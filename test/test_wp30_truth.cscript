@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11
+    S48 11 S49 4
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -10828,10 +10828,189 @@ if inlist("`only'", "", "S48") & `: list posof "S48" in w30_run' {
 }
 * ==== end S48 ====
 
+// S49 (WP-30 P1.9a): one drawn horizontal case.  The SVG twoway drew in
+// the same run (S49_SVG) and dash's saved page (S49_HTML): the page's
+// default titles are twoway's (rotated title left of the plot region is
+// y, right of it y2, flat below it x; HZ-28's x is skipped: twoway writes
+// a two-label axis "Xvar...", dash leaves it untitled); every numeric
+// tick label twoway writes on an axis lies inside dash's range on the
+// same axis; an axis twoway labels with dates is a date axis in the page,
+// or its numbers' format is a date format (a mixed axis); and S49_GLYPH,
+// when set, is a glyph class of the page.  Globals S49_OK, S49_MSG.
+capture program drop _s49_check
+program define _s49_check
+    version 19
+    args svg html id glyph
+    global S49_SVG `"`svg'"'
+    global S49_HTML `"`html'"'
+    global S49_ID "`id'"
+    global S49_GLYPH "`glyph'"
+    python: __import__("sys").modules["_dash_s49"].check()
+end
+python:
+def _s49_check():
+    import json, os, re, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.join(Macro.getGlobal("S49_REPO"), "scripts"))
+    import svg_truth
+    svg, html = Macro.getGlobal("S49_SVG"), Macro.getGlobal("S49_HTML")
+    cid, glyph = Macro.getGlobal("S49_ID"), Macro.getGlobal("S49_GLYPH")
+    doc = svg_truth.svg_document(svg)
+    pr = doc["plotregion"]
+    want = {"x": "", "y": "", "y2": ""}
+    labels = {}
+    for ax in ("x", "y"):
+        rd = svg_truth.svg_axis_reading(svg, ax, doc=doc)
+        labels[ax] = [str(v) for v in (rd.get("labels") or [])]
+    seen = set(labels["x"]) | set(labels["y"])
+    mid = (pr["left"] + pr["right"]) / 2.0
+    for t in doc["texts"]:
+        s = t.get("text", "")
+        # A legend key has no anchor; a tick label is a number or a date.
+        if not s or s in seen or t.get("anchor") is None \
+                or re.fullmatch(r"-?[\d.]+|\d\d[a-z]{3}\d{4}", s):
+            continue
+        if t.get("rotate") is not None:
+            k = "y" if t.get("x", 0) < mid else "y2"
+            want[k] = want[k] or s
+        elif t.get("y", 0) > pr["bottom"] and pr["left"] < t.get("x", 0) < pr["right"]:
+            want["x"] = want["x"] or s
+    with open(html, encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, figs = {}, []
+    def walk(o):
+        if isinstance(o, dict):
+            if "id" in o and "attributes" in o:
+                objs[o["id"]] = o
+                if o.get("name") == "Figure":
+                    figs.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        walk(json.loads(m.group(1)))
+    def ref(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    bad = []
+    fig = figs[0]["attributes"] if figs else {}
+    axes = {}
+    for side, key in (("below", "x"), ("left", "y"), ("right", "y2")):
+        for a in fig.get(side) or []:
+            a = ref(a)
+            if a.get("name", "").endswith("Axis"):
+                axes.setdefault(key, a)
+    for key in ("x", "y", "y2"):
+        if key == "x" and cid == "HZ-28":
+            continue
+        got = ((axes.get(key) or {}).get("attributes") or {}).get("axis_label") or ""
+        if got != want[key]:
+            bad.append("%s title %r, twoway %r" % (key, got, want[key]))
+    for ax in ("x", "y"):
+        rng = (ref(fig.get(ax + "_range")) or {}).get("attributes", {})
+        dated = [v for v in labels[ax] if re.fullmatch(r"\d\d[a-z]{3}\d{4}", v)]
+        if dated:
+            a = axes.get(ax) or {}
+            fmt = json.dumps((ref((a.get("attributes") or {}).get("formatter")) or {}))
+            if a.get("name") != "DatetimeAxis" and not re.search(r"%t[cCdwmqhy]", fmt):
+                bad.append("%s is no date axis (%s)" % (ax, a.get("name")))
+            continue
+        try:
+            nums = [float(v) for v in labels[ax]]
+        except ValueError:
+            continue
+        if "start" in rng and nums:
+            lo, hi = sorted((float(rng["start"]), float(rng["end"])))
+            if min(nums) < lo - 1e-9 or max(nums) > hi + 1e-9:
+                bad.append("%s range %.4g..%.4g, twoway ticks %s" % (ax, lo, hi, labels[ax]))
+    if glyph:
+        names = {ref(ref(r).get("attributes", {}).get("glyph") or {}).get("name")
+                 for r in fig.get("renderers") or []}
+        if glyph not in names:
+            bad.append("no %s among %s" % (glyph, sorted(n for n in names if n)))
+    Macro.setGlobal("S49_OK", "0" if bad else "1")
+    Macro.setGlobal("S49_MSG", "; ".join(bad)[:400] or "ok")
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s49_sys
+_s49_sys.modules["_dash_s49"] = type(_s49_sys)("_dash_s49")
+_s49_sys.modules["_dash_s49"].check = _s49_check
+end
+
 * ==== S49 P1.9a: horizontal drawn ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S49") & `: list posof "S49" in w30_run' {
     display as text "S49 start " c(current_date) " " c(current_time)
+    global S49_REPO "`c(pwd)'/.."
+    local s49log "`w30_work'/s49.log"
+    local s49pg "`w30_work'/zhz.html"
+    local s49svg "`w30_work'/zhz.svg"
+    local s49ls = c(linesize)
+    local s49sch "`c(scheme)'"
+    set linesize 255
+    // horizontal_truth.json's scheme.
+    set scheme stcolor
+    // horizontal_truth.json's data: x 1..5, y, lo/hi about it, a %td d.
+    clear
+    quietly set obs 5
+    quietly generate double x = _n
+    quietly generate double y = .
+    local ys 10 30 20 50 40
+    forvalues i = 1/5 {
+        quietly replace y = `: word `i' of `ys'' in `i'
+    }
+    quietly generate double lo = y - 5
+    quietly generate double hi = y + 5
+    quietly generate double d = td(08jan2020) + 25 * (_n - 1)
+    format d %td
+    label variable x "Xvar"
+    label variable y "Yvar"
+    label variable lo "Lovar"
+    label variable hi "Hivar"
+    label variable d "Day"
+    // HZ-20..HZ-28: twoway draws each, then dash; titles, ranges, date
+    // axes and the turned glyph compared in the same run.
+    foreach row in ///
+        `"HZ-20|HBar|bar y x, horizontal"' ///
+        `"HZ-21|Segment|rcap lo hi x, horizontal"' ///
+        `"HZ-22|Quad|histogram y, horizontal"' ///
+        `"HZ-23|Line|kdensity y, horizontal"' ///
+        `"HZ-24|Line|function y=x^2, range(0 2) horizontal"' ///
+        `"HZ-25|HBar|bar y d, horizontal"' ///
+        `"HZ-26|HBar|(scatter y d) (bar y d, horizontal)"' ///
+        `"HZ-27|HBar|(bar y d, horizontal) (scatter y d)"' ///
+        `"HZ-28|HBar|(scatter y x) (bar y x, horizontal yaxis(2))"' {
+        gettoken id rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken gl rest : rest, parse("|")
+        gettoken bar cmd : rest, parse("|")
+        capture graph drop _all
+        capture noisily twoway `cmd'
+        local trc = _rc
+        if `trc' == 0 quietly graph export "`s49svg'", replace
+        // A comma before saving() unless the layer's own list takes it.
+        local sep ","
+        if strpos(`"`cmd'"', ",") & substr(`"`cmd'"', 1, 1) != "(" local sep ""
+        _s36_run `"dash `cmd'`sep' saving("`s49pg'", replace)"' "`s49log'"
+        local drc = r(rc)
+        local prc 1
+        global S49_OK 0
+        global S49_MSG "not checked"
+        if `trc' == 0 & `drc' == 0 {
+            capture _s49_check "`s49svg'" "`s49pg'" "`id'" "`gl'"
+            local prc = _rc
+        }
+        _w30_expect `id' "(`trc' == 0 & `drc' == 0 & `prc' == 0 & ${S49_OK} == 1)" "rc `trc'/`drc'/`prc': ${S49_MSG}"
+        _w30_done `id' "`cmd': titles, ranges, date axes and the turned glyph as twoway draws them"
+    }
+    capture dash clear
+    capture graph drop _all
+    capture erase "`s49log'"
+    capture erase "`s49pg'"
+    capture erase "`s49svg'"
+    macro drop S49_*
+    set linesize `s49ls'
+    set scheme `s49sch'
     display as text "S49 end " c(current_date) " " c(current_time)
 }
 * ==== end S49 ====

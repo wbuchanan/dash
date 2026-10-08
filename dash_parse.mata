@@ -151,6 +151,11 @@
 *!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
 *!       _rp_tok<i>.
 *!
+*!   _dash_hz_order(opts)
+*!       The words spelling horizontal and vertical, each flag's first
+*!       spelling, in the order typed: "vert hor", one word or ""
+*!       (WP-30 P1.9a).
+*!
 *!   _dash_rep_keyof(snames)
 *!       The option a word read alone set, from the parser's s() names.
 *!
@@ -5952,6 +5957,37 @@ void _dash_rep_scan(string scalar opts, real scalar unk, real scalar cap)
         st_local("_rp_nm" + strofreal(i), names[i])
         st_local("_rp_tok" + strofreal(i), last[i])
     }
+}
+
+// _dash_hz_order(opts) -- horizontal and vertical as typed in a plot's
+// option list (WP-30 P1.9a): the first word spelling each (minimums hor
+// and vert, lower case, no parentheses), in the order typed, as typed:
+// "vert hor", one word or "".  dash.ado's _dash_hz_check judges the flags
+// in this order and names the word as typed, as twoway names the first
+// one it refuses ("option vert not allowed").  The list is read by value;
+// nothing in it is run.
+string scalar _dash_hz_order(string scalar opts)
+{
+    string rowvector toks
+    string scalar    nm, out
+    real scalar      i, h, v
+
+    toks = _dash_rep_toks(opts, 0)
+    out = ""
+    h = v = 0
+    for (i = 1; i <= cols(toks); i++) {
+        if (strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (!h & strlen(nm) >= 3 & nm == substr("horizontal", 1, strlen(nm))) {
+            out = strtrim(out + " " + nm)
+            h = 1
+        }
+        else if (!v & strlen(nm) >= 4 & nm == substr("vertical", 1, strlen(nm))) {
+            out = strtrim(out + " " + nm)
+            v = 1
+        }
+    }
+    return(out)
 }
 
 // _dash_rep_keyof(snames) -- the option a word read alone set: the s()

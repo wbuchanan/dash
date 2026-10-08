@@ -1083,6 +1083,9 @@ FUNCTIONS = {
  '_dash_by_spacing': 'test/test_by_grid.py::TestSpacing::test_every_probe',
  '_dash_by_word': 'test/test_by_grid.py::TestTheGrammar::test_every_spelling_is_twoways',
  # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
+ '_dash_is_horizontal': 'test/test_horizontal.py::TestTheRoleRule::test_is_horizontal_and_role_letter',
+ '_dash_role_letter': 'test/test_horizontal.py::TestTheRoleRule::test_is_horizontal_and_role_letter',
+ '_dash_transpose_layer': 'test/test_horizontal.py::TestHorizontalIsTheTranspose::test_type',
  # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
  # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
  # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)

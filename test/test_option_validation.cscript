@@ -1194,6 +1194,80 @@ if `cv_lines' == 0 | `ncv' != `cv_lines' {
 else display as text "CV: all `ncv' corpus lines probed"
 
 // ----------------------------------------------------------------
+// HZ: horizontal and vertical refused as twoway refuses them (WP-30 P1.9a)
+// ----------------------------------------------------------------
+// Each case runs twoway's own command (nodraw) and dash's, and compares
+// rc and the first error line (test/fixtures/horizontal_truth.json holds
+// the same rows); an accepted case must not name either flag.  E4's
+// order: a refusing type names its first refused flag as typed, then the
+// two together are refused; recast() is judged first, a derived type on
+// both its own type and its target.
+capture program drop _hz_case
+program define _hz_case
+    version 16.0
+    args id cmd
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 120
+    capture log close _ovlog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily twoway `cmd' nodraw
+    local trc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local tline `"`r(line)'"'
+    if `trc' != 0 & `"`tline'"' == "" {
+        _ov_count "`logfile'" "may not combine"
+        local tline `"`r(line)'"'
+    }
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    quietly graph drop _all
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `cmd' name(hz)
+    local drc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local dline `"`r(line)'"'
+    if `drc' != 0 & `"`dline'"' == "" {
+        _ov_count "`logfile'" "may not combine"
+        local dline `"`r(line)'"'
+    }
+    _ov_count "`logfile'" "unsupported option"
+    local named = r(n)
+    local bad = (`trc' != `drc') | (strtrim(`"`tline'"') != strtrim(`"`dline'"')) | (`drc' == 0 & `named' > 0)
+    if `bad' {
+        display as error `"`id' FAIL: twoway rc `trc' [`tline'], dash rc `drc' [`dline'], named `named': `cmd'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: rc `drc' as twoway -- `cmd'"'
+end
+_hz_case HZ-01 "scatter mpg weight, horizontal"
+_hz_case HZ-02 "kdensity mpg, vertical"
+_hz_case HZ-03 "scatter mpg weight, vertical horizontal"
+_hz_case HZ-04 "kdensity mpg, horizontal vertical"
+_hz_case HZ-05 "bar mpg weight, vertical horizontal"
+_hz_case HZ-06 "bar mpg weight, recast(scatter) horizontal"
+_hz_case HZ-07 "kdensity mpg, recast(area) vertical"
+_hz_case HZ-08 "lfit mpg weight, recast(bar) horizontal"
+_hz_case HZ-09 "lfit mpg weight, recast(scatter) horizontal"
+_hz_case HZ-10 "histogram mpg, recast(line) vertical"
+_hz_case HZ-11 "scatter mpg weight, recast(bar) horizontal"
+_hz_case HZ-12 "area mpg weight, recast(line) vertical"
+_hz_case HZ-13 "rcap mpg price weight, recast(rscatter) horizontal vertical"
+_hz_case HZ-14 "tsline mpg, horizontal"
+_hz_case HZ-15 "bar mpg weight, hor"
+_hz_case HZ-16 "kdensity mpg, vert horizontal"
+// The typed-order scan itself: minimums, parentheses and quoted text.
+mata: st_local("_hz_o1", _dash_hz_order("vert hor"))
+mata: st_local("_hz_o2", _dash_hz_order("horizontal"))
+mata: st_local("_hz_o3", _dash_hz_order("hor(1) ve"))
+mata: st_local("_hz_o4", _dash_hz_order(`"title("vert hor") horiz vertical"'))
+_ov_assert HZ-17 `"("`_hz_o1'" == "vert hor") & ("`_hz_o2'" == "horizontal") & ("`_hz_o3'" == "") & ("`_hz_o4'" == "horiz vertical")"' "_dash_hz_order reads the flags in typed order, as typed"
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

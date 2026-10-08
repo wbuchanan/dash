@@ -296,6 +296,22 @@ is missing everywhere -- {cmd:dash} draws in silence too, and
 one-variable plot of a type that takes a {it:y} and an {it:x} is "too few
 variables specified", r(102).
 
+{phang}{ul:Orientation.}  {opt horizontal} draws a plot on its side, as
+{cmd:twoway} draws it, on {cmd:area}, {cmd:bar}, {cmd:spike},
+{cmd:dropline}, {cmd:dot}, {cmd:histogram}, {cmd:kdensity}, the eight
+range types, the five paired-coordinate types, {cmd:pci},
+{cmd:pcarrowi}, {cmd:function} and {cmd:tsrline}: the {it:x} values run
+up the y axis, the {it:y} values across, and the default axis titles and
+date labels follow them ({cmd:histogram} {it:var}{cmd:, horizontal}
+titles y with the variable and x "Density").  {opt vertical}, the
+default, is taken on the same types except {cmd:kdensity} and
+{cmd:function}.  {cmd:yaxis(2)} and {cmd:xaxis(2)} stay where they are
+(a sideways layer's {it:x} values on {cmd:yaxis(2)} are on the right),
+and marker labels keep their clock positions.  Either flag on a type
+that does not take it is refused, "option horizontal not allowed",
+r(198), judged after {cmd:recast()}; the two together are "may not
+combine options horizontal and vertical", r(198).
+
 {pstd}
 {ul:Time-series operators.}  A plot variable may carry {cmd:L.}, {cmd:F.},
 {cmd:D.} and {cmd:S.}, their combinations and {cmd:L(1/2).}, wherever
@@ -4813,10 +4829,7 @@ disagree in either direction.
     not read their contents; the confidence band, the density line and the
     fitted line keep their default styling.
 
-{phang2}{ul:Orientation, bar labels and positions.}
-    {opt horizontal}, {opt vertical} -- {cmd:twoway} draws a bar, spike,
-    dropline or range bar sideways with {cmd:horizontal}; {cmd:dash}
-    draws every plot upright, bars at the {it:x} variable's values.
+{phang2}{ul:Bar labels and positions.}
     {opt blabel(...)} is {cmd:graph bar}'s and {opt at(varname)} no
     {cmd:twoway} plot's: {cmd:twoway} refuses both, r(198).
 

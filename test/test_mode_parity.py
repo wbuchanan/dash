@@ -337,7 +337,10 @@ def _drawn(r):
 _STYLE = ("marker", "size", "fill_color", "line_color", "line_width",
           "line_dash", "fill_alpha", "line_alpha", "angle")
 _COORDS = ("x", "y", "left", "right", "top", "bottom", "x0", "x1", "y0",
-           "y1", "xs", "ys", "base", "upper", "lower", "width", "height")
+           "y1", "xs", "ys", "base", "upper", "lower", "width", "height",
+           # WP-30 P1.9a: an area's second edge, upright (VArea) or turned
+           # (HArea).
+           "x2", "y2")
 
 
 def _glyph_profile(fig):
@@ -2220,6 +2223,15 @@ CORPUS = [
     # WP-30 S48 (P1.15b): by() grid and size.
     _case("by() grid and size (WP-30 P1.15b)", [_sc()], None,
           {"by": "rep, rows(2) holes(1) colfirst iscale(.7) imargin(small)"}),
+    # WP-30 P1.9a: horizontal drawn.
+    _case("horizontal bar, rcap, histogram and pcarrow (WP-30 P1.9a)",
+          [plot_for("bar", {"horizontal": "horizontal", "mlabel": "mpg"}),
+           plot_for("rcap", {"horizontal": "horizontal"}),
+           plot_for("histogram", {"horizontal": "horizontal"}),
+           plot_for("pcarrow", {"horizontal": "horizontal"})]),
+    _case("horizontal area on a second y axis (WP-30 P1.9a)",
+          [_sc(), plot_for("area", {"horizontal": "horizontal",
+                                    "yaxis": "2"})]),
 ]
 
 

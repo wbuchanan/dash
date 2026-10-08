@@ -347,7 +347,7 @@ and now matches Stata.
 
 - `recast()` is drawn: `dash scatter y x, recast(line)` drew markers and named the option, and now draws `line y x`; `kdensity x, recast(area)` drew a line and now draws an area; `lfit y x, recast(scatter)` drew a line and now draws the fitted points as markers; `recastas()` and `type()` are read as its synonyms, and an out-of-group or unknown name falls back as twoway does (a yx type to scatter, a range type to rspike, a pc type to pcspike) with twoway's two notes. (WP-30, P1.8b)
 
-<!-- WP-30 P1.9a -->
+- `horizontal` is drawn on bar, rbar, spike, rspike, rcap, rcapsym, dropline, dot, area, rarea, histogram, kdensity, function, rline, rconnected, rscatter, tsrline, the pc types, pci and pcarrowi, as twoway draws it: `dash bar mpg rep78, horizontal` drew upright bars and named the option, and now draws bars along the y axis with the axes, default titles, date labels and second axes swapped, rcap caps across the spine and marker labels where twoway puts them; `vertical` is no longer named. (WP-30, P1.9a)
 
 - TeX in graph text is drawn as typed, as twoway draws it: `dash scatter mpg weight, title("\(y\)") subtitle("\[z\]") note("\$\$ x \$\$")` drew typeset maths and wrote a 3,087,832-byte page carrying MathJax; it now draws the text as typed and the page is 1,302,025 bytes, against 1,301,893 for the same page in plain words. (WP-30, P1.11a)
 
@@ -747,7 +747,7 @@ and now matches Stata.
 
 - `recast()`, `recastas()` and `type()` on lfitci, qfitci, lpolyci and fpfitci are refused as twoway refuses them (`recastas() option not allowed`, or `type() option not allowed`, r(198)), where dash took them with a note; `rec()`, `reca()` and `recas()` are refused with `option rec() not allowed`, r(198). (WP-30, P1.8b)
 
-<!-- WP-30 P1.9a -->
+- `horizontal` and `vertical` are refused where twoway refuses them, in its words (both were accepted with a note): `horizontal vertical` together (`may not combine options horizontal and vertical`, r(198)); `horizontal` on scatter, line, connected, the fits and smoothers, scatteri and tsline, and `vertical` on those and on kdensity and function (`option horizontal not allowed`, r(198), naming the flag as typed), judged after `recast()` as twoway judges it. (WP-30, P1.9a)
 
 <!-- WP-30 P1.10 -->
 

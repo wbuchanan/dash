@@ -381,6 +381,7 @@ COVERAGE = {
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
         "_dash_by_check": ("test_by_suboptions.cscript:BYG-01", "test_by_suboptions.cscript:BYG-17"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
+        "_dash_hz_check": ("test_option_validation.cscript:HZ-03",),
         # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
         # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
@@ -811,6 +812,7 @@ COVERAGE = {
         "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),
         "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
+        "_dash_hz_order": ("test_option_validation.cscript:HZ-03",),
         # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
         # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)

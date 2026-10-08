@@ -532,8 +532,10 @@ class TestTheParsersFoundSomething:
         # 162 -> 163: P1.8b's Recast entry adds recastas() and type() and
         # the Unsupported entry's recast() leaves; 163 -> 165: P1.31a's
         # dash serve maxsessions() and idletimeout().
-        assert len(found) == 165, (
-            f"{len(found)} options parsed out of dash.sthlp, 165 measured "
+        # 165 -> 166: P1.9a's Orientation entry names xaxis(2) beside
+        # yaxis(2) (horizontal and vertical move there from Unsupported).
+        assert len(found) == 166, (
+            f"{len(found)} options parsed out of dash.sthlp, 166 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -618,7 +620,8 @@ class TestTheParsersFoundSomething:
         # 47 -> 46: P1.24 mlabvposition() honoured
         # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
         # 45 -> 44: P1.8b recast() honoured
-        assert len(_ignored_options()) == 44
+        # 44 -> 42: P1.9a horizontal drawn, vertical silent
+        assert len(_ignored_options()) == 42
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -631,7 +634,9 @@ class TestTheParsersFoundSomething:
         # 47 -> 46: P1.24 mlabvposition() honoured
         # 46 -> 45: P1.24 mlabtextstyle() honoured, its entry gone
         # 45 -> 44: P1.8b recast() honoured; its residual is cross-referenced
-        assert len(_unsupported_section()) == 44
+        # 44 -> 42: P1.9a horizontal drawn, vertical silent; the entry is
+        # "Bar labels and positions"
+        assert len(_unsupported_section()) == 42
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -679,9 +684,10 @@ class TestTheParsersFoundSomething:
         # maxsessions() and idletimeout() rows; 375 -> 377: P1.20b's
         # plotregion(margin()) and ifcolor() rows; 377 -> 383: P1.15b's
         # six by() rows (rows(), holes(), colfirst, compact, iscale(),
-        # imargin()).
-        assert len(defs) == 383, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 383 "
+        # imargin()); 383 -> 384: P1.9a's {ul:Orientation.} entry (the
+        # Unsupported entry it replaces stays, as "Bar labels and positions").
+        assert len(defs) == 384, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 384 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

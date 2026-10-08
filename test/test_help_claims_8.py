@@ -1438,15 +1438,20 @@ class TestTheUnsupportedProseIsTrue:
     @pytest.mark.parametrize("flag", ["", "horizontal"])
     def test_bars_are_drawn_vertically_at_the_x_values(self, tmp_path, mode,
                                                        flag):
+        """Flipped (WP-30 P1.9a): a VBar under horizontal was wrong because
+        twoway turns the bars (horizontal_truth.json draw bar); they are
+        an HBar at the x values, which run on the y axis."""
         opts = {"horizontal": "horizontal"} if flag else {}
         spec = _one_graph([{"type": "bar", "yvar": "mpg", "xvar": "weight",
                             "options": opts}])
         fig = _figure(mode, tmp_path, spec, tag="bar" + flag)
+        cls, at = ("HBar", "y") if flag else ("VBar", "x")
         bars = [r for r in fig.renderers
-                if type(getattr(r, "glyph", None)).__name__ == "VBar"]
+                if type(getattr(r, "glyph", None)).__name__ == cls]
         assert len(bars) == 1
         g = bars[0].glyph
-        xs = sorted(float(v) for v in bars[0].data_source.data[g.x])
+        xs = sorted(float(v) for v in bars[0].data_source.data[
+            getattr(g, at)])
         assert xs == sorted(_DF["weight"].tolist())
 
     @pytest.mark.parametrize("ptype", ["line", "connected"])
@@ -1469,6 +1474,9 @@ class TestTheUnsupportedProseIsTrue:
 
     def test_a_spike_is_drawn_upright_even_with_horizontal(self, tmp_path,
                                                            mode):
+        """Flipped (WP-30 P1.9a): an upright spike under horizontal was
+        wrong because twoway turns it (horizontal_truth.json draw spike):
+        its segments are horizontal, y0 == y1."""
         spec = _one_graph([{"type": "spike", "yvar": "mpg", "xvar": "weight",
                             "options": {"horizontal": "horizontal"}}])
         fig = _figure(mode, tmp_path, spec, tag="spikeh")
@@ -1476,7 +1484,7 @@ class TestTheUnsupportedProseIsTrue:
                 if type(getattr(r, "glyph", None)).__name__ == "Segment"]
         assert segs
         g, d = segs[0].glyph, segs[0].data_source.data
-        assert list(d[g.x0]) == list(d[g.x1])      # vertical segments
+        assert list(d[g.y0]) == list(d[g.y1])      # horizontal segments
 
     def test_a_markers_outline_is_drawn_solid(self, tmp_path, mode):
         spec = _one_graph([{"type": "scatter", "yvar": "mpg",

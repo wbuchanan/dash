@@ -1,0 +1,1508 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "1dfee5e7fb2430c8bd40951aa5576d5055e75390",
+  "data": "x 1..5 (Xvar), y 10 30 20 50 40 (Yvar), lo = y-5 (Lovar), hi = y+5 (Hivar), d %td from 08jan2020 step 25 (Day), t = _n tsset; recast rows on sysuse auto",
+  "extracted": " 8 Oct 2026",
+  "scheme": "stcolor",
+  "stata_version": "19.5"
+ },
+ "accept": {
+  "area": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "bar": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "connected": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "dot": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "dropline": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "fpfit": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "fpfitci": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "function": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "histogram": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "kdensity": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "lfit": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "lfitci": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "line": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "lowess": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "lpoly": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "lpolyci": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "mband": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "mspline": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "pcarrow": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "pcarrowi": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "pcbarrow": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "pccapsym": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "pci": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "pcscatter": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "pcspike": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "qfit": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "qfitci": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "rarea": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rbar": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rcap": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rcapsym": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rconnected": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rline": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rscatter": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "rspike": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "scatter": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "scatteri": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "spike": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  },
+  "tsline": {
+   "h": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "hv": {
+    "line": "option horizontal not allowed",
+    "rc": 198
+   },
+   "v": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   },
+   "vh": {
+    "line": "option vertical not allowed",
+    "rc": 198
+   }
+  },
+  "tsrline": {
+   "h": {
+    "line": "",
+    "rc": 0
+   },
+   "hv": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   },
+   "v": {
+    "line": "",
+    "rc": 0
+   },
+   "vh": {
+    "line": "may not combine options horizontal and vertical",
+    "rc": 198
+   }
+  }
+ },
+ "draw": {
+  "HZ-25": {
+   "cmd": "twoway bar y d, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "01may2020",
+    "01apr2020",
+    "01mar2020",
+    "01feb2020",
+    "01jan2020"
+   ],
+   "ytitle": "Day"
+  },
+  "HZ-26": {
+   "cmd": "twoway (scatter y d) (bar y d, horizontal)",
+   "rc": 0,
+   "xlabels": [
+    "01jan1960",
+    "01jan1980",
+    "01jan2000",
+    "01jan2020"
+   ],
+   "xtitle": "",
+   "y2title": "",
+   "ylabels": [
+    "20000",
+    "15000",
+    "10000",
+    "5000",
+    "0"
+   ],
+   "ytitle": ""
+  },
+  "HZ-27": {
+   "cmd": "twoway (bar y d, horizontal) (scatter y d)",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "5000",
+    "10000",
+    "15000",
+    "20000"
+   ],
+   "xtitle": "",
+   "y2title": "",
+   "ylabels": [
+    "01jan2020",
+    "01jan2000",
+    "01jan1980",
+    "01jan1960"
+   ],
+   "ytitle": ""
+  },
+  "HZ-28": {
+   "cmd": "twoway (scatter y x) (bar y x, horizontal yaxis(2))",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Xvar...",
+   "y2title": "Xvar",
+   "ylabels": [
+    "50",
+    "40",
+    "30",
+    "20",
+    "10"
+   ],
+   "ytitle": "Yvar"
+  },
+  "T-barh-barh": {
+   "cmd": "twoway (bar y x, horizontal) (bar y x, horizontal)",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "T-rcaph-sc": {
+   "cmd": "twoway (rcap lo hi x, horizontal) (scatter x y)",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "T-sc-barh": {
+   "cmd": "twoway (scatter y x) (bar y x, horizontal)",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "",
+   "y2title": "",
+   "ylabels": [
+    "50",
+    "40",
+    "30",
+    "20",
+    "10",
+    "0"
+   ],
+   "ytitle": ""
+  },
+  "T-sc-barh-sc": {
+   "cmd": "twoway (scatter y x) (bar y x, horizontal) (scatter y x)",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Xvar",
+   "y2title": "",
+   "ylabels": [
+    "50",
+    "40",
+    "30",
+    "20",
+    "10",
+    "0"
+   ],
+   "ytitle": "Yvar"
+  },
+  "area": {
+   "cmd": "twoway area y x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "bar": {
+   "cmd": "twoway bar y x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "dot": {
+   "cmd": "twoway dot y x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "dropline": {
+   "cmd": "twoway dropline y x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "function": {
+   "cmd": "twoway function y=x^2, range(0 2) horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "xtitle": "y",
+   "y2title": "",
+   "ylabels": [
+    "2",
+    "1.5",
+    "1",
+    ".5",
+    "0"
+   ],
+   "ytitle": "x"
+  },
+  "hist-d": {
+   "cmd": "twoway histogram d, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    ".005",
+    ".01",
+    ".015"
+   ],
+   "xtitle": "Density",
+   "y2title": "",
+   "ylabels": [
+    "25mar2020",
+    "11mar2020",
+    "26feb2020",
+    "12feb2020",
+    "29jan2020"
+   ],
+   "ytitle": "Day"
+  },
+  "histogram": {
+   "cmd": "twoway histogram y, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    ".01",
+    ".02",
+    ".03"
+   ],
+   "xtitle": "Density",
+   "y2title": "",
+   "ylabels": [
+    "40",
+    "35",
+    "30",
+    "25",
+    "20"
+   ],
+   "ytitle": "Yvar"
+  },
+  "kdensity": {
+   "cmd": "twoway kdensity y, horizontal",
+   "rc": 0,
+   "xlabels": [
+    ".014",
+    ".016",
+    ".018",
+    ".02"
+   ],
+   "xtitle": "kdensity y",
+   "y2title": "",
+   "ylabels": [
+    "50",
+    "40",
+    "30",
+    "20",
+    "10"
+   ],
+   "ytitle": "x"
+  },
+  "pcarrow": {
+   "cmd": "twoway pcarrow lo x hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "pcarrowi": {
+   "cmd": "twoway pcarrowi 1 1 2 2, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "1",
+    "1.2",
+    "1.4",
+    "1.6",
+    "1.8",
+    "2"
+   ],
+   "xtitle": "y/yb",
+   "y2title": "",
+   "ylabels": [
+    "2",
+    "1.8",
+    "1.6",
+    "1.4",
+    "1.2",
+    "1"
+   ],
+   "ytitle": "x/xb"
+  },
+  "pcbarrow": {
+   "cmd": "twoway pcbarrow lo x hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "pccapsym": {
+   "cmd": "twoway pccapsym lo x hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "pci": {
+   "cmd": "twoway pci 1 1 2 2, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "1",
+    "1.2",
+    "1.4",
+    "1.6",
+    "1.8",
+    "2"
+   ],
+   "xtitle": "y/yb",
+   "y2title": "",
+   "ylabels": [
+    "2",
+    "1.8",
+    "1.6",
+    "1.4",
+    "1.2",
+    "1"
+   ],
+   "ytitle": "x/xb"
+  },
+  "pcscatter": {
+   "cmd": "twoway pcscatter lo x hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "pcspike": {
+   "cmd": "twoway pcspike lo x hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rarea": {
+   "cmd": "twoway rarea lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rbar": {
+   "cmd": "twoway rbar lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rcap": {
+   "cmd": "twoway rcap lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rcapsym": {
+   "cmd": "twoway rcapsym lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rconnected": {
+   "cmd": "twoway rconnected lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rline": {
+   "cmd": "twoway rline lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rscatter": {
+   "cmd": "twoway rscatter lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "rspike": {
+   "cmd": "twoway rspike lo hi x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "spike": {
+   "cmd": "twoway spike y x, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50"
+   ],
+   "xtitle": "Yvar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Xvar"
+  },
+  "tsrline": {
+   "cmd": "twoway tsrline lo hi, horizontal",
+   "rc": 0,
+   "xlabels": [
+    "0",
+    "20",
+    "40",
+    "60"
+   ],
+   "xtitle": "Lovar/Hivar",
+   "y2title": "",
+   "ylabels": [
+    "5",
+    "4",
+    "3",
+    "2",
+    "1"
+   ],
+   "ytitle": "Tvar"
+  }
+ },
+ "recast": {
+  "HZ-06": {
+   "cmd": "twoway bar mpg weight, recast(scatter) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "HZ-07": {
+   "cmd": "twoway kdensity mpg, recast(area) vertical",
+   "line": "",
+   "rc": 0
+  },
+  "HZ-08": {
+   "cmd": "twoway lfit mpg weight, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "HZ-09": {
+   "cmd": "twoway lfit mpg weight, recast(scatter) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "HZ-10": {
+   "cmd": "twoway histogram mpg, recast(line) vertical",
+   "line": "",
+   "rc": 0
+  },
+  "HZ-11": {
+   "cmd": "twoway scatter mpg weight, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "HZ-12": {
+   "cmd": "twoway area mpg weight, recast(line) vertical",
+   "line": "option vertical not allowed",
+   "rc": 198
+  },
+  "HZ-13": {
+   "cmd": "twoway rcap mpg price weight, recast(rscatter) horizontal vertical",
+   "line": "may not combine options horizontal and vertical",
+   "rc": 198
+  },
+  "R-fn-area-v": {
+   "cmd": "twoway function y=x, range(0 1) recast(area) vertical",
+   "line": "",
+   "rc": 0
+  },
+  "R-fn-line-v": {
+   "cmd": "twoway function y=x, range(0 1) recast(line) vertical",
+   "line": "option vertical not allowed",
+   "rc": 198
+  },
+  "R-hist-sc-h": {
+   "cmd": "twoway histogram mpg, recast(scatter) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "R-kd-line-h": {
+   "cmd": "twoway kdensity mpg, recast(line) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "R-kd-line-hv": {
+   "cmd": "twoway kdensity mpg, recast(line) horizontal vertical",
+   "line": "option vertical not allowed",
+   "rc": 198
+  },
+  "R-kd-line-v": {
+   "cmd": "twoway kdensity mpg, recast(line) vertical",
+   "line": "option vertical not allowed",
+   "rc": 198
+  },
+  "R-lfit-line": {
+   "cmd": "twoway lfit mpg weight, recast(line) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  },
+  "R-line-area-h": {
+   "cmd": "twoway line mpg weight, recast(area) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "R-lowess-bar": {
+   "cmd": "twoway lowess mpg weight, recast(bar) horizontal",
+   "line": "",
+   "rc": 0
+  },
+  "R-lowess-line": {
+   "cmd": "twoway lowess mpg weight, recast(line) horizontal",
+   "line": "option horizontal not allowed",
+   "rc": 198
+  }
+ }
+}

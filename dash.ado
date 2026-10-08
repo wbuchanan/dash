@@ -464,6 +464,7 @@ program define _dash_require_mata
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
+        _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
@@ -1305,7 +1306,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
     if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
     if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
-    if `: length local horizontal' local _dash_pending `"`_dash_pending' horizontal"'
     if `: length local l1title' local _dash_pending `"`_dash_pending' l1title"'
     if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
@@ -1345,7 +1345,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
     if `: length local text' local _dash_pending `"`_dash_pending' text"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
-    if `: length local vertical' local _dash_pending `"`_dash_pending' vertical"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
@@ -2225,6 +2224,66 @@ program define _dash_fold_typed, sclass
         }
     }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
+end
+
+// ================================================================
+// _dash_hz_check <ptype> <target> <kind> <S>  -- horizontal and vertical
+// refused as twoway refuses them (WP-30 P1.9a)
+//
+// Called by _dash_process_segment right after _dash_recast_opt, so ptype
+// is the type drawn (a base, range, pc or time-series layer's recast
+// target) and target the canonical recast() target of a derived layer
+// (kind "derived").  Measured on StataNow 19.5
+// (test/fixtures/horizontal_truth.json, scripts/extract_horizontal_truth.do):
+//   * horizontal is taken by the 24 types of _hz_htypes, vertical by the
+//     22 of _hz_vtypes; any other type refuses the flag, "option
+//     horizontal not allowed", r(198);
+//   * a derived type (_hz_derived) is refused only when it and its recast
+//     target both refuse the flag;
+//   * a refusing type names the first refused flag in the order typed,
+//     as typed (Mata _dash_hz_order; "option vert not allowed"); then the
+//     two together are "may not combine
+//     options horizontal and vertical", r(198).
+// The lists equal dash_render.py's _DASH_HORIZONTAL_TYPES,
+// _DASH_VERTICAL_TYPES and _DASH_DERIVED_ORIENT_TYPES (test_horizontal.py).
+// S names a string scalar holding the plot's option text, read by value;
+// messages are constant text.  sclass:
+// it reads s(horizontal) and s(vertical) and changes nothing in s().
+// ================================================================
+program define _dash_hz_check, sclass
+    version 19
+    args ptype target kind S
+    local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline
+    local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline
+    local _hz_derived lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mband mspline kdensity function histogram
+    if `"`s(horizontal)'`s(vertical)'"' == "" exit
+    mata: st_local("_hz_order", _dash_hz_order(st_strscalar("`S'")))
+    if "`_hz_order'" == "" {
+        if `"`s(horizontal)'"' != "" local _hz_order horizontal
+        if `"`s(vertical)'"' != "" local _hz_order `_hz_order' vertical
+    }
+    foreach w of local _hz_order {
+        local f vertical
+        if substr("horizontal", 1, strlen("`w'")) == "`w'" local f horizontal
+        if `"`s(`f')'"' == "" continue
+        local _hz_ok 0
+        if "`f'" == "horizontal" {
+            if `: list ptype in _hz_htypes' local _hz_ok 1
+            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_htypes' local _hz_ok 1
+        }
+        else {
+            if `: list ptype in _hz_vtypes' local _hz_ok 1
+            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_vtypes' local _hz_ok 1
+        }
+        if !`_hz_ok' {
+            display as error "option `w' not allowed"
+            exit 198
+        }
+    }
+    if `"`s(horizontal)'"' != "" & `"`s(vertical)'"' != "" {
+        display as error "may not combine options horizontal and vertical"
+        exit 198
+    }
 end
 
 // _dash_stylelist_check ptype nser -- a stylelist held to twoway's rules
@@ -5393,6 +5452,11 @@ program define _dash_process_segment, rclass
         local _rc_ts     "`s(_recast_ts)'"
         if inlist("`_rc_kind'", "base", "range2yx", "ts") local ptype "`s(_recast_type)'"
         if "`_rc_kind'" == "range2yx" local yvar "`yvar1'"
+        // horizontal and vertical refused where twoway refuses them,
+        // judged after recast() (WP-30 P1.9a): _dash_hz_check.
+        tempname _hz_s
+        mata: st_strscalar("`_hz_s'", st_local("opts_raw"))
+        _dash_hz_check "`ptype'" "`_rc_target'" "`_rc_kind'" `_hz_s'
         // connect() and cmissing() as twoway reads them (WP-30 P1.8a): a
         // scatter y given a connect() element is twoway's connected type,
         // and the folds, checks and sort below read it as connected.  A

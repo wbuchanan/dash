@@ -1211,7 +1211,8 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars, axis_no=1):
 
     A univariate layer (histogram, kdensity) draws its variable on x, as
     twoway does, so its ``var`` counts on the ``"xvar"`` key and nothing on
-    ``"yvar"`` (WP-29 P0.8; ``horizontal`` is not read here yet, P1.9).
+    ``"yvar"`` (WP-29 P0.8); a horizontal one on ``"yvar"`` (WP-30 P1.9a,
+    through :func:`_dash_layer_axis_names`).
     Where twoway's first-plot rule labels the axis with the variable's
     numbers -- an ``lfit``, ``qfit``, ``lfitci``, ``qfitci``, ``kdensity``,
     ``lpoly`` or ``lpolyci`` first, measured in WP-29 S05 Evidence §6 --
@@ -1242,17 +1243,21 @@ def _dash_layer_axis_names(plot, key):
     univariate layer's ``var``, a pc layer's ``x1var``/``x2var``, else
     ``xvar``; on y: a range layer's ``yvar1``/``yvar2``, a pc layer's
     ``y1var``/``y2var``, else ``yvar`` (a univariate layer draws nothing on
-    y: ``[]`` with the axis kept out by ``None``)."""
+    y: ``[]`` with the axis kept out by ``None``).  *key* is the physical
+    axis: a horizontal layer's names there are those of the other role,
+    its axis number the physical option (WP-30 P1.9a)."""
     if not isinstance(plot, dict):
         return (None, [])
     ptype = str(plot.get("type", "")).lower()
     if ptype in _DASH_LITERAL_TYPES:
         return (None, [])
-    letter = "x" if key == "xvar" else "y"
+    phys = "x" if key == "xvar" else "y"
     opts = plot.get("options") or {}
     if not isinstance(opts, dict):
         opts = {}
-    axis_no = 2 if str(opts.get(letter + "axis", "1")).strip() == "2" else 1
+    axis_no = 2 if str(opts.get(phys + "axis", "1")).strip() == "2" else 1
+    letter = _dash_role_letter(plot, phys)
+    key = letter + "var"
     if ptype in _DASH_UNIVARIATE_TYPES:
         if letter == "y":
             return (None, [])
@@ -1290,10 +1295,11 @@ def _dash_axis_vars(plots, axis_no=1):
                   else 1)
             if on != axis_no:
                 continue
+            role = _dash_role_letter(p, letter)
             if ptype in _DASH_UNIVARIATE_TYPES:
                 return ((p.get("var", "") or p.get("xvar", "") or "")
-                        if letter == "x" else "")
-            if letter == "x":
+                        if role == "x" else "")
+            if role == "x":
                 return p.get("xvar", "") or p.get("x1var", "") or ""
             return (p.get("yvar", "") or p.get("yvar1", "")
                     or p.get("y1var", "") or "")
@@ -1307,6 +1313,8 @@ def _dash_axis_vars(plots, axis_no=1):
         d0 = (p0.get("var", "") or p0.get("xvar", "") or "", "")
     else:
         d0 = (p0.get("xvar", "") or "", p0.get("yvar", "") or "")
+    if _dash_is_horizontal(p0):
+        d0 = (d0[1], d0[0])
     return (d0[0] if xv is None else xv, d0[1] if yv is None else yv)
 
 
@@ -1424,8 +1432,11 @@ def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
             for i, p, _mine, oth in on:
                 firsts.setdefault(oth, (i, p))
             _i, chosen = max(firsts.values(), key=lambda t: t[0])
-            out[key] = _dash_layer_tick_format(chosen, dim, numeric_formats,
-                                               date_vars)
+            # A horizontal layer's format on *dim* is its other role's
+            # (WP-30 P1.9a).
+            out[key] = _dash_layer_tick_format(
+                chosen, _dash_role_letter(chosen, dim), numeric_formats,
+                date_vars)
     return out
 
 
@@ -11724,7 +11735,9 @@ def _compute_secondary_range(
         opts = plot.get("options", {})
         if str(opts.get(axis_key, "1")).strip() != str(axis_number):
             continue
-        varname = plot.get(var_key, "")
+        # A horizontal layer shows its other role on this axis (WP-30
+        # P1.9a).
+        varname = plot.get(_dash_role_letter(plot, var_key[0]) + "var", "")
         if varname and varname in df.columns:
             # A date in milliseconds, a missing one dropped: to_numeric
             # read a date in its own unit and a missing one as -9.2e18
@@ -15753,8 +15766,14 @@ class GlyphMapper:
     def _axis_kind(fig, axis, options=None):
         """The date kind of the axis a layer with *options* is drawn on for
         letter *axis*: ``axis + "2"`` under ``xaxis(2)``/``yaxis(2)``, else
-        *axis* (WP-30 P1.23a, TR-35.4)."""
+        *axis* (WP-30 P1.23a, TR-35.4).  *axis* is the mapper's role
+        letter: a horizontal layer draws it on the other physical axis
+        (WP-30 P1.9a), whose ``xaxis(2)``/``yaxis(2)`` then decides.  The
+        options are judged as a layer of a type that turns (dash.ado has
+        refused the flag elsewhere)."""
         opts = options if isinstance(options, dict) else {}
+        axis = _dash_role_letter(
+            {"type": _DASH_HORIZONTAL_TYPES[0], "options": opts}, axis)
         two = str(opts.get(axis + "axis", "1")).strip() == "2"
         return _dash_axis_date_kind(fig, axis + "2" if two else axis)
 
@@ -28333,6 +28352,9 @@ def _dash_axis_default_titles(plots, var_labels=None, yaxis=1, xaxis=1,
         opts = (plot.get("options") if isinstance(plot.get("options"), dict)
                 else {})
         series = _dash_layer_series(plot, var_labels, default_level)
+        if _dash_is_horizontal(plot):
+            # Each series read through its orientation (WP-30 P1.9a).
+            series = [(s[1], s[0]) + tuple(s[2:]) for s in series]
         if str(yaxis) in (str(opts.get("yaxis", "1") or "1").split()
                           or ["1"]):
             ys.extend(s[0] for s in series)
@@ -31428,7 +31450,157 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
 
 #: A glyph's coordinates along each axis, by property name.
 _DASH_Y_COORDS = ("y", "y0", "y1", "y2", "top", "bottom")
-_DASH_X_COORDS = ("x", "x0", "x1", "left", "right")
+#: x2 is a turned area's (HArea's) second edge (WP-30 P1.9a).
+_DASH_X_COORDS = ("x", "x0", "x1", "x2", "left", "right")
+
+# WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
+#: The types twoway draws turned under ``horizontal``, and those it takes
+#: ``vertical`` on (measured: test/fixtures/horizontal_truth.json
+#: ``accept``); dash.ado's ``_dash_hz_check`` holds the same lists.
+_DASH_HORIZONTAL_TYPES = (
+    "area", "bar", "spike", "dropline", "dot", "histogram", "kdensity",
+    "rarea", "rbar", "rspike", "rcap", "rcapsym", "rline", "rconnected",
+    "rscatter", "pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym",
+    "pci", "pcarrowi", "function", "tsrline")
+_DASH_VERTICAL_TYPES = (
+    "area", "bar", "spike", "dropline", "dot", "histogram",
+    "rarea", "rbar", "rspike", "rcap", "rcapsym", "rline", "rconnected",
+    "rscatter", "pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym",
+    "pci", "pcarrowi", "tsrline")
+#: Types that keep their own type under recast() and carry the target
+#: (S45): a flag is refused only when both refuse it (E4).
+_DASH_DERIVED_ORIENT_TYPES = (
+    "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci", "lowess",
+    "lpoly", "lpolyci", "mband", "mspline", "kdensity", "function",
+    "histogram")
+#: Glyph or annotation class -> (turned class, property pairs swapped):
+#: the one property map of ``_dash_transpose_layer``.  A constant; no
+#: property name is read from user input.
+_DASH_TRANSPOSE = {
+    "VBar": ("HBar", (("x", "y"), ("top", "right"), ("bottom", "left"),
+                      ("width", "height"))),
+    "HBar": ("VBar", (("y", "x"), ("right", "top"), ("left", "bottom"),
+                      ("height", "width"))),
+    "VArea": ("HArea", (("x", "y"), ("y1", "x1"), ("y2", "x2"))),
+    "HArea": ("VArea", (("y", "x"), ("x1", "y1"), ("x2", "y2"))),
+    "Quad": ("Quad", (("left", "bottom"), ("right", "top"))),
+    "Segment": ("Segment", (("x0", "y0"), ("x1", "y1"))),
+    "Scatter": ("Scatter", (("x", "y"),)),
+    "Line": ("Line", (("x", "y"),)),
+    "Circle": ("Circle", (("x", "y"),)),
+    "Patch": ("Patch", (("x", "y"),)),
+    "Patches": ("Patches", (("xs", "ys"),)),
+    "MultiLine": ("MultiLine", (("xs", "ys"),)),
+    "LabelSet": ("LabelSet", (("x", "y"),)),
+    "Label": ("Label", (("x", "y"),)),
+    "Arrow": ("Arrow", (("x_start", "y_start"), ("x_end", "y_end"))),
+}
+
+
+def _dash_is_horizontal(plot):
+    """Is *plot* drawn turned?  ``options.horizontal`` set and its type,
+    or the canonical recast() target S45 writes into its options, one
+    twoway turns (WP-30 P1.9a, TR-49.2).  A hand-built spec with the flag
+    on a type and target that both refuse it draws upright (dash.ado
+    refuses it first)."""
+    if not isinstance(plot, dict):
+        return False
+    opts = plot.get("options")
+    if not isinstance(opts, dict) \
+            or not str(opts.get("horizontal", "") or "").strip():
+        return False
+    ptype = str(plot.get("type", "") or "").lower()
+    target = str(opts.get("recast", "") or "").strip().lower()
+    return (ptype in _DASH_HORIZONTAL_TYPES
+            or target in _DASH_HORIZONTAL_TYPES)
+
+
+def _dash_role_letter(plot, letter):
+    """The data role physical axis *letter* shows for *plot*: the other
+    letter for a horizontal layer, *letter* otherwise; any other letter
+    unchanged (WP-30 P1.9a, D-49b).  Every reader of a layer's axis
+    variables calls it once."""
+    if letter in ("x", "y") and _dash_is_horizontal(plot):
+        return "y" if letter == "x" else "x"
+    return letter
+
+
+def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
+    """Turn one layer drawn upright into twoway's ``horizontal`` drawing
+    (WP-30 P1.9a, D-49a; E3: every turned type is the exact transpose).
+
+    Each renderer that is no colour-key swatch has its five glyph slots
+    rebuilt as ``_DASH_TRANSPOSE``'s class with the pairs swapped,
+    keeping every other property (styles, alpha, name, tags, field specs
+    and their transforms); an rcap cap (tagged ``dash_cap``) turns by
+    pi/2 so it stays across the spine (P1.17.5); a default-base tag
+    (``dash_base:``) and S21's ``_dash_base`` stamp are re-mapped by the
+    same pairs.  Each annotation of the layer that is no Legend or
+    ColorBar has its pairs swapped in place (offsets, angle and alignment
+    stay physical).  A class the map does not hold leaves its renderer
+    upright with one note.  Pure model edits; no data is read."""
+    import bokeh.models as _bm
+    for r in renderers or ():
+        g = getattr(r, "glyph", None)
+        if g is None or _dash_is_swatch(r):
+            continue
+        entry = _DASH_TRANSPOSE.get(type(g).__name__)
+        if entry is None:
+            _dash_warn_once(
+                ("hz-unmapped", str(ptype), type(g).__name__),
+                f"(note: horizontal: {_dash_display(str(ptype), 32)} is "
+                f"drawn upright; dash cannot turn a {type(g).__name__})")
+            continue
+        cls_name, pairs = entry
+        cls = getattr(_bm, cls_name)
+        swap = {}
+        for a, b in pairs:
+            swap[a], swap[b] = b, a
+        cap = "dash_cap" in (getattr(r, "tags", None) or ())
+        for slot in ("glyph", "selection_glyph", "nonselection_glyph",
+                     "hover_glyph", "muted_glyph"):
+            m = getattr(r, slot, None)
+            if not isinstance(m, _bm.Glyph):
+                continue
+            props = {}
+            for k, v in m.properties_with_values(
+                    include_defaults=False).items():
+                # A Field or Value with no transform or units as it was
+                # set: a field name or a number (both come back wrapped).
+                tn = type(v).__name__
+                if tn in ("Field", "Value") and all(
+                        "Unspecified" in type(getattr(v, u, None)).__name__
+                        for u in ("transform", "units")):
+                    v = v.field if tn == "Field" else v.value
+                props[swap.get(k, k)] = v
+            if cap:
+                ang = props.get("angle", 0.0)
+                ang = (ang.get("value") if isinstance(ang, dict)
+                       else getattr(ang, "value", ang))
+                if isinstance(ang, (int, float)) \
+                        and not isinstance(ang, bool):
+                    props["angle"] = float(ang) + math.pi / 2
+            setattr(r, slot, cls(**props))
+        bs = _dash_base_spec(r)
+        if bs:
+            GlyphMapper._tag_base(r, swap.get(bs["prop"], bs["prop"]),
+                                  bs["auto"], bs["zero"],
+                                  "y" if bs["letter"] == "x" else "x")
+        based = getattr(r, "_dash_base", None)
+        if based:
+            r._dash_base = tuple(swap.get(p, p) for p in based)
+    for a in annotations or ():
+        if isinstance(a, (_bm.Legend, _bm.ColorBar)):
+            continue
+        entry = _DASH_TRANSPOSE.get(type(a).__name__)
+        if entry is None:
+            continue
+        for p, q in entry[1]:
+            vp, vq = getattr(a, p, None), getattr(a, q, None)
+            setattr(a, p, vq)
+            setattr(a, q, vp)
+
+
 #: The xscale()/yscale() look sub-options dash draws (WP-30 P1.18a).
 _DASH_SCALE_LOOK_SUBOPTS = frozenset({
     "off", "on", "noline", "line", "lcolor", "lwidth", "lpattern",
@@ -42258,6 +42430,11 @@ class DashRenderer:
                 pi + 1, ptype, _rows_here, _layer_renderers,
                 layer_rows=_layer_rows)
 
+            # A horizontal layer, drawn upright, is turned once (WP-30
+            # P1.9a); its yaxis(2)/xaxis(2) stay physical.
+            if _dash_is_horizontal(plot):
+                _dash_transpose_layer(fig, _layer_renderers,
+                                      list(fig.center[_c_before:]), ptype)
             # A yaxis(2)/xaxis(2) layer draws on the secondary range, its
             # marker labels and arrowheads with it.
             _dash_assign_axis_ranges(fig, _layer_renderers, popts,
@@ -45009,6 +45186,9 @@ class ServerAppBuilder:
                          "_dash_glyph_dispatch",
                          "_dash_pc_dispatch", "_dash_add_glyph",
                          "_dash_add_pc_glyph", "_dash_note_no_second_y",
+                         # horizontal (WP-30 P1.9a).
+                         "_dash_is_horizontal", "_dash_role_letter",
+                         "_dash_transpose_layer",
                          # A layer that drew nothing has to say so in BOTH
                          # modes, in the same words.
                          "_dash_layer_drew_anything",
@@ -47124,6 +47304,10 @@ class ServerAppBuilder:
             "            _DASH_MAPPER.colorvar_domain = None",
             "        # A yaxis(2)/xaxis(2) layer draws on the secondary range, its",
             "        # marker labels and arrowheads with it.",
+            "        # A horizontal layer, drawn upright, is turned once (WP-30 P1.9a).",
+            "        if _dash_is_horizontal(plot):",
+            "            _dash_transpose_layer(fig, fig.renderers[_before:],",
+            "                                  list(fig.center[_before_c:]), ptype)",
             "        _dash_assign_axis_ranges(fig, fig.renderers[_before:], opts,",
             "                                 list(fig.center[_before_c:]))",
             "        # A raw date on an axis that is no date axis, in its Stata",

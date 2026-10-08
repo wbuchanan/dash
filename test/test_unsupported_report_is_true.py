@@ -114,7 +114,6 @@ PLOT_VALUES = {
     "fxsize": ("50", "80", "scatter"),
     "fysize": ("50", "80", "scatter"),
     "link": ("g1", "g2", "scatter"),
-    "horizontal": ("horizontal", "", "bar"),
     "jitterseed": ("7", "99", "scatter"),
     "kernel": ("epan2", "gaussian", "kdensity"),
     "l1title": ("l1", "lA", "scatter"),
@@ -151,7 +150,6 @@ PLOT_VALUES = {
     "t2title": ("t2", "tB", "scatter"),
     "text": ('20 3000 "hi"', '25 2500 "yo"', "scatter"),
     "title2": ("T2", "TT", "scatter"),
-    "vertical": ("vertical", "", "bar"),
     "width": ("2", "4", "histogram"),
     "xmlabel": ("5(5)40", "10(10)40", "scatter"),
     "xmtick": ("5(1)40", "10(2)40", "scatter"),
@@ -255,7 +253,8 @@ class TestTheListIsCoveredAndHonest:
         # 47 -> 46: P1.24 mlabvposition() honoured
         # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
         # 45 -> 44: P1.8b recast() honoured
-        assert len(_plot_pending()) == 44, sorted(_plot_pending())
+        # 44 -> 42: P1.9a horizontal drawn, vertical silent
+        assert len(_plot_pending()) == 42, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -419,6 +418,14 @@ NOT_IN_FILE = {
     "replace": "lets saving() write over a file that exists (WP-27); the "
                "page is the same with or without it, so it is certified by "
                "test_path_validation.cscript PV-22..27",
+    # Flipped (WP-30 P1.9a): vertical was named and inert on bar
+    # (PLOT_VALUES), which was wrong because twoway takes it silently as
+    # its default orientation (horizontal_truth.json accept bar).
+    "vertical": "twoway's default orientation, taken in silence (WP-30 "
+                "P1.9a); the page is the one without it, pinned by "
+                "test_horizontal.py::TestUprightIsUntouched and refused "
+                "where twoway refuses it by test_option_validation.cscript "
+                "HZ-02",
 }
 
 #: option -> (options A, options B, plot type, extra graph options).  Two
@@ -437,6 +444,10 @@ LIVE_VALUES = {
     # (PLOT_VALUES), which was wrong because twoway draws the target
     # (recast_truth.json); a derived layer draws its points as it.
     "recast": ({"recast": "scatter"}, {"recast": "line"}, "lfit", {}),
+    # Flipped (WP-30 P1.9a): horizontal was named and inert on bar
+    # (PLOT_VALUES), which was wrong because twoway turns the bars
+    # (horizontal_truth.json draw bar).
+    "horizontal": ({"horizontal": "horizontal"}, {}, "bar", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
     "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
     "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
