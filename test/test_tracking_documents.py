@@ -1572,7 +1572,6 @@ WP30_OPEN = {
     "P1.20b": "plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn",
     "P1.21a": "xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() and lalign() are only named",
     "P1.21b": "xline() and yline() noextend, extend and style() are only named, so every line spans the whole frame",
-    "P1.22": "The points-free function fallback knows ten functions and draws any other in silence",
     "P1.23a": "Dates on range, pc, immediate and second axes are drawn at raw or millisecond positions, and a date layer beside a numeric one is drawn in epoch milliseconds",
     "P1.24": "mlabvposition(varname) and mlabtextstyle() are declared and pending but never serialised or drawn",
     "P1.25b": "scheme(NAME) is looked for in two places only, never along Stata's ado-path or under Stata's scheme-NAME.scheme file name, and its refusal does not list the valid names",

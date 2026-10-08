@@ -6289,10 +6289,136 @@ if inlist("`only'", "", "S25") {
 }
 * ==== end S25 ====
 
+// S26's helpers (WP-30 P1.22), outside every gate: copies of
+// test_wp29_truth.cscript's _fx_serset and _fx_stored, renamed.
+//   _s26_serset  twoway's last graph's first plot's y, from its serset,
+//                into the row matrix s26_sy.
+//   _s26_stored <name>  the stored y of graph <name>'s layer 1, as the
+//                row matrix s26_dy.
+capture program drop _s26_serset
+program define _s26_serset
+    version 19
+    preserve
+    serset set `.Graph.plotregion1.plot1.serset.id'
+    serset use, clear
+    mata: st_matrix("s26_sy", st_data(., 1)')
+    restore
+end
+capture program drop _s26_stored
+program define _s26_stored
+    version 19
+    args name
+    mata: _s = st_global("dash_fpts_" + st_local("name")); _a = strpos(_s, `""y":["') + 5; _t = substr(_s, _a, strpos(substr(_s, _a, .), "]") - 1); _v = tokens(_t, ","); _v = select(_v, _v :!= ","); st_matrix("s26_dy", strtoreal(_v))
+end
+
 * ==== S26 P1.22: function: closed by disposition ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S26") {
     display as text "S26 start " c(current_date) " " c(current_time)
+    // FN-01: the thirteen expressions DROPIN P1.22 names are drawn from
+    // Stata's points: stored == twoway's serset, and the saved page and the
+    // served app draw them (the premise of the disposition, M12).
+    quietly graph drop _all
+    sysuse auto, clear
+    quietly regress mpg weight
+    scalar s26s = 2
+    dash clear
+    local s26_list `" "normalden(x)" "normal(x)" "ln(x)" "_pi*x" "c(pi)*x" "(x>1)*x" "cond(x>1,x,0)" "min(x,1)" "max(x,1)" "round(x)" "int(x-1)" "scalar(s26s)*x" "_b[_cons]+_b[weight]*x" "'
+    local k 0
+    local s26_names ""
+    foreach e of local s26_list {
+        local ++k
+        quietly twoway function y = `e', range(0.1 2) n(5) nodraw
+        _s26_serset
+        matrix s26_want_`k' = s26_sy
+        quietly graph drop _all
+        capture noisily dash function y = `e', range(0.1 2) n(5) name(fn01_`k') title("fn01_`k'")
+        _w30_expect FN-01 "(_rc == 0)" `"dash function y = `e' r(`=_rc')"'
+        _s26_stored fn01_`k'
+        mata: st_local("s26_eq", strofreal(st_matrix("s26_dy") == st_matrix("s26_sy")))
+        _w30_expect FN-01 "(`s26_eq' == 1)" `"`e': stored y differs from twoway's serset"'
+        local s26_names `s26_names' fn01_`k'
+    }
+    local s26_html "`w30_work'/s26.html"
+    local s26_app  "`w30_work'/s26_app.py"
+    quietly dash build, saving("`s26_html'") replace nobrowser
+    quietly dash build, saving("`s26_app'") server replace
+    global s26_names "`s26_names'"
+    global s26_html "`s26_html'"
+    global s26_app "`s26_app'"
+    python:
+import json as _json
+import math as _math
+import re as _re
+import warnings as _w
+from sfi import Macro as _M, Matrix as _X, Missing as _Miss
+from bokeh.document import Document as _Doc
+from bokeh.models import Plot as _Plot
+
+
+def _s26_plots_saved(path):
+    with open(path, encoding="utf-8") as fh:
+        page = fh.read()
+    out = dict()
+    for blob in _re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _re.S):
+        dj = _json.loads(blob)
+        for dd in dj.values():
+            doc = _Doc.from_json(dd)
+            for p in doc.select(dict(type=_Plot)):
+                out[p.title.text if p.title is not None else ""] = p
+    return out
+
+
+def _s26_plots_served(path):
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s04_app")
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s04_app.py", "exec"), ns)
+        doc = _Doc()
+        ns["make_document"](doc)
+    out = dict()
+    for p in doc.select(dict(type=_Plot)):
+        out[p.title.text if p.title is not None else ""] = p
+    return out
+
+
+def _s26_check():
+    bad = []
+    names = _M.getGlobal("s26_names").split()
+    for mode, plots in (("saved", _s26_plots_saved(_M.getGlobal("s26_html"))),
+                        ("served", _s26_plots_served(_M.getGlobal("s26_app")))):
+        for nm in names:
+            k = nm.split("_")[-1]
+            want = [float("nan") if _Miss.isMissing(v) else float(v)
+                    for v in _X.get("s26_want_" + k)[0]]
+            got = None
+            for g in (plots[nm].renderers if nm in plots else []):
+                src = getattr(g, "data_source", None)
+                if src is not None and "x_fn" in src.data:
+                    got = [float(v) for _x, v in sorted(zip(src.data["x_fn"], src.data["y_fn"]), key=lambda t: t[0])]
+            same = got is not None and len(got) == len(want) and all(
+                u == v or (_math.isnan(u) and _math.isnan(v)) for u, v in zip(got, want))
+            if not same:
+                bad.append(mode + ":" + nm + ":" + repr(None if got is None else got[:4]))
+    _M.setGlobal("s26_bad", " ".join(bad))
+
+
+_s26_check()
+end
+    _w30_expect FN-01 `"("${s26_bad}" == "")"' `"drawn points differ: ${s26_bad}"'
+    _w30_done FN-01 "thirteen expressions: stored, saved and served points are twoway's serset"
+    dash clear
+    capture erase "`s26_html'"
+    capture erase "`s26_app'"
+    macro drop s26_names s26_html s26_app s26_bad
+    capture scalar drop s26s
+    capture matrix drop s26_sy s26_dy
+    forvalues k = 1/13 {
+        capture matrix drop s26_want_`k'
+    }
     display as text "S26 end " c(current_date) " " c(current_time)
 }
 * ==== end S26 ====

@@ -12406,6 +12406,64 @@ class GlyphMapper:
         return renderers
 
     @staticmethod
+    def _mark_needs_points(renderers, why):
+        """Mark a function layer drawn empty for want of Stata's points with
+        *why*, and return it.
+
+        A spec without points (written by hand, or a registry whose points
+        were removed or cannot be read) reaches the points-free fallback;
+        what it cannot draw is drawn empty (maintainer decision M12, WP-30
+        P1.22).  ``_dash_note_empty_layer`` reads the mark and gives *why*
+        after "drew nothing", in both modes.  A private attribute of the
+        Python object, never serialised; a static method, so the served
+        app, which copies GlyphMapper by source, carries it.
+        """
+        for _r in (renderers if isinstance(renderers, (list, tuple))
+                   else [renderers]):
+            try:
+                _r._dash_needs_points = str(why)
+            except (AttributeError, TypeError):
+                pass
+        return renderers
+
+    @staticmethod
+    def _needs_points_why(exc=None):
+        """Why a function layer without drawable points drew nothing.
+
+        *exc* None: the points the spec carries cannot be read.  Otherwise
+        *exc* is the fallback parser's refusal (``_stata_fn_parse``): the
+        text says what the fallback evaluates and names the first function
+        (``name()``) or bare name it refused, or says the expression cannot
+        be read.  The note is neutral (register P1.22.3, critic 1): it does
+        not claim Stata evaluates the name -- twoway refuses ``pi`` and
+        ``sin (x)`` too.  Only a plain ASCII name (a letter or ``_``, then
+        letters, digits and ``_``) is echoed, cut at 32 characters; nothing
+        else of the spec is (WP-30 P1.22).  Reads no module-level name, so
+        the served app's copy of GlyphMapper carries it.
+        """
+        head = ("it needs the points Stata computes for it when dash "
+                "registers the graph, and ")
+        if exc is None:
+            return head + "the points this spec carries for it cannot be read"
+        got = getattr(exc, "dash_refused", None)
+        tail = "the expression cannot be read with them"
+        if (isinstance(got, tuple) and len(got) == 2
+                and got[0] in ("function", "name")
+                and isinstance(got[1], str) and got[1]
+                and got[1].isascii()
+                and (got[1][0].isalpha() or got[1][0] == "_")
+                and all(c.isalnum() or c == "_" for c in got[1])):
+            shown = got[1] if len(got[1]) <= 32 else got[1][:32] + "..."
+            if got[0] == "function":
+                tail = shown + "() is not one of them"
+            else:
+                tail = "the name " + shown + " is not one of them"
+        return (head + "this spec carries none; without them dash evaluates "
+                "only x, _pi, numbers, + - * / ^ and sin(), cos(), tan(), "
+                "exp(), log(), log10(), sqrt(), abs(), floor() and ceil(), "
+                "and " + tail)
+
+    @staticmethod
     def _masked_index(source: ColumnDataSource, view, *varnames: str):
         """Row indices selecting exactly the rows ``_masked`` keeps.
 
@@ -16593,7 +16651,9 @@ class GlyphMapper:
         (twoway__function_gen, WP-29 P0.6), and the points are drawn as
         they are -- the expression is never parsed or evaluated here.  A
         points object that is not valid (``_dash_function_points``) draws
-        the layer empty, and the caller notes it.
+        the layer empty, marked (``_mark_needs_points``) with the reason
+        ``_needs_points_why`` words, which ``_dash_note_empty_layer`` gives
+        in both modes (WP-30 P1.22).
 
         A spec without points (written by hand) is drawn by a small
         interpreter of Stata's grammar (``_stata_fn_parse``,
@@ -16604,7 +16664,11 @@ class GlyphMapper:
         ``tan``, ``exp``, ``log``, ``log10``, ``sqrt``, ``abs``, ``floor``
         and ``ceil``.  A missing value propagates as in Stata.  Anything
         else -- ``pi``, ``e``, ``**``, a leading ``+``, any other name --
-        draws the layer empty.  No text reaches ``eval`` or ``compile``.
+        draws the layer empty, marked the same way with the function or
+        name the parser refused (M12, WP-30 P1.22).  A later edit keeps
+        the mark on both of these empty returns, and marks any new empty
+        return caused by missing or unreadable points.  No text reaches
+        ``eval`` or ``compile``.
         The grid is twoway's: ``x = lo + dx*(i-1)``, ``dx = (hi-lo)/(n-1)``.
 
         Args:
@@ -16638,7 +16702,8 @@ class GlyphMapper:
         if points is not None:
             got = _dash_function_points(points)
             if got is None:
-                return _empty()
+                return self._mark_needs_points(_empty(),
+                                               self._needs_points_why())
             x_arr, y_arr = got
         else:
             if len(text) > _MAX_EXPR_CHARS:
@@ -16651,8 +16716,9 @@ class GlyphMapper:
                 return _empty()
             try:
                 tree = _stata_fn_parse(text)
-            except ValueError:
-                return _empty()
+            except ValueError as exc:
+                return self._mark_needs_points(_empty(),
+                                               self._needs_points_why(exc))
             x_lo, x_hi = float(x_range[0]), float(x_range[1])
             n = int(n_points)
             dx = (x_hi - x_lo) / (n - 1)
@@ -32302,7 +32368,7 @@ def _dash_layer_drew_anything(renderers):
     return False
 
 
-def _dash_report_empty_layer(gname, index, ptype, rows=None):
+def _dash_report_empty_layer(gname, index, ptype, rows=None, why=""):
     """Warn that layer *index* of graph *gname* drew nothing from *rows* rows.
 
     One text, so the two modes cannot word it differently and a test cannot
@@ -32310,12 +32376,15 @@ def _dash_report_empty_layer(gname, index, ptype, rows=None):
     -- is named by the layer's place alone: the saved page called it '?'
     and the served app '' (measured 24sep2026).  *rows* None is a layer
     that does not draw from the observations, a function, and the count is
-    left out.
+    left out.  *why*, when given, follows "drew nothing" after a colon: a
+    function layer drawn empty for want of Stata's points says what it
+    needs (WP-30 P1.22).
     """
     where = f"graph {gname!r} plot {index}" if gname else f"plot {index}"
     tail = f" from {rows:,} observations" if rows is not None else ""
+    reason = f": {why}" if why else ""
     warnings.warn(
-        f"dash: {where} ({ptype}) drew nothing{tail}.",
+        f"dash: {where} ({ptype}) drew nothing{tail}{reason}.",
         UserWarning, stacklevel=2,
     )
 
@@ -32333,7 +32402,9 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers,
     * function draws from its own grid too, and a value missing everywhere
       is drawn as missing (``map_function``): drawn empty, its expression
       was refused or could not be evaluated, which is reported whatever
-      the data, with no count of observations it never read.
+      the data, with no count of observations it never read; drawn empty
+      for want of Stata's points, it says why
+      (``GlyphMapper._mark_needs_points``, WP-30 P1.22).
     * Any other layer is reported when the graph's own data has rows: an
       ``if`` qualifier that selects none is the user's doing, not a broken
       layer.
@@ -32381,7 +32452,13 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers,
            for _r in renderers or ()):
         return
     if pt == "function":
-        _dash_report_empty_layer(gname, index, ptype)
+        why = ""
+        for _r in renderers or ():
+            _w = getattr(_r, "_dash_needs_points", "")
+            if isinstance(_w, str) and 0 < len(_w) <= 1000:
+                why = _w
+                break
+        _dash_report_empty_layer(gname, index, ptype, why=why)
     elif rows and layer_rows != 0:
         _dash_report_empty_layer(gname, index, ptype, rows)
 
@@ -32756,7 +32833,10 @@ def _stata_fn_parse(text):
         (odd: the exponent's sign is minus) and ``("call", name, node)``.
 
     Raises:
-        ValueError: the text is not an expression this grammar takes.
+        ValueError: the text is not an expression this grammar takes.  A
+            refusal at a name carries it as ``exc.dash_refused``,
+            ``("function" | "name", <name>)``, for the empty layer's note
+            (WP-30 P1.22).
     """
     funcs = ("sin", "cos", "tan", "exp", "log", "log10", "sqrt", "abs",
              "floor", "ceil")
@@ -32808,7 +32888,9 @@ def _stata_fn_parse(text):
             name = text[i:j]
             if j < n and text[j] == "(":
                 if name not in funcs:
-                    raise ValueError("unknown function")
+                    exc = ValueError("unknown function")
+                    exc.dash_refused = ("function", name)
+                    raise exc
                 toks.append(("f", name))
                 i = j + 1
                 continue
@@ -32817,7 +32899,9 @@ def _stata_fn_parse(text):
             elif name == "_pi":
                 toks.append(("c", math.pi))
             else:
-                raise ValueError("unknown name")
+                exc = ValueError("unknown name")
+                exc.dash_refused = ("name", name)
+                raise exc
             i = j
             continue
         if ch in "+-*/^()":

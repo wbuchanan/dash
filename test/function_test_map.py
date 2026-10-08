@@ -903,6 +903,8 @@ FUNCTIONS = {
  '_dash_dep_fail': 'test/test_dependency_guards.py::TestTheRendererRefusesWithTheRemedy::test_a_missing_package_is_one_line_naming_dash_setup',
  '_dash_dep_versions': 'test/test_dependency_guards.py::TestTheVersionNote::test_numpy_or_pandas_below_the_minimum_is_noted',
  # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
+ 'GlyphMapper._mark_needs_points': 'test/test_function_expr.py::TestTheNeedsPointsMark::test_mark_needs_points_marks_each_renderer',
+ 'GlyphMapper._needs_points_why': 'test/test_function_expr.py::TestTheNeedsPointsMark::test_the_why_of_each_refusal',
  # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)
  # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
  # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)

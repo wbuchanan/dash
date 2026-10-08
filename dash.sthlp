@@ -447,12 +447,18 @@ saved or served.  Evaluating has {cmd:twoway}'s side effects:
 and data holding at least {cmd:n()} observations are marked changed
 ({cmd:c(changed)}).  Under {cmd:by()}, {cmd:dash} evaluates the expression
 once and draws it in every panel, where {cmd:twoway} evaluates it once per
-panel; only random draws differ.  A dashboard spec written by hand without
-the points is drawn by {cmd:dash} itself, with the same operators and
-missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
+panel; only random draws differ.  A dashboard spec written by hand, which
+carries no points, is drawn by {cmd:dash} itself, with the same operators
+and missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
 {cmd:cos}, {cmd:tan}, {cmd:exp}, {cmd:log}, {cmd:log10}, {cmd:sqrt},
-{cmd:abs}, {cmd:floor} and {cmd:ceil}; anything else draws that layer
-empty, and a note names it.
+{cmd:abs}, {cmd:floor} and {cmd:ceil}.  Any other function, name or form
+draws that layer empty, saved or served, with one note: the layer needs
+the points Stata computes when {cmd:dash} registers the graph, and the
+note names the first function or name it uses that {cmd:dash} cannot
+evaluate ({cmd:normalden()}, {cmd:pi}), or says that the expression
+cannot be read.  Stored points that cannot be read get the same note.
+Registering the graph with {cmd:dash} computes its points in Stata, or
+refuses the expression as {cmd:twoway} does.
 
 {pstd}
 {ul:Graphs that need no data.}  A graph whose plots are all

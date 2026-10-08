@@ -381,13 +381,21 @@ class TestARejectedExpressionIsStillReported:
     def test_with_data_or_none(self, tmp_path, mode, data):
         """dash refuses to evaluate it, and the layer is drawn empty.  With
         no data the report was lost: it was given only when the graph had
-        observations, which a function does not draw from."""
+        observations, which a function does not draw from.
+
+        Flipped (WP-30 P1.22): the note now says why the fallback drew
+        nothing."""
         g = _graph("a1", [{"type": "function", "expr": "__import__('os')",
                            "options": {}}])
         _, warns = _draw(mode, tmp_path, _spec([g]),
                          _DF if data == "six" else _EMPTY_DATA)
         assert _empty_reports(warns) == [
-            "dash: graph 'a1' plot 1 (function) drew nothing."], warns
+            "dash: graph 'a1' plot 1 (function) drew nothing: it needs the "
+            "points Stata computes for it when dash registers the graph, and "
+            "this spec carries none; without them dash evaluates only x, "
+            "_pi, numbers, + - * / ^ and sin(), cos(), tan(), exp(), log(), "
+            "log10(), sqrt(), abs(), floor() and ceil(), and __import__() is "
+            "not one of them."], warns
 
 
 # ===========================================================================

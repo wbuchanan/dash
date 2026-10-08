@@ -1987,6 +1987,9 @@ CORPUS = [
           {"scheme": "s1mono"}),
     _case("msymbol(smcircle) msize(large)",
           [plot_for("scatter", {"msymbol": "smcircle", "msize": "large"})]),
+    _case("function without points needing Stata (WP-30 P1.22)",
+          [_sc(), plot_for("function", {"range": "0 2", "n": "3"},
+                           expr="normalden(x)")]),
 ]
 
 
@@ -2120,6 +2123,10 @@ _MUST_WARN = {
     "ylabel2 with no second-axis layer":
         "dash: graph 'g1': ylabel2() (ylabel(..., axis(2))) is not drawn: "
         "no layer is on yaxis(2).",
+    # WP-30 P1.22: the fallback names what it needs, in both modes.
+    "function without points needing Stata (WP-30 P1.22)":
+        "dash: graph 'g1' plot 2 (function) drew nothing: it needs the "
+        "points Stata computes for it when dash registers the graph",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of

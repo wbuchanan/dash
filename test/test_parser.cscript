@@ -3,6 +3,7 @@
 *!
 *! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing), and
 *!        FX-01 through FX-11 (function evaluated by Stata, WP-29 P0.6)
+*!        FN-02 through FN-05 (a function layer without Stata's points, WP-30 P1.22)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -3024,6 +3025,73 @@ assert "${dash_graph_registry}" == ""
 _dash_process_segment "function _y = x^2, range(0 2)" _ptk12 _jsk12
 assert strpos(`"`_jsk12'"', `""expr":"x^2","yname":"_y""') > 0
 display "KT-12 PASS: function _y = and function ü = are refused r(111) in twoway's words; the spec carries yname"
+
+// ================================================================
+// FN-02..FN-05 (WP-30 P1.22) -- a function layer without Stata's points
+// says what it needs, saved and served, and stored points that are not
+// dash's are said to be unused.  Dropping $dash_fpts_<name> is the one
+// route from Stata into the points-free fallback (setting registry
+// macros by hand is unsupported, dash.sthlp; it stands in here for a
+// spec written by hand).
+// ================================================================
+sysuse auto, clear
+quietly graph drop _all
+dash clear
+dash function y = normalden(x), range(-3 3) n(7) name(fn02)
+macro drop dash_fpts_fn02
+local h02 "`c(tmpdir)'dash_fn02.html"
+capture erase "`h02'"
+_p1a_logrun `"dash build, saving("`h02'") replace"'
+assert r(rc) == 0
+local lg02 "`r(log)'"
+cert_log_has "`lg02'", needle("drew nothing: it needs the points Stata computes for it when dash registers the graph")
+assert r(count) == 1
+cert_log_has "`lg02'", needle("normalden() is not one of them")
+assert r(count) == 1
+capture erase "`h02'"
+display "FN-02 PASS: a saved build names normalden() as what the fallback cannot evaluate, once, rc 0"
+
+local a03 "`c(tmpdir)'dash_fn03.py"
+capture erase "`a03'"
+_p1a_logrun `"dash build, saving("`a03'") server replace"'
+assert r(rc) == 0
+local lg03 "`r(log)'"
+cert_log_has "`lg03'", needle("drew nothing: it needs the points Stata computes for it when dash registers the graph")
+assert r(count) == 1
+cert_log_has "`lg03'", needle("normalden() is not one of them")
+assert r(count) == 1
+capture erase "`a03'"
+dash clear
+display "FN-03 PASS: dash build, server prints the same note once, rc 0"
+
+dash function y = normalden(x), range(-3 3) n(7) name(fn04)
+mata: st_global("dash_fpts_fn04", `"{"1":"abc"}"')
+local h04 "`c(tmpdir)'dash_fn04.html"
+capture erase "`h04'"
+_p1a_logrun `"dash build, saving("`h04'") replace"'
+assert r(rc) == 0
+local lg04 "`r(log)'"
+cert_log_has "`lg04'", needle("are not dash's and are not used; run the graph's dash command again to store Stata's points.")
+assert r(count) == 1
+cert_log_has "`lg04'", needle("drawn from its expression")
+assert r(count) == 0
+cert_log_has "`lg04'", needle("normalden() is not one of them")
+assert r(count) == 1
+capture erase "`h04'"
+dash clear
+display "FN-04 PASS: points that are not dash's are said to be unused, and the layer's note names normalden()"
+
+dash function y = sin(x), range(0 2) n(5) name(fn05)
+macro drop dash_fpts_fn05
+local h05 "`c(tmpdir)'dash_fn05.html"
+capture erase "`h05'"
+_p1a_logrun `"dash build, saving("`h05'") replace"'
+assert r(rc) == 0
+cert_log_has "`r(log)'", needle("drew nothing")
+assert r(count) == 0
+capture erase "`h05'"
+dash clear
+display "FN-05 PASS: a function the fallback knows draws without a note"
 
 // twoway's answers: a question the fixture could not answer, or (with
 // DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.

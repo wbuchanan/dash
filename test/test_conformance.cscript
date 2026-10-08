@@ -2,7 +2,7 @@
 *! The drop-in claim, proved by RENDERING rather than by parsing.
 *!
 *! Usage:  do test/test_conformance.cscript
-*! Version: 1.0.0  20sep2026
+*! Version: 1.0.1  08oct2026
 *!
 *! WHY THIS EXISTS
 *!
@@ -218,7 +218,11 @@ file close `fh'
 //         to a points object with no y value, which passes the spec
 //         writer's character check and is refused where it is drawn
 //         (_dash_function_points) -- reported whatever the data:
-//           dash: graph 'ctl' plot 1 (function) drew nothing.
+//           dash: graph 'ctl' plot 1 (function) drew nothing: it needs
+//           the points Stata computes for it when dash registers the
+//           graph, and the points this spec carries for it cannot be read.
+//         (WP-30 P1.22: the note says why; it was the bare "drew
+//         nothing.", and the points cannot be read is that why.)
 //         (It was normal(x), which the renderer's whitelist refused; WP-29
 //         P0.6 has Stata evaluate every function layer, so normal(x) now
 //         draws twoway's points, and an empty function layer is made from
@@ -431,7 +435,7 @@ display "C-04 PASS: all `n_reg' registered graphs reached the page, each as a fi
 // its own words.
 cert_log_has "`buildlog'", needle(") drew nothing")
 local c3_nrep = r(count)
-cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing.")
+cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing: it needs the points Stata computes for it when dash registers the graph, and the points this spec carries for it cannot be read.")
 local c3_nctl = r(count)
 cert_log_has "`buildlog'", needle("dash: graph 'ctl2' plot 1 (scatter) drew nothing from 74 observations.")
 local c3_nctl2 = r(count)

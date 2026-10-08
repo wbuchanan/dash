@@ -4736,7 +4736,8 @@ real scalar _dash_fn_points_ok(string scalar txt)
 // Otherwise there is one entry "<name>":$dash_fpts_<name> for each word of
 // names whose global is not empty.  An entry that is not dash's
 // (_dash_fn_points_ok) is skipped with a note; the renderers then draw that
-// layer from its expression.  Appends ,"function_points":{<entries>}} or,
+// layer as a spec without points, and name what they cannot evaluate
+// (WP-30 P1.22).  Appends ,"function_points":{<entries>}} or,
 // with no entry, the bare }.
 void _dash_fn_spec_tail(string scalar path, string scalar names,
                         string scalar sc)
@@ -4753,8 +4754,9 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
         // write and nothing to say (it noted every one-line saving()).
         if (txt == "") {}
         else if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
-        else _dash_note("dash: the function points stored for graph '",
-                        "", "' are not dash's; that layer is drawn from its expression.")
+        else _dash_note("dash: the function points stored for graph '", "",
+                        "' are not dash's and are not used; run the graph's " +
+                        "dash command again to store Stata's points.")
     }
     else {
         nm = tokens(names)
@@ -4763,7 +4765,9 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
             if (txt == "") continue
             if (!_dash_fn_points_ok(txt)) {
                 _dash_note("dash: the function points stored for graph '",
-                           nm[i], "' are not dash's; that layer is drawn from its expression.")
+                           nm[i], "' are not dash's and are not used; run " +
+                           "the graph's dash command again to store " +
+                           "Stata's points.")
                 continue
             }
             out = out + (out == "" ? "" : ",") + q + nm[i] + q + ":" + txt
