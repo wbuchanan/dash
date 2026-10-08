@@ -1405,34 +1405,37 @@ class TestAdversarialPlotOptions:
     # marker, and a raised cap, passed.  Each refusal is also named.
 
     def test_injection_in_mcolor_produces_valid_html(self):
-        """Injection attempt in mcolor is rejected; render uses default color."""
+        """Injection attempt in mcolor is rejected; it is drawn black, as
+        twoway draws an unknown colour (Flipped, WP-30 P1.13a: the scheme's
+        p1 was drawn)."""
         spec, data = _single_graph_spec(
             "scatter", {"yvar": "y", "xvar": "x"},
             options={"mcolor": "'; import os; os.system('id')"},
         )
         with pytest.warns(UserWarning, match=re.escape(
                 "mcolor('; import os; os.system('id')) is not a recognised "
-                "colour; using the scheme's default")):
+                "colour; using black")):
             html = _render_to_html(spec, data)
-        # The scheme's first series colour, fill and outline.
+        # Black, fill and outline.
         pts = _only_layer(html, "Scatter")
         assert _values(pts, "fill_color") == _values(pts, "line_color") \
-            == ["#1a476f"] * 20
+            == ["#000000"] * 20
         # Injected string must NOT appear literally in output HTML
         assert "os.system" not in html
 
     def test_injection_in_lcolor_produces_valid_html(self):
-        """Injection attempt in lcolor is rejected; render uses default color."""
+        """Injection attempt in lcolor is rejected; it is drawn black, as
+        twoway draws an unknown colour (Flipped, WP-30 P1.13a)."""
         spec, data = _single_graph_spec(
             "line", {"yvar": "y", "xvar": "x"},
             options={"lcolor": "__import__('os').system('id')"},
         )
         with pytest.warns(UserWarning, match=re.escape(
                 "lcolor(__import__('os').system('id')) is not a recognised "
-                "colour; using the scheme's default")):
+                "colour; using black")):
             html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Line"), "line_color") \
-            == ["#1a476f"] * 20
+            == ["#000000"] * 20
 
     def test_invalid_msymbol_falls_back_to_default(self):
         """Invalid msymbol value falls back to default circle marker."""

@@ -6,6 +6,7 @@ Run with:  pytest test/test_scheme.py -v
 """
 import sys
 import os
+import re
 import math
 import tempfile
 import warnings
@@ -429,7 +430,13 @@ class TestCssBlock:
                 "positive control: the file's own `color text white' must "
                 f"reach the KPI card rule, got {clean!r}"
             )
-            assert css == clean, (
+            # Flipped (WP-30 P1.13a): a malformed hex is drawn white, in
+            # silence, as twoway draws `color background #}a{b;c' (probe
+            # v01), so the body rule is white; every other rule is
+            # byte-identical to the clean file's.
+            body = re.compile(r"body \{[^{}]*\}")
+            assert "background-color: #ffffff;" in body.search(css).group(0)
+            assert body.sub("", css) == body.sub("", clean), (
                 "a payload value reached the CSS, or changed it:\n"
                 f"with payload:    {css!r}\nwithout payload: {clean!r}"
             )
@@ -438,10 +445,12 @@ class TestCssBlock:
             # file opened.
             assert (css.count("{"), css.count("}"), css.count(";")) == (
                 4, 4, 8), css
-            # The three colour payloads are refused aloud, not dropped.
+            # The unknown name is refused aloud; the two malformed hex
+            # codes are drawn white in silence, as twoway draws them.
             said = " ".join(str(w.message) for w in caught)
-            for bad in ("#}a{b;c", "<script>alert(1)</script>", "#;}{"):
-                assert f"colour '{bad}'" in said, (bad, said)
+            assert "colour '<script>alert(1)</script>'" in said, said
+            for bad in ("#}a{b;c", "#;}{"):
+                assert f"colour '{bad}'" not in said, (bad, said)
         finally:
             for name in names:
                 os.unlink(os.path.join(os.getcwd(), name))

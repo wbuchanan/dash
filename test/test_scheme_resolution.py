@@ -732,16 +732,17 @@ class TestTheParserCarriesTheColourOpacity:
         assert sp.default_alpha(0, "line") is None
         assert sp.default_alpha(0, "scatter") is None
 
-    def test_an_unresolvable_colour_carries_no_opacity(self):
-        """The colour degrades loudly to the default, as _color does; the
-        %NN on a colour dash could not resolve is not kept."""
+    def test_an_unknown_colour_keeps_its_opacity(self):
+        """An unknown colour is black with a warning, its own %NN kept, as
+        twoway draws `color p1 bogus%50' (colour_grammar_truth.json
+        sch_42).  Flipped (WP-30 P1.13a): the opacity was dropped."""
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             sp = _props_scheme({"color p1": "nosuchcolour%20"})
         assert any("nosuchcolour%20" in str(w.message) for w in caught), [
             str(w.message) for w in caught]
         assert sp.p_colors[0] == "#000000"
-        assert sp.p_alphas[0] is None
+        assert sp.p_alphas[0] == 0.2
 
 
 @pytest.mark.parametrize("mode", MODES)

@@ -281,7 +281,7 @@ class TestTheHelpSaysWhatWasMeasured:
     def test_the_values_dash_accepts_are_all_named(self):
         """HC2-16, and TestAStyleOptionGivenEmptyParenthesesIsReported,
         TestAStringColorvarIsDrawnAColourPerValue,
-        TestAColourWrittenWithCommasIsReadAsTheTriplet."""
+        TestAColourWrittenWithCommasIsRefusedInStata."""
         v = self._values()
         assert "Two values {cmd:twoway} refuses" not in v
         for s in ("{cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}",
@@ -302,8 +302,9 @@ class TestTheHelpSaysWhatWasMeasured:
         v = self._values()
         assert ("Colours, {cmd:msymbol()}, {cmd:lpattern()}, {cmd:scheme()} "
                 "and") not in v
-        assert ("Colours, {cmd:msymbol()}, {cmd:lpattern()} and the "
-                "sub-options") in v
+        # WP-30 P1.13a: a comma in a colour is checked in Stata.
+        assert ("Colours (but for a comma), {cmd:msymbol()}, "
+                "{cmd:lpattern()} and the sub-options") in v
 
     def test_the_labels_dash_reads_are_the_ones_it_uses(self):
         """TestLabelsUsedAutomatically."""
@@ -433,17 +434,23 @@ class TestAStringColorvarIsDrawnAColourPerValue:
         assert sw == vw
 
 
-class TestAColourWrittenWithCommasIsReadAsTheTriplet:
-    """dash.sthlp: "a colour written with commas, mcolor(255,0,0), which
-    twoway refuses, dash reads as the triplet 255 0 0" (HC2-16o/p)."""
+class TestAColourWrittenWithCommasIsRefusedInStata:
+    """dash.sthlp: a colour written with commas, mcolor(255,0,0), is refused
+    as twoway refuses it, invalid '0', r(198) (HC2-16o/p).  A hand-written
+    spec that still reaches the renderer reads it as an unknown colour.
 
-    def test_both_modes_draw_red_and_say_nothing(self, tmp_path):
+    Flipped (WP-30 P1.13a): it drew red in silence; twoway refuses it in
+    an option and draws an unknown colour black with a note."""
+
+    def test_a_hand_written_spec_is_noted_and_drawn_black(self, tmp_path):
         spec = _spec([plot_for("scatter", {"mcolor": "255,0,0"})])
         r, _, sw, doc, _, vw = _both(tmp_path, spec)
         for fig in (_saved_figure(r), _served_figure(doc)):
             g = fig.renderers[0].glyph
-            assert str(g.fill_color).lower() == "#ff0000", g.fill_color
-        assert sw == vw == []
+            assert str(g.fill_color).lower() == "#000000", g.fill_color
+        assert sw == vw
+        assert [w for w in sw if "mcolor(" in w] == [
+            "dash: mcolor(255,0,0) is not a recognised colour; using black."]
 
 
 #: An unknown style inside a structured option, and the property it would
@@ -475,9 +482,11 @@ class TestAnUnknownStyleInsideAStructuredOption:
     """dash.sthlp: "An unknown style inside one (title(T, size(bogus))) gets a
     note and the default in twoway and in dash alike" (twoway: HC2-21f)."""
 
-    def test_one_note_and_the_schemes_default_in_both_modes(
+    def test_one_note_and_twoways_default_in_both_modes(
             self, tmp_path, scheme, option, text, sub, prop):
-        """A bad colour keeps the scheme's default.  A bad size draws
+        """A bad colour draws black, as twoway draws title("T",
+        color(bogus)) (WP-30 P1.13a; it kept the scheme's colour, which
+        the flip corrects).  A bad size draws
         twoway's medium, 11 pt, in both modes and both schemes (WP-30
         P1.12a, P1.12.2): twoway falls back to medium for an unknown size,
         not to the scheme's title size, so the size rows no longer compare
@@ -496,10 +505,12 @@ class TestAnUnknownStyleInsideAStructuredOption:
             assert prop(_saved_figure(r1)) == "11pt"
             assert prop(_served_figure(d1)) == "11pt"
             return
-        assert prop(_saved_figure(r1)) == prop(_saved_figure(r0)), \
-            "saved: the unknown style replaced the scheme's default"
-        assert prop(_served_figure(d1)) == prop(_served_figure(d0)), \
-            "served: the unknown style replaced the scheme's default"
+        # WP-30 P1.13a: twoway draws an unknown colour black (measured,
+        # colour_grammar_truth.json site_05).
+        assert prop(_saved_figure(r1)) == "#000000", \
+            "saved: an unknown colour is not drawn black"
+        assert prop(_served_figure(d1)) == "#000000", \
+            "served: an unknown colour is not drawn black"
 
     def test_a_known_style_is_still_honoured(self, tmp_path, scheme, option,
                                              text, sub, prop):

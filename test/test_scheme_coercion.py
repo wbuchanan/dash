@@ -111,12 +111,15 @@ class TestColor:
         assert "stc99" in msg, f"the warning does not name the token: {msg}"
         assert "color p1" in msg, f"the warning does not name the key: {msg}"
 
-    def test_the_warning_says_the_output_will_not_match_stata(self, sp):
+    def test_the_warning_says_black_as_twoway(self, sp):
+        """Flipped (WP-30 P1.13a): the warning said the output would not
+        match Stata's; dash now draws black, what twoway draws."""
         _set(sp, **{"color p1": "notacolour"})
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            sp._color("color p1")
-        assert any("match Stata" in str(w.message) for w in caught)
+            assert sp._color("color p1") == "#000000"
+        assert any("using black, as twoway does" in str(w.message)
+                   for w in caught)
 
 
 # ======================================================================

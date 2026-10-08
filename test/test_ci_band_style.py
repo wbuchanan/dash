@@ -451,16 +451,19 @@ class TestAdversarial:
     @pytest.mark.parametrize("bad", [
         "red`=1'", "$(rm -rf)", "<script>", "1e400", "nan", "red%nan",
         "red%1e400", "red%-5", "x" * 100_000, "‮red", "#12345g"], ids=lambda v: repr(v)[:24])
-    def test_a_bad_colour_is_noted_and_the_scheme_kept(self, key, bad):
+    def test_a_bad_colour_is_noted_and_drawn_black(self, key, bad):
         """Injection and resource exhaustion: nothing raises, nothing of
-        the value reaches a glyph, and the band keeps the ci style."""
+        the value reaches a glyph.  An unknown colour draws the band black
+        (Flipped, WP-30 P1.13a: twoway draws an unknown colour black; the
+        band kept the ci style); a malformed opacity or hex keeps it."""
         t0 = time.perf_counter()
         fig = _draw("lfitci", "s2color", {key: bad})
         assert time.perf_counter() - t0 < 5.0
         k = _parts(fig.renderers)
         if key == "acolor":
-            assert _hex(k["VArea"][0].glyph.fill_color) in ("#c0c0c0",
-                                                           "#ff0000")
+            malformed = bad.startswith(("red%", "#"))
+            assert _hex(k["VArea"][0].glyph.fill_color) == (
+                "#c0c0c0" if malformed else "#000000")
         assert str(k["Patch"][0].glyph.line_color).startswith("#")
 
     @pytest.mark.parametrize("bad", ["1e400", "inf", "-inf", "nan", "-1",

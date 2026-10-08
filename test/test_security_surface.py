@@ -152,11 +152,20 @@ class TestAColourMustBeAColour:
             tr.translate_mcolor(bad)
 
     @pytest.mark.parametrize("good", [
-        "#fff", "#FFF", "#1a476f", "#1A476F", "#000000", "#abc",
+        "#1a476f", "#1A476F", "#000000",
     ])
     def test_real_hex_still_passes(self, good):
         # The translator lower-cases what it returns, so compare that way.
         assert dr.OptionTranslator().translate_mcolor(good) == good.lower()
+
+    @pytest.mark.parametrize("short", ["#fff", "#FFF", "#abc"])
+    def test_a_short_hex_is_not_a_stata_colour(self, short):
+        """Flipped (WP-30 P1.13a): the 3-digit params of
+        test_real_hex_still_passes.  twoway keeps the default for
+        mcolor("#F00") (colour_grammar_truth.json opt_96), so it is not a
+        colour the translator returns."""
+        with pytest.raises(ValueError):
+            dr.OptionTranslator().translate_mcolor(short)
 
     def test_a_scheme_cannot_break_out_of_its_css_rule(self, tmp_path,
                                                        monkeypatch):
@@ -192,14 +201,15 @@ class TestAColourMustBeAColour:
         decl = {m.group(1): m.group(2) for m in rules}
         assert list(decl) == ["body", ".db-title", ".db-subtitle",
                               ".db-kpi-card"], sheet
-        # Each hostile value was refused, said so, and its default drawn.
-        assert decl["body"] == "background-color: #d9e8f0;", decl["body"]
-        assert decl[".db-title"].split(";")[0] == "color: #000000", (
+        # Flipped (WP-30 P1.13a): each hostile value is a malformed hex,
+        # which twoway draws white in silence (probe v01); it drew the
+        # default with a note.  Either way the payload never reaches CSS.
+        assert decl["body"] == "background-color: #ffffff;", decl["body"]
+        assert decl[".db-title"].split(";")[0] == "color: #ffffff", (
             decl[".db-title"])
         notes = [str(w.message) for w in caught
-                 if "is not a colour dash recognises" in str(w.message)]
-        assert len(notes) == 2 and "#}a{b;c" in notes[0] \
-            and "#%d{e;f" in notes[1], notes
+                 if "#}a{b;c" in str(w.message) or "#%d{e;f" in str(w.message)]
+        assert notes == [], notes
         # The control: the scheme's real colour lands in its rule.
         assert decl[".db-kpi-card"].split(";")[0] == \
             "background-color: #000000", decl[".db-kpi-card"]

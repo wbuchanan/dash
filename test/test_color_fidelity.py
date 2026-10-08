@@ -116,19 +116,19 @@ class TestTheDefaultPalette:
 
 
 class TestTheAliasesStillWork:
-    """British spellings are dash's own convenience, not Stata names."""
+    """British spellings are not Stata names: twoway notes mcolor(grey) and
+    draws it black (WP-30 P1.13a, colour_grammar_truth.json opt_89).  They
+    are kept for the KPI card's lenient lookup alone."""
 
-    @pytest.mark.parametrize("alias,canonical", [
-        ("grey", "gray"),
-        ("dimgrey", "dimgray"),
-        ("bluishgrey", "bluishgray"),
-        ("ltbluishgrey", "ltbluishgray"),
-    ])
-    def test_an_alias_resolves_to_its_canonical_colour(self, alias, canonical):
+    def test_a_british_spelling_is_not_a_stata_name(self):
+        """Flipped (WP-30 P1.13a): each alias was a _COLOR_MAP key equal to
+        its US name.  Nor is the empty string a name (it drew black)."""
         cm = OptionTranslator._COLOR_MAP
-        assert cm[alias] == cm[canonical], (
-            f"{alias} and {canonical} must be the same colour"
-        )
+        want = {"grey": "gray", "dimgrey": "dimgray",
+                "bluishgrey": "bluishgray", "ltbluishgrey": "ltbluishgray"}
+        assert OptionTranslator._BRITISH_SPELLINGS == want
+        assert not [k for k in list(want) + [""] if k in cm]
+        assert all(v in cm for v in want.values())
 
 
 class TestColourNone:

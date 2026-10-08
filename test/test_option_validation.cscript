@@ -283,6 +283,15 @@
 *!                                    "unsupported option", which no
 *!                                    refusal may print ("not found" is
 *!                                    found at OV-134m)
+*! A comma-written plot colour (WP-30 P1.13a), refused in twoway's words:
+*!   CG-01  mcolor("255,0,128")        rc 198, invalid '0', nothing registered
+*!   CG-02  lcolor("1,2,3") on line    rc 198, invalid '2'
+*!   CG-03  mcolor("red,blue")         rc 198, invalid 'blue'
+*!   CG-04  mcolor("1,")               rc 198, invalid 'editcopy'
+*!   CG-05  mcolor(red "255,0,0")      rc 198, invalid '0' (two y)
+*!   CG-06  mcolor("1,,2")             rc 0, registered (the renderer notes it)
+*!   CG-07  bgcolor("1,2,3")           rc 0 (twoway accepts it)
+*!   CG-08  mcolor(navy*.5)            rc 0, the spec carries "mcolor":"navy*.5"
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
@@ -1081,6 +1090,69 @@ _af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format()) nam
 _af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%td) labsize(small)) name(af17e)"' 0 ""
 _af_case AF-18 `"twoway scatter mpg weight, colorvar(price) zlabel(, format(bogus))"' 198 "invalid format, bogus"
 _af_case AF-18 `"dash scatter mpg weight, colorvar(price) zlabel(, format(bogus)) name(af18)"' 198 "invalid format, bogus"
+
+// ----------------------------------------------------------------
+// CG-nn (WP-30 P1.13a): a comma-written plot colour is refused as twoway
+// refuses it, invalid '<word>', r(198), before anything is registered;
+// mcolor("1,,2") and bgcolor("1,2,3") draw in twoway and register here.
+// _cg_case: rc must equal `expected'; the log must say `needle' (when
+// given); a refusal registers nothing; an acceptance registers cgNN and
+// carries `json' (when given).
+capture program drop _cg_case
+program define _cg_case
+    version 16.0
+    args id cmdtext expected needle json
+    local logfile "`c(tmpdir)'dash_ov.log"
+    local nm = "cg" + subinstr("`id'", "CG-", "", 1)
+    set linesize 80
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ovlog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `"`macval(needle)'"' != "" {
+        _ov_count "`logfile'" `"`macval(needle)'"'
+        if r(n) == 0 {
+            display as error `"`id' FAIL: the log does not say `macval(needle)'"'
+            local bad = 1
+        }
+    }
+    if `expected' != 0 & `"${dash_json_`nm'}"' != "" {
+        display as error `"`id' FAIL: the refused command still registered `nm'"'
+        local bad = 1
+    }
+    if `expected' == 0 & `"${dash_json_`nm'}"' == "" {
+        display as error `"`id' FAIL: nothing was registered as `nm'"'
+        local bad = 1
+    }
+    if `expected' == 0 & `"`macval(json)'"' != "" & `bad' == 0 {
+        _ov_has "`nm'" `"`macval(json)'"'
+        if r(found) != 1 {
+            display as error `"`id' FAIL: the registered spec does not carry `macval(json)'"'
+            local bad = 1
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+end
+_cg_case CG-01 `"dash scatter mpg weight, mcolor("255,0,128") name(cg01)"' 198 "invalid '0'"
+_cg_case CG-02 `"dash line mpg weight, lcolor("1,2,3") name(cg02)"' 198 "invalid '2'"
+_cg_case CG-03 `"dash scatter mpg weight, mcolor("red,blue") name(cg03)"' 198 "invalid 'blue'"
+_cg_case CG-04 `"dash scatter mpg weight, mcolor("1,") name(cg04)"' 198 "invalid 'editcopy'"
+_cg_case CG-05 `"dash scatter mpg turn weight, mcolor(red "255,0,0") name(cg05)"' 198 "invalid '0'"
+_cg_case CG-06 `"dash scatter mpg weight, mcolor("1,,2") name(cg06)"' 0 ""
+_cg_case CG-07 `"dash scatter mpg weight, bgcolor("1,2,3") name(cg07)"' 0 ""
+_cg_case CG-08 `"dash scatter mpg weight, mcolor(navy*.5) name(cg08)"' 0 "" `""mcolor":"navy*.5""'
 
 // ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must

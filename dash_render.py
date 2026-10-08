@@ -5492,14 +5492,12 @@ def _textbox_color(opts: dict, default: "str | None") -> "str | None":
     raw = opts.get("color", "")
     if not raw:
         return default
-    try:
-        return OptionTranslator.translate_mcolor(raw)
-    except (ValueError, TypeError):
-        warnings.warn(
-            f"dash: color({raw}) is not a recognised colour; ignoring it.",
-            UserWarning, stacklevel=3,
-        )
-        return default
+    # Stata's colour grammar (WP-30 P1.13a): an unknown colour is black
+    # with the note, as twoway draws title("T", color(bogus)); a malformed
+    # one keeps the default in silence.  The opacity, a bare *#/%# and the
+    # figure's own scheme are section 43's.
+    hx, _alpha = OptionTranslator.parse_color_alpha(str(raw), "color")
+    return hx if hx is not None else default
 
 
 def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
@@ -5758,6 +5756,12 @@ class OptionTranslator:
     All translation methods are static — no instance state is required.
     Methods raise ``ValueError`` with a descriptive message for invalid input,
     so that the caller can wrap them in a user-facing error.
+
+    The one exception is the colour readers of an instance built with
+    ``scheme_of`` (WP-30 P1.13a, D-30b): ``translate_mcolor``,
+    ``translate_lcolor`` and ``parse_color_alpha`` are then instance
+    attributes that read ``bg``, ``fg`` and ``colour*#`` with that scheme.
+    Everything else stays static.
     """
 
     # Stata's own colour table, extracted from
@@ -5875,18 +5879,57 @@ class OptionTranslator:
 
         # stcolor's own palette names, which the scheme file defines
         # rather than a color-*.style file.
-
-        # An unset colour option.  Not a Stata name; kept because callers
-        # resolve an empty option through this table.
-        "":                "#000000",
-
-        # British spellings, dash's own convenience.  Stata accepts only
-        # the US forms, so these are aliases, not Stata names.
-        "bluishgrey":      "#d9e6eb",
-        "dimgrey":         "#e8e8e8",
-        "grey":            "#808080",
-        "ltbluishgrey":    "#eaf2f3",
     }
+
+    # The British spellings are not Stata names: twoway notes
+    # mcolor(grey) and draws it black (WP-30 P1.13a, IR-6).  Only the KPI
+    # card's lenient lookup (_resolve_kpi_color) reads them.
+    _BRITISH_SPELLINGS: dict[str, str] = {
+        "grey": "gray", "dimgrey": "dimgray", "bluishgrey": "bluishgray",
+        "ltbluishgrey": "ltbluishgray",
+    }
+    # Colour text longer than this is an unknown colour, unread (TR-30.14).
+    _COLOUR_TEXT_MAX = 200
+    # The one hex form twoway draws: six digits, either case (E3: #F00 and
+    # #ff00 keep the default).  Anchored by fullmatch, no repetition nest.
+    _HEX6_RE = re.compile(r"#[0-9A-Fa-f]{6}")
+    # bg and fg without a scheme: s2color's, the fallback scheme's (E3).
+    _FALLBACK_BG = "#eaf2f3"
+    _FALLBACK_FG = "#000000"
+
+    def __init__(self, scheme_of=None) -> None:
+        """A translator; with *scheme_of* (a callable returning the scheme
+        to read, or None) its three colour readers read that scheme's
+        ``bg``/``fg`` and ``naturally_white`` at call time (D-30b).  They
+        are lambdas set on the instance, so an explicit keyword still wins
+        and the static methods stay unbound for every other caller."""
+        self._scheme_of = scheme_of
+        if callable(scheme_of):
+            T = OptionTranslator
+            self.translate_mcolor = lambda value, **kw: T.translate_mcolor(
+                value, **{**self.colour_context(), **kw})
+            self.translate_lcolor = lambda value, **kw: T.translate_lcolor(
+                value, **{**self.colour_context(), **kw})
+            self.parse_color_alpha = lambda value, option="", **kw: \
+                T.parse_color_alpha(value, option,
+                                    **{**self.colour_context(), **kw})
+
+    def colour_context(self) -> dict:
+        """The colour keywords of the scheme *scheme_of* returns now."""
+        return OptionTranslator.scheme_colour_context(
+            self._scheme_of() if callable(self._scheme_of) else None)
+
+    @staticmethod
+    def scheme_colour_context(scheme) -> dict:
+        """``stata_colour``'s keywords for *scheme*: its ``bg``/``fg``
+        lookups and ``naturally_white``; ``{}`` for None (s2color's)."""
+        if scheme is None:
+            return {}
+        T = OptionTranslator
+        return {"background": getattr(scheme, "bg_lookup", T._FALLBACK_BG),
+                "foreground": getattr(scheme, "fg_lookup", T._FALLBACK_FG),
+                "naturally_white": bool(getattr(scheme, "naturally_white",
+                                                True))}
 
     # ------------------------------------------------------------------
     # Stata marker symbol → Bokeh marker string
@@ -6271,56 +6314,34 @@ class OptionTranslator:
 
     @staticmethod
     def parse_color_alpha(
-        value: str, option: str = "",
+        value: str, option: str = "", **ctx,
     ) -> "tuple[str | None, float | None]":
-        """Parse a Stata color+alpha spec such as ``'red%50'`` or ``'%30'``.
+        """``(hex or None, opacity 0-1 or None)`` of a Stata colour option,
+        read with Stata's colour grammar (``stata_colour``, WP-30 P1.13a).
 
-        Stata allows an optional ``%N`` suffix on any color spec where *N* is
-        0-100 and represents opacity percentage (0 = transparent, 100 = opaque).
-        A bare ``%N`` with no color prefix means "use current color, change
-        alpha only".
+        ``%#`` (0-100) is the opacity, beside ``*#`` in either order
+        (``navy*.5%50`` and ``navy%50*.5`` are both ``#8da3b7`` at 0.5).  A
+        bare ``*#`` or ``%#`` gives no colour of its own (``hex`` None; the
+        site's base colour is section 43's).  Three answers, as twoway
+        draws them: a colour; a malformed hex, multiplier or opacity gives
+        ``(None, None)`` in silence, so the site keeps its default; an
+        unknown or wrong-case colour is black, its own ``*#`` and ``%#``
+        applied, and is noted ``dash: <option>(<value>) is not a recognised
+        colour; using black.`` when *option* is given.
 
         Args:
-            value:  Raw option value from a Stata mcolor()/fcolor()/lcolor()
-                    call, e.g. ``"navy%80"`` or ``"%50"`` or ``"navy"``.
-            option: The option the value came from.  When given, a colour
-                    that cannot be resolved is reported through
-                    ``_dash_style_note`` before ``None`` is returned; every
-                    option applier passes it, so an unknown colour name is
-                    never dropped in silence.
-
-        Returns:
-            A ``(hex_color_or_None, alpha_0_to_1_or_None)`` tuple.  Either
-            element can be ``None`` if absent.
+            value:  The option's text, e.g. ``"navy%80"``, ``"%50"``.
+            option: The option the value came from; when given, an unknown
+                    colour is reported through ``_dash_style_note``.
+            ctx:    ``background``, ``foreground``, ``naturally_white`` for
+                    ``stata_colour`` (a bound translator passes its scheme's).
         """
-        v = value.strip()
-        alpha: "float | None" = None
-        hex_color: "str | None" = None
-
-        # Split on the LAST '%' to find an optional alpha suffix.
-        pct_idx = v.rfind("%")
-        if pct_idx >= 0:
-            alpha_str = v[pct_idx + 1:].strip()
-            color_part = v[:pct_idx].strip()
-            try:
-                alpha_val = float(alpha_str)
-                if 0.0 <= alpha_val <= 100.0:
-                    alpha = alpha_val / 100.0
-                    v = color_part          # strip alpha from the color string
-            except ValueError:
-                pass   # '%' is part of the color name — fall through
-
-        # Resolve color (may be empty if bare '%N' form)
-        if v:
-            try:
-                hex_color = OptionTranslator.translate_mcolor(v)
-            except ValueError:
-                # Unrecognised: the caller keeps its default.  Named when
-                # the caller said which option it is reading.
-                if option:
-                    _dash_style_note(option, value, "colour")
-
-        return hex_color, alpha
+        st, hx, alpha = OptionTranslator.stata_colour(value, **ctx)
+        if st == "keep":
+            return None, None
+        if st == "unknown" and option:
+            _dash_style_note(option, value, "colour", "black")
+        return hx, alpha
 
     # Stata's colour token meaning "draw nothing".  Its own
     # color-none.style sets rgb "0 0 0" and then says `* values should not
@@ -6335,71 +6356,191 @@ class OptionTranslator:
         """True when a colour option asks for nothing to be drawn."""
         return str(value).strip().lower() in OptionTranslator._NO_COLOR
 
+    # ------------------------------------------------------------------
+    # Stata's colour grammar (WP-30 P1.13a), measured against StataNow
+    # 19.5's SVG export (plan section 30 Evidence E3; the fixture is
+    # test/fixtures/colour_grammar_truth.json).
+    # ------------------------------------------------------------------
+
     @staticmethod
-    def translate_mcolor(value: str) -> str:
-        """Return a CSS hex color string for a Stata mcolor() value.
+    def _colour_parts(text: str) -> "tuple[str, str | None, str | None]":
+        """``(base, multiplier, opacity)`` text of a colour, raw: the base
+        runs to the first ``*`` or ``%``; the text between the two markers
+        belongs to the first, the rest to the second, in either order
+        (``navy*.5%50`` and ``navy%50*.5`` are both ``(navy, .5, 50)``;
+        ``navy*.5*2`` is ``(navy, .5*2, None)``, which is malformed)."""
+        cut = [k for k in (text.find("*"), text.find("%")) if k >= 0]
+        if not cut:
+            return text.strip(), None, None
+        i = min(cut)
+        base, rest = text[:i].strip(), text[i:]
+        first = rest[0]
+        other = "%" if first == "*" else "*"
+        j = rest.find(other, 1)
+        one = rest[1:j] if j >= 0 else rest[1:]
+        two = rest[j + 1:] if j >= 0 else None
+        mult, pct = (one, two) if first == "*" else (two, one)
+        return base, mult, pct
 
-        Strips any trailing ``%alpha`` suffix before resolving the color so
-        that ``translate_mcolor`` can be used as a plain color resolver while
-        ``parse_color_alpha`` handles the full ``color%alpha`` syntax.
+    @staticmethod
+    def _colour_cmyk(nums) -> "str | None":
+        """``#rrggbb`` of CMYK *nums*, or None out of range (E3): when all
+        four lie in [0, 1] they are proportions, each ``floor(v*255)``;
+        otherwise each must be a whole number 0-255.  A channel is
+        ``max(0, 255 - (C + K))`` (``"85 40 0 144"`` is ``#1a476f``)."""
+        if len(nums) != 4:
+            return None
+        if all(0.0 <= x <= 1.0 for x in nums):
+            v = [int(math.floor(x * 255 + 1e-9)) for x in nums]
+        elif all(x == int(x) and 0 <= x <= 255 for x in nums):
+            v = [int(x) for x in nums]
+        else:
+            return None
+        c, m, y, k = v
+        return "#%02x%02x%02x" % tuple(max(0, 255 - (q + k))
+                                       for q in (c, m, y))
 
-        Args:
-            value: A Stata color name (e.g. "navy"), RGB string "R G B", or
-                   hex code.  A ``%N`` alpha suffix is silently stripped.
+    @staticmethod
+    def _colour_hsv(h: float, s: float, v: float) -> "str | None":
+        """``#rrggbb`` of HSV, or None out of range (E3): the hue wraps mod
+        360, S and V lie in [0, 1], each channel ``floor(x*255)``
+        (``"hsv 209 .766 .435"`` is ``#19456e``, ``"hsv -30 1 1"``
+        ``#ff007f``)."""
+        if not (0.0 <= s <= 1.0 and 0.0 <= v <= 1.0):
+            return None
+        h = h % 360.0
+        k = int(h / 60.0) % 6
+        f = h / 60.0 - int(h / 60.0)
+        p, q, t_ = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+        rgb = ((v, t_, p), (q, v, p), (p, v, t_),
+               (p, q, v), (t_, p, v), (v, p, q))[k]
+        return "#%02x%02x%02x" % tuple(int(math.floor(x * 255 + 1e-9))
+                                       for x in rgb)
 
-        Returns:
-            A CSS hex color string, e.g. "#1a476f".
+    @staticmethod
+    def _colour_base(base: str, context: str, background, foreground
+                     ) -> "tuple[str, str | None]":
+        """``("ok", hex)``, ``("malformed", None)`` or ``("unknown", None)``
+        for a colour without its ``*#``/``%#`` (TR-30.4), in this order: a
+        Stata name (exact case); ``bg``/``background`` and
+        ``fg``/``foreground`` (None there is unknown); ``#`` and six hex
+        digits, anything else after ``#`` malformed; in a scheme file only,
+        numbers separated by commas (3 RGB, 4 CMYK; out of range unknown,
+        another count or a non-number malformed); ``hsv H S V`` (keyword in
+        any case); three whole numbers 0-255 (RGB); four numbers (CMYK);
+        anything else unknown.  Numbers are read by ``stata_number``."""
+        T = OptionTranslator
+        if base in T._COLOR_MAP:
+            return "ok", T._COLOR_MAP[base]
+        if base in ("bg", "background", "fg", "foreground"):
+            hx = background if base[0] == "b" else foreground
+            if hx is None or not T._HEX6_RE.fullmatch(str(hx)):
+                return "unknown", None
+            return "ok", str(hx).lower()
+        if base.startswith("#"):
+            if T._HEX6_RE.fullmatch(base):
+                return "ok", base.lower()
+            return "malformed", None
+        if context == "scheme" and "," in base:
+            nums = [T.stata_number(x) for x in base.split(",")]
+            if len(nums) not in (3, 4) or any(x is None for x in nums):
+                return "malformed", None
+            if len(nums) == 3:
+                if all(x == int(x) and 0 <= x <= 255 for x in nums):
+                    return "ok", "#%02x%02x%02x" % tuple(int(x) for x in nums)
+                return "unknown", None
+            hx = T._colour_cmyk(nums)
+            return ("ok", hx) if hx else ("unknown", None)
+        toks = base.split()
+        if toks and toks[0].lower() == "hsv":
+            nums = [T.stata_number(x) for x in toks[1:]]
+            if len(nums) == 3 and all(x is not None for x in nums):
+                hx = T._colour_hsv(*nums)
+                if hx:
+                    return "ok", hx
+            return "unknown", None
+        nums = [T.stata_number(x) for x in toks]
+        if len(nums) in (3, 4) and all(x is not None for x in nums):
+            if len(nums) == 3:
+                if all(x == int(x) and 0 <= x <= 255 for x in nums):
+                    return "ok", "#%02x%02x%02x" % tuple(int(x) for x in nums)
+                return "unknown", None
+            hx = T._colour_cmyk(nums)
+            return ("ok", hx) if hx else ("unknown", None)
+        return "unknown", None
+
+    @staticmethod
+    def stata_colour(value: Any, *, context: str = "option",
+                     background: "str | None" = "#eaf2f3",
+                     foreground: "str | None" = "#000000",
+                     naturally_white: Any = True
+                     ) -> "tuple[str, str | None, float | None]":
+        """``(status, hex, opacity)`` of a colour as twoway reads it.
+
+        ``status`` is ``"ok"`` (``hex`` is the colour, None only for a bare
+        ``*#``/``%#``, whose base colour is section 43's), ``"keep"`` (an
+        option's malformed hex, multiplier or opacity: the site keeps its
+        default, silently) or ``"unknown"`` (an unknown or wrong-case
+        name, or a value out of range: black, with the value's own ``*#``
+        and ``%#`` applied; the caller notes it).  In ``context="scheme"``
+        (a scheme file) a malformed value is white, ``("ok", "#ffffff",
+        None)``, and commas separate numbers.
+
+        ``*#`` is ``GlyphMapper._blend_intensity`` (towards white below 1,
+        divided above it, Stata's clamp, multiplied under *naturally_white*
+        false): navy*.5 ``#8da3b7``, navy*1.5 ``#112f4a``, maroon*1.25
+        ``#732a2f``; navy*52 is UNCLEAR (twoway ``#010304``) and pinned
+        nowhere.  An empty ``*`` or ``%`` is ignored; ``%#`` is 0-100.
+        *background*/*foreground* are what ``bg``/``fg`` mean (None: they
+        are unknown).  Never raises for a colour, never notes, never
+        evaluates text; every hex fullmatches ``#[0-9a-f]{6}``.
+        """
+        T = OptionTranslator
+        if context not in ("option", "scheme"):
+            raise ValueError(f"stata_colour: context {context!r}")
+        scheme = context == "scheme"
+        keep = ("ok", "#ffffff", None) if scheme else ("keep", None, None)
+        text = str(value).strip()
+        if len(text) > T._COLOUR_TEXT_MAX:
+            return "unknown", "#000000", None
+        if not text:
+            return keep
+        base, mult, pct = T._colour_parts(text)
+        f = alpha = None
+        if mult is not None and mult.strip():
+            f = T.stata_number(mult)
+            if f is None or f < 0:
+                return keep
+        if pct is not None and pct.strip():
+            p = T.stata_number(pct)
+            if p is None or not 0 <= p <= 100:
+                return keep
+            alpha = p / 100.0
+        if not base:
+            return "ok", ("#ffffff" if scheme else None), alpha
+        st, hx = T._colour_base(base, context, background, foreground)
+        if st == "malformed":
+            return keep
+        if st == "unknown":
+            hx = "#000000"
+        if f is not None:
+            hx = GlyphMapper._blend_intensity(hx, f, bool(naturally_white))
+        return st, hx, alpha
+
+    @staticmethod
+    def translate_mcolor(value: str, **ctx) -> str:
+        """``#rrggbb`` of a Stata colour, read with Stata's colour grammar
+        (``stata_colour``; WP-30 P1.13a).  A ``%#`` opacity is read and
+        dropped (``parse_color_alpha`` keeps it).
 
         Raises:
-            ValueError: If the value cannot be recognised as a valid color.
+            ValueError: for anything that is not a colour of its own: an
+                unknown or wrong-case name, a malformed hex, multiplier or
+                opacity, an empty value or a bare ``*#``/``%#``.
         """
-        # Strip alpha suffix before color resolution
-        v = value.strip()
-        pct_idx = v.rfind("%")
-        if pct_idx >= 0:
-            alpha_str = v[pct_idx + 1:].strip()
-            try:
-                alpha_val = float(alpha_str)
-                if 0.0 <= alpha_val <= 100.0:
-                    v = v[:pct_idx].strip()
-            except ValueError:
-                pass  # literal '%' in value — keep as-is
-        v = v.lower()
-
-        # RGB triplet: "255 0 128" or "255,0,128"
-        parts = v.replace(",", " ").split()
-        if len(parts) == 3:
-            try:
-                r, g, b = (int(p) for p in parts)
-                if all(0 <= x <= 255 for x in (r, g, b)):
-                    return f"#{r:02x}{g:02x}{b:02x}"
-            except ValueError:
-                pass
-
-        # Named color lookup (case-insensitive)
-        if v in OptionTranslator._COLOR_MAP:
-            return OptionTranslator._COLOR_MAP[v]
-
-        # Passthrough for hex values already in CSS format.
-        #
-        # The 3- and 6-digit forms are the only ones deliberately accepted:
-        # they are what Stata's own scheme files and dash's colour table
-        # carry, and what every browser reads the same way.  4- and 8-digit
-        # forms carry alpha, which dash sets separately through malpha(),
-        # lalpha() and falpha(), so accepting them would give two places to
-        # set one property.
-        #
-        # The length test alone was the whole check, so any 4- or
-        # 7-character string starting with '#' was returned as a colour --
-        # '#}a{b;c' among them. SchemeParser puts this value into a <style>
-        # block where html.escape leaves '{', '}' and ';' alone, so a
-        # .scheme file (which the help invites the user to take from the
-        # working directory) could close dash's own rule and open its own.
-        # The KPI colour path was hardened against exactly this; this was
-        # the colour path it did not reach.
-        if re.fullmatch(r"#(?:[0-9a-f]{3}|[0-9a-f]{6})", v):
-            return v
-
+        st, hx, _alpha = OptionTranslator.stata_colour(value, **ctx)
+        if st == "ok" and hx is not None:
+            return hx
         raise ValueError(
             f"Unknown Stata color: '{value}'. "
             "Use a Stata named color (e.g. 'navy'), an RGB triplet "
@@ -6468,9 +6609,9 @@ class OptionTranslator:
                               ref_in) * T.PX_PER_PT
 
     @staticmethod
-    def translate_lcolor(value: str) -> str:
+    def translate_lcolor(value: str, **ctx) -> str:
         """Return a CSS hex color string for a Stata lcolor() value."""
-        return OptionTranslator.translate_mcolor(value)
+        return OptionTranslator.translate_mcolor(value, **ctx)
 
     @staticmethod
     def translate_lwidth(value: str, default_px: Any = None,
@@ -7420,57 +7561,68 @@ class SchemeParser:
     # ------------------------------------------------------------------
 
     def _color(self, key: str, default: str = "#000000") -> str:
-        """Translate a raw scheme colour to hex, degrading loudly if it cannot.
+        """The hex of a scheme colour, as ``_color_alpha`` reads it.
 
-        An ABSENT key falls back silently — that is ordinary inheritance, and
-        every scheme leaves most keys unset.  But a key that is PRESENT and
-        unresolvable is a defect in the scheme or in the colour table, and must
-        say so: silently returning the default here is what made the whole
-        stcolor scheme render every series black, because `color p1 stc1` could
-        not be resolved and nothing reported it.
+        An ABSENT key is silent inheritance: *default*.  A PRESENT key is
+        read with Stata's colour grammar in scheme context (WP-30 P1.13a):
+        an unknown or wrong-case name draws black with one warning, a
+        malformed number draws white silently, as twoway draws them.  (The
+        warning matters: stcolor once drew every series black because
+        ``color p1 stc1`` could not be read and nothing said so.)
         """
-        raw = self._props.get(key, "").strip()
-        if not raw:
-            return default
-        try:
-            return OptionTranslator.translate_mcolor(raw)
-        except ValueError:
-            warnings.warn(
-                f"dash scheme: colour '{raw}' (from '{key}') is not a colour "
-                f"dash recognises; falling back to {default}. The rendered "
-                "colour will not match Stata's.",
-                UserWarning,
-                stacklevel=3,
-            )
-            return default
+        return self._color_alpha(key, default)[0]
 
     def _color_alpha(
         self, key: str, default: str = "#000000",
         default_alpha: "float | None" = None,
     ) -> "tuple[str, float | None]":
-        """``(hex, opacity)`` of a scheme colour: the colour as ``_color``
-        reads it, and the opacity its ``%NN`` suffix declares, or None.
-
-        Stata's colour syntax carries an opacity on the colour itself:
-        scheme-sttrans.scheme declares every p# colour as ``"26 71 111
-        %20"`` and draws it at fill-opacity AND stroke-opacity 0.20
-        (measured 22sep2026 in its SVG export).  ``_color`` resolves that
-        through ``translate_mcolor``, which strips the suffix, so the
-        opacity was read by nothing and sttrans drew opaque.
+        """``(hex, opacity)`` of a scheme colour; the opacity is its
+        ``%NN`` (sttrans declares ``"26 71 111 %20"`` and draws 0.20), or
+        None.
 
         An ABSENT key falls back to *default* and *default_alpha* together:
-        a scheme that declares only ``color p1 red%50`` gives p1line, p1bar,
-        p1mark and p1lineplot the colour and its opacity, as Stata's p#stub
-        -> p# chain does.  A PRESENT but unresolvable colour degrades loudly
-        through ``_color`` and carries no opacity.
+        a scheme that declares only ``color p1 red%50`` gives p1line, p1bar
+        and p1lineplot the colour and its opacity, as Stata's p#stub -> p#
+        chain does.  A PRESENT key is read by
+        ``OptionTranslator.stata_colour(context="scheme")`` with this
+        scheme's ``bg``/``fg`` lookups and ``naturally_white`` (WP-30
+        P1.13a): commas separate numbers, a malformed hex, multiplier,
+        opacity or comma list draws white silently, and an unknown or
+        wrong-case name or an out-of-range value draws black (its own
+        ``*#`` and ``%#`` applied) with one warning, as twoway draws them.
         """
         raw = self._props.get(key, "").strip()
         if not raw:
             return default, default_alpha
-        hexval, alpha = OptionTranslator.parse_color_alpha(raw)
-        if hexval is None:
-            return self._color(key, default), default_alpha
-        return hexval, alpha
+        st, hx, alpha = OptionTranslator.stata_colour(
+            raw, context="scheme",
+            background=getattr(self, "_colour_bg", None),
+            foreground=getattr(self, "_colour_fg", None),
+            naturally_white=getattr(self, "naturally_white", True))
+        if st == "unknown":
+            warnings.warn(
+                f"dash scheme: colour '{_dash_display(raw)}' (from '{key}') "
+                "is not a colour; using black, as twoway does.",
+                UserWarning,
+                stacklevel=3,
+            )
+        return hx, alpha
+
+    def _named_lookup(self, key: str, resolved: str, absent: str
+                      ) -> "str | None":
+        """What ``bg``/``fg`` mean under this scheme (D-30d, D-30e):
+        *absent* when *key* is not set; *resolved* when its raw text is a
+        Stata colour name or a ``#rrggbb`` (dash's own files write every
+        name as hex); otherwise None, so ``bg``/``fg`` are unknown colours,
+        as twoway's named-style lookup fails on RGB, HSV, CMYK, ``*#`` and
+        ``%#`` text."""
+        raw = self._props.get(key, "").strip()
+        if not raw:
+            return absent
+        if raw in OptionTranslator._COLOR_MAP or \
+                OptionTranslator._HEX6_RE.fullmatch(raw):
+            return resolved
+        return None
 
     def _first_present(self, keys: "tuple[str, ...]") -> "str | None":
         """The first of *keys* the scheme declares with a non-blank value,
@@ -7486,9 +7638,10 @@ class SchemeParser:
         p#stub -> pstub -> p# -> p (scheme.class), p# and p being
         ``p_colors``/``p_alphas`` already resolved.
 
-        Applied from the far end, so a step that is PRESENT but not a colour
-        dash can read warns (through ``_color``) and falls back to the rest
-        of the chain rather than to black.
+        Applied from the far end, so a step that is PRESENT but not a
+        colour draws what twoway draws for it (WP-30 P1.13a): black with a
+        warning for an unknown name, white for a malformed number -- not
+        the rest of the chain.
         """
         val = (self.p_colors[i - 1], self.p_alphas[i - 1])
         for key in (f"color p{stub}", f"color p{i}{stub}"):
@@ -7865,8 +8018,22 @@ class SchemeParser:
 
     def _init_properties(self) -> None:
         """Extract all Bokeh-relevant properties into named attributes."""
+        # Parsed for S16 (P1.2b): whether the scheme's background is white.
+        # First, with the foreground and background, because every colour
+        # below reads colour*#, bg and fg through them (WP-30 P1.13a).
+        self.naturally_white: bool = bool(self._bounded_int(
+            "system naturally_white", 1, 0, 1, "naturally_white"))
+        self._colour_bg = None
+        self._colour_fg = None
+        self.foreground_color: str = self._color("color foreground", "#000000")
+        self.fg_lookup = self._named_lookup(
+            "color foreground", self.foreground_color, "#000000")
+        self._colour_fg = self.fg_lookup
         # Background / region colors
         self.background_color: str = self._color("color background", "#d9e8f0")
+        self.bg_lookup = self._named_lookup(
+            "color background", self.background_color, "#d9e8f0")
+        self._colour_bg = self.bg_lookup
         self.plotregion_color: str = self._color("color plotregion", "#ffffff")
         self.legend_bg_color: str = self._color("color legend", "#ffffff")
         self.legend_border_color: str = self._color("color legend_line", "#000000")
@@ -8023,8 +8190,8 @@ class SchemeParser:
         # extracted, shipped in all twenty files and the fallback dict,
         # and read by nothing: every axis line was Bokeh's 1px.  Applied
         # in apply_to_figure.  (`color foreground' is carried alongside
-        # it in the same files and has no consumer here by design: Stata
-        # reads it for elements dash does not draw.)
+        # it in the same files; it is read first, as foreground_color, and
+        # is what `fg' means (WP-30 P1.13a).)
         self.axis_line_width: float = self._lwidth(
             "linewidth axisline", OptionTranslator.translate_lwidth("thin"))
 
@@ -8211,11 +8378,9 @@ class SchemeParser:
                                  "clock position")
             for k, d in (("title", 12), ("subtitle", 12), ("note", 7),
                          ("caption", 7))}
-        # Parsed for S16 (P1.2b): whether the scheme's background is white,
-        # and the p#bar / p#area intensity chains (p#stub -> pstub -> p#
-        # -> p, as _first_present walks every p# cycle).
-        self.naturally_white: bool = bool(self._bounded_int(
-            "system naturally_white", 1, 0, 1, "naturally_white"))
+        # Parsed for S16 (P1.2b): the p#bar / p#area intensity chains
+        # (p#stub -> pstub -> p# -> p, as _first_present walks every p#
+        # cycle); naturally_white is read first (above).
         self.p_bar_intensity: "list[float]" = [
             self._intensity(self._first_present(
                 (f"intensity p{i}bar", "intensity pbar", f"intensity p{i}",
@@ -9338,7 +9503,17 @@ class GlyphMapper:
         band draws at when its layer names no level() of its own.  The
         mapper owns it so both render modes resolve it in one place.
         """
-        self.tr = translator or OptionTranslator()
+        # D-30b (WP-30 P1.13a): the mapper's translator reads this mapper's
+        # scheme -- bg, fg and colour*# under its naturally_white -- at call
+        # time, so the per-graph scheme() DashRenderer swaps onto the
+        # mapper is honoured.  A plain OptionTranslator passed in is
+        # replaced by a bound one; any other object is kept.
+        if translator is None or (type(translator) is OptionTranslator
+                                  and getattr(translator, "_scheme_of",
+                                              None) is None):
+            self.tr = OptionTranslator(scheme_of=lambda: self.scheme)
+        else:
+            self.tr = translator
         self.default_level: float = float(default_level)
         # The whole dataset, as Stata holds it in memory (dash exports every
         # row of the variables it needs), for the rules that read beyond a
@@ -17533,11 +17708,11 @@ def _dash_graph_color(option, raw):
         option: As written, e.g. ``plotregion(lcolor)``.
         raw:    The colour text.
     """
-    try:
-        return OptionTranslator.translate_mcolor(raw)
-    except (ValueError, TypeError):
-        _dash_style_note(option, raw, "colour")
-        return ""
+    # Stata's colour grammar (WP-30 P1.13a): an unknown colour is black
+    # with the note, as twoway draws graphregion(color(bogus)); a
+    # malformed one is "" (the default), silently.
+    hx, _alpha = OptionTranslator.parse_color_alpha(str(raw), option)
+    return hx or ""
 
 
 def _dash_figure_aspect(graph_opts, scheme_x=None, scheme_y=None):
@@ -19208,6 +19383,21 @@ def _resolve_kpi_color(val: str, default: str, option: str = "") -> str:
         return default
     try:
         return _sanitize_css_color(OptionTranslator.translate_mcolor(raw),
+                                   default)
+    except (ValueError, TypeError):
+        pass
+    # The card is dash's own, so it keeps the leniency it always had (WP-30
+    # P1.13a, D-30g): a Stata name in any case, a British spelling and a
+    # 3-digit hex, then Stata's grammar on the lower-cased text -- every
+    # colour accepted before keeps its colour, ahead of CSS.
+    low = raw.lower()
+    low = OptionTranslator._BRITISH_SPELLINGS.get(low, low)
+    if low in OptionTranslator._COLOR_MAP:
+        return _sanitize_css_color(OptionTranslator._COLOR_MAP[low], default)
+    if re.fullmatch(r"#[0-9a-f]{3}", low):
+        return low
+    try:
+        return _sanitize_css_color(OptionTranslator.translate_mcolor(low),
                                    default)
     except (ValueError, TypeError):
         pass
@@ -31495,14 +31685,22 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
     else:
         kw = {"line_color": "#000000", "line_dash": "dashed",
               "line_width": OptionTranslator.translate_lwidth("medium")}
+    # lcolor() in Stata's colour grammar with the scheme's bg/fg (WP-30
+    # P1.13a): an unknown colour is black with the note, as twoway draws
+    # yline(25, lcolor(bogus)); a malformed one keeps the default.
+    if style.get("lcolor"):
+        hx, _alpha = OptionTranslator.parse_color_alpha(
+            str(style["lcolor"]),
+            f"{opt}({style.get('_typed', {}).get('lcolor', 'lcolor')})",
+            **OptionTranslator.scheme_colour_context(scheme))
+        if hx is not None:
+            kw["line_color"] = hx
     # An unknown style inside xline()/yline() is named through the one
     # helper, as a plot option's is: lpattern() and lwidth() were
-    # dropped in silence, and lcolor() had a wording of its own.
+    # dropped in silence.
     for sub, what, fn, attr in (
-            ("lcolor", "colour", OptionTranslator.translate_mcolor,
-             "line_color"),
             ("lpattern", "line pattern", OptionTranslator.translate_lpattern,
-             "line_dash")):
+             "line_dash"),):
         if style.get(sub):
             try:
                 kw[attr] = fn(style[sub])

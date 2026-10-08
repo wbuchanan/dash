@@ -2026,6 +2026,13 @@ CORPUS = [
               "xtitle": '"{&mu} R{sup:2}"',
               "xlabel": '3000 "{bf:a}" 4000 "{bf:b}"',
               "legend": 'label(1 "{&beta} key")'}),
+    # WP-30 P1.13a: Stata's colour grammar, an unknown colour drawn black
+    _case("scatter, the colour grammar",
+          [_sc(mcolor="navy*.5", mfcolor="hsv 240 1 1", mlcolor="bg")]),
+    _case("line, an unknown colour drawn black",
+          [plot_for("line", {"lcolor": "bogus"})]),
+    _case("bar, an unknown fill", [plot_for("bar", {"fcolor": "bogus"})]),
+    _case("s1rcolor, fg", [_sc(mcolor="fg*.5")], {"scheme": "s1rcolor"}),
 ]
 
 
@@ -2120,6 +2127,8 @@ DATE_CORPUS = [
 #: but a layer drawn empty (the lpoly entries' "drew nothing" is not what
 #: they exist for).
 _MUST_WARN = {
+    "line, an unknown colour drawn black":
+        "dash: lcolor(bogus) is not a recognised colour; using black",
     "line, a colour clcolor() cannot name":
         "dash: clcolor(notacolour) is not a recognised colour",
     "a format mlabformat() cannot reproduce":

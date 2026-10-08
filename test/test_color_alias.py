@@ -121,18 +121,19 @@ class TestColorReachesTheCommonPlotTypes:
     ])
     def test_a_bad_colour_name_does_not_take_the_render_down(
             self, gm, src, mapper, prop, kind):
-        """It draws the scheme's default and says so -- what twoway does
-        with a colour it cannot read ("named style ... not found in class
-        color, default attributes used")."""
+        """It draws black and says so -- what twoway does with a colour it
+        cannot read ("named style ... not found in class color").
+        Flipped (WP-30 P1.13a): it drew the scheme's default; twoway draws
+        black (colour_grammar_truth.json opt_87, site_02)."""
         dr._dash_reset_notes()          # the note is made once per render
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             r = getattr(gm, mapper)(figure(), src, "mpg", "weight",
                                     {"color": "not_a_colour"})
         glyph = (r[0] if isinstance(r, list) else r).glyph
-        assert getattr(glyph, prop) == gm.scheme.default_color(0, kind)
+        assert getattr(glyph, prop) == "#000000"
         assert ("dash: color(not_a_colour) is not a recognised colour; "
-                "using the scheme's default.") in \
+                "using black.") in \
             [str(c.message) for c in caught]
 
 

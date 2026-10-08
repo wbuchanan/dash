@@ -42,8 +42,8 @@
 *!           accepting each value; the options twoway does not have
 *!   HC2-15  bands() 1 to 200 is twoway's own bound, twoway's message
 *!   HC2-16  values twoway refuses and dash accepts: kernel(GAUSSIAN),
-*!           a style option given (()), a string colorvar(), and a colour
-*!           written with commas
+*!           a style option given (()), a string colorvar(); and a colour
+*!           written with commas, which dash refuses, as twoway
 *!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
 *!           refuses; twoway has no theme() at all
 *!   HC2-18  forms twoway reads and dash refuses: an mlabel() element that
@@ -547,7 +547,8 @@ _hc2_expect "HC2-15b" 198 `"twoway mband mpg weight, bands(0)"' "bands must be b
 _hc2_dash   "HC2-15c" 198 `"dash mband mpg weight, bands(201) name(hc)"'
 _hc2_tail   "HC2-15d" bands "" 201
 
-// HC2-16 -- values twoway refuses and dash accepts.
+// HC2-16 -- values twoway refuses and dash accepts (HC2-16a-n), and a
+// colour written with commas, which dash refuses, as twoway (HC2-16o-q).
 _hc2_expect "HC2-16a" 198 `"twoway kdensity mpg, kernel(GAUSSIAN)"' "invalid kernel function"
 _hc2_dash   "HC2-16b" 0   `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"'
 _hc2_reg    "HC2-16c" hc `""kernel":"gaussian""'
@@ -563,8 +564,11 @@ _hc2_expect "HC2-16l" 7   `"twoway scatter mpg weight, colorvar(make)"' "found w
 _hc2_dash   "HC2-16m" 0   `"dash scatter mpg weight, colorvar(make) name(hc)"'
 _hc2_reg    "HC2-16n" hc `""colorvar":"make""'
 _hc2_expect "HC2-16o" 198 `"twoway scatter mpg weight, mcolor(255,0,0)"'
-_hc2_dash   "HC2-16p" 0   `"dash scatter mpg weight, mcolor(255,0,0) name(hc)"'
-_hc2_reg    "HC2-16q" hc `""mcolor":"255,0,0""'
+// WP-30 P1.13a: a colour written with commas is refused, as twoway
+// refuses it (invalid '0', r(198)), and no graph hc is registered.
+_hc2_dash   "HC2-16p" 198 `"dash scatter mpg weight, mcolor(255,0,0) name(hc)"' "invalid '0'"
+mata: st_local("_hc2q", strofreal(st_global("dash_json_hc") == ""))
+_hc2_ok     "HC2-16q" `_hc2q' "no graph hc is registered"
 
 // HC2-17 -- an unknown scheme: twoway notes and draws s2color, dash
 // refuses; theme() is not a twoway option at all.

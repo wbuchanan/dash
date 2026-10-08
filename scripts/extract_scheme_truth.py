@@ -121,6 +121,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import math
 import os
 import re
 import sys
@@ -301,20 +302,89 @@ def _round_half_up(x: float) -> int:
     return int(Decimal(repr(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def _apply_intensity(rgb: tuple[int, int, int], f: float) -> tuple[int, int, int]:
-    """Stata's ``colorstyle*#`` intensity adjustment.
+def _apply_intensity(rgb: tuple[int, int, int], f: float,
+                     naturally_white: bool = True) -> tuple[int, int, int]:
+    """Stata's ``colorstyle*#`` intensity, as twoway draws it (WP-30
+    P1.13a; plan section 30 Evidence E3, StataNow 19.5 SVG export).
 
-    Empirically verified against Stata 19.5 SVG output (see module docstring):
-    f <= 1 blends towards white, f > 1 scales towards black.
+    Each channel, rounded half up: under ``naturally_white 1`` f <= 1
+    gives ``255 - (255 - c) * f`` and f > 1 ``c / f``; under
+    ``naturally_white 0`` ``c * f``, held to 255.  Then Stata's clamp: when
+    a channel that was non-zero came out 0, every channel is ``c / m``, m
+    the smallest non-zero channel.  The same rule as dash_render's
+    ``GlyphMapper._blend_intensity`` (the extractor stays standalone);
+    navy*52 (twoway #010304, this rule #010102) is UNCLEAR.
     """
-    out = []
-    for c in rgb:
-        if f <= 1.0:
-            v = 255.0 - (255.0 - c) * f
-        else:
-            v = c / f
-        out.append(max(0, min(255, _round_half_up(v))))
+    f = max(0.0, float(f))
+    if not naturally_white:
+        raw = [c * f for c in rgb]
+    elif f <= 1.0:
+        raw = [255.0 - (255.0 - c) * f for c in rgb]
+    else:
+        raw = [c / f for c in rgb]
+    out = [max(0, min(255, _round_half_up(v))) for v in raw]
+    if any(c > 0 and o == 0 for c, o in zip(rgb, out)):
+        m = min(c for c in rgb if c > 0)
+        out = [max(0, min(255, _round_half_up(c / m))) for c in rgb]
     return tuple(out)  # type: ignore[return-value]
+
+
+_NUMBER = re.compile(r"[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eEdD][-+]?[0-9]+)?")
+_HEX6 = re.compile(r"#[0-9A-Fa-f]{6}")
+_STYLE_NAME = re.compile(r"[a-z0-9_]+")
+
+
+def _number(text: str):
+    """Stata's spelling of a finite number, or None (64 characters at most)."""
+    t = text.strip()
+    if not t or len(t) > 64 or not _NUMBER.fullmatch(t):
+        return None
+    v = float(t.replace("d", "e").replace("D", "e"))
+    return v if v == v and abs(v) != float("inf") else None
+
+
+def _cmyk_hex(nums):
+    """RGB of CMYK *nums* (proportions when all lie in [0, 1], else whole
+    numbers 0-255), each channel ``max(0, 255 - (C + K))``; None out of
+    range.  A private copy of dash_render's ``OptionTranslator._colour_cmyk``."""
+    if len(nums) != 4:
+        return None
+    if all(0.0 <= x <= 1.0 for x in nums):
+        v = [int(math.floor(x * 255 + 1e-9)) for x in nums]
+    elif all(x == int(x) and 0 <= x <= 255 for x in nums):
+        v = [int(x) for x in nums]
+    else:
+        return None
+    c, m, y, k = v
+    return tuple(max(0, 255 - (q + k)) for q in (c, m, y))
+
+
+def _hsv_hex(h, s, v):
+    """RGB of HSV (hue mod 360, S and V in [0, 1], ``floor(x*255)``); None
+    out of range.  A private copy of ``OptionTranslator._colour_hsv``."""
+    if not (0.0 <= s <= 1.0 and 0.0 <= v <= 1.0):
+        return None
+    h = h % 360.0
+    k = int(h / 60.0) % 6
+    f = h / 60.0 - int(h / 60.0)
+    p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    rgb = ((v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v),
+           (v, p, q))[k]
+    return tuple(int(math.floor(x * 255 + 1e-9)) for x in rgb)
+
+
+def _colour_parts(text: str):
+    """(base, multiplier, opacity) text, ``*`` and ``%`` in either order."""
+    cut = [k for k in (text.find("*"), text.find("%")) if k >= 0]
+    if not cut:
+        return text.strip(), None, None
+    i = min(cut)
+    base, rest = text[:i].strip(), text[i:]
+    other = "%" if rest[0] == "*" else "*"
+    j = rest.find(other, 1)
+    one = rest[1:j] if j >= 0 else rest[1:]
+    two = rest[j + 1:] if j >= 0 else None
+    return (base, one, two) if rest[0] == "*" else (base, two, one)
 
 
 class ColorResolver:
@@ -349,67 +419,81 @@ class ColorResolver:
         if not tok or _depth > 8:
             return None, None
 
-        # Opacity suffix (%NN): Stata's 0-100 opacity, kept beside the hex.
-        opacity: float | None = None
-        if "%" in tok:
-            tok, _, op = tok.partition("%")
-            try:
-                opacity = float(op.strip())
-            except ValueError:
+        # Stata's colour grammar (WP-30 P1.13a, plan section 30 E3): *# and
+        # %# in either order; malformed and unknown tokens are REPORTED in
+        # `unresolved' and give (None, None) -- the extractor reports, it
+        # does not guess (Stata's shipped files contain neither).
+        base, m, op = _colour_parts(tok)
+        mult = opacity = None
+        if m is not None and m.strip():
+            mult = _number(m)
+            if mult is None or mult < 0:
                 self.unresolved.append(
-                    f"unparseable opacity suffix in colour token {token!r}"
-                )
-                opacity = None
-
-        # Intensity multiplier (*N).
-        mult = None
-        if "*" in tok:
-            base, _, m = tok.partition("*")
-            tok = base
-            try:
-                mult = float(m)
-            except ValueError:
+                    f"unparseable intensity multiplier in colour token {token!r}")
+                return None, None
+        if op is not None and op.strip():
+            opacity = _number(op)
+            if opacity is None or not 0 <= opacity <= 100:
                 self.unresolved.append(
-                    f"unparseable intensity multiplier in colour token {token!r}"
-                )
-                mult = None
+                    f"unparseable opacity suffix in colour token {token!r}")
+                return None, None
 
-        tok = tok.strip()
-        low = tok.lower()
-
-        if low == "none":
+        if base == "none":
             # color-none.style carries "0 0 0" but its own comment says the
             # values should not matter: 'none' means "do not draw".
             return None, None
 
-        rgb: tuple[int, int, int] | None = None
-
-        if _RGB_LITERAL.match(tok):
-            parts = [int(p) for p in tok.split()]
-            rgb = (parts[0], parts[1], parts[2])
-        elif low in ("background", "bg"):
-            h, inner = self.resolve_with_opacity(
-                self.r.get("color", "background"), _depth + 1)
-            return h, opacity if opacity is not None else inner
-        elif low in ("foreground", "fg"):
-            h, inner = self.resolve_with_opacity(
-                self.r.get("color", "foreground"), _depth + 1)
-            return h, opacity if opacity is not None else inner
-        else:
-            st = self.r.style("color", low)
+        rgb = None
+        nums = None
+        if base in ("background", "bg", "foreground", "fg"):
+            # A named-style lookup of the scheme's own text: a style name
+            # (exact lower case) or a hex code resolves; RGB, HSV, CMYK,
+            # *# or %# text does not (twoway: black with a note).
+            key = "background" if base[0] == "b" else "foreground"
+            raw = (self.r.get("color", key) or "").strip().strip('"').strip()
+            if _STYLE_NAME.fullmatch(raw) or _HEX6.fullmatch(raw):
+                h, inner = self.resolve_with_opacity(raw, _depth + 1)
+                if h is not None:
+                    rgb = tuple(int(h[k:k + 2], 16) for k in (1, 3, 5))
+                    if opacity is None:
+                        opacity = inner
+        elif base.startswith("#"):
+            if _HEX6.fullmatch(base):
+                rgb = tuple(int(base[k:k + 2], 16) for k in (1, 3, 5))
+        elif "," in base:
+            nums = [_number(x) for x in base.split(",")]
+        elif base.split() and base.split()[0].lower() == "hsv":
+            hv = [_number(x) for x in base.split()[1:]]
+            if len(hv) == 3 and all(x is not None for x in hv):
+                rgb = _hsv_hex(*hv)
+        elif len(base.split()) in (3, 4):
+            nums = [_number(x) for x in base.split()]
+        elif _STYLE_NAME.fullmatch(base):
+            # Names are case-sensitive: Stata's 92 color-*.style files are
+            # all lower case, and a case-folding file system would find
+            # color-navy.style for Navy (twoway: not found).
+            st = self.r.style("color", base)
             if st and "rgb" in st:
                 parts = st["rgb"].split()
                 if len(parts) == 3:
                     rgb = (int(parts[0]), int(parts[1]), int(parts[2]))
+        if nums is not None and all(x is not None for x in nums):
+            if len(nums) == 3 and all(x == int(x) and 0 <= x <= 255
+                                      for x in nums):
+                rgb = tuple(int(x) for x in nums)
+            elif len(nums) == 4:
+                rgb = _cmyk_hex(nums)
 
         if rgb is None:
             self.unresolved.append(f"unknown colour token {token!r}")
             return None, None
 
         if mult is not None:
-            rgb = _apply_intensity(rgb, mult)
+            nw = self.r.get("system", "naturally_white")
+            rgb = _apply_intensity(
+                rgb, mult, naturally_white=str(nw).strip() != "0")
 
-        return "#%02x%02x%02x" % rgb, opacity
+        return "#%02x%02x%02x" % tuple(rgb), opacity
 
 
 # --------------------------------------------------------------------------- #

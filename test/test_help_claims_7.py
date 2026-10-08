@@ -269,11 +269,12 @@ class TestRegionColours:
             f"{opt}({value}) was reported as an unknown colour: {caught}")
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_an_unknown_colour_is_named_and_the_scheme_kept(self, mode):
-        base, _ = _render(mode, [plot_for("scatter")])
+    def test_an_unknown_colour_is_named_and_drawn_black(self, mode):
+        """Flipped (WP-30 P1.13a): twoway draws an unknown region colour
+        black (colour_grammar_truth.json site_08); this kept the scheme's."""
         fig, caught = _render(mode, [plot_for("scatter")],
                               {"plotregion": "color(notacolour)"})
-        assert fig.background_fill_color == base.background_fill_color
+        assert fig.background_fill_color == "#000000"
         assert any("notacolour" in w for w in caught), caught
 
 
@@ -1351,15 +1352,15 @@ class TestAdversarialLegendAxesRegions:
 
     def test_a_hostile_colour_is_refused_not_passed_through(self):
         """Injection: a colour that is CSS with a payload is no colour; it
-        is named and the scheme's colour is kept, never set raw."""
+        is named and drawn black, as twoway draws an unknown colour, never
+        set raw (Flipped, WP-30 P1.13a: the scheme's colour was kept)."""
         payload = 'color("red; background:url(javascript:alert(1))")'
         for mode in _MODES:
-            base = _render(mode, [plot_for("scatter")])[0]
             fig, caught = _render(mode, [plot_for("scatter")],
                                   {"plotregion": payload,
                                    "graphregion": payload})
-            assert fig.background_fill_color == base.background_fill_color
-            assert fig.border_fill_color == base.border_fill_color
+            assert fig.background_fill_color == "#000000"
+            assert fig.border_fill_color == "#000000"
             assert any("javascript" in w for w in caught), caught
 
     def test_quotes_that_are_not_a_pair_are_not_stripped(self):
@@ -1369,10 +1370,11 @@ class TestAdversarialLegendAxesRegions:
             fig, _ = _render(mode, [plot_for("scatter")],
                              {"plotregion": 'color(`"255 0 0"\')'})
             assert str(fig.background_fill_color).lower() == "#ff0000"
-            base = _render(mode, [plot_for("scatter")])[0]
             fig, caught = _render(mode, [plot_for("scatter")],
                                   {"plotregion": 'color("255 0 0)'})
-            assert fig.background_fill_color == base.background_fill_color
+            # Flipped (WP-30 P1.13a): an unknown colour is black; the
+            # scheme's colour was kept.
+            assert fig.background_fill_color == "#000000"
             assert caught
             # Any warning passed `assert caught'.  The note that names the
             # colour is knowable (measured 24sep2026, both modes, the only

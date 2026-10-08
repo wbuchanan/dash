@@ -403,11 +403,12 @@ class TestTheConnectingLineOptions:
         assert g.line_alpha == 0.0
 
     def test_a_bad_clcolor_is_named_as_written(self):
-        """twoway: "named style notacolour not found in class color, default
-        attributes used" -- the DEFAULT, not lcolor()'s colour."""
+        """twoway: "named style notacolour not found in class color" --
+        black, not lcolor()'s colour.  Flipped (WP-30 P1.13a): the note
+        said the scheme's default; twoway draws an unknown colour black."""
         g, notes = _line_with({"lcolor": "red", "clcolor": "notacolour"})
         assert notes == ["dash: clcolor(notacolour) is not a recognised "
-                         "colour; using the scheme's default."], notes
+                         "colour; using black."], notes
         assert g.line_color.lower() != _hex("red")
 
     def test_a_bad_clwidth_and_clpattern_are_named_as_written(self):

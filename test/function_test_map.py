@@ -256,7 +256,7 @@ FUNCTIONS = {
  'SchemeParser._line_color': 'test/test_scheme_consumption.py::TestHostileSchemeValuesForTheNewKeys::test_none_is_no_line',
  'SchemeParser.__init__': 'test/test_packaging.py::test_glyphmapper_constructs_from_packaged_install',
  'SchemeParser._bounded_int': 'test/test_scheme_review_fixes.py::TestHostileSchemeValues::test_a_negative_legend_cols_is_refused',
- 'SchemeParser._color': 'test/test_scheme_resolution.py::TestTheParserCarriesTheColourOpacity::test_an_unresolvable_colour_carries_no_opacity',
+ 'SchemeParser._color': 'test/test_colour_grammar.py::TestSchemeFiles::test_an_unreadable_key_draws_black_with_one_note',
  'SchemeParser._color_alpha': 'test/test_scheme_resolution.py::TestTheParserCarriesTheColourOpacity::test_a_declared_opacity_falls_through_with_its_colour',
  'SchemeParser._cycle_for': 'test/test_scheme_resolution.py::TestTheParserCarriesTheColourOpacity::test_a_cycle_declares_its_own_opacity',
  'SchemeParser._first_present': 'test/test_scheme_consumption.py::TestAChildPHashReachesWhatStatasChainReaches::test_what_a_child_p1_reaches',
@@ -937,6 +937,15 @@ FUNCTIONS = {
  '_dash_gt_char': 'test/test_graph_text.py::TestGraphTextTruth::test_char_codes',
  '_dash_gt_head': 'test/test_graph_text.py::TestTheScanner::test_heads_name_known_directives_only',
  # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
+ 'OptionTranslator.__init__': 'test/test_colour_grammar.py::TestTheMapperReadsItsScheme::test_a_plain_translator_is_bound_and_another_object_kept',
+ 'OptionTranslator._colour_base': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
+ 'OptionTranslator._colour_cmyk': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
+ 'OptionTranslator._colour_hsv': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
+ 'OptionTranslator._colour_parts': 'test/test_colour_grammar.py::TestTheParts::test_either_order',
+ 'OptionTranslator.colour_context': 'test/test_colour_grammar.py::TestTheMapperReadsItsScheme::test_a_graphs_own_scheme_is_read',
+ 'OptionTranslator.scheme_colour_context': 'test/test_colour_grammar.py::TestTheMapperReadsItsScheme::test_the_context_of_a_scheme',
+ 'OptionTranslator.stata_colour': 'test/test_colour_grammar.py::TestOutputIsAlwaysHex::test_hostile_inputs',
+ 'SchemeParser._named_lookup': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
  # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
  # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
  # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)

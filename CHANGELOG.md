@@ -360,7 +360,9 @@ and now matches Stata.
 
 - Line widths are drawn in Stata's units on Stata's own ladder, one unit 2.88 point (3.84 pixels) as for every other size. Under s2color the default line, marker outline, grid and reference line go from 1.5 to 1.15 pixels, axis lines, the plot-region border and bar outlines from 0.8 to 0.77, and economist's lines from 6.0 to 4.61. lwidth(thin) was 0.8 and is 0.77, lwidth(thick) 2.5 and now 3.07, lwidth(vvthick) 5.0 and now 9.98, lwidth(vvvthick) 6.6 and now 16.13. A number is Stata units, so lwidth(.3) was 0.3 pixels and is 1.15, and lwidth(2) was 2 and is 7.68. lwidth(vvvthin), lwidth(none), lwidth(1pt), lwidth(*2) and the in, cm and rs units are drawn where they were noted and ignored, a width under 0.3 point is drawn at 0.3 point, and a name is matched in its case, so lwidth(THICK) is noted and drawn at the scheme's width, as twoway draws it. This holds for lwidth(), mlwidth(), clwidth(), alwidth(), plotregion(lwidth()), xline() and yline(), and for a scheme's linewidth keys, in the saved dashboard and the served app. (WP-30, P1.12b)
 
-<!-- WP-30 P1.13a -->
+- Stata's colour grammar is read in every colour option and scheme file: dash scatter mpg weight, mcolor(navy*.5) drew the scheme's #1a476f with a note, now #8da3b7; mcolor("85 40 0 144") (CMYK) and mcolor("hsv 209 .766 .435") draw #1a476f and #19456e; mcolor(fg) draws the scheme's foreground (white under s1rcolor); a scheme file's color p1 navy*.5 drew #000000, now #8da3b7. (WP-30, P1.13a)
+- An unknown or wrong-case colour is drawn black with a note, as twoway draws it: mcolor(bogus), mcolor(Navy) and mcolor(grey) drew the scheme's colour (Navy and grey silently), now #000000; bar …, fcolor(bogus) draws #333333; title("T", color(bogus)), graphregion(color(bogus)) and xline(3000, lcolor(bogus)) draw black. A malformed hex code or multiplier keeps the default silently: mcolor(#f00) drew red, now the scheme's colour. (WP-30, P1.13a)
+- A scheme file's unreadable colour is drawn as twoway draws it: color background bogus drew #d9e8f0, now #000000 with a note; color background #}a{b;c is drawn white, silently. (WP-30, P1.13a)
 
 <!-- WP-30 P1.13b -->
 
@@ -751,7 +753,7 @@ and now matches Stata.
 
 - A line width twoway refuses is refused with twoway's message, gm_linewidth must be between 0.000 and  1.0e+04, r(198), and a second line naming the option. lwidth(*-1), lwidth(-1pt), mlwidth(-0.5in), clwidth(*-1), alwidth(-1pt) and lwidth(1e5rs) were drawn at the scheme's width with a note. lwidth(-1) and lwidth(10001), refused before in dash's own words, now print twoway's message first. As before, dash refuses a negative width on every plot type, where twoway refuses it only where it draws the line or outline. lwidth(*40000) and economist's lwidth(20000pt), which twoway refuses once it knows the default width and the graph's size, are noted and drawn at the default. (WP-30, P1.12b)
 
-<!-- WP-30 P1.13a -->
+- A colour written with commas in a plot colour option is refused, as twoway refuses it: dash scatter mpg weight, mcolor(255,0,0) drew red, now stops with invalid '0', r(198). Write the triplet with blanks, mcolor("255 0 0"). (WP-30, P1.13a)
 
 <!-- WP-30 P1.15b -->
 

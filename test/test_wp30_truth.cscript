@@ -6912,10 +6912,334 @@ if inlist("`only'", "", "S29") {
 }
 * ==== end S29 ====
 
+// ----------------------------------------------------------------
+// S30 helpers (WP-30 P1.13a), outside every gate: _s30_svg reads
+// twoway's SVG (marker fills of the largest circles, the dominant narrow
+// rect fill, the dominant stroke of the series paths, the fill of the text
+// "T", the vertical line strokes, the graph region's rect); _s30_page and
+// _s30_app read dash's saved page and served app (every glyph renderer's
+// Type:fill_color:fill_alpha:line_color, the figure's border_fill_color,
+// the title's text_color and the Span colours), the app also after a
+// Select move on foreign; _s30_cmp compares one property of the three.
+// Every argument crosses through sfi.Macro.
+python:
+import collections as _s30_col
+import json as _s30_json
+import html as _s30_html
+import os as _s30_os
+import re as _s30_re
+import sys as _s30_sys
+import warnings as _s30_w
+from sfi import Macro as _s30_M
+
+
+def _s30_svg():
+    _s30_sys.path.insert(0, _s30_os.path.join(_s30_M.getGlobal("S30_REPO"), "scripts"))
+    from svg_truth import svg_document
+    doc = svg_document(_s30_M.getGlobal("S30_SVG"))
+    kind = _s30_M.getGlobal("S30_KIND")
+    items = []
+    if kind == "marker":
+        circ = [c for c in doc["circles"]
+                if c.get("fill") and c["fill"] != "none" and c.get("r")]
+        rmax = max(c["r"] for c in circ) if circ else 0
+        items = [(c["fill"], c.get("fill_opacity")) for c in circ
+                 if c["r"] == rmax]
+    elif kind == "bar":
+        cw = doc["canvas"]["w"]
+        items = [(r["fill"], None) for r in doc["rects"]
+                 if r.get("w") and 0 < r["w"] < cw / 3.0
+                 and r.get("fill") not in (None, "none")]
+    elif kind == "line":
+        items = [(p["stroke"], None) for p in doc["paths"]
+                 if p.get("fill") in (None, "none") and p.get("stroke")
+                 and p["stroke"] != "none"]
+    elif kind == "title":
+        items = [(t["fill"], None) for t in doc["texts"] if t["text"] == "T"]
+    elif kind == "refline":
+        items = [(d["stroke"], None) for d in doc["vlines"] if d.get("stroke")]
+    c = _s30_col.Counter(items)
+    f, o = c.most_common(1)[0][0] if c else ("", None)
+    if kind == "marker":
+        # every marker colour, in order of first appearance (two layers)
+        seen = []
+        for x in items:
+            if x[0] not in seen:
+                seen.append(x[0])
+        f = ",".join(seen)
+    rects = doc["rects"]
+    region = rects[1]["fill"] if len(rects) > 1 else ""
+    _s30_M.setGlobal("S30_TW", "%s|%s|%s" % (f, 1.0 if o is None else o, region))
+
+
+def _s30_v(x):
+    x = getattr(x, "value", x)
+    return str(x).lower()
+
+
+def _s30_read(doc):
+    from bokeh.models import GlyphRenderer, Span, Plot
+    g = []
+    for r in doc.select({"type": GlyphRenderer}):
+        gl = r.glyph
+        g.append("%s:%s:%s:%s" % (type(gl).__name__, _s30_v(getattr(gl, "fill_color", "")),
+                                  _s30_v(getattr(gl, "fill_alpha", "")),
+                                  _s30_v(getattr(gl, "line_color", ""))))
+    plots = list(doc.select({"type": Plot}))
+    p = plots[0] if plots else None
+    border = _s30_v(p.border_fill_color) if p is not None else ""
+    title = _s30_v(p.title.text_color) if p is not None and p.title is not None else ""
+    spans = ",".join(_s30_v(s.line_color) for s in doc.select({"type": Span}))
+    return "%s|%s|%s|%s" % (";".join(g), border, title, spans)
+
+
+def _s30_page():
+    from bokeh.document import Document
+    with open(_s30_M.getGlobal("S30_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    out = ""
+    for blob in _s30_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s30_re.S):
+        try:
+            docs = _s30_json.loads(_s30_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if not isinstance(dj, dict) or "roots" not in dj:
+                continue
+            with _s30_w.catch_warnings():
+                _s30_w.simplefilter("ignore")
+                doc = Document.from_json(dj)
+            out = _s30_read(doc)
+            break
+        if out:
+            break
+    _s30_M.setGlobal("S30_D", out)
+
+
+def _s30_app():
+    from bokeh.document import Document
+    from bokeh.models import Select
+    with open(_s30_M.getGlobal("S30_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s30_app")
+    with _s30_w.catch_warnings():
+        _s30_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s30_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    before = _s30_read(doc)
+    _s30_M.setGlobal("S30_S", before)
+    same = "0"
+    sels = [m for root in doc.roots for m in root.select({"type": Select})
+            if getattr(m, "_dash_var", None) == "foreign"]
+    if sels:
+        w = sels[0]
+        opts = [o[0] if isinstance(o, (list, tuple)) else o for o in w.options]
+        if len(opts) > 1:
+            w.value = opts[1]
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, opts[1])
+            same = "1" if _s30_read(doc) == before else "0"
+    _s30_M.setGlobal("S30_SAME_AFTER", same)
+
+
+def _s30_cmp():
+    """S30_OK = 1 when twoway's colour (S30_KIND) equals both modes':
+    marker -> every Scatter's fill (and opacity), as a set; bar ->
+    the VBar fill; line -> the Line colour; title -> the title colour;
+    refline -> a Span colour; and the graph region when S30_REGION is 1."""
+    tw = _s30_M.getGlobal("S30_TW").split("|")
+    kind = _s30_M.getGlobal("S30_KIND")
+    ok, msg = len(tw) == 3, ["twoway " + "|".join(tw)]
+    for mode in ("D", "S"):
+        got = _s30_M.getGlobal("S30_" + mode).split("|")
+        if len(got) != 4:
+            ok = False
+            msg.append(mode + " none")
+            continue
+        ents = [e.split(":") for e in got[0].split(";") if e]
+        if kind == "marker":
+            mine = [e for e in ents if e[0] == "Scatter"]
+            # sorted: the served document's select order is not the
+            # layer order
+            fills = ",".join(sorted(e[1] for e in mine))
+            ok = ok and fills == ",".join(sorted(tw[0].split(","))) and all(
+                abs(float(e[2]) - float(tw[1])) < 1e-9 for e in mine)
+            d = fills
+        elif kind == "bar":
+            d = ",".join(e[1] for e in ents if e[0] == "VBar")
+            ok = ok and d.split(",")[0] == tw[0]
+        elif kind == "line":
+            d = ",".join(e[3] for e in ents if e[0] == "Line")
+            ok = ok and d.split(",")[0] == tw[0]
+        elif kind == "title":
+            d = got[2]
+            ok = ok and d == tw[0]
+        else:
+            d = got[3]
+            ok = ok and tw[0] in d.split(",")
+        if _s30_M.getGlobal("S30_REGION") == "1":
+            ok = ok and got[1] == tw[2]
+            d += " region " + got[1]
+        msg.append(mode + " " + d)
+    _s30_M.setGlobal("S30_OK", "1" if ok else "0")
+    _s30_M.setGlobal("S30_MSG", "; ".join(msg)[:240])
+end
+
+// _s30_case tag scheme kind "twoway command" work: twoway and dash (saved,
+// served with a foreign dropdown filter) on one command; sets S30_OK,
+// S30_MSG, S30_SAME_AFTER, S30_RC, S30_TNOTE (twoway's log says "named
+// style"), S30_DNOTES (the (note: lines of dash's saved build) and
+// S30_DCOL (those naming "mcolor(").
+capture program drop _s30_case
+program define _s30_case
+    version 19
+    args tag scheme kind cmd work
+    quietly sysuse auto, clear
+    local svg "`work'/cg_`tag'.svg"
+    local page "`work'/cg_`tag'.html"
+    local app "`work'/cg_`tag'.py"
+    local tlog "`work'/cg_`tag'_t.log"
+    local dlog "`work'/cg_`tag'_d.log"
+    local c = cond(strpos(`"`cmd'"', ","), " ", ", ")
+    if substr(`"`cmd'"', 1, 1) == "(" local c ", "
+    quietly graph drop _all
+    quietly log using "`tlog'", text replace name(s30t)
+    capture noisily twoway `cmd' `c' scheme(`scheme') name(g, replace)
+    local trc = _rc
+    quietly log close s30t
+    if !`trc' quietly graph export "`svg'", replace name(g)
+    quietly graph drop _all
+    capture dash clear
+    quietly log using "`dlog'", text replace name(s30d)
+    capture noisily dash `cmd' `c' scheme(`scheme') saving("`page'", replace)
+    local drc = _rc
+    quietly log close s30d
+    capture dash clear
+    capture noisily dash `cmd' `c' scheme(`scheme') name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser filter(foreign, type(dropdown))
+    local drc = `drc' + _rc
+    foreach g in S30_TW S30_D S30_S S30_MSG {
+        global `g' ""
+    }
+    global S30_SAME_AFTER "0"
+    global S30_OK "0"
+    global S30_SVG "`svg'"
+    global S30_PAGE "`page'"
+    global S30_APP "`app'"
+    global S30_KIND "`kind'"
+    if !`trc' capture noisily python: __import__("__main__")._s30_svg()
+    if !`drc' capture noisily python: __import__("__main__")._s30_page()
+    if !`drc' capture noisily python: __import__("__main__")._s30_app()
+    if !`trc' & !`drc' capture noisily python: __import__("__main__")._s30_cmp()
+    global S30_RC = `trc' + `drc'
+    capture cert_log_has "`tlog'", needle("named style")
+    global S30_TNOTE = cond(_rc, 0, r(found))
+    mata: st_global("S30_DNOTES", strofreal(_s30_count(st_local("dlog"), "(note:", "")))
+    mata: st_global("S30_DCOL", strofreal(_s30_count(st_local("dlog"), "(note:", "mcolor(")))
+    capture dash clear
+    foreach f in svg page app tlog dlog {
+        capture erase "``f''"
+    }
+    capture graph drop g
+end
+
+// The number of lines of a log that start with `head' and hold `has'.
+capture mata: mata drop _s30_count()
+mata:
+real scalar _s30_count(string scalar path, string scalar head, string scalar has)
+{
+    real scalar fh, n
+    string scalar ln
+    n = 0
+    fh = fopen(path, "r")
+    while ((ln = fget(fh)) != J(0, 0, "")) {
+        ln = strtrim(ln)
+        if (substr(ln, 1, strlen(head)) == head & (has == "" | strpos(ln, has) > 0)) n++
+    }
+    fclose(fh)
+    return(n)
+}
+end
+
 * ==== S30 P1.13a: Stata colour grammar ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S30") {
     display as text "S30 start " c(current_date) " " c(current_time)
+    global S30_REPO "`c(pwd)'/.."
+    global S30_REGION "0"
+    local s30_after ""
+
+    // CG-10: the grammar's forms, s2color, both modes.
+    foreach v in "navy*.5" "navy*100" `""85 40 0 144""' `""hsv 209 .766 .435""' "bg" "fg" "navy*.5%50" {
+        _s30_case m10 s2color marker `"scatter mpg weight, mcolor(`v')"' "`w30_work'"
+        _w30_expect CG-10 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"mcolor(`v'): ${S30_MSG}"'
+        if `"`v'"' == "navy*.5" local s30_after "`s30_after'${S30_SAME_AFTER}"
+    }
+    _w30_done CG-10 "colour*#, CMYK, HSV, bg, fg and %# beside *# are twoway's colours, saved and served"
+
+    // CG-11: unknown and wrong-case colours: black, a note in each.
+    foreach v in "bogus" "Navy" "grey" `""300 0 0""' {
+        _s30_case m11 s2color marker `"scatter mpg weight, mcolor(`v')"' "`w30_work'"
+        _w30_expect CG-11 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"mcolor(`v'): ${S30_MSG}"'
+        _w30_expect CG-11 "(${S30_TNOTE} == 1 & ${S30_DCOL} == 1)" `"mcolor(`v'): twoway note ${S30_TNOTE}, dash mcolor notes ${S30_DCOL}"'
+    }
+    _w30_done CG-11 "bogus, Navy, grey and 300 0 0 are drawn black with one note, as twoway draws them"
+
+    // CG-12: malformed: the default, silently.
+    foreach v in "red*abc" `""#F00""' {
+        _s30_case m12 s2color marker `"scatter mpg weight, mcolor(`v')"' "`w30_work'"
+        _w30_expect CG-12 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"mcolor(`v'): ${S30_MSG}"'
+        _w30_expect CG-12 "(${S30_TNOTE} == 0 & ${S30_DNOTES} == 0)" `"mcolor(`v'): notes ${S30_TNOTE} ${S30_DNOTES}"'
+    }
+    _w30_done CG-12 "red*abc and #F00 keep the scheme's #1A476F in silence, as in twoway"
+
+    // CG-13: s1rcolor multiplies, and fg is its white.
+    foreach v in "navy*.5" "fg" {
+        _s30_case m13 s1rcolor marker `"scatter mpg weight, mcolor(`v')"' "`w30_work'"
+        _w30_expect CG-13 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"mcolor(`v'): ${S30_MSG}"'
+    }
+    _w30_done CG-13 "under s1rcolor navy*.5 multiplies and fg is white, as twoway draws them"
+
+    // CG-14: a user scheme's colours, read with the grammar.
+    tempname s30fh
+    foreach f in "`w30_work'/scheme-cg14.scheme" "`w30_work'/cg14.scheme" {
+        file open `s30fh' using "`f'", write text replace
+        file write `s30fh' "#include s2color" _n "color p1 navy*.5" _n `"color p2 "hsv 240 1 1""' _n "color background bogus" _n
+        file close `s30fh'
+    }
+    local s30_home `"`c(pwd)'"'
+    adopath ++ "`w30_work'"
+    quietly cd "`w30_work'"
+    global S30_REGION "1"
+    _s30_case m14 cg14 marker "(scatter mpg weight) (scatter price weight, yaxis(2))" "`w30_work'"
+    global S30_REGION "0"
+    quietly cd `"`s30_home'"'
+    adopath - "`w30_work'"
+    _w30_expect CG-14 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"${S30_MSG}"'
+    local s30_after "`s30_after'${S30_SAME_AFTER}"
+    capture erase "`w30_work'/scheme-cg14.scheme"
+    capture erase "`w30_work'/cg14.scheme"
+    _w30_done CG-14 "a user scheme's navy*.5, hsv 240 1 1 and unknown background are drawn as twoway draws them"
+
+    // CG-15: bars, lines, titles and reference lines.
+    _s30_case b15 s2color bar "bar mpg rep78 if rep78<., lcolor(none) fcolor(bogus)" "`w30_work'"
+    _w30_expect CG-15 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"fcolor(bogus): ${S30_MSG}"'
+    _s30_case l15 s2color line "line mpg weight, sort lcolor(navy*.5)" "`w30_work'"
+    _w30_expect CG-15 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"lcolor(navy*.5): ${S30_MSG}"'
+    _s30_case t15 s2color title `"scatter mpg weight, title("T", color(bogus))"' "`w30_work'"
+    _w30_expect CG-15 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"title color(bogus): ${S30_MSG}"'
+    _s30_case x15 s2color refline "scatter mpg weight, xline(3000, lcolor(bogus))" "`w30_work'"
+    _w30_expect CG-15 "(${S30_RC} == 0 & ${S30_OK} == 1)" `"xline lcolor(bogus): ${S30_MSG}"'
+    _w30_done CG-15 "a bar's unknown fill is #333333, a line's navy*.5 #8DA3B7, and an unknown title and xline colour black, in both modes"
+
+    // CG-16: the served app after a filter move.
+    _w30_expect CG-16 `"("`s30_after'" == "11")"' "after the move: `s30_after'"
+    _w30_done CG-16 "the served app redraws CG-10's navy*.5 and CG-14's scheme colours after a filter move"
+    macro drop S30_*
     display as text "S30 end " c(current_date) " " c(current_time)
 }
 * ==== end S30 ====

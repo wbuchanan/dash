@@ -2361,8 +2361,9 @@ end
 // non-number where a number-only option got a word twoway would silently
 // ignore, and -- like twoway's own "(note: named style X not found in
 // class Y, default attributes used)" -- reports and falls back on the
-// scheme where a STYLE NAME (colour, symbol, size, line width, pattern,
-// angle, clock position, intensity) is unknown.  Every bound below was
+// scheme where a STYLE NAME (symbol, size, line width, pattern, angle,
+// clock position, intensity) is unknown; an unknown colour is drawn black
+// with the note, as twoway draws it (WP-30 P1.13a).  Every bound below was
 // measured against twoway (22sep2026, StataNow 19.5).  Five bounds are
 // dash's own rather than twoway's AND say so in a second sentence of the
 // refusal: yaxis/xaxis 1..2, degree 0..3, bin 1..1000, n 2..10000 (mspline's
@@ -2405,6 +2406,10 @@ end
 // test/test_option_validation.py reads this table out of dash.ado and
 // test/test_option_validation.cscript exercises every token against Stata.
 // `,u' reads the value in Stata's line-width units (WP-30 P1.12b).
+// colour (WP-30 P1.13a): the kind refuses only a comma-written colour,
+// as twoway does (invalid '<word>', r(198)); everything else in a colour
+// is the renderer's, which draws an unknown colour black with the note,
+// as twoway draws it.
 // ================================================================
 program define _dash_option_rules
     version 19
@@ -2426,7 +2431,8 @@ program define _dash_option_rules
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
         clwidth=style,0,10000,u ///
         alwidth=style,0,10000,u@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
-        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri
+        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri ///
+        mcolor=colour mfcolor=colour mlcolor=colour mlabcolor=colour lcolor=colour fcolor=colour color=colour acolor=colour alcolor=colour bfcolor=colour blcolor=colour clcolor=colour
     // alwidth(), the outline of a ci fit's band, has them too: measured
     // 24sep2026, `twoway lfitci mpg weight, alwidth(-1)' and alwidth(20000)
     // are "gm_linewidth must be between 0.000 and 1.0e+04", r(198), and
@@ -2651,6 +2657,33 @@ program define _dash_validate_value, rclass
             if `plain' local norm : copy local tv
             else       local norm = strtrim(string(`R', "%21.0g"))
         }
+    }
+    else if "`kind'" == "colour" {
+        // WP-30 P1.13a: twoway refuses a comma-written plot colour,
+        // mcolor("255,0,128"), with invalid '<word>', r(198): the first
+        // word after the first comma, words split at blanks and commas,
+        // unless the text after that comma starts with one (mcolor("1,,2")
+        // draws); `editcopy' when there is no word.  One enclosing pair of
+        // double quotes is stripped; a value holding any other " is left
+        // alone (twoway accepts mcolor("red",blue)).  Everything else in a
+        // colour is the renderer's to read.
+        tempname W
+        scalar `W' = scalar(`T')
+        if ustrlen(scalar(`W')) >= 2 & usubstr(scalar(`W'), 1, 1) == char(34) & usubstr(scalar(`W'), -1, 1) == char(34) {
+            scalar `W' = usubstr(scalar(`W'), 2, ustrlen(scalar(`W')) - 2)
+        }
+        local _cg_p = ustrpos(scalar(`W'), ",")
+        if `_cg_p' > 0 & ustrpos(scalar(`W'), char(34)) == 0 {
+            scalar `W' = usubstr(scalar(`W'), `_cg_p' + 1, .)
+            if usubstr(scalar(`W'), 1, 1) != "," {
+                scalar `W' = ustrtrim(usubinstr(scalar(`W'), ",", " ", .))
+                scalar `W' = usubstr(word(scalar(`W'), 1), 1, 80)
+                if scalar(`W') == "" scalar `W' = "editcopy"
+                mata: _dash_say("err", "invalid '", st_strscalar(st_local("W")), "' ")
+                exit 198
+            }
+        }
+        local bad ""
     }
     else if "`kind'" == "style" {
         // A name is a style name and passes untouched: the renderer falls

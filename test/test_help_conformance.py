@@ -981,4 +981,7 @@ class TestInternalLinksResolve:
         # 80 -> 86 links to 31 -> 32 markers: WP-30 P1.28a links Exporting
         # and Stored results (jump list, Description, Stored results) and
         # adds the results marker.
-        assert len(refs) == 86 and len(set(refs)) == 32
+        # 86 -> 90 links to 32 -> 33 markers: WP-30 P1.13a adds the
+        # Colours paragraph (colours) and links it from Option values, the
+        # region options and the scheme-file paragraph.
+        assert len(refs) == 90 and len(set(refs)) == 33

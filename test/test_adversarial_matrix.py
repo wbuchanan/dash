@@ -331,7 +331,7 @@ SURFACES = {
             "test_adversarial.cscript:P20-15",
             "test_json_escaping.cscript:JSE-08",
             "test_json_escaping.cscript:JSE-29",
-            "test/test_help_claims_2.py::TestAnUnknownStyleInsideAStructuredOption::test_one_note_and_the_schemes_default_in_both_modes",
+            "test/test_help_claims_2.py::TestAnUnknownStyleInsideAStructuredOption::test_one_note_and_twoways_default_in_both_modes",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_direction_word_in_any_spelling_is_not_a_placement",
             # The renderer's text boxes: text a string or a parenthesis
             # holds is never read as a sub-option (24sep2026).

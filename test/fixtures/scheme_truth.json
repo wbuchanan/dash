@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-08T03:29:12Z",
+    "generated_utc": "2026-10-08T05:41:05Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",

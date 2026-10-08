@@ -766,11 +766,13 @@ named in a note and drawn around -- because it is what would be drawn.
 {phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
     refuses it, and a word is refused where a number-only option was given
     one that {cmd:twoway} would have swallowed in silence.  A style name
-    that {cmd:dash} does not recognise (a colour, a marker symbol, a size,
-    a line width, a line pattern, an angle, a clock position or a fill
+    that {cmd:dash} does not recognise (a marker symbol, a size, a line
+    width, a line pattern, an angle, a clock position or a fill
     intensity) is reported once per render and the scheme's default drawn
     (for a fill intensity, full intensity), as {cmd:twoway} does with its
-    own "named style not found" note.  A
+    own "named style not found" note.  An unknown or wrong-case colour is
+    reported the same way and drawn black, as {cmd:twoway} draws it (see
+    {help dash##colours:Colours}).  A
     refusal is one line naming the option and the value, printed before
     any Python runs, with r(198), or r(111) for a variable that does not
     exist:
@@ -896,19 +898,21 @@ named in a note and drawn around -- because it is what would be drawn.
 {phang3}{cmd:. dash (scatter mpg weight, discrete)}{p_end}
 {phang3}{cmd:option discrete not allowed}{p_end}
 
-{phang2}    Colours, {cmd:msymbol()}, {cmd:lpattern()} and the sub-options of
-    the structured options are not checked in Stata.  An unknown style
+{phang2}    Colours (but for a comma), {cmd:msymbol()}, {cmd:lpattern()} and
+    the sub-options of the structured options are not checked in Stata.  An unknown style
     inside one ({cmd:title(T, size(bogus))}) gets a note and the default
     in {cmd:twoway} and in {cmd:dash} alike.  An unknown sub-option word
     of {cmd:legend()} is refused as {cmd:twoway} refuses it
     ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198));
     one of {cmd:xscale()}, which {cmd:twoway} refuses too
     ({cmd:xscale(bogus)}), {cmd:dash} names in its sub-option note and
-    draws without.  A colour written with commas,
-    {cmd:mcolor(255,0,0)}, which {cmd:twoway} refuses, {cmd:dash} reads as
-    the triplet {cmd:255 0 0}; a triplet written with blanks is quoted,
+    draws without.  A colour written with commas in a plot colour option,
+    {cmd:mcolor(255,0,0)}, is refused as {cmd:twoway} refuses it,
+    {cmd:invalid '0'}, r(198); a triplet is written with blanks and quoted,
     {cmd:mcolor("255 0 0")}, as in {cmd:twoway} (see
-    {help dash##stylelists:Style lists}).
+    {help dash##stylelists:Style lists}).  Inside a structured option's
+    sub-option ({cmd:title(T, color("255,0,0"))}) such a colour is drawn
+    black with a note, where {cmd:twoway} refuses it.
 
 {phang2}    {marker stylelists}{ul:Style lists.}  A style option given a
     list styles the y variables of an expanded varlist in turn, as
@@ -3073,10 +3077,11 @@ app alike.
 {synoptline}
 
 {pstd}
-Each of these takes a Stata named color ({cmd:navy}, {cmd:maroon},
-{cmd:forest_green}, etc.), an RGB triplet in quotes ({cmd:"255 0 0"}), or a
-hex string ({cmd:#1a476f}).  An unknown color is named in a note and the
-scheme's color is kept.  {cmd:twoway}'s own {cmd:bgcolor()} paints the
+Each of these takes any Stata colour (see {help dash##colours:Colours}):
+a named color ({cmd:navy}, {cmd:maroon}, {cmd:forest_green}, etc.), an RGB
+triplet in quotes ({cmd:"255 0 0"}), or a hex string ({cmd:#1a476f}).  An
+unknown color is named in a note and drawn black, as {cmd:twoway} draws
+it.  {cmd:twoway}'s own {cmd:bgcolor()} paints the
 canvas under the graph region, which shows only where the graph region has
 no color of its own; {cmd:dash} colors the graph region itself.
 
@@ -3739,6 +3744,31 @@ does not collapse to an unreadable sliver on a phone.
 {title:Marker and Transparency Options}
 
 {pstd}
+{marker colours}{ul:Colours.}  Every colour option reads Stata's colour
+grammar, in the saved dashboard and the served app alike: a colour name,
+case-sensitive ({cmd:navy}; {cmd:Navy} is not a name, nor are {cmd:grey}
+and the other British spellings); an RGB triplet {cmd:"R G B"}; CMYK
+{cmd:"C M Y K"} (proportions from 0 to 1, or whole numbers from 0 to 255);
+HSV {cmd:"hsv H S V"}; a hex code {cmd:#rrggbb}; and {cmd:bg}, {cmd:fg},
+{cmd:background} and {cmd:foreground}, the scheme's background and
+foreground colours, when the scheme names them.  {it:colour}{cmd:*}{it:#}
+sets the intensity, lighter below 1 and darker above it (multiplied under
+a scheme's {cmd:system naturally_white 0}), and {it:colour}{cmd:%}{it:#}
+the opacity, from 0 to 100; the two may be given in either order.  An
+unknown colour, or a number out of range, is drawn black with a note (a
+bar at its intensity), as {cmd:twoway} draws it; a malformed hex code,
+multiplier or opacity keeps the default in silence; a colour written with
+commas is refused (see {help dash##validation:Option values}).  Not yet
+as {cmd:twoway}: a bare {cmd:*}{it:#} or {cmd:%}{it:#} keeps the default
+colour; at {cmd:mlabcolor()}, {cmd:colormissing()}, {cmd:color()},
+{cmd:bfcolor()} and {cmd:blcolor()} on {cmd:bar} and {cmd:rbar},
+{cmd:color()} on {cmd:area}, {cmd:rarea} and {cmd:histogram}, and the
+colour options of the {cmd:pc} plots, {cmd:dropline}, {cmd:rcapsym} and
+{cmd:scatteri}, an unknown colour keeps the scheme's colour with the note;
+and title and region colours read {cmd:bg}, {cmd:fg} and {cmd:*}{it:#}
+with {cmd:s2color}'s.
+
+{pstd}
 These plot-level options are honoured on the plot types named, in the
 saved dashboard and the served app alike, and {cmd:dash}'s note does not
 name them there.
@@ -4117,7 +4147,12 @@ and draws {cmd:s2color}; never an error, so a session set to a scheme
 {cmd:dash} does not know still builds.
 
 {pstd}
-{ul:What a scheme file of yours may include.}  StataCorp's schemes are
+{ul:What a scheme file of yours may include.}  A colour in your file
+follows the grammar of {help dash##colours:Colours}, with {cmd:twoway}'s
+scheme-file rules: commas separate the numbers, a malformed number is
+drawn white, an unknown name is drawn black with a note, and
+{cmd:system naturally_white 0} makes {it:colour}{cmd:*}{it:#} multiply.
+StataCorp's schemes are
 written as edits on top of an {cmd:#include}d parent, and {cmd:dash}
 resolves that chain once, when it extracts its twenty-six translations, so
 each shipped file already carries every directive it needs with every
