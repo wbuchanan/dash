@@ -385,7 +385,10 @@ for _c3name, _c3cell in zip(_c3reg, _c3cells):
     if isinstance(_c3cell, Plot):
         _c3figs = [_c3cell]
     elif isinstance(_c3cell, GridPlot):
-        _c3figs = [c[0] for c in _c3cell.children if isinstance(c[0], Plot)]
+        # WP-30 P1.15a: a by() grid's head and foot cells hold its
+        # overall text, not a panel.
+        _c3figs = [c[0] for c in _c3cell.children if isinstance(c[0], Plot)
+                   and c[0].name not in ("dash_by_head", "dash_by_foot")]
     else:
         _c3figs = []
     if not _c3figs:

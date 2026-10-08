@@ -1111,9 +1111,11 @@ if $sl_rc | `_o' local ok 0
 capture noisily dash line mpg weight, lwidth(()) name(sl21c)
 mata: st_local("_o", strofreal(strpos(st_global("dash_json_sl21c"), char(34) + "lwidth" + char(34) + ":" + char(34) + "()" + char(34)) > 0))
 if !`_o' local ok 0
-capture noisily dash scatter mpg weight, mcolor(255,0,0) name(sl21d)
-mata: st_local("_o", strofreal(_sl_spec("sl21d", "{'mcolor':'255,0,0'}")))
-if !`_o' local ok 0
+// WP-30 P1.13a: a comma-written colour is refused in twoway's words,
+// r(198) invalid '0', and nothing is registered (it was read as RGB).
+_sl_run dash scatter mpg weight, mcolor(255,0,0) name(sl21d), log(`sl_log')
+mata: st_local("_o", strofreal(_sl_log_has(st_local("sl_log"), "invalid '0'") & st_global("dash_json_sl21d") == ""))
+if $sl_rc != 198 | !`_o' local ok 0
 capture noisily dash scatter mpg weight, mcolor("\$G") name(sl21e)
 // The $ is kept literally and written as JSON's \u0024 (JSE-69).
 mata: st_local("_o", strofreal(_sl_spec("sl21e", "{'mcolor':'" + char(92) + "u0024G'}")))
@@ -1121,7 +1123,7 @@ if !`_o' local ok 0
 capture noisily dash scatter mpg weight, mcolor(navy) name(sl21f)
 mata: st_local("_o", strofreal(_sl_spec("sl21f", "{'mcolor':'navy'}")))
 if !`_o' local ok 0
-_sl_tally SL-21 `ok' "guards: empty quotes, (), commas, \$ and one value as before"
+_sl_tally SL-21 `ok' "guards: empty quotes, (), \$ and one value as before; a comma colour refused as twoway"
 
 // SL-22 one value on every y for the options twoway does not list
 capture noisily dash scatter mpg turn weight, malpha(50) recast(line) yaxis(2) sort name(sl22)

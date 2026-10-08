@@ -218,8 +218,8 @@ class TestOutputIsAlwaysHex:
                 try:
                     st, hx, a = OT.stata_colour(v, context=ctx)
                 except Exception as exc:  # noqa: BLE001
-                    bad.append(f"{ctx} {v[:20]!r}: raised {exc!r}")
-                    continue
+                    raise AssertionError(
+                        f"{ctx} {v[:20]!r}: raised {exc!r}") from exc
                 if st not in _STATUSES or (
                         hx is not None and not _HEX.fullmatch(hx)) or (
                         a is not None and not 0 <= a <= 1):

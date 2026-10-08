@@ -5329,10 +5329,22 @@ def _s21_doc_of_app(path):
     return doc
 
 
+def _s21_key(f):
+    # WP-30 P1.15a: a by() panel is named by its label row (a Title named
+    # dash_by_label), no longer by its title.
+    for m in list(f.above) + list(f.below):
+        if type(m).__name__ == "Title" and m.name == "dash_by_label":
+            return str(m.text or "")
+    return str(getattr(f.title, "text", "") or "")
+
+
 def _s21_figs(doc):
     from bokeh.models import Plot
-    return sorted([m for m in doc.select(dict(type=Plot))],
-                  key=lambda f: str(getattr(f.title, "text", "") or ""))
+    # WP-30 P1.15a: the by() grid's head and foot cells are bare Plots
+    # holding the overall text, not panels.
+    return sorted([m for m in doc.select(dict(type=Plot))
+                   if m.name not in ("dash_by_head", "dash_by_foot")],
+                  key=_s21_key)
 
 
 def _s21_axes(fig):
@@ -6425,7 +6437,7 @@ end
 
 // S27 helpers (WP-30 P1.17b).  _db_bases(sp, dp, app): every tagged
 // base of a registered dash graph, saved and served, as "base@lo,hi" per
-// renderer (panels by title; lo,hi the unpadded scale of its axis) into
+// renderer (panels by label; lo,hi the unpadded scale of its axis) into
 // globals DB_S and DB_V; _db_move: the served base after a RangeSlider move
 // of x1 to (1, 3) and back, into DB_M; _db_tw: twoway's drawn_base and
 // curmin,curmax of graph g's probes, into DB_T.
@@ -6445,7 +6457,13 @@ def _db_fmt(b, sc):
 def _db_read(figs):
     import dash_render as dr
     out = []
-    figs = sorted(figs, key=lambda f: str(getattr(f.title, "text", "")))
+    # WP-30 P1.15a: panels by their label row (a Title named
+    # dash_by_label); their titles are now all the graph's title.
+    def key(f):
+        lab = [m for m in list(f.above) + list(f.below)
+               if type(m).__name__ == "Title" and m.name == "dash_by_label"]
+        return str(getattr(lab[0] if lab else f.title, "text", "") or "")
+    figs = sorted(figs, key=key)
     for f in figs:
         for r in f.renderers:
             bs = dr._dash_base_spec(r)

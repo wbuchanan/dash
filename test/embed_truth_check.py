@@ -105,7 +105,8 @@ def page_rows(path):
     """``{"rows", "cells", "view_counts", "panels"}`` of a saved page:
     the distinct ``__dash_row__`` count over every source; per column, the
     number of distinct row ids carrying a value; per scatter renderer (in
-    the page's order) the rows its view selects; the figures' titles."""
+    the page's order) the rows its view selects; each figure's by() label,
+    or its title when it has none."""
     objs = _objects(path)
     ids = set()
     cells = {}
@@ -144,7 +145,14 @@ def page_rows(path):
     for o in objs.values():
         if o.get("name") != "Figure":
             continue
-        t = _ref(objs, (o.get("attributes") or {}).get("title"))
+        a = o.get("attributes") or {}
+        # WP-30 P1.15a: a by() panel's label is a row of its own (a Title
+        # named dash_by_label), no longer its title.
+        rows = [_ref(objs, m) for m in (a.get("above") or []) +
+                (a.get("below") or [])]
+        lab = [m for m in rows if isinstance(m, dict)
+               and (m.get("attributes") or {}).get("name") == "dash_by_label"]
+        t = lab[0] if lab else _ref(objs, a.get("title"))
         if isinstance(t, dict):
             panels.append(str((t.get("attributes") or {}).get("text", "")))
     return {"rows": len(ids), "cells": {c: len(v) for c, v in cells.items()},

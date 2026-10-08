@@ -3601,7 +3601,24 @@ def _s10_saved():
     for blob in _s10_re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _s10_re.S):
         for dd in _s10_json.loads(blob).values():
             out += list(_s10_Doc.from_json(dd).select(dict(type=_s10_Plot)))
-    return sorted(out, key=lambda p: str(p.title.text if p.title is not None else ""))
+    return _s10_figs(out)
+
+
+def _s10_key(p):
+    # WP-30 P1.15a: a by() panel is named by its label row (a Title named
+    # dash_by_label), no longer by its title; other plots by their title.
+    for m in list(p.above) + list(p.below):
+        if type(m).__name__ == "Title" and m.name == "dash_by_label":
+            return str(m.text or "")
+    return str(p.title.text if p.title is not None else "")
+
+
+def _s10_figs(plots):
+    # WP-30 P1.15a: the by() grid's head and foot cells are bare Plots
+    # holding the overall text, not panels.
+    return sorted((p for p in plots
+                   if p.name not in ("dash_by_head", "dash_by_foot")),
+                  key=_s10_key)
 
 
 def _s10_served():
@@ -3614,8 +3631,7 @@ def _s10_served():
         exec(compile(src.replace(attach, "pass"), "dash_s10_app.py", "exec"), ns)
         doc = _s10_Doc()
         ns["make_document"](doc)
-    return sorted(doc.select(dict(type=_s10_Plot)),
-                  key=lambda p: str(p.title.text if p.title is not None else ""))
+    return _s10_figs(doc.select(dict(type=_s10_Plot)))
 
 
 def _s10_cont(side):
@@ -3917,7 +3933,7 @@ def _s10_live():
 
 
 def _s10_panelmap(plots):
-    return {str(p.title.text if p.title is not None else ""): p for p in plots}
+    return {_s10_key(p): p for p in plots}
 
 
 def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):

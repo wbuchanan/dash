@@ -132,15 +132,20 @@ def _draw(mode, spec):
         notes = [str(w.message) for w in built + caught]
         extra = doc
     panels, head, foot = [], None, None
-    for root in roots:
-        try:
-            p, head, foot = by_grid(root)
-        except AssertionError:
-            continue
+    gridded = [r for r in roots if _has_panel_grid(r)]
+    if gridded:
+        p, head, foot = by_grid(gridded[0])
         panels = [f for _, _, f in p]
-        break
     return types.SimpleNamespace(panels=panels, head=head, foot=foot,
                                  notes=notes, roots=roots, extra=extra)
+
+
+def _has_panel_grid(root):
+    """True when *root* holds a GridPlot of figures (a by() grid)."""
+    from bokeh.models import GridPlot
+    return any(isinstance(m, GridPlot)
+               and any(type(c[0]).__name__ == "figure" for c in m.children)
+               for m in root.references())
 
 
 def _rows(fig):

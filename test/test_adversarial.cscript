@@ -2278,8 +2278,20 @@ def _p2033_title(objs, fig):
     t = _p2033_ref(objs, fig.get("attributes", {}).get("title"))
     return t.get("attributes", {}).get("text") if isinstance(t, dict) else None
 
+def _p2033_key(objs, fig):
+    # WP-30 P1.15a: a by() panel keeps the graph's title and draws its
+    # label as a row of its own (a Title named dash_by_label), so a panel
+    # is keyed "title \u2014 label", as its title used to read.
+    t = str(_p2033_title(objs, fig))
+    a = fig.get("attributes", {})
+    for m in (a.get("above") or []) + (a.get("below") or []):
+        m = _p2033_ref(objs, m)
+        if isinstance(m, dict) and m.get("attributes", {}).get("name") == "dash_by_label":
+            return t + " \u2014 " + str(m["attributes"].get("text"))
+    return t
+
 def _p2033_under(objs, node):
-    # The titles of every figure in node's subtree, sorted.
+    # The keys (_p2033_key) of every figure in node's subtree, sorted.
     out = []
     stack = [_p2033_ref(objs, node)]
     while stack:
@@ -2287,7 +2299,7 @@ def _p2033_under(objs, node):
         if not isinstance(n, dict):
             continue
         if n.get("name") == "Figure":
-            out.append(str(_p2033_title(objs, n)))
+            out.append(_p2033_key(objs, n))
         stack.extend(_p2033_kids(objs, n))
     return sorted(out)
 
