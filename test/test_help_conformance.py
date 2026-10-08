@@ -528,8 +528,9 @@ class TestTheParsersFoundSomething:
         # entry's four.
         # 158 -> 161: P1.14b's Unsupported entry names dstyle(),
         # dlstyle() and bmlinestyle().
-        assert len(found) == 161, (
-            f"{len(found)} options parsed out of dash.sthlp, 161 measured "
+        # 161 -> 162: P1.8a's cmissings() entry.
+        assert len(found) == 162, (
+            f"{len(found)} options parsed out of dash.sthlp, 162 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -596,7 +597,8 @@ class TestTheParsersFoundSomething:
         # declared xvarformat and yvarformat.  188 since WP-30 P1.14a
         # declared astyle, alstyle, bstyle, blstyle, clstyle and p.
         # 188 -> 191: P1.14b declared dstyle, dlstyle and bmlinestyle.
-        assert len(_ado_declarations()) == 191
+        # 191 -> 192: P1.8a declared cmissings(), twoway's spelling.
+        assert len(_ado_declarations()) == 192
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -663,8 +665,9 @@ class TestTheParsersFoundSomething:
         # 364 -> 367: WP-30 P1.20a's Region Styling rows (ten for seven:
         # each drawn sub-option, the graph region and the canvas).
         # 367 -> 368: WP-30 P1.21a's $dash_max_reflines row.
-        assert len(defs) == 368, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 368 "
+        # 368 -> 369: P1.8a's cmissings() entry.
+        assert len(defs) == 369, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 369 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

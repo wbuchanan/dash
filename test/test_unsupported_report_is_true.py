@@ -92,11 +92,17 @@ PLOT_VALUES = {
     "bin": ("5", "9", "histogram"),
     "blabel": ("total", "bar", "bar"),
     "ciopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
-    "cmissing": ("n", "y", "line"),
+    # Flipped (WP-30 P1.8a): ("n", "y", "line") was wrong because dash draws
+    # cmissing(n) on line as twoway does (connect_truth.json P08); it stays
+    # named, and inert, on area (P2.42).
+    "cmissing": ("n", "y", "area"),
     "color": ("maroon", "navy", "scatter"),
     "colorlist": ("red blue", "green orange", "scatter"),
     "coloruseplegend": ("coloruseplegend", "", "scatter"),
-    "connect": ("l", "J", "line"),
+    # Flipped (WP-30 P1.8a): ("l", "J", "line") was wrong because dash draws
+    # connect() on line as twoway does (connect_truth.json P02); it stays
+    # named, and inert, as anything but direct on rarea (P2.42).
+    "connect": ("direct", "stairstep", "rarea"),
     "density": ("density", "frequency", "histogram"),
     "falpha": ("30", "80", "area"),
     "fitopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
@@ -392,7 +398,10 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            # exactly as twoway_yxview_parse.class declares it; the argument
            # form is reported as sort() and never written to the spec
            # (WP-22, pinned in test_twoway_option_parity.cscript TP-06).
-           "sort1"}
+           "sort1",
+           # cmissings() is twoway's other spelling of cmissing(), copied
+           # onto it before the spec is written (WP-30 P1.8a).
+           "cmissings"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -658,7 +667,8 @@ class TestEveryDeclaredOptionIsClassified:
         # Flipped (WP-30 P1.14a): 171 -> 177: astyle(), alstyle(),
         # bstyle(), blstyle(), clstyle() and p() declared.
         # 177 -> 180: P1.14b dstyle dlstyle bmlinestyle declared and named
-        assert len(_declared_plot()) == 180, len(_declared_plot())
+        # 180 -> 181: P1.8a cmissings() declared
+        assert len(_declared_plot()) == 181, len(_declared_plot())
         assert len(_declared_graph()) == 72, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

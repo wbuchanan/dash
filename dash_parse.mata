@@ -176,6 +176,10 @@
 *!   _dash_stylelist_locals(raw, stub)
 *!       A stylelist's elements as the caller's locals <stub>n, t<j>, q<j>.
 *!
+*!   _dash_connect_canon(kind, e)
+*!       One connect() or cmissing() element as twoway reads it: the
+*!       canonical style name, y or n; "" when empty, "?" when unknown.
+*!
 *!   _dash_rep_und_scan(opts, ptype)
 *!       An option dash does not declare, given twice where twoway takes
 *!       it once (_dash_rep_und_tab), into the caller's local _rp_refuse;
@@ -5011,8 +5015,8 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // base barwidth (P1.1b), then the named styles pstyle lstyle clstyle mstyle
 // mlstyle astyle alstyle bstyle blstyle (P1.14a; p() is one name and is
 // not split), dstyle dlstyle bmlinestyle (P1.14b, kept and named) and
-// mlabtextstyle (P1.24).  Later sections add their names here: connect
-// cmissing (P1.8a).
+// mlabtextstyle (P1.24), then connect cmissing (P1.8a), which
+// _dash_connect_opt canonicalises before the per-y writer splits them.
 string scalar _dash_stylelist_keys()
 {
     return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
@@ -5021,7 +5025,7 @@ string scalar _dash_stylelist_keys()
            "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +
            "mlabel jitter base barwidth " +
            "pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle " +
-           "dstyle dlstyle bmlinestyle mlabtextstyle")
+           "dstyle dlstyle bmlinestyle mlabtextstyle connect cmissing")
 }
 
 // _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k
@@ -5180,6 +5184,42 @@ string scalar _dash_stylelist_probe(string scalar tok)
     if (nm == "" | !strpos(tok, "(")) return("")
     if (_dash_stylelist_norm(_dash_rep_value(tok)) != "") return("")
     return(nm + "(x)")
+}
+
+// _dash_connect_canon(kind, e) -- one element of connect() (kind
+// "connect") or cmissing() (kind "cmissing") as twoway reads it (WP-30
+// P1.8a): connect gives direct, ascending, stairstep, stepstair or none,
+// cmissing y or n; "" for an empty element and "?" for anything else.
+// The spellings are twoway's connectstyle and yesno names as
+// test/fixtures/connect_truth.json measures them (its S block): exact
+// and case-sensitive (L is ascending, l direct; N and j are unknown),
+// the long names also by the abbreviations the fixture shows taken (dir,
+// asc, asce, stair, stairs).  A fixed table read by value; O(len(e)).
+string scalar _dash_connect_canon(string scalar kind, string scalar e)
+{
+    string scalar t
+    real scalar   n
+
+    t = strtrim(e)
+    if (t == "" | t == ".") return("")
+    n = strlen(t)
+    if (kind == "cmissing") {
+        if (t == "y" | t == "ye" | t == "yes" | t == "on") return("y")
+        if (n <= 4 & t == substr("true", 1, n)) return("y")
+        if (t == "n" | t == "no" | t == "off") return("n")
+        if (n <= 5 & t == substr("false", 1, n)) return("n")
+        return("?")
+    }
+    if (t == "l" | t == "line" | t == "d" | t == "c" | t == "connected") return("direct")
+    if (n >= 3 & n <= 6 & t == substr("direct", 1, n)) return("direct")
+    if (t == "L" | t == "a") return("ascending")
+    if (n >= 3 & n <= 9 & t == substr("ascending", 1, n)) return("ascending")
+    if (t == "J" | t == "s") return("stairstep")
+    if (n >= 5 & n <= 9 & t == substr("stairstep", 1, n)) return("stairstep")
+    if (t == "u" | t == "upstairstep") return("stepstair")
+    if (n >= 4 & n <= 9 & t == substr("stepstair", 1, n)) return("stepstair")
+    if (t == "n" | t == "i" | t == "none") return("none")
+    return("?")
 }
 
 // _dash_stylelist_locals(raw, stub) -- the elements of a stylelist as the

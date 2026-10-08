@@ -232,6 +232,13 @@ _CORPUS = [
     _case("a pcscatter labelled at per-row clocks, range", _MOVES[1],
           [plot_for("pcscatter", {"mlabel": "rep",
                                   "mlabvposition": "rep"})]),
+    # WP-30 P1.8a: stairs and ascending breaks are rebuilt from the kept
+    # rows (dash_join_rebuild).
+    _case("a stairstep line (WP-30 P1.8a)", _MOVES[0],
+          [plot_for("line", {"connect": "stairstep"})]),
+    _case("an ascending cmissing(n) connected (WP-30 P1.8a)", _MOVES[0],
+          [plot_for("connected", {"connect": "ascending",
+                                  "cmissing": "n"})]),
 ]
 
 

@@ -11899,14 +11899,16 @@ class GlyphMapper:
         band_r, _outline_r = self._ci_band_glyphs(
             fig, source if band_source is None else band_source, x_col,
             lo_col, hi_col, options)
-        line_r = fig.line(
+        # The fit line by connect() (WP-30 P1.8a).  A band drawn from the
+        # same source steps with it, as twoway's band does under c(J).
+        line_r = _dash_join_glyph(self, fig, options, dict(
             x=x_col, y=y_col, source=source,
             line_color=color,
             line_width=(self.scheme.default_line_width if line_width is None
                         else line_width),
             legend_label=yvar,
             **(alpha_kw or {}),
-        )
+        ), role=False)
         self._ci_line_restyle(line_r, options)
         # pstyle() and p() are read by _ci_pstyle alone: never a shadow
         # (pstyle() is first, and p()'s options were dropped at the spec)
@@ -11914,6 +11916,7 @@ class GlyphMapper:
         _nopstyle = {k: v for k, v in (options or {}).items()
                      if k not in ("pstyle", "p")}
         self._apply_line_opts(line_r, _nopstyle)
+        _dash_join_hide(line_r, options)
         return line_r, band_r
 
     #: The pstyle() names a ci layer is drawn in besides p1..p15, spelled
@@ -14410,7 +14413,11 @@ class GlyphMapper:
         # saved-page filter move keeps (by their row id, carried below) are
         # in the order the same rule gives them alone
         # (_collect_derived_sources).
-        df = df.dropna(subset=[xvar, yvar])
+        # cmissing(n) keeps the rows missing x or y, each a break in the
+        # line (_dash_join_glyph); _join_order puts a missing x last, as
+        # twoway's sort does (WP-30 P1.8a).
+        if _dash_join_spec(options)[1] != "n":
+            df = df.dropna(subset=[xvar, yvar])
         df = df.loc[self._join_order(source, df.index.to_numpy(), xvar,
                                      options, order, by_x)]
         # Each point is an observation, so the caller's other columns --
@@ -14450,13 +14457,14 @@ class GlyphMapper:
             _line_kwargs["line_alpha"] = _line_alpha
         if view is not None:
             _line_kwargs["view"] = view
-        r = fig.line(**_line_kwargs)
-        self._apply_line_opts(r, options, role=role)
+        # connect() and cmissing() (WP-30 P1.8a): the line by its style,
+        # its line options, and the hover tool unless the line is none.
         # No marker labels: twoway accepts mlabel() on line (and on tsline,
         # which is drawn here) and draws none, without a note -- measured
         # 23sep2026 from its SVG.  dash labelled every point.  connected
         # and rconnected label their MARKERS, through map_scatter.
-        fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
+        r = _dash_join_glyph(self, fig, options, _line_kwargs, role=role,
+                             hover=(yvar, xvar))
         return r
 
     def map_connected(
@@ -14469,10 +14477,14 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
         order=None,
+        marker_view=None,
     ) -> list:
         """Add connected (line + scatter) glyphs to *fig*.
 
         The line joins its points as map_line does; *order* is its join key.
+        *marker_view*, when given, is the markers' view in place of *view*:
+        a linked graph's selection reaches the markers while the line keeps
+        the layer's rows, so cmissing(n) still breaks it (WP-30 P1.8a).
 
         Args:
             fig:     Bokeh Figure object.
@@ -14492,7 +14504,8 @@ class GlyphMapper:
         renderers = [
             self.map_line(fig, source, yvar, xvar, opts_no_label, view=view,
                           color_idx=color_idx, connected=True, order=order),
-            self.map_scatter(fig, source, yvar, xvar, options, view=view,
+            self.map_scatter(fig, source, yvar, xvar, options,
+                             view=view if marker_view is None else marker_view,
                              color_idx=color_idx),
         ]
         return renderers
@@ -15539,13 +15552,12 @@ class GlyphMapper:
         "lineplot" for every other fit), its legend key and its line
         options.  twoway keys such a layer in its p# style; dash drew a
         bare Bokeh glyph, #1f77b4 at width 1."""
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x=xcol, y=ycol,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x=xcol, y=ycol,
                      source=ColumnDataSource({xcol: [], ycol: []}),
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx,
                                                             width_kind),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         return r
 
     def map_lfit(
@@ -15611,7 +15623,15 @@ class GlyphMapper:
         # 10% at each end, so lfit and lfitci drew the same fit at different
         # x values and lfit put fitted values on screen at an x no
         # observation reaches, which twoway does not do.
-        x_fit = _fit_grid(x, options, "lfit")
+        # twoway's lfit evaluates three points, min, middle and max (its
+        # n() default; range(1000 6000) plots 1000, 3500, 6000): the same
+        # straight line as 100, but stairs over it step twice, not 99
+        # times (connect_truth.json F-lfit-J; WP-30 P1.8a).
+        _lf_opts = options
+        if (_dash_join_spec(options)[0] in ("stairstep", "stepstair")
+                and not str(options.get("n", "") or "").strip()):
+            _lf_opts = dict(options, n="3")
+        x_fit = _fit_grid(x, _lf_opts, "lfit")
         y_fit = np.polyval(coeffs, x_fit)
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
@@ -15622,11 +15642,10 @@ class GlyphMapper:
                                             x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"), line_dash="solid",
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         return r
 
     def map_qfit(
@@ -15699,11 +15718,10 @@ class GlyphMapper:
                                             x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         return r
 
     def map_lfitci(
@@ -16069,11 +16087,10 @@ class GlyphMapper:
             "x_lw": x_lw,
             "y_lw": y_lw,
         })
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_lw", y="y_lw", source=lw_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_lw", y="y_lw", source=lw_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         # A smooth missing everywhere -- three observations, whose
         # neighbourhoods are too small -- twoway draws in silence (measured
         # 24sep2026: x = 1 3 4 plots three missing values, rc 0).
@@ -16483,11 +16500,10 @@ class GlyphMapper:
             "x_lp": _xd.tolist(),
             "y_lp": _yd.tolist(),
         })
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_lp", y="y_lp", source=lp_src,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         # A smooth missing at every grid point -- no observation within the
         # bandwidth of any, on two, three, even eight observations --
         # twoway plots as missing values, in silence, rc 0 (measured
@@ -17031,11 +17047,10 @@ class GlyphMapper:
             "x_fp": _xd.tolist(),
             "y_fp": _yd.tolist(),
         })
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fp", y="y_fp", source=fp_src,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         return r
 
     def map_fpfitci(
@@ -17624,11 +17639,10 @@ class GlyphMapper:
             "kdensity", "point(s)", _off, x_draw, x_range, density)
 
         kd_source = ColumnDataSource({"x": x_draw, "y": density})
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=kd_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         # Tag renderer so DashRenderer can wire filter-callback recomputation.
         # The JS recomputes on the same x grid, with the same kernel and the
         # same bandwidth rule (_KDE_BANDWIDTH_RULE), so an inert filter leaves
@@ -17663,6 +17677,11 @@ class GlyphMapper:
             else None
         if _wk in _STATA_DATE_KINDS:
             r._dash_agg_config["wdatekind"] = _wk
+        # A stepped curve stays stepped when a saved move recomputes it
+        # (_FILTER_JS's dash_join_rebuild; WP-30 P1.8a).
+        _kd_style = _dash_join_spec(options)[0]
+        if _kd_style not in ("direct", "none"):
+            r._dash_agg_config["join"] = {"style": _kd_style}
         # The rows this curve is estimated from; see map_histogram.
         r._dash_agg_rows = self._agg_member_ids(source, view)
         return r
@@ -18045,10 +18064,18 @@ class GlyphMapper:
         # P0.1; dash left it out of both).
         _xs = _dash_float_values(source.data[xvar])
         _bound_src = {}
+        # cmissing(n) keeps each bound's missing rows as breaks (WP-30
+        # P1.8a): the view alone selects them.
+        _cm_n = _dash_join_spec(options)[1] == "n"
         for _yv in (y1var, y2var):
-            _ord = self._join_order(
-                source, self._masked_index(source, view, xvar, _yv), xvar,
-                options, order, by_x)
+            if _cm_n:
+                _mi = np.arange(len(_xs))
+                _ms = self._view_mask(view, len(_xs))
+                if _ms is not None:
+                    _mi = _mi[_ms]
+            else:
+                _mi = self._masked_index(source, view, xvar, _yv)
+            _ord = self._join_order(source, _mi, xvar, options, order, by_x)
             # The caller's other columns -- the variables hover() names --
             # ride along in the same order: each point is an observation.
             _bound_src[_yv] = ColumnDataSource(self._carry_cols(
@@ -18073,10 +18100,9 @@ class GlyphMapper:
             _rl2_kwargs["view"] = view
         _rl1_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
         _rl2_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
-        r1 = fig.line(**_rl1_kwargs)
-        r2 = fig.line(**_rl2_kwargs)
-        self._apply_line_opts(r1, options, role="aline")
-        self._apply_line_opts(r2, options, role="aline")
+        # Each bound by connect() and cmissing() (WP-30 P1.8a).
+        r1 = _dash_join_glyph(self, fig, options, _rl1_kwargs, role="aline")
+        r2 = _dash_join_glyph(self, fig, options, _rl2_kwargs, role="aline")
         # No marker labels: twoway draws none on rline or tsrline, which is
         # drawn here (measured).
         return [r1, r2]
@@ -18537,6 +18563,20 @@ class GlyphMapper:
         # P1.4a); msymbol() wins.
         marker, _hollow, _factor = self._marker_traits(color_idx, options)
 
+        # connect() joins the points, as twoway's scatteri joins them under
+        # it, in the connected style's line (WP-30 P1.8a); the line has no
+        # row id and no saved-page rebuild (the points are literals).
+        _si_line = None
+        if str(options.get("connect", "") or "").strip():
+            _si_line = _dash_join_glyph(self, fig, options, dict(
+                x="x", y="y",
+                source=ColumnDataSource({
+                    "x": list(si_source.data["x"]),
+                    "y": list(si_source.data["y"])}),
+                line_color=self.scheme.default_color(color_idx, "connected"),
+                line_width=self.scheme.plot_line_width(color_idx, "")),
+                role="line")
+
         r = fig.scatter(x="x", y="y", source=si_source,
                         marker=marker, size=size,
                         fill_color=color, line_color=line_color,
@@ -18557,7 +18597,7 @@ class GlyphMapper:
                                    _labels, _clocks, options, "scatteri",
                                    radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
 
-        return [r]
+        return [r] if _si_line is None else [_si_line, r]
 
     # ------------------------------------------------------------------
     # Phase 4 plot types
@@ -19620,11 +19660,10 @@ class GlyphMapper:
         x_grid, y_grid = self._drop_off_dates("mspline", "point(s)",
                                               _ox | _oy, x_grid, y_grid)
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_sp", y="y_sp", source=ms_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         return [r]
 
     @staticmethod
@@ -19742,11 +19781,10 @@ class GlyphMapper:
         x_mids, y_meds = self._drop_off_dates("mband", "point(s)",
                                               _ox | _oy, x_mids, y_meds)
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_mb", y="y_mb", source=mb_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
-                     legend_label=yvar)
-        self._apply_line_opts(r, options)
+                     legend_label=yvar), role=None)
         return [r]
 
     def map_function(
@@ -19853,12 +19891,14 @@ class GlyphMapper:
         x_arr, y_arr = self._drop_off_dates("function", "point(s)",
                                             _offx | _offy, x_arr, y_arr,
                                             reach="browser")
+        # A missing region is bridged, as twoway's cmissing(y) default
+        # bridges it, and broken under cmissing(n) (_dash_join_glyph; WP-30
+        # P1.8a): dash drew it as a gap whatever was given.
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
-        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=fn_source,
+        r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
-                     legend_label=text[:40])
-        self._apply_line_opts(r, options)
+                     legend_label=text[:40]), role=None)
         return [r]
 
 
@@ -23769,6 +23809,63 @@ function dash_own_col(o, col) {
                                    enumerable: true, configurable: true});
 }
 
+// connect() and cmissing() after a move (WP-30 P1.8a): the kept rows of a
+// line, in join order, rebuilt into the vertices twoway draws -- the twin
+// of dash_render.py's _dash_join_vertices.  spec is {x, y, style, cmiss}
+// as _dash_join_glyph recorded it; a JSON null in x or y is NaN (a JSON
+// snapshot holds a missing value as null, and null * k + b is a finite
+// 0), so a cmissing(n) break stays a break.  Every column is rebuilt:
+// x from each vertex's x row, y from its y row, every other column from
+// its row when the vertex is an observation and null otherwise (a
+// stair's corner, an ascending break), so a synthetic vertex never
+// enters a keep set, a brush or a KPI.  Column names are read as keys
+// only.  Hoisted, so a test can run it alone.
+function dash_join_rebuild(nd, spec, rowId) {
+    const xc = spec.x, yc = spec.y;
+    const st = ["direct", "ascending", "stairstep", "stepstair", "none"]
+        .indexOf(spec.style) >= 0 ? spec.style : "direct";
+    const cm = spec.cmiss === "n" ? "n" : "y";
+    const X = nd[xc] || [], Y = nd[yc] || [];
+    const n = Math.min(X.length, Y.length);
+    const xs = new Array(n), ys = new Array(n), fin = new Array(n);
+    for (let i = 0; i < n; i++) {
+        xs[i] = (X[i] === null || X[i] === undefined) ? NaN : Number(X[i]);
+        ys[i] = (Y[i] === null || Y[i] === undefined) ? NaN : Number(Y[i]);
+        fin[i] = isFinite(xs[i]) && isFinite(ys[i]);
+    }
+    const xi = [], yi = [];
+    let prev = -1;
+    for (let b = 0; b < n; b++) {
+        if (cm !== "n" && !fin[b]) continue;
+        const a = prev;
+        prev = b;
+        if (a >= 0 && fin[a] && fin[b]) {
+            if (st === "ascending") {
+                if (xs[b] < xs[a]) { xi.push(-1); yi.push(-1); }
+            } else if (st === "stairstep") {
+                xi.push(b); yi.push(a);
+            } else if (st === "stepstair") {
+                xi.push(a); yi.push(b);
+            }
+        }
+        xi.push(b); yi.push(b);
+    }
+    const out = {};
+    for (const col of Object.keys(nd)) {
+        dash_own_col(out, col);
+        const v = nd[col];
+        const o = out[col];
+        for (let k = 0; k < xi.length; k++) {
+            const a = xi[k], b = yi[k];
+            if (col === xc) o.push(a >= 0 ? xs[a] : NaN);
+            else if (col === yc) o.push(b >= 0 ? ys[b] : NaN);
+            else if (rowId === null) o.push(b >= 0 ? v[b] : null);
+            else o.push((a >= 0 && a === b) ? v[b] : null);
+        }
+    }
+    return out;
+}
+
 const ROW_ID = __DASH_ROW_ID__;
 
 // The set of row identities that survived every active filter, taken from
@@ -23902,6 +23999,10 @@ const _dsrcs_orig = (typeof derived_sources_orig !== "undefined" &&
 // Parallel to _dsrcs: which filters apply to each derived copy (GAPS2 E2).
 const _derived_use = (typeof derived_use_json !== "undefined")
     ? JSON.parse(derived_use_json) : _dsrcs.map(() => null);
+// Parallel to _dsrcs: each copy's connect()/cmissing() spec, or null
+// (WP-30 P1.8a); absent on a page that draws neither.
+const _djoin = (typeof derived_join_json !== "undefined")
+    ? JSON.parse(derived_join_json) : _dsrcs.map(() => null);
 if (_primary_ids) {
     for (let _di = 0; _di < _dsrcs.length && _di < _dsrcs_orig.length; _di++) {
         const _od = _dsrcs_orig[_di].data;
@@ -23916,7 +24017,14 @@ if (_primary_ids) {
             if (!_dkeep_ids.has(_did[i])) continue;
             for (const col of _dc) { _nd[col].push(_od[col][i]); }
         }
-        _dsrcs[_di].data = _nd;
+        // A line drawn by connect() or cmissing(n): its breaks and stairs
+        // rebuilt from the kept rows (WP-30 P1.8a).
+        const _jn = _djoin[_di];
+        if (_jn && (_jn.x in _nd) && (_jn.y in _nd)) {
+            _dsrcs[_di].data = dash_join_rebuild(_nd, _jn, ROW_ID);
+        } else {
+            _dsrcs[_di].data = _nd;
+        }
         _dsrcs[_di].selected.indices = [];
         _dsrcs[_di].change.emit();
     }
@@ -24411,6 +24519,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             return s / (n * h);
         });
         src.data = { x: xs, y: ys };
+        // A stepped curve stays stepped (WP-30 P1.8a).
+        if (ac.join) {
+            src.data = dash_join_rebuild(src.data,
+                {x: "x", y: "y", style: ac.join.style, cmiss: "y"}, null);
+        }
         src.change.emit();
     }
 }
@@ -35319,7 +35432,7 @@ def _dash_parse_filter_raw(raw, warn=True):
 
 def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
                        shared_source, shared_pos, fallback_src,
-                       extra_cols=()):
+                       extra_cols=(), keep_missing=False):
     """Build the ColumnDataSource, and any view, for one ordinary plot layer.
 
     Written once because the generated server app repeated this step in every
@@ -35334,6 +35447,9 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     pointed at the shared source, because that would draw rows the qualifier
     excluded, so it gets a CDSView over it instead -- which is how the
     standalone renderer has always done it.
+
+    *keep_missing* keeps the rows missing x or y: a cmissing(n) layer's
+    breaks, which its mapper draws as the saved page does (WP-30 P1.8a).
     """
     cols = [c for c in [xvar, yvar, label_var] + list(extra_cols)
             if c and c in g_df.columns]
@@ -35343,7 +35459,10 @@ def _dash_layer_source(g_df, df, xvar, yvar, label_var, gname, linked_names,
     # hover(rep78) would otherwise silently delete the five cars whose
     # rep78 is missing.
     _drop_on = [c for c in [xvar, yvar] if c and c in g_df.columns]
-    clean = g_df[cols].dropna(subset=_drop_on) if _drop_on else g_df
+    if keep_missing and _drop_on:
+        clean = g_df[cols]
+    else:
+        clean = g_df[cols].dropna(subset=_drop_on) if _drop_on else g_df
 
     view = None
     if gname in linked_names and xvar and yvar:
@@ -36034,10 +36153,13 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
 
     # A ci band's outline is the band's polygon, drawn from a source of its
     # own (GlyphMapper._ci_band_glyphs): a tooltip on it would name the
-    # polygon's vertices, so it answers for nothing; the band does.
+    # polygon's vertices, so it answers for nothing; the band does.  A
+    # connect(none) line is drawn hidden and answers for nothing either
+    # (_dash_join_hide; WP-30 P1.8a).
     _rends = [r for r in fig.renderers if getattr(r, "data_source", None)
               is not None
-              and "dash_ci_outline" not in (getattr(r, "tags", None) or [])]
+              and "dash_ci_outline" not in (getattr(r, "tags", None) or [])
+              and "dash_join_none" not in (getattr(r, "tags", None) or [])]
     if not _rends:
         return
 
@@ -36677,6 +36799,179 @@ def _dash_sort_cols_named(spec):
                     "dash: a plot names the sort() list %r, which has no %s<k> "
                     "column in the spec." % (str(sv)[:40], _DASH_SORT_PREFIX))
     return out
+
+
+# ---------------------------------------------------------------------------
+# connect() and cmissing() (WP-30 P1.8a).  twoway joins a line's points by
+# its connectstyle and breaks it at missing values under cmissing(n)
+# (test/fixtures/connect_truth.json, scripts/extract_connect_truth.do):
+# direct joins consecutive points; ascending also breaks between j and j+1
+# where x drops (a tie joins); stairstep goes (x[j],y[j]) -> (x[j+1],y[j])
+# -> (x[j+1],y[j+1]) and stepstair (x[j],y[j]) -> (x[j],y[j+1]) ->
+# (x[j+1],y[j+1]); none draws no line and keeps the key.  cmissing(y), the
+# default, bridges a missing row; cmissing(n) breaks there.  Every style is
+# drawn as a Line over pre-expanded vertices, so each observation keeps
+# its tooltip; a vertex no observation owns (a stair's corner, a break)
+# carries a null row id and null in every carried column.  The saved
+# page's twin is _FILTER_JS's dash_join_rebuild.
+# ---------------------------------------------------------------------------
+
+def _dash_join_spec(options):
+    """``(style, cmiss)`` of a plot's options: the connect() style dash.ado
+    wrote (direct, ascending, stairstep, stepstair or none; anything else
+    direct) and "n" or "y"
+    (anything but "n" is y).  A hand-written value never selects a path
+    of its own."""
+    opts = options if isinstance(options, dict) else {}
+    style = opts.get("connect")
+    style = style if isinstance(style, str) and style in (
+        "direct", "ascending", "stairstep", "stepstair", "none") else "direct"
+    cmiss = "n" if opts.get("cmissing") == "n" else "y"
+    return style, cmiss
+
+
+def _dash_join_vertices(xs, ys, style, cmiss):
+    """The vertices twoway draws for points *xs*, *ys* in join order.
+
+    Returns ``(xi, yi)``, two int64 arrays naming, per output vertex, the
+    input row its x and its y come from; -1 in both is a break (NaN).  A
+    row non-finite in x or y is left out under cmissing "y" (bridged) and
+    kept under "n", as itself (j, j): its own NaN breaks the line, and it
+    keeps its row id, so a saved move keeps the break.  ascending inserts a break between finite
+    neighbours j, j+1 where x[j+1] < x[j]; stairstep inserts (j+1, j) and
+    stepstair (j, j+1) between finite neighbours (after the ascending
+    check).  *style* outside the five names is direct; *cmiss* other than
+    "n" is "y"; none gives the rows as direct does (its line is hidden by
+    _dash_join_glyph).  O(n); at most 3n - 2 vertices.
+    """
+    x = np.asarray(xs, dtype=float)
+    y = np.asarray(ys, dtype=float)
+    n = min(len(x), len(y))
+    x, y = x[:n], y[:n]
+    style = style if style in ("direct", "ascending", "stairstep",
+                               "stepstair", "none") else "direct"
+    finite = np.isfinite(x) & np.isfinite(y)
+    rows = np.arange(n, dtype=np.int64)
+    if cmiss != "n":
+        rows = rows[finite]
+    if style in ("direct", "none") or len(rows) < 2:
+        return rows.copy(), rows.copy()
+    a = rows[:-1]
+    b = rows[1:]
+    both = finite[a] & finite[b]
+    drop = both & (x[b] < x[a]) if style == "ascending" else \
+        np.zeros(len(a), dtype=bool)
+    # Per gap between rows a and b: what goes in before b.
+    if style == "ascending":
+        ins_x = np.where(drop, -1, -2)
+        ins_y = ins_x.copy()
+    elif style == "stairstep":
+        ins_x = np.where(both, b, -2)
+        ins_y = np.where(both, a, -2)
+    else:
+        ins_x = np.where(both, a, -2)
+        ins_y = np.where(both, b, -2)
+    m = len(rows)
+    out_x = np.empty(2 * m - 1, dtype=np.int64)
+    out_y = np.empty(2 * m - 1, dtype=np.int64)
+    out_x[0::2] = rows
+    out_y[0::2] = rows
+    out_x[1::2] = ins_x
+    out_y[1::2] = ins_y
+    keep = out_x != -2
+    return out_x[keep], out_y[keep]
+
+
+def _dash_join_glyph(mapper, fig, options, line_kwargs, role="line",
+                     hover=None):
+    """Draw a layer's line by its connect() style and cmissing().
+
+    *line_kwargs* are what ``fig.line`` took before (x, y and source among
+    them).  With direct and cmissing(y) over finite points the call is
+    exactly ``fig.line(**line_kwargs)``; otherwise the source's data are
+    replaced in place by _dash_join_vertices' vertices (the source object
+    is kept, so the served redraw pairs it as before): the x column takes
+    each vertex's x row, every other column its y row; on a source that
+    carries the row id a vertex no observation owns holds null there and
+    in every carried column, and the source records ``_dash_join`` for the
+    saved page's rebuild.  ``mapper._apply_line_opts(r, options, role)``
+    is applied (when *role* is not False); a none line is then hidden --
+    alpha 0 in every state -- and left out of the hover tool.  *hover* is
+    ``(yvar, xvar)`` to add the layer's hover tool on this renderer.
+    """
+    style, cmiss = _dash_join_spec(options)
+    src = line_kwargs.get("source")
+    xcol, ycol = line_kwargs.get("x"), line_kwargs.get("y")
+    data = getattr(src, "data", None)
+    if (isinstance(xcol, str) and isinstance(ycol, str) and data is not None
+            and xcol in data and ycol in data):
+        try:
+            xs = _dash_float_values(data[xcol])
+            ys = _dash_float_values(data[ycol])
+        except (TypeError, ValueError):
+            xs = ys = None
+        # A line with no finite point draws nothing whatever its style:
+        # its rows are left as they are (a function that is missing
+        # everywhere keeps its points, every y missing).
+        _fin = (np.isfinite(xs) & np.isfinite(ys)) if xs is not None \
+            and len(xs) == len(ys) else None
+        if _fin is not None and bool(_fin.any()) and not (
+                style in ("direct", "none") and cmiss == "y"
+                and bool(_fin.all())):
+            xi, yi = _dash_join_vertices(xs, ys, style, cmiss)
+            rowid = _ROW_ID_COLUMN in data
+            new = {}
+            for col, vals in data.items():
+                n0 = len(vals)
+                if col == xcol:
+                    new[col] = np.where(xi >= 0, xs[np.clip(xi, 0, None)],
+                                        np.nan) if n0 else xs
+                    continue
+                if col == ycol:
+                    new[col] = np.where(yi >= 0, ys[np.clip(yi, 0, None)],
+                                        np.nan) if n0 else ys
+                    continue
+                own = (xi == yi) & (xi >= 0) if rowid else (yi >= 0)
+                arr = np.asarray(vals, dtype=object) if n0 else \
+                    np.asarray([], dtype=object)
+                if n0 != len(xs):
+                    continue
+                if (not rowid) and np.asarray(vals).dtype.kind == "f":
+                    fv = np.asarray(vals, dtype=float)
+                    new[col] = np.where(own, fv[np.clip(yi, 0, None)], np.nan)
+                    continue
+                pick = arr[np.clip(yi, 0, None)] if len(arr) else arr
+                new[col] = [v if o else None for v, o in zip(pick, own)]
+            src.data = new
+            if rowid:
+                src._dash_join = {"x": xcol, "y": ycol, "style": style,
+                                  "cmiss": cmiss}
+    r = fig.line(**line_kwargs)
+    if role is not False:
+        if role is None:
+            mapper._apply_line_opts(r, options)
+        else:
+            mapper._apply_line_opts(r, options, role=role)
+    if style == "none":
+        _dash_join_hide(r, options)
+    elif hover is not None:
+        fig.add_tools(mapper._hover_tool(hover[0], hover[1], renderers=[r]))
+    return r
+
+
+def _dash_join_hide(r, options):
+    """Hide renderer *r*'s line when the layer's connect() is none: line
+    alpha 0 in every glyph state, after the line options were applied (a
+    colour's opacity among them), so nothing shows it again, and tagged
+    ``dash_join_none`` so no hover tool lists it (_dash_build_hover).  The
+    legend item stays.  Nothing happens for any other style."""
+    if _dash_join_spec(options)[0] != "none":
+        return
+    r.tags = list(r.tags or []) + ["dash_join_none"]
+    for g in (r.glyph, r.nonselection_glyph, r.selection_glyph,
+              r.hover_glyph, r.muted_glyph):
+        if g is not None and g != "auto" and hasattr(g, "line_alpha"):
+            g.line_alpha = 0
 
 
 def _dash_take_sort_columns(df, spec):
@@ -37924,13 +38219,15 @@ def _dash_note_no_second_y(plot_type):
 
 
 def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
-                    y2var="", view=None, color_idx=0, order=None):
+                    y2var="", view=None, color_idx=0, order=None,
+                    marker_view=None):
     """Dispatch one plot layer to the GlyphMapper method that draws it.
 
     *order* is the layer's join key (``_dash_join_key``), one value per row
     of *source*; it reaches the mapper of a joining type only
     (``_DASH_JOIN_TYPES``).  tsline and tsrline join in time order and take
-    none.
+    none.  *marker_view* reaches connected alone: its markers' view
+    (map_connected; WP-30 P1.8a).
     """
     _before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
     try:
@@ -37946,6 +38243,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
         # Range plots take (fig, source, y1var, y2var, xvar, options).
         _jkw = ({"order": order}
                 if pt in _DASH_JOIN_TYPES and order is not None else {})
+        if pt == "connected" and marker_view is not None:
+            _jkw["marker_view"] = marker_view
         rfn = range_dispatch.get(pt)
         if rfn is not None and not y2var:
             # A range type with no second y variable fell through to "no glyph
@@ -39586,12 +39885,22 @@ class DashRenderer:
             else:
                 pyvar = plot.get("yvar", yvar)
                 _frozen_vars = [pyvar, pxvar]
+                _mk_view = None
                 if ptype.lower() == "scatter":
                     _plot_view = self._linked_scatter_view(
                         source_for_plot, pyvar, pxvar, popts, _plot_view)
+                elif ptype.lower() == "connected":
+                    # A connected layer's markers take the linked view a
+                    # scatter takes -- a scatter given connect() is one --
+                    # and its line keeps the layer's view, so cmissing(n)
+                    # rows still break it (WP-30 P1.8a).
+                    _mk_view = self._linked_scatter_view(
+                        source_for_plot, pyvar, pxvar, popts, _plot_view)
+                    if _mk_view is _plot_view:
+                        _mk_view = None
                 self._add_glyph(fig, source_for_plot, ptype, pyvar, pxvar, popts,
                                 view=_plot_view, color_idx=_pstyle_idx[pi],
-                                order=_jo)
+                                order=_jo, marker_view=_mk_view)
 
             _layer_renderers = list(fig.renderers[_r_before:])
             _plot_renderers.append((plot, _layer_renderers))
@@ -39734,6 +40043,7 @@ class DashRenderer:
         view=None,
         color_idx: int = 0,
         order=None,
+        marker_view=None,
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -39748,10 +40058,12 @@ class DashRenderer:
                         non-range plots).
             color_idx:  Zero-based plot index for scheme color cycling.
             order:      The layer's join key (``_dash_join_key``), or None.
+            marker_view: A connected layer's markers' view, or None
+                        (``_dash_add_glyph``).
         """
         _dash_add_glyph(self.mapper, fig, source, plot_type, yvar, xvar,
                         options, y2var=y2var, view=view, color_idx=color_idx,
-                        order=order)
+                        order=order, marker_view=marker_view)
 
     def _add_pc_glyph(
         self,
@@ -41247,6 +41559,13 @@ class DashRenderer:
                 })
         _der_srcs_orig_all = [_snapshot_of[id(_dsrc)]
                               for _dsrc in _der_srcs_all]
+        # Each copy's connect()/cmissing() spec (_dash_join_glyph), for the
+        # rebuild after a move (WP-30 P1.8a); passed only when one exists,
+        # so a page that draws neither is unchanged.
+        _der_join = [getattr(_dsrc, "_dash_join", None)
+                     for _dsrc in _der_srcs_all]
+        _der_join_json = (json.dumps(_der_join)
+                          if any(_j is not None for _j in _der_join) else None)
 
         # Every filter-mode KPI whose "use" is non-empty -- one every
         # filter excludes is left at whatever the first render gave it, as
@@ -41290,6 +41609,8 @@ class DashRenderer:
             _cb.args["derived_sources"]   = _der_srcs_all
             _cb.args["derived_sources_orig"] = _der_srcs_orig_all
             _cb.args["derived_use_json"]  = _der_use_json_all
+            if _der_join_json is not None:
+                _cb.args["derived_join_json"] = _der_join_json
             if _stale_args:
                 for _k, _v in _stale_args.items():
                     _cb.args[_k] = _v
@@ -42303,6 +42624,8 @@ class ServerAppBuilder:
                          # takes the rank columns out, each layer reads its.
                          "_dash_join_key", "_dash_sort_col_of",
                          "_dash_sort_cols_named", "_dash_take_sort_columns",
+                         "_dash_join_glyph", "_dash_join_vertices",
+                         "_dash_join_spec", "_dash_join_hide",
                          # One column reader for both modes' loaders, and
                          # the date axes it makes possible (WP-27): the
                          # axis kind, its tick formatter, a number given
@@ -44369,7 +44692,8 @@ class ServerAppBuilder:
             "                _ly_src, _ly_view = _dash_layer_source(",
             "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
             "                    gname, _ln, _shared, _shared_pos, _fallback,",
-            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns))",
+            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
+            "                    keep_missing=_dash_join_spec(opts)[1] == 'n')",
             "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
             "                       if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
             "                if _ly_src is not None:",

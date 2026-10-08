@@ -53,8 +53,10 @@ _NAMED_KEYS = ("pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle "
                "blstyle dstyle dlstyle bmlinestyle mlabtextstyle").split()
 # P1.1b: mlabel jitter base barwidth are value lists now (test_value_lists)
 # Flipped (WP-30 P1.14a): pstyle mstyle lstyle mlstyle left _NOT_YET.
-_NOT_YET = ("connect", "cmissing",
-            "malpha", "lalpha", "falpha", "jseed", "mlabwidth", "mlpattern",
+# Flipped (WP-30 P1.8a): connect cmissing left _NOT_YET; style lists now,
+# after the named styles in _dash_stylelist_keys().
+_JOIN_KEYS = ["connect", "cmissing"]
+_NOT_YET = ("malpha", "lalpha", "falpha", "jseed", "mlabwidth", "mlpattern",
             "marker")
 
 _FIX = os.path.join(_HERE, "fixtures", "stylelist_truth.json")
@@ -237,7 +239,7 @@ class TestTheParserKeepsQuotes:
     def test_each_style_option_is_declared_asis(self):
         decl = {m.group(1).lower(): m.group(2) for m in re.finditer(
             r"\b([A-Za-z0-9]+)\((string(?: asis)?)\)", self._syntax())}
-        for k in _STYLE_KEYS + _NAMED_KEYS:
+        for k in _STYLE_KEYS + _NAMED_KEYS + _JOIN_KEYS:
             assert decl[k] == "string asis", k
 
     def test_the_later_lists_are_not_yet_asis(self):
@@ -266,13 +268,14 @@ class TestOneList:
         lit = "".join(re.findall(r'"([^"]*)"', m.group(1)))
         # P1.1b: the value lists follow the style keys
         assert lit.split() == _STYLE_KEYS + ["mlabel", "jitter", "base",
-                                             "barwidth"] + _NAMED_KEYS
+                                             "barwidth"] + _NAMED_KEYS \
+            + _JOIN_KEYS
 
     def test_every_listed_key_reaches_the_json_writer(self):
         body = _program_body(_read(_ADO), "_dash_plot_opts_to_json")
         keys = re.search(r"foreach key in (.*?)\{", body, re.S).group(1)
         keys = set(keys.replace("///", " ").split())
-        assert set(_STYLE_KEYS + _NAMED_KEYS) <= keys
+        assert set(_STYLE_KEYS + _NAMED_KEYS + _JOIN_KEYS) <= keys
 
     def test_the_six_are_public_and_needed(self):
         six = ("_dash_stylelist_keys", "_dash_stylelist_norm",
@@ -301,7 +304,9 @@ class TestOneOptionsObjectPerSeries:
 
     def test_the_check_runs_after_validation(self):
         body = _program_body(_read(_ADO), "_dash_process_segment")
-        v = body.index('_dash_validate_opts "`ptype\'"')
+        # P1.8a: validated as the connected type a scatter given connect()
+        # is (_cn_ptype).
+        v = body.index('_dash_validate_opts "`_cn_ptype\'"')
         c = body.index("_dash_stylelist_check")
         assert v < c
 

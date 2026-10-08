@@ -157,6 +157,9 @@
 *!   RS-10  repeated region copies merge as twoway applies them.
 *!   RS-11  two abbreviated copies are written under their full names.
 *!   RS-12  the measured copy pairs (region_truth.json M) merge as drawn.
+*!   CM-01..CM-12  connect() and cmissing() read as twoway reads them
+*!          (WP-30 P1.8a; connect_truth.json): refusals, notes, spellings,
+*!          copies, per-y types, the silent and the named types.
 *!   BG-07  barwidth() on rcap and rcapsym is refused r(198) in twoway's words,
 *!          in comma mode, in a plot group and after || (WP-30 P1.17a).
 *!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
@@ -3758,6 +3761,234 @@ if `rc' | !`hv' {
 }
 else display as text "RS-11 PASS: plotregion(c(red)) plotregion(lc(blue)) is written fcolor(red) lcolor(blue)"
 capture mata: mata drop _zrs_f
+
+// ----------------------------------------------------------------
+// CM: connect() and cmissing(), read as twoway reads them (WP-30 P1.8a)
+// twoway's answers are test/fixtures/connect_truth.json's probes, from
+// scripts/extract_connect_truth.do (StataNow 19.5): the words below are
+// its log lines, cited by probe id.  dash runs here.
+// ----------------------------------------------------------------
+capture program drop _zcm_spec
+program define _zcm_spec, rclass
+    args needle
+    mata: st_local("_zf", strofreal(strpos(st_global("dash_json_zqtp"), st_local("needle")) > 0))
+    return scalar found = `_zf'
+end
+local cmq = char(34)
+quietly tsset t
+
+// CM-01: R-01, R-01s -- a misplaced .. is "connect(l .. J):  invalid syntax".
+local bad 0
+foreach tt in line scatter {
+    _ztp_run `"dash `tt' mpg weight, c(l .. J) name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "connect(l .. J):  invalid syntax"
+    if `rc' != 198 | !r(found) local bad 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-01"
+    display as error "CM-01 FAIL: c(l .. J) is not r(198) connect(l .. J):  invalid syntax"
+}
+else display as text "CM-01 PASS: c(l .. J) refused r(198) in twoway's words"
+
+// CM-02: R-02 -- "cmissings(n .. y):  invalid syntax", r(198).
+_ztp_run `"dash line mpg turn weight, cmissing(n .. y) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "cmissings(n .. y):  invalid syntax"
+if `rc' != 198 | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-02"
+    display as error "CM-02 FAIL: cmissing(n .. y) r(`rc')"
+}
+else display as text "CM-02 PASS: cmissing(n .. y) refused r(198) as cmissings(n .. y)"
+
+// CM-03: R-03, R-10, R-11, R-12 and the matrix's cmissing(x) rc 101 rows --
+// two notes, then " not allowed", r(101), on every type twoway refuses it.
+local bad ""
+foreach tt in line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci rline rconnected tsrline {
+    local v `v_`tt''
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    foreach o in "cmissing(x)" "cmissing(N)" {
+        _ztp_run `"dash `tt' `v'`sep' `o' name(zqtp)"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "not found in class yesno, default attributes used)"
+        local n1 = r(found)
+        _ztp_logged "`logfile'" "(note:  yesno not found in scheme, default attributes used)"
+        if `rc' != 101 | !`n1' | !r(found) local bad "`bad' `tt'/`o'"
+    }
+}
+_ztp_run `"dash line mpg turn weight, cmissing(n x) name(zqtp)"' "`logfile'"
+if r(rc) != 101 local bad "`bad' line/cmissing(n x)"
+// R_EXTRA: an element past the last y is not read.
+_ztp_run `"dash line mpg weight, cmissing(n x) name(zqtp)"' "`logfile'"
+if r(rc) != 0 local bad "`bad' R_EXTRA"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-03"
+    display as error "CM-03 FAIL:`bad'"
+}
+else display as text "CM-03 PASS: an unknown cmissing() is r(101) after twoway's two notes on the 19 types"
+
+// CM-04: the matrix's cmissing(x) rc 0 rows: bar, area take it with notes.
+local bad ""
+foreach tt in bar area {
+    _ztp_run `"dash `tt' mpg weight, cmissing(x) name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "(note:  yesno not found in scheme, default attributes used)"
+    if `rc' != 0 | !r(found) local bad "`bad' `tt'"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-04"
+    display as error "CM-04 FAIL:`bad'"
+}
+else display as text "CM-04 PASS: cmissing(x) on bar and area: rc 0, twoway's notes"
+
+// CM-05: P07, S-c-Direct -- an unknown name is noted and drawn direct.
+local bad ""
+foreach tt in scatter line bar {
+    foreach o in bogus Direct {
+        _ztp_run `"dash `tt' mpg weight, c(`o') name(zqtp)"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "(note:  named style `o' not found in class connectstyle"
+        local nf = r(found)
+        _zcm_spec `"`cmq'connect`cmq':`cmq'direct`cmq'"'
+        if `rc' != 0 | !`nf' | !r(found) local bad "`bad' `tt'/`o'"
+    }
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-05"
+    display as error "CM-05 FAIL:`bad'"
+}
+else display as text "CM-05 PASS: c(bogus), c(Direct): twoway's note, drawn direct"
+
+// CM-06: R-07, R-08, P28 -- a scatter given connect() takes the cl options.
+local bad ""
+foreach o in l i {
+    _ztp_run `"dash scatter mpg weight, c(`o') clwidth(-1) name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "gm_linewidth must be between 0.000 and  1.0e+04"
+    if `rc' != 198 | !r(found) local bad "`bad' c(`o')"
+}
+_ztp_run `"dash scatter mpg weight, c(l) clcolor(red) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'clcolor`cmq':`cmq'red`cmq'"'
+if !r(found) local bad "`bad' clcolor"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-06"
+    display as error "CM-06 FAIL:`bad'"
+}
+else display as text "CM-06 PASS: clwidth(-1) r(198) under c(l) and c(i); clcolor() kept"
+
+// CM-07: P26, P27 -- sort and sort(varlist) are honoured, not named.
+local bad ""
+_ztp_run `"dash scatter mpg weight, c(l) sort name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' sort"
+_ztp_run `"dash scatter mpg turn weight, c(l) sort(turn) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'sortvars`cmq':`cmq'turn`cmq'"'
+if !r(found) local bad "`bad' sort(turn)"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-07"
+    display as error "CM-07 FAIL:`bad'"
+}
+else display as text "CM-07 PASS: sort and sort(varlist) on a scatter given c(l), not named"
+
+// CM-08: R-05, R-06 and the S block -- spellings read as twoway reads them.
+local bad ""
+foreach o in "cmissings(n)" "cmiss(n)" {
+    _ztp_run `"dash line mpg weight, `o' name(zqtp)"' "`logfile'"
+    _zcm_spec `"`cmq'cmissing`cmq':`cmq'n`cmq'"'
+    if !r(found) local bad "`bad' `o'"
+}
+foreach p in "stair stairstep" "u stepstair" "a ascending" "L ascending" "l direct" "i none" {
+    gettoken o c : p
+    local c = strtrim("`c'")
+    _ztp_run `"dash line mpg weight, c(`o') name(zqtp)"' "`logfile'"
+    _zcm_spec `"`cmq'connect`cmq':`cmq'`c'`cmq'"'
+    if !r(found) local bad "`bad' c(`o')"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-08"
+    display as error "CM-08 FAIL:`bad'"
+}
+else display as text "CM-08 PASS: cmissings(), cmiss() and the connect spellings read as twoway reads them"
+
+// CM-09: P25, R-09 -- the rightmost copy counts.
+local bad ""
+_ztp_run `"dash line mpg weight, c(l) c(J) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'connect`cmq':`cmq'stairstep`cmq'"'
+if !r(found) local bad "`bad' connect"
+_ztp_run `"dash line mpg weight, cmissing(n) cmissing(y) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'cmissing`cmq':`cmq'y`cmq'"'
+if !r(found) local bad "`bad' cmissing"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-09"
+    display as error "CM-09 FAIL:`bad'"
+}
+else display as text "CM-09 PASS: of two copies the rightmost counts"
+
+// CM-10: the matrix's same_as_base rows -- silent where twoway draws the
+// same picture.
+local bad ""
+foreach tt in bar spike dot histogram pcspike {
+    local v `v_`tt''
+    foreach o in "c(J)" "cmissing(n)" {
+        _ztp_run `"dash `tt' `v', `o' name(zqtp)"' "`logfile'"
+        if r(rc) | r(note) local bad "`bad' `tt'/`o'"
+    }
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-10"
+    display as error "CM-10 FAIL:`bad'"
+}
+else display as text "CM-10 PASS: c(J) and cmissing(n) are taken in silence where twoway draws the same picture"
+
+// CM-11: named, not drawn (P2.42, P2.43).
+local bad ""
+foreach c in "area mpg weight, cmissing(n)|cmissing()" "rarea lo hi weight, c(J)|connect()" "lowess mpg weight, cmissing(n)|cmissing()" {
+    gettoken cmd nm : c, parse("|")
+    local nm = substr("`nm'", 2, .)
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "`nm'"
+    if `rc' | !r(found) local bad "`bad' `cmd'"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-11"
+    display as error "CM-11 FAIL:`bad'"
+}
+else display as text "CM-11 PASS: cmissing(n) on area and lowess, c(J) on rarea are named"
+
+// CM-12: P20, P23 -- per y: a scatter y given an element is connected.
+local bad ""
+_ztp_run `"dash scatter mpg turn weight, c(l) name(zqtp)"' "`logfile'"
+_zcm_spec `"{`cmq'type`cmq':`cmq'connected`cmq',`cmq'yvar`cmq':`cmq'mpg`cmq',`cmq'xvar`cmq':`cmq'weight`cmq',`cmq'options`cmq':{`cmq'connect`cmq':`cmq'direct`cmq'"'
+if !r(found) local bad "`bad' P20-1"
+_zcm_spec `"{`cmq'type`cmq':`cmq'scatter`cmq',`cmq'yvar`cmq':`cmq'turn`cmq',`cmq'xvar`cmq':`cmq'weight`cmq',`cmq'options`cmq':{}"'
+if !r(found) local bad "`bad' P20-2"
+_ztp_run `"dash scatter mpg turn length weight, c(J =) name(zqtp)"' "`logfile'"
+foreach y in mpg turn {
+    _zcm_spec `"{`cmq'type`cmq':`cmq'connected`cmq',`cmq'yvar`cmq':`cmq'`y'`cmq',`cmq'xvar`cmq':`cmq'weight`cmq',`cmq'options`cmq':{`cmq'connect`cmq':`cmq'stairstep`cmq'"'
+    if !r(found) local bad "`bad' P23-`y'"
+}
+_zcm_spec `"{`cmq'type`cmq':`cmq'scatter`cmq',`cmq'yvar`cmq':`cmq'length`cmq'"'
+if !r(found) local bad "`bad' P23-length"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-12"
+    display as error "CM-12 FAIL:`bad'"
+}
+else display as text "CM-12 PASS: each y given a connect() element is connected, the others scatter"
+capture program drop _zcm_spec
+quietly tsset, clear
 
 // ----------------------------------------------------------------
 // Summary

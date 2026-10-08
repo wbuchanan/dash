@@ -460,6 +460,7 @@ program define _dash_require_mata
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
+        _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
@@ -1153,7 +1154,8 @@ program define _dash_parse_plot_opts, sclass
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
         COLORLEVels(string)       COLORVARMINMax ///
         BWIDth(string)            DEGree(string)            PSTYle(string asis) ///
-        CMISSing(string)          RECAST(string)            Connect(string) ///
+        CMISSing(string asis)     RECAST(string)            Connect(string asis) ///
+        CMISSINGS(string asis) ///
         BIN(string)               BINS(string)              Width(string) ///
         START(string) ///
         DISCrete                  STDP                      STDF ///
@@ -1213,6 +1215,10 @@ program define _dash_parse_plot_opts, sclass
     foreach _dash_slo of local _dash_slk {
         mata: st_local(st_local("_dash_slo"), _dash_stylelist_norm(st_local(st_local("_dash_slo"))))
     }
+    // cmissings() is twoway's own spelling of cmissing() (WP-30 P1.8a): a
+    // copy of it is a copy of cmissing(), the rightmost copy read
+    // (_dash_opts_repeats keys both as cmissing).
+    if `"`macval(cmissings)'"' != "" mata: st_local("cmissing", _dash_stylelist_norm(st_local("cmissings")))
     /* ---- plot-level ---- */
 
     // t(), b(), l() and r() need no fold: T1title() .. R1title() take them
@@ -1285,6 +1291,9 @@ program define _dash_parse_plot_opts, sclass
     if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
     if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
+    // cmissing and connect stay here, as sort does: _dash_connect_opt
+    // takes them off where dash draws them or twoway draws the same
+    // picture without them (WP-30 P1.8a).
     if `: length local cmissing' local _dash_pending `"`_dash_pending' cmissing"'
     if `: length local colorlist' local _dash_pending `"`_dash_pending' colorlist"'
     if `: length local coloruseplegend' local _dash_pending `"`_dash_pending' coloruseplegend"'
@@ -2347,6 +2356,115 @@ program define _dash_sort_opt, sclass
             sreturn local _pending `"`_so_k'"'
         }
     }
+end
+
+// ================================================================
+// _dash_connect_opt <ptype> <nser>  -- connect() and cmissing() as twoway
+// reads them (WP-30 P1.8a)
+//
+// Called by _dash_process_segment right after _dash_opts_repeats, which
+// has kept the rightmost copy of each (cmissings() is a copy of
+// cmissing()).  Measured on StataNow 19.5 (test/fixtures/
+// connect_truth.json, scripts/extract_connect_truth.do):
+//   * a .. or ... that is not the last element is refused,
+//     "connect(l .. J):  invalid syntax", "cmissings(n .. y):  invalid
+//     syntax", r(198) (probes R-01, R-02);
+//   * each element the y use is read by twoway's connectstyle and yesno
+//     names (_dash_connect_canon; S block); an element past the last y is
+//     not read (R_EXTRA);
+//   * an unknown connect() name prints "(note:  named style <e> not found
+//     in class connectstyle, default attributes used)" once per y and
+//     draws direct (P07, C_BOGUS2);
+//   * an unknown cmissing() element prints two notes, then on the types
+//     that draw a connecting line (cm_refuse, matrix cmissing(x) rc 101)
+//     " not allowed", r(101), and elsewhere draws the default.
+// It writes s(connect) and s(cmissing) back as blank-separated canonical
+// lists ("." for an empty element), so the per-y writer gives each y its
+// own value; on scatter s(_cn_types) holds connected for a y given a
+// connect() element, else scatter, and s(_cn_any) 1 when any is.  It takes
+// connect and cmissing off s(_pending) except where dash does not draw
+// them: connect() other than direct on rarea, cmissing(n) on area, rarea
+// and the fits whose own missing points twoway breaks at (cm_named, the
+// matrix's cmissing(n) rows that differ from the plain fit) -- named in
+// the note (P2.42, P2.43).  Values are read by value; echoes go through
+// _dash_say and _dash_note.
+// ================================================================
+program define _dash_connect_opt, sclass
+    version 19
+    args ptype nser
+    sreturn local _cn_types ""
+    sreturn local _cn_any ""
+    mata: st_local("_cn_c", st_global("s(connect)"))
+    mata: st_local("_cn_m", st_global("s(cmissing)"))
+    if !`: length local _cn_c' & !`: length local _cn_m' exit
+    local cm_refuse "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci rline rconnected tsrline"
+    local cm_named "area rarea fpfit fpfitci lfitci lowess lpoly lpolyci qfitci"
+    if "`nser'" == "" local nser 1
+    foreach kind in connect cmissing {
+        mata: st_local("_cn_bad", strofreal(_dash_stylelist_bad(st_global("s(`kind')"))))
+        if `_cn_bad' {
+            local _cn_w "`kind'"
+            if "`kind'" == "cmissing" local _cn_w "cmissings"
+            mata: _dash_say("err", "`_cn_w'(", st_global("s(`kind')"), "):  invalid syntax")
+            exit 198
+        }
+    }
+    local _cn_out ""
+    local _cn_types ""
+    local _cn_any 0
+    local _cn_nondirect 0
+    if `: length local _cn_c' {
+        forvalues i = 1/`nser' {
+            mata: st_local("e", _dash_stylelist_pick(st_global("s(connect)"), `i'))
+            mata: st_local("v", _dash_connect_canon("connect", st_local("e")))
+            if "`v'" == "?" {
+                mata: _dash_note("named style ", st_local("e"), " not found in class connectstyle, default attributes used")
+                local v direct
+            }
+            if "`v'" == "" {
+                local _cn_out "`_cn_out' ."
+                local _cn_types "`_cn_types' scatter"
+            }
+            else {
+                local _cn_out "`_cn_out' `v'"
+                local _cn_types "`_cn_types' connected"
+                local _cn_any 1
+                if "`v'" != "direct" local _cn_nondirect 1
+            }
+        }
+        sreturn local connect "`: list retokenize _cn_out'"
+    }
+    local _mn_out ""
+    local _cn_no 0
+    if `: length local _cn_m' {
+        forvalues i = 1/`nser' {
+            mata: st_local("e", _dash_stylelist_pick(st_global("s(cmissing)"), `i'))
+            mata: st_local("v", _dash_connect_canon("cmissing", st_local("e")))
+            if "`v'" == "?" {
+                mata: _dash_note("named style ", st_local("e"), " not found in class yesno, default attributes used")
+                mata: _dash_note("yesno not found in scheme, default attributes used", "", "")
+                if `: list ptype in cm_refuse' | ("`ptype'" == "scatter" & `_cn_any') {
+                    display as error " not allowed"
+                    exit 101
+                }
+                local v ""
+            }
+            if "`v'" == "" local v "."
+            if "`v'" == "n" local _cn_no 1
+            local _mn_out "`_mn_out' `v'"
+        }
+        sreturn local cmissing "`: list retokenize _mn_out'"
+    }
+    if "`ptype'" == "scatter" {
+        sreturn local _cn_types "`: list retokenize _cn_types'"
+        sreturn local _cn_any "`_cn_any'"
+    }
+    mata: st_local("_cn_p", st_global("s(_pending)"))
+    local _cn_rm ""
+    if !("`ptype'" == "rarea" & `_cn_nondirect') local _cn_rm "connect"
+    if !(`_cn_no' & `: list ptype in cm_named') local _cn_rm "`_cn_rm' cmissing"
+    local _cn_k : list _cn_p - _cn_rm
+    sreturn local _pending `"`_cn_k'"'
 end
 
 // ================================================================
@@ -4965,6 +5083,16 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // connect() and cmissing() as twoway reads them (WP-30 P1.8a): a
+        // scatter y given a connect() element is twoway's connected type,
+        // and the folds, checks and sort below read it as connected.
+        local _cn_n 1
+        if `"`yvarlist'"' != "" local _cn_n : word count `yvarlist'
+        _dash_connect_opt "`ptype'" `_cn_n'
+        local _cn_types `"`s(_cn_types)'"'
+        local _cn_any   `"`s(_cn_any)'"'
+        local _cn_ptype "`ptype'"
+        if "`ptype'" == "scatter" & "`_cn_any'" == "1" local _cn_ptype connected
         // function's range() as typed, before validation normalises it
         // through numlist, which keeps 13 digits (WP-29 P0.6, S4-D5).
         if "`ptype'" == "function" mata: st_local("_fn_rtyped", st_global("s(range)"))
@@ -4995,14 +5123,14 @@ program define _dash_process_segment, rclass
         // mlabvposition() (WP-30 P1.24): checked and counted as twoway
         // counts it, before mlabel()'s own rule (_dash_fold_mlab).
         _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
-        _dash_fold_bw "`ptype'"
+        _dash_fold_bw "`_cn_ptype'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
         local _sl_n 1
         if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
-        _dash_validate_opts "`ptype'" `_sl_n'
-        _dash_stylelist_check "`ptype'" `_sl_n'
+        _dash_validate_opts "`_cn_ptype'" `_sl_n'
+        _dash_stylelist_check "`_cn_ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))
             mata: st_local("_fn_nval", st_global("s(n)"))
@@ -5011,10 +5139,10 @@ program define _dash_process_segment, rclass
         // does not draw them on: named in the note -- after the validation
         // above, so a bad value is refused first, as twoway refuses it
         // (WP-23).
-        _dash_fold_typed "`ptype'"
+        _dash_fold_typed "`_cn_ptype'"
         // sort(varlist): checked as twoway checks it, after the repeats
         // are reduced, and honoured on the six joining types (WP-29 P0.1).
-        _dash_sort_opt "`ptype'"
+        _dash_sort_opt "`_cn_ptype'"
         // twoway__histogram_gen.ado:102-107: a start() above the variable's
         // minimum over the plot's sample is r(198), discrete or not.  dash
         // drew it, the observations below start() silently left out of
@@ -5243,12 +5371,17 @@ program define _dash_process_segment, rclass
             _dash_json_str "`xvar'"   _jxv
             local vfields `""yvar":"`_jyv'","xvar":"`_jxv'""'
             if `_yi' > 1 local seg_json `"`seg_json',"'
-            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
+            // A scatter y given a connect() element is connected (P1.8a).
+            local _yt "`ptype'"
+            if `"`_cn_types'"' != "" local _yt : word `_yi' of `_cn_types'
+            local seg_json `"`seg_json'{"type":"`_yt'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
         }
     }
     else {
         local _nyv = 1
-        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
+        local _yt "`ptype'"
+        if `"`_cn_types'"' != "" local _yt : word 1 of `_cn_types'
+        local seg_json `"{"type":"`_yt'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
     }
 
     c_local `plottype_out' "`ptype'"

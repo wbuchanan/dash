@@ -397,7 +397,9 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // ================================================================
 // HC8-02 -- every option on the list: accepted, and named
 // ================================================================
-// Plot level, comma mode: the 45 names of _dash_parse_plot_opts' list
+// Plot level, comma mode: the 42 names of _dash_parse_plot_opts' list
+// (45 -> 42: WP-30 P1.8a draws connect() and cmissing(), and a scatter
+// given connect() honours sort, given here and not named)
 // (47 -> 45: WP-30 P1.24 honours mlabvposition() and mlabtextstyle(),
 // given here and not named)
 // (flipped, WP-30 P1.14a: 48 -> 44, pstyle() lstyle() mstyle() mlstyle()
@@ -405,12 +407,15 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // four fitarea options among them, named on scatter: _dash_fold_typed takes
 // them off only on the ci types).
 local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b1title(b) b2title(b) blabel(total) bmlinestyle(p3) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) horizontal l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) play(x) r1title(r) r2title(r) recast(line) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) vertical xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
-local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmlinestyle ciopts cmissing colorlist coloruseplegend connect dlstyle dstyle filter fitopts fxsize fysize horizontal l1title l2title link lineopts mlabwidth mlpattern play r1title r2title recast scale sort subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmlinestyle ciopts colorlist coloruseplegend dlstyle dstyle filter fitopts fxsize fysize horizontal l1title l2title link lineopts mlabwidth mlpattern play r1title r2title recast scale subtitle2 t1title t2title text title2 vertical xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
 // scheme's text box style.
-local p_honoured "mlabvposition mlabtextstyle"
+// Flipped (WP-30 P1.8a): connect(), cmissing() and sort named in the note
+// was wrong, because a scatter given connect() is drawn as twoway's
+// connected plot, its line joined in x order under sort.
+local p_honoured "mlabvposition mlabtextstyle cmissing connect sort"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -457,7 +462,7 @@ foreach nm of local g_names {
     }
 }
 _hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
-_hc_done "HC8-02" "all 45 pending plot-level and 23 graph-level options accepted and named; mlabvposition() and mlabtextstyle() honoured"
+_hc_done "HC8-02" "all 42 named plot-level and 23 graph-level options accepted and named; mlabvposition(), mlabtextstyle(), connect(), cmissing() and sort honoured"
 
 // ================================================================
 // HC8-03 -- twoway's own verdict on each option the prose names

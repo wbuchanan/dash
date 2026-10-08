@@ -1022,6 +1022,10 @@ FUNCTIONS = {
  '_dash_refline_positions': 'test/test_reference_lines.py::TestPositions::test_the_fallback_reads_as_numlist',
  '_dash_refline_tally': 'test/test_reference_lines.py::TestTheLimit::test_the_renderer_ceiling',
  # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
+ '_dash_join_glyph': 'test/test_connect_options.py::TestTheJoinGlyph::test_each_style',
+ '_dash_join_hide': 'test/test_connect_options.py::TestConnectNone::test_no_line_key_kept',
+ '_dash_join_spec': 'test/test_connect_options.py::TestHandWrittenSpecs::test_defaults',
+ '_dash_join_vertices': 'test/test_connect_options.py::TestTheVertices::test_every_rule',
  # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
  # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
  # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)

@@ -2191,6 +2191,17 @@ CORPUS = [
     _case("Reference-line numlists and lstyle (WP-30 P1.21a)", [_sc()], None,
           {"xline": "2000(500)3000, lc(red) lstyle(foreground), 4000",
            "yline": "10/12, lstyle(grid)"}),
+    # WP-30 P1.8a: connect() styles, and a scatter given connect().
+    _case("connect() styles (WP-30 P1.8a)",
+          [plot_for("line", {"connect": "stairstep"}),
+           plot_for("line", yvar="price", options={"connect": "ascending"}),
+           plot_for("line", yvar="rep", options={"connect": "none"}),
+           plot_for("connected", {"connect": "direct"})]),
+    _case("cmissing(n) and function (WP-30 P1.8a)",
+          [plot_for("line", {"cmissing": "n", "connect": "stepstair"}),
+           plot_for("rline", {"cmissing": "n"}),
+           {"type": "function", "expr": "sqrt(x^2-1)",
+            "options": {"range": "-2 2"}}]),
 ]
 
 

@@ -343,7 +343,7 @@ and now matches Stata.
 - Narrow display formats with an explicit digit count write what Stata's `display` writes: `%6.4g` of .0001 wrote .0001 and now writes 1.0e-04, `%6.2e` of 12345 wrote 1.e+04 and now 1.2e+04, and `%10.1g` of 1.23 wrote 1 and now 1.2, on axis ticks, kpi `fmt()`, `mlabformat()`, tooltips and slider values. (WP-30, P1.5)
 
 
-<!-- WP-30 P1.8a -->
+- `connect()` and `cmissing()` are drawn, in both modes and after filter moves (both were named in the note and ignored): `dash scatter y x, c(l)` drew markers only and now draws twoway's connected plot, its `clcolor()`, `clwidth()` and `sort` honoured; `c(J)`/`c(stairstep)` and `c(stepstair)` drew a straight line and now draw stairs, every point keeping its tooltip; `c(L)` now breaks the line wherever x drops; `c(i)` hides the line and keeps the key; `cmissing(n)` drew a bridged line and now breaks it at each missing value, on line, connected, tsline, rline, rconnected, tsrline, scatteri and a scatter given `connect()`; the fits take every `connect()` style (lfit steps over twoway's three points); per-y lists and `cmissings()` are read as twoway reads them. `function y=sqrt(x^2-1), range(-2 2)` drew a gap over the missing middle and now bridges it as twoway does (`cmissing(n)` breaks it). A linked connected layer with a missing value now shows the link selection on its markers. (WP-30, P1.8a)
 
 <!-- WP-30 P1.8b -->
 
@@ -743,7 +743,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.7 -->
 
-<!-- WP-30 P1.8a -->
+- `connect()` and `cmissing()` are checked as twoway checks them (each was rc 0 with a note before): a misplaced `..` is refused (`connect(l .. J):  invalid syntax`, `cmissings(n .. y):  invalid syntax`, r(198)); an unknown `cmissing()` value is refused on the types twoway refuses it on, after twoway's two notes (` not allowed`, r(101)), and noted elsewhere; an unknown `connect()` name prints twoway's note and draws direct; `clwidth()` out of range on a scatter given `connect()` is refused (`gm_linewidth must be between 0.000 and  1.0e+04`, r(198)). (WP-30, P1.8a)
 
 <!-- WP-30 P1.8b -->
 

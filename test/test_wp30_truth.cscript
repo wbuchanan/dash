@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9545,10 +9545,210 @@ if inlist("`only'", "", "S39") & `: list posof "S39" in w30_run' {
 }
 * ==== end S39 ====
 
+// _s40_paths html svg -- the visible Line runs of a saved page's first
+// figure, read from its document JSON, against the subpaths of twoway's
+// SVG of the same command in data units (WP-30 P1.8a): S40_OK is 1 when
+// they agree within 0.2% of each axis's span, S40_WHY says how they
+// differ.  A run is split at a non-finite vertex, as the browser splits
+// it.  With svg "", S40_COLOR holds the first visible Line's colour.
+capture program drop _s40_paths
+program define _s40_paths
+    version 19
+    args html svg
+    global S40_HTML `"`html'"'
+    global S40_SVG `"`svg'"'
+    python: __import__("sys").modules["_dash_s40"].paths()
+end
+python:
+def _s40_paths():
+    import base64, json, math, os, re, sys
+    from sfi import Macro
+    with open(Macro.getGlobal("S40_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, fig = {}, None
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        stack = [json.loads(m.group(1))]
+        while stack:
+            o = stack.pop()
+            if isinstance(o, dict):
+                if "id" in o and "name" in o:
+                    objs[o["id"]] = o
+                    if fig is None and o["name"] == "Figure":
+                        fig = o
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+    def res(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    def arr(v):
+        if isinstance(v, dict) and v.get("type") == "ndarray":
+            import numpy as np
+            a = v["array"]
+            raw = base64.b64decode(a["data"]) if isinstance(a, dict) else None
+            if raw is not None and raw[:2] == b"\x1f\x8b":
+                import gzip
+                raw = gzip.decompress(raw)
+            if raw is None:
+                return [float("nan") if x is None else float(x) for x in a]
+            return [float(x) for x in np.frombuffer(raw, dtype=v["dtype"])]
+        out = []
+        for x in v or []:
+            if isinstance(x, dict):
+                x = float(x.get("value", "nan"))
+            out.append(float("nan") if x is None else float(x))
+        return out
+    runs, color = [], ""
+    for rr in (fig or {}).get("attributes", {}).get("renderers", []):
+        r = res(rr).get("attributes", {})
+        g = res(r.get("glyph", {}))
+        if g.get("name") != "Line":
+            continue
+        ga = g.get("attributes", {})
+        if ga.get("line_alpha", 1) == 0:
+            continue
+        data = res(r.get("data_source", {})).get("attributes", {}).get("data", {})
+        cols = dict(data.get("entries", [])) if isinstance(data, dict) else {}
+        xs = arr(cols.get(ga.get("x", {}).get("field")))
+        ys = arr(cols.get(ga.get("y", {}).get("field")))
+        if not color:
+            color = str(ga.get("line_color", ""))
+        cur = []
+        for a, b in zip(xs, ys):
+            if math.isfinite(a) and math.isfinite(b):
+                cur.append((a, b))
+            elif cur:
+                runs.append(cur)
+                cur = []
+        if cur:
+            runs.append(cur)
+    Macro.setGlobal("S40_COLOR", color)
+    svg = Macro.getGlobal("S40_SVG")
+    if not svg:
+        Macro.setGlobal("S40_OK", "1" if runs else "0")
+        Macro.setGlobal("S40_WHY", "%d runs" % len(runs))
+        return
+    sys.path.insert(0, os.path.join(Macro.getGlobal("S40_REPO"), "scripts"))
+    import svg_truth
+    def fit(axis):
+        pairs = svg_truth.svg_axis_reading(svg, axis).get("pairs") or []
+        n = float(len(pairs))
+        mx = sum(p for p, _ in pairs) / n
+        mv = sum(v for _, v in pairs) / n
+        b = (sum((p - mx) * (v - mv) for p, v in pairs)
+             / sum((p - mx) ** 2 for p, _ in pairs))
+        return mv - b * mx, b
+    fx, fy = fit("x"), fit("y")
+    with open(svg, encoding="utf-8") as fh:
+        stxt = fh.read()
+    want = []
+    for el in re.findall(r"<path[^>]*>", stxt):
+        m = re.search(r'\sd="([^"]*)"', el)
+        if not m or "Z" in m.group(1):
+            continue
+        for sub in re.split(r"(?=M)", m.group(1)):
+            nums = re.findall(r"[ML]\s*(-?[0-9.]+)\s+(-?[0-9.]+)", sub)
+            if nums:
+                want.append([(fx[0] + fx[1] * float(a), fy[0] + fy[1] * float(b))
+                             for a, b in nums])
+    pts = [p for r in want for p in r] or [(0.0, 0.0)]
+    tx = 2e-3 * max(1.0, max(p[0] for p in pts) - min(p[0] for p in pts))
+    ty = 2e-3 * max(1.0, max(p[1] for p in pts) - min(p[1] for p in pts))
+    ok = len(runs) == len(want) and all(
+        len(a) == len(b) and all(abs(p[0] - q[0]) <= tx and abs(p[1] - q[1]) <= ty
+                                 for p, q in zip(a, b))
+        for a, b in zip(runs, want))
+    Macro.setGlobal("S40_OK", "1" if ok else "0")
+    Macro.setGlobal("S40_WHY", "dash %s, twoway %s" % (
+        [len(r) for r in runs], [len(r) for r in want]))
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s40_sys
+_s40_sys.modules["_dash_s40"] = type(_s40_sys)("_dash_s40")
+_s40_sys.modules["_dash_s40"].paths = _s40_paths
+end
+
+capture program drop _s40_dataT
+program define _s40_dataT
+    version 19
+    clear
+    quietly set obs 8
+    quietly generate double x = .
+    quietly generate double y = .
+    quietly generate double y2 = .
+    local xs  2 5 3 6 1 . 7 4
+    local ys  10 20 . 40 50 45 60 70
+    local y2s 12 22 32 42 . 47 62 72
+    forvalues i = 1/8 {
+        quietly replace x  = `: word `i' of `xs''  in `i'
+        quietly replace y  = `: word `i' of `ys''  in `i'
+        quietly replace y2 = `: word `i' of `y2s'' in `i'
+    }
+    quietly generate double y3 = y + 1
+end
+
 * ==== S40 P1.8a: connect() and cmissing() ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S40") & `: list posof "S40" in w30_run' {
     display as text "S40 start " c(current_date) " " c(current_time)
+    local s40log "`w30_work'/s40.log"
+    local s40pg "`w30_work'/zcm.html"
+    local s40svg "`w30_work'/zcm.svg"
+    global S40_REPO "`c(pwd)'/.."
+    // CM-20 P02 P03 P04 P08 P09 P12 P16 P17; CM-21 P18 P19; CM-22 P20 P23
+    // P24: dash's saved runs against twoway's SVG of the same command,
+    // drawn live (connect_truth.json records the same paths).
+    local c20 `""line y x, c(J)" "line y x, c(stepstair) sort" "line y x, c(L)" "line y x, cmissing(n)" "scatter y x, c(l) cmissing(n)" "line y y2 x, cmissing(n)" "line y x, cmissing(n) c(J)" "line y x, cmissing(n) c(L)""'
+    local c21 `""function y=sqrt(x^2-1), range(-2 2)" "function y=sqrt(x^2-1), range(-2 2) cmissing(n)""'
+    local c22 `""scatter y y2 x, c(l)" "scatter y y2 y3 x, c(J =)" "scatter y y2 y3 x, c(l . J)""'
+    local d20 "c(J), c(stepstair), c(L) and cmissing(n) draw twoway's paths"
+    local d21 "function bridges its missing middle and breaks under cmissing(n)"
+    local d22 "connect() per y draws each y's path, a scatter y given none none"
+    foreach id in 20 21 22 {
+        foreach c of local c`id' {
+            _s40_dataT
+            quietly graph drop _all
+            capture noisily twoway `c'
+            local trc = _rc
+            if !`trc' quietly graph export "`s40svg'", replace
+            _s40_dataT
+            _s36_run `"dash `c' saving("`s40pg'", replace)"' "`s40log'"
+            local drc = r(rc)
+            global S40_OK 0
+            global S40_WHY ""
+            if !`trc' & !`drc' capture _s40_paths "`s40pg'" "`s40svg'"
+            _w30_expect CM-`id' "(`trc' == 0 & `drc' == 0 & ${S40_OK} == 1)" `"`c': rc `trc'/`drc', ${S40_WHY}"'
+        }
+        _w30_done CM-`id' "`d`id''"
+    }
+
+    // CM-23: lfit and kdensity c(J) on auto draw stairs as twoway does.
+    foreach c in "lfit mpg weight, c(J)" "kdensity mpg, c(J)" {
+        quietly sysuse auto, clear
+        quietly graph drop _all
+        capture noisily twoway `c'
+        local trc = _rc
+        if !`trc' quietly graph export "`s40svg'", replace
+        _s36_run `"dash `c' saving("`s40pg'", replace)"' "`s40log'"
+        local drc = r(rc)
+        global S40_OK 0
+        if !`trc' & !`drc' capture _s40_paths "`s40pg'" "`s40svg'"
+        _w30_expect CM-23 "(`trc' == 0 & `drc' == 0 & ${S40_OK} == 1)" `"`c': rc `trc'/`drc', ${S40_WHY}"'
+    }
+    _w30_done CM-23 "lfit and kdensity c(J) draw twoway's stairs"
+
+    // CM-24: P28's connecting line is clcolor()'s red (twoway #FF0000).
+    _s40_dataT
+    _s36_run `"dash scatter y x, c(l) clcolor(red) saving("`s40pg'", replace)"' "`s40log'"
+    local drc = r(rc)
+    global S40_COLOR ""
+    if !`drc' capture _s40_paths "`s40pg'" ""
+    mata: st_local("col", strlower(st_global("S40_COLOR")))
+    _w30_expect CM-24 `"(`drc' == 0 & inlist("`col'", "red", "#ff0000", "#ff0000ff"))"' "rc `drc', colour `col'"
+    _w30_done CM-24 "scatter, c(l) clcolor(red) draws its line red, as twoway does"
+    capture dash clear
+    capture erase "`s40log'"
+    capture erase "`s40pg'"
+    capture erase "`s40svg'"
+    macro drop S40_*
     display as text "S40 end " c(current_date) " " c(current_time)
 }
 * ==== end S40 ====

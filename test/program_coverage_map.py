@@ -365,6 +365,7 @@ COVERAGE = {
         "_dash_reflines_cap": ("test_suboption_reporting.cscript:XP-07",),
         "_dash_reflines_of": ("test_suboption_reporting.cscript:XP-07",),
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
+        "_dash_connect_opt": ("test_twoway_option_parity.cscript:CM-01", "test_twoway_option_parity.cscript:CM-12"),
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
         # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
@@ -787,6 +788,7 @@ COVERAGE = {
         "_dash_axreq_accept_line": ("test_suboption_reporting.cscript:XP-01",),
         "_dash_reflines_positions": ("test_suboption_reporting.cscript:XP-07",),
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
+        "_dash_connect_canon": ("test_twoway_option_parity.cscript:CM-08", "test_twoway_option_parity.cscript:CM-05"),
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
         # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)

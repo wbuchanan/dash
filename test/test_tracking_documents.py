@@ -1551,7 +1551,6 @@ WP30_OPEN = {
     "P1.3b": "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks",
     "P1.6": "The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note",
     "P1.7": "Time-series operators in plot varlists, such as line D.close date and lfit y L.x, are refused r(101)",
-    "P1.8a": "connect() and cmissing() are not honoured: scatter y x, c(l) draws no line, stairsteps and connect(L) cannot be drawn, and cmissing(n) never breaks a line",
     "P1.8b": "recast() is not honoured, and recast() on lfitci, qfitci, lpolyci and fpfitci is accepted where twoway refuses it",
     "P1.9a": "horizontal is not drawn on any plot type, and vertical is named as unsupported",
     "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",

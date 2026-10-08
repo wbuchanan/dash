@@ -319,6 +319,41 @@ never written to the dashboard: their order travels as a rank column,
 {cmd:__dashs}{it:#}, that no tooltip, filter or download shows.
 
 {pstd}
+{ul:Connecting and missing values.}  {cmd:connect()} and {cmd:cmissing()}
+are drawn as {cmd:twoway} draws them, on {cmd:line}, {cmd:connected},
+{cmd:tsline}, {cmd:rline}, {cmd:rconnected}, {cmd:tsrline},
+{cmd:scatteri}, the fits and smooths and the fit line of the four
+{cmd:ci} types, in the saved page and the served app, before and after
+a filter move.  A {cmd:scatter} given {cmd:connect()} is {cmd:twoway}'s
+{cmd:connected} plot: its line is drawn, and {cmd:clcolor()},
+{cmd:clpattern()}, {cmd:clwidth()} and {cmd:sort} are honoured on it.
+{cmd:l} (or {cmd:direct}) joins the points in order; {cmd:L} (or
+{cmd:ascending}) also breaks the line wherever {it:x} drops (a tie
+joins); {cmd:J} (or {cmd:stairstep}) steps across, then up or down;
+{cmd:stepstair} steps up or down, then across; and {cmd:i} (or
+{cmd:none}) draws no line and keeps the key.  The spellings are
+{cmd:twoway}'s, case and all ({cmd:L} is not {cmd:l}); a name
+{cmd:twoway} does not know is drawn direct, after {cmd:twoway}'s note.
+Every point keeps its tooltip on a stepped line, and a hidden line has
+none.  {cmd:cmissing(n)} breaks the line at each observation missing
+{it:x} or {it:y} (each bound of a range plot at its own), and
+{cmd:cmissing(y)}, the default, joins across it; {cmd:function} joins
+across a region where its expression is missing, as {cmd:twoway} does,
+and breaks there under {cmd:cmissing(n)}.  Across several {it:y} both
+are style lists ({cmd:c(l J)}, {cmd:c(. l)}, {cmd:cmissing(n ..)}),
+{cmd:cmissings()} is a copy of {cmd:cmissing()}, and of several copies
+the last counts.  A misplaced {cmd:..} is refused, r(198), and a
+{cmd:cmissing()} value that is neither yes nor no is refused, r(101),
+where {cmd:twoway} draws a connecting line, in {cmd:twoway}'s words.
+{cmd:cmissing(n)} on {cmd:area} and {cmd:rarea}, and on {cmd:lowess},
+{cmd:lpoly}, {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci}
+and {cmd:qfitci}, and {cmd:connect()} other than direct on {cmd:rarea},
+are named in the note and not drawn.
+
+{phang2}{opt cmissings(y|n ...)} is {cmd:twoway}'s other spelling of
+{cmd:cmissing()}, and is read as it.
+
+{pstd}
 With {cmd:by()} {cmd:twoway} answers panel by panel, and so does
 {cmd:dash}.  A graph with no panel -- no observation its qualifier
 selects, or every {cmd:by()} value missing -- is "nothing to graph",
@@ -4613,8 +4648,8 @@ disagree in either direction.
     {opt sort} and {opt sort(varlist)} on every plot type other than
     {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline}, {cmd:rarea},
     {cmd:rconnected}, {cmd:tsline} and {cmd:tsrline} -- {cmd:dash} joins no
-    points there, and names them in the note.  On the first six they are
-    honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
+    points there, and names them in the note.  On the first six, and on a
+    {cmd:scatter} given {cmd:connect()}, they are honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
     {cmd:twoway} does, so none of the eight names them (see
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
     refused on every type, as {cmd:twoway} refuses it.
@@ -4637,11 +4672,11 @@ disagree in either direction.
     {cmd:nobrowser}.
 
 {phang2}{ul:Not drawn.}
-    {opt connect(list)} -- use the {cmd:connected} plot type.
-    {opt cmissing(y|n)} -- missing observations are dropped before
-    rendering, so a line joins the points either side of a gap, which is
-    {cmd:twoway}'s default, {cmd:cmissing(y)}; {cmd:cmissing(n)}'s break is
-    not drawn.
+    {opt cmissing(n)} on {cmd:area} and {cmd:rarea}, and on the fits that
+    make missing points of their own ({cmd:lowess}, {cmd:lpoly},
+    {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci},
+    {cmd:qfitci}), and {opt connect()} other than direct on {cmd:rarea}
+    -- see {ul:Connecting and missing values} under the plot types.
     {opt recast(plottype)} -- name the plot type you want directly.
     {opt play(recordingname)} -- there is no graph editor to replay.
     {opt text(# # "string")} -- use {cmd:note()} or {cmd:caption()}.
@@ -4652,7 +4687,8 @@ connecting-line options {cmd:clcolor()}, {cmd:clpattern()} and
 {cmd:clwidth()} (abbreviated {cmd:clc()}, {cmd:clp()} and {cmd:clw()}),
 which style the line of {cmd:line}, {cmd:connected}, {cmd:lfit},
 {cmd:qfit}, {cmd:fpfit}, {cmd:lpoly}, {cmd:lowess}, {cmd:mspline},
-{cmd:mband}, {cmd:kdensity}, {cmd:function} and {cmd:tsline}, and the fit
+{cmd:mband}, {cmd:kdensity}, {cmd:function} and {cmd:tsline}, of a
+{cmd:scatter} given {cmd:connect()}, and the fit
 line of {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and {cmd:fpfitci}, in
 place of {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} -- and of
 {cmd:color()} -- whatever the order they are typed in, never touching the

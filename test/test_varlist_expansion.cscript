@@ -874,7 +874,8 @@ string scalar _sl_cq(string scalar s) return(char(96) + char(34) + s + char(34) 
 end
 
 // Flipped (WP-30 P1.14a): pstyle mstyle lstyle mlstyle left the list.
-local _notyet connect cmissing malpha lalpha falpha jseed mlabwidth mlpattern marker
+// Flipped (WP-30 P1.8a): connect cmissing left the list.
+local _notyet malpha lalpha falpha jseed mlabwidth mlpattern marker
 
 // SL-01 the key list
 mata: st_local("_slk", _dash_stylelist_keys())
@@ -883,10 +884,11 @@ mata: st_local("_slk", _dash_stylelist_keys())
 // mstyle mlstyle astyle alstyle bstyle blstyle follow them.  Flipped
 // (WP-30 P1.14b): 41 -> 44, dstyle dlstyle bmlinestyle follow those.
 // Flipped (WP-30 P1.24): 44 -> 45, mlabtextstyle follows them.
-local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle mlabtextstyle
+// Flipped (WP-30 P1.8a): 45 -> 47, connect cmissing follow it.
+local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle mlabtextstyle connect cmissing
 local _inter : list _slk & _notyet
-local ok = (`: word count `_slk'' == 45 & "`_slk'" == "`_want'" & "`_inter'" == "")
-_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options, the 4 value lists, the 12 named styles and mlabtextstyle"
+local ok = (`: word count `_slk'' == 47 & "`_slk'" == "`_want'" & "`_inter'" == "")
+_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options, the 4 value lists, the 12 named styles, mlabtextstyle, connect and cmissing"
 
 // SL-02 elements
 mata: q = char(34)
