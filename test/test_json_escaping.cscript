@@ -3125,16 +3125,18 @@ assert `j5_sthere' == 1
 local j5_here "`c(pwd)'"
 quietly cd "`j5_sdir'"
 mata: st_global("J5_CMD", "_dash_serve, scheme(j58" + char(36) + "J5_G) nobrowser")
+// Flipped (WP-30 P1.25b, BR-34.5): a scheme name holding a $ is refused
+// r(198) before any file is looked for, the name shown as typed -- never
+// the global's value.
+tempfile j5_slog
+quietly log using "`j5_slog'", text replace name(j5s)
 _j5_serve "`j5_stub'"
 local j5_rc = r(rc)
-local j5_st = r(stub)
+quietly log close j5s
 quietly cd "`j5_here'"
-assert `j5_rc' == 0 & `j5_st' == 1
-mata: st_global("J5_WANT_T", "j58" + char(36) + "J5_G")
-global J5_PATH "build_options scheme"
-python: _j5_spec_field()
-local j5_ok "`j5_ok'$J5_OK"
-mata: _dash_say("txt", "  served scheme: [", st_global("J5_GOT_T"), "]")
+assert `j5_rc' == 198
+mata: st_local("j5_named", strofreal(strpos(subinstr(invtokens(cat(st_local("j5_slog"))', char(10)), char(10) + "> ", ""), "(got: j58" + char(36) + "J5_G)") > 0))
+local j5_ok "`j5_ok'`j5_named'"
 mata: st_local("j5_rm", strofreal(_unlink(st_local("j5_sfile"))))
 capture rmdir "`j5_sdir'"
 // The validated options are validated as written: a macro that expands to

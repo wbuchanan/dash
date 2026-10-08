@@ -511,7 +511,8 @@ class TestTheServedCopy:
         import re as _re
         assert _re.search(r"_dash_add_secondary_axes\(fig, plots, go, g_df,"
                           r"\s*_reported_subopts, gname,\s*var_labels, "
-                          r"_DASH_SCHEME\)", src)
+                          # WP-30 P1.23a: date_axes and more may follow.
+                          r"_DASH_SCHEME[,)]", src)
 
 
 # ---------------------------------------------------------------------------

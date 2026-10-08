@@ -239,28 +239,27 @@ class TestAnInstalledTreeResolvesItsOwnSchemes:
         for name, letter in MEASURED_INSTALL.items():
             assert INSTALLED_SCHEMES.get(name) == "d", (name, letter)
 
-    def test_the_default_scheme_is_the_real_s2color(self, installed):
-        """INST-03. The fallback mimics s2color, so only provenance separates them."""
+    def test_the_default_scheme_is_the_real_s2color(self, installed,
+                                                    monkeypatch):
+        """INST-03. The fallback mimics s2color, so only provenance separates
+        them: the shipped file is the one read.  (The fallback has the same
+        219 keys since WP-30 P1.14b gave it `symbol p', `linepattern p' and
+        `linewidth pbar', so a count no longer tells them apart.)"""
         module, root, _cwd = installed
+        on_disk = os.path.join(root, "d", "dash-s2color.scheme")
+        read = []
+        real = module.SchemeParser.__dict__["_read_scheme_lines"].__func__
+
+        def spy(cls, path, *a, **k):
+            read.append(os.path.realpath(path))
+            return real(cls, path, *a, **k)
+
+        monkeypatch.setattr(module.SchemeParser, "_read_scheme_lines",
+                            classmethod(spy))
         scheme = module.SchemeParser("s2color")
         assert scheme.is_fallback is False
-        on_disk = os.path.join(root, "d", "dash-s2color.scheme")
-        # It must have parsed the shipped file, not an in-memory dict: the
-        # file carries more properties than the fallback, and keys the
-        # fallback has none of (`symbol p', `linepattern p').  The file has
-        # 70 since its p#stub cycles and marker symbols carry only the keys
-        # Stata's chain declares -- `symbol p', where it wrote symbol p1 to
-        # p15 -- and the fallback 67 since it gained the reference line's,
-        # the border's and the note box's (S3 batch); the file had 136 when
-        # this said "over a hundred".
-        fallback = module.SchemeParser._FALLBACK_PROPS
-        assert len(scheme._props) > len(fallback), (
-            "s2color parsed only %d properties; the fallback has %d and the "
-            "shipped file at %s has more"
-            % (len(scheme._props), len(fallback), on_disk)
-        )
-        for key in ("symbol p", "linepattern p"):
-            assert key in scheme._props and key not in fallback, key
+        assert os.path.realpath(on_disk) in read, (on_disk, read)
+        assert scheme._props != module.SchemeParser._FALLBACK_PROPS
 
 
 # ==========================================================================

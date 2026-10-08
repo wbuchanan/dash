@@ -670,11 +670,39 @@ class TestTheServedAppWritesNoFile:
                 hits.append((scope(node), "%s.%s" % (node.value.id,
                                                      node.attr), node))
 
+        def read_opener(node):
+            """WP-30 P1.25b: ``os.open`` as the ``opener=`` lambda of an
+            ``open(path, "rb")`` that adds only ``O_NONBLOCK`` to the
+            read's own flags (_read_scheme_lines): a read, not a write."""
+            lam = parents.get(node)
+            kw = parents.get(lam)
+            call = parents.get(kw)
+            if not (isinstance(lam, ast.Lambda) and lam.body is node
+                    and isinstance(kw, ast.keyword) and kw.arg == "opener"
+                    and isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Name)
+                    and call.func.id == "open" and len(call.args) > 1
+                    and isinstance(call.args[1], ast.Constant)
+                    and call.args[1].value == "rb"):
+                return False
+            # os.open(p, fl | getattr(os, "O_NONBLOCK", 0)), *fl* the
+            # lambda's own parameter: the flags open() chose for "rb".
+            fl = node.args[1] if len(node.args) == 2 else None
+            params = [a.arg for a in lam.args.args]
+            return (isinstance(fl, ast.BinOp) and isinstance(fl.op, ast.BitOr)
+                    and len(params) == 2
+                    and isinstance(fl.left, ast.Name)
+                    and fl.left.id == params[1]
+                    and ast.unparse(fl.right)
+                    == "getattr(os, 'O_NONBLOCK', 0)")
+
         allowed, bad, page = [], [], set()
         for where, what, node in hits:
             up = parents.get(node)
             ok = False
-            if where == "_dash_private_page":
+            if what == "os.open" and read_opener(node):
+                ok = True
+            elif where == "_dash_private_page":
                 if what == "tempfile.mkdtemp" and isinstance(up, ast.Call) \
                         and [k.arg for k in up.keywords] == ["prefix"]:
                     ok = True

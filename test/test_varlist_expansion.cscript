@@ -880,11 +880,12 @@ local _notyet mlabtextstyle connect cmissing malpha lalpha falpha jseed mlabwidt
 mata: st_local("_slk", _dash_stylelist_keys())
 // P1.1b: the four value lists follow the 28 style options.  Flipped
 // (WP-30 P1.14a): 32 -> 41, the nine named styles pstyle lstyle clstyle
-// mstyle mlstyle astyle alstyle bstyle blstyle follow them.
-local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle
+// mstyle mlstyle astyle alstyle bstyle blstyle follow them.  Flipped
+// (WP-30 P1.14b): 41 -> 44, dstyle dlstyle bmlinestyle follow those.
+local _want mcolor msymbol msize msangle mfcolor mlcolor mlwidth mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat lcolor lwidth lpattern clcolor clpattern clwidth color fcolor fintensity bfcolor blcolor acolor alcolor alwidth alpattern mlabel jitter base barwidth pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle
 local _inter : list _slk & _notyet
-local ok = (`: word count `_slk'' == 41 & "`_slk'" == "`_want'" & "`_inter'" == "")
-_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options, the 4 value lists and the 9 named styles"
+local ok = (`: word count `_slk'' == 44 & "`_slk'" == "`_want'" & "`_inter'" == "")
+_sl_tally SL-01 `ok' "_dash_stylelist_keys() is the 28 style options, the 4 value lists and the 12 named styles"
 
 // SL-02 elements
 mata: q = char(34)
