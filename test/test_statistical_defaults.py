@@ -863,9 +863,10 @@ class TestKdensityRange:
         # The regex must actually have matched the pending list, or
         # "range not in pending" holds vacuously: `_dash_parse_plot_opts'
         # carries 48 pending options (measured 24sep2026; 44 before the S3
-        # batch's four fitarea options), among them the
+        # batch's four fitarea options; 44 again since WP-30 P1.14a reads
+        # pstyle, lstyle, mstyle and mlstyle), among them the
         # genuinely-unsupported sort/text/scale, and never `range'.
-        assert len(pending) == 48, (len(pending), pending)
+        assert len(pending) == 44, (len(pending), pending)
         for really_pending in ("sort", "text", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (
