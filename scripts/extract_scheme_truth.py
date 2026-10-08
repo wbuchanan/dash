@@ -776,6 +776,26 @@ def extract(stata_base: str, scheme: str) -> dict:
         provenance[out_key] = prov
         return c.resolve(tok)
 
+    def color_alpha_of(out_key: str, keys: list[str], required: bool = True):
+        """As ``color_of``, with Stata's %NN opacity (or None) recorded in
+        ``<out_key>_opacity``."""
+        tok, src_s, prov = getsrc("color", keys, class_default=False,
+                                  chain_name="Stata's generic colour fallback")
+        if tok is None:
+            if required:
+                unresolvable.append(
+                    f"{out_key}: none of [" + ", ".join("color " + k for k in keys)
+                    + "] is set anywhere in the #include chain")
+            sources[out_key] = None
+            provenance[out_key] = None
+            opacities[f"{out_key}_opacity"] = None
+            return None
+        sources[out_key] = src_s
+        provenance[out_key] = prov
+        hexval, pct = c.resolve_with_opacity(tok)
+        opacities[f"{out_key}_opacity"] = pct
+        return hexval
+
     # --- the p1..p15 cycle, with Stata's p#stub -> pstub -> p# -> p chain --- #
     P_CHAIN = "p#stub -> pstub -> p# -> p"
 
@@ -819,7 +839,12 @@ def extract(stata_base: str, scheme: str) -> dict:
     p_colors = p_color_series("p_colors", "")
     p_line_colors = p_color_series("p_line_colors", "line")
     p_bar_colors = p_color_series("p_bar_colors", "bar")
-    p_mark_colors = p_color_series("p_mark_colors", "mark")
+    # A marker's fill and outline (WP-30 P1.4a): style/markerstyle-p#
+    # .style reads `set fillcolor scheme p#markfill' and `set linestyle
+    # scheme p#mark', whose linestyle-p#mark.style reads `set color scheme
+    # p#markline'.  `color p#mark' is never a marker colour.
+    p_mark_colors = p_color_series("p_mark_colors", "markfill")
+    p_markline_colors = p_color_series("p_markline_colors", "markline")
     p_symbols = p_series("p_symbols", "symbol", "", lambda t: t)
     # The marker size, per plot: style/markerstyle-p#.style says `set size
     # scheme p#', so `symbolsize p#' -> `symbolsize p'.  Only s1manual's
@@ -1276,6 +1301,7 @@ def extract(stata_base: str, scheme: str) -> dict:
         "p_line_colors": p_line_colors,
         "p_bar_colors": p_bar_colors,
         "p_mark_colors": p_mark_colors,
+        "p_markline_colors": p_markline_colors,
         "p_symbols": p_symbols,
         "p_symbolsizes": p_symbolsizes,
         "p_line_patterns": p_line_patterns,
@@ -1414,6 +1440,19 @@ def extract(stata_base: str, scheme: str) -> dict:
         "ci_pattern": scalar(
             "ci_pattern", "linepattern", ["ci"],
             lambda t: t.strip().strip('"')),
+        # The histogram's style (WP-30 P1.4a): shadestyle-histogram.style
+        # (`set color scheme histogram', `set intensity scheme histogram')
+        # and linestyle-histogram.style (`set color scheme histogram_line',
+        # `set width scheme histogram').
+        "histogram_color": color_alpha_of("histogram_color", ["histogram"]),
+        "histogram_line_color": color_alpha_of("histogram_line_color",
+                                               ["histogram_line"]),
+        "histogram_intensity": scalar(
+            "histogram_intensity", "intensity", ["histogram"],
+            lambda t: resolve_intensity(r, t)),
+        "histogram_line_width": scalar(
+            "histogram_line_width", "linewidth", ["histogram"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
         # A ci band under pstyle(p#) is areastyle p# (areastyle-p#.style:
         # linestyle and shadestyle p#other), whose outline width is
         # `linewidth p#other' -> `pother' -> p# -> p.  Only economist sets
@@ -1670,7 +1709,8 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     group(["Per-plot colour cycle p# (Stata: color p#)."],
           color_cycle("", "p_colors"))
     for stub, key in (("line", "p_line_colors"), ("bar", "p_bar_colors"),
-                      ("mark", "p_mark_colors"),
+                      ("markfill", "p_mark_colors"),
+                      ("markline", "p_markline_colors"),
                       ("lineplot", "p_lineplot_colors")):
         group(chain_comment("color", stub),
               declared_cycle("color", stub, key, True))
@@ -1702,8 +1742,6 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     ])
     group(["Fill intensities."], [
         scalar("intensity", "p", "fill_alpha", use_name=True),
-        scalar("intensity", "bar", "bar_alpha", use_name=True),
-        scalar("intensity", "area", "area_alpha", use_name=True),
     ])
     group(["A ci fit's band: areastyle ci (style/areastyle-ci.style) fills",
            "it in `color ci_area' at `intensity ci_area' and outlines it in",
@@ -1725,6 +1763,22 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("color", "ci2_area", "ci2_area_color"),
         scalar("color", "ci2_arealine", "ci2_arealine_color"),
         scalar("linewidth", "ci2_area", "ci2_area_line_width",
+               use_name=True),
+    ])
+    group(["A histogram's style: shadestyle-histogram.style fills it in",
+           "`color histogram' at `intensity histogram', and",
+           "linestyle-histogram.style outlines it in `color histogram_line'",
+           "at `linewidth histogram'.  twoway draws every histogram layer in",
+           "it."], [
+        scalar("color", "histogram", "histogram_color",
+               value=_color_token(e.get("histogram_color"),
+                                  e.get("histogram_color_opacity"))),
+        scalar("color", "histogram_line", "histogram_line_color",
+               value=_color_token(e.get("histogram_line_color"),
+                                  e.get("histogram_line_color_opacity"))),
+        scalar("intensity", "histogram", "histogram_intensity",
+               use_name=True),
+        scalar("linewidth", "histogram", "histogram_line_width",
                use_name=True),
     ])
     group(["A ci band's outline under pstyle(p#) (Stata: linewidth pother),",
@@ -2201,11 +2255,16 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
 
 #: The resolved p#stub keys an older translation wrote out p1..p15.
 _STUB_KEY = {
-    "color": re.compile(r"p\d+(line|bar|mark|lineplot)"),
+    "color": re.compile(r"p\d+(line|bar|mark|markfill|markline|lineplot)"),
     "linepattern": re.compile(r"p\d+(line|lineplot)"),
     "symbol": re.compile(r"p\d+"),
     "symbolsize": re.compile(r"p\d+"),
 }
+
+#: Directives the files no longer carry: graph bar's `intensity bar' and
+#: `intensity area', which twoway's bar and area do not read (register
+#: P1.2.8; WP-30 P1.4a).
+_RETIRED_DIRECTIVES = {("intensity", "bar"), ("intensity", "area")}
 
 
 def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
@@ -2215,14 +2274,16 @@ def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
     -- the chain an older translation wrote out resolved -- and return
     them as ``"<class> <key>"``.  A paragraph (the lines between blank
     lines) left with no directive goes whole, its comment with it, since
-    the comment described the lines removed."""
+    the comment described the lines removed.  A directive in
+    ``_RETIRED_DIRECTIVES`` is removed and reported likewise."""
     expected = {(c, k.lower()) for _cm, items, _o in groups
                 for c, k, _v, _r in items}
     present = _file_directives(lines)
     drop = {}
     for (cls, key), (idx, _old) in present.items():
         pat = _STUB_KEY.get(cls)
-        if pat and pat.fullmatch(key) and (cls, key) not in expected:
+        if ((pat and pat.fullmatch(key) and (cls, key) not in expected)
+                or (cls, key) in _RETIRED_DIRECTIVES):
             drop[idx] = f"{cls} {key}"
     if not drop:
         return []

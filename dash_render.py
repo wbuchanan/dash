@@ -5775,6 +5775,21 @@ class OptionTranslator:
     # Stata marker names that mean "draw nothing".  msymbol(i) silently drew
     # a visible marker.
     _INVISIBLE_SYMBOLS: frozenset = frozenset({"i", "none", "invisible"})
+    # The size Stata 19.5 draws a small symbol at, as a fraction of its full
+    # symbol, at the default size and under msize(large) alike (WP-30
+    # P1.4a; the stroked extent measured from `graph export' SVGs, 03oct
+    # 2026): smcircle, smdiamond, smsquare, smplus and their hollow forms
+    # 0.707 (1/sqrt 2), smtriangle 0.751, smx and smv drawn as x and v.
+    # Keyed by full name only, so the one- and two-letter shorthands keep
+    # their size (P2.11).
+    _SMALL_SYMBOL_FACTOR: dict = {
+        "smcircle": math.sqrt(0.5), "smcircle_hollow": math.sqrt(0.5),
+        "smdiamond": math.sqrt(0.5), "smdiamond_hollow": math.sqrt(0.5),
+        "smsquare": math.sqrt(0.5), "smsquare_hollow": math.sqrt(0.5),
+        "smplus": math.sqrt(0.5),
+        "smtriangle": 0.75, "smtriangle_hollow": 0.75,
+        "smx": 1.0, "smv": 1.0,
+    }
 
     _MARKER_MAP: dict[str, str] = {
         "i":               "circle",
@@ -6291,6 +6306,21 @@ class OptionTranslator:
         return result
 
     @staticmethod
+    def symbol_traits(value: str) -> "tuple[str, bool, float]":
+        """``(marker, hollow, small-symbol factor)`` of a Stata symbol name.
+
+        The marker is ``translate_msymbol``'s (which raises ``ValueError``
+        for a name it does not know); hollow is ``_HOLLOW_SYMBOLS``; the
+        factor is ``_SMALL_SYMBOL_FACTOR``'s, 1.0 for any other name.
+        """
+        marker = OptionTranslator.translate_msymbol(value)
+        key = value.strip()
+        low = key.lower()
+        hollow = low in OptionTranslator._HOLLOW_SYMBOLS
+        fac = OptionTranslator._SMALL_SYMBOL_FACTOR
+        return marker, hollow, fac.get(key, fac.get(low, 1.0))
+
+    @staticmethod
     def translate_msize(value: str, default_px: "float | None" = None,
                         ref_in: float = 4.0) -> float:
         """Return the signed pixel size of a Stata msize() value.
@@ -6537,8 +6567,6 @@ class SchemeParser:
         "numstyle legend_cols":   "2",
         "clockdir legend_position": "6",
         "symbolsize p":           "medium",
-        "intensity area":         "full",
-        "intensity bar":          "full",
         "intensity p":            "inten80",
         "yesno draw_major_grid":  "no",
         "yesno draw_major_hgrid": "no",
@@ -6592,6 +6620,10 @@ class SchemeParser:
         "color ci2_area":         "#e5daa5",
         "color ci2_arealine":     "#e5daa5",
         "linewidth ci2_area":     "medium",
+        "color histogram":        "#cac27e",
+        "color histogram_line":   "#d7d29e",
+        "intensity histogram":    "full",
+        "linewidth histogram":    "medium",
         # The chrome (WP-30 P1.2a), at scheme-s2color.scheme's values:
         # anglestyle :1964-1965, linepattern :565-566, color tick :349-350,
         # linewidth tick :1206, gsize tick :153, tickposition :1892,
@@ -7691,14 +7723,18 @@ class SchemeParser:
             self._line_color(f"color {fill_key}", self.background_color)
             if drawn else None)
 
-    def _symbol(self, key: str, default: str = "circle") -> str:
+    def _symbol_traits(self, key: str, default: str = "circle"
+                       ) -> "tuple[str, bool, float]":
+        """``(marker, hollow, small-symbol factor)`` of the symbol *key*
+        declares, or ``(default, False, 1.0)`` when it is blank or not a
+        symbol dash knows (``OptionTranslator.symbol_traits``)."""
         raw = self._props.get(key, "").strip()
         if not raw:
-            return default
+            return default, False, 1.0
         try:
-            return OptionTranslator.translate_msymbol(raw)
+            return OptionTranslator.symbol_traits(raw)
         except ValueError:
-            return default
+            return default, False, 1.0
 
     def _init_properties(self) -> None:
         """Extract all Bokeh-relevant properties into named attributes."""
@@ -7758,9 +7794,19 @@ class SchemeParser:
         _pb = [self._stub_color_alpha(i, "bar") for i in range(1, 16)]
         self.p_bar_colors: list[str] = [c for c, _ in _pb]
         self.p_bar_alphas: "list[float | None]" = [a for _, a in _pb]
-        _pm = [self._stub_color_alpha(i, "mark") for i in range(1, 16)]
+        # A marker's FILL: style/markerstyle-p#.style says `set fillcolor
+        # scheme p#markfill', so the chain is p#markfill -> pmarkfill -> p#
+        # -> p.  `color p#mark' is never a marker colour (twoway ignores a
+        # user scheme's `color p1mark green', measured 03oct2026).
+        _pm = [self._stub_color_alpha(i, "markfill") for i in range(1, 16)]
         self.p_mark_colors: list[str] = [c for c, _ in _pm]
         self.p_mark_alphas: "list[float | None]" = [a for _, a in _pm]
+        # A marker's OUTLINE: markerstyle-p#.style's `set linestyle scheme
+        # p#mark' is style/linestyle-p#mark.style, whose `set color scheme
+        # p#markline' gives p#markline -> pmarkline -> p# -> p.
+        _pml = [self._stub_color_alpha(i, "markline") for i in range(1, 16)]
+        self.p_markline_colors: list[str] = [c for c, _ in _pml]
+        self.p_markline_alphas: "list[float | None]" = [a for _, a in _pml]
 
         # Marker symbol cycle, through Stata's chain: style/markerstyle-p#
         # .style says `set symbol scheme p#', and scheme.class falls back
@@ -7772,11 +7818,19 @@ class SchemeParser:
         # all twenty shipped schemes).  They now carry only the keys
         # Stata's chain declares (s1mono's branch declares p1..p15 itself,
         # which a bare `symbol p' then does not reach -- in Stata either).
-        self.p_symbols: list[str] = [
-            self._symbol(self._first_present(
+        # Each symbol carries its traits (WP-30 P1.4a): a hollow name is
+        # drawn as an outline and a small one (smcircle ...) at Stata's
+        # measured factor of the full symbol (OptionTranslator
+        # ._SMALL_SYMBOL_FACTOR), so s1mono's p7-p10 are hollow and its
+        # p11-p14 small.
+        _st = [
+            self._symbol_traits(self._first_present(
                 (f"symbol p{i}", "symbol p")) or f"symbol p{i}")
             for i in range(1, 16)
         ]
+        self.p_symbols: list[str] = [m for m, _, _ in _st]
+        self.p_symbol_hollow: "list[bool]" = [h for _, h, _ in _st]
+        self.p_symbol_factor: "list[float]" = [f for _, _, f in _st]
 
         # Line pattern cycles.  These are two DIFFERENT stubs, not a
         # preference order.
@@ -8116,6 +8170,20 @@ class SchemeParser:
             "line_dash": self._lpattern_chain(("linepattern ci",)),
         }
         self.ci_line_styles: dict = {"ci": _ci_line, "ci2": dict(_ci_line)}
+        # The histogram's own style (WP-30 P1.4a): shadestyle-histogram
+        # .style is `color histogram' at `intensity histogram', and
+        # linestyle-histogram.style `color histogram_line' at `linewidth
+        # histogram'.  twoway draws every histogram layer in it, whatever
+        # its position (measured 03oct2026).  The defaults are s2color's
+        # (khaki, stone, full, medium), as the CI band's are.
+        self.histogram_color, self.histogram_alpha = self._color_alpha(
+            "color histogram", "#cac27e")
+        self.histogram_line_color, self.histogram_line_alpha = (
+            self._band_color("color histogram_line", "#d7d29e"))
+        self.histogram_intensity: float = self._intensity(
+            "intensity histogram", 1.0, clamp=False)
+        self.histogram_line_width: float = self._bounded_lwidth(
+            "linewidth histogram", self.default_line_width)
         # ...and under pstyle(p#): areastyle p# (style/areastyle-p#.style)
         # is linestyle and shadestyle p#other -- fill `color p#other' at
         # `intensity p#bar' (shadestyle-p#other.style), outline `color
@@ -8163,7 +8231,7 @@ class SchemeParser:
     # Public API
     # ------------------------------------------------------------------
 
-    #: The plot types whose colour is a MARKER colour: `color p#mark'.
+    #: The plot types whose colour is a MARKER colour: `color p#markfill'.
     #: The mapper asks for one of these for the MARKER glyph only: dot asks
     #: for "scatter", dropline's dot for "dropline", rcapsym's symbols for
     #: "rscatter".  A Segment -- spike, rspike, rcap, pcspike, pcarrow,
@@ -8209,11 +8277,10 @@ class SchemeParser:
             return "line"
         if plot_type in {"bar", "rbar", "area", "rarea", "histogram"}:
             return "bar"
-        # A MARKER reads `color p#mark' (style/markerstyle-p#.style), which
-        # falls back to `color p#' at parse time.  Equal in every shipped
-        # scheme, so nothing rendered changes; a user scheme declaring
-        # `color p1mark' used to be read into p_mark_colors and drawn from
-        # nowhere.
+        # A MARKER fills from `color p#markfill' (style/markerstyle-p#
+        # .style's fillcolor), which falls back to `color p#' at parse
+        # time; its outline is `default_markline'.  `color p#mark' is not
+        # read: twoway does not read it either (WP-30 P1.4a).
         if plot_type in self._MARKER_PLOT_TYPES:
             return "mark"
         return "p"
@@ -8297,6 +8364,18 @@ class SchemeParser:
     def default_symbol(self, index: int) -> str:
         """Return the Bokeh marker string for the plot at *index*."""
         return self.p_symbols[index % 15]
+
+    def default_symbol_traits(self, index: int) -> "tuple[str, bool, float]":
+        """``(marker, hollow, small-symbol factor)`` of p# symbol *index*."""
+        i = index % 15
+        return (self.default_symbol(i), self.p_symbol_hollow[i],
+                self.p_symbol_factor[i])
+
+    def default_markline(self, index: int) -> "tuple[str, float | None]":
+        """``(hex, declared opacity or None)`` of p# *index*'s marker
+        outline: `color p#markline' -> pmarkline -> p# -> p."""
+        i = index % 15
+        return self.p_markline_colors[i], self.p_markline_alphas[i]
 
     def default_line_pattern(self, index: int) -> list:
         """Return the Bokeh dash list for the line plot at *index*."""
@@ -9403,8 +9482,12 @@ class GlyphMapper:
         hi_col: str = "y_upper",
         line_width: "float | None" = None,
         band_source: "ColumnDataSource | None" = None,
+        alpha_kw: "dict | None" = None,
     ) -> "tuple[Any, Any]":
         """Render a confidence-interval band, its outline and its fit line.
+
+        *alpha_kw* is the fit line's construction opacity
+        (``_scheme_alpha_kw``, WP-30 P1.4a); the band keeps ci_area's.
 
         The band is drawn in Stata's ci style, not the line's colour
         (``_ci_band_glyphs``); the line in *color* and *line_width*, or in
@@ -9442,6 +9525,7 @@ class GlyphMapper:
             line_width=(self.scheme.default_line_width if line_width is None
                         else line_width),
             legend_label=yvar,
+            **(alpha_kw or {}),
         )
         self._ci_line_restyle(line_r, options)
         self._apply_line_opts(line_r, options)
@@ -9702,15 +9786,20 @@ class GlyphMapper:
                 g.line_alpha = 0.0
             else:
                 g.line_color = ls["line"]
-                if ls.get("line_alpha") is not None:
-                    g.line_alpha = ls["line_alpha"]
+                # The named style's opacity or none (WP-30 P1.4a): twoway
+                # draws `lfitci, pstyle(ci)' opaque under sttrans.
+                _want = (ls["line_alpha"] if ls.get("line_alpha") is not None
+                         else 1.0)
+                if g.line_alpha != _want:
+                    g.line_alpha = _want
             g.line_width = ls["line_width"]
             g.line_dash = list(ls["line_dash"])
         elif ps == "p":
             g.line_color = self.scheme.default_color(pi, "connected")
             _a = self.scheme.default_alpha(pi, "connected")
-            if _a is not None:
-                g.line_alpha = _a
+            _want = _a if _a is not None else 1.0
+            if g.line_alpha != _want:
+                g.line_alpha = _want
             g.line_width = self.scheme.plot_line_width(pi, "")
             g.line_dash = list(self.scheme.default_connect_pattern(pi))
 
@@ -9867,8 +9956,19 @@ class GlyphMapper:
         self,
         renderer: Any,
         options: dict[str, str],
+        traits: "tuple[bool, float] | None" = None,
     ) -> None:
         """Apply mcolor/msymbol/msize/malpha options to a scatter-type glyph renderer.
+
+        *traits* is ``(hollow, small-symbol factor)`` of the symbol the
+        mapper built the glyph with (the scheme's p# symbol, WP-30 P1.4a).
+        A valid ``msymbol()``/``marker`` replaces it with its own traits,
+        so the user's symbol wins; with neither it is ``(False, 1.0)``.
+        Order: the colour, symbol, size and outline options, then
+        ``malpha()`` and ``msangle()``; then a hollow symbol's fill is
+        switched off (so neither ``malpha()`` nor ``mfcolor()`` refills
+        it) and an invisible one's fill and outline; and last of all the
+        size is multiplied by the factor, once, after ``msize()``.
 
         Supports Stata's ``color%alpha`` notation on ``mcolor``, ``mfcolor``
         and ``mlcolor`` (e.g. ``mcolor(red%50)``).  A standalone ``malpha``
@@ -10030,18 +10130,6 @@ class GlyphMapper:
             if str(options.get(_fk, "")).strip().lower() == "none":
                 if hasattr(glyph, "fill_alpha"):
                     glyph.fill_alpha = 0.0
-        # Hollow and invisible symbols, applied last so an explicit alpha
-        # cannot resurrect them.
-        _sym_raw = str(options.get("msymbol", options.get("marker", ""))
-                       ).strip().lower()
-        if _sym_raw in OptionTranslator._HOLLOW_SYMBOLS:
-            if hasattr(glyph, "fill_alpha"):
-                glyph.fill_alpha = 0.0
-        elif _sym_raw in OptionTranslator._INVISIBLE_SYMBOLS:
-            if hasattr(glyph, "fill_alpha"):
-                glyph.fill_alpha = 0.0
-            if hasattr(glyph, "line_alpha"):
-                glyph.line_alpha = 0.0
         # malpha: standalone fill+line opacity override, 0-100%.
         # Applied last so it wins over any alpha embedded in mcolor/mfcolor/
         # mlcolor.  lalpha() is the LINES' opacity (dash.sthlp: "opacity of
@@ -10070,6 +10158,31 @@ class GlyphMapper:
                     glyph.angle = math.radians(angle_deg)
                     if hasattr(glyph, "angle_units"):
                         glyph.angle_units = "rad"
+        # Hollow and invisible symbols, applied after malpha() so an
+        # explicit alpha cannot refill them (twoway keeps `msymbol(Oh)
+        # malpha(50)' hollow, WP-30 P1.4a).
+        _sym_raw = str(options.get("msymbol", options.get("marker", ""))
+                       ).strip()
+        _hollow, _factor = traits if traits is not None else (False, 1.0)
+        if _sym_raw:
+            try:
+                _, _hollow, _factor = OptionTranslator.symbol_traits(_sym_raw)
+            except ValueError:
+                pass
+        if _hollow:
+            if hasattr(glyph, "fill_alpha"):
+                glyph.fill_alpha = 0.0
+        elif _sym_raw.lower() in OptionTranslator._INVISIBLE_SYMBOLS:
+            if hasattr(glyph, "fill_alpha"):
+                glyph.fill_alpha = 0.0
+            if hasattr(glyph, "line_alpha"):
+                glyph.line_alpha = 0.0
+        # A small symbol at Stata's measured fraction of the size it would
+        # otherwise have, msize() included: applied once, last.
+        _sz = getattr(glyph, "size", None)
+        if (_factor != 1.0 and isinstance(_sz, (int, float))
+                and not isinstance(_sz, bool) and math.isfinite(_sz)):
+            glyph.size = _sz * _factor
 
     def _apply_fill_opts(self, renderer: Any, options: dict[str, str],
                          base: Any = None, intensity: float = 1.0) -> None:
@@ -11125,6 +11238,55 @@ class GlyphMapper:
         declared = self.scheme.default_alpha(color_idx, plot_type)
         return 1.0 if declared is None else declared
 
+    def _scheme_alpha_kw(self, color_idx: int, plot_type: str, *,
+                         fill: bool = False, line: bool = True) -> dict:
+        """The construction keywords carrying the opacity the scheme
+        declares on *plot_type*'s p# colour, or ``{}`` when it declares
+        none (WP-30 P1.4a, D-24a).
+
+        Passed only when declared, as ``map_line`` does, so a scheme with
+        no opacity builds the same glyph as before.  twoway draws sttrans's
+        %20 at stroke-opacity (and, on a fill, fill-opacity) 0.20 on every
+        fit, spike, range, paired-coordinate and immediate layer (measured
+        03oct2026).  An intensity never reaches here: it is a colour.
+        """
+        a = self.scheme.default_alpha(color_idx, plot_type)
+        if a is None:
+            return {}
+        kw: dict = {}
+        if line:
+            kw["line_alpha"] = a
+        if fill:
+            kw["fill_alpha"] = a
+        return kw
+
+    def _marker_traits(self, color_idx: int, options: dict
+                       ) -> "tuple[str, bool, float]":
+        """``(marker, hollow, factor)`` a marker layer is built with: a
+        valid ``msymbol()``/``marker``'s own, else the scheme's p# symbol
+        (an unknown name keeps the scheme's; ``_apply_marker_opts`` names
+        it)."""
+        raw = str(options.get("msymbol", options.get("marker", ""))
+                  or "").strip()
+        if raw:
+            try:
+                return OptionTranslator.symbol_traits(raw)
+            except ValueError:
+                pass
+        return self.scheme.default_symbol_traits(color_idx)
+
+    def _marker_alpha_kw(self, color_idx: int) -> dict:
+        """A marker's declared fill and outline opacities (``color
+        p#markfill`` and ``color p#markline``), each only when declared."""
+        kw: dict = {}
+        fa = self.scheme.default_alpha(color_idx, "scatter")
+        if fa is not None:
+            kw["fill_alpha"] = fa
+        la = self.scheme.default_markline(color_idx)[1]
+        if la is not None:
+            kw["line_alpha"] = la
+        return kw
+
     def map_scatter(
         self,
         fig: Any,
@@ -11155,12 +11317,7 @@ class GlyphMapper:
         # whose whole point is that the symbol distinguishes the series,
         # because the colour does not -- was unreadable.  Colour schemes
         # declare circle for every p#, so they are unaffected.
-        marker = self.scheme.default_symbol(color_idx)
-        if "msymbol" in options:
-            try:
-                marker = self.tr.translate_msymbol(options["msymbol"])
-            except ValueError:
-                pass
+        marker, _hollow, _factor = self._marker_traits(color_idx, options)
 
         _jittered = bool(str(options.get("jitter", "") or "").strip())
         _linked_jit = (self._linked_jitter_columns(source, xvar, yvar,
@@ -11214,7 +11371,8 @@ class GlyphMapper:
             marker=marker,
             size=self.scheme.default_marker_size(color_idx),
             fill_color=_default_color,
-            line_color=_default_color,
+            # The outline is `color p#markline' (WP-30 P1.4a).
+            line_color=self.scheme.default_markline(color_idx)[0],
             # Fill AND outline: Stata's SVG carries fill-opacity and
             # stroke-opacity alike, 0.20 under sttrans.
             # Opaque, as twoway draws a marker, unless the scheme declares
@@ -11228,8 +11386,11 @@ class GlyphMapper:
         )
         if view is not None:
             _scatter_kwargs["view"] = view
+        _ml_alpha = self.scheme.default_markline(color_idx)[1]
+        if _ml_alpha is not None and _ml_alpha != _scatter_kwargs["alpha"]:
+            _scatter_kwargs["line_alpha"] = _ml_alpha
         r = fig.scatter(**_scatter_kwargs)
-        self._apply_marker_opts(r, options)
+        self._apply_marker_opts(r, options, traits=(_hollow, _factor))
         # colorvar: map a variable's values to fill/line color via a color mapper
         self._apply_colorvar(fig, r, plot_source, options,
                              add_key=colorvar_key)
@@ -11763,7 +11924,8 @@ class GlyphMapper:
                                   source=seg_source,
                                   line_color=self.scheme.default_color(color_idx, "spike"),
                                   line_width=self.scheme.plot_line_width(color_idx, ""),
-                                  legend_label=yvar)
+                                  legend_label=yvar,
+                                  **self._scheme_alpha_kw(color_idx, "spike"))
         # No view here: seg_source already holds only the selected rows.
         r = fig.segment(**_seg_kwargs)
         self._apply_line_opts(r, options)
@@ -12235,7 +12397,7 @@ class GlyphMapper:
         "lineplot" for every other fit), its legend key and its line
         options.  twoway keys such a layer in its p# style; dash drew a
         bare Bokeh glyph, #1f77b4 at width 1."""
-        r = fig.line(x=xcol, y=ycol,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x=xcol, y=ycol,
                      source=ColumnDataSource({xcol: [], ycol: []}),
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx,
@@ -12318,7 +12480,7 @@ class GlyphMapper:
                                             x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
-        r = fig.line(x="x", y="y", source=fit_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"), line_dash="solid",
                      legend_label=yvar)
@@ -12395,7 +12557,7 @@ class GlyphMapper:
                                             x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
-        r = fig.line(x="x", y="y", source=fit_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
@@ -12450,7 +12612,7 @@ class GlyphMapper:
             # layer's legend key is the band twoway keys.
             band_r, _ = self._ci_band_glyphs(
                 fig, empty_ci_src, "x_fit", "y_lower", "y_upper", options)
-            line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
+            line_r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fit", y="y_fit", source=empty_ci_src,
                               line_color=_lfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
             self._ci_line_restyle(line_r, options)
@@ -12503,7 +12665,8 @@ class GlyphMapper:
 
         line_r, band_r = self._render_ci_band(
             fig, ci_source, "x_fit", "y_fit", _lfitci_color, yvar, options,
-            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
+            alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
         )
         return [line_r, band_r]
 
@@ -12575,7 +12738,7 @@ class GlyphMapper:
             # layer's legend key is the band twoway keys.
             band_r, _ = self._ci_band_glyphs(
                 fig, empty_ci_src, "x_fit", "y_lower", "y_upper", options)
-            line_r = fig.line(x="x_fit", y="y_fit", source=empty_ci_src,
+            line_r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fit", y="y_fit", source=empty_ci_src,
                               line_color=_qfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
             self._ci_line_restyle(line_r, options)
@@ -12630,7 +12793,8 @@ class GlyphMapper:
         })
         line_r, band_r = self._render_ci_band(
             fig, ci_source, "x_fit", "y_fit", _qfitci_color, yvar, options,
-            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
+            alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
         )
         return [line_r, band_r]
 
@@ -12763,7 +12927,7 @@ class GlyphMapper:
             "x_lw": x_lw,
             "y_lw": y_lw,
         })
-        r = fig.line(x="x_lw", y="y_lw", source=lw_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_lw", y="y_lw", source=lw_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
@@ -13177,7 +13341,7 @@ class GlyphMapper:
             "x_lp": _xd.tolist(),
             "y_lp": _yd.tolist(),
         })
-        r = fig.line(x="x_lp", y="y_lp", source=lp_src,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
@@ -13241,7 +13405,8 @@ class GlyphMapper:
                                          "y_upper": list(bhi)})
             return self._render_ci_band(
                 fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
-                options, line_width=_lw_px, band_source=band_src)
+                options, line_width=_lw_px, band_source=band_src,
+                alpha_kw=self._scheme_alpha_kw(color_idx, "line"))
 
         if len(x) < 2:
             # None or one observation: twoway draws nothing, rc 0, in a
@@ -13723,7 +13888,7 @@ class GlyphMapper:
             "x_fp": _xd.tolist(),
             "y_fp": _yd.tolist(),
         })
-        r = fig.line(x="x_fp", y="y_fp", source=fp_src,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
@@ -13774,7 +13939,7 @@ class GlyphMapper:
             # layer's legend key is the band twoway keys.
             band_r, _ = self._ci_band_glyphs(
                 fig, empty_src, "x_fp", "y_lower", "y_upper", options)
-            line_r = fig.line(x="x_fp", y="y_fp", source=empty_src,
+            line_r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fp", y="y_fp", source=empty_src,
                               line_color=_fpfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
             self._ci_line_restyle(line_r, options)
@@ -13823,21 +13988,25 @@ class GlyphMapper:
         })
         line_r, band_r = self._render_ci_band(
             fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
-            line_width=self.scheme.plot_line_width(color_idx, "lineplot")
+            line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
+            alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
         )
         return [line_r, band_r]
 
     def _histogram_quads(self, fig, source, options, color_idx, yvar):
         """A histogram's bars over *source* (``top``/``left``/``right``) in
-        its own style: scheme colour, white outline, bar alpha, color(),
-        fill and line options (WP-29 P0.18).  The populated and both empty
-        branches of map_histogram draw through it, so an emptied histogram
-        keeps its colour and key, as twoway keys it."""
-        # Full intensity, opaque: twoway reads `intensity histogram' (full
-        # in the s2color family), never the p#bar chain; section 24 reads
-        # the histogram's own style (WP-30 P1.2b, D-16a).
-        _fill_base = self.scheme.default_color(color_idx, "histogram")
-        _f = 1.0
+        the scheme's histogram style -- `color histogram' at `intensity
+        histogram', outlined in `color histogram_line' at `linewidth
+        histogram', each at its declared opacity -- then color(), the fill
+        and the line options (WP-29 P0.18, WP-30 P1.4a).  *color_idx* no
+        longer picks a colour: twoway draws every histogram layer in the
+        one style (measured 03oct2026, two layers under s2color both khaki
+        outlined stone).  The populated and both empty branches of
+        map_histogram draw through it, so an emptied histogram keeps its
+        colour and key, as twoway keys it."""
+        scheme = self.scheme
+        _fill_base = scheme.histogram_color
+        _f = scheme.histogram_intensity
         if "color" in options:
             try:
                 _fill_base = self.tr.translate_mcolor(options["color"])
@@ -13848,10 +14017,17 @@ class GlyphMapper:
         r = fig.quad(top="top", bottom=0, left="left", right="right",
                      source=source,
                      fill_color=self._blend_intensity(
-                         _fill_base, _f, self.scheme.naturally_white),
-                     line_color="white",
-                     fill_alpha=self._scheme_alpha(color_idx, "histogram"),
-                     legend_label=yvar)
+                         _fill_base, _f, scheme.naturally_white),
+                     line_color=scheme.histogram_line_color or _fill_base,
+                     line_width=scheme.histogram_line_width,
+                     fill_alpha=(scheme.histogram_alpha
+                                 if scheme.histogram_alpha is not None
+                                 else 1.0),
+                     legend_label=yvar,
+                     **({"line_alpha": 0.0}
+                        if scheme.histogram_line_color is None
+                        else {"line_alpha": scheme.histogram_line_alpha}
+                        if scheme.histogram_line_alpha is not None else {}))
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options)
@@ -14300,7 +14476,7 @@ class GlyphMapper:
             "kdensity", "point(s)", _off, x_draw, x_range, density)
 
         kd_source = ColumnDataSource({"x": x_draw, "y": density})
-        r = fig.line(x="x", y="y", source=kd_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar)
@@ -14416,7 +14592,11 @@ class GlyphMapper:
                                     fill_color=self._blend_intensity(
                                         _fill_base, _f,
                                         self.scheme.naturally_white),
-                                    fill_alpha=0.5,
+                                    # area's rule (WP-30 P1.4a): opaque, or
+                                    # the scheme's declared opacity; twoway
+                                    # draws rarea as it draws area.
+                                    fill_alpha=self._scheme_alpha(
+                                        color_idx, "rarea"),
                                     legend_label=y1var)
         if view is not None:
             _varea_kwargs["view"] = view
@@ -14485,7 +14665,10 @@ class GlyphMapper:
                                        _fill_base, _f,
                                        self.scheme.naturally_white),
                                    line_alpha=0,
-                                   legend_label=y1var)
+                                   legend_label=y1var,
+                                   **self._scheme_alpha_kw(
+                                       color_idx, "rbar", fill=True,
+                                       line=False))
         _rbar_lw = self.scheme.plot_line_width(color_idx, "bar")
         if _rbar_lw is not None:
             _rbar_kwargs["line_width"] = _rbar_lw
@@ -14568,7 +14751,8 @@ class GlyphMapper:
         _rseg_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var, source=source,
                                    line_color=self.scheme.default_color(color_idx, "rspike"),
                                    line_width=self.scheme.plot_line_width(color_idx, ""),
-                                   legend_label=y1var)
+                                   legend_label=y1var,
+                                   **self._scheme_alpha_kw(color_idx, "rspike"))
         if view is not None:
             _rseg_kwargs["view"] = view
         r = fig.segment(**_rseg_kwargs)
@@ -14622,7 +14806,8 @@ class GlyphMapper:
         _spine_kwargs: dict = dict(x0=xvar, y0=y1var, x1=xvar, y1=y2var,
                                     source=cap_source,
                                     line_color=_rcap_color, line_width=_rcap_lw,
-                                    legend_label=y1var)
+                                    legend_label=y1var,
+                                    **self._scheme_alpha_kw(color_idx, "rcap"))
         spine = fig.segment(**_spine_kwargs)
         # A cap is as long as a marker of the layer's msize() is wide, the
         # scheme's symbolsize p# by default, in screen units: twoway's cap
@@ -14636,7 +14821,9 @@ class GlyphMapper:
                                marker="dash", angle=0.0,
                                size=self.scheme.default_marker_size(color_idx),
                                line_cap="round", fill_color=_rcap_color,
-                               line_color=_rcap_color, line_width=_rcap_lw)
+                               line_color=_rcap_color, line_width=_rcap_lw,
+                               **self._scheme_alpha_kw(color_idx, "rcap",
+                                                       fill=True))
             _cap.tags = ["dash_cap"]
             _caps.append(_cap)
         bot_cap, top_cap = _caps
@@ -14719,6 +14906,8 @@ class GlyphMapper:
         if view is not None:
             _rl1_kwargs["view"] = view
             _rl2_kwargs["view"] = view
+        _rl1_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
+        _rl2_kwargs.update(self._scheme_alpha_kw(color_idx, "line"))
         r1 = fig.line(**_rl1_kwargs)
         r2 = fig.line(**_rl2_kwargs)
         self._apply_line_opts(r1, options)
@@ -14894,25 +15083,28 @@ class GlyphMapper:
         # once, so a user scheme declaring p1mark recoloured the line.
         seg_color = self.scheme.default_color(color_idx, "spike")
         dot_color = self.scheme.default_color(color_idx, "dropline")
+        dot_line = self.scheme.default_markline(color_idx)[0]
         try:
             if "mcolor" in options:
-                seg_color = dot_color = self.tr.translate_mcolor(
+                seg_color = dot_color = dot_line = self.tr.translate_mcolor(
                     options["mcolor"])
             elif "color" in options:
-                seg_color = dot_color = self.tr.translate_mcolor(
+                seg_color = dot_color = dot_line = self.tr.translate_mcolor(
                     options["color"])
         except ValueError:
             pass
+        _dl_marker, _dl_h, _dl_f = self._marker_traits(color_idx, options)
 
         _dl_seg_kwargs: dict = dict(
             x0="x", y0="y0", x1="x", y1="y", source=dl_source,
-            line_color=seg_color, line_width=self.scheme.plot_line_width(color_idx, ""))
+            line_color=seg_color, line_width=self.scheme.plot_line_width(color_idx, ""),
+            **self._scheme_alpha_kw(color_idx, "spike"))
         _dl_dot_kwargs: dict = dict(
-            x="x", y="y", source=dl_source,
-            fill_color=dot_color, line_color=dot_color,
+            x="x", y="y", source=dl_source, marker=_dl_marker,
+            fill_color=dot_color, line_color=dot_line,
             size=self.scheme.default_marker_size(color_idx),
             line_width=self.scheme.plot_line_width(color_idx, "mark"),
-            legend_label=yvar)
+            legend_label=yvar, **self._marker_alpha_kw(color_idx))
         if view is not None:
             _dl_seg_kwargs["view"] = view
             _dl_dot_kwargs["view"] = view
@@ -14922,7 +15114,7 @@ class GlyphMapper:
         # msymbol(), msize(), msangle() and malpha() are read here and
         # nowhere else, and the dot was never passed through -- so a dropline
         # drew a default circle whatever was asked for.
-        self._apply_marker_opts(dot, options)
+        self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f))
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
         return [seg, dot]
@@ -14980,26 +15172,35 @@ class GlyphMapper:
         # p#'; the symbols are markers and take `color p#mark'.
         color = self.scheme.default_color(color_idx, "rcap")
         mark_color = self.scheme.default_color(color_idx, "rscatter")
+        mark_line = self.scheme.default_markline(color_idx)[0]
         try:
             if "mcolor" in options:
-                color = mark_color = self.tr.translate_mcolor(options["mcolor"])
+                color = mark_color = mark_line = self.tr.translate_mcolor(
+                    options["mcolor"])
             elif "color" in options:
-                color = mark_color = self.tr.translate_mcolor(options["color"])
+                color = mark_color = mark_line = self.tr.translate_mcolor(
+                    options["color"])
         except ValueError:
             pass
+        _rcs_marker, _rcs_h, _rcs_f = self._marker_traits(color_idx, options)
 
         _rcs_spine_kw: dict = dict(x0="x",     y0="y1",  x1="x",     y1="y2",
                                     source=cap_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, ""),
-                                    legend_label=y1var)
+                                    legend_label=y1var,
+                                    **self._scheme_alpha_kw(color_idx, "rcap"))
         _rcs_mlw = self.scheme.plot_line_width(color_idx, "mark")
         _rcs_bdot_kw: dict  = dict(x="x", y="y1", source=cap_source,
-                                    fill_color=mark_color, line_color=mark_color,
+                                    marker=_rcs_marker,
+                                    fill_color=mark_color, line_color=mark_line,
                                     size=self.scheme.default_marker_size(color_idx),
-                                    line_width=_rcs_mlw)
+                                    line_width=_rcs_mlw,
+                                    **self._marker_alpha_kw(color_idx))
         _rcs_tdot_kw: dict  = dict(x="x", y="y2", source=cap_source,
-                                    fill_color=mark_color, line_color=mark_color,
+                                    marker=_rcs_marker,
+                                    fill_color=mark_color, line_color=mark_line,
                                     size=self.scheme.default_marker_size(color_idx),
-                                    line_width=_rcs_mlw)
+                                    line_width=_rcs_mlw,
+                                    **self._marker_alpha_kw(color_idx))
         if view is not None:
             for _kw in (_rcs_spine_kw, _rcs_bdot_kw, _rcs_tdot_kw):
                 _kw["view"] = view
@@ -15008,7 +15209,7 @@ class GlyphMapper:
         top_dot = fig.scatter(**_rcs_tdot_kw)
         self._apply_line_opts(spine, options)
         for dot in (bot_dot, top_dot):
-            self._apply_marker_opts(dot, options)
+            self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f))
         # Both ends are labelled, as twoway labels them ("the same marker
         # label would be used to label both ends of the spike",
         # twoway_rcapsym.sthlp; measured, twenty labels for ten
@@ -15079,11 +15280,14 @@ class GlyphMapper:
         si_source = ColumnDataSource({"x": x_vals.tolist(), "y": y_vals.tolist()})
 
         color = self.scheme.default_color(color_idx, "scatter")
+        line_color = self.scheme.default_markline(color_idx)[0]
         try:
             if "mcolor" in options:
-                color = self.tr.translate_mcolor(options["mcolor"])
+                color = line_color = self.tr.translate_mcolor(
+                    options["mcolor"])
             elif "color" in options:
-                color = self.tr.translate_mcolor(options["color"])
+                color = line_color = self.tr.translate_mcolor(
+                    options["color"])
         except ValueError:
             pass
 
@@ -15104,23 +15308,21 @@ class GlyphMapper:
                     getattr(self.scheme, "size_ref_in", 4.0)))
             except ValueError:
                 pass
-        marker = "circle"
-        if str(options.get("msymbol", "")).strip():
-            try:
-                marker = self.tr.translate_msymbol(options["msymbol"])
-            except ValueError:
-                pass
+        # The scheme's symbol cycle, as every marker type takes it (WP-30
+        # P1.4a); msymbol() wins.
+        marker, _hollow, _factor = self._marker_traits(color_idx, options)
 
         r = fig.scatter(x="x", y="y", source=si_source,
                         marker=marker, size=size,
-                        fill_color=color, line_color=color,
+                        fill_color=color, line_color=line_color,
                         line_width=self.scheme.plot_line_width(color_idx,
                                                                "mark"),
-                        legend_label="y")
+                        legend_label="y",
+                        **self._marker_alpha_kw(color_idx))
         # mcolor(), msize() and msymbol() are resolved above; msangle() and
         # malpha() are read only here, and dash.sthlp lists scatteri as
         # taking msangle().
-        self._apply_marker_opts(r, options)
+        self._apply_marker_opts(r, options, traits=(_hollow, _factor))
         # The labels, each at its own (jittered) point.
         if any(_labels):
             self._immediate_labels(fig, x_vals.tolist(), y_vals.tolist(),
@@ -15183,7 +15385,8 @@ class GlyphMapper:
                                     source=source_clean,
                                     line_color=self.scheme.default_color(color_idx, "pcspike"),
                                     line_width=self.scheme.plot_line_width(color_idx, ""),
-                                    legend_label=y1var)
+                                    legend_label=y1var,
+                                    **self._scheme_alpha_kw(color_idx, "pcspike"))
         # No view here: source_clean already holds only the selected rows.
         r = fig.segment(**_pcseg_kwargs)
         self._apply_line_opts(r, options)
@@ -15343,15 +15546,21 @@ class GlyphMapper:
                          np.concatenate([_pc_rows, _pc_rows]))
         pc_source = ColumnDataSource(_pc_cols)
 
-        _pcsc_kwargs: dict = dict(source=pc_source,
+        _pcsc_marker, _pcsc_h, _pcsc_f = self._marker_traits(color_idx,
+                                                             options)
+        _pcsc_kwargs: dict = dict(source=pc_source, marker=_pcsc_marker,
                                    size=self.scheme.default_marker_size(color_idx),
-                                   color=self.scheme.default_color(color_idx, "scatter"),
+                                   fill_color=self.scheme.default_color(
+                                       color_idx, "scatter"),
+                                   line_color=self.scheme.default_markline(
+                                       color_idx)[0],
                                    line_width=self.scheme.plot_line_width(
                                        color_idx, "mark"),
-                                   legend_label=y1var)
+                                   legend_label=y1var,
+                                   **self._marker_alpha_kw(color_idx))
         # No view here: pc_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_pcsc_kwargs)
-        self._apply_marker_opts(r, options)
+        self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f))
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
                                 _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
@@ -15394,7 +15603,7 @@ class GlyphMapper:
 
     @staticmethod
     def _add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var, color,
-                         line_width, end, start=None):
+                         line_width, end, start=None, line_alpha=1.0):
         """Add ONE Arrow annotation drawing a head on every row of
         *pc_source*, the source the layer's shaft draws from.
 
@@ -15410,6 +15619,8 @@ class GlyphMapper:
             color:      Line colour of the arrow.
             line_width: Line width of the arrow (the shaft's).
             end, start: Arrow heads (``start`` None draws no tail head).
+            line_alpha: The shaft's final opacity (WP-30 P1.4a): twoway
+                        strokes a head as its shaft, 0.20 under sttrans.
 
         Returns:
             The Arrow annotation, or None when nothing was added.
@@ -15421,7 +15632,9 @@ class GlyphMapper:
                      x_start={"field": x1var}, y_start={"field": y1var},
                      x_end={"field": x2var}, y_end={"field": y2var},
                      source=pc_source, line_color=color,
-                     line_width=line_width)
+                     line_width=line_width,
+                     **({} if line_alpha == 1.0
+                        else {"line_alpha": line_alpha}))
         fig.add_layout(head)
         return head
 
@@ -15477,13 +15690,16 @@ class GlyphMapper:
 
         _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
-                                      legend_label=y1var)
+                                      legend_label=y1var,
+                                      **self._scheme_alpha_kw(color_idx, "pcarrow"))
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pca_seg_kwargs)
         self._apply_line_opts(seg, options)
 
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
+        _la = seg.glyph.line_alpha
+        _hk = {} if _la == 1.0 else {"line_alpha": _la}
 
         # ONE Arrow annotation over pc_source, the copy the shaft draws:
         # its heads are the rows that copy holds, so they follow exactly the
@@ -15498,7 +15714,8 @@ class GlyphMapper:
         # milliseconds, the axis's unit.
         self._add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var,
                               color, arrow_lw,
-                              end=OpenHead(size=10, line_color=color))
+                              end=OpenHead(size=10, line_color=color, **_hk),
+                              line_alpha=_la)
 
         # Labels at the tail, (x1, y1), where twoway puts them without
         # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
@@ -15559,19 +15776,24 @@ class GlyphMapper:
 
         _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
-                                      legend_label=y1var)
+                                      legend_label=y1var,
+                                      **self._scheme_alpha_kw(color_idx, "pcbarrow"))
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pcb_seg_kwargs)
         self._apply_line_opts(seg, options)
 
         # Resolve line_width for Arrow annotations (same value as segment after opts applied)
         arrow_lw = seg.glyph.line_width
+        _la = seg.glyph.line_alpha
+        _hk = {} if _la == 1.0 else {"line_alpha": _la}
 
         # One Arrow annotation over the shaft's copy, as map_pcarrow's.
         self._add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var,
                               color, arrow_lw,
-                              end=NormalHead(size=10, line_color=color),
-                              start=NormalHead(size=10, line_color=color))
+                              end=NormalHead(size=10, line_color=color, **_hk),
+                              start=NormalHead(size=10, line_color=color,
+                                               **_hk),
+                              line_alpha=_la)
 
         # Labels at the first point, (x1, y1), as twoway labels pcbarrow
         # without headlabel (measured, ten labels, all at the first point).
@@ -15660,7 +15882,8 @@ class GlyphMapper:
                           source=seg_src,
                           line_color=self.scheme.default_color(color_idx,
                                                                "pccapsym"),
-                          line_width=self.scheme.plot_line_width(color_idx, ""), legend_label=y1var)
+                          line_width=self.scheme.plot_line_width(color_idx, ""), legend_label=y1var,
+                          **self._scheme_alpha_kw(color_idx, "pccapsym"))
         self._apply_line_opts(seg, options)
 
         # One marker at each end, from the same rows: the starts, then the
@@ -15672,17 +15895,21 @@ class GlyphMapper:
             "y": np.concatenate([clean[y1var].to_numpy(),
                                  clean[y2var].to_numpy()]),
         }, np.concatenate([_pcc_rows, _pcc_rows])))
+        _pcc_marker, _pcc_h, _pcc_f = self._marker_traits(color_idx, options)
         dots = fig.scatter(x="x", y="y", source=dot_src,
-                           marker=self.scheme.default_symbol(color_idx),
+                           marker=_pcc_marker,
                            size=self.scheme.default_marker_size(color_idx),
-                           fill_color=mark_color, line_color=mark_color,
+                           fill_color=mark_color,
+                           line_color=self.scheme.default_markline(
+                               color_idx)[0],
                            line_width=self.scheme.plot_line_width(color_idx,
-                                                                  "mark"))
+                                                                  "mark"),
+                           **self._marker_alpha_kw(color_idx))
         # The line options never reach the markers: _apply_marker_opts
         # reads the outline from mlcolor()/mlwidth() alone, on every type
         # (this mapper used to filter lcolor()/lwidth()/lalpha() out itself,
         # the only one that did).
-        self._apply_marker_opts(dots, options)
+        self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f))
 
         self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
@@ -16029,15 +16256,20 @@ class GlyphMapper:
         self._carry_cols(source, _rs_cols,
                          np.concatenate([_rs_rows, _rs_rows])[mask])
         rs_source = ColumnDataSource(_rs_cols)
-        _rs_kwargs: dict = dict(source=rs_source,
+        _rs_marker, _rs_h, _rs_f = self._marker_traits(color_idx, options)
+        _rs_kwargs: dict = dict(source=rs_source, marker=_rs_marker,
                                  size=self.scheme.default_marker_size(color_idx),
-                                 color=self.scheme.default_color(color_idx, "scatter"),
+                                 fill_color=self.scheme.default_color(
+                                     color_idx, "scatter"),
+                                 line_color=self.scheme.default_markline(
+                                     color_idx)[0],
                                  line_width=self.scheme.plot_line_width(
                                      color_idx, "mark"),
-                                 legend_label=y1var)
+                                 legend_label=y1var,
+                                 **self._marker_alpha_kw(color_idx))
         # No view here: rs_source already holds only the selected rows.
         r = fig.scatter("x", "y", **_rs_kwargs)
-        self._apply_marker_opts(r, options)
+        self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f))
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
                                 label_col=_DASH_MLABEL_VALUES,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
@@ -16132,7 +16364,7 @@ class GlyphMapper:
         x_grid, y_grid = self._drop_off_dates("mspline", "point(s)",
                                               _ox | _oy, x_grid, y_grid)
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
-        r = fig.line(x="x_sp", y="y_sp", source=ms_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
                      legend_label=yvar)
@@ -16254,7 +16486,7 @@ class GlyphMapper:
         x_mids, y_meds = self._drop_off_dates("mband", "point(s)",
                                               _ox | _oy, x_mids, y_meds)
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
-        r = fig.line(x="x_mb", y="y_mb", source=mb_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
                      legend_label=yvar)
@@ -16316,7 +16548,7 @@ class GlyphMapper:
         empty_source = ColumnDataSource({"x_fn": [], "y_fn": []})
 
         def _empty():
-            return [fig.line(x="x_fn", y="y_fn", source=empty_source,
+            return [fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=empty_source,
                              line_color=self.scheme.default_color(color_idx, "line"),
                              line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
@@ -16351,7 +16583,7 @@ class GlyphMapper:
                 y_arr = np.full(len(x_arr), float(y_arr))
 
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
-        r = fig.line(x="x_fn", y="y_fn", source=fn_source,
+        r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=text[:40])

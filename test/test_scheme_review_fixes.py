@@ -365,6 +365,7 @@ class TestRowsAndColsAreAlternatives:
 
 LINE = "#111111"
 MARK = "#22aa22"
+OUTLINE = "#0000ff"
 
 #: What each type draws with which colour under a scheme whose p1 and
 #: p1mark differ.  ``S`` is the Segment line colour, ``M`` the Scatter fill.
@@ -388,13 +389,18 @@ MARK_CASES = [
 @pytest.mark.parametrize("ptype, seg, mark", MARK_CASES,
                          ids=[c[0] for c in MARK_CASES])
 class TestMarkColourIsForMarkers:
-    """Stata keeps ``color p#mark`` (style/markerstyle-p#.style) apart from
-    the ``p#`` colour its "other" plots draw with: a spike, a range cap, a
+    """Stata keeps a marker's colours (style/markerstyle-p#.style: fill
+    ``color p#markfill``, outline ``color p#markline``) apart from the
+    ``p#`` colour its "other" plots draw with: a spike, a range cap, a
     paired-coordinate spike or arrow is a line, and the line half of a
-    dropline or rcapsym is one too.  The shipped schemes declare p#mark
-    equal to p#, so only a user scheme can tell the two apart."""
+    dropline or rcapsym is one too.  ``color p#mark`` is never a marker
+    colour: twoway ignores a user scheme's ``color p1mark green`` (measured
+    03oct2026, WP-30 P1.4a).  Only a user scheme can tell them apart.
 
-    def test_markers_take_p1mark_and_segments_take_p1(
+    Flipped (WP-30 P1.4a): this test expected markers to take ``color
+    p1mark``, which followed the wrong chain."""
+
+    def test_markers_take_p1markfill_and_segments_take_p1(
             self, ptype, seg, mark, mode, tmp_path, monkeypatch):
         name = _user_scheme(tmp_path, monkeypatch, "marks.scheme", [
             f"color p1 {LINE}", f"color p1mark {MARK}",
@@ -406,9 +412,25 @@ class TestMarkColourIsForMarkers:
                 f"{ptype}/{mode}: segments drawn in {got['Segment']}, "
                 f"expected the p1 colour {seg}")
         if mark is not None:
-            assert got["Scatter"] == {mark}, (
-                f"{ptype}/{mode}: markers drawn in {got['Scatter']}, "
-                f"expected the p1mark colour {mark}")
+            assert got["Scatter"] == {LINE}, (
+                f"{ptype}/{mode}: markers drawn in {got['Scatter']}: "
+                f"`color p1mark' is not a marker colour")
+        name = _user_scheme(tmp_path, monkeypatch, "fills.scheme", [
+            f"color p1 {LINE}", f"color p1markfill {MARK}",
+            f"color p1markline {OUTLINE}",
+        ])
+        fig = _fig(tp._spec([plot_for(ptype)], {"scheme": name}), mode)
+        got = _glyph_colors(fig)
+        if seg is not None:
+            assert got["Segment"] == {seg}, (ptype, mode, got)
+        if mark is not None:
+            lines = {str(_val(r.glyph.line_color)).lower()
+                     for r in fig.renderers
+                     if isinstance(r, GlyphRenderer)
+                     and not dr._dash_is_swatch(r)
+                     and type(r.glyph).__name__ == "Scatter"}
+            assert (got["Scatter"], lines) == ({mark}, {OUTLINE}), (
+                ptype, mode, got["Scatter"], lines)
 
 
 # ---------------------------------------------------------------------------

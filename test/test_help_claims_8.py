@@ -772,8 +772,9 @@ def _layer_styles(mode, tmp_path, spec, tag):
     return sorted(out)
 
 
-#: The layers dash.sthlp says take the scheme's colour but not yet its
-#: opacity: range, spike, fit, band, density, function and immediate.
+#: Range, spike, fit, band, density, function and immediate layers: the
+#: ones dash.sthlp used to say took the scheme's colour but not yet its
+#: opacity (WP-30 P1.4a carried it to them).
 _NOT_YET_OPACITY = ("rspike", "rcap", "rarea", "spike", "dropline", "lfit",
                     "lfitci", "kdensity", "function", "scatteri", "pci",
                     "pcspike", "mband")
@@ -783,12 +784,16 @@ _NOT_YET_OPACITY = ("rspike", "rcap", "rarea", "spike", "dropline", "lfit",
 class TestTheSchemeOpacityStopsWhereTheHelpSays:
 
     @pytest.mark.parametrize("ptype", _NOT_YET_OPACITY)
-    def test_the_colour_but_not_the_opacity(self, tmp_path, mode, ptype):
+    def test_the_colour_and_the_opacity(self, tmp_path, mode, ptype):
         """Under sttrans the second layer is drawn in sttrans' p2, #cc6677,
-        at the alphas it has under s2color -- where no opacity is declared
-        -- so the %20 does not reach it.  (lfitci's band is not in p2: it
-        is the scheme's ci style, opaque gs12 under both, as twoway draws
-        it -- test_ci_band_style.py -- and is left out here.)"""
+        at its declared %20 -- twoway's stroke-opacity and fill-opacity
+        0.20 (measured 03oct2026) -- and under s2color, which declares
+        none, opaque.  lfitci's band is not in p2: it is the scheme's ci
+        style, opaque gs12 under both, as twoway draws it.
+
+        Flipped (WP-30 P1.4a): this was test_the_colour_but_not_the_opacity,
+        which expected sttrans' alphas to equal s2color's; twoway draws
+        these layers at 0.20."""
         trans = _layer_styles(mode, tmp_path / "t",
                               _two_layer(ptype, "sttrans"), "t" + ptype)
         plain = _layer_styles(mode, tmp_path / "p",
@@ -798,13 +803,13 @@ class TestTheSchemeOpacityStopsWhereTheHelpSays:
             trans = [s for s in trans if s[0] != "#c0c0c0"]
             plain = [s for s in plain if s[0] != "#c0c0c0"]
         # rarea's fill is p2 at its p2area intensity, inten80 (WP-30 P1.2b;
-        # twoway's SVG, plan section 16 Evidence E3); the alphas are
-        # section 24's.
+        # twoway's SVG, plan section 16 Evidence E3).
         want_t, want_p = (("#d68592", "#a65d62") if ptype == "rarea"
                           else ("#cc6677", "#90353b"))
         assert trans and {c for c, _a in trans} == {want_t}, trans
         assert plain and {c for c, _a in plain} == {want_p}, plain
-        assert [a for _c, a in trans] == [a for _c, a in plain]
+        assert all(abs(a - 0.2) < 1e-9 for _c, a in trans), trans
+        assert {a for _c, a in plain} == {1.0}, plain
 
     def test_malpha_wins_over_the_declared_opacity(self, tmp_path, mode):
         spec = _one_graph([{"type": "scatter", "yvar": "mpg",
@@ -1036,19 +1041,18 @@ class TestWhatAnIncludeResolvesTo:
 class TestTheShippedFiles:
 
     @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
-    def test_80_to_140_directives(self, name):
-        """100 to 170 directives: 104 or 105 for the colour schemes (108
-        for economist), 134 to 136 for the monochrome ones, whose chains
-        declare a connecting-line colour or pattern, a line-plot cycle and
-        their marker symbols, 143 for s1manual, which declares symbolsize
-        p1..p9, and 163 for s2gmanual, which declares every p#line and
-        p#lineplot key -- each twenty-four more since WP-30 P1.2a carried
-        the scheme's chrome keys (tick-label angles, grid patterns, the
-        tick's colour, width, length and side, the axis styles, the
-        alt-axis switches, the text boxes' justification and clock
-        positions and system naturally_white).  The node keeps its name.
-        Flipped: 80 <= n <= 140 was wrong because S15 (P1.2a) carries the
-        scheme's chrome keys, measured 104 to 163."""
+    def test_the_directive_count_is_what_the_help_says(self, name):
+        """100 to 170 directives, measured: 109 for the colour schemes
+        (110 for s2color, 113 for economist), 139 to 141 for the
+        monochrome ones, whose chains declare a connecting-line colour or
+        pattern, a line-plot cycle and their marker symbols, 148 for
+        s1manual, which declares symbolsize p1..p9, and 168 for s2gmanual,
+        which declares every p#line and p#lineplot key.  They moved with
+        WP-30 P1.2a's chrome keys (twenty-four more), P1.3a's three axis
+        keys and P1.4a's four histogram keys, and lost graph bar's
+        `intensity bar' and `intensity area' (P1.4a), which twoway's bar
+        and area do not read.  Renamed (WP-30 P1.4a) from
+        test_80_to_140_directives, whose name had outlived its bounds."""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
                                                         "dash-" + name + ".scheme"))
                 if not k.startswith(("sequence", "label")))
@@ -1088,8 +1092,10 @@ class TestTheShippedFiles:
                 if k == "color plotregion_line" and v.split()[0] == "none":
                     assert name == "economist", (name, k, v)
                     continue
+                # sttrans' histogram keys carry the %20 too (WP-30 P1.4a).
                 pat = (r"#[0-9a-f]{6}%20" if name == "sttrans"
-                       and re.fullmatch(r"color p\d*(line|bar|mark)?", k)
+                       and re.fullmatch(r"color (p\d*(line|bar|mark)?"
+                                        r"|histogram(_line)?)", k)
                        else r"#[0-9a-f]{6}")
                 assert re.fullmatch(pat, v.split()[0].lower()), (name, k, v)
 

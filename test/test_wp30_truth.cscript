@@ -5868,10 +5868,360 @@ if inlist("`only'", "", "S23") {
 }
 * ==== end S23 ====
 
+// S24's helpers (WP-30 P1.4a), outside every gate:
+//   _s24_dash()  reads the saved page S24_PAGE and the served app S24_APP
+//                (built on a fresh Document, its attach line replaced by
+//                pass, as _s19_app does) and sets, per mode (S24_SAVED_*,
+//                S24_SERVED_*): A, the distinct alphas of the first
+//                figure's lines, fills, markers and arrow heads (the band's
+//                #c0c0c0 aside, an outline drawn at 0 aside), sorted and
+//                joined by "|"; Q, the distinct Quad "fill/line" styles;
+//                M, each Scatter "marker:size:fill_alpha:fill:line" in the
+//                figure's renderer order, joined by ";".  It fires the
+//                served app's Select on `foreign' to Foreign and sets
+//                S24_SAME_AFTER (1 when A, Q and M are unchanged).
+//   _s24_tw()    reads twoway's SVG S24_SVG through scripts/svg_layer.py
+//                and sets S24_TW_A (as A, the grid's #eaf2f3 aside), S24_TW_Q
+//                (the rect "fill/stroke" styles) and S24_TW_M (each marker
+//                "shape:hollow:extent:fill:stroke" in drawn order).
+//   _s24_run     one command: twoway's SVG, then dash's page and app.
+python:
+import os as _s24_os, sys as _s24_sys, warnings as _s24_w
+import __main__ as _s24_main
+from sfi import Macro as _s24_M
+
+
+def _s24_lower(v):
+    v = _s24_main._s19_val(v)
+    return str(v).lower() if v is not None else ""
+
+
+def _s24_f(v):
+    v = _s24_main._s19_val(v)
+    try:
+        return round(float(v), 4)
+    except (TypeError, ValueError):
+        return None
+
+
+def _s24_ref(m, attr):
+    """A reference attribute, raw: _s19_val reads a saved {"id": ..}
+    reference as a value and loses it."""
+    if hasattr(m, "attrs"):
+        return m.attrs.get(attr)
+    return getattr(m.model, attr, None)
+
+
+def _s24_summ(fig, by_id):
+    alphas, quads, marks = set(), set(), []
+    for ref in (_s24_ref(fig, "renderers") or []):
+        r = by_id(ref)
+        if r is None or r.kind != "GlyphRenderer":
+            continue
+        g = by_id(_s24_ref(r, "glyph"))
+        if g is None:
+            continue
+        la, fa = _s24_f(g.get("line_alpha")), _s24_f(g.get("fill_alpha"))
+        lc, fc = _s24_lower(g.get("line_color")), _s24_lower(g.get("fill_color"))
+        if g.kind != "VArea" and la not in (None, 0.0) and lc != "#c0c0c0":
+            alphas.add(la)
+        if g.kind in ("Scatter", "VBar", "VArea", "Quad") and fa not in (None, 0.0) and fc != "#c0c0c0":
+            alphas.add(fa)
+        if g.kind == "Quad":
+            quads.add("%s/%s" % (fc, lc))
+        if g.kind == "Scatter":
+            marks.append("%s:%s:%s:%s:%s" % (_s24_lower(g.get("marker")), _s24_f(g.get("size")), fa, fc, lc))
+    for ref in (_s24_ref(fig, "center") or []):
+        a = by_id(ref)
+        if a is None or a.kind != "Arrow":
+            continue
+        alphas.add(_s24_f(a.get("line_alpha")))
+        for h in ("end", "start"):
+            hd = by_id(_s24_ref(a, h))
+            if hd is not None:
+                alphas.add(_s24_f(hd.get("line_alpha")))
+    return dict(A="|".join("%g" % x for x in sorted(alphas)), Q="|".join(sorted(quads)), M=";".join(marks))
+
+
+def _s24_saved():
+    objs = _s24_main._s19_models(_s24_M.getGlobal("S24_PAGE"))
+    by = dict((o["id"], _s24_main._S19Saved(o)) for o in objs)
+
+    def by_id(ref):
+        rid = ref.get("id") if isinstance(ref, dict) else getattr(ref, "id", None)
+        return by.get(rid)
+    figs = [m for m in by.values() if m.kind in ("Figure", "figure", "Plot")]
+    return _s24_summ(figs[0], by_id) if figs else dict(A="", Q="", M="")
+
+
+def _s24_served_doc():
+    from bokeh.document import Document
+    with open(_s24_M.getGlobal("S24_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s24_app")
+    with _s24_w.catch_warnings():
+        _s24_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s24_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return doc
+
+
+def _s24_doc_summ(doc):
+    seen = dict()
+    for root in doc.roots:
+        for m in root.references():
+            seen[m.id] = m
+    figs = [m for m in seen.values() if type(m).__name__ in ("figure", "Figure")]
+
+    def by_id(ref):
+        return _s24_main._S19Served(ref) if ref is not None and not isinstance(ref, (str, int, float)) else None
+    return _s24_summ(_s24_main._S19Served(figs[0]), by_id) if figs else dict(A="", Q="", M="")
+
+
+def _s24_dash():
+    from bokeh.models import Select
+    for k, v in _s24_saved().items():
+        _s24_M.setGlobal("S24_SAVED_" + k, v)
+    doc = _s24_served_doc()
+    before = _s24_doc_summ(doc)
+    for k, v in before.items():
+        _s24_M.setGlobal("S24_SERVED_" + k, v)
+    same = 0
+    sel = [w for w in doc.select(dict(type=Select))]
+    if sel:
+        w = sel[0]
+        pick = [v for v, lab in w.options if lab == "Foreign"]
+        if pick:
+            old = w.value
+            w.value = pick[0]
+            with _s24_w.catch_warnings():
+                _s24_w.simplefilter("ignore")
+                for attr in ("value", "value_throttled"):
+                    for cb in list(w._callbacks.get(attr, [])):
+                        cb(attr, old, pick[0])
+            same = int(_s24_doc_summ(doc) == before)
+    _s24_M.setGlobal("S24_SAME_AFTER", str(same))
+
+
+def _s24_tw():
+    root = _s24_M.getGlobal("S24_REPO")
+    if _s24_os.path.join(root, "scripts") not in _s24_sys.path:
+        _s24_sys.path.insert(0, _s24_os.path.join(root, "scripts"))
+    import svg_layer as sl
+    els = [e for e in sl.svg_elements(_s24_M.getGlobal("S24_SVG")) if e["stroke"] != "#eaf2f3"]
+    alphas, quads = set(), set()
+    for e in els:
+        if "#c0c0c0" in (e["fill"], e["stroke"]):
+            continue
+        if e["fill"] not in (None, "none"):
+            alphas.add(e["fill_opacity"] if e["fill_opacity"] is not None else 1.0)
+        if e["stroke"] not in (None, "none"):
+            alphas.add(e["stroke_opacity"] if e["stroke_opacity"] is not None else 1.0)
+    fills = [e["fill"] for e in els if e["kind"] == "rect" and e["fill"] not in (None, "none")]
+    strokes = [e["stroke"] for e in els if e["kind"] == "rect" and e["fill"] == "none"]
+    for f, st in zip(fills, strokes):
+        quads.add("%s/%s" % (f, st))
+    ms = [m for m in sl.markers(els) if sl.marker_shape(m)]
+    _s24_M.setGlobal("S24_TW_A", "|".join("%g" % x for x in sorted(alphas)))
+    _s24_M.setGlobal("S24_TW_Q", "|".join(sorted(quads)))
+    def col(m, k):
+        return next((e[k] for e in m if e[k] not in (None, "none")), "none")
+    _s24_M.setGlobal("S24_TW_M", ";".join("%s:%d:%s:%s:%s" % (sl.marker_shape(m), int(sl.hollow(m)), sl.stroke_extent(m), col(m, "fill"), col(m, "stroke")) for m in ms))
+
+
+_s24_main._s24_dash = _s24_dash
+_s24_main._s24_tw = _s24_tw
+end
+
+capture program drop _s24_run
+program define _s24_run
+    version 19
+    // id; scheme; the twoway command (with any of its own options after a
+    // comma); twoway's options and dash's are appended after one more.
+    args id scheme cmd
+    local d "${S24_WORK}"
+    local sep = cond(strpos(`"`cmd'"', ",") & substr(`"`cmd'"', 1, 1) != "(", " ", ", ")
+    quietly twoway `cmd' `sep' scheme(`scheme') legend(off) xscale(off) yscale(off) plotregion(style(none)) name(s24tw, replace)
+    quietly graph export "`d'/s24.svg", name(s24tw) replace
+    global S24_SVG "`d'/s24.svg"
+    python: __import__("__main__")._s24_tw()
+    capture graph drop s24tw
+    capture dash clear
+    capture noisily dash `cmd' `sep' scheme(`scheme') name(s24g)
+    _w30_expect `id' "(_rc == 0)" "dash `cmd' rc `_rc'"
+    capture noisily dash build, saving("`d'/s24.html") replace nobrowser filter(foreign, type(dropdown))
+    _w30_expect `id' "(_rc == 0)" "dash build rc `_rc'"
+    capture noisily dash build, server saving("`d'/s24_app.py") replace nobrowser filter(foreign, type(dropdown))
+    _w30_expect `id' "(_rc == 0)" "dash build, server rc `_rc'"
+    global S24_PAGE "`d'/s24.html"
+    global S24_APP "`d'/s24_app.py"
+    python: __import__("__main__")._s24_dash()
+    display as text `"  `id' `scheme' `cmd': twoway A[${S24_TW_A}] Q[${S24_TW_Q}]"'
+    display as text `"     saved A[${S24_SAVED_A}] Q[${S24_SAVED_Q}] served A[${S24_SERVED_A}] Q[${S24_SERVED_Q}] same after ${S24_SAME_AFTER}"'
+    foreach x in s24.svg s24.html s24_app.py {
+        capture erase "`d'/`x'"
+    }
+    capture dash clear
+end
+
 * ==== S24 P1.4a: Scheme opacity, histogram style and symbols reach every layer ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S24") {
     display as text "S24 start " c(current_date) " " c(current_time)
+    global S24_WORK "`w30_work'"
+    local s24_repo : environment DASH_REPO
+    if `"`s24_repo'"' == "" local s24_repo ".."
+    global S24_REPO "`s24_repo'"
+    sysuse auto, clear
+    generate lo = mpg - 3
+    generate hi = mpg + 3
+    forvalues i = 1/15 {
+        generate y`i' = mpg + `i'
+    }
+    sort weight
+
+    // SK-01 and SK-09: sttrans' %20 on fits, spikes, arrows and immediates.
+    foreach c in "lfit mpg weight" "rspike lo hi weight" "pcarrow mpg weight price length in 1/5" "scatteri 20 3000" {
+        _s24_run SK-01 sttrans "`c'"
+        local ok = ("${S24_TW_A}" == "0.2" & "${S24_SAVED_A}" == "0.2" & "${S24_SERVED_A}" == "0.2")
+        _w30_expect SK-01 "(`ok' == 1)" "`c': twoway ${S24_TW_A}, saved ${S24_SAVED_A}, served ${S24_SERVED_A}"
+        if "`c'" == "lfit mpg weight" {
+            _w30_expect SK-09 "(${S24_SAME_AFTER} == 1)" "`c': the served glyphs changed after a dropdown move"
+        }
+    }
+    _w30_done SK-01 "every line, segment, arrow head and immediate marker at sttrans' 0.20, as twoway, in both modes"
+
+    // SK-02: rarea follows area's rule.
+    foreach S in s2color sttrans {
+        local want = cond("`S'" == "sttrans", "0.2", "1")
+        _s24_run SK-02 `S' "rarea lo hi weight"
+        local ok = ("${S24_TW_A}" == "`want'" & "${S24_SAVED_A}" == "`want'" & "${S24_SERVED_A}" == "`want'")
+        _w30_expect SK-02 "(`ok' == 1)" "`S': twoway ${S24_TW_A}, saved ${S24_SAVED_A}, served ${S24_SERVED_A}"
+    }
+    _w30_done SK-02 "rarea opaque under s2color and 0.20 under sttrans, as twoway, in both modes"
+
+    // SK-03 and SK-04: the histogram style, one for every layer.
+    foreach S in s2color stcolor s1mono {
+        _s24_run SK-03 `S' "histogram mpg"
+        local ok = ("${S24_TW_Q}" != "" & "${S24_SAVED_Q}" == "${S24_TW_Q}" & "${S24_SERVED_Q}" == "${S24_TW_Q}")
+        _w30_expect SK-03 "(`ok' == 1)" "`S': twoway ${S24_TW_Q}, saved ${S24_SAVED_Q}, served ${S24_SERVED_Q}"
+    }
+    _w30_done SK-03 "histogram fill and outline are twoway's under s2color, stcolor and s1mono in both modes"
+    _s24_run SK-04 s2color "(histogram mpg) (histogram trunk)"
+    local ok = ("${S24_TW_Q}" == "#cac27e/#d7d29e" & "${S24_SAVED_Q}" == "${S24_TW_Q}" & "${S24_SERVED_Q}" == "${S24_TW_Q}")
+    _w30_expect SK-04 "(`ok' == 1)" "twoway ${S24_TW_Q}, saved ${S24_SAVED_Q}, served ${S24_SERVED_Q}"
+    _w30_done SK-04 "two histogram layers share twoway's one style in both modes"
+
+    // SK-05 and SK-09: s1mono's hollow and small symbols.
+    _s24_run SK-05 s1mono "scatter y1-y15 weight in 1/3"
+    local s24_ok = 1
+    local s24_tw : copy global S24_TW_M
+    foreach mode in SAVED SERVED {
+        local s24_d : copy global S24_`mode'_M
+        forvalues L = 1/15 {
+            local k = 3 * (`L' - 1) + 1
+            local tw : word `k' of `=subinstr("`s24_tw'", ";", " ", .)'
+            local dm : word `L' of `=subinstr("`s24_d'", ";", " ", .)'
+            tokenize "`tw'", parse(":")
+            local twh "`3'"
+            local twshape "`1'"
+            tokenize "`dm'", parse(":")
+            local dfa "`5'"
+            if inlist("`twshape'", "circle", "diamond", "square", "triangle") {
+                if (`twh' == 1) != (`dfa' == 0) local s24_ok = 0
+            }
+        }
+        // p11 (smcircle) over p1 (circle): twoway's extent ratio against
+        // dash's size ratio, within 1%.
+        local t1 : word 1 of `=subinstr("`s24_tw'", ";", " ", .)'
+        local t11 : word 31 of `=subinstr("`s24_tw'", ";", " ", .)'
+        local d1 : word 1 of `=subinstr("`s24_d'", ";", " ", .)'
+        local d11 : word 11 of `=subinstr("`s24_d'", ";", " ", .)'
+        tokenize "`t1'", parse(":")
+        local e1 = `5'
+        tokenize "`t11'", parse(":")
+        local e11 = `5'
+        tokenize "`d1'", parse(":")
+        local s1 = `3'
+        tokenize "`d11'", parse(":")
+        local s11 = `3'
+        if abs((`e11' / `e1') - (`s11' / `s1')) > 0.01 * (`e11' / `e1') local s24_ok = 0
+    }
+    _w30_expect SK-05 "(`s24_ok' == 1)" "hollow or size differs: twoway ${S24_TW_M}; saved ${S24_SAVED_M}; served ${S24_SERVED_M}"
+    _w30_expect SK-09 "(${S24_SAME_AFTER} == 1)" "s1mono scatter: the served glyphs changed after a dropdown move"
+    _w30_done SK-05 "s1mono's hollow p7-p10 and small p11 are twoway's in both modes"
+    _w30_done SK-09 "the served glyph styles survive a dropdown move"
+
+    // SK-06: msymbol(smcircle) under msize(large).
+    _s24_run SK-06 s2color "scatter mpg weight in 1, msymbol(smcircle) msize(large)"
+    local s24_ts : copy global S24_TW_M
+    local s24_ds : copy global S24_SAVED_M
+    local s24_vs : copy global S24_SERVED_M
+    _s24_run SK-06 s2color "scatter mpg weight in 1, msymbol(circle) msize(large)"
+    tokenize "`s24_ts'", parse(":")
+    local a = `5'
+    tokenize "${S24_TW_M}", parse(":")
+    local b = `5'
+    tokenize "`s24_ds'", parse(":")
+    local c = `3'
+    tokenize "${S24_SAVED_M}", parse(":")
+    local dd = `3'
+    tokenize "`s24_vs'", parse(":")
+    local e = `3'
+    tokenize "${S24_SERVED_M}", parse(":")
+    local f = `3'
+    local ok = (abs(`a'/`b' - `c'/`dd') <= 0.01 * `a'/`b' & abs(`a'/`b' - `e'/`f') <= 0.01 * `a'/`b')
+    _w30_expect SK-06 "(`ok' == 1)" "twoway `a'/`b', saved `c'/`dd', served `e'/`f'"
+    _w30_done SK-06 "msymbol(smcircle) msize(large) is twoway's fraction of the circle in both modes"
+
+    // SK-07: the cycle reaches dropline's and rcapsym's markers.
+    foreach t in "dropline mpg weight in 1/3" "rcapsym lo hi weight in 1/3" {
+        _s24_run SK-07 s1mono "(scatter mpg weight in 1/3) (`t')"
+        local tw : copy global S24_TW_M
+        local tw = substr("`tw'", strrpos("`tw'", ";") + 1, .)
+        local sv : copy global S24_SAVED_M
+        local sv = substr("`sv'", strrpos("`sv'", ";") + 1, .)
+        local se : copy global S24_SERVED_M
+        local se = substr("`se'", strrpos("`se'", ";") + 1, .)
+        local ok = (substr("`tw'", 1, 8) == "diamond:" & substr("`sv'", 1, 8) == "diamond:" & substr("`se'", 1, 8) == "diamond:")
+        _w30_expect SK-07 "(`ok' == 1)" "`t': twoway `tw', saved `sv', served `se'"
+    }
+    _w30_done SK-07 "s1mono's second dropline and rcapsym layers draw p2's diamond in both modes"
+
+    // SK-08: the marker colour keys, through two schemes of yours in the
+    // working directory (twoway's findfile and dash's lookup read there).
+    foreach S in w24g w24m {
+        capture confirm new file "`S'.scheme"
+        local s24_new = _rc
+        _w30_expect SK-08 "(`s24_new' == 0)" "`S'.scheme already exists in the working directory; not overwritten"
+        if `s24_new' == 0 {
+            tempname s24_fh
+            file open `s24_fh' using "`S'.scheme", write text
+            if "`S'" == "w24g" file write `s24_fh' "#include s2color" _n "color pmarkfill green" _n "color pmarkline blue" _n
+            else file write `s24_fh' "#include s2color" _n "color p1mark green" _n "color pmark red" _n
+            file close `s24_fh'
+            local want = cond("`S'" == "w24g", "#008000:#0000ff", "#1a476f:#1a476f")
+            _s24_run SK-08 `S' "scatter mpg weight in 1/3"
+            local tw : copy global S24_TW_M
+            if strpos("`tw'", ";") local tw = substr("`tw'", 1, strpos("`tw'", ";") - 1)
+            local sv : copy global S24_SAVED_M
+            if strpos("`sv'", ";") local sv = substr("`sv'", 1, strpos("`sv'", ";") - 1)
+            local se : copy global S24_SERVED_M
+            if strpos("`se'", ";") local se = substr("`se'", 1, strpos("`se'", ";") - 1)
+            tokenize "`tw'", parse(":")
+            local twc "`7':`9'"
+            tokenize "`sv'", parse(":")
+            local svc "`7':`9'"
+            tokenize "`se'", parse(":")
+            local sec "`7':`9'"
+            local ok = ("`twc'" == "`want'" & "`svc'" == "`want'" & "`sec'" == "`want'")
+            _w30_expect SK-08 "(`ok' == 1)" "`S': twoway `twc', saved `svc', served `sec', want `want'"
+            capture erase "`S'.scheme"
+        }
+    }
+    _w30_done SK-08 "markers take color p#markfill and p#markline, never p#mark, in both modes"
     display as text "S24 end " c(current_date) " " c(current_time)
 }
 * ==== end S24 ====

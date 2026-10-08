@@ -3837,17 +3837,34 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     where a scheme declares them; {cmd:mlwidth()} still wins), a bar's
     and an area's outline width ({cmd:linewidth pbar} and
     {cmd:linewidth parea}), the
-    marker colour where a scheme
-    declares a {cmd:color p}{it:#}{cmd:mark} apart from {cmd:p}{it:#}, the
+    marker fill and outline colours ({cmd:color p}{it:#}{cmd:markfill}
+    and {cmd:color p}{it:#}{cmd:markline}, each falling back to
+    {cmd:p}{it:#} as Stata's chain does; {cmd:color p}{it:#}{cmd:mark} is
+    not read, as {cmd:twoway} does not read it), the
     marker size ({cmd:symbolsize p}, and {cmd:symbolsize p}{it:#} per
     plot), the fill intensities, and a colour
     opacity the scheme declares ({cmd:sttrans}'s {cmd:%20}), which is
-    carried into the scatter, connected, line, bar, area and histogram
-    layers in both modes and sets the opacity of the opaque colours its
-    intensities give; the range, spike, fit, band, density,
-    function and immediate layers take the colour but not yet its opacity;
-    your own {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()}
-    still wins over both.  Plots are numbered as {cmd:twoway} numbers
+    carried into every layer's lines, markers and fills in both modes, as
+    Stata draws it, except the confidence band, which {cmd:twoway} draws
+    in {cmd:color ci_area} with no opacity; a colour you give without its
+    own {cmd:%}{it:NN} keeps the scheme's opacity, and
+    {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()} still win.
+    A symbol in the cycle, or one you give with {cmd:msymbol()}, is drawn
+    with its own traits: a hollow symbol ({cmd:circle_hollow} and the
+    rest) as an outline, whatever a fill colour or {cmd:malpha()} say,
+    and a small one ({cmd:smcircle}, {cmd:smdiamond}, {cmd:smsquare},
+    {cmd:smplus} and their hollow forms) at 0.71 of the full symbol's
+    size, {cmd:smtriangle} at 0.75, after {cmd:msize()}, as Stata 19.5
+    draws them; {cmd:smx} and {cmd:smv} are drawn as {cmd:x} and {cmd:v}.
+    The cycle reaches every marker: {cmd:scatter}, {cmd:connected},
+    {cmd:dot}, {cmd:rconnected}, {cmd:scatteri}, {cmd:rscatter},
+    {cmd:pcscatter}, {cmd:pccapsym} and the markers of {cmd:dropline} and
+    {cmd:rcapsym}.  A histogram is drawn in the scheme's histogram style,
+    {cmd:color histogram} at {cmd:intensity histogram} outlined in
+    {cmd:color histogram_line} at {cmd:linewidth histogram}, the same for
+    every histogram layer, as {cmd:twoway} draws it; {cmd:color()},
+    {cmd:lcolor()} and the fill colour and intensity options still win.
+    Plots are numbered as {cmd:twoway} numbers
     them: a {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} or {cmd:fpfitci}
     draws two plots, its band and its line, so
     {cmd:lfitci} || {cmd:lfitci} || {cmd:lfit} draws its lines in
@@ -4057,10 +4074,11 @@ Stata declares kept as {cmd:#rrggbb%20}, and {cmd:economist}'s plot-region
 border written as Stata's {cmd:none}), and a {cmd:* provenance:}
 comment for every
 directive saying whether it was transcribed from Stata's file, and from
-which directive, or inferred by {cmd:dash} -- the area intensity, which
-Stata resolves through a fallback and {cmd:dash} writes out resolved.  The
+which directive, or inferred by {cmd:dash} where Stata resolves the key
+through a fallback and {cmd:dash} writes it out resolved.  The
 {cmd:p}{it:#}{cmd:line}, {cmd:p}{it:#}{cmd:bar},
-{cmd:p}{it:#}{cmd:mark} and {cmd:p}{it:#}{cmd:lineplot} colours, the
+{cmd:p}{it:#}{cmd:markfill}, {cmd:p}{it:#}{cmd:markline} and
+{cmd:p}{it:#}{cmd:lineplot} colours, the
 line patterns, the marker symbols and the marker sizes are not written
 out: each file carries only the keys
 Stata's own chain declares, and {cmd:dash} follows the
@@ -4072,7 +4090,9 @@ A confidence band's keys are carried -- {cmd:color ci_area},
 {cmd:ci_arealine} and {cmd:ci_line}, {cmd:intensity ci_area},
 {cmd:linewidth ci_area} and {cmd:ci}, {cmd:linepattern ci_area} and
 {cmd:ci}, and {cmd:ci2}'s colours and width -- and drawn as Stata draws
-them (see {help dash##ciband:The band's look}).  {cmd:graph} never reads
+them (see {help dash##ciband:The band's look}), and so are a histogram's:
+{cmd:color histogram} and {cmd:histogram_line}, {cmd:intensity histogram}
+and {cmd:linewidth histogram}.  {cmd:graph} never reads
 these files (see below).
 
 {pstd}

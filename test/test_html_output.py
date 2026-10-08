@@ -1871,7 +1871,9 @@ class TestOutputBackendAndVisualMarkers:
         assert _values(bars, "top") == pytest.approx(dens.tolist())
         assert _values(bars, "left") == pytest.approx(edges[:-1].tolist())
         assert _values(bars, "right") == pytest.approx(edges[1:].tolist())
-        assert _values(bars, "fill_color") == ["#1a476f"] * 4
+        # The scheme's histogram style, s2color's khaki (WP-30 P1.4a).
+        # Flipped: #1a476f was the bar p# cycle twoway's histogram ignores.
+        assert _values(bars, "fill_color") == ["#cac27e"] * 4
 
     def test_all_plot_types_produce_renderers_in_json(self):
         """Every basic plot type must produce a non-empty 'renderers' array in model JSON."""
@@ -1896,10 +1898,12 @@ class TestOutputBackendAndVisualMarkers:
         html = _render_to_html(spec, data)
         band = _only_layer(html, "VArea")
         # The band's own fill: the scheme's first series colour at its
-        # p1area intensity, #486c8c (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3), at the 0.5 alpha map_rarea gives
-        # it (section 24's; the renderer's value, pinned here).
+        # p1area intensity, #486c8c (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3), opaque by area's rule: twoway's
+        # rarea is drawn as area is (WP-30 P1.4a).  Flipped: the 0.5 pinned
+        # here was dash's own, which twoway never draws.
         assert _values(band, "fill_color") == ["#486c8c"] * 20
-        assert _values(band, "fill_alpha") == [0.5] * 20
+        # Opaque is Bokeh's own default, which the page then omits.
+        assert _values(band, "fill_alpha", 1.0) == [1.0] * 20
 
 
 class TestWebglBackendLargeData:

@@ -88,8 +88,6 @@ linewidth major_grid  medium
 * Note that "intensity bar" is inten80 in s1rcolor, not the full of s2color.
 * ---------------------------------------------------------------------------
 intensity p        inten80
-intensity bar      inten80
-intensity area     full
 
 * ---------------------------------------------------------------------------
 * Font sizes (Stata gsize keywords, relative units)
@@ -392,6 +390,25 @@ numticks_g vertical_major    5
 margin twoway            medsmall
 
 * ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* A histogram's style: shadestyle-histogram.style fills it in
+* `color histogram' at `intensity histogram', and
+* linestyle-histogram.style outlines it in `color histogram_line'
+* at `linewidth histogram'.  twoway draws every histogram layer in
+* it.
+color histogram       #cac27e
+color histogram_line  #d7d29e
+intensity histogram       full
+linewidth histogram       medium
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -434,8 +451,6 @@ margin twoway            medsmall
 * provenance: linewidth major_grid -- transcribed from scheme-s2color.scheme:1203 `linewidth major_grid medium'
 * provenance: linewidth pbar -- transcribed from scheme-s2color.scheme:1246 `linewidth pbar thin'
 * provenance: intensity p -- transcribed from scheme-s2color.scheme:1300 `intensity p inten80'
-* provenance: intensity bar -- transcribed from scheme-s1rcolor.scheme:151 `intensity bar inten80'
-* provenance: intensity area -- inferred: class default; `intensity area' is not set anywhere in the #include chain, took the bare `intensity full' class default (scheme-s2color.scheme:1267)
 * provenance: color ci_area -- transcribed from scheme-s1rcolor.scheme:66 `color ci_area gs5'
 * provenance: color ci_arealine -- transcribed from scheme-s1rcolor.scheme:65 `color ci_arealine gs5'
 * provenance: intensity ci_area -- transcribed from scheme-s2color.scheme:1272 `intensity ci_area full'
@@ -447,6 +462,10 @@ margin twoway            medsmall
 * provenance: color ci2_area -- transcribed from scheme-s1rcolor.scheme:70 `color ci2_area navy'
 * provenance: color ci2_arealine -- transcribed from scheme-s1rcolor.scheme:69 `color ci2_arealine navy'
 * provenance: linewidth ci2_area -- transcribed from scheme-s2color.scheme:1211 `linewidth ci2_area medium'
+* provenance: color histogram -- transcribed from scheme-s1rcolor.scheme:77 `color histogram khaki'
+* provenance: color histogram_line -- transcribed from scheme-s1rcolor.scheme:79 `color histogram_line stone'
+* provenance: intensity histogram -- transcribed from scheme-s2color.scheme:1273 `intensity histogram full'
+* provenance: linewidth histogram -- transcribed from scheme-s2color.scheme:1212 `linewidth histogram medium'
 * provenance: gsize text -- transcribed from scheme-s2color.scheme:136 `gsize text medium'
 * provenance: gsize heading -- transcribed from scheme-s2color.scheme:139 `gsize heading large'
 * provenance: gsize axis_title -- transcribed from scheme-s2color.scheme:141 `gsize axis_title medsmall'

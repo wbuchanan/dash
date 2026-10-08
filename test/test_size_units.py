@@ -1226,7 +1226,7 @@ class TestEmptyOptionsChangeNothing:
             with pytest.MonkeyPatch.context() as mp:
                 def patch(cls, mp=mp):
                     mp.setattr(cls, "_apply_marker_opts",
-                               lambda self, r, o: None)
+                               lambda self, r, o, **kw: None)
                 figs2, _, _ = _build(mode, tmp_path,
                                      [dict(plot, options={})], patch=patch)
                 if [_glyph_props(f) for f in figs2] != built:

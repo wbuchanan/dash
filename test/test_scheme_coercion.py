@@ -252,21 +252,25 @@ class TestLineWidth:
 
 
 class TestSymbol:
+    """SchemeParser._symbol_traits: (marker, hollow, small factor); it
+    replaced _symbol, which kept the marker alone (WP-30 P1.4a)."""
 
     def test_absent_returns_the_default(self, sp):
-        assert sp._symbol("symbol p1", default="square") == "square"
+        assert sp._symbol_traits("symbol p1", default="square") == \
+            ("square", False, 1.0)
 
     def test_a_known_symbol_is_translated(self, sp):
         _set(sp, **{"symbol p1": "diamond"})
-        assert sp._symbol("symbol p1") == "diamond"
+        assert sp._symbol_traits("symbol p1") == ("diamond", False, 1.0)
 
     def test_a_stata_abbreviation_is_translated(self, sp):
         _set(sp, **{"symbol p1": "Dh"})
-        assert sp._symbol("symbol p1") == "diamond"
+        assert sp._symbol_traits("symbol p1") == ("diamond", True, 1.0)
 
     def test_an_unknown_symbol_returns_the_default(self, sp):
         _set(sp, **{"symbol p1": "octagon"})
-        assert sp._symbol("symbol p1", default="circle") == "circle"
+        assert sp._symbol_traits("symbol p1", default="circle") == \
+            ("circle", False, 1.0)
 
 
 # ======================================================================

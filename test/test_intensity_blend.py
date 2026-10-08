@@ -378,9 +378,11 @@ class TestTheHistogramUntilS24:
         assert _fill(d, "Quad") == ("#1a476f", 1.0)
 
     def test_s2color_keeps_the_full_colour(self, mode):
-        """Guard: s2color's histogram is twoway's full intensity."""
+        """s2color's histogram is its histogram style at full intensity,
+        khaki (WP-30 P1.4a).  Flipped: the default was the bar p# cycle's
+        #1a476f, which twoway's histogram ignores."""
         assert _fill(_drawn([plot_for("histogram")], mode), "Quad") == \
-            ("#1a476f", 1.0)
+            ("#cac27e", 1.0)
         d = _drawn([plot_for("histogram", {"fcolor": "navy"})], mode)
         assert _fill(d, "Quad") == ("#1a476f", 1.0)
 
@@ -455,7 +457,7 @@ def _probe_plots(cmd):
 
 def _probe_ids():
     return sorted(k for k, v in _PROBES.items()
-                  if v.get("owner") != "S24" and k not in _EXCLUDED
+                  if k not in _EXCLUDED
                   and v.get("fill"))
 
 

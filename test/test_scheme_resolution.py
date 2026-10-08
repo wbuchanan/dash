@@ -578,6 +578,7 @@ ALPHA_LISTS = {
     "p_line_alphas":     "p_line_colors_opacity",
     "p_bar_alphas":      "p_bar_colors_opacity",
     "p_mark_alphas":     "p_mark_colors_opacity",
+    "p_markline_alphas": "p_markline_colors_opacity",
     "p_lineplot_alphas": "p_lineplot_colors_opacity",
 }
 
@@ -725,6 +726,7 @@ class TestTheParserCarriesTheColourOpacity:
         assert sp.p_line_alphas[0] == pytest.approx(0.3)
         assert sp.p_bar_alphas[0] is None
         assert sp.p_mark_alphas[0] is None
+        assert sp.p_markline_alphas[0] is None
         assert sp.p_lineplot_alphas[0] is None
         assert sp.default_alpha(0, "connected") == pytest.approx(0.3)
         assert sp.default_alpha(0, "line") is None

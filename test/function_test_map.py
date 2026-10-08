@@ -280,7 +280,6 @@ FUNCTIONS = {
  'SchemeParser._safe_name': 'test/test_scheme_consumption.py::TestAnIncludeIsSplicedWhereItStands::test_a_hostile_name_is_printed_bounded_and_printable',
  'SchemeParser._scheme_tokens': 'test/test_scheme_quoted_values.py::TestTheTokeniserIsStatas::test_a_quoted_value_is_one_token',
  'SchemeParser._stub_color_alpha': 'test/test_scheme_consumption.py::TestAChildPHashReachesWhatStatasChainReaches::test_what_a_child_p1_reaches',
- 'SchemeParser._symbol':'test/test_scheme_coercion.py::TestSymbol::test_a_known_symbol_is_translated',
  'SchemeParser._warn_unreadable_scheme_line': 'test/test_scheme_quoted_values.py::TestUnreadableLinesWarnOnceEach::test_each_bad_line_is_named_with_its_number_then_the_bound_holds',
  'SchemeParser._yesno': 'test/test_scheme_coercion.py::TestScalarCoercions::test_yesno_absent_or_unrecognised_returns_the_default',
  'SchemeParser.apply_to_figure': 'test/test_scheme.py::TestApplyToFigure::test_sets_axis_label_font_size',
@@ -316,7 +315,7 @@ FUNCTIONS = {
  '_clock_slider_step_ms': 'test/test_filter_slider_step.py::TestAClockFilterIsUsable::test_a_clock_filter_may_step_below_a_day',
  '_compute_secondary_range': 'test/test_scheme.py::TestComputeSecondaryRange::test_lo_less_than_hi',
  '_dash_add_glyph': 'test/test_server.py::TestTheServerDispatchesThroughTheSharedTable::test_an_unknown_plot_type_warns_rather_than_drawing_nothing',
- '_dash_add_pc_glyph': 'test/test_scheme_review_fixes.py::TestMarkColourIsForMarkers::test_markers_take_p1mark_and_segments_take_p1',
+ '_dash_add_pc_glyph': 'test/test_scheme_review_fixes.py::TestMarkColourIsForMarkers::test_markers_take_p1markfill_and_segments_take_p1',
  '_dash_add_secondary_axes': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  '_dash_anglestyle_degrees': 'test/test_twoway_option_parity.py::TestTheAnglestyleReader::test_a_number_is_degrees',
  '_dash_apply_axis_options': 'test/test_axis_options.py::TestAxisLabelGrammar::test_hash_n_is_a_suggestion_not_a_count',
@@ -604,7 +603,7 @@ FUNCTIONS = {
  '_dash_qualified_frame': 'test/test_server_layer_defects.py::TestTheQualifierReader::test_a_malformed_in_is_ignored_rather_than_raising',
  '_dash_qualified_frame.<locals>._bound': 'test/test_adversarial_matrix.py::TestIfQualifierExhaustion::test_an_in_range_too_long_for_int_is_read_not_raised',
  '_dash_range_pair': 'test/test_help_claims_6.py::TestTheFitRangeIsReadSafely::test_an_unreadable_range_draws_the_observed_range',
- '_dash_range_source': 'test/test_scheme_review_fixes.py::TestMarkColourIsForMarkers::test_markers_take_p1mark_and_segments_take_p1',
+ '_dash_range_source': 'test/test_scheme_review_fixes.py::TestMarkColourIsForMarkers::test_markers_take_p1markfill_and_segments_take_p1',
  '_dash_reference_lines': 'test/test_axis_options.py::TestReferenceLines::test_suboptions_are_applied',
  '_dash_refline_instances': 'test/test_axis_options.py::TestRepeatedReferenceLines::test_the_instances',
  '_dash_by_tokens_commas': 'test/test_axis_options.py::TestRepeatedReferenceLines::test_the_comma_split_honours_quotes_and_parentheses',
@@ -893,6 +892,13 @@ FUNCTIONS = {
  '_dash_relay_kind': 'test/test_serve_launcher.py::TestTheRelayKind::test_each_kind_of_line',
  '_dash_trial_render': 'test/test_served_notes.py::TestTheServerBuildNamesTheSavedNotes::test_main_names_what_the_saved_build_names',
  # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
+ 'GlyphMapper._marker_alpha_kw': 'test/test_scheme_layer_alpha.py::TestTwowaysOpacity::test_each_probe',
+ 'GlyphMapper._marker_traits': 'test/test_scheme_symbol_traits.py::TestDrawnTraits::test_a_user_small_symbol',
+ 'GlyphMapper._scheme_alpha_kw': 'test/test_scheme_layer_alpha.py::TestOtherSchemesDeclareNothing::test_the_helper',
+ 'OptionTranslator.symbol_traits': 'test/test_scheme_symbol_traits.py::TestSymbolTraits::test_each_stata_name',
+ 'SchemeParser._symbol_traits': 'test/test_scheme_coercion.py::TestSymbol::test_a_known_symbol_is_translated',
+ 'SchemeParser.default_markline': 'test/test_scheme_symbol_traits.py::TestTheSchemeCycle::test_the_marker_outline_chain',
+ 'SchemeParser.default_symbol_traits': 'test/test_scheme_symbol_traits.py::TestTheSchemeCycle::test_s1mono_traits',
  # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
  # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
  # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)

@@ -215,7 +215,12 @@ COLOR_LISTS = {
     "p_colors":      ["color p{i}", "color p"],
     "p_line_colors": ["color p{i}line", "color pline", "color p{i}", "color p"],
     "p_bar_colors":  ["color p{i}bar", "color pbar", "color p{i}", "color p"],
-    "p_mark_colors": ["color p{i}mark", "color pmark", "color p{i}", "color p"],
+    # A marker's fill and outline (style/markerstyle-p#.style, WP-30
+    # P1.4a); `color p#mark' is never a marker colour.
+    "p_mark_colors": ["color p{i}markfill", "color pmarkfill", "color p{i}",
+                      "color p"],
+    "p_markline_colors": ["color p{i}markline", "color pmarkline",
+                          "color p{i}", "color p"],
 }
 
 #: fixture key -> per-index directive chain templates, compared as style names
@@ -228,11 +233,10 @@ NAME_LISTS = {
 #: fixture key -> directive chain; fixture value is {"name","pct","alpha"}
 ALPHA_SCALARS = {
     "fill_alpha": ["intensity p"],
-    "bar_alpha":  ["intensity bar"],
-    # No Stata base scheme sets "intensity area"; all 20 resolve it through the
-    # bare "intensity" class default (see _meta.sources).  Either spelling in a
-    # translated scheme supplies it.
-    "area_alpha": ["intensity area", "intensity"],
+    # bar_alpha and area_alpha (graph bar's `intensity bar' and `intensity
+    # area') are no longer written to the shipped files (WP-30 P1.4a):
+    # twoway's bar and area do not read them.  Flipped: their rows checked
+    # two retired directives.
 }
 
 #: Graph bar's intensity keys, which twoway's bar and area ignore (measured,
@@ -1312,7 +1316,10 @@ def test_shipped_provenance_agrees_with_the_fixture():
     assert ("color", "p1line") not in _file_directives(scheme_path("s2color"))
     assert prov[("linepattern", "p")].startswith(
         "transcribed from scheme-s2color.scheme:")
-    assert prov[("intensity", "area")].startswith("inferred: ")
+    # An inferred directive: `intensity area' was the example until WP-30
+    # P1.4a stopped writing it (twoway's area does not read it).
+    prov_e, _ = _provenance_lines(scheme_path("economist"))
+    assert prov_e[("color", "plotregion_line")].startswith("inferred: ")
     # s2mono's connecting-line colour is its declared `color pline'.
     prov_m, _ = _provenance_lines(scheme_path("s2mono"))
     assert prov_m[("color", "pline")].startswith(
@@ -1348,30 +1355,54 @@ def test_an_older_translation_loses_its_resolved_stub_lines(tmp_path):
     written out resolved (`color p1mark' .. under s2color, as every shipped
     file did before the S3 batch) removes those lines and the comment
     paragraph that headed them, and adds the key Stata's chain declares
-    (`linepattern p'); a second run changes nothing."""
+    (`linepattern p'); graph bar's `intensity bar' and `intensity area',
+    which the files no longer carry (WP-30 P1.4a), go too; a second run
+    changes nothing."""
     mod = _extractor()
     dst = str(tmp_path / "s2color.scheme")
     shutil.copyfile(scheme_path("s2color"), dst)
     extra = ["", "* Per-plot marker fill color (resolved, spelled out).",
              *[f"color p{i}mark   #1a476f" for i in range(1, N_PLOTS + 1)],
              "", "* Line patterns, spelled out.",
-             *[f"linepattern p{i}line   solid" for i in range(1, N_PLOTS + 1)]]
+             *[f"linepattern p{i}line   solid" for i in range(1, N_PLOTS + 1)],
+             "", "* Graph bar's intensities.", "intensity bar   full",
+             "intensity area  full"]
     text = open(dst, encoding="utf-8").read()
     head, sep, tail = text.partition("* ---------------------------------------------------------------------------\n* BEGIN provenance")
     text = head.replace("linepattern p  solid\n", "") + "\n".join(extra) + "\n\n" + sep + tail
     open(dst, "w", encoding="utf-8").write(text)
     r = mod.update_scheme_file(dst, "s2color", truth_for("s2color"),
                                mod.DEFAULT_STATA_BASE, "01jan2000")
-    assert len(r["removed"]) == 2 * N_PLOTS, r
+    assert len(r["removed"]) == 2 * N_PLOTS + 2, r
+    assert {"intensity bar", "intensity area"} <= set(r["removed"]), r
     assert r["added"] == ["linepattern p"], r
     after = open(dst, encoding="utf-8").read()
     assert "Per-plot marker fill color (resolved" not in after
     assert "Line patterns, spelled out." not in after
     assert "color p1mark" not in after and "linepattern p1line" not in after
+    assert "intensity bar " not in after and "intensity area " not in after
     r2 = mod.update_scheme_file(dst, "s2color", truth_for("s2color"),
                                 mod.DEFAULT_STATA_BASE, "01jan2000")
     assert (r2["changed"], r2["added"], r2["removed"], r2["provenance"]) == (
         [], [], [], None), r2
+
+
+def test_the_histogram_keys_are_resolved():
+    """Every scheme's chain resolves the histogram's four keys (WP-30
+    P1.4a): a hex fill and outline, an intensity and a width; sttrans
+    declares its %20 on both colours, no other scheme any."""
+    bad = []
+    for name in EXPECTED_SCHEMES:
+        t = truth_for(name)
+        for k in ("histogram_color", "histogram_line_color"):
+            if not re.fullmatch(r"#[0-9a-f]{6}", t.get(k) or ""):
+                bad.append((name, k, t.get(k)))
+            if t.get(k + "_opacity") != (20.0 if name == "sttrans" else None):
+                bad.append((name, k + "_opacity", t.get(k + "_opacity")))
+        for k in ("histogram_intensity", "histogram_line_width"):
+            if not (t.get(k) or {}).get("name"):
+                bad.append((name, k, t.get(k)))
+    assert not bad, bad
 
 
 # ===========================================================================

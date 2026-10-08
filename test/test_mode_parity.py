@@ -1971,6 +1971,22 @@ CORPUS = [
     _case("by() fits in the shared scale",
           [plot_for("scatter", yvar="price"), plot_for("lfit", yvar="price")],
           None, {"by": "foreign"}),
+    # WP-30 P1.4a: the scheme's opacity, histogram style and symbols reach
+    # every layer, alike in both modes.
+    _case("sttrans fits and ranges", [plot_for("lfit"), plot_for("rspike"),
+                                      plot_for("pcarrow"),
+                                      plot_for("scatteri")],
+          {"scheme": "sttrans"}),
+    _case("rarea, s2color", [plot_for("rarea")]),
+    _case("two histograms, stcolor",
+          [plot_for("histogram"), plot_for("histogram")],
+          {"scheme": "stcolor"}),
+    _case("s1mono symbol cycle",
+          [plot_for("scatter")] * 11 + [plot_for("dropline"),
+                                        plot_for("rcapsym")],
+          {"scheme": "s1mono"}),
+    _case("msymbol(smcircle) msize(large)",
+          [plot_for("scatter", {"msymbol": "smcircle", "msize": "large"})]),
 ]
 
 

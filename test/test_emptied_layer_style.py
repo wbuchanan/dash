@@ -109,7 +109,9 @@ def _key_cases():
     out = []
     for sch, s in d["schemes"].items():
         for t, e in s["probes"].items():
-            if t == "histogram" or e["rows0"]["rc"] != 0:
+            # A Quad's key is its outline (WP-30 P1.4a: the histogram was
+            # skipped while its key colour was left to P1.4).
+            if e["rows0"]["rc"] != 0:
                 continue
             out.append(pytest.param(sch, t, id=f"{sch}-{t}"))
     return out

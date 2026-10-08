@@ -938,10 +938,12 @@ class TestFillOptions:
         assert r.glyph.fill_color == "#ff0000"
 
     def test_map_histogram_fintensity(self, fig, std_cds):
-        """fintensity(40) is navy at 40, #a3b5c5, opaque (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
+        """fintensity(40) is the histogram's khaki at 40, #eae7cb, opaque
+        (WP-30 P1.2b; P1.4a: the histogram's own colour, where this was
+        the bar cycle's navy, #a3b5c5)."""
         gm = GlyphMapper()
         r = gm.map_histogram(fig, std_cds, "y", {"fintensity": "40"})
-        assert r.glyph.fill_color == "#a3b5c5"
+        assert r.glyph.fill_color == "#eae7cb"
         assert r.glyph.fill_alpha == 1.0
 
     def test_map_rarea_fcolor(self, fig, range_cds):
@@ -952,13 +954,13 @@ class TestFillOptions:
         assert r.glyph.fill_color == "#ff33ff"
 
     def test_map_rarea_fintensity(self, fig, range_cds):
-        """fintensity(30) is navy at 30, #bac8d4; rarea's own 0.5 opacity
-        is section 24's (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
+        """fintensity(30) is navy at 30, #bac8d4, opaque by area's rule
+        (WP-30 P1.2b; P1.4a: the 0.5 was dash's own, never twoway's)."""
         gm = GlyphMapper()
         result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "30"})
         r = result[0] if isinstance(result, list) else result
         assert r.glyph.fill_color == "#bac8d4"
-        assert r.glyph.fill_alpha == 0.5
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_rbar_fcolor(self, fig, range_cds):
         """fcolor() is filled at rbar's intensity: twoway's rbar,
@@ -3391,7 +3393,12 @@ class TestHardeningGuards:
         gm = self._make_gm()
         r = gm.map_histogram(self._fig(), ColumnDataSource({"mpg": []}),
                              "mpg", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "histogram")
+        # The scheme's histogram style (WP-30 P1.4a).  Flipped: this
+        # compared with the bar p# cycle, which twoway's histogram ignores.
+        sch = gm.scheme
+        assert self._colour(r) == gm._blend_intensity(
+            sch.histogram_color, sch.histogram_intensity,
+            sch.naturally_white)
 
     def test_bar_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource

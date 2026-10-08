@@ -604,6 +604,11 @@ class TestNoParsedKeyIsDiscarded:
         "xyline_color", "xyline_dash", "xyline_width",
         "plotregion_line_color", "plotregion_line_width",
         "note_text_font_size", "note_text_color", "note_box_fill_color",
+        # WP-30 P1.4a: the histogram style, the symbol traits and the
+        # marker outline cycle.
+        "histogram_color", "histogram_line_color", "histogram_intensity",
+        "histogram_line_width", "p_symbol_hollow", "p_symbol_factor",
+        "p_markline_colors",
     ])
     def test_the_key_is_read_somewhere(self, attr):
         """A parsed key with no consumer is a key that does nothing.
@@ -1572,7 +1577,8 @@ class TestAChildPHashReachesWhatStatasChainReaches:
             truth = json.load(fh)[scheme]
         sp = SchemeParser(scheme)
         for key in ("p_colors", "p_line_colors", "p_bar_colors",
-                    "p_mark_colors", "p_lineplot_colors"):
+                    "p_mark_colors", "p_markline_colors",
+                    "p_lineplot_colors"):
             assert [c.lower() for c in getattr(sp, key)] == [
                 c.lower() for c in truth[key]], key
             assert getattr(sp, key.replace("colors", "alphas")) == [

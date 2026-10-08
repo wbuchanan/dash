@@ -457,10 +457,14 @@ class TestTheDifferencesSection:
         assert "yaxis(3)" in diff and "Option values" in diff
 
     def test_scheme_is_not_claimed_fully_supported(self):
-        """The scheme section says the range, fit and immediate layers do
-        not yet take a scheme's opacity."""
-        scheme = _between(_help(), "{marker scheme}", "{marker ")
-        assert "not yet" in scheme
+        """The scheme section says where a scheme's opacity stops: at the
+        confidence band, which twoway draws in `color ci_area' with no
+        opacity.  Flipped (WP-30 P1.4a): it said the range, fit and
+        immediate layers did not yet take the opacity; they do."""
+        scheme = " ".join(_between(_help(), "{marker scheme}",
+                                   "{marker ").split())
+        assert "not yet its opacity" not in scheme
+        assert "except the confidence band" in scheme
         assert "fully supported" not in _prose(_differences())
 
     def test_the_registry_limit_is_the_limit_table(self):

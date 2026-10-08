@@ -329,7 +329,11 @@ and now matches Stata.
 
 <!-- WP-30 P1.3b -->
 
-<!-- WP-30 P1.4a -->
+- `twoway histogram mpg` and every other histogram layer is drawn in the scheme's histogram style, the same for every layer: s2color fill `#1a476f` with a white 1px outline (a second histogram `#90353b`) -> khaki `#cac27e` outlined stone `#d7d29e` at `linewidth histogram`; stcolor `#1a85ff` -> `#3191ff` outlined `#5faaff`; s1mono `#606060` -> `#808080` outlined black; an emptied histogram's key likewise. `color()`, `fcolor()`, `lcolor()` and `fintensity()` still win (WP-30, P1.4a)
+- `twoway rarea` is drawn as opaque as `area`: fill opacity 0.5 -> 1 (0.2 under sttrans) (WP-30, P1.4a)
+- Under `scheme(sttrans)`, fits, smooths, function, spikes, range caps and lines, paired-coordinate layers, arrow heads and immediate layers carry the scheme's 20% opacity: alpha 1.0 -> 0.2; the confidence band stays as it was, as twoway draws it (WP-30, P1.4a)
+- The mono schemes' hollow symbols (s1mono's p7-p10 and the rest) are drawn hollow, and small symbols (`smcircle` and the rest, from the scheme or `msymbol()`) at Stata's size for them, about 0.71 of the full symbol (0.75 for `smtriangle`), after `msize()`: filled and full size -> hollow and small. scatteri, rscatter, pcscatter, dropline and rcapsym take the scheme's symbol cycle (circle -> the p# symbol) (WP-30, P1.4a)
+- A user scheme's `color p#mark` no longer colours markers, as twoway does not read it; `color p#markfill` and `color p#markline` now colour a marker's fill and outline. `msymbol(Oh) malpha(50)` stays hollow (fill 0.5 -> 0) (WP-30, P1.4a)
 
 <!-- WP-30 P1.4b -->
 
