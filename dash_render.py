@@ -39486,6 +39486,11 @@ class ServerAppBuilder:
         # Constants these classes reference that are not already written out
         # by _shared_stat_lines and are not modules the app imports.
         _already = set(self._shared_stat_lines())
+        # The names those lines assign ("NAME = ..."), so each constant
+        # below is looked up once, not against every line (the scan was a
+        # tenth of a build).
+        _already_names = {_l.partition(" =")[0] for _l in _already
+                          if " =" in _l}
         for _name in ("_TEXTBOX_SUBOPTS", "_TEXTBOX_SUBOPT_RE",
                       # _dash_route_axis_titles' axis-number rule (P0.5).
                       "_DASH_AXIS_NUM_RE",
@@ -39665,7 +39670,7 @@ class ServerAppBuilder:
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
-            if any(_l.startswith(_name + " =") for _l in _already):
+            if _name in _already_names:
                 continue
             if isinstance(_val, pd.Timestamp):
                 # repr() is Timestamp('...'), a name the app has not got.
@@ -40308,12 +40313,19 @@ class ServerAppBuilder:
             _names.update(_re_const.findall(r"\b_[A-Z][A-Z0-9_]*\b", _l))
         import ast as _ast_const
         _consts = []
+        # The names *out* already assigns, as a plain ("NAME = ...") or an
+        # annotated ("NAME: ...") assignment, read once.
+        _assigned = set()
+        for _l in out:
+            if " =" in _l:
+                _assigned.add(_l.partition(" =")[0])
+            if ":" in _l:
+                _assigned.add(_l.partition(":")[0])
         for _nm in sorted(_names):
             # Already written out above, as a plain or an annotated
             # assignment.  _KERNELS is the annotated one, and it holds
             # lambdas, so repr() of it is not even valid Python.
-            if any(_l.startswith(_nm + " =") or _l.startswith(_nm + ":")
-                   for _l in out):
+            if _nm in _assigned:
                 continue
             _val = getattr(_mod, _nm, None)
             try:
