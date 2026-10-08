@@ -3508,6 +3508,12 @@ refused, {cmd:r(198)}, with {cmd:twoway}'s
 {cmd:xtick()} and {cmd:ytick()} take their own {cmd:noticks},
 {cmd:tlength()} and {cmd:tposition()}; the label option's tick look never
 reaches their positions.
+{cmd:add} adds the listed values to the axis's default ticks, dates
+included ({cmd:ylabel(25, add)} draws 10 20 25 30 40 on {cmd:mpg}), in
+both modes and after every filter move; after a rule
+({cmd:ylabel(15(10)35, add)}, {cmd:#}{it:#}, {cmd:minmax}, {cmd:none}) it
+has no effect, and repeated copies merge as {cmd:twoway}'s do
+({cmd:ylabel(25, add) ylabel(35, add)} keeps both and the default ticks).
 Without {cmd:angle()} the labels take the scheme's
 {cmd:anglestyle horizontal_tick} and {cmd:anglestyle vertical_tick}: the y labels are
 vertical under {cmd:s2color}, {cmd:s2mono}, {cmd:s2gcolor}, {cmd:s1color},
@@ -3721,7 +3727,8 @@ second comma ({cmd:ylabel(5000, angle(0), axis(2))}) are refused, r(198),
 with {cmd:twoway}'s message, in the order {cmd:twoway} checks them.
 {cmd:ymlabel()} and {cmd:ymtick()} are checked the same way but are drawn
 on neither axis (named in a warning).  {cmd:add} on a label routed to the
-second axis ({cmd:ylabel(5000, axis(2) add)}) is named, not applied.  The
+second axis ({cmd:ylabel(5000, axis(2) add)}) adds to that axis's default
+ticks.  The
 second axes also take the options below, which are {cmd:dash}'s own
 spellings of the {cmd:axis(2)} forms, as are their synonyms:
 {cmd:twoway} refuses all sixteen, r(198).  Given on a graph with no layer

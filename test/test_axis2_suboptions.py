@@ -363,13 +363,17 @@ class TestTheSecondAxisOptionsReachTheSecondAxis:
         span = _span_at(figs[0], 5000.0)
         assert span.y_range_name == "y2"
 
-    def test_add_is_named_on_ylabel2(self, mode):
-        _fig, caught = _one(mode, DUAL_Y,
-                            {"ylabel": "5000 10000, axis(2) add"})
-        named = [w for w in caught if "add" in w.split(":")[-1].split()]
-        assert len(named) == 1, caught
-        assert named[0].startswith("dash: ylabel2()")
-        assert not any(w.startswith("dash: ylabel()") for w in caught)
+    def test_add_is_drawn_on_ylabel2(self, mode):
+        # Flipped (WP-30 P1.18b): named and not drawn was wrong because
+        # twoway draws an axis(2) add (axis_add_truth.json b01): the second
+        # axis's default ticks plus the values, with no note.
+        from test_by_scales import _major_ticks
+        fig, caught = _one(mode, DUAL_Y,
+                           {"ylabel": "6000 10000, axis(2) add"})
+        assert not [w for w in caught if "add" in w.split(":")[-1].split()]
+        assert _major_ticks(_y2(fig)) == [0.0, 5000.0, 6000.0, 10000.0,
+                                          15000.0]
+        assert _major_ticks(_left(fig)) == [10.0, 20.0, 30.0, 40.0]
 
 
 # ---------------------------------------------------------------------------

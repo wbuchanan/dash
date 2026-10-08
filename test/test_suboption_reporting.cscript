@@ -67,6 +67,9 @@
 *!          running numlist on it.
 *!   XP-07  the reflines limit refuses r(134), with by() panels counted.
 *!   XP-08  _dash_line_expand keeps each copy's own style.
+*!   AD-01 .. AD-09  add merged across copies and spent after a rule as
+*!          twoway reads it (WP-30 P1.18b; test/fixtures/
+*!          axis_add_truth.json); norescale dropped from a lone rule.
 *!
 *! Every render is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_by_suboptions.cscript does.
@@ -965,6 +968,138 @@ if _rc | `"`xl'"' != "20, lcolor(red), 10 15 20 25 30 35 40, lcolor(blue)" {
     local faillist "`faillist' XP-08"
 }
 else display as text "XP-08 PASS: _dash_line_expand keeps each copy's style"
+
+// ----------------------------------------------------------------
+// AD: add merged and kept as twoway reads it (WP-30 P1.18b)
+// AD-01 .. AD-06: repeated ylabel() copies merge as twoway merges them
+// (test/fixtures/axis_add_truth.json m_both, m_plain, m_second, a01,
+// m_nolab): a copy with values and add appends and keeps add only when
+// the copy before it held add; a copy with no values keeps the earlier
+// copy's values and add.  AD-07 / AD-08: dash.ado spends add after a
+// leading rule and norescale after a lone a(b)c rule, as twoway does
+// (rule, rule50, n2_25, nr_rule, nr_list).  AD-09: the Mata splitter's
+// _ap_rule on every head form.  Values are read from $dash_json_<name>
+// through Mata (_xp_hasval), never by macro expansion.
+// ----------------------------------------------------------------
+capture program drop _ad_case
+program define _ad_case
+    // _ad_case <id> `"<options>"' `"<want>"' : the ylabel value dash
+    // writes for scatter mpg weight with <options> is <want>.
+    args id opts want
+    dash clear
+    capture noisily dash scatter mpg weight, `opts' name(zad)
+    local rc = _rc
+    global AD_WANT `"`want'"'
+    mata: st_local("ok", strofreal(_xp_hasval("zad", "ylabel", st_global("AD_WANT"))))
+    macro drop AD_WANT
+    c_local ad_bad 0
+    if `rc' | !`ok' {
+        display as error `"`id' FAIL: `opts': rc `rc'; want "ylabel":"`want'""'
+        c_local ad_bad 1
+    }
+end
+local b = 0
+_ad_case AD-01 `"ylabel(25, add) ylabel(35, add)"' `"25 35, add"'
+if `ad_bad' local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-01"
+}
+else display as text "AD-01 PASS: ylabel(25, add) ylabel(35, add) keeps add"
+_ad_case AD-02 `"ylabel(25) ylabel(35, add)"' `"25 35"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-02"
+}
+else display as text "AD-02 PASS: ylabel(25) ylabel(35, add) appends and spends add"
+_ad_case AD-03 `"ylabel(25, add) ylabel(35)"' `"35"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-03"
+}
+else display as text "AD-03 PASS: a later copy without add replaces"
+_ad_case AD-04 `"ylabel(25, add) ylabel(, nolabels)"' `"25, nolabels add"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-04"
+}
+else display as text "AD-04 PASS: a later copy with no values keeps the earlier add"
+_ad_case AD-05 `"ylabel(25, nolabels) ylabel(35, add)"' `"25 35, nolabels"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-05"
+}
+else display as text "AD-05 PASS: ylabel(25, nolabels) ylabel(35, add) appends, nolabels kept"
+dash clear
+capture noisily dash (scatter mpg weight, ylabel(25, add)), ylabel(35, add) name(zad)
+local rc = _rc
+mata: st_local("ok", strofreal(_xp_hasval("zad", "ylabel", "25 35, add")))
+if `rc' | !`ok' {
+    display as error "AD-06 FAIL: rc `rc'; the after-comma copy did not merge to 25 35, add"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-06"
+}
+else display as text "AD-06 PASS: the after-comma copy merges with the segment's"
+local b = 0
+_ad_case AD-07 `"ylabel(15(10)35, add)"' `"15 25 35"'
+if `ad_bad' local b = 1
+_ad_case AD-07 `"ylabel(15(10)35 50, add)"' `"15 25 35 50"'
+if `ad_bad' local b = 1
+_ad_case AD-07 `"ylabel(15 25 35, add)"' `"15 25 35, add"'
+if `ad_bad' local b = 1
+_ad_case AD-07 `"ylabel(#2 25, add)"' `"#2 25"'
+if `ad_bad' local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-07"
+}
+else display as text "AD-07 PASS: a leading rule spends add; a value list keeps it"
+local b = 0
+_ad_case AD-08 `"ylabel(0(10)100, norescale)"' `"0 10 20 30 40 50 60 70 80 90 100"'
+if `ad_bad' local b = 1
+_ad_case AD-08 `"ylabel(0 10 20, norescale)"' `"0 10 20, norescale"'
+if `ad_bad' local b = 1
+_ad_case AD-08 `"ylabel(15/17, add)"' `"15 16 17, add"'
+if `ad_bad' local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-08"
+}
+else display as text "AD-08 PASS: a lone rule drops norescale; a list keeps it and add"
+dash clear
+// AD-09: _dash_axis_pieces' _ap_rule and its tail, on every head form.
+local b = 0
+local k = 0
+foreach v in `", add"' `"25, add"' `""a" 25, add"' `"15(10)35, add"' `"15(10)35 50, add"' `"#3 25, add"' `"minmax, add"' `"none, add"' `"15/17, add"' `"0(10)100, add norescale"' {
+    local ++k
+    local want : word `k' of 0 0 0 2 1 1 1 1 0 2
+    local _ap_rule ""
+    mata: _dash_axis_pieces(st_local("v"))
+    local t : copy local _ap_txt`_ap_n'
+    local tw ", add"
+    if `want' local tw ""
+    if "`_ap_rule'" != "`want'" | `"`macval(t)'"' != `"`tw'"' {
+        display as error `"AD-09 FAIL: `macval(v)': _ap_rule `_ap_rule' (want `want'), tail [`macval(t)'] (want [`tw'])"'
+        local b = 1
+    }
+}
+local v "15(10)35, norescale"
+mata: _dash_axis_pieces(st_local("v"))
+local t : copy local _ap_txt`_ap_n'
+if "`_ap_rule'" != "2" | `"`macval(t)'"' != "" local b = 1
+local v "15 25, add norescale grid"
+mata: _dash_axis_pieces(st_local("v"))
+local t : copy local _ap_txt`_ap_n'
+if "`_ap_rule'" != "0" | `"`macval(t)'"' != ", add norescale grid" local b = 1
+local v "15(10)35 50, add norescale grid"
+mata: _dash_axis_pieces(st_local("v"))
+local t : copy local _ap_txt`_ap_n'
+if "`_ap_rule'" != "1" | `"`macval(t)'"' != ", norescale grid" local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-09"
+}
+else display as text "AD-09 PASS: _dash_axis_pieces rates the head and spends add and norescale"
 
 // ----------------------------------------------------------------
 // Summary

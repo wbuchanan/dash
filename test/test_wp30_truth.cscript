@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 4
+    S48 11 S49 4 S50 5 S51 4 S52 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11317,10 +11317,117 @@ if inlist("`only'", "", "S51") & `: list posof "S51" in w30_run' {
 }
 * ==== end S51 ====
 
+// WP-30 S52 (P1.18b) helpers.  _s52_case draws a twoway command, reads
+// one axis's labelled ticks (.major.dlg_tickpos) into S52_TW, builds dash's
+// saved page of the dash command and reads the same axis's ticks from it
+// into S52_DASH (a %tm axis in Stata months), both sorted.  A backtick
+// here is spelled \x60.
+python:
+def _s52_ticks():
+    import dash_render as dr
+    from bokeh.models import CustomJSTicker, FixedTicker
+    from bokeh.models.axes import ContinuousAxis
+    M = _s21_M
+    axis, kind = M.getGlobal("S52_AXIS"), M.getGlobal("S52_KIND")
+    doc = _s21_doc_of_page(M.getGlobal("S52_PAGE"))
+    got = None
+    if doc is not None:
+        figs = [f for f in _s21_figs(doc) if f.renderers]
+        if figs:
+            f = figs[0]
+            side, attr, name = {"y": ("left", "y_range_name", "default"),
+                                "y2": ("right", "y_range_name", "y2"),
+                                "x": ("below", "x_range_name", "default")}[axis]
+            axs = [a for a in getattr(f, side) if isinstance(a, ContinuousAxis)
+                   and getattr(a, attr, "default") == name]
+            t = axs[0].ticker if axs else None
+            if isinstance(t, CustomJSTicker):
+                t = (t.args or {}).get("base")
+            if isinstance(t, FixedTicker):
+                got = sorted(float(v) for v in t.ticks)
+                if kind:
+                    got = [round(dr._dash_unix_ms_to_unit(v, kind), 6)
+                           for v in got]
+    M.setGlobal("S52_DASH", "none" if got is None
+                else " ".join("%g" % v for v in got))
+end
+
+capture program drop _s52_case
+program define _s52_case
+    // _s52_case <data> <axis> <kind> `"<twoway command>"' `"<dash command>"'
+    version 19
+    args data axis kind tcmd dcmd
+    if "`data'" == "auto" sysuse auto, clear
+    else {
+        clear
+        quietly set obs 60
+        quietly generate t = tm(2000m1) + _n - 1
+        format t %tm
+        quietly tsset t
+        quietly generate y = 100 + _n
+    }
+    capture graph drop _all
+    capture dash clear
+    capture noisily `tcmd'
+    global S52_TRC = _rc
+    local a = cond("`axis'" == "y2", "yaxis2", cond("`axis'" == "x", "xaxis1", "yaxis1"))
+    local n "`.Graph.`a'.major.dlg_tickpos.arrnels'"
+    if "`n'" == "" | "`n'" == "." local n 0
+    local tw ""
+    forvalues i = 1/`n' {
+        local tw "`tw' `.Graph.`a'.major.dlg_tickpos[`i']'"
+    }
+    mata: st_global("S52_TW", invtokens(strtrim(strofreal(sort(strtoreal(tokens(st_local("tw")))', 1)', "%21.0g"))))
+    capture graph drop _all
+    global S52_SEQ = ${S52_SEQ} + 1
+    local f "${S52_WORK}/ad${S52_SEQ}.html"
+    capture noisily `dcmd' name(ad${S52_SEQ})
+    global S52_DRC = _rc
+    capture noisily dash build, saving("`f'") replace nobrowser
+    global S52_BRC = _rc
+    global S52_PAGE "`f'"
+    global S52_AXIS "`axis'"
+    global S52_KIND "`kind'"
+    python: import __main__; __main__._s52_ticks()
+    capture erase "`f'"
+    capture dash clear
+end
+
 * ==== S52 P1.18b: The add sub-option ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S52") & `: list posof "S52" in w30_run' {
     display as text "S52 start " c(current_date) " " c(current_time)
+    global S52_WORK "`w30_work'/s52"
+    capture mkdir "${S52_WORK}"
+    global S52_SEQ 0
+    // AD-20: ylabel(25, add): live twoway's y ticks are dash's saved page's.
+    _s52_case auto y "" `"twoway scatter mpg weight, ylabel(25, add)"' `"dash scatter mpg weight, ylabel(25, add)"'
+    display as text "AD-20 twoway ${S52_TW}; dash ${S52_DASH}"
+    _w30_expect AD-20 "(${S52_TRC} == 0 & ${S52_DRC} == 0 & ${S52_BRC} == 0)" "rc twoway ${S52_TRC}, dash ${S52_DRC}, build ${S52_BRC}"
+    _w30_expect AD-20 `"("${S52_TW}" == "${S52_DASH}" & "${S52_TW}" == "10 20 25 30 40")"' "twoway ${S52_TW}, dash ${S52_DASH}"
+    _w30_done AD-20 "ylabel(25, add): dash draws twoway's 10 20 25 30 40"
+    // AD-21: b01, the second axis.
+    _s52_case auto y2 "" `"twoway (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(6000, axis(2) add)"' `"dash (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(6000, axis(2) add)"'
+    display as text "AD-21 twoway ${S52_TW}; dash ${S52_DASH}"
+    _w30_expect AD-21 "(${S52_TRC} == 0 & ${S52_DRC} == 0 & ${S52_BRC} == 0)" "rc twoway ${S52_TRC}, dash ${S52_DRC}, build ${S52_BRC}"
+    _w30_expect AD-21 `"("${S52_TW}" == "${S52_DASH}" & "${S52_TW}" == "0 5000 6000 10000 15000")"' "twoway ${S52_TW}, dash ${S52_DASH}"
+    _w30_done AD-21 "ylabel(6000, axis(2) add): dash draws twoway's second-axis ticks"
+    // AD-22: dash's xlabel(492, add) against twoway's tlabel(2001m1, add)
+    // on a %tm axis.  Each adds 2001m1 (492) to its own default date
+    // ticks; dash's default model differs from _tsnatscale over these 60
+    // months (S44, A8), so each is compared with its own default.
+    _s52_case ts x m `"tsline y"' `"dash tsline y,"'
+    local tw0 "${S52_TW}"
+    local d0 "${S52_DASH}"
+    _s52_case ts x m `"tsline y, tlabel(2001m1, add)"' `"dash tsline y, xlabel(492, add)"'
+    display as text "AD-22 twoway `tw0' -> ${S52_TW}; dash `d0' -> ${S52_DASH}"
+    _w30_expect AD-22 "(${S52_TRC} == 0 & ${S52_DRC} == 0 & ${S52_BRC} == 0)" "rc twoway ${S52_TRC}, dash ${S52_DRC}, build ${S52_BRC}"
+    mata: st_local("tw_ok", strofreal(uniqrows((tokens(st_local("tw0")), "492")')' == sort(tokens(st_global("S52_TW"))', 1)'))
+    mata: st_local("d_ok", strofreal(uniqrows((tokens(st_local("d0")), "492")')' == sort(tokens(st_global("S52_DASH"))', 1)'))
+    _w30_expect AD-22 "(`tw_ok' == 1 & `d_ok' == 1)" "twoway `tw0' -> ${S52_TW}; dash `d0' -> ${S52_DASH}"
+    _w30_done AD-22 "xlabel(492, add) adds 2001m1 to dash's default date ticks as tlabel(2001m1, add) adds it to twoway's"
+    capture rmdir "${S52_WORK}"
+    macro drop S52_*
     display as text "S52 end " c(current_date) " " c(current_time)
 }
 * ==== end S52 ====

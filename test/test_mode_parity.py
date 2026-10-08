@@ -2244,6 +2244,12 @@ CORPUS = [
           {"formats": {"when": "%td"}},
           {"xlabel": "15341 15344 15347", "xtitle": '"Day"',
            "xline": "15345"}),
+    # WP-30 P1.18b: add unions with the default ticks.
+    _case("ylabel(25, add) (WP-30 P1.18b)", [_sc()], None,
+          {"ylabel": "25, add"}),
+    _case("ylabel2(6000, add) on a second axis (WP-30 P1.18b)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
+          {"ylabel2": "6000, add"}),
 ]
 
 
@@ -3110,6 +3116,10 @@ MOVE_CORPUS = [
     # WP-30 P1.21b: an unextended line follows the axis.
     _move_case("noextend after a dropdown move (WP-30 P1.21b)", _MOVES[0],
                [_sc()], {"xline": "3000, noextend"}),
+    # WP-30 P1.18b: an added date holds after a move.
+    _move_case("xlabel(15345, add) on a date axis, range (WP-30 P1.18b)",
+               _MOVES[1], [plot_for("line", yvar="mpg", xvar="when")],
+               {"xlabel": "15345, add"}, bo=_P123A_W),
 ]
 
 

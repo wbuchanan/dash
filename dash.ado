@@ -3781,6 +3781,14 @@ end
 // refuse those alike (xlabel(1(0)5) is rc 0, xlabel(2000 abc 4000) r(198))
 // and numlist's rc cannot tell them apart; the renderer names what it
 // cannot draw and bounds the rest.  Read by value (_dash_text_args).
+// WP-30 P1.18b: an expanded rule reads as a list, so the rule-versus-list
+// distinction twoway draws by is kept here: _dash_axis_pieces rates the
+// head (_ap_rule) and its T piece is the tail twoway reads.  After a
+// rule-led head (a(b)c, #N, minmax, none) add is spent -- twoway draws
+// ylabel(15(10)35, add) as 15 25 35 -- and after a lone a(b)c rule
+// norescale is dropped, as twoway draws ylabel(0(10)100, norescale)
+// (test/fixtures/axis_add_truth.json).  The tail is rebuilt in Mata from
+// its words, never by macro substitution of the user's text.
 // Returns r(norm).
 // ----------------------------------------------------------------
 program define _dash_axis_expand, rclass

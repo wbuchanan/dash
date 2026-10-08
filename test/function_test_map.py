@@ -1092,6 +1092,7 @@ FUNCTIONS = {
  '_dash_refline_margin': 'test/test_refline_extent.py::TestTheExtent::test_probe',
  # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
  # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
+ '_dash_axis_add': 'test/test_axis_add.py::TestTheUnitFunctions::test_axis_add',
  # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
  # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
  # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)

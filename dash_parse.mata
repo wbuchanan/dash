@@ -476,7 +476,8 @@
 *!   _dash_axis_pieces(s)
 *!       An axis-label option's value split into strings, bare runs and
 *!       its sub-option tail, into the caller's locals _ap_n, _ap_tag<i>
-*!       and _ap_txt<i> (WP-28 S14, GAPS2 B1).
+*!       and _ap_txt<i> (WP-28 S14, GAPS2 B1), and the head's rating
+*!       _ap_rule; a rule-led head spends add (WP-30 P1.18b).
 *!
 *!   _dash_imm_echo(s)
 *!       s cut at 80 characters with "..." for a one-line echo (WP-30
@@ -5530,11 +5531,25 @@ void _dash_stylelist_locals(string scalar raw, string scalar stub)
 // such text never reaches numlist's command line).  The tail, with its
 // comma, is last (tag T, possibly empty).  Sets the caller's locals
 // _ap_n and, for each piece i, _ap_tag<i> and _ap_txt<i>.
+//
+// WP-30 P1.18b: the head is rated as twoway reads it, into the caller's
+// local _ap_rule (test/fixtures/axis_add_truth.json).  Its first word --
+// a quoted string counts as a value -- is a rule when it begins with #,
+// is minmax or none, or is a(b)c (a[b]c) with numbers a, b and c; the
+// head being that one a(b)c word alone is a lone rule.  _ap_rule is 2
+// for a lone rule, 1 for any other rule-led head, 0 for a value first or
+// an empty head.  After a rule twoway spends add (ylabel(15(10)35, add)
+// draws 15 25 35), so the tail loses every add word when _ap_rule is 1
+// or 2; after a lone rule it also loses norescale, which twoway does not
+// keep on a range of ticks (ylabel(0(10)100, norescale) widens the
+// axis).  The tail is rebuilt from its words (_dash_rep_toks) after one
+// comma and blank, "" when none is left.  No regex; linear in s.
 void _dash_axis_pieces(string scalar s)
 {
-    string rowvector tags, txts
-    string scalar    head, tail, run, ch
+    string rowvector tags, txts, hw, tw
+    string scalar    head, tail, run, ch, w1, lt
     real scalar      n, i, k, in_dq, in_cq, nxt, was_in, sstart, bstart
+    real scalar      rule, p1, p2, cut
 
     n    = strlen(s)
     head = s
@@ -5561,6 +5576,45 @@ void _dash_axis_pieces(string scalar s)
             }
         }
         i++
+    }
+
+    // The head's rating (WP-30 P1.18b).
+    rule = 0
+    hw   = _dash_rep_toks(subinstr(head, ",", " "), 0)
+    if (cols(hw)) {
+        w1 = hw[1]
+        ch = substr(w1, 1, 1)
+        if (ch == char(34) | ch == char(96)) rule = 0
+        else if (ch == "#" | w1 == "minmax" | w1 == "none") rule = 1
+        else {
+            p1 = strpos(w1, "(")
+            p2 = strpos(w1, ")")
+            if (!p1) {
+                p1 = strpos(w1, "[")
+                p2 = strpos(w1, "]")
+            }
+            if (p1 > 1 & p2 > p1 + 1 & p2 < strlen(w1)) {
+                if (strtoreal(substr(w1, 1, p1 - 1)) < . &
+                    strtoreal(substr(w1, p1 + 1, p2 - p1 - 1)) < . &
+                    strtoreal(substr(w1, p2 + 1, .)) < .) {
+                    rule = (cols(hw) == 1 ? 2 : 1)
+                }
+            }
+        }
+    }
+    st_local("_ap_rule", strofreal(rule))
+    if (rule & tail != "") {
+        tw  = _dash_rep_toks(substr(tail, 2, .), 0)
+        lt  = ""
+        cut = 0
+        for (k = 1; k <= cols(tw); k++) {
+            if (tw[k] == "add" | (rule == 2 & tw[k] == "norescale")) {
+                cut = 1
+                continue
+            }
+            lt = lt + (lt == "" ? "" : " ") + tw[k]
+        }
+        if (cut) tail = (lt == "" ? "" : ", " + lt)
     }
 
     tags = J(1, 0, "")
@@ -8728,12 +8782,19 @@ string scalar _dash_rep_region_word(string scalar w, string scalar full)
 
 // _dash_rep_merge(key, v1, v2) -- the value twoway draws for option key
 // written first with value v1 and then with v2 (_dash_rep_cat says how).
+// An axis-label option (cat L) keeps add as twoway merges it (WP-30
+// P1.18b, test/fixtures/axis_add_truth.json): ylabel(25, add)
+// ylabel(35, add) is 25 35, add (both held add); ylabel(25)
+// ylabel(35, add) is 25 35 (appended, add spent); ylabel(25, add)
+// ylabel(35) is 35; ylabel(25, nolabels) ylabel(35, add) is 25 35,
+// nolabels; and a copy with no values keeps the earlier copy's add
+// (a01: ylabel(25, add) ylabel(, nolabels) is 25, nolabels add).
 string scalar _dash_rep_merge(string scalar key, string scalar v1,
                               string scalar v2)
 {
     string scalar    cat, b1, s1, b2, s2, body, sub
     string rowvector w2, drop
-    real scalar      c1, c2, has2, suf, pre, add
+    real scalar      c1, c2, has2, suf, pre, add, a1, keep
 
     cat = _dash_rep_cat(key)
     if (cat == "F") return(strtrim(v1) != "" ? v1 : v2)
@@ -8758,6 +8819,11 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     else if (add & has2)  body = strtrim(b1) + " " + strtrim(b2)
     else                  body = (has2 ? strtrim(b2) : strtrim(b1))
     sub = _dash_rep_subs(s1, s2, cat, drop, key)
+    if (cat == "L") {
+        a1   = anyof(strlower(_dash_rep_toks(s1, 1)), "add")
+        keep = (has2 ? (add & a1) : a1)
+        if (keep) sub = sub + (sub != "" ? " " : "") + "add"
+    }
     return(body + (sub != "" ? ", " + sub : ""))
 }
 

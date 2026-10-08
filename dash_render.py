@@ -30038,12 +30038,18 @@ def _dash_parse_axis_spec(raw):
         A dict with keys ``mode`` (``"default"``, ``"explicit"``,
         ``"count"``, ``"minmax"`` or ``"none"``), ``ticks``, ``count``,
         ``labels``, ``format``, ``labsize``, ``angle``, ``grid``,
-        ``valuelabel`` and ``norescale`` (WP-28 B2).
+        ``valuelabel``, ``norescale`` (WP-28 B2) and ``add`` (WP-30
+        P1.18b): True when the tail says ``add`` and the head begins with
+        a value, so the listed values join the axis's default ticks
+        (:func:`_dash_axis_add`).  After a leading rule -- ``a(b)c``,
+        ``#N``/``##N``, ``minmax``, ``none`` -- or with no values twoway
+        spends ``add`` (``ylabel(15(10)35, add)`` draws 15 25 35, measured
+        in test/fixtures/axis_add_truth.json), and so does this.
     """
     out = {"mode": "default", "ticks": [], "count": None,
            "labels": {}, "format": None, "labsize": None,
            "angle": None, "grid": None, "valuelabel": False,
-           "norescale": False, "unsupported": [],
+           "norescale": False, "add": False, "unsupported": [],
            # WP-30 P1.18a: the label and tick look (None: not given).
            "show_labels": None, "show_ticks": None, "labcolor": None,
            "tlength": None, "tposition": None, "angle_bad": None}
@@ -30089,6 +30095,8 @@ def _dash_parse_axis_spec(raw):
                     out["angle_bad"] = _arg
             elif _nm == "norescale":
                 out["norescale"] = True
+            elif _nm == "add":
+                out["add"] = True
             elif _nm in ("labcolor", "tlength", "tposition"):
                 out[_nm] = _arg
         if "grid" in _seen:
@@ -30107,6 +30115,14 @@ def _dash_parse_axis_spec(raw):
             out["show_ticks"] = False
 
     head = head.strip()
+    # WP-30 P1.18b: add holds only after a head that begins with a value
+    # (a quoted label counts as one); a rule or no values spends it.
+    if out["add"]:
+        _first = head.split(None, 1)[0] if head else ""
+        if (not _first or _first.lower() in ("none", "minmax")
+                or _DASH_AXIS_RULE_RE.match(head)
+                or _DASH_AXIS_INCR_RE.match(_first)):
+            out["add"] = False
 
     if re.fullmatch(r"none", head, re.I):
         out["mode"] = "none"
@@ -30163,7 +30179,7 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                           fmt_fallback="", grid_color=None,
                           value_labels=None, fmt_cache=None, ref_in=4.0,
                           date_kind=None, option="axis", by_graph=False,
-                          colours=None):
+                          colours=None, numticks=None):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -30199,6 +30215,9 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       ``noticks`` as if absent (WP-30 P1.18a, M6).
         colours:      The scheme's colour context for ``labcolor()``
                       (``OptionTranslator.scheme_colour_context``).
+        numticks:     The axis's default tick count, for an ``add`` spec
+                      on an axis that carries no default ticker yet
+                      (:func:`_dash_axis_add`; WP-30 P1.18b).
     """
     from bokeh.models.tickers import FixedTicker, BasicTicker
     from bokeh.models.formatters import CustomJSTickFormatter
@@ -30231,7 +30250,11 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
     if spec.get("labels"):
         overrides.update({float(k): v for k, v in spec["labels"].items()})
 
-    if mode == "none":
+    if spec.get("add") and _dash_axis_add(axis_obj, spec, numticks,
+                                          overrides):
+        # WP-30 P1.18b: the listed values join the default ticks.
+        pass
+    elif mode == "none":
         # Zero ticks BY INTENT.  Measured: Stata's xlabel(none) also
         # removes the gridlines.
         axis_obj.ticker = FixedTicker(ticks=[])
@@ -30364,6 +30387,56 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                     g.grid_line_color = grid_color or "#e5e5e5"
             else:
                 g.grid_line_color = None
+
+
+def _dash_axis_add(axis_obj, spec, numticks=None, overrides=None):
+    """Give *axis_obj* twoway's ``add``: its default ticks plus the spec's
+    listed values (WP-30 P1.18b).  Returns True when it applied it.
+
+    twoway draws ``ylabel(25, add)`` as its default ticks and 25 (10 20 30
+    40 25 on auto's mpg; test/fixtures/axis_add_truth.json), where dash
+    drew 25 alone.  The values ride as ``_dash_extra_ticks``, the list a
+    ``#N`` rule before values already uses (E2): the finishers
+    (:func:`_dash_place_count_ticks`, :func:`_dash_axis_plan` and the
+    re-finish JS) union it with the ticks they place, at build and after
+    every move.  The axis's default placeholder (S21's, S44's on a date
+    axis) is kept; any other ticker on a continuous axis becomes a default
+    placeholder of *numticks* (5 when None).  Labels given as text join
+    ``major_label_overrides`` (*overrides*, else the spec's), so the
+    default ticks keep their formatter.  With ``norescale`` the values
+    stay out of the hull (``_dash_extra_norescale``; a07: 50 drawn, the
+    axis not widened).  False, the axis untouched, when the spec has no
+    ``add`` or no values, or the axis is not continuous.
+    """
+    from bokeh.models.tickers import ContinuousTicker, FixedTicker
+    if not spec.get("add") or not spec.get("ticks"):
+        return False
+    members = list(axis_obj) if isinstance(axis_obj, list) else [axis_obj]
+    members = [a for a in members
+               if isinstance(getattr(a, "ticker", None), ContinuousTicker)]
+    if not members:
+        return False
+    try:
+        n = int(numticks) if numticks is not None else 5
+    except (TypeError, ValueError, OverflowError):
+        n = 5
+    extra = sorted({float(t) for t in spec["ticks"]
+                    if math.isfinite(float(t))})
+    labels = (overrides if overrides is not None else
+              {float(k): str(v) for k, v in (spec.get("labels") or {}).items()})
+    for ax in members:
+        t = ax.ticker
+        if not (isinstance(t, FixedTicker)
+                and _DASH_DEFAULT_TAG in (getattr(t, "tags", None) or ())):
+            ax.ticker = _dash_default_ticker(n)
+        ax._dash_extra_ticks = list(extra)
+        if spec.get("norescale"):
+            ax._dash_extra_norescale = True
+        if labels:
+            ax.major_label_overrides = {
+                **dict(getattr(ax, "major_label_overrides", None) or {}),
+                **labels}
+    return True
 
 
 def _dash_primary_axes(axes, range_attr):
@@ -30753,7 +30826,9 @@ function dash_axis_hull(a, ticks, lo, hi, models, bases) {
     for (const v of a.explicit) if (ok(v)) vals.push(v);
     for (const v of [lo, hi]) if (v !== null && ok(v)) vals.push(v);
     for (const v of (bases || [])) if (ok(v)) vals.push(v);
-    if (a.mode === "count") for (const v of ticks) if (ok(v)) vals.push(v);
+    // add's norescale: the placed ticks without the added values (P1.18b).
+    const placed = (a.xnr && ticks && ticks.dash_base) ? ticks.dash_base : ticks;
+    if (a.mode === "count") for (const v of placed) if (ok(v)) vals.push(v);
     for (const v of a.held) if (ok(v)) vals.push(v);
     for (const B of a.bars) {
         const src = models[B.src];
@@ -30872,7 +30947,9 @@ function dash_axis_place(a, lo, hi, cur) {
     if (a.mode !== "count" || a.hold) return cur;
     let t = dash_axis_ticks(lo, hi, a.n, a.kind);
     if (a.extra.length) {
-        t = Array.from(new Set((t || []).concat(a.extra))).sort((x, y) => x - y);
+        const b = t || [];
+        t = Array.from(new Set(b.concat(a.extra))).sort((x, y) => x - y);
+        if (a.xnr) t.dash_base = b;
     }
     return (t && t.length) ? t : cur;
 }
@@ -31338,7 +31415,9 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                     **(getattr(fig, "_dash_unit_kind", None) or {}),
                     ax_key[0]: "su:" + _stata_date_kind(fb)}
         spec = _dash_parse_axis_spec(raw) if raw else None
-        if (spec is None or spec.get("mode") == "default") \
+        # WP-30 P1.18b: an add spec draws the default ticks too.
+        if (spec is None or spec.get("mode") == "default"
+                or spec.get("add")) \
                 and (kind in (None, "tc", "tC") or kind in _DASH_TS_UNITS):
             # WP-30 P1.3a: no label rule -- twoway's #N for the scheme's
             # tick count (numticks_g), placed by natscale over every drawn
@@ -31361,7 +31440,10 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                                   grid_color, vlabels, fmt_cache=fmt_cache,
                                   ref_in=ref_in,
                                   date_kind=kind, option=ax_key,
-                                  by_graph=by_graph, colours=colours)
+                                  by_graph=by_graph, colours=colours,
+                                  numticks=(getattr(fig, "_dash_numticks",
+                                                    None) or {}).get(
+                                      ax_key[0], 5))
         elif fb and fmts is not None:
             _dash_apply_axis_spec(axis_obj, grid_obj,
                                   _dash_parse_axis_spec(""), col, fb,
@@ -32205,6 +32287,9 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     "explicit": [float(v) for v in explicit if ok(v)],
                     "extra": [float(v) for v in (getattr(
                         ax, "_dash_extra_ticks", None) or ()) if ok(v)],
+                    # WP-30 P1.18b: add's norescale (extra out of the hull).
+                    "xnr": bool(getattr(ax, "_dash_extra_norescale",
+                                        False)),
                     "scale": [float(v) for v in scale if ok(v)],
                     "reverse": bool(rev),
                     "margin": (list(_dash_margin_pair(margins[letter]))
@@ -32379,7 +32464,8 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         _sr2[name] = "reverse" in names
         fig._dash_scale_reverse2 = _sr2
         if ax is not None and (spec is None
-                               or spec.get("mode") == "default") \
+                               or spec.get("mode") == "default"
+                               or spec.get("add")) \
                 and (kind in (None, "tc", "tC") or kind in _DASH_TS_UNITS):
             # No ylabel2()/xlabel2() rule: ticked as the first axes are.
             _nt = getattr(fig, "_dash_numticks", None) or {}
@@ -32440,11 +32526,13 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                     fig._dash_unit_kind = {
                         **(getattr(fig, "_dash_unit_kind", None) or {}),
                         name: "su:" + _stata_date_kind(fb2)}
+            _nt2 = getattr(fig, "_dash_numticks", None) or {}
             _dash_apply_axis_spec(ax, grids, spec, col_vals or None, fb2,
                                   grid_color, vlabels2, fmt_cache=fmt_cache,
                                   ref_in=ref_in, date_kind=kind,
                                   option=f"{n}label2", by_graph=by_graph,
-                                  colours=colours)
+                                  colours=colours,
+                                  numticks=_nt2.get(name, _nt2.get(n, 5)))
         elif fmts2 is not None and ax is not None:
             fb2, _by2 = fmts2[name]
             if kind and not _by2:
@@ -32629,6 +32717,10 @@ def _dash_place_count_ticks(e, lo, hi, common=False):
     # count ticks are known.
     _extra = getattr(ax, "_dash_extra_ticks", None)
     if _extra and base is not None and not held:
+        # WP-30 P1.18b: add's norescale keeps its values out of the hull
+        # (_dash_axis_hull reads these ticks in place of the union).
+        if getattr(ax, "_dash_extra_norescale", False):
+            ax._dash_hull_count_ticks = [float(v) for v in (t_base or [])]
         if t_base:
             t_base = sorted(set(t_base) | set(_extra))
         else:
@@ -32832,7 +32924,13 @@ def _dash_axis_hull(fig, e):
             dict(t.args or {}).get("base")
             if isinstance(t, CustomJSTicker) else None)
         if isinstance(fixed, FixedTicker):
-            vals += [float(v) for v in fixed.ticks if ok(v)]
+            _placed = fixed.ticks
+            if getattr(ax, "_dash_extra_norescale", False) and getattr(
+                    ax, "_dash_hull_count_ticks", None) is not None:
+                # WP-30 P1.18b: add norescale -- the placed ticks without
+                # the added values (twoway a07: 50 drawn, axis 10-41).
+                _placed = ax._dash_hull_count_ticks
+            vals += [float(v) for v in _placed if ok(v)]
     vals += [float(v) for v in (getattr(ax, "_dash_every_extra", None)
                                 or ()) if ok(v)]
     # A bar's outer half-width, read with numpy over the view's rows.
@@ -36503,6 +36601,8 @@ _DASH_AXTITLE_SUBOPT_TABLE = (
 _DASH_AXLABEL_HONOURED = frozenset({
     "format", "labsize", "angle", "grid", "nogrid", "valuelabels",
     "novaluelabels", "norescale",
+    # WP-30 P1.18b: add unions the listed values with the default ticks.
+    "add",
     # WP-30 P1.18a: the label and tick look.
     "labels", "nolabels", "ticks", "noticks", "labcolor", "tlength",
     "tposition"})
@@ -37330,9 +37430,12 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
             # axis and not drawn on the colour bar: named as typed.
             for _sub in ("angle", "grid", "nogrid", "labels", "nolabels",
                          "ticks", "noticks", "labcolor", "tlength",
-                         "tposition"):
+                         "tposition", "add"):
                 if _sub in _typed:
                     _bad.append(_typed[_sub])
+            # WP-30 P1.18b: add is a valid zlabel() option the colour key
+            # does not draw; named above, its listed values are the ticks.
+            spec["add"] = False
             _dash_report_suboptions("zlabel", _bad, seen, key)
             _ticks = None
             if spec["mode"] == "none":
@@ -45532,6 +45635,8 @@ class ServerAppBuilder:
                          # WP-30 P1.20b: plot-region margin and inner box.
                          "_dash_margin_sides", "_dash_margin_pair",
                          "_dash_inner_box", "_dash_ts_kind",
+                         # WP-30 P1.18b: add joins the default ticks.
+                         "_dash_axis_add",
                          # WP-28 B2: the extent after the layers, the
                          # scale sub-option names and the shared
                          # primary-renderers limit.

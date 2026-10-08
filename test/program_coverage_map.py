@@ -479,7 +479,8 @@ COVERAGE = {
         # WP-28 S14 (B1): direct -- an axis-label value split into strings,
         # bare runs and hostile runs; the hostile run is never expanded.
         "_dash_axis_pieces": ("test_gaps2_truth.cscript:AL-02",
-                              "test_gaps2_truth.cscript:AL-01"),
+                              "test_gaps2_truth.cscript:AL-01",
+                              "test_suboption_reporting.cscript:AD-09"),
         "_dash_axis_run_tag": ("test_gaps2_truth.cscript:AL-02",),
         "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
         # P1A-76: every prefix of every name, direct, and no prefix that
