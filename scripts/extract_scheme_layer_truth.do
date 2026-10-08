@@ -77,6 +77,26 @@ file close `fh'
 file open `fh' using "${OB_WORK}/scheme-w24h.scheme", write text replace
 file write `fh' "#include s2color" _n "color histogram red" _n "intensity histogram inten50" _n "color histogram_line blue" _n "linewidth histogram vthick" _n
 file close `fh'
+* Section 33's six user schemes (P1.4b): the marker-label chain and the
+* colour key's text and tick keys.
+file open `fh' using "${OB_WORK}/scheme-w33a.scheme", write text replace
+file write `fh' "#include s2color" _n "color plabel green" _n "gsize plabel large" _n
+file close `fh'
+file open `fh' using "${OB_WORK}/scheme-w33b.scheme", write text replace
+file write `fh' "#include s2color" _n "color p1label blue" _n "gsize p1label vlarge" _n "color plabel green" _n
+file close `fh'
+file open `fh' using "${OB_WORK}/scheme-w33c.scheme", write text replace
+file write `fh' "#include s2color" _n "color label white" _n "gsize label huge" _n
+file close `fh'
+file open `fh' using "${OB_WORK}/scheme-w33d.scheme", write text replace
+file write `fh' "#include s2color" _n "color p1 red" _n
+file close `fh'
+file open `fh' using "${OB_WORK}/scheme-w33k.scheme", write text replace
+file write `fh' "#include s2color" _n "gsize axis_title vlarge" _n "color axis_title red" _n "gsize tick_label small" _n "color tick_label blue" _n
+file close `fh'
+file open `fh' using "${OB_WORK}/scheme-w33t.scheme", write text replace
+file write `fh' "#include s2color" _n "color axisline orange" _n "color tick purple" _n "color clegend_line green" _n "color clegend blue" _n
+file close `fh'
 adopath ++ "${OB_WORK}/"
 
 quietly shell git -C "${OB_REPO}" rev-parse HEAD > "${OB_WORK}/git_head.txt"
@@ -175,6 +195,52 @@ foreach s in w24g w24m w24f {
     _sk_probe mk_`s'_2 mark `s' (scatter mpg weight in 1/3) (scatter price weight in 1/3, yaxis(2))
 }
 
+* Section 33 (P1.4b): marker labels and the colour key.
+capture program drop _s33_probe
+program define _s33_probe
+    * _s33_probe id group scheme command: as _sk_probe, with the axes and
+    * plot region left on, so the colour key's place is measurable.
+    gettoken id 0 : 0
+    gettoken group 0 : 0
+    gettoken scheme 0 : 0
+    local cmd = strtrim(`"`0'"')
+    global OB_SEQ = ${OB_SEQ} + 1
+    local f "${OB_WORK}/p${OB_SEQ}"
+    global OBF_`id' "p${OB_SEQ}"
+    capture noisily twoway `cmd' scheme(`scheme') name(sk, replace)
+    local rc = _rc
+    global OBR_`id' = `rc'
+    global OBG_`id' "`group'"
+    global OBS_`id' "`scheme'"
+    global OBC_`id' `"`cmd'"'
+    if `rc' == 0 {
+        quietly graph export "`f'.svg", replace
+    }
+    global OB_IDS "${OB_IDS} `id'"
+    capture graph drop sk
+end
+foreach s in s2color s1rcolor stcolor s1mono economist sttrans s2mono stmono1 {
+    _sk_probe s33_mlabel_`s' mlabel `s' scatter mpg weight in 1/3, mlabel(make)
+}
+foreach s in w33a w33c w33d {
+    _sk_probe s33_mlabel_chain_`s' mlabel_chain `s' scatter mpg weight in 1/3, mlabel(make)
+}
+_sk_probe s33_mlabel_chain_w33b mlabel_chain w33b (scatter mpg weight in 1/3, mlabel(make)) (scatter price weight in 1/3, mlabel(make) yaxis(2))
+_sk_probe s33_mlabel_chain_mcolor mlabel_chain s2color scatter mpg weight in 1/3, mlabel(make) mcolor(red)
+_sk_probe s33_mlabel_chain_mlabsize2 mlabel_chain s2color scatter mpg weight in 1/3, mlabel(make) mlabsize(*2)
+_sk_probe s33_mlabel_chain_mlabcolor mlabel_chain s2color scatter mpg weight in 1/3, mlabel(make) mlabcolor(red)
+_sk_probe s33_mlabel_chain_trmlabcolor mlabel_chain sttrans scatter mpg weight in 1/3, mlabel(make) mlabcolor(red)
+_sk_probe s33_mlabel_chain_trmcolor mlabel_chain sttrans scatter mpg weight in 1/3, mlabel(make) mcolor(red)
+foreach c in "bar mpg weight in 1/3" "dropline mpg weight in 1/3" "rcapsym lo hi weight in 1/3" "rscatter lo hi weight in 1/3" "pcscatter mpg weight price length in 1/3" "pcarrow mpg weight price length in 1/3" "pcbarrow mpg weight price length in 1/3" "pccapsym mpg weight price length in 1/3" "connected mpg weight in 1/3" {
+    gettoken t : c
+    _sk_probe s33_mlabel_types_`t' mlabel_types s2color (scatter mpg weight in 1/3) (`c', mlabel(make))
+}
+_sk_probe s33_mlabel_types_scatteri mlabel_types s2color (scatter mpg weight in 1/3) (scatteri 20 3000 "lab")
+_sk_probe s33_mlabel_types_pcarrowi mlabel_types s2color (scatter mpg weight in 1/3) (pcarrowi 20 3000 30 4000 "lab")
+foreach s in s2color s1manual s1rcolor economist w33k w33t {
+    _s33_probe s33_colorkey_`s' colorkey `s' scatter mpg weight, colorvar(price)
+}
+
 python:
 import json, os, sys
 from collections import Counter
@@ -188,6 +254,8 @@ work = G("OB_WORK")
 written = [os.path.join(work, n) for n in
            ("scheme-w24g.scheme", "scheme-w24m.scheme", "scheme-w24f.scheme",
             "scheme-w24h.scheme", "git_head.txt")]
+written += [os.path.join(work, "scheme-%s.scheme" % n) for n in
+           ("w33a", "w33b", "w33c", "w33d", "w33k", "w33t")]
 _KEYS = ("kind", "fill", "fill_opacity", "stroke", "stroke_opacity",
          "stroke_width")
 
@@ -256,6 +324,109 @@ cyc = probes.get("sy_cycle", {}).get("layers") or []
 derived = {"sm_factor": sm,
            "s1mono_hollow": [l["hollow"] for l in cyc],
            "s1mono_extent": [l["extent"] for l in cyc]}
+
+# Section 33 (P1.4b): every text of a probe's SVG with its fill, opacity,
+# size in Stata's relative units (font-size over a hundredth of the
+# canvas's smaller side), rotation, anchor and x; and, for the colour key,
+# the lines right of the plot region.
+import re  # noqa: E402
+import svg_truth as st  # noqa: E402
+
+_S33_OPACITY = re.compile(r"(?:^|;)\s*opacity:([0-9.]{1,8})")
+
+
+def _s33_texts(path):
+    doc = st.svg_document(path)
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        raw = fh.read()
+    ops = []
+    for m in st._RE_TEXT.finditer(raw):
+        o = _S33_OPACITY.search(st._attrs(m.group(1)).get("style", ""))
+        ops.append(float(o.group(1)) if o else None)
+    cv = doc["canvas"] or {"w": 100.0, "h": 100.0}
+    rs = min(cv["w"], cv["h"]) / 100.0
+    texts = []
+    for t, o in zip(doc["texts"], ops):
+        texts.append({"text": t["text"], "fill": t["fill"], "opacity": o,
+                      "size_rs": round(t["size"] / rs, 3)
+                      if t["size"] else None,
+                      "rotate": t["rotate"], "anchor": t["anchor"],
+                      "x": t["x"]})
+    return doc, rs, texts
+
+
+def _s33_key_lines(doc, rs):
+    pr = doc["plotregion"]
+    if not pr:
+        return []
+    out = []
+    for vertical, ls in ((False, doc["hlines"]), (True, doc["vlines"])):
+        for l in ls:
+            if min(l["x1"], l["x2"]) >= pr["right"] + 1:
+                length = (abs(l["y2"] - l["y1"]) if vertical
+                          else abs(l["x2"] - l["x1"]))
+                out.append({"stroke": l["stroke"],
+                            "width_rs": round((l["width"] or 0) / rs, 3),
+                            "length_rs": round(length / rs, 3),
+                            "vertical": vertical,
+                            "x1": l["x1"], "x2": l["x2"]})
+    return out
+
+
+s33 = {"label": {}, "chain": {}, "types": {}, "key": {}}
+for pid in G("OB_IDS").split():
+    if not pid.startswith("s33_"):
+        continue
+    rec = probes[pid]
+    rec.pop("elements", None)
+    rec.pop("layers", None)
+    svg = os.path.join(work, G("OBF_" + pid) + ".svg")
+    if not os.path.exists(svg):
+        continue
+    doc, rs, texts = _s33_texts(svg)
+    grp = rec["group"]
+    if grp == "colorkey":
+        pr = doc["plotregion"]
+        right = pr["right"] if pr else 0.0
+        texts = [t for t in texts if t["x"] is not None and t["x"] > right]
+        rec["key_lines"] = _s33_key_lines(doc, rs)
+    else:
+        # A marker label is a make or "lab"; a number is an axis's tick
+        # label and a turned text its title (the second y axis of w33b is
+        # not turned off).
+        texts = [t for t in texts if st.label_value(t["text"]) is None
+                 and t["rotate"] is None]
+    rec["texts"] = texts
+    tag = pid[len("s33_" + grp + "_"):]
+    if grp == "mlabel" and texts:
+        t = texts[0]
+        s33["label"][tag] = {"fill": t["fill"], "opacity": t["opacity"],
+                             "size_rs": t["size_rs"]}
+    elif grp == "mlabel_chain":
+        s33["chain"][tag] = [[texts[i]["fill"], texts[i]["size_rs"],
+                              texts[i]["opacity"]]
+                             for i in range(0, len(texts), 3)]
+    elif grp == "mlabel_types" and texts:
+        s33["types"][tag] = texts[0]["fill"]
+    elif grp == "colorkey":
+        title = next((t for t in texts if t["rotate"] is not None), None)
+        labs = [t for t in texts if t["rotate"] is None]
+        ticks = [l for l in rec["key_lines"] if not l["vertical"]]
+        axis = [l for l in rec["key_lines"] if l["vertical"]]
+        tick = ticks[0] if ticks else None
+        s33["key"][tag] = {
+            "label_fill": labs[0]["fill"] if labs else None,
+            "label_rs": labs[0]["size_rs"] if labs else None,
+            "title_fill": title["fill"] if title else None,
+            "title_rs": title["size_rs"] if title else None,
+            "title_rotate": title["rotate"] if title else None,
+            "tick_stroke": tick["stroke"] if tick else None,
+            "tick_len_rs": tick["length_rs"] if tick else None,
+            "tick_side": ("outward" if tick and labs and
+                          min(tick["x1"], tick["x2"]) < labs[0]["x"]
+                          else "inward") if tick else None,
+            "axis_stroke": axis[0]["stroke"] if axis else None}
+derived["s33"] = s33
 
 try:
     with open(os.path.join(work, "git_head.txt"), encoding="utf-8") as fh:

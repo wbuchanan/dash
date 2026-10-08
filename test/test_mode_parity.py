@@ -516,6 +516,8 @@ def _annotations(fig):
             out.append({"kind": "LabelSet", "text": _tf,
                         "font": r.text_font_size,
                         "color": _spec_of(r.text_color),
+                        # WP-30 P1.4b: the scheme's label opacity.
+                        "alpha": _spec_of(r.text_alpha),
                         "x_offset": r.x_offset, "y_offset": r.y_offset,
                         "angle": _spec_of(r.angle),
                         "angle_units": r.angle_units,
@@ -587,7 +589,17 @@ def _annotations(fig):
                         "mapper": type(m).__name__,
                         "low": _num(getattr(m, "low", None)),
                         "high": _num(getattr(m, "high", None)),
-                        "side": panel.get(id(r))})
+                        "side": panel.get(id(r)),
+                        # WP-30 P1.4b: the scheme's text and tick chrome.
+                        "label_font": r.major_label_text_font_size,
+                        "label_color": r.major_label_text_color,
+                        "title_font": r.title_text_font_size,
+                        "title_color": r.title_text_color,
+                        "title_style": r.title_text_font_style,
+                        "tick_color": r.major_tick_line_color,
+                        "tick_in": r.major_tick_in,
+                        "tick_out": r.major_tick_out,
+                        "background_alpha": r.background_fill_alpha})
         elif isinstance(r, BoxAnnotation):
             out.append({"kind": "BoxAnnotation",
                         "left": _num(r.left), "right": _num(r.right),
@@ -2158,6 +2170,14 @@ DATE_CORPUS = [
     _case("ylabel(0(20)100, norescale)", [_sc()], None,
           {"ylabel": "0(20)100, norescale"}),
     _case("yscale(range(abc))", [_sc()], None, {"yscale": "range(abc)"}),
+    # WP-30 P1.4b: marker labels and the colour bar in the scheme's style.
+    _case("mlabel, s1rcolor", [plot_for("scatter", {"mlabel": "mpg"})],
+          {"scheme": "s1rcolor"}),
+    _case("colour bar, s1rcolor", [plot_for("scatter", {"colorvar": "price"})],
+          {"scheme": "s1rcolor"}),
+    _case("mlabel on bar and pcarrow, sttrans",
+          [plot_for("scatter"), plot_for("bar", {"mlabel": "mpg"}),
+           plot_for("pcarrow", {"mlabel": "mpg"})], {"scheme": "sttrans"}),
 ]
 
 #: The entries a report is the point of, with the report each must make.

@@ -221,6 +221,9 @@ COLOR_LISTS = {
                       "color p"],
     "p_markline_colors": ["color p{i}markline", "color pmarkline",
                           "color p{i}", "color p"],
+    # A marker label's colour (style/textboxstyle-p#.style, WP-30 P1.4b).
+    "p_label_colors": ["color p{i}label", "color plabel", "color p{i}",
+                       "color p"],
 }
 
 #: fixture key -> per-index directive chain templates, compared as style names

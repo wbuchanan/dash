@@ -270,6 +270,20 @@ intensity histogram       inten90
 linewidth histogram       vthin
 
 * ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt -> stcolor_mv); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Marker-label size gsize p#label: only the keys this scheme's
+* #include chain declares (style/textboxstyle-p#.style: set size
+* scheme p#label).
+gsize plabel  small
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -340,6 +354,7 @@ linewidth histogram       vthin
 * provenance: symbolsize p -- transcribed from scheme-stcolor.scheme:13 `symbolsize p small'
 * provenance: clockdir legend_position -- transcribed from scheme-stcolor_alt.scheme:15 `clockdir legend_position 6'
 * provenance: numstyle legend_cols -- transcribed from scheme-stcolor_alt.scheme:14 `numstyle legend_cols 2'
+* provenance: gsize plabel -- transcribed from scheme-s2color.scheme:191 `gsize plabel small'
 * provenance: yesno draw_major_hgrid -- transcribed from scheme-stcolor.scheme:33 `yesno draw_major_hgrid yes'
 * provenance: yesno draw_major_vgrid -- transcribed from scheme-s2color.scheme:2121 `yesno draw_major_vgrid yes'
 * provenance: yesno draw_major_grid -- transcribed from scheme-s2color.scheme:2113 `yesno draw_major_grid no'

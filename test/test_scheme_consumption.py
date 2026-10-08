@@ -609,6 +609,8 @@ class TestNoParsedKeyIsDiscarded:
         "histogram_color", "histogram_line_color", "histogram_intensity",
         "histogram_line_width", "p_symbol_hollow", "p_symbol_factor",
         "p_markline_colors",
+        # WP-30 P1.4b: the marker-label style.
+        "p_label_colors", "p_label_alphas", "p_label_sizes",
     ])
     def test_the_key_is_read_somewhere(self, attr):
         """A parsed key with no consumer is a key that does nothing.
@@ -1578,12 +1580,17 @@ class TestAChildPHashReachesWhatStatasChainReaches:
         sp = SchemeParser(scheme)
         for key in ("p_colors", "p_line_colors", "p_bar_colors",
                     "p_mark_colors", "p_markline_colors",
-                    "p_lineplot_colors"):
+                    "p_label_colors", "p_lineplot_colors"):
             assert [c.lower() for c in getattr(sp, key)] == [
                 c.lower() for c in truth[key]], key
             assert getattr(sp, key.replace("colors", "alphas")) == [
                 None if p is None else p / 100.0
                 for p in truth[key + "_opacity"]], key
+        # WP-30 P1.4b: the marker-label sizes, in points at Stata's 4-inch
+        # reference.
+        assert [dash_render.OptionTranslator.css_to_pt(s)
+                for s in sp.p_label_sizes] == [
+            d["pt_at_4in"] for d in truth["p_label_sizes"]]
         for key in ("p_line_patterns", "p_lineplot_patterns"):
             assert getattr(sp, key) == [
                 dash_render.OptionTranslator.translate_lpattern(p)

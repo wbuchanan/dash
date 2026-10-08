@@ -2479,10 +2479,17 @@ the per-plot specification (not to {cmd:dash build} options).
 {synoptset 28}{...}
 {synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with
     the value of {it:varname}, on the plot types listed below{p_end}
-{synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text{p_end}
+{synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text;
+    by default the scheme's marker-label colour -- {cmd:color p}{it:#}{cmd:label},
+    else {cmd:color plabel}, else the plot's own colour, with its opacity,
+    as {cmd:twoway} draws it; {cmd:mcolor()} and {cmd:color label} do not
+    change it{p_end}
 {synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}a text size in Stata's units:
     a {cmd:gsize} keyword ({cmd:small}, {cmd:medium}, {cmd:large}), a
-    number, a number with a unit or a {cmd:*}{it:#} multiplier{p_end}
+    number, a number with a unit or a {cmd:*}{it:#} multiplier; by default
+    the scheme's {cmd:gsize p}{it:#}{cmd:label}, else {cmd:gsize plabel}
+    ({cmd:small} in every shipped scheme), and {cmd:*}{it:#} multiplies
+    that size{p_end}
 {synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position of the label
     around the point, a whole number from 0 to 12, placed as {cmd:twoway}
     places it: 3 = right (the default), 12 = above, 6 = below, 9 = left,
@@ -3643,7 +3650,14 @@ are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
 {cmd:colorend()} and {cmd:colorformissing()}, are named in the note.  How the colours are drawn
 is {cmd:dash}'s: an unbinned numeric {it:varname} is mapped continuously
 through the palette and a colour bar is drawn beside the figure, where
-{cmd:twoway} bins it at its z axis's ticks.  {cmd:colordiscrete},
+{cmd:twoway} bins it at its z axis's ticks.  The colour bar sits on the
+graph region with no box of its own: its tick labels take the scheme's
+{cmd:tick_label} size and colour, its title the {cmd:axis_title} size and
+colour, upright, and its ticks the scheme's tick colour, width and length,
+as in {cmd:twoway}'s colour key.  {cmd:twoway} turns the title to run up
+the key's right-hand side and draws an axis line on the side of its
+labels; {cmd:dash} draws the title above the bar and no axis line.
+{cmd:colordiscrete},
 {cmd:colorcuts()} and {cmd:colornlevels()} bin it, and a discrete key
 entry is drawn per bin, in the scheme's series colours unless
 {cmd:colpalette()} names a palette.  {cmd:twoway} wants a numeric
@@ -4107,7 +4121,12 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     filled with {cmd:color reverse_big} (Stata's note textbox does not use
     {cmd:gsize note}, and neither does {cmd:dash}), axis titles are
     {cmd:axis_title}, tick labels {cmd:tick_label} and legend entries
-    {cmd:key_label}.  The dashboard's own title and subtitle use
+    {cmd:key_label}.  Marker labels take {cmd:color p}{it:#}{cmd:label}
+    and {cmd:gsize p}{it:#}{cmd:label} (else {cmd:plabel}, else the plot's
+    colour) -- not {cmd:color label} or {cmd:gsize label}, which
+    {cmd:twoway}'s marker labels do not read -- and the colour bar's labels
+    and title take {cmd:tick_label} and {cmd:axis_title}.  The dashboard's
+    own title and subtitle use
     {cmd:heading} and {cmd:subheading}.  Under {cmd:s1rcolor} every one of
     them is white on black; under {cmd:economist} the title is drawn
     larger than the subtitle, as its {cmd:gsize heading 6.0} asks.  No
@@ -4268,13 +4287,18 @@ area outline, {cmd:arrowline} for {cmd:pcarrow}; a bar's outline stops at
 never reaches it, as in Stata; a marker's outline takes the stub
 {cmd:mark}.  Only {cmd:graphsize x} and {cmd:graphsize y} size a graph; a bare
 {cmd:graphsize} {it:#} sizes nothing, as in Stata.
+A directive {cmd:dash} does not draw yet -- such as {cmd:clockdir p}
+(where marker labels sit) or the {cmd:textboxstyle} of a title -- is read
+and kept with the scheme, without a note, so a later {cmd:dash} that draws
+it takes it from your file.
 Colours may be Stata colour names or {cmd:#rrggbb}.
 
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
 scheme: 100 to 170 directives (more for the monochrome schemes, whose
-chains declare connecting-line and line-plot keys and a symbol cycle) where Stata's
+chains declare connecting-line and line-plot keys, a symbol cycle and
+{cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
 has 2060, the {cmd:#include} chain flattened into the file, every colour
 resolved to {cmd:#rrggbb} ({cmd:sttrans}'s with the {cmd:%20} opacity

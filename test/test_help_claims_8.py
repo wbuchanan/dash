@@ -1051,7 +1051,9 @@ class TestTheShippedFiles:
         WP-30 P1.2a's chrome keys (twenty-four more), P1.3a's three axis
         keys and P1.4a's four histogram keys, and lost graph bar's
         `intensity bar' and `intensity area' (P1.4a), which twoway's bar
-        and area do not read.  Renamed (WP-30 P1.4a) from
+        and area do not read.  WP-30 P1.4b added `gsize plabel' to every
+        file and `color plabel' to the nine monochrome ones (s2gmanual
+        168 -> 170, the bound).  Renamed (WP-30 P1.4a) from
         test_80_to_140_directives, whose name had outlived its bounds."""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
                                                         "dash-" + name + ".scheme"))

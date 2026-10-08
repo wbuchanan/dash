@@ -1549,7 +1549,6 @@ class TestWp29Tracking:
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
     "P1.3b": "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks",
-    "P1.4b": "Marker-label size and colour are fixed, the colour key has no scheme chrome, and unread user-scheme directives are ignored silently",
     "P1.6": "The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note",
     "P1.7": "Time-series operators in plot varlists, such as line D.close date and lfit y L.x, are refused r(101)",
     "P1.8a": "connect() and cmissing() are not honoured: scatter y x, c(l) draws no line, stairsteps and connect(L) cannot be drawn, and cmissing(n) never breaks a line",

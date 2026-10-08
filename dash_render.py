@@ -6869,6 +6869,7 @@ class SchemeParser:
         "gsize subheading":       "medium",
         "gsize body":             "medsmall",
         "gsize small_body":       "small",
+        "gsize plabel":           "small",
         "gsize key_label":        "medsmall",
         "linewidth minor_grid":   "thin",
         "linewidth axisline":     "thin",
@@ -7661,6 +7662,69 @@ class SchemeParser:
                 val = self._color_alpha(key, *val)
         return val
 
+    def _init_label_style(self) -> None:
+        """The marker labels' colour, opacity and size per plot (WP-30
+        P1.4b).  Stata's style/textboxstyle-p#.style reads ``set color
+        scheme p#label`` and ``set size scheme p#label``, so both walk
+        p#label -> plabel -> p# -> p.  ``color label`` and ``gsize label``
+        are not in that chain: twoway draws the same labels with or without
+        them (measured, StataNow 19.5).  Read from ``_props`` alone, so the
+        served app's rebuilt parser holds the same values."""
+        _pl = [self._stub_color_alpha(i, "label") for i in range(1, 16)]
+        self.p_label_colors: list[str] = [c for c, _ in _pl]
+        self.p_label_alphas: "list[float | None]" = [a for _, a in _pl]
+        # One _gsize call per distinct key, so an out-of-range size warns
+        # once, not once per plot.
+        _sizes: "dict[str, str]" = {}
+        out = []
+        for i in range(1, 16):
+            key = self._first_present((f"gsize p{i}label", "gsize plabel",
+                                       f"gsize p{i}", "gsize p")) \
+                or "gsize plabel"
+            if key not in _sizes:
+                _sizes[key] = self._gsize(key, "8pt")
+            out.append(_sizes[key])
+        self.p_label_sizes: list[str] = out
+
+    def default_mlabel_style(self, index: int
+                             ) -> "tuple[str, float | None, str]":
+        """``(colour, opacity, size)`` of plot *index*'s marker labels
+        (zero-based, wrapping at 15 as :meth:`default_color` does)."""
+        i = int(index) % 15
+        return (self.p_label_colors[i], self.p_label_alphas[i],
+                self.p_label_sizes[i])
+
+    def colorbar_chrome(self) -> "dict[str, Any]":
+        """A colour bar's text and tick style, as twoway draws its colour
+        key (WP-30 P1.4b, measured under s2color, s1manual, s1rcolor,
+        economist and two user schemes): tick labels in the ``tick_label``
+        size and colour, the title in the ``axis_title`` size and colour,
+        upright, ticks in the scheme's tick colour, width, length and side,
+        and no box of its own, so the graph region shows through.  The
+        tick pair follows the axes' rule (outside 0/L, inside L/0, crossing
+        L/2 each), in whole pixels clamped to 100."""
+        L = float(self.tick_length_px)
+        L = min(abs(L), 100.0) if math.isfinite(L) else 0.0
+        n, h = int(round(L)), int(round(L / 2.0))
+        if self.tick_position == "inside":
+            tin, tout = n, 0
+        elif self.tick_position == "crossing":
+            tin = tout = h
+        else:
+            tin, tout = 0, n
+        return {
+            "background_fill_alpha": 0.0,
+            "major_label_text_font_size": self.tick_label_font_size,
+            "major_label_text_color": self.tick_label_color,
+            "title_text_font_size": self.axis_title_font_size,
+            "title_text_color": self.axis_title_color,
+            "title_text_font_style": "normal",
+            "major_tick_line_color": self.tick_color,
+            "major_tick_line_width": self.tick_line_width,
+            "major_tick_in": tin,
+            "major_tick_out": tout,
+        }
+
     def _gsize(self, key: str, default: str = "10pt") -> str:
         raw = self._props.get(key, "").strip().lower()
         if raw in self._GSIZE_PT:
@@ -8113,6 +8177,7 @@ class SchemeParser:
         _pml = [self._stub_color_alpha(i, "markline") for i in range(1, 16)]
         self.p_markline_colors: list[str] = [c for c, _ in _pml]
         self.p_markline_alphas: "list[float | None]" = [a for _, a in _pml]
+        self._init_label_style()
 
         # Marker symbol cycle, through Stata's chain: style/markerstyle-p#
         # .style says `set symbol scheme p#', and scheme.class falls back
@@ -11364,7 +11429,8 @@ class GlyphMapper:
                 # it only showed the entities.
                 _cbar = ColorBar(color_mapper=mapper, label_standoff=8,
                                 width=12, location=(0, 0),
-                                title=var_display)
+                                title=var_display,
+                                **self.scheme.colorbar_chrome())
             except (ValueError, TypeError, KeyError) as _exc:  # noqa: BLE001
                 warnings.warn(f"dash: color bar skipped — {_exc}", stacklevel=2)
                 _cbar = None
@@ -11442,6 +11508,7 @@ class GlyphMapper:
         yvar: str,
         label_col: "str | None" = None,
         radius_px: "float | None" = None,
+        color_idx: int = 0,
     ) -> None:
         """Add a LabelSet annotation when the mlabel() option is set.
 
@@ -11479,6 +11546,15 @@ class GlyphMapper:
                        variable's name, from ``mlabel()``, still decides its
                        value labels and formats.  Absent from *source*, the
                        variable is taken to be absent from the data.
+            radius_px: The layer's marker radius, for the label's offset.
+            color_idx: The layer's index, whose marker-label style the
+                       labels take (WP-30 P1.4b): the scheme's ``color
+                       p#label`` -> ``plabel`` -> ``p#`` -> ``p`` colour with
+                       its opacity, and ``gsize p#label`` -> ``plabel`` size,
+                       as twoway draws them (measured: a second layer's bar
+                       labels in p2's colour).  ``mlabcolor()`` replaces the
+                       colour and keeps the opacity; ``mlabsize(*#)``
+                       multiplies the scheme's size.
         """
         from bokeh.models import LabelSet
 
@@ -11591,15 +11667,19 @@ class GlyphMapper:
             text_col = self._mlabformat_column(source, mlabel_var, _mfmt,
                                                text_col, values_col)
 
+        _lc, _la, _ls = self.scheme.default_mlabel_style(color_idx)
         kwargs: dict[str, Any] = dict(
             x=xvar,
             y=yvar,
             text=text_col,
             source=source,
-            text_font_size="10px",
+            text_font_size=_ls,
+            text_color=_lc,
             x_offset=4,
             y_offset=4,
         )
+        if _la is not None:
+            kwargs["text_alpha"] = float(_la)
         # A whole label's style and the labels' one font (WP-30 P1.11b).
         if style_col and style_col in source.data:
             from bokeh.core.properties import field as _bk_field
@@ -12177,7 +12257,7 @@ class GlyphMapper:
             if _sel is not None:
                 _label_source = self._subset_source(plot_source, _sel)
         self._apply_mlabel_opts(fig, _label_source, options, xvar, yvar,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         fig.add_tools(self._hover_tool(yvar, xvar, renderers=[r]))
         return r
 
@@ -12620,7 +12700,7 @@ class GlyphMapper:
         # The labels of the bars drawn -- the layer's own rows -- from the
         # source the bars are drawn from.
         self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return r
 
     #: The reserved columns a bar on a period axis is drawn from (D-14c).
@@ -16055,7 +16135,7 @@ class GlyphMapper:
         # drew a default circle whatever was asked for.
         self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f))
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [seg, dot]
 
     def map_rcapsym(
@@ -16173,9 +16253,9 @@ class GlyphMapper:
         # the caller's source, as the top one always was -- restricted to
         # the layer's own rows, which it labelled every row of.
         self._apply_mlabel_opts(fig, _label_source, options, xvar, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         self._apply_mlabel_opts(fig, _label_source, options, xvar, y2var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [spine, bot_dot, top_dot]
 
     def map_scatteri(
@@ -16285,7 +16365,7 @@ class GlyphMapper:
         if any(_labels):
             self._immediate_labels(fig, x_vals.tolist(), y_vals.tolist(),
                                    _labels, _clocks, options, "scatteri",
-                                   radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                   radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
 
         return [r]
 
@@ -16521,7 +16601,7 @@ class GlyphMapper:
         self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f))
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
                                 _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [r]
 
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
@@ -16682,7 +16762,7 @@ class GlyphMapper:
         # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
         # first point).  dash drew no pcarrow label at all.
         self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [seg]
 
     def map_pcbarrow(
@@ -16763,7 +16843,7 @@ class GlyphMapper:
         # without headlabel (measured, ten labels, all at the first point).
         # dash drew no pcbarrow label at all.
         self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [seg]
 
     def map_pccapsym(
@@ -16876,7 +16956,7 @@ class GlyphMapper:
         self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f))
 
         self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [seg, dots]
 
     @staticmethod
@@ -16951,7 +17031,8 @@ class GlyphMapper:
 
     def _immediate_labels(self, fig, xs, ys, labels, clocks, options,
                           ptype: str, xcol: str = "x", ycol: str = "y",
-                          radius_px: "float | None" = None):
+                          radius_px: "float | None" = None,
+                          color_idx: int = 0):
         """Draw an immediate list's labels where twoway draws them.
 
         twoway assumes ``mlabel()`` when a label is given and
@@ -17014,7 +17095,7 @@ class GlyphMapper:
             opts = dict(options, mlabel=col, mlabposition=pos)
             opts.pop("mlabvposition", None)
             self._apply_mlabel_opts(fig, lab_src, opts, xcol, ycol,
-                                    radius_px=radius_px)
+                                    radius_px=radius_px, color_idx=color_idx)
 
     def map_pcarrowi(
         self,
@@ -17062,7 +17143,7 @@ class GlyphMapper:
                 fig, [x1[i] if drawn[i] else nan for i in range(len(labels))],
                 [y1[i] if drawn[i] else nan for i in range(len(labels))],
                 labels, clocks, options, "pcarrowi", "x1", "y1",
-                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return out
 
     def map_tsline(
@@ -17236,7 +17317,7 @@ class GlyphMapper:
         self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f))
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
                                 label_col=_DASH_MLABEL_VALUES,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)))
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [r]
 
     def map_mspline(

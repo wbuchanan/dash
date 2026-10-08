@@ -429,6 +429,20 @@ intensity histogram       full
 linewidth histogram       medium
 
 * ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> economist); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Marker-label size gsize p#label: only the keys this scheme's
+* #include chain declares (style/textboxstyle-p#.style: set size
+* scheme p#label).
+gsize plabel  small
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -501,6 +515,7 @@ linewidth histogram       medium
 * provenance: symbolsize p -- transcribed from scheme-economist.scheme:95 `symbolsize p large'
 * provenance: clockdir legend_position -- transcribed from scheme-economist.scheme:315 `clockdir legend_position 12'
 * provenance: numstyle legend_cols -- transcribed from scheme-economist.scheme:20 `numstyle legend_cols 3'
+* provenance: gsize plabel -- transcribed from scheme-s2color.scheme:191 `gsize plabel small'
 * provenance: yesno draw_major_hgrid -- transcribed from scheme-economist.scheme:342 `yesno draw_major_hgrid no'
 * provenance: yesno draw_major_vgrid -- transcribed from scheme-economist.scheme:366 `yesno draw_major_nlt_vgrid yes' via axisstyle vertical_default = vertical_nolinetick, style/axisstyle-vertical_nolinetick.style
 * provenance: yesno draw_major_grid -- transcribed from scheme-economist.scheme:338 `yesno draw_major_grid no'

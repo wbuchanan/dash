@@ -7738,10 +7738,253 @@ if inlist("`only'", "", "S32") {
 }
 * ==== end S32 ====
 
+// S33 helpers.  _s33_tw reads twoway's SVG: the marker labels (the texts
+// named in S33_MAKES) as their distinct fill:size:opacity styles, sizes in
+// Stata's relative units (font-size over a hundredth of the canvas's
+// smaller side); or, for a colour key, the first upright text right of the
+// plot region (a tick label) and the turned one (the title).  _s33_both
+// reads dash's saved page and served app the same way (LabelSet text
+// colour, css_to_pt(size) / 2.88 and text alpha; ColorBar label and title
+// colour and size, tick colour), the app also after a Select move on
+// foreign, and sets S33_OK, S33_MSG and S33_SAME_AFTER.  Every argument
+// crosses through sfi.Macro.
+python:
+import html as _s33_html
+import json as _s33_json
+import os as _s33_os
+import re as _s33_re
+import sys as _s33_sys
+import warnings as _s33_w
+from sfi import Macro as _s33_M
+
+
+def _s33_tw():
+    _s33_sys.path.insert(0, _s33_os.path.join(_s33_M.getGlobal("S33_REPO"), "scripts"))
+    import svg_truth as st
+    path = _s33_M.getGlobal("S33_SVG")
+    doc = st.svg_document(path)
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        raw = fh.read()
+    ops = []
+    for m in st._RE_TEXT.finditer(raw):
+        o = _s33_re.search(r"(?:^|;)\s*opacity:([0-9.]{1,8})",
+                           st._attrs(m.group(1)).get("style", ""))
+        ops.append(float(o.group(1)) if o else 1.0)
+    rs = min(doc["canvas"]["w"], doc["canvas"]["h"]) / 100.0
+    out = []
+    if _s33_M.getGlobal("S33_KIND") == "key":
+        right = doc["plotregion"]["right"] if doc["plotregion"] else 0.0
+        ts = [t for t in doc["texts"] if t["x"] is not None and t["x"] > right]
+        lab = next((t for t in ts if t["rotate"] is None), None)
+        tit = next((t for t in ts if t["rotate"] is not None), None)
+        for t in (lab, tit):
+            out.append("" if t is None else "%s:%.3f" % (t["fill"], t["size"] / rs))
+    else:
+        makes = set(_s33_M.getGlobal("S33_MAKES").split("|"))
+        for t, o in zip(doc["texts"], ops):
+            if t["text"] in makes and t["rotate"] is None:
+                e = "%s:%.3f:%.2f" % (t["fill"], t["size"] / rs, o)
+                if e not in out:
+                    out.append(e)
+    _s33_M.setGlobal("S33_TW", ";".join(out))
+
+
+def _s33_read(doc):
+    _s33_sys.path.insert(0, _s33_M.getGlobal("S33_REPO"))
+    import dash_render as dr
+    from bokeh.models import ColorBar, LabelSet
+
+    def rs(css):
+        # A size read back from a saved page may be a value spec.
+        css = getattr(css, "value", css)
+        if isinstance(css, dict):
+            css = css.get("value")
+        pt = dr.OptionTranslator.css_to_pt(css)
+        return -1.0 if pt is None else pt / dr.OptionTranslator.PT_PER_RS
+    if _s33_M.getGlobal("S33_KIND") == "key":
+        bars = list(doc.select({"type": ColorBar}))
+        if not bars:
+            return ""
+        b = bars[0]
+        return ";".join(["%s:%.3f" % (str(b.major_label_text_color).lower(),
+                                      rs(b.major_label_text_font_size)),
+                         "%s:%.3f" % (str(b.title_text_color).lower(),
+                                      rs(b.title_text_font_size))])
+    out = []
+    for ls in doc.select({"type": LabelSet}):
+        # A saved page's LabelSet holds value specs.
+        e = "%s:%.3f:%.2f" % (str(getattr(ls.text_color, "value", ls.text_color)).lower(),
+                              rs(ls.text_font_size),
+                              float(getattr(ls.text_alpha, "value", ls.text_alpha)))
+        if e not in out:
+            out.append(e)
+    return ";".join(sorted(out))
+
+
+def _s33_same(tw, got):
+    """Each twoway style has a dash style of the same colour and opacity,
+    its size within 1%."""
+    a = sorted(tw.split(";"))
+    b = sorted(got.split(";"))
+    if len(a) != len(b) or not tw:
+        return False
+    for x, y in zip(a, b):
+        x, y = x.split(":"), y.split(":")
+        if x[0] != y[0] or abs(float(x[1]) - float(y[1])) > 0.01 * float(x[1]):
+            return False
+        if len(x) > 2 and abs(float(x[2]) - float(y[2])) > 1e-6:
+            return False
+    return True
+
+
+def _s33_both():
+    from bokeh.document import Document
+    from bokeh.models import Select
+    tw = _s33_M.getGlobal("S33_TW")
+    saved = ""
+    with open(_s33_M.getGlobal("S33_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    for blob in _s33_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s33_re.S):
+        try:
+            docs = _s33_json.loads(_s33_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if isinstance(dj, dict) and "roots" in dj:
+                with _s33_w.catch_warnings():
+                    _s33_w.simplefilter("ignore")
+                    saved = _s33_read(Document.from_json(dj))
+                break
+        if saved:
+            break
+    with open(_s33_M.getGlobal("S33_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s33_app")
+    with _s33_w.catch_warnings():
+        _s33_w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s33_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    served = _s33_read(doc)
+    same = "0"
+    sels = [m for root in doc.roots for m in root.select({"type": Select})
+            if getattr(m, "_dash_var", None) == "foreign"]
+    if sels:
+        w = sels[0]
+        opts = [o[0] if isinstance(o, (list, tuple)) else o for o in w.options]
+        if len(opts) > 1:
+            w.value = opts[1]
+            with _s33_w.catch_warnings():
+                _s33_w.simplefilter("ignore")
+                for key in ("value", "value_throttled"):
+                    for cb in list(w._callbacks.get(key, [])):
+                        cb("value", None, opts[1])
+            same = "1" if _s33_read(doc) == served else "0"
+    ok = _s33_same(tw, saved) and _s33_same(tw, served)
+    _s33_M.setGlobal("S33_OK", "1" if ok else "0")
+    _s33_M.setGlobal("S33_SAME_AFTER", same)
+    _s33_M.setGlobal("S33_MSG", ("twoway %s | saved %s | served %s" % (tw, saved, served))[:240])
+end
+
+// _s33_case tag scheme kind "command" work: twoway's SVG and dash's saved
+// page and served app (foreign dropdown) for one command.
+capture program drop _s33_case
+program define _s33_case
+    version 19
+    args tag scheme kind cmd work
+    quietly sysuse auto, clear
+    local svg "`work'/mk_`tag'.svg"
+    local page "`work'/mk_`tag'.html"
+    local app "`work'/mk_`tag'.py"
+    local c = cond(strpos(`"`cmd'"', ","), " ", ", ")
+    if substr(`"`cmd'"', 1, 1) == "(" local c ", "
+    quietly levelsof make in 1/3, local(mk) clean separate(|)
+    global S33_MAKES `"`mk'"'
+    quietly graph drop _all
+    capture noisily twoway `cmd' `c' scheme(`scheme') name(g, replace)
+    local trc = _rc
+    if !`trc' quietly graph export "`svg'", replace name(g)
+    quietly graph drop _all
+    capture dash clear
+    capture noisily dash `cmd' `c' scheme(`scheme') saving("`page'", replace)
+    local drc = _rc
+    capture dash clear
+    capture noisily dash `cmd' `c' scheme(`scheme') name(g1)
+    local drc = `drc' + _rc
+    capture noisily dash build, server saving("`app'") replace nobrowser filter(foreign, type(dropdown))
+    local drc = `drc' + _rc
+    global S33_OK "0"
+    global S33_SAME_AFTER "0"
+    global S33_MSG ""
+    global S33_SVG "`svg'"
+    global S33_PAGE "`page'"
+    global S33_APP "`app'"
+    global S33_KIND "`kind'"
+    if !`trc' capture noisily python: __import__("__main__")._s33_tw()
+    if !`trc' & !`drc' capture noisily python: __import__("__main__")._s33_both()
+    global S33_RC = `trc' + `drc'
+    capture dash clear
+    foreach f in svg page app {
+        capture erase "``f''"
+    }
+    capture graph drop g
+end
+
 * ==== S33 P1.4b: Marker-label and colour-key chrome; unread directives retained ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S33") {
     display as text "S33 start " c(current_date) " " c(current_time)
+    global S33_REPO "`c(pwd)'/.."
+    local s33_home `"`c(pwd)'"'
+    tempname s33fh
+    foreach f in "`w30_work'/scheme-w33b.scheme" "`w30_work'/w33b.scheme" {
+        file open `s33fh' using "`f'", write text replace
+        file write `s33fh' "#include s2color" _n "color p1label blue" _n "gsize p1label vlarge" _n "color plabel green" _n
+        file close `s33fh'
+    }
+    foreach f in "`w30_work'/scheme-w33k.scheme" "`w30_work'/w33k.scheme" {
+        file open `s33fh' using "`f'", write text replace
+        file write `s33fh' "#include s2color" _n "gsize axis_title vlarge" _n "color axis_title red" _n "gsize tick_label small" _n "color tick_label blue" _n
+        file close `s33fh'
+    }
+    adopath ++ "`w30_work'"
+    quietly cd "`w30_work'"
+    local s33_after ""
+
+    // MK-01: s1rcolor's labels are its p1 yellow at small.
+    _s33_case m01 s1rcolor label "scatter mpg weight in 1/3, mlabel(make)" "`w30_work'"
+    _w30_expect MK-01 "(${S33_RC} == 0 & ${S33_OK} == 1)" `"${S33_MSG}"'
+    local s33_after "`s33_after'${S33_SAME_AFTER}"
+    _w30_done MK-01 "s1rcolor's marker labels are #ffff00 at small, saved and served, as twoway draws them"
+
+    // MK-02: p1label reaches layer 1 only, plabel layer 2.
+    _s33_case m02 w33b label "(scatter mpg weight in 1/3, mlabel(make)) (scatter price weight in 1/3, mlabel(make) yaxis(2))" "`w30_work'"
+    _w30_expect MK-02 "(${S33_RC} == 0 & ${S33_OK} == 1)" `"${S33_MSG}"'
+    _w30_done MK-02 "w33b's layer 1 labels are #0000ff at vlarge and layer 2's #008000 at small, as twoway draws them"
+
+    // MK-03: sttrans's label opacity.
+    _s33_case m03 sttrans label "scatter mpg weight in 1/3, mlabel(make)" "`w30_work'"
+    _w30_expect MK-03 "(${S33_RC} == 0 & ${S33_OK} == 1)" `"${S33_MSG}"'
+    _w30_done MK-03 "sttrans's marker labels are drawn at its 0.20 opacity, as twoway draws them"
+
+    // MK-04: the colour key's text from the scheme.
+    _s33_case m04 w33k key "scatter mpg weight, colorvar(price)" "`w30_work'"
+    _w30_expect MK-04 "(${S33_RC} == 0 & ${S33_OK} == 1)" `"${S33_MSG}"'
+    local s33_after "`s33_after'${S33_SAME_AFTER}"
+    _w30_done MK-04 "w33k's colour key labels are #0000ff at small and its title #ff0000 at vlarge, as twoway draws them"
+
+    // MK-05: the served app after a filter move.
+    _w30_expect MK-05 `"("`s33_after'" == "11")"' "after the move: `s33_after'"
+    _w30_done MK-05 "the served app keeps MK-01's labels and MK-04's key style after a filter move"
+
+    quietly cd `"`s33_home'"'
+    adopath - "`w30_work'"
+    foreach n in w33b w33k {
+        capture erase "`w30_work'/scheme-`n'.scheme"
+        capture erase "`w30_work'/`n'.scheme"
+    }
+    macro drop S33_*
     display as text "S33 end " c(current_date) " " c(current_time)
 }
 * ==== end S33 ====

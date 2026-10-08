@@ -929,6 +929,12 @@ def extract(stata_base: str, scheme: str) -> dict:
     # p#markline'.  `color p#mark' is never a marker colour.
     p_mark_colors = p_color_series("p_mark_colors", "markfill")
     p_markline_colors = p_color_series("p_markline_colors", "markline")
+    # A marker label's colour and size (WP-30 P1.4b): style/textboxstyle-
+    # p#.style reads `set color scheme p#label' and `set size scheme
+    # p#label', so the chains are p#label -> plabel -> p# -> p.
+    p_label_colors = p_color_series("p_label_colors", "label")
+    p_label_sizes = p_series("p_label_sizes", "gsize", "label",
+                             lambda t: resolve_sized(r, "gsize", t))
     p_symbols = p_series("p_symbols", "symbol", "", lambda t: t)
     # The marker size, per plot: style/markerstyle-p#.style says `set size
     # scheme p#', so `symbolsize p#' -> `symbolsize p'.  Only s1manual's
@@ -1386,6 +1392,8 @@ def extract(stata_base: str, scheme: str) -> dict:
         "p_bar_colors": p_bar_colors,
         "p_mark_colors": p_mark_colors,
         "p_markline_colors": p_markline_colors,
+        "p_label_colors": p_label_colors,
+        "p_label_sizes": p_label_sizes,
         "p_symbols": p_symbols,
         "p_symbolsizes": p_symbolsizes,
         "p_line_patterns": p_line_patterns,
@@ -1795,6 +1803,7 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     for stub, key in (("line", "p_line_colors"), ("bar", "p_bar_colors"),
                       ("markfill", "p_mark_colors"),
                       ("markline", "p_markline_colors"),
+                      ("label", "p_label_colors"),
                       ("lineplot", "p_lineplot_colors")):
         group(chain_comment("color", stub),
               declared_cycle("color", stub, key, True))
@@ -1901,6 +1910,11 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
            "p#'), as Stata's scheme.class does."],
           declared_cycle("symbolsize", "", "p_symbolsizes", False,
                          conv=name_of, numbered_only=True))
+    group(["Marker-label size gsize p#label: only the keys this scheme's",
+           "#include chain declares (style/textboxstyle-p#.style: set size",
+           "scheme p#label)."],
+          declared_cycle("gsize", "label", "p_label_sizes", False,
+                         conv=name_of))
     group(["Major grid switches (effective per-axis values; see the minor-grid note)."], [
         scalar("yesno", "draw_major_hgrid", "draw_major_hgrid"),
         scalar("yesno", "draw_major_vgrid", "draw_major_vgrid"),
@@ -2339,7 +2353,8 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
 
 #: The resolved p#stub keys an older translation wrote out p1..p15.
 _STUB_KEY = {
-    "color": re.compile(r"p\d+(line|bar|mark|markfill|markline|lineplot)"),
+    "color": re.compile(r"p\d+(line|bar|mark|markfill|markline|lineplot|label)"),
+    "gsize": re.compile(r"p\d+label"),
     "linepattern": re.compile(r"p\d+(line|lineplot)"),
     "symbol": re.compile(r"p\d+"),
     "symbolsize": re.compile(r"p\d+"),

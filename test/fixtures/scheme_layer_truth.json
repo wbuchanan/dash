@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "90ad3936355a2f2610d2d8a1c20f617931370679",
-  "extracted": " 7 Oct 2026 23:35:55",
+  "dash_commit": "35765a482f3cad38863b86433913dd1dec90d34e",
+  "extracted": " 8 Oct 2026 03:49:30",
   "source": "scripts/extract_scheme_layer_truth.do",
   "stata_version": "19.5"
  },
@@ -41,6 +41,201 @@
    false,
    true
   ],
+  "s33": {
+   "chain": {
+    "mcolor": [
+     [
+      "#1a476f",
+      2.776,
+      null
+     ]
+    ],
+    "mlabcolor": [
+     [
+      "#ff0000",
+      2.776,
+      null
+     ]
+    ],
+    "mlabsize2": [
+     [
+      "#1a476f",
+      5.556,
+      null
+     ]
+    ],
+    "trmcolor": [
+     [
+      "#1a476f",
+      2.776,
+      0.2
+     ]
+    ],
+    "trmlabcolor": [
+     [
+      "#ff0000",
+      2.776,
+      0.2
+     ]
+    ],
+    "w33a": [
+     [
+      "#008000",
+      4.86,
+      null
+     ]
+    ],
+    "w33b": [
+     [
+      "#0000ff",
+      5.556,
+      null
+     ],
+     [
+      "#008000",
+      2.776,
+      null
+     ]
+    ],
+    "w33c": [
+     [
+      "#1a476f",
+      2.776,
+      null
+     ]
+    ],
+    "w33d": [
+     [
+      "#ff0000",
+      2.776,
+      null
+     ]
+    ]
+   },
+   "key": {
+    "economist": {
+     "axis_stroke": "#000000",
+     "label_fill": "#000000",
+     "label_rs": 3.819,
+     "tick_len_rs": 1.388,
+     "tick_side": "inward",
+     "tick_stroke": "#000000",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.819
+    },
+    "s1manual": {
+     "axis_stroke": "#000000",
+     "label_fill": "#000000",
+     "label_rs": 3.301,
+     "tick_len_rs": 1.39,
+     "tick_side": "outward",
+     "tick_stroke": "#000000",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.901
+    },
+    "s1rcolor": {
+     "axis_stroke": null,
+     "label_fill": "#ffffff",
+     "label_rs": 3.472,
+     "tick_len_rs": null,
+     "tick_side": null,
+     "tick_stroke": null,
+     "title_fill": "#ffffff",
+     "title_rotate": -90.0,
+     "title_rs": 3.472
+    },
+    "s2color": {
+     "axis_stroke": "#000000",
+     "label_fill": "#000000",
+     "label_rs": 3.472,
+     "tick_len_rs": 1.388,
+     "tick_side": "outward",
+     "tick_stroke": "#000000",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.472
+    },
+    "w33k": {
+     "axis_stroke": "#000000",
+     "label_fill": "#0000ff",
+     "label_rs": 2.776,
+     "tick_len_rs": 1.392,
+     "tick_side": "outward",
+     "tick_stroke": "#000000",
+     "title_fill": "#ff0000",
+     "title_rotate": -90.0,
+     "title_rs": 5.556
+    },
+    "w33t": {
+     "axis_stroke": "#ff7f00",
+     "label_fill": "#000000",
+     "label_rs": 3.472,
+     "tick_len_rs": 1.388,
+     "tick_side": "outward",
+     "tick_stroke": "#800080",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.472
+    }
+   },
+   "label": {
+    "economist": {
+     "fill": "#3e647d",
+     "opacity": null,
+     "size_rs": 2.778
+    },
+    "s1mono": {
+     "fill": "#000000",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "s1rcolor": {
+     "fill": "#ffff00",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "s2color": {
+     "fill": "#1a476f",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "s2mono": {
+     "fill": "#000000",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "stcolor": {
+     "fill": "#1a85ff",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "stmono1": {
+     "fill": "#000000",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "sttrans": {
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "size_rs": 2.776
+    }
+   },
+   "types": {
+    "bar": "#90353b",
+    "connected": "#90353b",
+    "dropline": "#90353b",
+    "pcarrow": "#90353b",
+    "pcarrowi": "#90353b",
+    "pcbarrow": "#90353b",
+    "pccapsym": "#90353b",
+    "pcscatter": "#90353b",
+    "rcapsym": "#90353b",
+    "rscatter": "#90353b",
+    "scatteri": "#90353b"
+   }
+  },
   "sm_factor": {
    "smcircle": {
     "default": 0.7077,
@@ -2797,6 +2992,1695 @@
    "layers": [],
    "rc": 0,
    "scheme": "sttrans"
+  },
+  "s33_colorkey_economist": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 74.222,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 1185.46,
+     "x2": 1185.46
+    }
+   ],
+   "rc": 0,
+   "scheme": "economist",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "10",
+     "x": 847.32
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "20",
+     "x": 847.32
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "30",
+     "x": 847.32
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "40",
+     "x": 847.32
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.819,
+     "text": "Mileage (mpg)",
+     "x": 982.16
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "0",
+     "x": 1196.5
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "5,000",
+     "x": 1196.5
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "10,000",
+     "x": 1196.5
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "15,000",
+     "x": 1196.5
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.819,
+     "text": "Price",
+     "x": 1452.67
+    }
+   ]
+  },
+  "s33_colorkey_s1manual": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 72.233,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1800.59
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1manual",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "0",
+     "x": 1836.53
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "5,000",
+     "x": 1836.53
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "10,000",
+     "x": 1836.53
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "15,000",
+     "x": 1836.53
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.901,
+     "text": "Price",
+     "x": 2103.06
+    }
+   ]
+  },
+  "s33_colorkey_s1rcolor": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [],
+   "rc": 0,
+   "scheme": "s1rcolor",
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "10",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "20",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "30",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "40",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Mileage (mpg)",
+     "x": 190.71
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "2,000",
+     "x": 632.36
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "3,000",
+     "x": 1374.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "4,000",
+     "x": 2117.24
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 2859.74
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "Weight (lbs.)",
+     "x": 1656.89
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "0",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "10,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "15,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Price",
+     "x": 3724.02
+    }
+   ]
+  },
+  "s33_colorkey_s2color": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 73.531,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3239.65
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "0",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "10,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "15,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Price",
+     "x": 3724.02
+    }
+   ]
+  },
+  "s33_colorkey_w33k": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 72.143,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3248.31
+    }
+   ],
+   "rc": 0,
+   "scheme": "w33k",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "0",
+     "x": 3308.33
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "5,000",
+     "x": 3308.33
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "10,000",
+     "x": 3308.33
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "15,000",
+     "x": 3308.33
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 5.556,
+     "text": "Price",
+     "x": 3705.77
+    }
+   ]
+  },
+  "s33_colorkey_w33t": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 73.531,
+     "stroke": "#ff7f00",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3239.65
+    }
+   ],
+   "rc": 0,
+   "scheme": "w33t",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "0",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "10,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "15,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Price",
+     "x": 3724.02
+    }
+   ]
+  },
+  "s33_mlabel_chain_mcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_mlabcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mlabcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_mlabsize2": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mlabsize(*2)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_trmcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "sttrans",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_chain_trmlabcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mlabcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "sttrans",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33a": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33a",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 4.86,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 4.86,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 4.86,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33b": {
+   "command": "(scatter mpg weight in 1/3, mlabel(make)) (scatter price weight in 1/3, mlabel(make) yaxis(2))",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33b",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Ford Fiesta",
+     "x": 3547.67
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Plym. Champ",
+     "x": 3547.67
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3547.67
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3547.67
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33c": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33c",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33d": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33d",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_economist": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "economist",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#3e647d",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.778,
+     "text": "Honda Civic",
+     "x": 95.19
+    },
+    {
+     "anchor": null,
+     "fill": "#3e647d",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.778,
+     "text": "Ford Fiesta",
+     "x": 1549.3
+    },
+    {
+     "anchor": null,
+     "fill": "#3e647d",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.778,
+     "text": "Plym. Champ",
+     "x": 1549.3
+    }
+   ]
+  },
+  "s33_mlabel_s1mono": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s1mono",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_s1rcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s1rcolor",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ffff00",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#ffff00",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#ffff00",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_s2color": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_s2mono": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s2mono",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_stcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "stcolor",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a85ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#1a85ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#1a85ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_stmono1": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "stmono1",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_sttrans": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "sttrans",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_types_bar": {
+   "command": "(scatter mpg weight in 1/3) (bar mpg weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 208.4
+    },
+    {
+     "anchor": "middle",
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3751.48
+    },
+    {
+     "anchor": "middle",
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3751.48
+    }
+   ]
+  },
+  "s33_mlabel_types_connected": {
+   "command": "(scatter mpg weight in 1/3) (connected mpg weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_dropline": {
+   "command": "(scatter mpg weight in 1/3) (dropline mpg weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_pcarrow": {
+   "command": "(scatter mpg weight in 1/3) (pcarrow mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_pcarrowi": {
+   "command": "(scatter mpg weight in 1/3) (pcarrowi 20 3000 30 4000 \"lab\")",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "lab",
+     "x": 2385.03
+    }
+   ]
+  },
+  "s33_mlabel_types_pcbarrow": {
+   "command": "(scatter mpg weight in 1/3) (pcbarrow mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_pccapsym": {
+   "command": "(scatter mpg weight in 1/3) (pccapsym mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_pcscatter": {
+   "command": "(scatter mpg weight in 1/3) (pcscatter mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_rcapsym": {
+   "command": "(scatter mpg weight in 1/3) (rcapsym lo hi weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_rscatter": {
+   "command": "(scatter mpg weight in 1/3) (rscatter lo hi weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_scatteri": {
+   "command": "(scatter mpg weight in 1/3) (scatteri 20 3000 \"lab\")",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "lab",
+     "x": 3837.61
+    }
+   ]
   },
   "sm_circle": {
    "command": "scatter mpg weight in 1, msymbol(circle)",

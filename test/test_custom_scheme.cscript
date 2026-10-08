@@ -652,13 +652,58 @@ _cs_notes CQ-03 "`lg'" 0
 _cs_page CQ-03 "q3.html" "#1f77b4" 1
 _cs_done CQ-03 "scheme(myp1), an appended quoted color p1 directive: rc 0, no warning, #1f77b4 drawn"
 
+// WP-30 P1.4b: a directive dash does not draw yet is kept with the scheme
+// and never noted (ratification row 4), on every route.
+tempname mkfh
+file open `mkfh' using "w33s.scheme", write text replace
+file write `mkfh' "#include s2color" _n "textboxstyle title subheading" _n "textboxstyle axis_title heading" _n "clockdir p 9" _n "yesno plabelboxed yes" _n "textboxstyle key_label heading" _n "textboxstyle tick heading" _n
+file close `mkfh'
+file open `mkfh' using "w33m.scheme", write text replace
+file write `mkfh' "#include s2color" _n
+forvalues i = 1/15 {
+    file write `mkfh' "clockdir p`i' 9" _n
+}
+file write `mkfh' "clockdir p 9" _n "textboxstyle tick heading" _n
+file close `mkfh'
+quietly graph drop _all
+
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, mlabel(make) scheme(w33s) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-06 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes MK-06 "`lg'" 0
+_cs_done MK-06 "scheme(w33s), six directives dash does not draw: rc 0, no note"
+
+capture erase "b.html"
+_cs_run "dash scatter mpg weight, mlabel(make) name(g)" "dash build, scheme(w33s) saving(b.html) replace"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-07 "(`rc' == 0)" "saved build: rc `rc' (expected 0)"
+_cs_notes MK-07 "`lg'" 0
+capture erase "c15.py"
+_cs_run "dash scatter mpg weight, mlabel(make) name(g)" "dash build, scheme(w33s) saving(c15.py) server replace"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-07 "(`rc' == 0)" "served build: rc `rc' (expected 0)"
+_cs_notes MK-07 "`lg'" 0
+_cs_done MK-07 "dash build, scheme(w33s), saved and served: rc 0, no note"
+
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(w33m) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-08 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes MK-08 "`lg'" 0
+_cs_done MK-08 "scheme(w33m), clockdir p1 to p15 and p: rc 0, no note"
+
 // ----------------------------------------------------------------
 // Restore the session, leave the working directory as it was found
 // ----------------------------------------------------------------
 capture set scheme `cs_scheme0'
 capture dash clear
 cd "`cs_home'"
-foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme q1.html q2.html q3.html myquoted.scheme myquoted50.scheme myp1.scheme {
+foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme q1.html q2.html q3.html myquoted.scheme myquoted50.scheme myp1.scheme w33s.scheme w33m.scheme {
     capture erase "`cs_dir'/`f'"
 }
 capture rmdir "`cs_dir'"

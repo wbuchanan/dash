@@ -961,6 +961,9 @@ FUNCTIONS = {
  'GlyphMapper._style_value': 'test/test_named_styles.py::TestPlanUnits::test_style_value_falls_back',
  'SchemeParser.style_bundle': 'test/test_named_styles.py::TestStyleBundle::test_against_stata',
  # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
+ 'SchemeParser._init_label_style': 'test/test_label_key_chrome.py::TestTheParsersLabelStyle::test_props_alone_give_the_attributes',
+ 'SchemeParser.colorbar_chrome': 'test/test_label_key_chrome.py::TestTheColourKeyTakesTheSchemeChrome::test_the_chrome_dict',
+ 'SchemeParser.default_mlabel_style': 'test/test_label_key_chrome.py::TestTheParsersLabelStyle::test_the_index_wraps_at_fifteen',
  # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
  # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
  # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
