@@ -3990,100 +3990,6 @@ else display as text "CM-12 PASS: each y given a connect() element is connected,
 capture program drop _zcm_spec
 quietly tsset, clear
 
-// RM: plot-region margins and inner box (WP-30 P1.20b)
-// ----------------------------------------------------------------
-// Live twoway and dash, rc and notes from the logs.
-local rm_ls = c(linesize)
-set linesize 255
-local rmpg "`c(tmpdir)'dash_rm_page.html"
-quietly sysuse auto, clear
-// RM-01: an unknown margin is twoway's note, word for word.
-local bad ""
-_ztp_run `"twoway scatter mpg weight, plotregion(margin(bogus))"' "`logfile'"
-local trc = r(rc)
-_ztp_logged "`logfile'" "named style bogus not found in class margin, default attributes used"
-local tf = r(found)
-quietly graph drop _all
-_ztp_run `"dash scatter mpg weight, plotregion(margin(bogus)) saving("`rmpg'", replace)"' "`logfile'"
-local drc = r(rc)
-_ztp_logged "`logfile'" "named style bogus not found in class margin, default attributes used"
-if `trc' | `drc' | !`tf' | !r(found) local bad " rc `trc'/`drc', notes `tf'/`=r(found)'"
-if "`bad'" != "" {
-    local nfail = `nfail' + 1
-    local faillist "`faillist' RM-01"
-    display as error "RM-01 FAIL:`bad'"
-}
-else display as text "RM-01 PASS: plotregion(margin(bogus)) is rc 0 with twoway's note in both"
-// RM-02: the documented forms are rc 0 and draw with no note.
-local bad ""
-foreach m in "margin(zero)" "margin(l+10)" "mar(t-5)" "m(1 2 3 4)" "margin(10-pt)" {
-    _ztp_run `"twoway scatter mpg weight, plotregion(`m')"' "`logfile'"
-    local trc = r(rc)
-    quietly graph drop _all
-    _ztp_run `"dash scatter mpg weight, plotregion(`m') saving("`rmpg'", replace)"' "`logfile'"
-    local drc = r(rc)
-    _ztp_logged "`logfile'" "class margin"
-    local f1 = r(found)
-    _ztp_logged "`logfile'" "plotregion() sub-option"
-    if `trc' | `drc' | `f1' | r(found) local bad "`bad' `m': rc `trc'/`drc'"
-}
-if "`bad'" != "" {
-    local nfail = `nfail' + 1
-    local faillist "`faillist' RM-02"
-    display as error "RM-02 FAIL:`bad'"
-}
-else display as text "RM-02 PASS: zero, l+10, mar(t-5), m(1 2 3 4) and 10-pt are rc 0 in both, with no dash note"
-// RM-03: two margin() in one copy is refused as twoway refuses it.
-_ztp_run `"twoway scatter mpg weight, plotregion(margin(zero) margin(l+10))"' "`logfile'"
-local trc = r(rc)
-quietly graph drop _all
-_ztp_run `"dash scatter mpg weight, plotregion(margin(zero) margin(l+10)) saving("`rmpg'", replace)"' "`logfile'"
-local drc = r(rc)
-_ztp_logged "`logfile'" "option margin() not allowed"
-if `trc' != 198 | `drc' != 198 | !r(found) {
-    local nfail = `nfail' + 1
-    local faillist "`faillist' RM-03"
-    display as error "RM-03 FAIL: rc `trc'/`drc'"
-}
-else display as text "RM-03 PASS: margin() twice in one plotregion() is r(198) in both"
-// RM-04: graphregion's margin and inner options are named, not drawn.
-local bad ""
-_ztp_run `"twoway scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue))"' "`logfile'"
-local trc = r(rc)
-quietly graph drop _all
-_ztp_run `"dash scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue)) saving("`rmpg'", replace)"' "`logfile'"
-local drc = r(rc)
-_ztp_logged "`logfile'" "graphregion() sub-option(s) not implemented and ignored: margin(l+10) ifcolor(red) ilc(blue)"
-local f1 = r(found)
-_ztp_logged "`logfile'" "plotregion() sub-option"
-if `trc' | `drc' | !`f1' | r(found) local bad " rc `trc'/`drc', named `f1'"
-if "`bad'" != "" {
-    local nfail = `nfail' + 1
-    local faillist "`faillist' RM-04"
-    display as error "RM-04 FAIL:`bad'"
-}
-else display as text "RM-04 PASS: graphregion(margin() ifcolor() ilc()) is rc 0 and named as typed, no plotregion note"
-// RM-05: plotregion's ilalign() is still named; ifcolor() is drawn.
-_ztp_run `"twoway scatter mpg weight, plotregion(ifcolor(red) ilalign(inside))"' "`logfile'"
-local trc = r(rc)
-quietly graph drop _all
-_ztp_run `"dash scatter mpg weight, plotregion(ifcolor(red) ilalign(inside)) saving("`rmpg'", replace)"' "`logfile'"
-local drc = r(rc)
-_ztp_logged "`logfile'" "plotregion() sub-option(s) not implemented and ignored: ilalign(inside)"
-local f1 = r(found)
-_ztp_logged "`logfile'" "ignored: ilalign(inside) ifcolor"
-local f2 = r(found)
-_ztp_logged "`logfile'" "ignored: ifcolor"
-if `trc' | `drc' | !`f1' | `f2' | r(found) {
-    local nfail = `nfail' + 1
-    local faillist "`faillist' RM-05"
-    display as error "RM-05 FAIL: rc `trc'/`drc', named `f1'/`f2'"
-}
-else display as text "RM-05 PASS: plotregion(ifcolor() ilalign()) is rc 0 and names ilalign() only"
-capture dash clear
-capture erase "`rmpg'"
-set linesize `rm_ls'
-
 // ----------------------------------------------------------------
 // RC: recast(), read as twoway reads it (WP-30 P1.8b)
 // twoway's answers are test/fixtures/recast_truth.json's probes, from
@@ -4312,6 +4218,101 @@ if "`bad'" != "" local nfail = `nfail' + 1
 if "`bad'" != "" display as error "RC-13 FAIL:`bad'"
 else display as text "RC-13 PASS: a recast layer's options are judged on the drawn type"
 capture program drop _zrc_spec
+
+// ----------------------------------------------------------------
+// RM: plot-region margins and inner box (WP-30 P1.20b)
+// ----------------------------------------------------------------
+// Live twoway and dash, rc and notes from the logs.
+local rm_ls = c(linesize)
+set linesize 255
+local rmpg "`c(tmpdir)'dash_rm_page.html"
+// The data in memory are kept: the cases before and after read lo/hi.
+// RM-01: an unknown margin is twoway's note, word for word.
+local bad ""
+_ztp_run `"twoway scatter mpg weight, plotregion(margin(bogus))"' "`logfile'"
+local trc = r(rc)
+_ztp_logged "`logfile'" "named style bogus not found in class margin, default attributes used"
+local tf = r(found)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, plotregion(margin(bogus)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "named style bogus not found in class margin, default attributes used"
+if `trc' | `drc' | !`tf' | !r(found) local bad " rc `trc'/`drc', notes `tf'/`=r(found)'"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-01"
+    display as error "RM-01 FAIL:`bad'"
+}
+else display as text "RM-01 PASS: plotregion(margin(bogus)) is rc 0 with twoway's note in both"
+// RM-02: the documented forms are rc 0 and draw with no note.
+local bad ""
+foreach m in "margin(zero)" "margin(l+10)" "mar(t-5)" "m(1 2 3 4)" "margin(10-pt)" {
+    _ztp_run `"twoway scatter mpg weight, plotregion(`m')"' "`logfile'"
+    local trc = r(rc)
+    quietly graph drop _all
+    _ztp_run `"dash scatter mpg weight, plotregion(`m') saving("`rmpg'", replace)"' "`logfile'"
+    local drc = r(rc)
+    _ztp_logged "`logfile'" "class margin"
+    local f1 = r(found)
+    _ztp_logged "`logfile'" "plotregion() sub-option"
+    if `trc' | `drc' | `f1' | r(found) local bad "`bad' `m': rc `trc'/`drc'"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-02"
+    display as error "RM-02 FAIL:`bad'"
+}
+else display as text "RM-02 PASS: zero, l+10, mar(t-5), m(1 2 3 4) and 10-pt are rc 0 in both, with no dash note"
+// RM-03: two margin() in one copy is refused as twoway refuses it.
+_ztp_run `"twoway scatter mpg weight, plotregion(margin(zero) margin(l+10))"' "`logfile'"
+local trc = r(rc)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, plotregion(margin(zero) margin(l+10)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "option margin() not allowed"
+if `trc' != 198 | `drc' != 198 | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-03"
+    display as error "RM-03 FAIL: rc `trc'/`drc'"
+}
+else display as text "RM-03 PASS: margin() twice in one plotregion() is r(198) in both"
+// RM-04: graphregion's margin and inner options are named, not drawn.
+local bad ""
+_ztp_run `"twoway scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue))"' "`logfile'"
+local trc = r(rc)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "graphregion() sub-option(s) not implemented and ignored: margin(l+10) ifcolor(red) ilc(blue)"
+local f1 = r(found)
+_ztp_logged "`logfile'" "plotregion() sub-option"
+if `trc' | `drc' | !`f1' | r(found) local bad " rc `trc'/`drc', named `f1'"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-04"
+    display as error "RM-04 FAIL:`bad'"
+}
+else display as text "RM-04 PASS: graphregion(margin() ifcolor() ilc()) is rc 0 and named as typed, no plotregion note"
+// RM-05: plotregion's ilalign() is still named; ifcolor() is drawn.
+_ztp_run `"twoway scatter mpg weight, plotregion(ifcolor(red) ilalign(inside))"' "`logfile'"
+local trc = r(rc)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, plotregion(ifcolor(red) ilalign(inside)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "plotregion() sub-option(s) not implemented and ignored: ilalign(inside)"
+local f1 = r(found)
+_ztp_logged "`logfile'" "ignored: ilalign(inside) ifcolor"
+local f2 = r(found)
+_ztp_logged "`logfile'" "ignored: ifcolor"
+if `trc' | `drc' | !`f1' | `f2' | r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-05"
+    display as error "RM-05 FAIL: rc `trc'/`drc', named `f1'/`f2'"
+}
+else display as text "RM-05 PASS: plotregion(ifcolor() ilalign()) is rc 0 and names ilalign() only"
+capture dash clear
+capture erase "`rmpg'"
+set linesize `rm_ls'
 
 // ----------------------------------------------------------------
 // Summary
