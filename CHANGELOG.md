@@ -402,7 +402,8 @@ and now matches Stata.
 - Every numeric colour key is written in twoway's %8.0gc whatever the variable's display format (price at %9.0g keys ≤5,000, not ≤5000), and the colour bar is ticked at twoway's key ticks (0, 5,000, 10,000, 15,000) where Bokeh chose its own; zlabel(#N) places ticks by twoway's rule and zlabel(, format()) is honoured on every key. (WP-30, P1.23b)
 - Tooltips of histogram, the fits and smooths and kdensity write values in the variable's display format (a date histogram's bins read 02jan2001, not 978393600000); a kdensity's rows are its variable and Density, not x and y; and a histogram's height row is named Density, Frequency, Fraction or Percent, as its y axis is titled, not Count. (WP-30, P1.23b)
 
-<!-- WP-30 P1.25b -->
+- scheme(), a scheme named on one graph and the session's c(scheme) are found as Stata finds them: scheme-NAME.scheme, then NAME.scheme, in each directory of the ado-path in turn (BASE, SITE, the working directory, PERSONAL, PLUS, OLDPLACE and directories added with adopath, each with its first-letter subdirectory), and a scheme file's #include the same way. dash scatter mpg weight, scheme(w30x) with scheme-w30x.scheme in the working directory was refused r(198), and after set scheme of a PLUS, PERSONAL or third-party scheme an unschemed dashboard was drawn in s2color with a warning; each is now drawn in that scheme. A file in the working directory named like one of the twenty-six shipped schemes (s2color.scheme, scheme-s1mono.scheme) no longer replaces the shipped scheme, as in twoway; scheme(mono) and the other theme names draw a scheme file of that name when Stata finds one; and the refusal of a name Stata does not find lists the twenty-six schemes and the six themes. (WP-30, P1.25b)
+- A dashboard whose graphs name different schemes is served with each graph in its own scheme, as the saved page draws it: served, scheme(s1rcolor) on the second graph drew it white in the first graph's s1mono. The warning that a dashboard draws one scheme is gone from both modes, and a graph's scheme(mono) draws s1mono on the saved page where it drew s2color with a note. (WP-30, P1.25b)
 
 ### Security
 
@@ -502,7 +503,7 @@ and now matches Stata.
 
 - Text drawn on a graph no longer reaches a TeX engine. A `$$…$$`, `\(…\)` or `\[…\]` pair in a title, subtitle, note, caption, axis title, tick label, legend key, by() panel title or colour key was typeset by MathJax, whose html package makes `\href{javascript:…}` a live link and `\style{…}` a style attribute; every delimiter in that text is now broken by an invisible word joiner, in the saved page and the served app, before and after a filter move. (WP-30, P1.11a)
 
-<!-- WP-30 P1.25b -->
+- Schemes are looked up by name only. A scheme() holding a blank, a quote, a slash or backslash, a colon or .. is refused r(198) before any file is looked for, and such an #include is read as s2color with Stata's note. A scheme file found along the ado-path is read only if it is a regular file of at most 1,048,576 bytes whose real path lies inside the directory it was found in, so a link out of that directory is not followed; otherwise a note says why and s2color is drawn. Scheme files are read as data and never run, and the ado-path directories are read at build time and never written into the saved page or the served app. (WP-30, P1.25b)
 
 - A dashboard page no longer lets an injected script run. A saved page's
   Content Security Policy used to allow `'unsafe-inline'` scripts, so an
@@ -773,6 +774,8 @@ and now matches Stata.
 <!-- WP-30 P1.21a -->
 
 <!-- WP-30 P1.24 -->
+
+- scheme() takes a scheme's name as Stata finds its file: a name holding a blank, a control character, a colon, a backtick or a dollar sign, or longer than 87 characters, such as scheme(my theme), was looked for as a file in the working directory and is now refused r(198) with the list of schemes; twoway does not find such a name either. Rename the file, for example to scheme-mytheme.scheme. (WP-30, P1.25b)
 
 - dash prints its notes as twoway prints its notes. Each is one line, (note:  dash: ...), in text colour; it shows under quietly and set output error, and capture hides it. It never names dash's files or Python source lines. Before, the renderer's notes were red Python warnings (".../dash_render.py:8679: UserWarning: dash: mcolor(notacolor) is not a recognised colour; ..." and a source line) that quietly did not hide, and dash.ado's own notes ("dash: ignoring unsupported option(s): play()", "dash: note: ...") were hidden by quietly. dash's copies of twoway's own "(note:  regress could not fit model)" and "(note: scheme X not found, using s2color)" print as plain text that quietly hides, as twoway's do. A do-file that searches a log for "UserWarning", or for a line beginning "dash: ignoring unsupported option(s)" or "dash: note:", now finds "(note:  dash: ...)". (WP-30, P1.26a)
 

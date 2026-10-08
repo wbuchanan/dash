@@ -1,0 +1,541 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "f7e034db0f60371839cffae9fd7c61cc34e21e5a",
+    "extracted": " 8 Oct 2026 06:28:19",
+    "stata_version": "19.5 MP"
+  },
+  "lk01": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/scheme-lk01.scheme": "R"
+    },
+    "findfile_rel": "cwd/scheme-lk01.scheme",
+    "name": "lk01",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk02": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/lk02.scheme": "B"
+    },
+    "findfile_rel": "cwd/lk02.scheme",
+    "name": "lk02",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [],
+    "twoway_bg": "#0000FF",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk03": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/lk03.scheme": "B",
+      "cwd/scheme-lk03.scheme": "R"
+    },
+    "findfile_rel": "cwd/scheme-lk03.scheme",
+    "name": "lk03",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk04": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/scheme-lk04.scheme": "R",
+      "cwd/lk04.scheme": "B"
+    },
+    "findfile_rel": "add/scheme-lk04.scheme",
+    "name": "lk04",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk05": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/s/scheme-lk05.scheme": "R"
+    },
+    "findfile_rel": "add/s/scheme-lk05.scheme",
+    "name": "lk05",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk06": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/l/lk06.scheme": "R"
+    },
+    "findfile_rel": "add/l/lk06.scheme",
+    "name": "lk06",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk07": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/9/9lk07.scheme": "R"
+    },
+    "findfile_rel": "add/9/9lk07.scheme",
+    "name": "9lk07",
+    "note": "",
+    "set_scheme_rc": 198,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk08": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/_/_lk08_.scheme": "R"
+    },
+    "findfile_rel": "add/_/_lk08_.scheme",
+    "name": "_lk08_",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk09": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add",
+      "addb"
+    ],
+    "files": {
+      "add/s/scheme-lk09.scheme": "R",
+      "addb/scheme-lk09.scheme": "B"
+    },
+    "findfile_rel": "add/s/scheme-lk09.scheme",
+    "name": "lk09",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add",
+      "adopath + addb"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk10": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/s/scheme-lk10.scheme": "B",
+      "add/scheme-lk10.scheme": "R"
+    },
+    "findfile_rel": "add/scheme-lk10.scheme",
+    "name": "lk10",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk11": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/scheme-lk11.scheme": "B",
+      "site/s/scheme-lk11.scheme": "R"
+    },
+    "findfile_rel": "site/s/scheme-lk11.scheme",
+    "name": "lk11",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "sysdir set SITE site"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk12": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "personal/scheme-lk12.scheme": "R"
+    },
+    "findfile_rel": "personal/scheme-lk12.scheme",
+    "name": "lk12",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "sysdir set PERSONAL personal"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk13": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "plus/s/scheme-lk13.scheme": "R"
+    },
+    "findfile_rel": "plus/s/scheme-lk13.scheme",
+    "name": "lk13",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "sysdir set PLUS plus"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk14": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "oldplace/scheme-lk14.scheme": "R"
+    },
+    "findfile_rel": "oldplace/scheme-lk14.scheme",
+    "name": "lk14",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "sysdir set OLDPLACE oldplace"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk15": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "rel"
+    ],
+    "files": {
+      "cwd/rel/scheme-lk15.scheme": "R"
+    },
+    "findfile_rel": "cwd/rel/scheme-lk15.scheme",
+    "name": "lk15",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + rel"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk16": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/s1mono.scheme": "R",
+      "cwd/scheme-s1mono.scheme": "R"
+    },
+    "findfile_rel": "BASE/s/scheme-s1mono.scheme",
+    "name": "s1mono",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [],
+    "twoway_bg": "#FFFFFF",
+    "twoway_marker": "#606060",
+    "twoway_rc": 0
+  },
+  "lk17": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/scheme-lk17p.scheme": "R",
+      "cwd/lk17.scheme": "#include lk17p\ncolor p1 green\n"
+    },
+    "findfile_rel": "cwd/lk17.scheme",
+    "name": "lk17",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk18": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/scheme-mono.scheme": "R"
+    },
+    "findfile_rel": "add/scheme-mono.scheme",
+    "name": "mono",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk19": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE",
+      "add"
+    ],
+    "files": {
+      "add/scheme-lk19.scheme": "->outside/x.scheme",
+      "outside/x.scheme": "R"
+    },
+    "findfile_rel": "add/scheme-lk19.scheme",
+    "name": "lk19",
+    "note": "",
+    "set_scheme_rc": 0,
+    "setup": [
+      "adopath + add"
+    ],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk20": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {},
+    "findfile_rel": "",
+    "name": "lk20none",
+    "note": "(note: scheme lk20none not found, using s2color)",
+    "set_scheme_rc": 111,
+    "setup": [],
+    "twoway_bg": "#EAF2F3",
+    "twoway_marker": "#1A476F",
+    "twoway_rc": 0
+  },
+  "lk21": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/scheme-lk2-1.scheme": "R"
+    },
+    "findfile_rel": "cwd/scheme-lk2-1.scheme",
+    "name": "lk2-1",
+    "note": "",
+    "set_scheme_rc": 111,
+    "setup": [],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  },
+  "lk22": {
+    "adopath": [
+      "REPO",
+      "BASE",
+      "SITE",
+      ".",
+      "PERSONAL",
+      "PLUS",
+      "OLDPLACE"
+    ],
+    "files": {
+      "cwd/scheme-lk.22.scheme": "R"
+    },
+    "findfile_rel": "cwd/scheme-lk.22.scheme",
+    "name": "lk.22",
+    "note": "",
+    "set_scheme_rc": 198,
+    "setup": [],
+    "twoway_bg": "#FF0000",
+    "twoway_marker": "#008000",
+    "twoway_rc": 0
+  }
+}

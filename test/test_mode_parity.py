@@ -2096,6 +2096,11 @@ CORPUS = [
     _case("named styles on a ci fit",
           [plot_for("lfitci", {"pstyle": "p3", "astyle": "p4",
                                "alstyle": "p5"})], {"scheme": "stcolor"}),
+    # WP-30 P1.25b: scheme lookup and each graph's own scheme
+    _case("two graphs, two schemes",
+          graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
+                  ("g2", [_sc()], {"scheme": "s1rcolor"})]),
+    _case("graph-level theme alias mono", [_sc()], go={"scheme": "mono"}),
 ]
 
 
@@ -2920,6 +2925,10 @@ MOVE_CORPUS = [
                [plot_for("scatter")],
                {"ylabel": ", noticks labcolor(red) angle(rvertical)",
                 "yscale": "noline alt"}),
+    # WP-30 P1.25b: scheme lookup and each graph's own scheme
+    _move_case("two graphs, two schemes, dropdown", _MOVES[0],
+               graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
+                       ("g2", [_sc()], {"scheme": "s1rcolor"})]),
 ]
 
 

@@ -947,9 +947,12 @@ def _chrome_and_figure(mode, tmp_path, spec, tag):
 
 @pytest.mark.parametrize("mode", _MODES)
 class TestAWorkingDirectorySchemeWinsOverAShippedOne:
-    """dash.sthlp: "A file in the working directory wins over a shipped
-    scheme of the same name."  test_installed_layout.py pins the lookup on
-    an installed tree; this renders it, in both modes, from a checkout."""
+    """WP-30 P1.25b reversed the claim this class was named for: a file in
+    the working directory named like a shipped scheme no longer replaces it,
+    as it never does in twoway, whose BASE comes first (dash.sthlp: "no
+    longer wins over the shipped one").  test_installed_layout.py pins the
+    lookup on an installed tree; this renders it, in both modes, from a
+    checkout."""
 
     @pytest.mark.parametrize("where", ["build", "graph"])
     def test_s2color_in_the_working_directory(self, tmp_path, monkeypatch,
@@ -962,14 +965,16 @@ class TestAWorkingDirectorySchemeWinsOverAShippedOne:
         spec = (_scatter(build={"scheme": "s2color"}) if where == "build"
                 else _scatter({"scheme": "s2color"}))
         page, bg = _chrome_and_figure(mode, tmp_path, spec, "wd" + where)
-        assert bg.lower() == "#123456"
-        assert "#123456" in page.lower()
+        assert bg.lower() == dr.SchemeParser("s2color").background_color.lower()
+        assert "#123456" not in page.lower()
 
 
 class TestWhatAnIncludeResolvesTo:
-    """A user file's #include: the working directory first, then a shipped
-    translation, never Stata's own scheme-<name>.scheme, and one that
-    resolves to neither is read as s2color, with Stata's note."""
+    """A user file's #include resolves as scheme() does (WP-30 P1.25b): a
+    shipped translation first, whatever file of that name is in the working
+    directory, then Stata's scheme-<name>.scheme and <name>.scheme along the
+    ado-path; one that resolves nowhere is read as s2color, with Stata's
+    note."""
 
     @staticmethod
     def _parse(wd, text, monkeypatch):
@@ -986,7 +991,9 @@ class TestWhatAnIncludeResolvesTo:
         (wd / "s2color.scheme").write_text(_custom_scheme("s2color",
                                                           "#abcdef"))
         sch, w = self._parse(wd, "#include s2color\n", monkeypatch)
-        assert sch.background_color.lower() == "#abcdef", w
+        # WP-30 P1.25b: the translation, never the working-directory file.
+        assert (sch.background_color.lower()
+                == dr.SchemeParser("s2color").background_color.lower()), w
 
     def test_then_a_shipped_translation(self, tmp_path, monkeypatch):
         wd = tmp_path / "wd"
@@ -1002,7 +1009,8 @@ class TestWhatAnIncludeResolvesTo:
             "#include s2color\ncolor background #ff00ff\n")
         sch, w = self._parse(
             wd, "#include zzinc\ncolor p1 #112233\n", monkeypatch)
-        assert sch.background_color.lower() != "#ff00ff"
+        # WP-30 P1.25b: Stata's setscheme tries scheme-NAME.scheme first.
+        assert sch.background_color.lower() == "#ff00ff"
         assert sch.p_colors[0].lower() == "#112233"
 
     def test_an_include_that_resolves_to_nothing_stands_s2color_in(
@@ -1185,6 +1193,9 @@ class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
                 assert sch.is_fallback is False and sch.name == name
             assert not mod.SchemeParser.can_resolve("zzthird")
             assert not mod.SchemeParser.can_resolve("scheme-zzthird")
+            # WP-30 P1.25b: along the ado-path it is found, as Stata does.
+            assert mod.SchemeParser.can_resolve("zzthird",
+                                                ado_dirs=(str(root),))
         finally:
             sys.modules.pop(mod_name, None)
 

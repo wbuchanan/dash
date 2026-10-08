@@ -965,6 +965,17 @@ FUNCTIONS = {
  'SchemeParser.colorbar_chrome': 'test/test_label_key_chrome.py::TestTheColourKeyTakesTheSchemeChrome::test_the_chrome_dict',
  'SchemeParser.default_mlabel_style': 'test/test_label_key_chrome.py::TestTheParsersLabelStyle::test_the_index_wraps_at_fifteen',
  # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
+ 'SchemeParser._admit': 'test/test_scheme_lookup.py::TestTheGuards::test_a_link_out_of_its_directory_is_not_read',
+ 'SchemeParser._ado_candidates': 'test/test_scheme_lookup.py::TestTheWalkIsStatas::test_each_measured_placement',
+ 'SchemeParser._read_scheme_lines': 'test/test_scheme_lookup.py::TestTheGuards::test_the_read_stops_at_the_cap',
+ 'SchemeParser._scheme_name_ok': 'test/test_scheme_lookup.py::TestTheNameRule::test_the_parser_reads_the_name_rule',
+ 'SchemeParser._shipped_path': 'test/test_scheme_lookup.py::TestShippedNamesComeFirst::test_a_working_directory_file_never_replaces_a_shipped_scheme',
+ 'SchemeParser.unresolved_reason': 'test/test_scheme_lookup.py::TestTheGuards::test_a_session_scheme_refused_by_a_guard_says_why',
+ 'ServerAppBuilder._resolve_graph_schemes': 'test/test_scheme_lookup.py::TestPerGraphSchemes::test_each_graph_is_drawn_in_its_own_scheme',
+ '_dash_scheme_choice': 'test/test_scheme_lookup.py::TestThemeNamesAndFiles::test_an_explicit_alias_loses_to_a_file',
+ '_dash_scheme_dirs_of': 'test/test_scheme_lookup.py::TestTheGuards::test_scheme_dirs_input_is_bounded',
+ 'app:_dash_graph_scheme': 'test/test_scheme_lookup.py::TestPerGraphSchemes::test_each_graph_is_drawn_in_its_own_scheme',
+ 'app:_dash_under_graph_scheme': 'test/test_scheme_lookup.py::TestPerGraphSchemes::test_the_served_move_keeps_each_graphs_scheme',
  # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
  # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
  # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)

@@ -351,6 +351,7 @@ COVERAGE = {
         # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
         # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
         # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
+        "_dash_scheme_dirs": ("test_custom_scheme.cscript:SP-04", "test_wp30_truth.cscript:SP-18"),
         # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
         # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
         # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
@@ -767,6 +768,7 @@ COVERAGE = {
         # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
         # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
         # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
+        "_dash_scheme_dirs_json": ("test_wp30_truth.cscript:SP-18", "test_custom_scheme.cscript:SP-04"),
         # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
         # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
         # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)

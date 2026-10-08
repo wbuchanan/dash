@@ -177,10 +177,12 @@ display as result "  [4/5] no note and no Python warning in the log: PASS"
 //    silencing Python's warnings for the session passes it whatever
 //    the renderer says, as dash_setup's scheme probe once did,
 //    leaving warnings.simplefilter("ignore") installed for every
-//    later render.  A session scheme dash cannot translate is one
-//    warning (CS-10): zzdashrlc, a scheme file in a scratch working
-//    directory that includes s2color, so that `set scheme' takes it
-//    and the renderer does not.
+//    later render.  An #include that resolves nowhere is one note
+//    (WP-30 P1.25b: a session scheme Stata found no longer notes, so
+//    the control is now its include): zzdashrlc, a scheme file in a
+//    scratch working directory holding `#include zzdashrlcnone', which
+//    `set scheme' takes and the renderer reads, noting the include once
+//    as twoway does.
 // ---------------------------------------------------------------
 local rlc_home    "`c(pwd)'"
 local rlc_scheme0 "`c(scheme)'"
@@ -189,7 +191,7 @@ local ctlfile     "`logdir'dash_render_log_clean_ctl.log"
 capture mkdir "`rlc_dir'"
 tempname sfh
 file open `sfh' using "`rlc_dir'/scheme-zzdashrlc.scheme", write text replace
-file write `sfh' "#include s2color" _n
+file write `sfh' "#include zzdashrlcnone" _n
 file close `sfh'
 capture erase "`ctlfile'"
 quietly cd "`rlc_dir'"

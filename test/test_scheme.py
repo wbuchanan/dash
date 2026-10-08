@@ -639,14 +639,17 @@ class TestSecurity:
                 os.unlink(real_name)
 
     def test_BUG_51_1e_realpath_check_covers_abspath_bypass(self):
-        """BUG-51-1e: _resolve_path must perform realpath validation, not just abspath."""
+        """BUG-51-1e: path resolution must perform realpath validation, not
+        just abspath.  Since WP-30 P1.25b _resolve_path hands a shipped name
+        to _shipped_path and a found file to _admit, which hold the checks."""
         # Verify the security fix is present in the source code
         import inspect
-        source = inspect.getsource(SchemeParser._resolve_path)
-        assert "realpath" in source, (
-            "SchemeParser._resolve_path must call os.path.realpath for symlink "
-            "traversal protection (BUG-51 regression)"
-        )
+        for fn in (SchemeParser._shipped_path, SchemeParser._admit):
+            source = inspect.getsource(fn)
+            assert "realpath" in source, (
+                f"SchemeParser.{fn.__name__} must call os.path.realpath for "
+                "symlink traversal protection (BUG-51 regression)"
+            )
 
 
 # ============================================================

@@ -36,8 +36,8 @@
 *!           exact wording.
 *!   HC8-09  twoway draws an unknown scheme as s2color with a note, rc 0;
 *!           `set scheme' refuses it, r(111).
-*!   HC8-10  an inherited session scheme dash cannot translate: rc 0, one
-*!           warning in the help's words, the page drawn in s2color.
+*!   HC8-10  an inherited session scheme Stata found: rc 0, no note, drawn
+*!           (WP-30 P1.25b).
 *!   HC8-11  a working-directory scheme, by bare name and by file name,
 *!           inside a layer's parentheses and on dash serve's spec path; the
 *!           served app built from that spec carries it.
@@ -545,7 +545,7 @@ _hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc08.
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-08" "(`rc' == 198)" "scheme(): rc `rc'"
-_hc_log "HC8-08" "`lf'" "dash build: scheme() must be a shipped scheme, a theme, or a .scheme file in the working directory (got: nosuchthing)" 1 1
+_hc_log "HC8-08" "`lf'" "dash build: scheme() must be one of economist, meta, s1color, s1manual, s1mono, s1rcolor, s2color, s2color8, s2gcolor, s2gmanual, s2manual, s2mono, sj, stcolor, stcolor_alt, stcolor_meta, stcolor_mv, stcoloralias, stgcolor, stgcolor_alt, stgcolor_meta, stgcolor_mv, stmono1, stmono2, stsj, sttrans; a theme (clean, dark, default, economist, mono, sj); or a scheme Stata finds along the ado-path as scheme-NAME.scheme or NAME.scheme (got: nosuchthing)" 1 1
 _hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc08.html") theme(nosuchtheme) replace"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -566,19 +566,22 @@ _hc_expect "HC8-09" "(`r(rc)' == 111)" "set scheme: rc `r(rc)'"
 _hc_done "HC8-09" "twoway draws s2color with a note; set scheme is r(111)"
 
 // ================================================================
-// HC8-10 -- an inherited scheme dash cannot translate
+// HC8-10 -- an inherited session scheme Stata found: rc 0, no note, drawn
+// (WP-30 P1.25b; zzdashtest includes s2color, whose heading is #1e2d53)
 // ================================================================
+// HC8-09's nodraw twoway graph would add dash's graph export note.
+quietly graph drop _all
 set scheme zzdashtest
 _hc_run "dash scatter mpg weight, name(g1)" `"dash build, saving("`hc_dir'/hc10.html") replace"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 set scheme `hc_scheme0'
 _hc_expect "HC8-10" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-10" "`lf'" "dash: 'zzdashtest' is not a known theme or scheme; it was inherited from the session (c(scheme)) because no scheme() or theme() was given" 1
-_hc_log "HC8-10" "`lf'" "; using s2color" 1
+_hc_log "HC8-10" "`lf'" "(note:" 0
+_hc_log "HC8-10" "`lf'" "is not a known theme or scheme" 0
 cert_file_has "`hc_dir'/hc10.html", needle("#1e2d53")
-_hc_expect "HC8-10" "(`r(found)' == 1)" "the page is not s2color's"
-_hc_done "HC8-10" "rc 0, one warning in the help's words, s2color drawn"
+_hc_expect "HC8-10" "(`r(found)' == 1)" "the page does not draw zzdashtest (s2color's heading)"
+_hc_done "HC8-10" "an inherited session scheme Stata found: rc 0, no note, drawn"
 
 // ================================================================
 // HC8-11 -- a working-directory scheme inside a layer's parentheses and on

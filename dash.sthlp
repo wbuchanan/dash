@@ -820,8 +820,9 @@ named in a note and drawn around -- because it is what would be drawn.
     from a list, matched without regard to case: {cmd:kernel()},
     {cmd:colpalette()} and {cmd:theme()}.  A scheme name:
     {cmd:scheme()} must be a shipped scheme, a {cmd:theme()} name or a
-    {cmd:.scheme} file in the working directory, given by bare name or
-    with the extension, wherever it is written (see
+    scheme Stata finds along the ado-path,
+    {cmd:scheme-}{it:name}{cmd:.scheme} or {it:name}{cmd:.scheme},
+    wherever it is written (see
     {help dash##scheme:Stata scheme support}).  A list of numbers,
     written as any Stata
     {it:numlist}: {cmd:colorcuts()} one or more, {cmd:range()} exactly
@@ -3970,6 +3971,10 @@ named there).
 
 {pstd}
 {cmd:scheme()} applies a named Stata graph scheme to the whole dashboard.
+A {cmd:scheme()} written on one graph draws that graph in it, in the
+saved page and the served app alike; the page and the KPI cards take the
+dashboard's scheme ({cmd:dash build}'s {cmd:scheme()}, then
+{cmd:theme()}, then the first graph's, then {cmd:c(scheme)}).
 With no {cmd:scheme()} and no {cmd:theme()}, {cmd:dash} follows the session's
 own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
 draw without your asking.
@@ -4202,38 +4207,50 @@ compatibility: {cmd:default} is {cmd:s2color}, {cmd:clean} is {cmd:s1color},
 are given.
 
 {pstd}
-{ul:A scheme of your own.}  To use a scheme {cmd:dash} does not ship, put
-its {cmd:.scheme} file in the working directory and name it either by its
-base name, {cmd:scheme(mytheme)}, or by its file name,
-{cmd:scheme(mytheme.scheme)}.  Both work on every entry point -- a plot
-drawn at once with {cmd:dash} {it:plottype}, a {cmd:scheme()} written on
-a registered graph or inside a layer's parentheses, {cmd:dash build} and
-{cmd:dash serve} -- and the page and every figure take the same file.  A
-file in the working directory wins over a shipped scheme of the same
-name.  A shipped name may be given with the extension too,
-{cmd:scheme(s2color.scheme)}, on every entry point and with no file in
-the working directory.  A scheme another package installed into
-{cmd:PLUS} is not read from there, deliberately: the letter directories
-are shared, so
-{cmd:dash} reads only its own translations and the working directory.
-Copy the file into the working directory instead.  The file is read the
+{ul:A scheme of your own.}  A scheme {cmd:dash} does not ship is found
+along the ado-path as {cmd:twoway} finds it:
+{cmd:scheme-}{it:name}{cmd:.scheme}, then
+{it:name}{cmd:.scheme}, in each directory of the ado-path in turn
+({cmd:BASE}, {cmd:SITE}, the working directory, {cmd:PERSONAL},
+{cmd:PLUS}, {cmd:OLDPLACE}, directories added with {cmd:adopath}), each
+with its first-letter subdirectory, as {cmd:findfile} looks.  So
+{cmd:scheme(mytheme)} reads {cmd:scheme-mytheme.scheme} or
+{cmd:mytheme.scheme} in the working directory, a third-party scheme
+installed into {cmd:PLUS/s/} is read from there, and
+{cmd:scheme(mytheme.scheme)} names the file itself.  This holds on every
+entry point -- a plot drawn at once with {cmd:dash} {it:plottype}, a
+{cmd:scheme()} written on a registered graph or inside a layer's
+parentheses, {cmd:dash build}, {cmd:dash serve} and the session's
+{cmd:c(scheme)}.  The twenty-six shipped names come first, as Stata's own
+are in {cmd:BASE}, so a working-directory {cmd:s2color.scheme} or
+{cmd:scheme-s2color.scheme} replaces nothing.  A shipped name may be given
+with the extension too, {cmd:scheme(s2color.scheme)}.  A {cmd:theme()}
+name given to {cmd:scheme()} is a file of that name when Stata finds one,
+and the theme otherwise.  Four things differ from {cmd:twoway}, for
+safety: a scheme is a name, never a path (a name holding a blank, a
+quote, a slash or backslash, a colon or {cmd:..} is refused, where
+{cmd:twoway} follows a relative path); a file is read only when it is a
+regular file of at most 1,048,576 bytes inside the directory it was found
+in, so a link out of that directory is not followed; a
+{cmd:dash-}{it:name} is read only from the working directory; and a file
+is read as data, never run.  A file refused this way is named in a note
+and {cmd:s2color} is drawn.  The file is read the
 way Stata reads it: each line is {cmd:styletype element style}, with the
 style the third word, quoted when it holds blanks, as in
 {cmd:color background "255 0 0"} or {cmd:color p1 "26 71 111 %20"}.  A
 line that cannot be read that way is named once, with its line number,
-and skipped.  A name carrying a
-directory separator or {cmd:..} is refused.
+and skipped.
 
 {pstd}
 {ul:A name that resolves to nothing is refused.}  A {cmd:scheme()} that
-is neither a shipped scheme, one of the {cmd:theme()} aliases nor a
-{cmd:.scheme} file in the working directory is refused before any Python
+is neither a shipped scheme, a {cmd:theme()} name nor a scheme Stata
+finds is refused before any Python
 runs, on every entry point, with r(198):
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
 {phang3}{cmd:. dash scatter mpg weight, name(s1)}{p_end}
 {phang3}{cmd:. dash build, saving(d.html) scheme(nosuchthing) replace}{p_end}
-{phang3}{cmd:dash build: scheme() must be a shipped scheme, a theme, or a .scheme file in the working directory (got: nosuchthing)}{p_end}
+{phang3}{cmd:dash build: scheme() must be one of economist, meta, s1color, s1manual, s1mono, s1rcolor, s2color, s2color8, s2gcolor, s2gmanual, s2manual, s2mono, sj, stcolor, stcolor_alt, stcolor_meta, stcolor_mv, stcoloralias, stgcolor, stgcolor_alt, stgcolor_meta, stgcolor_mv, stmono1, stmono2, stsj, sttrans; a theme (clean, dark, default, economist, mono, sj); or a scheme Stata finds along the ado-path as scheme-NAME.scheme or NAME.scheme (got: nosuchthing)}{p_end}
 
 {pstd}
 and a {cmd:theme()} likewise, naming its six values:
@@ -4242,12 +4259,10 @@ That is stricter than {cmd:twoway}, which draws {cmd:s2color} with a note
 when a scheme is not found, and the same as {cmd:set scheme}, which is
 r(111): a dashboard is a file you look at later, so {cmd:dash} will not
 save one in a scheme you did not ask for.  The session's own
-{cmd:c(scheme)}, inherited when you name none, is the one exception.
-When {cmd:dash} cannot translate it -- a third-party scheme -- it says
-so once,
-{cmd:dash: 'X' is not a known theme or scheme; it was inherited from the session (c(scheme)) because no scheme() or theme() was given ...; using s2color},
-and draws {cmd:s2color}; never an error, so a session set to a scheme
-{cmd:dash} does not know still builds.
+{cmd:c(scheme)}, inherited when you name none, is looked up the same
+way, so a scheme {cmd:set scheme} accepted is drawn; it is never refused,
+and when {cmd:dash} cannot read it -- a file the rules above refuse -- a
+note says why and {cmd:s2color} is drawn.
 
 {pstd}
 {ul:What a scheme file of yours may include.}  A colour in your file
@@ -4260,14 +4275,13 @@ written as edits on top of an {cmd:#include}d parent, and {cmd:dash}
 resolves that chain once, when it extracts its twenty-six translations, so
 each shipped file already carries every directive it needs with every
 colour written as hex.  A file of yours is read the same way: an
-{cmd:#include} is resolved as {cmd:scheme()} itself is -- a {cmd:.scheme}
-file of that name in the working directory first, then one of the
-twenty-six translations {cmd:dash} ships -- never Stata's own
-{cmd:scheme-}{it:name}{cmd:.scheme}.  As in Stata, an {cmd:#include}
+{cmd:#include} is resolved as {cmd:scheme()} itself is -- one of the
+twenty-six translations, or {cmd:scheme-}{it:name}{cmd:.scheme} then
+{it:name}{cmd:.scheme} along the ado-path.  As in Stata, an {cmd:#include}
 takes effect where it stands: the lines after it override the included
 scheme, and the included scheme overrides the lines before it.  An
-{cmd:#include} that resolves to neither (a third-party scheme, or a path
-outside the working directory) is read as {cmd:#include s2color}, as
+{cmd:#include} that resolves to neither (a scheme nowhere on the
+ado-path, or a path) is read as {cmd:#include s2color}, as
 Stata reads a scheme it cannot find, and {cmd:dash} says so in Stata's
 words, {cmd:(note: scheme} {it:name} {cmd:not found, using s2color)}.
 A {cmd:color p}{it:#} or {cmd:linepattern p}{it:#} of yours reaches the
@@ -4341,12 +4355,13 @@ its twenty-six schemes as {cmd:dash-}{it:name}{cmd:.scheme} files beside
 all twenty-six land in {cmd:PLUS/d/} -- {cmd:PLUS/d/dash-s2color.scheme},
 {cmd:PLUS/d/dash-economist.scheme} and so on -- while
 {cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there for
-its own twenty-six names and for nothing else, so {cmd:scheme()} works the
-same from an installed copy as from a source checkout, and any other
-package's file in the same directory stays unread.  You still name them
-as before: {cmd:scheme(s2color)} or {cmd:scheme(s2color.scheme)}.  A
-{cmd:.scheme} file you put in the working directory still wins over the
-shipped one of the same name.
+its own twenty-six names; a name it does not ship is looked for along the
+ado-path as Stata looks for it, so another package's file in the same
+directory is read only when you name it.  So {cmd:scheme()} works the
+same from an installed copy as from a source checkout.  You still name
+them as before: {cmd:scheme(s2color)} or {cmd:scheme(s2color.scheme)}.  A
+{cmd:.scheme} file in the working directory no longer wins over the
+shipped one of the same name, as it never does in {cmd:twoway}.
 
 {pstd}
 {ul:Why they are named {cmd:dash-}{it:name}{cmd:.scheme}.}  The
@@ -4354,8 +4369,9 @@ shipped one of the same name.
 {cmd:scheme-}{it:name}{cmd:.scheme} files or with another package's
 {it:name}{cmd:.scheme}, so {cmd:set scheme} {it:name} still finds Stata's
 own copy and {cmd:dash}'s translations never change how {cmd:graph} draws
-by default.  They are {cmd:dash}'s alone: {cmd:set scheme} looks only
-for {cmd:scheme-}{it:name}{cmd:.scheme}, so it never reads them, and in
+by default.  They are {cmd:dash}'s alone: {cmd:set scheme} {it:name}
+finds Stata's own {cmd:scheme-}{it:name}{cmd:.scheme} in {cmd:BASE}
+first, so it never reads them, and in
 {cmd:dash} you name each by Stata's own name, {cmd:scheme(s2color)},
 never by its file name.  In {cmd:dash},
 {cmd:scheme(dash-}{it:name}{cmd:)} is not another spelling of a shipped

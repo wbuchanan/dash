@@ -32,6 +32,13 @@
 *!       dash.ado's _dash_json_str: its `0' read by value, the text
 *!       JSON-escaped into the local _dash_jsv, the name into _dash_jsn.
 *!
+*!   _dash_scheme_dirs_json()
+*!       The ado-path as Stata's findfile walks it, a JSON array of at most
+*!       64 directories (WP-30 P1.25b): "." is c(pwd), a relative entry is
+*!       joined to it, ~ entries are kept as written, and an entry holding
+*!       a backtick, dollar sign, double quote or control character is
+*!       skipped.
+*!
 *!   _dash_text_args(nlead, ntail, optnum)
 *!       A program's `0' read by value: its first nlead and last ntail
 *!       arguments (dash's own words) into _dash_a1, _dash_a2, ..., their
@@ -503,6 +510,45 @@ void _dash_json_str_args()
         t = substr(t, 2, n - 2)
     }
     st_local("_dash_jsv", _json_escape(t))
+}
+
+// _dash_scheme_dirs_json() -- the ado-path a scheme dash does not ship is
+// looked for along (WP-30 P1.25b, M7).
+//
+// Stata's setscheme runs findfile scheme-NAME.scheme and then findfile
+// NAME.scheme (BASE/s/scheme.class:172-173), and findfile walks c(adopath)
+// expanded by pathsubsysdir(), each directory followed by its first-letter
+// subdirectory.  The renderer walks the same list, so it is written into
+// the spec as build_options.scheme_dirs: at most 64 entries, "." as
+// c(pwd), any other relative entry joined to c(pwd), an entry starting ~
+// kept as written (the renderer expands it).  An entry holding a backtick,
+// a dollar sign, a double quote or a control character is skipped: dash
+// never passes such a directory through a macro, a documented difference
+// beside the unfollowed link.  Returns the JSON array text; every entry is
+// escaped by _json_escape().
+string scalar _dash_scheme_dirs_json()
+{
+    string rowvector d
+    string scalar    p, out
+    real scalar      i, n, k, bad
+
+    d = pathsubsysdir(pathlist(c("adopath")))
+    out = ""
+    n = 0
+    for (i = 1; i <= cols(d) & n < 64; i++) {
+        p = d[i]
+        if (p == "") continue
+        bad = strpos(p, char(96)) | strpos(p, char(36)) | strpos(p, char(34))
+        for (k = 1; k <= strlen(p) & !bad; k++) {
+            if (ascii(substr(p, k, 1)) < 32 | ascii(substr(p, k, 1)) == 127) bad = 1
+        }
+        if (bad) continue
+        if (p == ".") p = c("pwd")
+        else if (substr(p, 1, 1) != "~" & !pathisabs(p)) p = pathjoin(c("pwd"), p)
+        out = out + (n ? "," : "") + char(34) + _json_escape(p) + char(34)
+        n++
+    }
+    return("[" + out + "]")
 }
 
 // _dash_text_args(nlead, ntail, optnum) -- a program's arguments read by

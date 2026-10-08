@@ -25,6 +25,7 @@
 *!   S15  P1.2a scheme chrome against twoway (LK-01..LK-07)
 *!   S17  P1.23b colour-key text and computed tooltips against twoway (DK-01..DK-09)
 *!   S20  P1.1b per-series value lists against twoway (PS-30..PS-34)
+*!   S34  P1.25b scheme lookup along the ado-path, each graph's own scheme (SP-10..SP-18)
 
 cscript "WP-30 truth: twoway comparisons" adodir ".."
 
@@ -112,7 +113,7 @@ if _rc {
 local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
-    S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5
+    S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -8080,10 +8081,484 @@ if inlist("`only'", "", "S33") & `: list posof "S33" in w30_run' {
 }
 * ==== end S33 ====
 
+// ----------------------------------------------------------------
+// S34 helpers (python at the top level, where braces are safe).  Values
+// cross only through sfi.Macro globals.
+//   _s34_svg()   S34_SVG, a twoway SVG -> S34_TW = bg;marker (lower case)
+//   _s34_figs()  S34_PAGE (a saved page) or S34_APP (a served app.py) ->
+//                S34_BG, each Plot's border_fill_color in document order
+//                joined by ";", and S34_MK, the first Scatter fill; for
+//                the app, the Select whose _dash_var is S34_MOVE is moved
+//                to its second option -> S34_BG_AFTER, S34_FIRED
+//   _s34_same()  S34_NAME, S34_FN (findfile's r(fn)) and S34_DIRS (the
+//                ado-path _dash_scheme_dirs wrote) -> S34_SAME, 1 when
+//                dash_render's walk resolves the file findfile found
+//   _s34_make()  S34_KEY, a scheme_lookup_truth.json record, recreated
+//                under S34_CASE -> S34_NAME, S34_SETUP (| separated)
+// _s34_where name: findfile as the gate runs it, then _s34_same.
+// ----------------------------------------------------------------
+python:
+import json as _s34_json
+import os as _s34_os
+import sys as _s34_sys
+from sfi import Macro as _s34_M
+
+
+def _s34_set(name, val):
+    _s34_M.setGlobal(name, str(val))
+
+
+def _s34_svg():
+    import svg_truth as _st
+    path = _s34_M.getGlobal("S34_SVG")
+    doc = _st.svg_document(path)
+    bg = doc["rects"][0]["fill"] if doc["rects"] else "none"
+    fills = _st.svg_marker_fills(path)
+    mk = max(fills, key=lambda c: fills[c]["n"]) if fills else "none"
+    _s34_set("S34_TW", "%s;%s" % (str(bg).lower(), str(mk).lower()))
+
+
+def _s34_plots(roots):
+    from bokeh.models import Plot
+    out, seen = [], set()
+    stack = list(roots)
+    def visit(m):
+        if isinstance(m, (list, tuple)):
+            for x in m:
+                visit(x)
+            return
+        if not hasattr(m, "properties") or id(m) in seen:
+            return
+        seen.add(id(m))
+        if isinstance(m, Plot):
+            out.append(m)
+            return
+        for a in ("children", "tabs", "child"):
+            k = getattr(m, a, None)
+            if k is not None:
+                visit(k)
+    visit(stack)
+    return out
+
+
+def _s34_doc_bg(doc):
+    from bokeh.models import Scatter
+    plots = _s34_plots(doc.roots)
+    mk = [s.fill_color for s in doc.select(dict(type=Scatter))]
+    return ";".join(str(p.border_fill_color).lower() for p in plots), \
+        (str(mk[0]).lower() if mk else "none")
+
+
+def _s34_figs():
+    page = _s34_M.getGlobal("S34_PAGE")
+    if page:
+        objs = _s07_models(page)
+        bgs = []
+        mk = "none"
+        for o in objs:
+            a = o.get("attributes", {}) or {}
+            if o.get("name") in _S07_PLOTS:
+                bgs.append(str(_s07_val(a.get("border_fill_color", "#ffffff"))).lower())
+            if o.get("name") == "Scatter" and mk == "none" and "fill_color" in a:
+                mk = str(_s07_val(a["fill_color"])).lower()
+        _s34_set("S34_BG", ";".join(bgs) or "none")
+        _s34_set("S34_MK", mk)
+        return
+    from bokeh.document import Document
+    from bokeh.models import Select
+    import warnings as _w
+    if not _s34_os.path.isfile(_s34_M.getGlobal("S34_APP")):
+        for g in ("S34_BG", "S34_MK", "S34_BG_AFTER"):
+            _s34_set(g, "none")
+        _s34_set("S34_FIRED", 0)
+        return
+    with open(_s34_M.getGlobal("S34_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_s34_app")
+    with _w.catch_warnings():
+        _w.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_s34_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+    bg, mk = _s34_doc_bg(doc)
+    _s34_set("S34_BG", bg or "none")
+    _s34_set("S34_MK", mk)
+    var = _s34_M.getGlobal("S34_MOVE")
+    sel = [s for s in doc.select(dict(type=Select))
+           if getattr(s, "_dash_var", None) == var]
+    fired = 0
+    if var and len(sel) == 1 and len(sel[0].options) > 1:
+        old = sel[0].value
+        opt = sel[0].options[1]
+        new = opt[0] if isinstance(opt, (list, tuple)) else opt
+        sel[0].value = new
+        with _w.catch_warnings():
+            _w.simplefilter("ignore")
+            for cb in sel[0]._callbacks.get("value", []):
+                cb("value", old, new)
+                fired += 1
+    _s34_set("S34_FIRED", fired)
+    _s34_set("S34_BG_AFTER", _s34_doc_bg(doc)[0] or "none")
+
+
+def _s34_dr():
+    repo = _s34_M.getGlobal("S34_REPO")
+    if repo not in _s34_sys.path:
+        _s34_sys.path.insert(0, repo)
+    import dash_render
+    return dash_render
+
+
+def _s34_same():
+    dr = _s34_dr()
+    if getattr(dr, "_dash_scheme_dirs_of", None) is None:
+        _s34_set("S34_SAME", 0)
+        _s34_set("S34_WHY", "the renderer reads no ado-path")
+        return
+    probe = dr.SchemeParser.__new__(dr.SchemeParser)
+    probe._ado_dirs = dr._dash_scheme_dirs_of(
+        {"scheme_dirs": _s34_json.loads(_s34_M.getGlobal("S34_DIRS"))})
+    fn = _s34_M.getGlobal("S34_FN")
+    try:
+        got = probe._resolve_path(_s34_M.getGlobal("S34_NAME"))
+    except ValueError as exc:
+        _s34_set("S34_SAME", 0)
+        _s34_set("S34_WHY", str(exc)[:120])
+        return
+    same = int(bool(fn) and _s34_os.path.realpath(got)
+               == _s34_os.path.realpath(fn))
+    _s34_set("S34_SAME", same)
+    _s34_set("S34_WHY", "dash %s, findfile %s" % (_s34_os.path.basename(got),
+                                                 _s34_os.path.basename(fn)))
+
+
+def _s34_make():
+    repo = _s34_M.getGlobal("S34_REPO")
+    with open(_s34_os.path.join(repo, "test", "fixtures",
+                                "scheme_lookup_truth.json"),
+              encoding="utf-8") as fh:
+        rec = _s34_json.load(fh)[_s34_M.getGlobal("S34_KEY")]
+    root = _s34_M.getGlobal("S34_CASE")
+    body = {"R": "#include s2color\ncolor background red\ncolor p1 green\n",
+            "B": "#include s2color\ncolor background blue\ncolor p1 green\n"}
+    _s34_os.makedirs(_s34_os.path.join(root, "cwd"), exist_ok=True)
+    for rel, kind in rec["files"].items():
+        p = _s34_os.path.join(root, rel)
+        _s34_os.makedirs(_s34_os.path.dirname(p), exist_ok=True)
+        if kind.startswith("->"):
+            _s34_os.symlink(_s34_os.path.join(root, kind[2:]), p)
+        else:
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write(body.get(kind, kind))
+    for s in rec["setup"]:
+        w = s.split()
+        if w[0] == "adopath":
+            _s34_os.makedirs(_s34_os.path.join(root, w[-1]) if w[-1] != "rel"
+                             else _s34_os.path.join(root, "cwd", "rel"),
+                             exist_ok=True)
+    _s34_set("S34_NAME", rec["name"])
+    _s34_set("S34_SETUP", "|".join(rec["setup"]))
+end
+
+capture program drop _s34_where
+program define _s34_where
+    version 19
+    args name
+    global S34_NAME "`name'"
+    global S34_FN ""
+    capture findfile "scheme-`name'.scheme"
+    if _rc {
+        capture findfile "`name'.scheme"
+    }
+    if !_rc global S34_FN `"`r(fn)'"'
+    local _dash_sdirs "[]"
+    capture noisily _dash_scheme_dirs
+    global S34_DIRS `"`macval(_dash_sdirs)'"'
+    python: __import__("__main__")._s34_same()
+end
+
+capture program drop _s34_file
+program define _s34_file
+    version 19
+    // _s34_file path text...: write the lines (#include s2color first).
+    gettoken path 0 : 0
+    tempname fh
+    file open `fh' using `"`path'"', write text replace
+    file write `fh' "#include s2color" _n
+    foreach ln of local 0 {
+        file write `fh' `"`ln'"' _n
+    }
+    file close `fh'
+end
+
+capture program drop _s34_tw
+program define _s34_tw
+    version 19
+    // _s34_tw svg [scheme]: twoway's scatter, as an SVG; S34_TW = bg;marker.
+    args svg sch
+    local opt = cond("`sch'" != "", "scheme(`sch')", "")
+    quietly twoway scatter mpg weight, `opt' name(s34tw, replace)
+    quietly graph export "`svg'", name(s34tw) replace
+    quietly graph drop _all
+    global S34_SVG "`svg'"
+    python: __import__("__main__")._s34_svg()
+end
+
+capture program drop _s34_read
+program define _s34_read
+    version 19
+    // _s34_read page|app path [move]: S34_BG, S34_MK (and after a move).
+    args kind path move
+    global S34_PAGE ""
+    global S34_APP ""
+    global S34_MOVE "`move'"
+    if "`kind'" == "page" global S34_PAGE "`path'"
+    else global S34_APP "`path'"
+    python: __import__("__main__")._s34_figs()
+end
+
 * ==== S34 P1.25b: Stata's scheme lookup along the ado-path ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S34") & `: list posof "S34" in w30_run' {
     display as text "S34 start " c(current_date) " " c(current_time)
+    // WP-30 P1.25b: a scheme dash does not ship is found as twoway finds
+    // it (scheme-NAME.scheme, then NAME.scheme, along the ado-path), and
+    // each graph is drawn in its own scheme in both modes (P1.25.6).
+    global S34_REPO "`c(pwd)'/.."
+    local s34_home `"`c(pwd)'"'
+    local s34_sch0 "`c(scheme)'"
+    local s34_site "`c(sysdir_site)'"
+    local s34_plus "`c(sysdir_plus)'"
+    local s34_ado0 `"$S_ADO"'
+    local s34_d "`w30_work'/s34"
+    capture mkdir "`s34_d'"
+    sysuse auto, clear
+    local R `""color background red" "color p1 green""'
+    local B `""color background blue" "color p1 green""'
+
+    // SP-10: scheme-sp10.scheme in the working directory, every route.
+    capture mkdir "`s34_d'/c10"
+    quietly cd "`s34_d'/c10"
+    _s34_file "scheme-sp10.scheme" `R'
+    _s34_tw "`s34_d'/c10/tw.svg" sp10
+    local tw "${S34_TW}"
+    capture log close s34lg
+    log using "`s34_d'/c10.log", text replace name(s34lg)
+    capture noisily dash scatter mpg weight, scheme(sp10) saving("`s34_d'/c10/p1.html", replace)
+    local rc1 = _rc
+    quietly dash scatter mpg weight, name(g1)
+    capture noisily dash build, scheme(sp10) saving("`s34_d'/c10/p2.html") replace
+    local rc2 = _rc
+    capture noisily dash build, scheme(sp10) server saving("`s34_d'/c10/app.py") replace nobrowser filter(foreign, type(dropdown))
+    local rc3 = _rc
+    log close s34lg
+    capture dash clear
+    cert_log_has "`s34_d'/c10.log", needle("(note:")
+    local nn = r(count)
+    _w30_expect SP-10 `"("`tw'" == "#ff0000;#008000")"' "twoway drew `tw'"
+    _w30_expect SP-10 "(`rc1' == 0 & `rc2' == 0 & `rc3' == 0 & `nn' == 0)" "rc `rc1' `rc2' `rc3', `nn' note(s)"
+    _s34_read page "`s34_d'/c10/p1.html"
+    _w30_expect SP-10 `"("${S34_BG};${S34_MK}" == "#ff0000;#008000")"' "dash scatter page: ${S34_BG};${S34_MK}"
+    _s34_read page "`s34_d'/c10/p2.html"
+    _w30_expect SP-10 `"("${S34_BG};${S34_MK}" == "#ff0000;#008000")"' "dash build page: ${S34_BG};${S34_MK}"
+    _s34_read app "`s34_d'/c10/app.py" foreign
+    _w30_expect SP-10 `"("${S34_BG};${S34_MK};${S34_BG_AFTER}" == "#ff0000;#008000;#ff0000" & ${S34_FIRED} > 0)"' "served: ${S34_BG};${S34_MK}, after the move ${S34_BG_AFTER} (fired ${S34_FIRED})"
+    _w30_done SP-10 "scheme-sp10.scheme in the working directory: twoway, dash scatter, dash build and the served app all draw it, no note"
+
+    // SP-11: form-major -- an added directory's scheme-sp11.scheme beats
+    // the working directory's sp11.scheme.
+    capture mkdir "`s34_d'/c11"
+    capture mkdir "`s34_d'/c11/add"
+    quietly cd "`s34_d'/c11"
+    _s34_file "sp11.scheme" `B'
+    _s34_file "`s34_d'/c11/add/scheme-sp11.scheme" `R'
+    adopath + "`s34_d'/c11/add"
+    _s34_tw "`s34_d'/c11/tw.svg" sp11
+    local tw "${S34_TW}"
+    capture noisily dash scatter mpg weight, scheme(sp11) saving("`s34_d'/c11/p.html", replace)
+    local rc = _rc
+    _s34_read page "`s34_d'/c11/p.html"
+    global S_ADO `"`s34_ado0'"'
+    _w30_expect SP-11 `"("`tw'" == "#ff0000;#008000" & `rc' == 0 & "${S34_BG}" == "#ff0000")"' "twoway `tw', dash rc `rc' ${S34_BG}"
+    _w30_done SP-11 "scheme-NAME.scheme on a later directory beats NAME.scheme in the working directory, in twoway and dash"
+
+    // SP-12: SITE's letter subdirectory beats the working directory.
+    capture mkdir "`s34_d'/c12"
+    capture mkdir "`s34_d'/c12/site"
+    capture mkdir "`s34_d'/c12/site/s"
+    quietly cd "`s34_d'/c12"
+    _s34_file "scheme-sp12.scheme" `B'
+    _s34_file "`s34_d'/c12/site/s/scheme-sp12.scheme" `R'
+    quietly sysdir set SITE "`s34_d'/c12/site/"
+    _s34_tw "`s34_d'/c12/tw.svg" sp12
+    local tw "${S34_TW}"
+    capture noisily dash scatter mpg weight, scheme(sp12) saving("`s34_d'/c12/p.html", replace)
+    local rc = _rc
+    _s34_read page "`s34_d'/c12/p.html"
+    quietly sysdir set SITE "`s34_site'"
+    _w30_expect SP-12 `"("`tw'" == "#ff0000;#008000" & `rc' == 0 & "${S34_BG}" == "#ff0000")"' "twoway `tw', dash rc `rc' ${S34_BG}"
+    _w30_done SP-12 "SITE's s/ subdirectory beats the working directory, in twoway and dash"
+
+    // SP-13: a shipped name: BASE (dash's translation) comes first.
+    capture mkdir "`s34_d'/c13"
+    quietly cd "`s34_d'/c13"
+    _s34_file "scheme-s1mono.scheme" `R'
+    _s34_file "s1mono.scheme" `R'
+    _s34_tw "`s34_d'/c13/tw.svg" s1mono
+    local tw "${S34_TW}"
+    capture noisily dash scatter mpg weight, scheme(s1mono) saving("`s34_d'/c13/p.html", replace)
+    local rc = _rc
+    _s34_read page "`s34_d'/c13/p.html"
+    _w30_expect SP-13 `"(substr("`tw'", 1, 7) == "#ffffff" & `rc' == 0 & "${S34_BG}" == "#ffffff")"' "twoway `tw', dash rc `rc' ${S34_BG}"
+    _w30_done SP-13 "a working-directory s1mono.scheme or scheme-s1mono.scheme replaces nothing, in twoway and dash"
+
+    // SP-14: set scheme of a PLUS/s scheme; unschemed builds draw it.
+    capture mkdir "`s34_d'/c14"
+    capture mkdir "`s34_d'/c14/plus"
+    capture mkdir "`s34_d'/c14/plus/s"
+    quietly cd "`s34_d'/c14"
+    _s34_file "`s34_d'/c14/plus/s/scheme-sp14.scheme" `R'
+    quietly sysdir set PLUS "`s34_d'/c14/plus/"
+    set scheme sp14
+    _s34_tw "`s34_d'/c14/tw.svg"
+    local tw "${S34_TW}"
+    capture log close s34lg
+    log using "`s34_d'/c14.log", text replace name(s34lg)
+    quietly dash scatter mpg weight, name(g1)
+    capture noisily dash build, saving("`s34_d'/c14/p.html") replace
+    local rc1 = _rc
+    capture noisily dash build, server saving("`s34_d'/c14/app.py") replace nobrowser
+    local rc2 = _rc
+    log close s34lg
+    capture dash clear
+    set scheme `s34_sch0'
+    quietly sysdir set PLUS "`s34_plus'"
+    cert_log_has "`s34_d'/c14.log", needle("(note:")
+    local nn = r(count)
+    _s34_read page "`s34_d'/c14/p.html"
+    local pg "${S34_BG}"
+    _s34_read app "`s34_d'/c14/app.py"
+    _w30_expect SP-14 `"("`tw'" == "#ff0000;#008000" & "`pg'" == "#ff0000" & "${S34_BG}" == "#ff0000")"' "twoway `tw', page `pg', app ${S34_BG}"
+    _w30_expect SP-14 "(`rc1' == 0 & `rc2' == 0 & `nn' == 0)" "rc `rc1' `rc2', `nn' note(s)"
+    _w30_done SP-14 "set scheme of a PLUS scheme: twoway, the saved and the served build draw it, no note"
+
+    // SP-15: an #include resolved along the ado-path.
+    capture mkdir "`s34_d'/c15"
+    capture mkdir "`s34_d'/c15/add"
+    quietly cd "`s34_d'/c15"
+    tempname s34fh
+    file open `s34fh' using "sp15.scheme", write text replace
+    file write `s34fh' "#include sp15p" _n "color p1 green" _n
+    file close `s34fh'
+    _s34_file "`s34_d'/c15/add/scheme-sp15p.scheme" "color background red"
+    adopath + "`s34_d'/c15/add"
+    _s34_tw "`s34_d'/c15/tw.svg" sp15
+    local tw "${S34_TW}"
+    capture log close s34lg
+    log using "`s34_d'/c15.log", text replace name(s34lg)
+    capture noisily dash scatter mpg weight, scheme(sp15) saving("`s34_d'/c15/p.html", replace)
+    local rc = _rc
+    log close s34lg
+    global S_ADO `"`s34_ado0'"'
+    cert_log_has "`s34_d'/c15.log", needle("not found")
+    local nn = r(count)
+    _s34_read page "`s34_d'/c15/p.html"
+    _w30_expect SP-15 `"("`tw'" == "#ff0000;#008000" & "${S34_BG};${S34_MK}" == "#ff0000;#008000")"' "twoway `tw', dash ${S34_BG};${S34_MK}"
+    _w30_expect SP-15 "(`rc' == 0 & `nn' == 0)" "rc `rc', `nn' not-found note(s)"
+    _w30_done SP-15 "#include sp15p finds Stata's scheme-sp15p.scheme on an added directory, in twoway and dash"
+
+    // SP-16: a theme name that is a file Stata finds, inherited and named;
+    // off the path, scheme(mono) is the s1mono alias again.
+    capture mkdir "`s34_d'/c16"
+    capture mkdir "`s34_d'/c16/add"
+    quietly cd "`s34_d'/c16"
+    _s34_file "`s34_d'/c16/add/scheme-mono.scheme" `R'
+    adopath + "`s34_d'/c16/add"
+    set scheme mono
+    _s34_tw "`s34_d'/c16/tw.svg"
+    local tw "${S34_TW}"
+    capture noisily dash scatter mpg weight, saving("`s34_d'/c16/p1.html", replace)
+    _s34_read page "`s34_d'/c16/p1.html"
+    local b1 "${S34_BG}"
+    capture noisily dash scatter mpg weight, scheme(mono) saving("`s34_d'/c16/p2.html", replace)
+    _s34_read page "`s34_d'/c16/p2.html"
+    local b2 "${S34_BG}"
+    global S_ADO `"`s34_ado0'"'
+    set scheme `s34_sch0'
+    capture noisily dash scatter mpg weight, scheme(mono) saving("`s34_d'/c16/p3.html", replace)
+    _s34_read page "`s34_d'/c16/p3.html"
+    local b3 "${S34_BG}"
+    _w30_expect SP-16 `"(substr("`tw'", 1, 7) == "#ff0000" & "`b1'" == "#ff0000" & "`b2'" == "#ff0000" & "`b3'" == "#ffffff")"' "twoway `tw', inherited `b1', named `b2', off the path `b3'"
+    _w30_done SP-16 "scheme-mono.scheme on the path is drawn inherited and named; off it, scheme(mono) is s1mono"
+
+    // SP-17: two graphs, two schemes, saved and served, before and after
+    // a move.
+    capture mkdir "`s34_d'/c17"
+    quietly cd "`s34_d'/c17"
+    _s34_tw "`s34_d'/c17/tw1.svg" s1mono
+    local t1 = substr("${S34_TW}", 1, 7)
+    _s34_tw "`s34_d'/c17/tw2.svg" s1rcolor
+    local t2 = substr("${S34_TW}", 1, 7)
+    capture log close s34lg
+    log using "`s34_d'/c17.log", text replace name(s34lg)
+    quietly dash scatter mpg weight, scheme(s1mono) name(g1)
+    quietly dash scatter mpg weight, scheme(s1rcolor) name(g2)
+    capture noisily dash build, saving("`s34_d'/c17/p.html") replace
+    local rc1 = _rc
+    capture noisily dash build, server saving("`s34_d'/c17/app.py") replace nobrowser filter(foreign, type(dropdown))
+    local rc2 = _rc
+    log close s34lg
+    capture dash clear
+    cert_log_has "`s34_d'/c17.log", needle("draws one scheme")
+    local nn = r(count)
+    _s34_read page "`s34_d'/c17/p.html"
+    local sv "${S34_BG}"
+    _s34_read app "`s34_d'/c17/app.py" foreign
+    _w30_expect SP-17 `"("`sv'" == "`t1';`t2'" & "${S34_BG}" == "`sv'" & "${S34_BG_AFTER}" == "`sv'")"' "twoway `t1';`t2', saved `sv', served ${S34_BG}, after ${S34_BG_AFTER}"
+    _w30_expect SP-17 "(`rc1' == 0 & `rc2' == 0 & `nn' == 0)" "rc `rc1' `rc2', `nn' one-scheme warning(s)"
+    _w30_done SP-17 "g1 scheme(s1mono) and g2 scheme(s1rcolor): each graph in its own scheme, saved and served, after a move, as twoway draws them"
+
+    // SP-18: the fixture's placements, live: dash's walk resolves the file
+    // Stata's findfile returns.
+    local bad18 ""
+    foreach k in lk01 lk02 lk03 lk04 lk05 lk06 lk07 lk08 lk09 lk10 lk11 lk12 lk13 lk14 lk15 lk17 lk21 lk22 {
+        global S34_KEY "`k'"
+        global S34_CASE "`s34_d'/c18_`k'"
+        python: __import__("__main__")._s34_make()
+        quietly cd "${S34_CASE}/cwd"
+        local setup "${S34_SETUP}"
+        while `"`setup'"' != "" {
+            gettoken one setup : setup, parse("|")
+            if "`one'" == "|" continue
+            local w : word 1 of `one'
+            local last : word `: word count `one'' of `one'
+            if "`w'" == "adopath" {
+                if "`last'" == "rel" adopath + rel
+                else adopath + "${S34_CASE}/`last'"
+            }
+            else {
+                local which : word 3 of `one'
+                quietly sysdir set `which' "${S34_CASE}/`last'/"
+            }
+        }
+        _s34_where ${S34_NAME}
+        if "${S34_SAME}" != "1" local bad18 "`bad18' `k'(${S34_WHY})"
+        global S_ADO `"`s34_ado0'"'
+        quietly sysdir set SITE "`s34_site'"
+        quietly sysdir set PLUS "`s34_plus'"
+    }
+    _w30_expect SP-18 `"("`bad18'" == "")"' "not the file findfile returned:`bad18'"
+    _w30_done SP-18 "for 18 measured placements dash's walk resolves the file Stata's findfile returns"
+
+    quietly cd `"`s34_home'"'
+    global S_ADO `"`s34_ado0'"'
+    quietly sysdir set SITE "`s34_site'"
+    quietly sysdir set PLUS "`s34_plus'"
+    set scheme `s34_sch0'
+    capture dash clear
+    shell rm -rf "`s34_d'"
+    macro drop S34_*
     display as text "S34 end " c(current_date) " " c(current_time)
 }
 * ==== end S34 ====

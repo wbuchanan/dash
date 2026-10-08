@@ -80,6 +80,7 @@ import os
 import shutil
 import sys
 import warnings
+from unittest import mock
 
 import pytest
 
@@ -297,6 +298,10 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         fourteen and run where the installed lookup is inert, so they pass
         whether or not this holds.  Here the name IS a built-in and the tree
         IS an install, which is the only combination that can regress.
+
+        WP-30 P1.25b: a shipped name never consults the working directory
+        (twoway's BASE comes first), so the link is never opened at all and
+        the install's own file is what resolves.
         """
         module, root, cwd = installed
         target = os.path.join(root, "d", "someone_elses_secret.scheme")
@@ -305,9 +310,21 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         link = os.path.join(cwd, "s2color.scheme")
         os.symlink(target, link)
 
+        import builtins
+        opened = []
+        real_open = builtins.open
+
+        def spy(path, *a, **k):
+            opened.append(os.path.realpath(str(path)))
+            return real_open(path, *a, **k)
+
         inst = module.SchemeParser.__new__(module.SchemeParser)
-        with pytest.raises(ValueError, match="symlink"):
-            inst._resolve_path("s2color.scheme")
+        with mock.patch.object(module, "open", spy, create=True):
+            got = inst._resolve_path("s2color.scheme")
+            module.SchemeParser("s2color.scheme")
+        assert os.path.realpath(got) == os.path.realpath(
+            os.path.join(root, "d", "dash-s2color.scheme"))
+        assert os.path.realpath(target) not in opened, opened
 
     def test_a_file_planted_in_the_letter_directory_is_not_reachable(
             self, installed):
@@ -357,18 +374,17 @@ class TestTheInstalledLookupDoesNotWidenWhatElseIsReadable:
         )
 
     def test_the_cwd_still_wins_over_the_install(self, installed):
-        """INST-08. dash.sthlp documents a .scheme file in the working directory.
-
-        The installed lookup is a LAST resort; it must not shadow the user's
-        own file.
+        """INST-08. WP-30 P1.25b: the shipped file wins over a working-
+        directory file of the same name, as twoway's BASE wins (research
+        t1/t3, M7, P1.25.3); the node keeps its name (flipped in place).
         """
-        module, _root, cwd = installed
+        module, root, cwd = installed
         mine = os.path.join(cwd, "s2color.scheme")
         with open(mine, "w", encoding="utf-8") as fh:
             fh.write("color background #0f0f0f\n")
         inst = module.SchemeParser.__new__(module.SchemeParser)
         assert os.path.realpath(inst._resolve_path("s2color")) == \
-            os.path.realpath(mine)
+            os.path.realpath(os.path.join(root, "d", "dash-s2color.scheme"))
 
     def test_a_missing_install_still_reports_the_truth(self, tmp_path,
                                                        monkeypatch):
@@ -543,7 +559,7 @@ class TestTheHelpStatesTheInstalledLayout:
             "{cmd:PLUS/d/}",
             "{ul:Why they are named {cmd:dash-}{it:name}{cmd:.scheme}.}",
             "cannot collide with Stata's own {cmd:scheme-}{it:name}{cmd:.scheme} files",
-            "{cmd:set scheme} looks only for {cmd:scheme-}{it:name}{cmd:.scheme}, so it never reads them",
+            "{cmd:set scheme} {it:name} finds Stata's own {cmd:scheme-}{it:name}{cmd:.scheme} in {cmd:BASE} first, so it never reads them",
             "you name each by Stata's own name, {cmd:scheme(s2color)}",
         ):
             assert phrase in text, (
@@ -553,7 +569,7 @@ class TestTheHelpStatesTheInstalledLayout:
 
 
 def test_the_help_never_offers_set_scheme_dash():
-    """`set scheme <name>' reads only scheme-<name>.scheme, so the shipped
+    """`set scheme <name>' tries scheme-<name>.scheme first, so the shipped
     dash-<name>.scheme files are not Stata schemes by that name, and the
     help must not say `set scheme dash-<name>' works."""
     with open(os.path.join(REPO_ROOT, "dash.sthlp"), encoding="utf-8") as fh:

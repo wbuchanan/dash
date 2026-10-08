@@ -6750,8 +6750,9 @@ class SchemeParser:
     # The twenty-six translated StataCorp schemes dash ships.  Each is a
     # faithful translation of the same-named Stata scheme, generated from
     # test/fixtures/scheme_truth.json by scripts/extract_scheme_truth.py.
-    # scheme()/theme() names one of these, a theme alias, or a .scheme file
-    # in the working directory (WP-17).  The same twenty-six are listed by the
+    # scheme()/theme() names one of these, a theme alias, or a scheme dash
+    # does not ship, which is found along Stata's ado-path as twoway finds
+    # it (WP-30 P1.25b).  The same twenty-six are listed by the
     # extractor's SCHEMES and by dash.ado's _dash_shipped_schemes;
     # test_scheme_resolution.py holds the copies equal.
     _BUILTIN_NAMES: frozenset[str] = frozenset({
@@ -6954,21 +6955,33 @@ class SchemeParser:
         return inst
 
     @classmethod
-    def resolve_or_fallback(cls, name: str, context: str) -> "SchemeParser":
+    def resolve_or_fallback(cls, name: str, context: str,
+                            ado_dirs: "tuple[str, ...] | list[str]" = ()
+                            ) -> "SchemeParser":
         """Build a SchemeParser for *name*, degrading instead of raising.
 
         Tries *name*, then the package default, then an in-memory fallback.
         Emits a UserWarning naming the directories searched when it has to
         fall all the way back, since that means the install is incomplete.
+        *ado_dirs* is the ado-path a scheme dash does not ship is looked
+        for along (WP-30 P1.25b); a file found there but refused by a read
+        guard is noted as not read.
         """
 
         for idx, candidate in enumerate((name, "s2color")):
             if not candidate:
                 continue
             try:
-                return cls(candidate)
+                return cls(candidate, ado_dirs=ado_dirs)
             except (ValueError, OSError) as exc:
-                if idx == 0:
+                if idx == 0 and "it was not read" in str(exc):
+                    warnings.warn(
+                        f"dash: scheme {candidate!r} was not read for "
+                        f"{context}; using s2color. ({exc})",
+                        UserWarning,
+                        stacklevel=3,
+                    )
+                elif idx == 0:
                     # Stata returns rc 0 here and prints
                     #   note: scheme X not found, using s2color
                     # so dash does not abort either -- but it must not be
@@ -7084,8 +7097,31 @@ class SchemeParser:
         "inten200": 2.0,  "max":      9999.99,
     }
 
-    def __init__(self, scheme_name: str = "s2color") -> None:
+    #: The most bytes a scheme file may hold (WP-30 P1.25b, M7).  BASE's
+    #: largest is 72,668 and the largest of 129 third-party files in one
+    #: PLUS/s is 106,413, so this is ten times the largest measured.
+    _MAX_SCHEME_BYTES: int = 1_048_576
+    #: The longest scheme name looked for: an 80-character name plus
+    #: ``.scheme``.
+    _MAX_SCHEME_NAME_CHARS: int = 87
+    #: What a scheme NAME may not hold (M7, register P1.25.4): any blank,
+    #: a C0 or C1 control character or DEL, a slash or backslash, a colon,
+    #: a double quote, a backtick or a dollar sign.  A scheme is named,
+    #: never given as a path.  Measured (p6/p7): twoway finds
+    #: scheme-a+b.scheme, scheme-.x.scheme, scheme--x.scheme and
+    #: scheme-x.y.scheme, so those stay names; it notes `scheme my theme
+    #: not found' although scheme-my theme.scheme exists.  dash.ado's gate
+    #: refuses the same set with ustrregexm's [\s\p{Cc}].
+    _SCHEME_NAME_BAD = re.compile("[\\s\\x00-\\x1f\\x7f-\\x9f/\\\\:\"\x60$]")
+
+    def __init__(self, scheme_name: str = "s2color",
+                 ado_dirs: "tuple[str, ...] | list[str]" = ()) -> None:
         raw = (scheme_name or "s2color").strip()
+        # The directories Stata's findfile walks, in its order (dash.ado's
+        # _dash_scheme_dirs, through build_options["scheme_dirs"]).  Empty
+        # for a spec built without dash.ado: the working directory and the
+        # package directory are walked instead (_ado_candidates).
+        self._ado_dirs: "tuple[str, ...]" = tuple(ado_dirs or ())
         path = self._resolve_path(raw)
         raw_props = self._parse_file(path, _visited=set())
         self._props = raw_props
@@ -7094,12 +7130,16 @@ class SchemeParser:
         # fallback was indistinguishable from a successful resolution.  A
         # shipped name read from its dash-<name>.scheme is <name>; a user's
         # own file keeps its file name, dash- prefix or not.
+        # Stata's scheme-NAME.scheme is the scheme NAME, the name c(scheme)
+        # shows (WP-30 P1.25b).
         shipped = self._shipped_base(raw)
         if (shipped is not None
                 and os.path.basename(path) == self._shipped_file(shipped)):
             self.name: str = shipped
         else:
             self.name = os.path.splitext(os.path.basename(path))[0]
+            if self.name.lower().startswith("scheme-"):
+                self.name = self.name[len("scheme-"):]
         self.is_fallback: bool = False
         self._init_properties()
 
@@ -7145,14 +7185,18 @@ class SchemeParser:
         return os.path.join(cls._PLUS_ROOT, "d")
 
     @classmethod
-    def can_resolve(cls, name: str) -> bool:
+    def can_resolve(cls, name: str,
+                    ado_dirs: "tuple[str, ...] | list[str]" = ()) -> bool:
         """Whether :meth:`_resolve_path` would find *name*.
 
-        True for a shipped scheme and for a ``.scheme`` file in the working
-        directory given by bare name or with the extension; False for a
-        name no file answers to and for one that fails containment
-        (``../x``, an absolute path, a symlink out of the working
-        directory).  Quiet: no warning and no exception either way.
+        True for a shipped scheme and for a scheme Stata's findfile would
+        find along *ado_dirs* (``scheme-NAME.scheme``, then
+        ``NAME.scheme``; the working directory and the package directory
+        when *ado_dirs* is empty) that passes the read guards; False for a
+        name no file answers to and for one that fails the name rule or a
+        guard (``../x``, an absolute path, a link out of its directory, a
+        file over the size cap).  Quiet: no warning and no exception
+        either way.
 
         ``_resolve_scheme_name`` asks this before it reports a name as
         unknown, so the gate and the parser cannot disagree about what
@@ -7162,70 +7206,87 @@ class SchemeParser:
         parser directly and found the file -- a bare name was drawn on the
         figure and refused for the page chrome.
         """
+        return not cls.unresolved_reason(name, ado_dirs)
+
+    @classmethod
+    def unresolved_reason(cls, name: str,
+                          ado_dirs: "tuple[str, ...] | list[str]" = ()
+                          ) -> str:
+        """``""`` when :meth:`_resolve_path` finds *name* along *ado_dirs*,
+        else why not (the error's text, or ``"no name"``).  Quiet: a probe
+        built with ``__new__`` resolves the path and reads no file."""
         raw = (name or "").strip()
         if not raw:
-            return False
-        # _resolve_path reads only class state.  A bare instance keeps its
-        # instance signature, which test_installed_layout calls directly.
+            return "no name"
+        # _resolve_path reads only class state and _ado_dirs.  A bare
+        # instance keeps its instance signature, which test_installed_layout
+        # calls directly.
         probe = cls.__new__(cls)
+        probe._ado_dirs = tuple(ado_dirs or ())
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 probe._resolve_path(raw)
-        except (ValueError, OSError):
-            return False
-        return True
+        except (ValueError, OSError) as exc:
+            return str(exc) or "not found"
+        return ""
+
+    @classmethod
+    def _scheme_name_ok(cls, name: str) -> bool:
+        """Whether *name* may be looked for as a scheme: 1 to 87
+        characters, no ``..`` and nothing ``_SCHEME_NAME_BAD`` matches
+        (WP-30 P1.25b, M7, P1.25.4)."""
+        return (0 < len(name) <= cls._MAX_SCHEME_NAME_CHARS
+                and ".." not in name
+                and cls._SCHEME_NAME_BAD.search(name) is None)
 
     def _resolve_path(self, name: str) -> str:
-        """Return absolute path for a scheme name, blocking path traversal."""
-        # The extension in any case: dash.ado's gate admits S2COLOR.SCHEME.
-        is_file_ref = (name.lower().endswith(".scheme") or os.sep in name
-                       or "/" in name)
+        """The file scheme *name* is read from, found as Stata finds it.
 
-        search_dirs = list(self._SCHEME_SEARCH_DIRS)
+        A shipped name, bare or with ``.scheme`` in any case, is dash's
+        ``dash-<name>.scheme`` and nothing else (``_shipped_path``): the
+        twenty-six come first, as twoway's BASE does, so no file of that
+        name anywhere replaces them.  Any other name must pass the name
+        rule, and is then looked for as Stata's ``setscheme`` looks
+        (scheme.class:172-173): ``scheme-NAME.scheme``, then
+        ``NAME.scheme``, in each directory of the ado-path and its
+        first-letter subdirectory (``_ado_candidates``).  The first file
+        that exists decides, as findfile's first hit does; ``_admit``
+        refuses it when it is not a contained regular file under the size
+        cap, and the walk does not go on.
+        """
+        name = (name or "").strip()
         shipped = self._shipped_base(name)
-        # The package directory is searched by <name>.scheme only for a name
-        # that cannot be one of dash's own files: scheme(dash-s2color) is
-        # the user's own dash-s2color.scheme in the working directory or
-        # nothing, never the shipped file reached by its file name.
-        own_file = os.path.basename(name).lower().startswith("dash-")
-
-        if is_file_ref:
-            # Try CWD first, then each scheme search dir
-            candidates = [os.path.abspath(os.path.join(os.getcwd(), name))]
-            if shipped is None and not own_file:
-                candidates += [
-                    os.path.abspath(os.path.join(d, name))
-                    for d in search_dirs
-                ]
-        else:
-            # CWD first, then the package's own directory.  A bare base name
-            # used to be looked for ONLY in the package directory, so
-            # dash.sthlp's instruction -- put a .scheme file in the working
-            # directory and give its base name -- did not work: the name was
-            # reported as an unknown scheme, and only `scheme(mytheme.scheme)'
-            # found it. The path validator below applies to these candidates
-            # exactly as it does to the file-reference branch.
-            candidates = [os.path.abspath(
-                os.path.join(os.getcwd(), name + ".scheme"))]
-            if shipped is None and not own_file:
-                candidates += [
-                    os.path.abspath(os.path.join(d, name + ".scheme"))
-                    for d in search_dirs
-                ]
-        # A shipped name, bare or with .scheme, is read from its
-        # dash-<name>.scheme beside the renderer -- never from a stray
-        # <name>.scheme there (WP-28).
         if shipped is not None:
-            candidates += [
-                os.path.abspath(os.path.join(d, self._shipped_file(shipped)))
-                for d in search_dirs
-            ]
+            return self._shipped_path(name, shipped)
+        safe = self._safe_name(name)
+        if not self._scheme_name_ok(name):
+            raise ValueError(
+                f"dash scheme: path '{safe}' resolves outside allowed "
+                "directories: a scheme is named, never given as a path (no "
+                "blank, quote, slash, backslash, colon or '..').")
+        for root, path in self._ado_candidates(name):
+            if os.path.exists(path):
+                return self._admit(root, path, safe)
+        raise ValueError(
+            f"dash: scheme '{safe}' not found. Built-in schemes: "
+            f"{', '.join(sorted(self._BUILTIN_NAMES))}. A scheme of your "
+            "own is found as Stata finds it: scheme-NAME.scheme, then "
+            "NAME.scheme, in a directory on the ado-path.")
+
+    def _shipped_path(self, name: str, shipped: str) -> str:
+        """The ``dash-<shipped>.scheme`` file a shipped *name* is read from:
+        beside the renderer, else where a ``net install`` put it.  Never a
+        working-directory file (WP-30 P1.25b: twoway's BASE comes first)."""
+        search_dirs = list(self._SCHEME_SEARCH_DIRS)
+        candidates = [
+            os.path.abspath(os.path.join(d, self._shipped_file(shipped)))
+            for d in search_dirs
+        ]
 
         # Security: a resolved path must lie within an allowed directory.
         # Loop-invariant, so computed once.
         allowed = [os.path.abspath(d) for d in search_dirs]
-        allowed.append(os.path.abspath(os.getcwd()))
         real_allowed = [os.path.realpath(d) for d in allowed]
 
         for candidate in candidates:
@@ -7236,13 +7297,11 @@ class SchemeParser:
             if not in_allowed:
                 raise ValueError(
                     f"dash scheme: path '{name}' resolves outside allowed "
-                    "directories (CWD or dash's shipped dash-<name>.scheme "
+                    "directories (dash's shipped dash-<name>.scheme "
                     "files)."
                 )
             # Security: also validate the *realpath* so that symlinks pointing
-            # outside allowed directories are rejected.  Without this check a
-            # symlink placed in the CWD (e.g. evil.scheme -> /etc/passwd) would
-            # pass the abspath boundary check above and silently read the target.
+            # outside allowed directories are rejected.
             real_candidate = os.path.realpath(candidate)
             real_in_allowed = any(
                 real_candidate.startswith(rd + os.sep) or real_candidate == rd
@@ -7251,27 +7310,19 @@ class SchemeParser:
             if not real_in_allowed:
                 raise ValueError(
                     f"dash scheme: path '{name}' resolves via symlink outside "
-                    "allowed directories (CWD or dash's shipped "
+                    "allowed directories (dash's shipped "
                     "dash-<name>.scheme files). "
                     "Symlinks pointing to external paths are not permitted."
                 )
             if os.path.isfile(candidate):
                 return candidate
 
-        # Last resort: the file where a `net install' put it.
-        #
-        # Deliberately NOT a candidate in the loop above, and the letter
-        # directory is deliberately NOT appended to `allowed'.  `allowed'
-        # also governs the CWD candidate, which the caller fully controls, so
-        # adding <PLUS>/d to it would let a symlink named `s2color.scheme'
-        # planted in the working directory point at any file in <PLUS>/d --
-        # reopening BUG-51 for exactly the twenty names this is meant to
-        # help.  Checking one path against its own directory keeps the
-        # reachable set byte-identical to before.
+        # Last resort: the file where a `net install' put it.  Checking one
+        # path against its own directory keeps the reachable set to the
+        # twenty-six shipped files (BUG-51).
         installed_dir = self._installed_letter_dir(name)
         if installed_dir is not None:
-            candidate = os.path.join(
-                installed_dir, self._shipped_file(self._shipped_base(name)))
+            candidate = os.path.join(installed_dir, self._shipped_file(shipped))
             if os.path.isfile(candidate):
                 real_dir = os.path.realpath(installed_dir)
                 if os.path.realpath(candidate).startswith(real_dir + os.sep):
@@ -7287,13 +7338,106 @@ class SchemeParser:
                     stacklevel=3,
                 )
 
-        built_in_list = ", ".join(sorted(self._BUILTIN_NAMES))
         raise ValueError(
-            f"dash: scheme '{name}' not found. "
-            f"Built-in schemes: {built_in_list}. "
-            "For a custom scheme, place a .scheme file in the current "
-            "working directory and pass its filename."
+            f"dash: scheme '{self._safe_name(name)}' not found. "
+            f"Built-in schemes: {', '.join(sorted(self._BUILTIN_NAMES))}. "
+            "dash's shipped dash-<name>.scheme file is missing; reinstall "
+            "dash."
         )
+
+    def _ado_candidates(self, name: str) -> "list[tuple[str, str]]":
+        """``(directory, path)`` pairs in the order Stata's findfile tries
+        them (measured, E9): every directory for ``scheme-NAME.scheme``,
+        then every directory for ``NAME.scheme`` (form-major), each
+        directory followed by its subdirectory named by the file name's
+        first character as written.  A ``dash-`` name is the user's own
+        file in the working directory only.  With no ado-path (a spec built
+        without dash.ado) the working directory and the package directory
+        are walked."""
+        low = name.lower()
+        if low.startswith("dash-"):
+            dirs: "tuple[str, ...]" = (os.getcwd(),)
+        else:
+            dirs = tuple(getattr(self, "_ado_dirs", ()) or ())
+            if not dirs:
+                dirs = (os.getcwd(),) + tuple(self._SCHEME_SEARCH_DIRS)
+        if low.endswith(".scheme"):
+            forms: "tuple[str, ...]" = (name,)
+        elif low.startswith("dash-"):
+            forms = (name + ".scheme",)
+        else:
+            forms = ("scheme-" + name + ".scheme", name + ".scheme")
+        return [(d, p) for f in forms for d in dirs
+                for p in (os.path.join(d, f), os.path.join(d, f[0], f))]
+
+    def _admit(self, root: str, path: str, safe: str) -> str:
+        """*path*, the first file found for scheme *safe* under *root*, if
+        it may be read: its real path inside *root*'s, a regular file, at
+        most ``_MAX_SCHEME_BYTES``.  Otherwise ValueError, naming the file
+        and never a directory.  The checked file's (device, inode) is
+        recorded, so ``_read_scheme_lines`` refuses a file swapped in
+        after this check."""
+        real_root = os.path.realpath(root)
+        real = os.path.realpath(path)
+        base = self._safe_name(os.path.basename(path))
+        if not real.startswith(real_root + os.sep):
+            raise ValueError(
+                f"dash scheme: '{base}' for scheme '{safe}' resolves via "
+                "symlink outside allowed directories (the directory it was "
+                "found in); it was not read.")
+        if not os.path.isfile(real):
+            raise ValueError(
+                f"dash scheme: '{base}' for scheme '{safe}' is not a regular "
+                "file; it was not read.")
+        # The identity is taken before the size is asked, so a file swapped
+        # in from here on is caught when it is opened.
+        st = os.stat(real)
+        if os.path.getsize(real) > self._MAX_SCHEME_BYTES:
+            raise ValueError(
+                f"dash scheme: '{base}' for scheme '{safe}' is larger than "
+                "1,048,576 bytes; it was not read.")
+        admitted = getattr(self, "_admitted", None)
+        if admitted is None:
+            admitted = self._admitted = {}
+        admitted[path] = (st.st_dev, st.st_ino)
+        return path
+
+    @classmethod
+    def _read_scheme_lines(cls, path: str,
+                           expect: "tuple[int, int] | None" = None
+                           ) -> "list[str]":
+        """The lines of scheme file *path*, read as data and bounded.
+
+        Opened without blocking and checked on the open descriptor: a
+        regular file, the very file ``_admit`` checked when *expect* is
+        given, and at most ``_MAX_SCHEME_BYTES`` (at most one byte more is
+        read).  The lines and their numbers are ``readlines()``'s with
+        universal newlines."""
+        import stat as _stat
+        base = cls._safe_name(os.path.basename(path))
+        try:
+            with open(path, "rb", opener=lambda p, fl: os.open(
+                    p, fl | getattr(os, "O_NONBLOCK", 0))) as fh:
+                st = os.fstat(fh.fileno())
+                if not _stat.S_ISREG(st.st_mode):
+                    raise ValueError(
+                        f"dash scheme: '{base}' is not a regular file; it "
+                        "was not read.")
+                if expect is not None and \
+                        (st.st_dev, st.st_ino) != tuple(expect):
+                    raise ValueError(
+                        f"dash scheme: '{base}' changed after it was "
+                        "checked; it was not read.")
+                data = fh.read(cls._MAX_SCHEME_BYTES + 1)
+        except OSError as exc:
+            raise ValueError(
+                f"dash: cannot read scheme file '{path}': {exc}") from exc
+        if len(data) > cls._MAX_SCHEME_BYTES:
+            raise ValueError(
+                f"dash scheme: '{base}' is larger than 1,048,576 bytes; it "
+                "was not read.")
+        return (data.decode("utf-8", errors="replace")
+                .replace("\r\n", "\n").replace("\r", "\n").split("\n"))
 
     # ------------------------------------------------------------------
     # File parsing
@@ -7439,11 +7583,10 @@ class SchemeParser:
         directive is named once, bounded, and nothing is stored for it.
         """
         props: dict[str, str] = {}
-        try:
-            with open(path, encoding="utf-8", errors="replace") as fh:
-                lines = fh.readlines()
-        except OSError as exc:
-            raise ValueError(f"dash: cannot read scheme file '{path}': {exc}") from exc
+        # Bounded, regular-file-only, and the very file _admit checked
+        # (WP-30 P1.25b).
+        lines = self._read_scheme_lines(
+            path, expect=getattr(self, "_admitted", {}).get(path))
 
         for lineno, raw_line in enumerate(lines, 1):
             line = raw_line.replace("\t", " ").strip()
@@ -7501,10 +7644,9 @@ class SchemeParser:
                  _notes: "dict[str, Any]") -> dict[str, str]:
         """The properties ``#include <name>`` in *from_path* contributes.
 
-        *name* resolves as ``scheme()`` does (``_resolve_path``, with its
-        containment and symlink checks).  When it resolves nowhere -- or
-        only outside the working directory and dash's shipped
-        dash-<name>.scheme files, which dash never reads -- Stata's rule applies: s2color stands in its
+        *name* resolves as ``scheme()`` does (``_resolve_path``: along the
+        ado-path, with its name rule and read guards).  When it resolves
+        nowhere -- or to a path or a file a guard refuses -- Stata's rule applies: s2color stands in its
         place, and a warning says so in Stata's words, "(note: scheme X not
         found, using s2color)" (measured 24sep2026, `#include w26nosuch':
         that note, rc 0, s2color drawn at 5.5 x 4in).  Where even s2color
@@ -7524,9 +7666,12 @@ class SchemeParser:
             _notes[safe] = 1
             _notes["\0count"] = seen + 1
             if seen < self._MAX_INCLUDE_NOTES:
-                where = ("; it resolves outside the working directory and "
-                         "dash's shipped dash-<name>.scheme files, which dash does not read"
-                         if "outside allowed" in reason else "")
+                if "outside allowed directories:" in reason:
+                    where = "; a scheme is named, never given as a path"
+                elif "it was not read" in reason:
+                    where = "; it was not read"
+                else:
+                    where = ""
                 warnings.warn(
                     f"dash scheme: (note: scheme {safe} not found, using "
                     f"s2color) -- '#include {safe}' in "
@@ -22562,11 +22707,79 @@ _THEME_SCHEME_MAP: "dict[str, str]" = {
 }
 
 
-def _resolve_scheme_name(master_spec: dict) -> str:
+#: The most ado-path directories a spec's ``scheme_dirs`` may name.
+_DASH_MAX_SCHEME_DIRS = 64
+
+
+def _dash_scheme_dirs_of(build_options: dict) -> "tuple[str, ...]":
+    """The ado-path dash.ado wrote as ``build_options["scheme_dirs"]``
+    (``_dash_scheme_dirs``), bounded: at most 64 entries, each a string of
+    1-4096 characters with no control character, ``~`` expanded only as
+    ``~`` or a ``~/`` prefix, absolute and an existing directory, taken as
+    its real path, duplicates dropped, order kept.  Anything else gives
+    ``()``.  Read, never popped; never raises (WP-30 P1.25b)."""
+    try:
+        raw = (build_options or {}).get("scheme_dirs")
+    except AttributeError:
+        return ()
+    if not isinstance(raw, list):
+        return ()
+    out: "list[str]" = []
+    for d in raw[:_DASH_MAX_SCHEME_DIRS]:
+        try:
+            if not isinstance(d, str) or not 1 <= len(d) <= 4096:
+                continue
+            if any(ch < "\x20" or ch == "\x7f" for ch in d):
+                continue
+            if d == "~" or d.startswith("~/"):
+                d = os.path.expanduser(d)
+            if not os.path.isabs(d) or not os.path.isdir(d):
+                continue
+            real = os.path.realpath(d)
+        except (OSError, ValueError):
+            continue
+        if real not in out:
+            out.append(real)
+    return tuple(out)
+
+
+def _dash_scheme_choice(raw: str, source: str,
+                        scheme_dirs: "tuple[str, ...]" = ()) -> str:
+    """The scheme name *raw* asks for, by one rule in both renderers.
+
+    *source* is ``"scheme"``, ``"theme"``, ``"graph"`` or ``"session"``.
+    A shipped name (any case, with or without ``.scheme``) is its lower-case
+    base.  A theme name is its alias for ``theme()``; for ``scheme()`` and a
+    graph's own ``scheme()`` it is a scheme file of that name when Stata
+    finds one along *scheme_dirs*, else the alias (P1.25.5); an inherited
+    ``c(scheme)`` is always the file's name.  Anything else is *raw*."""
+    raw = str(raw or "").strip()
+    if not raw:
+        return ""
+    shipped = SchemeParser._shipped_base(raw)
+    if shipped is not None:
+        return shipped
+    alias = _THEME_SCHEME_MAP.get(raw.lower())
+    if alias is not None:
+        if source == "theme":
+            return alias
+        if source == "session":
+            return raw
+        if SchemeParser.can_resolve(raw, ado_dirs=scheme_dirs):
+            return raw
+        return alias
+    return raw
+
+
+def _resolve_scheme_name(master_spec: dict,
+                         scheme_dirs: "tuple[str, ...] | None" = None) -> str:
     """Return the scheme name a spec asks for, after every fallback.
 
     Precedence: ``scheme()``, then ``theme()``, then a ``scheme()`` written on
-    a graph, then the session's own ``c(scheme)``, then ``s2color``.
+    a graph, then the session's own ``c(scheme)``, then ``s2color``.  Each
+    is named by ``_dash_scheme_choice`` and looked for along *scheme_dirs*
+    (``build_options["scheme_dirs"]`` when None), as Stata looks (WP-30
+    P1.25b).
 
     One function, because there are two renderers.  ``ServerAppBuilder``
     used to consult none of these keys -- ``grep scheme`` over the generated
@@ -22575,31 +22788,26 @@ def _resolve_scheme_name(master_spec: dict) -> str:
 
     Args:
         master_spec: The parsed master specification.
+        scheme_dirs: The ado-path, or None to read it from the spec.
 
     Returns:
         A scheme name suitable for :meth:`SchemeParser.resolve_or_fallback`.
     """
-    _build_opts: dict = master_spec.get("build_options", {})
+    _build_opts: dict = master_spec.get("build_options", {}) or {}
+    dirs = (_dash_scheme_dirs_of(_build_opts) if scheme_dirs is None
+            else tuple(scheme_dirs))
 
     # A scheme() written on a single graph rather than on `dash build'.
     # `dash scatter mpg weight, scheme(economist)' takes the immediate
     # render path, which writes its own build_options with no scheme key
-    # in it at all, and stores the option on the graph -- where nothing
-    # read it.  The explicit option lost to the session's c(scheme), and
-    # lost silently: a dashboard appeared, just not the one asked for.
-    #
-    # A dashboard draws one page, so several graphs cannot each have
-    # their own.  The first one wins and the rest are named, rather than
-    # picking one of several user intentions without saying which.
+    # in it at all, and stores the option on the graph.  The first graph's
+    # is the dashboard's; every graph is drawn in its own (WP-30 P1.25.6),
+    # so a second graph naming another scheme is not a conflict.
     # dash.ado emits a graph as
     #     {"plots":[...], "graph_options":{...}, "if_expr":"", "in_expr":""}
-    # -- "options" is a PLOT key and appears on no graph it writes.  Reading
-    # "options" here made this whole branch dead against real output: it fired
-    # only for hand-built test fixtures, which is why the tests that covered
-    # it passed while `dash scatter mpg weight, scheme(economist)' still drew
-    # the session's scheme.  "options" is kept as a fallback so those fixtures
-    # keep working.
-    _graph_schemes: list = []
+    # -- "options" is a PLOT key and appears on no graph it writes.
+    # "options" is kept as a fallback so hand-built fixtures keep working.
+    _graph_scheme = ""
     for _g in master_spec.get("graphs", []):
         if not isinstance(_g, dict):
             continue
@@ -22608,83 +22816,56 @@ def _resolve_scheme_name(master_spec: dict) -> str:
             continue
         _gs = str(_go.get("scheme", "") or "").strip()
         if _gs:
-            _graph_schemes.append(
-                (str(_go.get("name", "") or _g.get("name", "")), _gs))
-    _graph_scheme: str = _graph_schemes[0][1] if _graph_schemes else ""
-    if len({_s for _n, _s in _graph_schemes}) > 1:
-        _others = ", ".join(
-            f"{_n or '?'}: {_s}" for _n, _s in _graph_schemes[1:]
-        )
-        warnings.warn(
-            f"dash: a dashboard draws one scheme; using "
-            f"{_graph_scheme!r} from the first graph and ignoring "
-            f"{_others}. Set the scheme once with "
-            f"`dash build, scheme()'.", UserWarning,
-        )
+            _graph_scheme = _gs
+            break
 
     # Prefer explicit 'scheme' key, then 'theme', then a scheme named on
     # a graph, then the session's own c(scheme).  The session scheme is
-    # what a Stata user has already chosen for every graph they draw, so
-    # ignoring it made dash the one command in their session that did not
-    # look like the rest.
-    _raw_name: str = (
-        _build_opts.get("scheme", "").strip()
-        or _build_opts.get("theme", "").strip()
-        or _graph_scheme
-        or _build_opts.get("session_scheme", "").strip()
-        or ""
-    )
-    # theme() takes Stata theme names, which are aliases for schemes.  A
-    # name that is neither an alias, nor a shipped scheme, nor something
-    # SchemeParser can resolve -- a .scheme file in the working directory,
-    # by bare name or with the extension -- is reported: theme(dark) is
-    # documented in dash.sthlp, was absent from the map, and used to fall
-    # through to s2color without a word.
-    #
-    # The parser is asked, not second-guessed.  This gate used to refuse
-    # any unknown name that did not end in ".scheme" before _resolve_path's
-    # bare-name branch could look in the working directory, while the
-    # per-graph swap in _make_figure called the parser directly and found
-    # the file: `dash scatter ..., scheme(mytheme)' drew the figure with
-    # mytheme and the page chrome with s2color, and `dash build,
-    # scheme(mytheme)' drew s2color throughout (measured, WP-17).
-    #
+    # what a Stata user has already chosen for every graph they draw.
+    source, value = "", ""
+    for _src, _val in (
+            ("scheme", str(_build_opts.get("scheme", "") or "").strip()),
+            ("theme", str(_build_opts.get("theme", "") or "").strip()),
+            ("graph", _graph_scheme),
+            ("session",
+             str(_build_opts.get("session_scheme", "") or "").strip())):
+        if _val:
+            source, value = _src, _val
+            break
+    choice = _dash_scheme_choice(value, source, dirs)
     # dash.ado refuses an explicit scheme()/theme() it cannot resolve
     # before Python runs, so a name that arrives here unresolved is the
-    # session's own c(scheme) -- 129 third-party schemes on one machine,
-    # and cscript's s2color8 before dash shipped it -- or a spec built by
-    # hand.  The warning says so.  One line; the words three other tests
-    # pin ("is not a known theme or scheme") are kept.
-    _lower = _raw_name.lower()
-    if (_raw_name and _lower not in _THEME_SCHEME_MAP
-            and _lower not in SchemeParser._BUILTIN_NAMES
-            and not SchemeParser.can_resolve(_raw_name)):
-        warnings.warn(
-            f"dash: {_raw_name!r} is not a known theme or scheme; it was "
-            "inherited from the session (c(scheme)) because no scheme() or "
-            "theme() was given, or came from a spec built without "
-            "dash.ado; using s2color. Themes: "
-            f"{', '.join(sorted(_THEME_SCHEME_MAP))}. Schemes: "
-            f"{', '.join(sorted(SchemeParser._BUILTIN_NAMES))}.",
-            UserWarning,
-        )
-        _raw_name = ""
-        _lower = ""
-    # A shipped name is accepted in any case -- dash.ado's gate lowers it
-    # too -- and handed on lowered, so it resolves on a case-sensitive
-    # filesystem as it does on this one, and `scheme.name' is the scheme's
-    # own spelling rather than the caller's.  A user file keeps its
-    # spelling: the parser looks for that file.
-    # ... with or without the extension: scheme(S2COLOR.SCHEME) is the
-    # shipped s2color, not a file of that spelling.
-    _base = _lower[:-len(".scheme")] if _lower.endswith(".scheme") else _lower
-    if _base in SchemeParser._BUILTIN_NAMES:
-        _raw_name = _base
-        _lower = _base
-    _scheme_name: str = (
-        _THEME_SCHEME_MAP.get(_lower, _raw_name) or "s2color"
-    )
-    return _scheme_name
+    # session's own c(scheme) or a spec built by hand.  The warning says
+    # so.  One line; the words three other tests pin ("is not a known theme
+    # or scheme") are kept.  A file found but refused by a read guard says
+    # why instead: for an inherited c(scheme) here; for a name the user
+    # wrote (build or graph scheme()), once, where it is parsed --
+    # resolve_or_fallback -- so the immediate route, which names it as both
+    # the dashboard's and the graph's, notes it once.
+    if choice and SchemeParser._shipped_base(choice) is None:
+        reason = SchemeParser.unresolved_reason(choice, dirs)
+        if reason and "it was not read" in reason \
+                and source in ("scheme", "graph"):
+            return choice
+        if reason:
+            if "it was not read" not in reason:
+                warnings.warn(
+                    f"dash: {value!r} is not a known theme or scheme; it was "
+                    "inherited from the session (c(scheme)) because no "
+                    "scheme() or theme() was given, or came from a spec "
+                    "built without dash.ado; using s2color. Themes: "
+                    f"{', '.join(sorted(_THEME_SCHEME_MAP))}. Schemes: "
+                    f"{', '.join(sorted(SchemeParser._BUILTIN_NAMES))}.",
+                    UserWarning,
+                )
+            else:
+                warnings.warn(
+                    f"dash: {value!r} was found but not read "
+                    f"({reason.split(': ', 1)[-1]}); using s2color.",
+                    UserWarning,
+                )
+            return "s2color"
+    return choice or "s2color"
 
 
 # ---------------------------------------------------------------------------
@@ -35608,7 +35789,13 @@ class DashRenderer:
         # newer renderer) it falls back to Stata's factory default.
         self.default_level: float = _dash_session_level(_build_opts)
 
-        _scheme_name: str = _resolve_scheme_name(self.master_spec)
+        # The ado-path a scheme dash does not ship is looked for along
+        # (WP-30 P1.25b), read and then dropped from the spec, so no
+        # directory name reaches the page.
+        self._scheme_dirs: "tuple[str, ...]" = _dash_scheme_dirs_of(_build_opts)
+        _build_opts.pop("scheme_dirs", None)
+        _scheme_name: str = _resolve_scheme_name(self.master_spec,
+                                                 self._scheme_dirs)
         # Every scheme this build resolves, by the name it was asked for.
         # A graph's own scheme() is the build's scheme on the immediate
         # route (dash scatter ..., scheme(x)), so _make_figure used to
@@ -36600,7 +36787,8 @@ class DashRenderer:
         cache = self.__dict__.setdefault("_schemes", {})
         sch = cache.get(key)
         if sch is None:
-            sch = SchemeParser.resolve_or_fallback(key, context)
+            sch = SchemeParser.resolve_or_fallback(
+                key, context, ado_dirs=getattr(self, "_scheme_dirs", ()))
             cache[key] = sch
         return sch
 
@@ -36633,7 +36821,9 @@ class DashRenderer:
         if _gscheme:
             _saved_scheme, _saved_mapper = self.scheme, self.mapper.scheme
             self.scheme = self._scheme_for(
-                _gscheme, f"graph {graph_opts.get('name', '') or '(unnamed)'}")
+                _dash_scheme_choice(_gscheme, "graph",
+                                    getattr(self, "_scheme_dirs", ())),
+                f"graph {graph_opts.get('name', '') or '(unnamed)'}")
             self.mapper.scheme = self.scheme
             try:
                 return self._make_figure_body(graph_spec, source, facet_view,
@@ -39398,6 +39588,14 @@ class ServerAppBuilder:
         """
         with open(spec_path, "r", encoding="utf-8") as f:
             self.spec: dict = json.load(f)
+        # The ado-path schemes are looked for along (WP-30 P1.25b), read
+        # and dropped before the spec is embedded: the app receives scheme
+        # properties, never a directory name.
+        _bo = self.spec.get("build_options")
+        self._scheme_dirs: "tuple[str, ...]" = _dash_scheme_dirs_of(
+            _bo if isinstance(_bo, dict) else {})
+        if isinstance(_bo, dict):
+            _bo.pop("scheme_dirs", None)
         # Each function layer's stored points onto its plot (WP-29 P0.6),
         # before the spec is capped and embedded: the app draws them.
         self.spec = _dash_attach_function_points(self.spec)
@@ -39432,10 +39630,42 @@ class ServerAppBuilder:
         # (SchemeParser.fallback sets it), so a message built from it would
         # tell the user they got what they asked for.  Only this string can
         # name what they did NOT get.
-        self.scheme_requested: str = _resolve_scheme_name(self.spec)
+        self.scheme_requested: str = _resolve_scheme_name(
+            self.spec, self._scheme_dirs)
         self.scheme: SchemeParser = SchemeParser.resolve_or_fallback(
             self.scheme_requested, "the dashboard",
+            ado_dirs=self._scheme_dirs,
         )
+        self._resolve_graph_schemes()
+
+    def _resolve_graph_schemes(self) -> None:
+        """Each graph's own ``scheme()``, by the saved renderer's rule
+        (``_dash_scheme_choice``, as ``DashRenderer._make_figure`` names
+        it), into ``self.graph_schemes``: one parser per distinct name that
+        is not the dashboard's, parsed once, so its notes print once
+        (WP-30 P1.25.6).  ``_glyph_layer_lines`` writes their properties
+        into the app."""
+        self.graph_schemes: "dict[str, SchemeParser]" = {}
+        cache: "dict[str, SchemeParser]" = {
+            self.scheme_requested: self.scheme}
+        for g in self.spec.get("graphs", []) or []:
+            if not isinstance(g, dict):
+                continue
+            go = g.get("graph_options") or {}
+            if not isinstance(go, dict):
+                continue
+            raw = str(go.get("scheme", "") or "").strip()
+            if not raw or raw in self.graph_schemes:
+                continue
+            choice = _dash_scheme_choice(raw, "graph", self._scheme_dirs)
+            parser = cache.get(choice)
+            if parser is None:
+                parser = SchemeParser.resolve_or_fallback(
+                    choice, f"graph {go.get('name', '') or '(unnamed)'}",
+                    ado_dirs=self._scheme_dirs)
+                cache[choice] = parser
+            if parser is not self.scheme:
+                self.graph_schemes[raw] = parser
 
     def _glyph_layer_lines(self) -> "list[str]":
         """Emit the renderer's own glyph layer into the app, verbatim.
@@ -40163,6 +40393,53 @@ class ServerAppBuilder:
             "",
             "_DASH_SCHEME = _dash_build_scheme()",
             "_DASH_MAPPER = GlyphMapper(scheme=_DASH_SCHEME)",
+            "",
+            "",
+            "# Each graph's own scheme(), as a property dict per distinct name",
+            "# (WP-30 P1.25.6), swapped in for each figure and each redraw as",
+            "# the saved renderer's _make_figure swaps it.",
+            "_GRAPH_SCHEME_PROPS = %r" % ({
+                raw: {"name": s.name, "is_fallback": bool(s.is_fallback),
+                      "props": dict(s._props)}
+                for raw, s in sorted(
+                    getattr(self, "graph_schemes", {}).items())},),
+            "",
+            "_DASH_GRAPH_SCHEMES = {}",
+            "",
+            "",
+            "def _dash_graph_scheme(raw):",
+            '    """The parser for a graph\'s scheme() *raw*, rebuilt as',
+            "    _dash_build_scheme builds one, or None for the dashboard's.\"\"\"",
+            "    _e = _GRAPH_SCHEME_PROPS.get(raw)",
+            "    if _e is None:",
+            "        return None",
+            "    _s = _DASH_GRAPH_SCHEMES.get(raw)",
+            "    if _s is None:",
+            "        _s = SchemeParser.__new__(SchemeParser)",
+            "        _s._props = dict(_e['props'])",
+            "        _s.name = _e['name']",
+            "        _s.is_fallback = _e['is_fallback']",
+            "        _s._init_properties()",
+            "        _DASH_GRAPH_SCHEMES[raw] = _s",
+            "    return _s",
+            "",
+            "",
+            "def _dash_under_graph_scheme(g, fn, *args, **kwargs):",
+            '    """fn(*args, **kwargs) drawn in graph g\'s own scheme."""',
+            "    global _DASH_SCHEME",
+            "    _go = (g or {}).get('graph_options')",
+            "    if not isinstance(_go, dict):",
+            "        _go = {}",
+            "    _s = _dash_graph_scheme(str(_go.get('scheme', '') or '').strip())",
+            "    if _s is None:",
+            "        return fn(*args, **kwargs)",
+            "    _saved = (_DASH_SCHEME, _DASH_MAPPER.scheme)",
+            "    _DASH_SCHEME = _s",
+            "    _DASH_MAPPER.scheme = _s",
+            "    try:",
+            "        return fn(*args, **kwargs)",
+            "    finally:",
+            "        _DASH_SCHEME, _DASH_MAPPER.scheme = _saved",
             "",
         ]
         return out
@@ -41826,7 +42103,7 @@ class ServerAppBuilder:
             "                                          set(), None, None, sidx=_sidx,",
             "                                          cv_domain=_cv_dom)",
             "            return [_s for _s in _srcs if _s is not _ly]",
-            "        return _redraw",
+            "        return lambda frame: _dash_under_graph_scheme(g, _redraw, frame)",
             "",
             "    def _dash_figure_for(g, gname, g_df, _fac_label=None,",
             "                         _rescale=frozenset()):",
@@ -42306,7 +42583,7 @@ class ServerAppBuilder:
             "        _brs = _dash_by_rescale((go.get('by') or '').strip())",
             "        by_vars = [v for v in _bv.split() if v in df.columns]",
             "        if not by_vars:",
-            "            figures[gname] = _dash_figure_for(g, gname, g_df)",
+            "            figures[gname] = _dash_under_graph_scheme(g, _dash_figure_for, g, gname, g_df)",
             "            continue",
             "        _btotal = _btotal or go.get('by_total', '0') == '1'",
             "        _bmissing = _bmissing or go.get('by_missing', '0') == '1'",
@@ -42328,7 +42605,7 @@ class ServerAppBuilder:
             "        if work_df.empty and (_g_tot is g or _t_df.empty):",
             "            # Every by() value is missing: one empty panel, as saved.",
             "            _owner_rows[gname] = work_df.index",
-            "            figures[gname] = _dash_figure_for(g, gname, work_df,",
+            "            figures[gname] = _dash_under_graph_scheme(g, _dash_figure_for, g, gname, work_df,",
             "                                              _rescale=_brs)",
             "            continue",
             "        if gname not in linked_names:",
@@ -42390,7 +42667,7 @@ class ServerAppBuilder:
             "                _total_quals[_fname] = {",
             "                    'if_expr': _g_if, 'in_expr': _g_in,",
             "                    'qual_col': str(_g_tot.get('qual_col') or '')}",
-            "            figures[_fname] = _dash_figure_for(",
+            "            figures[_fname] = _dash_under_graph_scheme(_g_pan, _dash_figure_for,",
             "                _g_pan, _fname, _gdf, _fac_label=_label, _rescale=_brs)",
             "            _entries.append((_fname, _label))",
             "            _facet_group_vals[_fname] = (by_vars, _key)",

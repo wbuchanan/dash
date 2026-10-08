@@ -449,7 +449,7 @@ program define _dash_require_mata
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
-        _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
+        _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
         _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
@@ -2368,11 +2368,10 @@ end
 // list, and test/test_scheme_resolution.py holds the two together --
 // and `_dash_themes' are the theme() aliases the renderer maps onto them.
 // _dash_validate_value reads both for the `scheme' kind and
-// _dash_prepare_spec for theme(), so a name is accepted or refused by
-// this list and nowhere else.  Third-party schemes installed in PLUS/s
-// are deliberately not on it and not looked for (WP-05: the letter
-// directories are shared); the help says to copy such a file into the
-// working directory.
+// _dash_prepare_spec for theme().  Any other scheme -- PLUS/s, PERSONAL,
+// SITE, the working directory, a directory added with adopath -- is not
+// listed here: it is found along the ado-path as Stata finds it (WP-30
+// P1.25b; _dash_scheme_dirs below).
 // ================================================================
 program define _dash_shipped_schemes
     version 19
@@ -2380,6 +2379,22 @@ program define _dash_shipped_schemes
     c_local _dash_themes  "default clean mono dark economist sj"
 end
 // END shipped schemes (WP-17)
+
+// ----------------------------------------------------------------
+// _dash_scheme_dirs -- the ado-path a scheme dash does not ship is looked
+// for along (WP-30 P1.25b, M7).  Stata's setscheme runs findfile
+// scheme-NAME.scheme and then findfile NAME.scheme (BASE/s/scheme.class:
+// 172-173); Mata's _dash_scheme_dirs_json() writes the directories findfile
+// walks as a JSON array into the caller's _dash_sdirs, for the spec's
+// build_options.scheme_dirs.  The text is passed by value and expanded
+// only through macval(), so no directory name is expanded again as a
+// macro.
+// ----------------------------------------------------------------
+program define _dash_scheme_dirs
+    version 19
+    mata: st_local("j", _dash_scheme_dirs_json())
+    c_local _dash_sdirs `"`macval(j)'"'
+end
 
 // BEGIN option-validation table (WP-15)
 // ================================================================
@@ -2421,11 +2436,13 @@ end
 // refused, since dash cannot draw one; varlist: one or more, likewise;
 // byvarlist: the text before the first top-level comma is a varlist, the
 // rest is kept verbatim; format: a numeric display format (the gate is
-// spelled out in _dash_validate_value); scheme (WP-17): a shipped scheme
-// or theme name from _dash_shipped_schemes, case-insensitive (a shipped
-// name may carry the .scheme extension), or a .scheme
-// file in the working directory named bare or with the extension -- no
-// `/', `\' or `..' -- passed through as written.  A number that passes a num, int
+// spelled out in _dash_validate_value); scheme (WP-17, WP-30 P1.25b): a
+// shipped scheme or theme name from _dash_shipped_schemes,
+// case-insensitive (a shipped name may carry the .scheme extension), or a
+// scheme Stata finds along the ado-path, scheme-NAME.scheme or
+// NAME.scheme -- named, never a path: no blank, control character, `/',
+// `\', `:', `..', quote, backtick or dollar sign -- passed through as
+// written.  A number that passes a num, int
 // or pos rule reaches the renderer in one canonical spelling: an int as
 // %21.0f (2.0, 02, +2 and 1E3 -> 2, 2, 2, 1000); a num or pos as written
 // when it is a plain decimal or e-notation Python parses, else as %21.0g
@@ -2950,31 +2967,29 @@ program define _dash_validate_value, rclass
         }
     }
     else if "`kind'" == "scheme" {
-        // WP-17: a shipped translation or a theme alias, by name and
-        // case-insensitively (a shipped name with or without the .scheme
-        // extension), or a .scheme file in the working directory
-        // named bare (mytheme) or with the extension (mytheme.scheme) --
-        // the lookup dash_render.py's SchemeParser makes, so a name that
-        // passes here resolves there.  A name carrying a path separator
-        // or `..' is refused before any file is looked for; the renderer's
-        // containment stays the second line of defence.  The value goes
-        // through as written: the renderer lower-cases shipped names
-        // itself, and a file name is the user's own.  Nothing outside the
-        // working directory is looked for (third-party schemes in PLUS/s
-        // included: WP-05, the letter directories are shared).
+        // WP-17, WP-30 P1.25b: a shipped translation or a theme alias, by
+        // name and case-insensitively (a shipped name with or without the
+        // .scheme extension), or a scheme Stata finds as twoway finds it:
+        // findfile scheme-NAME.scheme, then findfile NAME.scheme, along the
+        // ado-path (BASE/s/scheme.class:172-173) -- the lookup
+        // dash_render.py's SchemeParser makes, so a name that passes here
+        // resolves there.  A scheme is named, never given as a path: a name
+        // holding a blank, a control character, a slash or backslash, a
+        // colon, `..', a quote, a backtick or a dollar sign, or longer than
+        // 87 characters, is refused before any file is looked for (M7,
+        // P1.25.4), read from the scalar T and never from a macro-expanded
+        // value; the renderer applies the same rule and its containment,
+        // regular-file and size guards again.  A dash- name is the user's
+        // own file in the working directory only.  The value goes through
+        // as written: the renderer lower-cases shipped names itself.
         _dash_shipped_schemes
         tempname L B
         scalar `L' = lower(scalar(`T'))
         // A shipped name written WITH the extension -- scheme(s2color.scheme),
-        // in any case -- is the shipped scheme: the renderer's _resolve_path
-        // reads that spelling from the package's dash-<name>.scheme, so no file
-        // in the working directory is needed.  Measured 22sep2026: the
-        // extension form was looked for as a working-directory file only,
-        // and scheme(s2color.scheme) was refused although the renderer
-        // would have drawn it.  The extension is dropped for the list test
-        // only: a theme is not a file and takes no extension, and a name
-        // that is not shipped still needs the file (below).  Read through
-        // the string scalars T, L (lower case) and B (without .scheme).
+        // in any case -- is the shipped scheme.  The extension is dropped
+        // for the list test only: a theme is not a file and takes no
+        // extension.  Read through the string scalars T, L (lower case) and
+        // B (without .scheme).
         scalar `B' = scalar(`L')
         if substr(scalar(`L'), -7, .) == ".scheme" {
             scalar `B' = substr(scalar(`L'), 1, strlen(scalar(`L')) - 7)
@@ -2986,24 +3001,48 @@ program define _dash_validate_value, rclass
         foreach c of local _dash_themes {
             if scalar(`L') == "`c'" local hit = 1
         }
+        local named = 1
         if !`hit' & scalar(`T') != "" {
-            // A double quote is refused with the separators: a file name
-            // put on confirm's command line must not end its quotes.
-            local unsafe = strpos(scalar(`T'), "/") | ///
-                           strpos(scalar(`T'), char(92)) | ///
-                           strpos(scalar(`T'), "..") | ///
-                           strpos(scalar(`T'), char(34))
-            if !`unsafe' {
-                if substr(scalar(`L'), -7, .) == ".scheme" {
-                    capture confirm file `"`macval(tv)'"'
+            local named = !ustrregexm(scalar(`T'), "[\s\p{Cc}]") & ///
+                          !strpos(scalar(`T'), "/") & ///
+                          !strpos(scalar(`T'), char(92)) & ///
+                          !strpos(scalar(`T'), ":") & ///
+                          !strpos(scalar(`T'), "..") & ///
+                          !strpos(scalar(`T'), char(34)) & ///
+                          !strpos(scalar(`T'), char(96)) & ///
+                          !strpos(scalar(`T'), char(36)) & ///
+                          ustrlen(scalar(`T')) <= 87
+            if `named' {
+                if substr(scalar(`L'), 1, 5) == "dash-" {
+                    if substr(scalar(`L'), -7, .) == ".scheme" {
+                        capture confirm file `"`macval(tv)'"'
+                    }
+                    else {
+                        capture confirm file `"`macval(tv)'.scheme"'
+                    }
+                }
+                else if substr(scalar(`L'), -7, .) == ".scheme" {
+                    capture findfile `"`macval(tv)'"'
                 }
                 else {
-                    capture confirm file `"`macval(tv)'.scheme"'
+                    capture findfile `"scheme-`macval(tv)'.scheme"'
+                    if _rc {
+                        capture findfile `"`macval(tv)'.scheme"'
+                    }
                 }
                 if !_rc local hit = 1
             }
         }
-        if !`hit' local bad "a shipped scheme, a theme, or a .scheme file in the working directory"
+        if !`hit' {
+            local _sn : list sort _dash_schemes
+            local _sn : subinstr local _sn " " ", ", all
+            local _tn : list sort _dash_themes
+            local _tn : subinstr local _tn " " ", ", all
+            local bad "one of `_sn'; a theme (`_tn'); or a scheme Stata finds along the ado-path as scheme-NAME.scheme or NAME.scheme"
+            if !`named' {
+                local extra ". A scheme is named, never given as a path: a name holding a blank, a quote, a slash or backslash, a colon or .. is not looked for"
+            }
+        }
     }
     else if "`kind'" == "format" {
         // 1. Character gate: one leading %, then only the characters a
@@ -7680,9 +7719,10 @@ program define _dash_render_immediate
     local _dash_lvl = c(level)
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    _dash_scheme_dirs
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -8357,8 +8397,8 @@ program define _dash_prepare_spec, rclass
     // ---- validate theme() and scheme() (WP-17) ----
     // Before anything is written, through the program that gates a
     // graph-level scheme(): theme() is one of the six aliases, scheme() a
-    // shipped translation, a theme, or a .scheme file in the working
-    // directory.  Measured 22sep2026: scheme(nosuchthing) and
+    // shipped translation, a theme, or a scheme Stata finds along the
+    // ado-path (WP-30 P1.25b).  Measured 22sep2026: scheme(nosuchthing) and
     // theme(nosuchtheme) went through with rc 0 and a warning and were
     // drawn as s2color, and a hostile theme() reached the spec (escaped,
     // but reached it).  The session's c(scheme) is not validated -- it was
@@ -8926,6 +8966,7 @@ program define _dash_prepare_spec, rclass
     // is the user's text: through macval() as well (JSE-58).
     _dash_json_str `"`macval(scheme)'"'    _scheme_esc
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    _dash_scheme_dirs
     // theme() was the one user string on the master-spec line that went in
     // raw while every other went through _dash_json_str.  Measured:
     // theme("C:\temp\x"), theme("a\q"), theme("a\") and a theme()
@@ -8968,7 +9009,7 @@ program define _dash_prepare_spec, rclass
     }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:

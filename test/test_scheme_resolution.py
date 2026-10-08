@@ -871,7 +871,10 @@ class TestTheShippedFilesAreDashNameDotDash:
 
     def test_a_scheme_file_in_the_working_directory_still_wins(
             self, tmp_path, monkeypatch, kind):
-        mod_name, mod, _files_dir, cwd = _layout(tmp_path, kind)
+        """A user's own mytheme.scheme still resolves from the working
+        directory, but a file there named like a shipped scheme no longer
+        replaces it: twoway draws BASE's scheme first (WP-30 P1.25b)."""
+        mod_name, mod, files_dir, cwd = _layout(tmp_path, kind)
         (cwd / "mytheme.scheme").write_text(
             "#include s1rcolor\ncolor background #123456\n", encoding="utf-8")
         (cwd / "s2color.scheme").write_text(
@@ -882,8 +885,10 @@ class TestTheShippedFilesAreDashNameDotDash:
             for spelling in ("mytheme", "mytheme.scheme"):
                 assert os.path.realpath(inst._resolve_path(spelling)) == \
                     os.path.realpath(str(cwd / "mytheme.scheme"))
+            # WP-30 P1.25b: the shipped translation wins.
             assert os.path.realpath(inst._resolve_path("s2color")) == \
-                os.path.realpath(str(cwd / "s2color.scheme"))
+                os.path.realpath(os.path.join(files_dir,
+                                              "dash-s2color.scheme"))
             sch = mod.SchemeParser("mytheme")
             assert sch.name == "mytheme" and sch.is_fallback is False
             assert sch._props.get("color background") == "#123456"
