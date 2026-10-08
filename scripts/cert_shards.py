@@ -17,14 +17,26 @@ continuations joined, comments dropped) whose command, after any capture,
 noisily or quietly, is ``dash serve`` or ``_dash_serve`` and which names one
 of those ports or no port().
 
+A script that splits itself -- it reads DASH_CERT_SHARD (``local <name> :
+env[ironment] DASH_CERT_SHARD``) and runs only its own part k of N, as
+test_wp30_truth.cscript does with its blocks -- runs in every shard: its
+row's shards are ``*``, and it counts its seconds divided by N in every
+shard when the others are balanced.  test_wp30_truth.cscript's parts are
+the same longest-first rule over its blocks' seconds (its ``parts``
+section, which wp30_parts mirrors).
+
 Usage:
   python3 scripts/cert_shards.py write <timed run log> [<source>]
           rewrite the table from a run's ``[ TIME] <script> timer=<s>
-          wall=<s>`` lines; <source> says in the table where the seconds
+          wall=<s>`` lines (a script timed more than once, as a split
+          script is in the shards' logs put together, counts their
+          sum); <source> says in the table where the seconds
           come from (default: the log's file name)
   python3 scripts/cert_shards.py check                   exit 1 unless the
           table holds every registered script, marks exactly the fixed-port
-          scripts, and gives each N the balanced assignment of its seconds
+          scripts and, with *, exactly the scripts that split themselves,
+          gives each N the balanced assignment of its seconds, and every
+          part of test_wp30_truth.cscript has a timed block
   python3 scripts/cert_shards.py show                    each N's loads
 """
 import os
@@ -48,6 +60,11 @@ END = "// ---- shards: end ----"
 _PREFIX = re.compile(r"^(?:(?:capture|cap|noisily|noi|quietly|qui)\s+)+")
 _SERVE = re.compile(r"^(?:dash\s+serve|_dash_serve)(?=$|[\s,])")
 _FIXED = re.compile(r"\bport\(\s*0*(%s)\s*\)" % "|".join(FIXED_PORTS))
+_SPLITS = re.compile(r"^local\s+\w+\s*:\s*env(?:ironment)?\s+DASH_CERT_SHARD$")
+EVERY = "*"
+WP30 = os.path.join(_REPO, "test", "test_wp30_truth.cscript")
+WP30_BEGIN = "// ---- parts: begin"
+WP30_END = "// ---- parts: end ----"
 _TIME = re.compile(r"^\[ TIME\] (\S+\.cscript) timer=\s*([0-9.]+|\.)s "
                    r"wall=\s*([0-9.]+)s", re.M)
 
@@ -88,17 +105,26 @@ def serves_on_a_fixed_port(text):
     return False
 
 
-def assign(seconds, port, n):
+def splits_itself(text):
+    """Whether a script reads DASH_CERT_SHARD to run only its own part."""
+    return any(_SPLITS.match(_PREFIX.sub("", ln))
+               for ln in logical_lines(text))
+
+
+def assign(seconds, port, n, every=frozenset()):
     """{script: shard (1..n)}: longest first onto the least loaded shard,
-    the fixed-port scripts one unit."""
+    the fixed-port scripts one unit; each script in *every* is "*", its
+    seconds shared out over the n shards before the others are placed."""
     units = []
-    together = sorted(s for s in seconds if s in port)
+    together = sorted(s for s in seconds if s in port and s not in every)
     if together:
         units.append((sum(seconds[s] for s in together), together))
-    units += [(seconds[s], [s]) for s in seconds if s not in port]
+    units += [(seconds[s], [s]) for s in seconds
+              if s not in port and s not in every]
     units.sort(key=lambda u: (-u[0], u[1][0]))
-    load = [0.0] * n
-    out = {}
+    share = sum(seconds[s] for s in seconds if s in every) / n
+    load = [share] * n
+    out = {s: EVERY for s in seconds if s in every}
     for sec, scripts in units:
         k = min(range(n), key=lambda i: (load[i], i))
         load[k] += sec
@@ -111,8 +137,38 @@ def loads(seconds, shards, n):
     """The seconds of each shard of n."""
     out = [0.0] * n
     for s, k in shards.items():
-        out[k - 1] += seconds[s]
+        if k == EVERY:
+            out = [v + seconds[s] / n for v in out]
+        else:
+            out[k - 1] += seconds[s]
     return out
+
+
+def wp30_parts(text, n):
+    """{block id: part (1..n)} for test_wp30_truth.cscript's text: its
+    blocks (header lines ``* ==== S<NN> ...``) longest first by the seconds
+    of its parts section, a block it does not list counting 0 s -- what the
+    script's own Mata computes."""
+    ids = []
+    for m in re.finditer(r"^\* ==== (S\d+) ", text, re.M):
+        if m.group(1) not in ids:
+            ids.append(m.group(1))
+    secs = wp30_seconds(text)
+    return assign({i: secs.get(i, 0.0) for i in ids}, set(), n)
+
+
+def wp30_seconds(text):
+    """{block id: seconds} from test_wp30_truth.cscript's parts section."""
+    if text.count(WP30_BEGIN) != 1 or text.count(WP30_END) != 1:
+        raise ValueError("test_wp30_truth.cscript has no single parts "
+                         "section")
+    sect = text[text.index(WP30_BEGIN):text.index(WP30_END)]
+    m = re.search(r"^local w30_secs ///\n((?:.*///\n)*.*)$", sect, re.M)
+    if not m:
+        raise ValueError("test_wp30_truth.cscript's parts section has no "
+                         "w30_secs")
+    toks = m.group(1).replace("///", " ").split()
+    return {toks[i]: float(toks[i + 1]) for i in range(0, len(toks) - 1, 2)}
 
 
 def read_table(runner_text):
@@ -122,25 +178,29 @@ def read_table(runner_text):
     block = runner_text[runner_text.index(BEGIN):runner_text.index(END)]
     rows = []
     for m in re.finditer(r"^\s+(test_\w+\.cscript)\s+([0-9.]+)\s+([01])"
-                         r"\s+([1-4])\s+([1-4])\s+([1-4])\s*(?:///)?\s*$",
+                         r"\s+([1-4*])\s+([1-4*])\s+([1-4*])\s*(?:///)?\s*$",
                          block, re.M):
         rows.append((m.group(1), float(m.group(2)), m.group(3) == "1",
-                     dict(zip(COUNTS, (int(m.group(4)), int(m.group(5)),
-                                       int(m.group(6)))))))
+                     dict(zip(COUNTS, (k if k == EVERY else int(k)
+                                       for k in m.group(4, 5, 6))))))
     return rows
 
 
-def render_table(seconds, port, source):
-    """The block's text for these seconds and fixed-port scripts."""
-    shards = {n: assign(seconds, port, n) for n in COUNTS}
+def render_table(seconds, port, source, every=frozenset()):
+    """The block's text for these seconds, fixed-port scripts and scripts
+    that split themselves over every shard.  The shards are those of the
+    seconds as the table writes them, to a tenth, so that check agrees."""
+    seconds = {s: float("%.1f" % v) for s, v in seconds.items()}
+    shards = {n: assign(seconds, port, n, every) for n in COUNTS}
     lines = [
         BEGIN,
         "// Each certification script: the seconds it takes, 1 when it runs",
         "// dash serve on a fixed port (5006, 5097, 5098, 5099), and its shard",
         "// when DASH_CERT_SHARD splits the run in 2, 3 or 4: longest first",
         "// onto the least loaded shard, the fixed-port scripts as one unit so",
-        "// that they never serve at once.  Unset, the run is every script, in",
-        "// this session.",
+        "// that they never serve at once; * when a script runs in every shard",
+        "// and splits itself (it reads DASH_CERT_SHARD), its seconds shared",
+        "// out over them.  Unset, the run is every script, in this session.",
     ]
     lines += ["// " + ln for ln in textwrap.wrap(
         "Seconds: " + " ".join(source.split()), 72)]
@@ -148,7 +208,7 @@ def render_table(seconds, port, source):
     width = max(len(s) for s in seconds)
     names = sorted(seconds)
     for i, s in enumerate(names):
-        lines.append("    %-*s %7.1f %d  %d %d %d%s"
+        lines.append("    %-*s %7.1f %d  %s %s %s%s"
                      % (width, s, seconds[s], 1 if s in port else 0,
                         shards[2][s], shards[3][s], shards[4][s],
                         " ///" if i < len(names) - 1 else ""))
@@ -157,10 +217,13 @@ def render_table(seconds, port, source):
 
 def seconds_from_log(log_text):
     """{script: seconds} from a timed run's `[ TIME]' lines: the timer, or
-    the wall clock where a script's own clear all reset the timer."""
+    the wall clock where a script's own clear all reset the timer.  A script
+    timed more than once (a split script in its shards' logs put together)
+    counts the sum."""
     out = {}
     for name, timer, wall in _TIME.findall(log_text):
-        out[name] = float(wall) if timer == "." else float(timer)
+        out[name] = out.get(name, 0.0) + (float(wall) if timer == "."
+                                          else float(timer))
     return out
 
 
@@ -195,12 +258,47 @@ def check(runner_text):
     if marked != port:
         probs.append("fixed-port marks %s, the scripts that serve on a fixed "
                      "port %s" % (sorted(marked), sorted(port)))
+    starred = {r[0] for r in rows if EVERY in r[3].values()}
+    if any(set(r[3].values()) != {EVERY} for r in rows if r[0] in starred):
+        probs.append("a row is * for some N and not for every N")
+    splits = {s for s in named if os.path.exists(os.path.join(
+        _REPO, "test", s)) and splits_itself(_cscript_text(s))}
+    if starred != splits:
+        probs.append("* marks %s, the scripts that split themselves %s"
+                     % (sorted(starred), sorted(splits)))
+    if starred & marked:
+        probs.append("a script that runs in every shard serves on a fixed "
+                     "port: " + " ".join(sorted(starred & marked)))
+    if "test_wp30_truth.cscript" in starred and os.path.exists(WP30):
+        probs += wp30_check(_cscript_text("test_wp30_truth.cscript"))
     for n in COUNTS:
-        want = assign(seconds, marked, n)
+        want = assign(seconds, marked, n, starred)
         got = {r[0]: r[3][n] for r in rows}
         if got != want:
             probs.append("the shards for N=%d are not the balanced "
                          "assignment of the seconds" % n)
+    return probs
+
+
+def wp30_check(text):
+    """The problems with test_wp30_truth.cscript's parts: its section, a
+    listed block it does not have, a part of some N with no timed block
+    (a part that runs no case fails the script)."""
+    try:
+        secs = wp30_seconds(text)
+    except ValueError as exc:
+        return [str(exc)]
+    probs = []
+    ids = set(re.findall(r"^\* ==== (S\d+) ", text, re.M))
+    if set(secs) - ids:
+        probs.append("test_wp30_truth.cscript's parts list blocks it does "
+                     "not have: " + " ".join(sorted(set(secs) - ids)))
+    for n in COUNTS:
+        parts = wp30_parts(text, n)
+        timed = {k for b, k in parts.items() if secs.get(b, 0) > 0}
+        if timed != set(range(1, n + 1)):
+            probs.append("test_wp30_truth.cscript: a part of %d has no "
+                         "timed block" % n)
     return probs
 
 
@@ -220,6 +318,15 @@ def main(argv):
             print("N=%d: %s" % (n, "  ".join(
                 "%d: %.0f s" % (k + 1, v)
                 for k, v in enumerate(loads(seconds, shards, n)))))
+        if os.path.exists(WP30):
+            text = _cscript_text("test_wp30_truth.cscript")
+            secs = wp30_seconds(text)
+            for n in COUNTS:
+                parts = wp30_parts(text, n)
+                print("test_wp30_truth N=%d: %s" % (n, "  ".join(
+                    "%d: %.0f s" % (k, sum(secs.get(b, 0) for b, p in
+                                           parts.items() if p == k))
+                    for k in range(1, n + 1))))
         return 0
     if argv[1:2] == ["write"] and len(argv) in (3, 4):
         with open(argv[2], encoding="utf-8", errors="replace") as fh:
@@ -232,8 +339,9 @@ def main(argv):
         seconds = {s: seconds[s] for s in scripts}
         port = {s for s in scripts
                 if serves_on_a_fixed_port(_cscript_text(s))}
+        every = {s for s in scripts if splits_itself(_cscript_text(s))}
         source = argv[3] if len(argv) == 4 else os.path.basename(argv[2])
-        new = render_table(seconds, port, source)
+        new = render_table(seconds, port, source, every)
         start = runner.index(BEGIN)
         stop = runner.index(END)
         with open(RUNNER, "w", encoding="utf-8") as fh:

@@ -14,7 +14,9 @@ A run split into N sessions (WP-30 test performance, C; DASH_CERT_SHARD=k/N
 in each, scripts/run_cert_suite.sh) leaves N logs, each saying which shard
 it is (`[SHARD] k/N: ...').  They are judged together: shards 1 to N each
 exactly once, every registered script reported in exactly one of them and
-passed, and each log's own summary agreeing with its results.
+passed, and each log's own summary agreeing with its results.  A script
+whose shard table row says "*" (it splits itself across the sessions, as
+test_wp30_truth.cscript does) is reported, and passed, in every one of them.
 
 Usage:  python3 scripts/cert_verdict.py [--only "<names>"] <log> [<log> ...] <run_all_cscripts.do>
         --only judges just the scripts it names (a DASH_CERT_ONLY run).
@@ -31,11 +33,19 @@ _RESULT = re.compile(r"^\[ (PASS|FAIL|SKIP)\] (\S+\.cscript)\b", re.M)
 _SUMMARY = re.compile(r"^ALL TESTS PASSED \((\d+) passed, (\d+) skipped\)\s*$",
                       re.M)
 _SHARD = re.compile(r"^\[SHARD\] ([1-9])/([1-9]):", re.M)
+# A shard-table row whose shards are "*": the script runs in every shard.
+_EVERY = re.compile(r"^\s+(test_\w+\.cscript)\s+[0-9.]+\s+[01]\s+\*\s+\*"
+                    r"\s+\*\s*(?:///)?\s*$", re.M)
 
 
 def registered_scripts(runner_text):
     """The certification scripts the runner runs, in its order."""
     return _REGISTERED.findall(runner_text)
+
+
+def every_shard_scripts(runner_text):
+    """The scripts the runner's shard table runs in every shard (``*``)."""
+    return _EVERY.findall(runner_text)
 
 
 def verdict(log_text, runner_text, only=None):
@@ -63,6 +73,10 @@ def verdict_logs(log_texts, runner_text, only=None):
     twice = []
     log_probs = []
     shards = []
+    # In a sharded run a "*" script reports once in each log.
+    every = set(every_shard_scripts(runner_text)) if len(log_texts) > 1 \
+        else set()
+    every_seen = {s: [] for s in every}
     for i, text in enumerate(log_texts, 1):
         found = _SHARD.findall(text)
         if len(log_texts) > 1:
@@ -72,11 +86,22 @@ def verdict_logs(log_texts, runner_text, only=None):
             else:
                 shards.append((int(found[0][0]), int(found[0][1])))
         passed_here = 0
+        here = set()
         for status, name in _RESULT.findall(text):
+            if name in every:
+                if name in here:
+                    twice.append(name)
+                here.add(name)
+                every_seen[name].append(status)
+                passed_here += status == "PASS"
+                continue
             if name in results:
                 twice.append(name)
             results[name] = status
             passed_here += status == "PASS"
+        for name in sorted(every & set(scripts) - here):
+            log_probs.append("log %d never reported %s, which runs in every "
+                             "shard" % (i, name))
         m = _SUMMARY.search(text)
         if len(log_texts) > 1 and (not m or int(m.group(2)) != 0
                                    or int(m.group(1)) != passed_here):
@@ -89,6 +114,10 @@ def verdict_logs(log_texts, runner_text, only=None):
             log_probs.append("the logs are shards %s, not 1 to %d of %d"
                              % (" ".join("%d/%d" % s for s in sorted(shards)),
                                 n, n))
+    for name, seen in every_seen.items():
+        if seen:
+            results[name] = ("FAIL" if "FAIL" in seen else
+                             "SKIP" if "SKIP" in seen else "PASS")
     failed = [s for s in scripts if results.get(s) == "FAIL"]
     skipped = [s for s in scripts if results.get(s) == "SKIP"]
     missing = [s for s in scripts if s not in results]

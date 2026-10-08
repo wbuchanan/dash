@@ -17,6 +17,8 @@
 *! (index.md "The cscript driver"); a block with no case yet then ends
 *! "no case ran" and r(9).  Each block prints "S<NN> start" and
 *! "S<NN> end" with the date and time, so the closeout can time it.
+*! The suite runs it in every session; DASH_CERT_SHARD=k/N runs part k of
+*! N of the blocks (the "parts" section below).
 *!
 *! Blocks filled so far (case ids):
 *!   S07  P1.25a the six StataCorp schemes against twoway (SX-01..SX-08)
@@ -94,9 +96,98 @@ if _rc {
     exit 9
 }
 
+// ---- parts: begin (WP-30 test performance) ----
+// The certification suite runs this script in every one of its sessions
+// (its row in run_all_cscripts.do's shard table is "* * *"); with
+// DASH_CERT_SHARD=k/N set, the session runs part k of N of the blocks.
+// The parts are balanced longest first onto the least loaded part (the
+// lowest numbered of equals), by the seconds below -- a block not listed
+// counts 0 s -- the rule scripts/cert_shards.py uses for the scripts and
+// mirrors for these blocks (wp30_parts).  Unset, or with WP30_ONLY set
+// (which keeps its precedence), every block runs.  A block runs when its
+// gate finds its id in w30_run.
+// Seconds: the start/end lines of the three parts of 08oct2026, run side
+// by side as the suite runs them (a block and its second block together;
+// a block not listed took under a second).
+local w30_secs ///
+    S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
+    S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
+    S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5
+local w30_sh : environment DASH_CERT_SHARD
+mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
+if !`w30_ok' {
+    display as error "test_wp30_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    exit 198
+}
+local w30_k 1
+local w30_N 1
+if "`w30_sh'" != "" {
+    local w30_k = real(substr("`w30_sh'", 1, 1))
+    local w30_N = real(substr("`w30_sh'", 3, 1))
+}
+local w30_only : env WP30_ONLY
+if `"`macval(w30_only)'"' != "" | `w30_N' == 1 {
+    local w30_k 1
+    local w30_N 1
+}
+if `w30_k' > `w30_N' {
+    display as error "test_wp30_truth: DASH_CERT_SHARD must be k/N, 1 <= k <= N <= 4"
+    exit 198
+}
+capture confirm file "test_wp30_truth.cscript"
+if _rc {
+    display as error "test_wp30_truth: run it from test/, where it reads its own blocks"
+    exit 601
+}
+capture mata: mata drop _w30_part()
+mata:
+// The ids of the blocks (their header lines, in file order), and those of
+// part k of n: longest first onto the least loaded part.
+void _w30_part(string scalar file, string scalar table, real scalar k,
+               real scalar n)
+{
+    string colvector lines, ids
+    string rowvector tok
+    real colvector sec, o, at
+    real rowvector load
+    real scalar i, j, p, best
+    string scalar run
+
+    lines = cat(file)
+    ids = J(0, 1, "")
+    for (i = 1; i <= rows(lines); i++) {
+        if (ustrregexm(lines[i], "^\* ==== (S[0-9]+) ")) {
+            if (!anyof(ids, ustrregexs(1))) ids = ids \ ustrregexs(1)
+        }
+    }
+    sec = J(rows(ids), 1, 0)
+    tok = tokens(table)
+    for (j = 1; j + 1 <= cols(tok); j = j + 2) {
+        for (i = 1; i <= rows(ids); i++) {
+            if (ids[i] == tok[j]) sec[i] = strtoreal(tok[j + 1])
+        }
+    }
+    o = order((-sec, (1::rows(ids))), (1, 2))
+    load = J(1, n, 0)
+    at = J(rows(ids), 1, 0)
+    for (i = 1; i <= rows(o); i++) {
+        best = 1
+        for (p = 2; p <= n; p++) if (load[p] < load[best]) best = p
+        load[best] = load[best] + sec[o[i]]
+        at[o[i]] = best
+    }
+    run = ""
+    for (i = 1; i <= rows(ids); i++) if (at[i] == k) run = run + " " + ids[i]
+    st_local("w30_run", strtrim(run))
+}
+end
+mata: _w30_part("test_wp30_truth.cscript", st_local("w30_secs"), `w30_k', `w30_N')
+display as text "test_wp30_truth: part `w30_k'/`w30_N' runs `: word count `w30_run'' blocks: `w30_run'"
+// ---- parts: end ----
+
 * ==== S01 scaffold: the helpers load and a twoway SVG is read ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S01") {
+if inlist("`only'", "", "S01") & `: list posof "S01" in w30_run' {
     display as text "S01 start " c(current_date) " " c(current_time)
 
     // ------------------------------------------------------------
@@ -222,7 +313,7 @@ end
 
 * ==== S02 P1.34: Portable runners ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S02") {
+if inlist("`only'", "", "S02") & `: list posof "S02" in w30_run' {
     display as text "S02 start " c(current_date) " " c(current_time)
     local s02_env0 : environment DASH_REPO
 
@@ -323,7 +414,7 @@ end
 
 * ==== S03 P1.35: Stata 19 floor declared and enforced ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S03") {
+if inlist("`only'", "", "S03") & `: list posof "S03" in w30_run' {
     display as text "S03 start " c(current_date) " " c(current_time)
 
     // ------------------------------------------------------------
@@ -422,7 +513,7 @@ def _csp_truth(key):
 end
 * ==== S04 P1.29: CSP without 'unsafe-inline'; safe Windows opener ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S04") {
+if inlist("`only'", "", "S04") & `: list posof "S04" in w30_run' {
     display as text "S04 start " c(current_date) " " c(current_time)
     // CSP-01..04: dash's saving() writes a name holding %, !, %% or ^ as
     // typed, as twoway's does (P1.29; only dash's Windows opener declines
@@ -454,7 +545,7 @@ if inlist("`only'", "", "S04") {
 
 * ==== S05 P1.33: Measured Python floor ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S05") {
+if inlist("`only'", "", "S05") & `: list posof "S05" in w30_run' {
     display as text "S05 start " c(current_date) " " c(current_time)
     // PYF-03: the linked interpreter is at or above the declared floor.
     capture program list _dash_pyver_ok
@@ -478,7 +569,7 @@ if inlist("`only'", "", "S05") {
 
 * ==== S06 P1.26a: One note channel ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S06") {
+if inlist("`only'", "", "S06") & `: list posof "S06" in w30_run' {
     display as text "S06 start " c(current_date) " " c(current_time)
 
     // twoway's measured channels (section 06, Stata truth p1-p4): a
@@ -877,7 +968,7 @@ end
 
 * ==== S07 P1.25a: Ship the six StataCorp schemes ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S07") {
+if inlist("`only'", "", "S07") & `: list posof "S07" in w30_run' {
     display as text "S07 start " c(current_date) " " c(current_time)
     // The six StataCorp schemes dash did not ship, against twoway's own
     // drawing in the same run.  Every page, app, SVG and log goes under
@@ -1407,7 +1498,7 @@ end
 
 * ==== S08 P1.12a: Stata size units for markers, text and gaps ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S08") {
+if inlist("`only'", "", "S08") & `: list posof "S08" in w30_run' {
     display as text "S08 start " c(current_date) " " c(current_time)
     local s08_scheme "`c(scheme)'"
     set scheme s2color
@@ -1590,7 +1681,7 @@ if inlist("`only'", "", "S08") {
 
 * ==== S09 P1.11a: TeX delimiters inert on every canvas sink ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S09") {
+if inlist("`only'", "", "S09") & `: list posof "S09" in w30_run' {
     display as text "S09 start " c(current_date) " " c(current_time)
 
     // TX-01 (guard, the truth): twoway draws each TeX pair as typed.
@@ -1972,7 +2063,7 @@ end
 
 * ==== S10 P1.19: Sub-option abbreviations ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S10") {
+if inlist("`only'", "", "S10") & `: list posof "S10" in w30_run' {
     display as text "S10 start " c(current_date) " " c(current_time)
 
     // SA-11: every Mata table equals dash_render's, row for row.
@@ -2277,7 +2368,7 @@ end
 
 * ==== S11 P1.1a: Stylelists of style options across an expanded varlist ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S11") {
+if inlist("`only'", "", "S11") & `: list posof "S11" in w30_run' {
     display as text "S11 start " c(current_date) " " c(current_time)
     local s11_scheme "`c(scheme)'"
     set scheme s2color
@@ -2432,7 +2523,7 @@ end
 
 * ==== S12 P1.27: Drop-in command form and saving() grammar ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S12") {
+if inlist("`only'", "", "S12") & `: list posof "S12" in w30_run' {
     display as text "S12 start " c(current_date) " " c(current_time)
     // twoway's answers come from the fixture (scripts/
     // extract_twoway_command_form_truth.do), measured in batch.
@@ -2746,7 +2837,7 @@ end
 
 * ==== S13 P1.12b: Stata line-width ladder ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S13") {
+if inlist("`only'", "", "S13") & `: list posof "S13" in w30_run' {
     display as text "S13 start " c(current_date) " " c(current_time)
     local s13_scheme "`c(scheme)'"
     set scheme s2color
@@ -3071,7 +3162,7 @@ end
 
 * ==== S14 P1.17a: Bar widths and range caps ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S14") {
+if inlist("`only'", "", "S14") & `: list posof "S14" in w30_run' {
     display as text "S14 start " c(current_date) " " c(current_time)
     local bgd "`w30_work'/s14"
     capture mkdir "`bgd'"
@@ -3483,7 +3574,7 @@ end
 
 * ==== S15 P1.2a: Scheme chrome: titles, ticks, grid, economist axes ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S15") {
+if inlist("`only'", "", "S15") & `: list posof "S15" in w30_run' {
     display as text "S15 start " c(current_date) " " c(current_time)
     global S15_REPO "`c(pwd)'/.."
     local s15_full `"title("TTL") subtitle("SUB") note("NTE") caption("CAP") xtitle("XTL") ytitle("YTL")"'
@@ -3789,7 +3880,7 @@ end
 
 * ==== S16 P1.2b: Intensity as an opaque blend ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S16") {
+if inlist("`only'", "", "S16") & `: list posof "S16" in w30_run' {
     display as text "S16 start " c(current_date) " " c(current_time)
     global S16_REPO "`c(pwd)'/.."
     global S16_ALPHA "1"
@@ -4131,7 +4222,7 @@ end
 
 * ==== S17 P1.23b: Date and format text in keys and tooltips ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S17") {
+if inlist("`only'", "", "S17") & `: list posof "S17" in w30_run' {
     display as text "S17 start " c(current_date) " " c(current_time)
     // DK-01..DK-03: a date colour key, its levels and its cuts.
     sysuse sp500, clear
@@ -4441,7 +4532,7 @@ end
 
 * ==== S18 P1.5: Axis format fallbacks ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S18") {
+if inlist("`only'", "", "S18") & `: list posof "S18" in w30_run' {
     display as text "S18 start " c(current_date) " " c(current_time)
     local d "`w30_work'"
     // AF-20..AF-26 and AF-29: twoway's labels, then dash's writer on the
@@ -4871,7 +4962,7 @@ end
 
 * ==== S19 P1.16: Legend keys and default axis titles ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S19") {
+if inlist("`only'", "", "S19") & `: list posof "S19" in w30_run' {
     display as text "S19 start " c(current_date) " " c(current_time)
     global S19_WORK "`w30_work'"
     sysuse auto, clear
@@ -5110,7 +5201,7 @@ end
 
 * ==== S20 P1.1b: Per-series value lists ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S20") {
+if inlist("`only'", "", "S20") & `: list posof "S20" in w30_run' {
     display as text "S20 start " c(current_date) " " c(current_time)
     local s20_scheme "`c(scheme)'"
     set scheme s2color
@@ -5592,7 +5683,7 @@ end
 
 * ==== S21 P1.3a: natscale ticker and twoway margin on non-date axes ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S21") {
+if inlist("`only'", "", "S21") & `: list posof "S21" in w30_run' {
     display as text "S21 start " c(current_date) " " c(current_time)
     global S21_WORK "`w30_work'/s21"
     capture mkdir "${S21_WORK}"
@@ -5704,7 +5795,7 @@ end
 
 * ==== S22 P1.28a: r(filename) and the stale-graph note ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S22") {
+if inlist("`only'", "", "S22") & `: list posof "S22" in w30_run' {
     display as text "S22 start " c(current_date) " " c(current_time)
     quietly sysuse auto, clear
     set linesize 255
@@ -5809,7 +5900,7 @@ end
 
 * ==== S23 P1.26b: Served notes reach Stata ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S23") {
+if inlist("`only'", "", "S23") & `: list posof "S23" in w30_run' {
     display as text "S23 start " c(current_date) " " c(current_time)
     local s23ls = c(linesize)
     set linesize 255
@@ -6081,7 +6172,7 @@ end
 
 * ==== S24 P1.4a: Scheme opacity, histogram style and symbols reach every layer ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S24") {
+if inlist("`only'", "", "S24") & `: list posof "S24" in w30_run' {
     display as text "S24 start " c(current_date) " " c(current_time)
     global S24_WORK "`w30_work'"
     local s24_repo : environment DASH_REPO
@@ -6267,7 +6358,7 @@ end
 
 * ==== S25 P1.32: Render-time dependency guards ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S25") {
+if inlist("`only'", "", "S25") & `: list posof "S25" in w30_run' {
     display as text "S25 start " c(current_date) " " c(current_time)
     capture _s25_exit
     local rg01 = _rc
@@ -6325,7 +6416,7 @@ end
 
 * ==== S26 P1.22: function: closed by disposition ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S26") {
+if inlist("`only'", "", "S26") & `: list posof "S26" in w30_run' {
     display as text "S26 start " c(current_date) " " c(current_time)
     // FN-01: the thirteen expressions DROPIN P1.22 names are drawn from
     // Stata's points: stored == twoway's serset, and the saved page and the
@@ -6566,7 +6657,7 @@ end
 
 * ==== S27 P1.17b: twoway's default base and axis extent ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S27") {
+if inlist("`only'", "", "S27") & `: list posof "S27" in w30_run' {
     display as text "S27 start " c(current_date) " " c(current_time)
     global DB_WORK "`w30_work'"
     global DB_K 0
@@ -6683,7 +6774,7 @@ end
 
 * ==== S28 P1.15a: by() panel labels and overall text ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S28") {
+if inlist("`only'", "", "S28") & `: list posof "S28" in w30_run' {
     display as text "S28 start " c(current_date) " " c(current_time)
     local q = char(34)
 
@@ -6788,7 +6879,7 @@ if inlist("`only'", "", "S28") {
 
 * ==== S29 P1.11b: SMCL in graph text ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S29") {
+if inlist("`only'", "", "S29") & `: list posof "S29" in w30_run' {
     display as text "S29 start " c(current_date) " " c(current_time)
     local W "`w30_work'"
 
@@ -7185,7 +7276,7 @@ end
 
 * ==== S30 P1.13a: Stata colour grammar ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S30") {
+if inlist("`only'", "", "S30") & `: list posof "S30" in w30_run' {
     display as text "S30 start " c(current_date) " " c(current_time)
     global S30_REPO "`c(pwd)'/.."
     global S30_REGION "0"
@@ -7397,7 +7488,7 @@ end
 
 * ==== S31 P1.18a: Axis look sub-options ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S31") {
+if inlist("`only'", "", "S31") & `: list posof "S31" in w30_run' {
     display as text "S31 start " c(current_date) " " c(current_time)
     sysuse auto, clear
     local pg "`w30_work'/axl.html"
@@ -7706,7 +7797,7 @@ end
 
 * ==== S32 P1.14a: Named styles p1-p15 ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S32") {
+if inlist("`only'", "", "S32") & `: list posof "S32" in w30_run' {
     display as text "S32 start " c(current_date) " " c(current_time)
     global S32_REPO "`c(pwd)'/.."
     local s32_n = 0
@@ -7933,7 +8024,7 @@ end
 
 * ==== S33 P1.4b: Marker-label and colour-key chrome; unread directives retained ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S33") {
+if inlist("`only'", "", "S33") & `: list posof "S33" in w30_run' {
     display as text "S33 start " c(current_date) " " c(current_time)
     global S33_REPO "`c(pwd)'/.."
     local s33_home `"`c(pwd)'"'
@@ -7991,7 +8082,7 @@ if inlist("`only'", "", "S33") {
 
 * ==== S34 P1.25b: Stata's scheme lookup along the ado-path ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S34") {
+if inlist("`only'", "", "S34") & `: list posof "S34" in w30_run' {
     display as text "S34 start " c(current_date) " " c(current_time)
     display as text "S34 end " c(current_date) " " c(current_time)
 }
@@ -7999,7 +8090,7 @@ if inlist("`only'", "", "S34") {
 
 * ==== S35 P1.23a: Date positions on every axis ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S35") {
+if inlist("`only'", "", "S35") & `: list posof "S35" in w30_run' {
     display as text "S35 start " c(current_date) " " c(current_time)
     display as text "S35 end " c(current_date) " " c(current_time)
 }
@@ -8007,7 +8098,7 @@ if inlist("`only'", "", "S35") {
 
 * ==== S36 P1.14b: Other style names ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S36") {
+if inlist("`only'", "", "S36") & `: list posof "S36" in w30_run' {
     display as text "S36 start " c(current_date) " " c(current_time)
     display as text "S36 end " c(current_date) " " c(current_time)
 }
@@ -8015,7 +8106,7 @@ if inlist("`only'", "", "S36") {
 
 * ==== S37 P1.24: mlabvposition() and mlabtextstyle() ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S37") {
+if inlist("`only'", "", "S37") & `: list posof "S37" in w30_run' {
     display as text "S37 start " c(current_date) " " c(current_time)
     display as text "S37 end " c(current_date) " " c(current_time)
 }
@@ -8023,7 +8114,7 @@ if inlist("`only'", "", "S37") {
 
 * ==== S38 P1.20a: plotregion()/graphregion() styling ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S38") {
+if inlist("`only'", "", "S38") & `: list posof "S38" in w30_run' {
     display as text "S38 start " c(current_date) " " c(current_time)
     display as text "S38 end " c(current_date) " " c(current_time)
 }
@@ -8031,7 +8122,7 @@ if inlist("`only'", "", "S38") {
 
 * ==== S39 P1.21a: xline/yline positions, refusals and lstyle ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S39") {
+if inlist("`only'", "", "S39") & `: list posof "S39" in w30_run' {
     display as text "S39 start " c(current_date) " " c(current_time)
     display as text "S39 end " c(current_date) " " c(current_time)
 }
@@ -8039,7 +8130,7 @@ if inlist("`only'", "", "S39") {
 
 * ==== S40 P1.8a: connect() and cmissing() ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S40") {
+if inlist("`only'", "", "S40") & `: list posof "S40" in w30_run' {
     display as text "S40 start " c(current_date) " " c(current_time)
     display as text "S40 end " c(current_date) " " c(current_time)
 }
@@ -8047,7 +8138,7 @@ if inlist("`only'", "", "S40") {
 
 * ==== S41 P1.30: Verified bokeh window; internals fail closed ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S41") {
+if inlist("`only'", "", "S41") & `: list posof "S41" in w30_run' {
     display as text "S41 start " c(current_date) " " c(current_time)
     display as text "S41 end " c(current_date) " " c(current_time)
 }
@@ -8055,7 +8146,7 @@ if inlist("`only'", "", "S41") {
 
 * ==== S42 P1.7: Time-series operators in plot varlists ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S42") {
+if inlist("`only'", "", "S42") & `: list posof "S42" in w30_run' {
     display as text "S42 start " c(current_date) " " c(current_time)
     display as text "S42 end " c(current_date) " " c(current_time)
 }
@@ -8063,7 +8154,7 @@ if inlist("`only'", "", "S42") {
 
 * ==== S43 P1.13b: Default colour and opacity at every colour site ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S43") {
+if inlist("`only'", "", "S43") & `: list posof "S43" in w30_run' {
     display as text "S43 start " c(current_date) " " c(current_time)
     display as text "S43 end " c(current_date) " " c(current_time)
 }
@@ -8071,7 +8162,7 @@ if inlist("`only'", "", "S43") {
 
 * ==== S44 P1.3b: tsnatscale on %td-%ty default axes ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S44") {
+if inlist("`only'", "", "S44") & `: list posof "S44" in w30_run' {
     display as text "S44 start " c(current_date) " " c(current_time)
     display as text "S44 end " c(current_date) " " c(current_time)
 }
@@ -8079,7 +8170,7 @@ if inlist("`only'", "", "S44") {
 
 * ==== S45 P1.8b: recast() ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S45") {
+if inlist("`only'", "", "S45") & `: list posof "S45" in w30_run' {
     display as text "S45 start " c(current_date) " " c(current_time)
     display as text "S45 end " c(current_date) " " c(current_time)
 }
@@ -8087,7 +8178,7 @@ if inlist("`only'", "", "S45") {
 
 * ==== S46 P1.31a: Served session capacity and memory ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S46") {
+if inlist("`only'", "", "S46") & `: list posof "S46" in w30_run' {
     display as text "S46 start " c(current_date) " " c(current_time)
     display as text "S46 end " c(current_date) " " c(current_time)
 }
@@ -8095,7 +8186,7 @@ if inlist("`only'", "", "S46") {
 
 * ==== S47 P1.20b: Plot-region margin and inner box ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S47") {
+if inlist("`only'", "", "S47") & `: list posof "S47" in w30_run' {
     display as text "S47 start " c(current_date) " " c(current_time)
     display as text "S47 end " c(current_date) " " c(current_time)
 }
@@ -8103,7 +8194,7 @@ if inlist("`only'", "", "S47") {
 
 * ==== S48 P1.15b: by() grid and size ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S48") {
+if inlist("`only'", "", "S48") & `: list posof "S48" in w30_run' {
     display as text "S48 start " c(current_date) " " c(current_time)
     display as text "S48 end " c(current_date) " " c(current_time)
 }
@@ -8111,7 +8202,7 @@ if inlist("`only'", "", "S48") {
 
 * ==== S49 P1.9a: horizontal drawn ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S49") {
+if inlist("`only'", "", "S49") & `: list posof "S49" in w30_run' {
     display as text "S49 start " c(current_date) " " c(current_time)
     display as text "S49 end " c(current_date) " " c(current_time)
 }
@@ -8119,7 +8210,7 @@ if inlist("`only'", "", "S49") {
 
 * ==== S50 P1.21b: xline/yline extend, noextend and style() ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S50") {
+if inlist("`only'", "", "S50") & `: list posof "S50" in w30_run' {
     display as text "S50 start " c(current_date) " " c(current_time)
     display as text "S50 end " c(current_date) " " c(current_time)
 }
@@ -8127,7 +8218,7 @@ if inlist("`only'", "", "S50") {
 
 * ==== S51 P1.6: tsline time-axis options ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S51") {
+if inlist("`only'", "", "S51") & `: list posof "S51" in w30_run' {
     display as text "S51 start " c(current_date) " " c(current_time)
     display as text "S51 end " c(current_date) " " c(current_time)
 }
@@ -8135,7 +8226,7 @@ if inlist("`only'", "", "S51") {
 
 * ==== S52 P1.18b: The add sub-option ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S52") {
+if inlist("`only'", "", "S52") & `: list posof "S52" in w30_run' {
     display as text "S52 start " c(current_date) " " c(current_time)
     display as text "S52 end " c(current_date) " " c(current_time)
 }
@@ -8143,7 +8234,7 @@ if inlist("`only'", "", "S52") {
 
 * ==== S53 P1.15c: Shared axes and keys under by() ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S53") {
+if inlist("`only'", "", "S53") & `: list posof "S53" in w30_run' {
     display as text "S53 start " c(current_date) " " c(current_time)
     display as text "S53 end " c(current_date) " " c(current_time)
 }
@@ -8151,7 +8242,7 @@ if inlist("`only'", "", "S53") {
 
 * ==== S54 P1.28b: Client-side Save as SVG ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S54") {
+if inlist("`only'", "", "S54") & `: list posof "S54" in w30_run' {
     display as text "S54 start " c(current_date) " " c(current_time)
     display as text "S54 end " c(current_date) " " c(current_time)
 }
@@ -8159,7 +8250,7 @@ if inlist("`only'", "", "S54") {
 
 * ==== S55 P1.9b: horizontal after a filter move ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S55") {
+if inlist("`only'", "", "S55") & `: list posof "S55" in w30_run' {
     display as text "S55 start " c(current_date) " " c(current_time)
     display as text "S55 end " c(current_date) " " c(current_time)
 }
@@ -8167,7 +8258,7 @@ if inlist("`only'", "", "S55") {
 
 * ==== S56 P1.10: text() and ttext() annotations ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S56") {
+if inlist("`only'", "", "S56") & `: list posof "S56" in w30_run' {
     display as text "S56 start " c(current_date) " " c(current_time)
     display as text "S56 end " c(current_date) " " c(current_time)
 }
@@ -8175,7 +8266,7 @@ if inlist("`only'", "", "S56") {
 
 * ==== S57 P1.31b: Served recompute off the event loop ====
 local only : env WP30_ONLY
-if inlist("`only'", "", "S57") {
+if inlist("`only'", "", "S57") & `: list posof "S57" in w30_run' {
     display as text "S57 start " c(current_date) " " c(current_time)
     display as text "S57 end " c(current_date) " " c(current_time)
 }

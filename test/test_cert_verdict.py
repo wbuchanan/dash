@@ -223,6 +223,24 @@ class TestTheShardedVerdict:
         assert not ok
         assert any("not 1 to 2 of 2" in l for l in lines), lines
 
+    def test_a_star_script_reports_once_in_every_shard(self):
+        runner = (_RUNNER3 + "local _cert_shards ///\n"
+                  "    test_c.cscript  9.0 0  * * *\n")
+        assert V.every_shard_scripts(runner) == ["test_c.cscript"]
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript"),
+                           ("PASS", "test_c.cscript")])], runner)
+        assert ok, lines
+        ok, lines = V.verdict_logs(
+            [_shard(1, 2, [("PASS", "test_a.cscript"),
+                           ("PASS", "test_c.cscript")]),
+             _shard(2, 2, [("PASS", "test_b.cscript")])], runner)
+        assert not ok
+        assert ("  log 2 never reported test_c.cscript, which runs in every "
+                "shard") in lines
+
     def test_a_log_that_names_no_shard_fails_it(self):
         ok, lines = V.verdict_logs(
             [_log([("PASS", "test_a.cscript"), ("PASS", "test_c.cscript")]),

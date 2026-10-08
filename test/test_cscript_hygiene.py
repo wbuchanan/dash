@@ -1121,7 +1121,8 @@ def _wp30_blocks(src):
         code = [ln.strip() for ln in lines[first:last - 1]
                 if ln.strip() and not ln.strip().startswith(("//", "*"))]
         if code[:2] != ["local only : env WP30_ONLY",
-                        'if inlist("`only\'", "", "%s") {' % sec]:
+                        'if inlist("`only\'", "", "%s") & `: list posof '
+                        '"%s" in w30_run\' {' % (sec, sec)]:
             bad.append("%s (line %d) is not gated by WP30_ONLY=%s"
                        % (sec, first, sec))
         timed = ['display as text "%s %s " c(current_date) " " '
@@ -1148,7 +1149,9 @@ class TestTheWp30TruthScript:
     def test_the_scaffold_is_in_order(self):
         text = _read(_WP30_TRUTH)
         order = ['cscript "WP-30 truth', "SKIP: Python not available.",
-                 'do "cert_helpers.do"', 'do "cert_svg.do"', "* ==== S01 ",
+                 'do "cert_helpers.do"', 'do "cert_svg.do"',
+                 "// ---- parts: begin", "local w30_sh : environment "
+                 "DASH_CERT_SHARD", "// ---- parts: end", "* ==== S01 ",
                  "local only : env WP30_ONLY", "* ==== end S01 ====",
                  "* ==== S02 ", "* ==== end S57 ====", _W30_MARK,
                  "test_wp30_truth: ALL CHECKS PASSED"]
@@ -1167,12 +1170,13 @@ class TestTheWp30TruthScript:
     def test_the_block_reader(self):
         def block(sec, head, body=""):
             return ("* ==== %s %s ====\nlocal only : env WP30_ONLY\n"
-                    'if inlist("`only\'", "", "%s") {\n'
+                    'if inlist("`only\'", "", "%s") & `: list posof "%s" '
+                    'in w30_run\' {\n'
                     '    display as text "%s start " c(current_date) " " '
                     "c(current_time)\n%s"
                     '    display as text "%s end " c(current_date) " " '
                     "c(current_time)\n}\n* ==== end %s ====\n"
-                    % (sec, head, sec, sec, body, sec, sec))
+                    % (sec, head, sec, sec, sec, body, sec, sec))
         good = ('cscript "x"\n' + block("S01", "scaffold: smoke",
                                         "    // a case\n")
                 + "\n" + block("S10", "P1.19: abbreviations")
@@ -1183,7 +1187,9 @@ class TestTheWp30TruthScript:
         moved = good.replace(_W30_MARK + "\n", "")
         second = block("S10", "P1.20a: more")
         for text, says in (
-                (good.replace('"S10") {', '"S01") {'), "not gated"),
+                (good.replace('"S10") &', '"S01") &'), "not gated"),
+                (good.replace('"S10" in w30_run', '"S01" in w30_run'),
+                 "not gated"),
                 (good.replace("* ==== end S10 ====\n", ""), "never closed"),
                 (good.replace("* ==== end S01 ====\n", ""),
                  "not closed before"),

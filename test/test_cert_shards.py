@@ -62,10 +62,32 @@ class TestTheRealTable:
         seconds = {r[0]: r[1] for r in rows}
         for n in S.COUNTS:
             shards = {r[0]: r[3][n] for r in rows}
-            assert set(shards.values()) == set(range(1, n + 1))
+            assert set(shards.values()) - {S.EVERY} == set(range(1, n + 1))
             ld = S.loads(seconds, shards, n)
             # Within a tenth of each other: the longest single unit (the
             # fixed-port scripts, about 110 s) is under a shard's share.
+            assert max(ld) <= 1.1 * min(ld), (n, ld)
+
+
+    def test_the_wp30_script_runs_in_every_shard_split_by_its_blocks(self):
+        rows = {r[0]: r[3] for r in S.read_table(_runner())}
+        assert rows["test_wp30_truth.cscript"] == {n: S.EVERY
+                                                   for n in S.COUNTS}
+        assert [s for s, k in rows.items() if S.EVERY in k.values()] == [
+            "test_wp30_truth.cscript"]
+        with open(S.WP30, encoding="utf-8") as fh:
+            text = fh.read()
+        secs = S.wp30_seconds(text)
+        ids = set(re.findall(r"^\* ==== (S\d+) ", text, re.M))
+        assert ids == {"S%02d" % i for i in range(1, 58)}
+        for n in S.COUNTS:
+            parts = S.wp30_parts(text, n)
+            # Every block in exactly one part; every part a timed block.
+            assert set(parts) == ids
+            assert {k for b, k in parts.items() if secs.get(b, 0) > 0} == \
+                set(range(1, n + 1)), n
+            ld = [sum(secs.get(b, 0) for b in parts if parts[b] == k)
+                  for k in range(1, n + 1)]
             assert max(ld) <= 1.1 * min(ld), (n, ld)
 
 
@@ -89,6 +111,23 @@ class TestTheRules:
     ])
     def test_what_serves_on_a_fixed_port(self, text, serves):
         assert S.serves_on_a_fixed_port(text) is serves
+
+    @pytest.mark.parametrize("text,splits", [
+        ("local w30_sh : environment DASH_CERT_SHARD\n", True),
+        ("    local k : env DASH_CERT_SHARD\n", True),
+        ("// local k : env DASH_CERT_SHARD\n", False),
+        ("local k : env DASH_CERT_SHARDS\n", False),
+        ('display "DASH_CERT_SHARD"\n', False),
+    ])
+    def test_what_splits_itself(self, text, splits):
+        assert S.splits_itself(text) is splits
+
+    def test_a_split_script_is_in_every_shard_its_seconds_shared(self):
+        seconds = {"a": 10, "w": 6, "b": 4, "c": 2}
+        got = S.assign(seconds, set(), 2, {"w"})
+        # w (3 a shard) first; a (10) to 1, b (4) to 2, c (2) to 2.
+        assert got == {"w": "*", "a": 1, "b": 2, "c": 2}
+        assert S.loads(seconds, got, 2) == [13, 9]
 
     def test_logical_lines(self):
         text = ("* a comment\nlocal a 1 // note\nlocal b ///\n  2 ///\n"
@@ -114,9 +153,11 @@ class TestTheRules:
     def test_seconds_from_a_timed_log(self):
         log = ("[ TIME] test_a.cscript timer=    2.500s wall=     3s\n"
                "[ TIME] test_b.cscript timer=        .s wall=     8s\n"
-               ". display as text \"[ TIME] test_c.cscript timer=\"\n")
+               ". display as text \"[ TIME] test_c.cscript timer=\"\n"
+               # A split script, timed in two shards' logs: their sum.
+               "[ TIME] test_b.cscript timer=    1.000s wall=     1s\n")
         assert S.seconds_from_log(log) == {"test_a.cscript": 2.5,
-                                           "test_b.cscript": 8.0}
+                                           "test_b.cscript": 9.0}
 
     def test_the_table_reads_back(self):
         seconds = {"test_a.cscript": 3.0, "test_b.cscript": 1.5,
@@ -211,6 +252,19 @@ class TestTheCommandLine:
         r = self._run(tree, "check")
         assert r.returncode == 1 and "fixed-port marks" in r.stdout
 
+    def test_check_finds_a_wrong_every_mark(self, tmp_path):
+        tree, log = self._tree(tmp_path)
+        (tree / "test" / "test_b.cscript").write_text(
+            "local k : environment DASH_CERT_SHARD\n")
+        assert self._run(tree, "write", str(log)).returncode == 0
+        path = tree / "test" / "run_all_cscripts.do"
+        assert re.search(r"test_b\.cscript\s+1\.0 0  \* \* \* ///$",
+                         path.read_text(), re.M)
+        assert self._run(tree, "check").returncode == 0
+        (tree / "test" / "test_b.cscript").write_text("display 1\n")
+        r = self._run(tree, "check")
+        assert r.returncode == 1 and "* marks" in r.stdout
+
     def test_write_needs_every_script_timed(self, tmp_path):
         tree, log = self._tree(tmp_path)
         log.write_text("[ TIME] test_a.cscript timer=   10.000s wall=  10s\n")
@@ -267,6 +321,11 @@ class TestTheRunnerRunsOnlyItsShard:
         # Before the first script.
         assert src.index("// ---- selection: end ----") < \
             src.index('display as text "[ RUN ]')
+
+    def test_a_star_row_runs_in_every_shard(self):
+        sel = _runner()
+        assert ('    if "`_cert_at\'" == "*" | "`_cert_at\'" == "`_cert_k\'" '
+                "local _cert_run `_cert_run' `_cert_s'") in sel
 
     def test_the_log_says_which_shard_and_plan(self):
         src = _runner()
