@@ -373,6 +373,9 @@ COVERAGE = {
         # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
         # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)
+        "_dash_recast_opt": ("test_twoway_option_parity.cscript:RC-01", "test_twoway_option_parity.cscript:RC-13"),
+        "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),
+        "_dash_recast_named": ("test_twoway_option_parity.cscript:RC-07",),
         # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
         # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)

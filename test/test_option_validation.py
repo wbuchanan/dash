@@ -483,8 +483,12 @@ class TestTheNewProgramsKeepTheirConstraints:
     def test_validate_opts_follows_fold_bw(self):
         src = _ado()
         # WP-30 P1.8a: both read the type connect() makes (_cn_ptype).
-        i = src.index('_dash_fold_bw "`_cn_ptype\'"')
-        j = src.index('_dash_validate_opts "`_cn_ptype\'"')
+        # Flipped (WP-30 P1.8b): both read _rc_own, which is _cn_ptype but
+        # a derived layer's own type under recast() (a recast lfit's
+        # options are still lfit's), where _cn_ptype was wrong because the
+        # recast target would judge them (recast_truth.json).
+        i = src.index('_dash_fold_bw "`_rc_own\'"')
+        j = src.index('_dash_validate_opts "`_rc_own\'"')
         assert i < j, "_dash_validate_opts must run after _dash_fold_bw"
 
     def test_the_old_level_text_is_gone_from_the_plot_parser(self):

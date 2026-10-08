@@ -139,7 +139,6 @@ PLOT_VALUES = {
     "r1title": ("r1", "rA", "scatter"),
     "r2title": ("r2", "rB", "scatter"),
     "range": ("10 30", "12 28", "kdensity"),
-    "recast": ("line", "area", "scatter"),
     "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
     # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
@@ -255,7 +254,8 @@ class TestTheListIsCoveredAndHonest:
         # mlabvposition() per row (mlabvpos_truth.json A).
         # 47 -> 46: P1.24 mlabvposition() honoured
         # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
-        assert len(_plot_pending()) == 45, sorted(_plot_pending())
+        # 45 -> 44: P1.8b recast() honoured
+        assert len(_plot_pending()) == 44, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -401,7 +401,11 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            "sort1",
            # cmissings() is twoway's other spelling of cmissing(), copied
            # onto it before the spec is written (WP-30 P1.8a).
-           "cmissings"}
+           "cmissings",
+           # recastas() and type() are twoway's other spellings of
+           # recast(), resolved into it before the spec is written (WP-30
+           # P1.8b; test_twoway_option_parity.cscript RC-05).
+           "recastas", "type"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -429,6 +433,10 @@ LIVE_VALUES = {
     "alstyle": ({"alstyle": "p3"}, {"alstyle": "p7"}, "bar", {}),
     "astyle": ({"astyle": "p3"}, {"astyle": "p7"}, "area", {}),
     "bands": ({"bands": "3"}, {"bands": "6"}, "mband", {}),
+    # Flipped (WP-30 P1.8b): recast() was named and inert on scatter
+    # (PLOT_VALUES), which was wrong because twoway draws the target
+    # (recast_truth.json); a derived layer draws its points as it.
+    "recast": ({"recast": "scatter"}, {"recast": "line"}, "lfit", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
     "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
     "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
@@ -668,7 +676,8 @@ class TestEveryDeclaredOptionIsClassified:
         # bstyle(), blstyle(), clstyle() and p() declared.
         # 177 -> 180: P1.14b dstyle dlstyle bmlinestyle declared and named
         # 180 -> 181: P1.8a cmissings() declared
-        assert len(_declared_plot()) == 181, len(_declared_plot())
+        # 181 -> 183: P1.8b recastas() and type() declared
+        assert len(_declared_plot()) == 183, len(_declared_plot())
         assert len(_declared_graph()) == 72, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

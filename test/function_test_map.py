@@ -1044,6 +1044,7 @@ FUNCTIONS = {
  '_dash_ts_pair': 'test/test_date_axis_ticks.py::TestTheModelIsUnchanged::test_the_pair_is_cpythons_order',
  '_dash_ts_kind': 'test/test_date_axis_ticks.py::TestTheRangeOption::test_the_kinds',
  # WP-30 S45 (P1.8b): recast() (P1.8 part b)
+ 'GlyphMapper._dash_draw_xy_as': 'test/test_recast.py::TestTheDrawAsHelper::test_each_target',
  # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
  # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
  # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)

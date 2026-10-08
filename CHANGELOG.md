@@ -345,7 +345,7 @@ and now matches Stata.
 
 - `connect()` and `cmissing()` are drawn, in both modes and after filter moves (both were named in the note and ignored): `dash scatter y x, c(l)` drew markers only and now draws twoway's connected plot, its `clcolor()`, `clwidth()` and `sort` honoured; `c(J)`/`c(stairstep)` and `c(stepstair)` drew a straight line and now draw stairs, every point keeping its tooltip; `c(L)` now breaks the line wherever x drops; `c(i)` hides the line and keeps the key; `cmissing(n)` drew a bridged line and now breaks it at each missing value, on line, connected, tsline, rline, rconnected, tsrline, scatteri and a scatter given `connect()`; the fits take every `connect()` style (lfit steps over twoway's three points); per-y lists and `cmissings()` are read as twoway reads them. `function y=sqrt(x^2-1), range(-2 2)` drew a gap over the missing middle and now bridges it as twoway does (`cmissing(n)` breaks it). A linked connected layer with a missing value now shows the link selection on its markers. (WP-30, P1.8a)
 
-<!-- WP-30 P1.8b -->
+- `recast()` is drawn: `dash scatter y x, recast(line)` drew markers and named the option, and now draws `line y x`; `kdensity x, recast(area)` drew a line and now draws an area; `lfit y x, recast(scatter)` drew a line and now draws the fitted points as markers; `recastas()` and `type()` are read as its synonyms, and an out-of-group or unknown name falls back as twoway does (a yx type to scatter, a range type to rspike, a pc type to pcspike) with twoway's two notes. (WP-30, P1.8b)
 
 <!-- WP-30 P1.9a -->
 
@@ -745,7 +745,7 @@ and now matches Stata.
 
 - `connect()` and `cmissing()` are checked as twoway checks them (each was rc 0 with a note before): a misplaced `..` is refused (`connect(l .. J):  invalid syntax`, `cmissings(n .. y):  invalid syntax`, r(198)); an unknown `cmissing()` value is refused on the types twoway refuses it on, after twoway's two notes (` not allowed`, r(101)), and noted elsewhere; an unknown `connect()` name prints twoway's note and draws direct; `clwidth()` out of range on a scatter given `connect()` is refused (`gm_linewidth must be between 0.000 and  1.0e+04`, r(198)). (WP-30, P1.8a)
 
-<!-- WP-30 P1.8b -->
+- `recast()`, `recastas()` and `type()` on lfitci, qfitci, lpolyci and fpfitci are refused as twoway refuses them (`recastas() option not allowed`, or `type() option not allowed`, r(198)), where dash took them with a note; `rec()`, `reca()` and `recas()` are refused with `option rec() not allowed`, r(198). (WP-30, P1.8b)
 
 <!-- WP-30 P1.9a -->
 

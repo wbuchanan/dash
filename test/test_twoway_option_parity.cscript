@@ -3991,6 +3991,235 @@ capture program drop _zcm_spec
 quietly tsset, clear
 
 // ----------------------------------------------------------------
+// RC: recast(), read as twoway reads it (WP-30 P1.8b)
+// twoway's answers are test/fixtures/recast_truth.json's probes, from
+// scripts/extract_recast_truth.do (StataNow 19.5): the words below are
+// its log lines.  dash runs here.
+// ----------------------------------------------------------------
+capture program drop _zrc_spec
+program define _zrc_spec, rclass
+    args needle
+    mata: st_local("_zf", strofreal(strpos(st_global("dash_json_zqtp"), st_local("needle")) > 0))
+    return scalar found = `_zf'
+end
+local q = char(34)
+local nyn "(note:  yxtype not found in scheme, default attributes used)"
+
+// RC-01: the ci fits refuse recast(), recastas() and type(), r(198).
+local bad ""
+foreach tt in lfitci qfitci lpolyci fpfitci {
+    foreach o in recast recastas type {
+        _ztp_run `"dash `tt' mpg weight, `o'(line) name(zqtp)"' "`logfile'"
+        local rc = r(rc)
+        local w "recastas"
+        if "`o'" == "type" local w "type"
+        _ztp_logged "`logfile'" "`w'() option not allowed"
+        if `rc' != 198 | !r(found) local bad "`bad' `tt'/`o'"
+    }
+}
+if "`bad'" != "" local faillist "`faillist' RC-01"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-01 FAIL:`bad'"
+else display as text "RC-01 PASS: recast(), recastas() and type() on the ci fits are r(198) in twoway's words"
+
+// RC-02: rec() is "option rec() not allowed", r(198).
+_ztp_run `"dash scatter mpg weight, rec(line) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "option rec() not allowed"
+if `rc' != 198 | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-02"
+    display as error "RC-02 FAIL: rec(line) r(`rc')"
+}
+else display as text "RC-02 PASS: rec() refused r(198) as twoway refuses it"
+
+// RC-03: a scatter recast as line is a line, the typed type kept.
+local bad ""
+_ztp_run `"dash scatter mpg weight, recast(line) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' rc/note"
+_zrc_spec `"{`q'type`q':`q'line`q',`q'recast_from`q':`q'scatter`q',`q'yvar`q':`q'mpg`q'"'
+if !r(found) local bad "`bad' spec"
+_zrc_spec `"`q'recast`q':"'
+if r(found) local bad "`bad' recast-key"
+if "`bad'" != "" local faillist "`faillist' RC-03"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-03 FAIL:`bad'"
+else display as text "RC-03 PASS: scatter, recast(line) is written as a line"
+
+// RC-04: fallbacks with twoway's two notes (probes FB-*).
+local bad ""
+foreach row in "line mpg weight, recast(rline)|scatter|rline|yxtype" ///
+               "rline lo hi weight, recast(pcspike)|rspike|pcspike|y2xtype" ///
+               "pcspike mpg weight turn length, recast(line)|pcspike|line|yxyxtype" ///
+               "function y=x, range(1 5) recast(rline)|function|rline|functiontype" {
+    gettoken cmd row : row, parse("|")
+    gettoken _p row : row, parse("|")
+    gettoken want row : row, parse("|")
+    gettoken _p row : row, parse("|")
+    gettoken nm row : row, parse("|")
+    gettoken _p cls : row, parse("|")
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) local bad "`bad' `cmd'/rc"
+    _ztp_logged "`logfile'" "(note:  named style `nm' not found in class `cls', default attributes used)"
+    if !r(found) local bad "`bad' `cmd'/note1"
+    _ztp_logged "`logfile'" "(note:  `cls' not found in scheme, default attributes used)"
+    if !r(found) local bad "`bad' `cmd'/note2"
+    _zrc_spec `"{`q'type`q':`q'`want'`q'"'
+    if !r(found) local bad "`bad' `cmd'/type"
+}
+if "`bad'" != "" local faillist "`faillist' RC-04"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-04 FAIL:`bad'"
+else display as text "RC-04 PASS: out-of-class names fall back with twoway's two notes"
+
+// RC-05: precedence -- recast()/recastas() over type(), rightmost of each.
+local bad ""
+foreach row in "recast(line) type(bar)|line" "type(bar) recast(line)|line" ///
+               "recastas(bar) recast(line)|line" "recast(line) recast(bar)|bar" ///
+               "type(line) type(bar)|bar" "recasta(line)|line" "ty(line)|line" {
+    gettoken o row : row, parse("|")
+    local want = substr("`row'", 2, .)
+    _ztp_run `"dash scatter mpg weight, `o' name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _zrc_spec `"{`q'type`q':`q'`want'`q',`q'recast_from`q'"'
+    if `rc' | !r(found) local bad "`bad' `o'"
+}
+if "`bad'" != "" local faillist "`faillist' RC-05"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-05 FAIL:`bad'"
+else display as text "RC-05 PASS: recast() and recastas() beat type(), the rightmost copy wins"
+
+// RC-06: spellings and case (probes SP-*).
+local bad ""
+foreach row in "scatter mpg weight, recast(li)|line|" "line mpg weight, recast(sc)|scatter|" ///
+               "scatter mpg weight, recast(co)|connected|" "scatter mpg weight, recast(b)|bar|" ///
+               "rline lo hi weight, recast(rsc)|rscatter|" "scatter mpg weight, recast(rsc)|scatter|rsc" ///
+               "rline lo hi weight, recast(rbarm)|rbar|" ///
+               "pcspike mpg weight turn length, recast(pcbar)|pcbarrow|" ///
+               "pcspike mpg weight turn length, recast(pccaps)|pccapsym|" ///
+               "pcspike mpg weight turn length, recast(pcl)|pcspike|pcline" ///
+               "scatter mpg weight, recast(LINE)|scatter|LINE" "line mpg weight, recast(l)|scatter|l" {
+    gettoken cmd row : row, parse("|")
+    gettoken _p row : row, parse("|")
+    gettoken want row : row, parse("|")
+    local nm = substr("`row'", 2, .)
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) local bad "`bad' `cmd'/rc"
+    _zrc_spec `"{`q'type`q':`q'`want'`q'"'
+    if !r(found) local bad "`bad' `cmd'/type"
+    _ztp_logged "`logfile'" "(note:  named style `nm' not found in class"
+    if "`nm'" != "" & !r(found) local bad "`bad' `cmd'/note"
+    if "`nm'" == "" {
+        _ztp_logged "`logfile'" "(note:  named style"
+        if r(found) local bad "`bad' `cmd'/a-note"
+    }
+}
+if "`bad'" != "" local faillist "`faillist' RC-06"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-06 FAIL:`bad'"
+else display as text "RC-06 PASS: twoway's spellings by class, case-sensitive"
+
+// RC-07: dot is silent; pci and histogram's range targets are named.
+local bad ""
+_ztp_run `"dash dot mpg weight, recast(line) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' dot"
+_zrc_spec `"{`q'type`q':`q'dot`q'"'
+if !r(found) local bad "`bad' dot/type"
+foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)" "histogram mpg, recast(rline)" {
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) | !r(note) local bad "`bad' `cmd'"
+    _ztp_logged "`logfile'" "recast()"
+    if !r(found) local bad "`bad' `cmd'/named"
+}
+if "`bad'" != "" local faillist "`faillist' RC-07"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-07 FAIL:`bad'"
+else display as text "RC-07 PASS: dot ignores recast() silently; pci and histogram's range targets are named"
+
+// RC-08: one value for every y; a two-name value is an unknown name.
+local bad ""
+_ztp_run `"dash scatter mpg turn weight, recast(line line) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_zrc_spec `"{`q'type`q':`q'line`q',`q'recast_from`q':`q'scatter`q',`q'yvar`q':`q'turn`q'"'
+if `rc' | !r(found) local bad "`bad' line-line"
+_ztp_run `"dash scatter mpg turn weight, recast(line scatter) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "`nyn'"
+if `rc' | !r(found) local bad "`bad' line-scatter/note"
+_zrc_spec `"{`q'type`q':`q'line`q'"'
+if r(found) local bad "`bad' line-scatter/type"
+if "`bad'" != "" local faillist "`faillist' RC-08"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-08 FAIL:`bad'"
+else display as text "RC-08 PASS: recast() is one value for every y"
+
+// RC-09: tsline recast joins in time order.
+quietly tsset t
+_ztp_run `"dash tsline mpg, recast(connected) name(zqtp)"' "`logfile'"
+_zrc_spec `"{`q'type`q':`q'connected`q',`q'recast_from`q':`q'tsline`q'"'
+local f1 = r(found)
+_zrc_spec `"`q'sortvars`q':`q't`q'"'
+if !`f1' | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-09"
+    display as error "RC-09 FAIL: tsline, recast(connected)"
+}
+else display as text "RC-09 PASS: tsline, recast(connected) is connected in time order"
+quietly tsset, clear
+
+// RC-10: a range type cast to a yx name draws its first bound.
+_ztp_run `"dash rline lo hi weight, recast(line) name(zqtp)"' "`logfile'"
+_zrc_spec `"{`q'type`q':`q'line`q',`q'recast_from`q':`q'rline`q',`q'yvar`q':`q'lo`q',`q'xvar`q':`q'weight`q'"'
+local f1 = r(found)
+_zrc_spec `"`q'yvar2`q'"'
+if !`f1' | r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-10"
+    display as error "RC-10 FAIL: rline, recast(line)"
+}
+else display as text "RC-10 PASS: rline, recast(line) is a line of the first bound"
+
+// RC-11: a derived layer keeps its type and records the target.
+local bad ""
+_ztp_run `"dash lfit mpg weight, recast(scatter) name(zqtp)"' "`logfile'"
+_zrc_spec `"{`q'type`q':`q'lfit`q',`q'yvar`q'"'
+if !r(found) local bad "`bad' type"
+_zrc_spec `"`q'recast`q':`q'scatter`q'"'
+if !r(found) local bad "`bad' target"
+_ztp_run `"dash lfit mpg weight, recast(rline) name(zqtp)"' "`logfile'"
+_ztp_logged "`logfile'" "`nyn'"
+if !r(found) local bad "`bad' rline/note"
+_zrc_spec `"`q'recast`q':`q'scatter`q'"'
+if !r(found) local bad "`bad' rline/target"
+if "`bad'" != "" local faillist "`faillist' RC-11"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-11 FAIL:`bad'"
+else display as text "RC-11 PASS: lfit, recast(scatter) keeps lfit and is drawn as scatter"
+
+// RC-12: connect() judges the drawn type (twoway's yxview order).
+_ztp_run `"dash line mpg weight, recast(scatter) c(l) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_zrc_spec `"{`q'type`q':`q'connected`q',`q'recast_from`q':`q'line`q'"'
+if `rc' | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-12"
+    display as error "RC-12 FAIL: line, recast(scatter) c(l)"
+}
+else display as text "RC-12 PASS: line, recast(scatter) c(l) is connected"
+
+// RC-13: each later step judges the right type.
+local bad ""
+_ztp_run `"dash lfit mpg weight, recast(scatter) msymbol(O) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' lfit/msymbol"
+_ztp_run `"dash scatter mpg weight, recast(line) sort name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' scatter/sort"
+if "`bad'" != "" local faillist "`faillist' RC-13"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-13 FAIL:`bad'"
+else display as text "RC-13 PASS: a recast layer's options are judged on the drawn type"
+capture program drop _zrc_spec
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 // twoway's answers: a question the fixture could not answer, or (with

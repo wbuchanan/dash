@@ -669,10 +669,16 @@ class TestTheAdoText:
         seg = ado[ado.index("_dash_opts_repeats _dash_parse_plot_opts "
                             "`ptype'"):]
         assert seg.index("_dash_connect_opt") < seg.index("_dash_fold_bw")
-        for call in ("_dash_fold_bw", "_dash_validate_opts",
-                     "_dash_stylelist_check", "_dash_fold_typed",
+        # Flipped (WP-30 P1.8b): _dash_fold_bw and _dash_validate_opts
+        # read _rc_own, _cn_ptype but a recast derived layer's own type;
+        # _cn_ptype there was wrong because the recast target would judge
+        # the layer's own options (recast_truth.json).
+        for call in ("_dash_stylelist_check", "_dash_fold_typed",
                      "_dash_sort_opt"):
             assert '%s "`_cn_ptype\'"' % call in ado, call
+        for call in ("_dash_fold_bw", "_dash_validate_opts"):
+            assert '%s "`_rc_own\'"' % call in ado, call
+        assert 'local _rc_own "`_cn_ptype\'"' in ado
         assert '"type":"`_yt\'"' in ado
         mata = _read("dash_parse.mata")
         keys = mata[mata.index("string scalar _dash_stylelist_keys()"):]

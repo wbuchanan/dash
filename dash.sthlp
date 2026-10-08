@@ -2709,6 +2709,29 @@ honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
 r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
+{phang}{ul:Recast.}  {opt recast(plottype)}, and its synonyms
+{opt recastas(plottype)} and {opt type(plottype)}, are read as
+{cmd:twoway} reads them: {cmd:recast()} and {cmd:recastas()} win over
+{cmd:type()} in either order, the rightmost copy wins, and one name
+serves every y variable.  A {cmd:scatter},
+{cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar}, {cmd:spike},
+{cmd:dropline}, range, {cmd:pc} or time-series layer is drawn as the
+type named, as {cmd:twoway} draws it; a range type named as a yx type
+draws its first bound, and {cmd:tsline} and {cmd:tsrline} still join in
+time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
+{cmd:histogram} and {cmd:scatteri} keep their computed points and draw
+them as {cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area},
+{cmd:bar} (one x unit wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},
+keyed as the layer is keyed without it; on the saved page a recast fit
+or density is marked after a filter move, as the fits are.  The
+spellings are {cmd:twoway}'s, case and all; a name outside the source's
+class prints {cmd:twoway}'s two notes and falls back -- a yx type to
+{cmd:scatter}, a range type to {cmd:rspike}, a {cmd:pc} type to
+{cmd:pcspike}, {cmd:function} to its own line.  {cmd:dot} ignores
+{cmd:recast()}.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
+{cmd:fpfitci} the three are refused, r(198), as {cmd:twoway} refuses
+them, and so is a spelling of {cmd:recast()} shorter than its name.
+
 {pstd}
 {it:Legend keys and default axis titles.}  Each layer is keyed as
 {cmd:twoway} keys it: a data layer by its y variable's label, or its
@@ -4732,7 +4755,9 @@ disagree in either direction.
     {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci},
     {cmd:qfitci}), and {opt connect()} other than direct on {cmd:rarea}
     -- see {ul:Connecting and missing values} under the plot types.
-    {opt recast(plottype)} -- name the plot type you want directly.
+    {cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}, and a range type or
+    an unknown name on {cmd:histogram} -- see {ul:Recast} under
+    Statistical Layer Options.
     {opt play(recordingname)} -- there is no graph editor to replay.
     {opt text(# # "string")} -- use {cmd:note()} or {cmd:caption()}.
 

@@ -378,6 +378,10 @@ def opt_cmd(abb, name):
     tok = opt_token(abb, name)
     if name == "name":
         return "scatter mpg weight, " + tok
+    # recast() reaches the spec as options.recast on a derived layer; on
+    # scatter it rewrites the type (WP-30 P1.8b).
+    if name == "recast":
+        return "lfit mpg weight, " + tok + " name(zqab)"
     return "scatter mpg weight, " + tok + " name(zqab)"
 
 CASES = []
@@ -537,6 +541,14 @@ for name in DASH_PLOT_KEYS + DASH_GRAPH_KEYS:
     add("R1", name + "()", opt_cmd(name, name),
         keys=("" if name == "name" else name), optname=name)
 
+# recastas() and type() are recast()'s synonyms (WP-30 P1.8b): each
+# spelling twoway takes lands on recast (test_twoway_option_parity.cscript
+# RC-05 has their precedence).
+RECAST_SYN = ["recasta", "recastas", "ty", "type"]
+for ab in RECAST_SYN:
+    add("R1", ab + "() -> recast()", "lfit mpg weight, " + ab +
+        "(line) name(zqab)", keys="recast", optname="recast")
+
 # ---- R2/R3: today's short forms ---------------------------------------
 for ab in sorted(MATA_OPT_ALIAS):
     tgt = MATA_OPT_ALIAS[ab]
@@ -622,7 +634,7 @@ EXPN = dict(BUILT)
 EXPN["A1"] = META["options"]
 EXPN["A3"] = META["dash_mismaps"]
 EXPN["A5"] = META["plottypes"]
-EXPN["R1"] = len(DASH_PLOT_KEYS) + len(DASH_GRAPH_KEYS)
+EXPN["R1"] = len(DASH_PLOT_KEYS) + len(DASH_GRAPH_KEYS) + len(RECAST_SYN)
 for g in ("A1", "A2", "A3", "A4", "A5", "A6", "A7", "R1", "R2", "R3", "R4"):
     sfi.Macro.setGlobal("ZQA_BUILT_" + g, str(BUILT.get(g, 0)))
     sfi.Macro.setGlobal("ZQA_EXPN_" + g, str(EXPN.get(g, 0)))

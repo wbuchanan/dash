@@ -644,7 +644,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # pending comment (two) and gives the mlabtextstyle sreturn one.
     # 124 -> 130: P1.8a's notes on cmissings() (three) and on the
     # cmissing and connect pending lines (three).
-    assert comments == {"_dash_parse_plot_opts": 130,
+    # 130 -> 132: P1.8b's note on recast(), recastas() and type() in the
+    # sreturn block (two).
+    assert comments == {"_dash_parse_plot_opts": 132,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

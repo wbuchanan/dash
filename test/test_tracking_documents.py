@@ -1549,7 +1549,6 @@ class TestWp29Tracking:
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
     "P1.6": "The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note",
-    "P1.8b": "recast() is not honoured, and recast() on lfitci, qfitci, lpolyci and fpfitci is accepted where twoway refuses it",
     "P1.9a": "horizontal is not drawn on any plot type, and vertical is named as unsupported",
     "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",
     "P1.10": "text() and ttext() annotations are not drawn",

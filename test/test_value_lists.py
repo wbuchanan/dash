@@ -165,8 +165,11 @@ class TestTheParserReadsValueLists:
         chg = chg[:chg.index("\n        }\n")]
         assert "local _snap_`o' : copy local _dash_vnorm" in chg
         seg = _program_body(_read(_ADO), "_dash_process_segment")
-        # WP-30 P1.8a: the type connect() makes (_cn_ptype).
-        call = seg.index('_dash_validate_opts "`_cn_ptype\'" `_sl_n\'')
+        # WP-30 P1.8a: the type connect() makes (_cn_ptype).  Flipped
+        # (WP-30 P1.8b): _rc_own, _cn_ptype but a derived layer's own type
+        # under recast(), where _cn_ptype was wrong because the recast
+        # target would judge its options (recast_truth.json).
+        call = seg.index('_dash_validate_opts "`_rc_own\'" `_sl_n\'')
         assert seg.rindex("local _sl_n 1", 0, call) > seg.rindex(
             "_dash_fold_bw", 0, call)
 

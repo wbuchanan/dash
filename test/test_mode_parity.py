@@ -2208,6 +2208,11 @@ CORPUS = [
            plot_for("bar", {"fcolor": "*.7"}),
            plot_for("line", {"lcolor": "%50"})],
           go={"title": "T, color(*.5)", "xline": "3000, lcolor(%50)"}),
+    # WP-30 P1.8b: recast().
+    _case("recast() (WP-30 P1.8b)",
+          [dict(plot_for("line"), recast_from="scatter"),
+           plot_for("lfit", {"recast": "scatter"}),
+           plot_for("kdensity", {"recast": "area"})]),
 ]
 
 
@@ -3062,6 +3067,9 @@ MOVE_CORPUS = [
                {"title": "T, color(*.5)", "xline": "3000, lcolor(%50)"}),
     # WP-30 P1.23a (section 35): date positions on every axis.
     *_P123A_MOVES,
+    # WP-30 P1.8b: recast().
+    _move_case("lfit recast scatter, dropdown (WP-30 P1.8b)", _MOVES[0],
+               [plot_for("lfit", {"recast": "scatter"})]),
 ]
 
 

@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -10360,10 +10360,149 @@ if inlist("`only'", "", "S44") & `: list posof "S44" in w30_run' {
 }
 * ==== end S44 ====
 
+// _s45_glyphs html -- the drawn glyphs of a saved page's first figure, read
+// from its document JSON (WP-30 P1.8b): S45_GLYPHS lists each visible
+// renderer as name:points (Line, Scatter, VArea, VBar, Segment, Quad) in
+// drawing order, and S45_MONO is 1 when every Line's x runs in order.
+capture program drop _s45_glyphs
+program define _s45_glyphs
+    version 19
+    args html
+    global S45_HTML `"`html'"'
+    python: __import__("sys").modules["_dash_s45"].glyphs()
+end
+python:
+def _s45_glyphs():
+    import json, re
+    from sfi import Macro
+    with open(Macro.getGlobal("S45_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, fig = {}, None
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        stack = [json.loads(m.group(1))]
+        while stack:
+            o = stack.pop()
+            if isinstance(o, dict):
+                if "id" in o and "name" in o:
+                    objs[o["id"]] = o
+                    if fig is None and o["name"] == "Figure":
+                        fig = o
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+    def res(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    def col(cols, spec):
+        f = spec.get("field") if isinstance(spec, dict) else None
+        v = cols.get(f)
+        if isinstance(v, dict) and v.get("type") == "ndarray":
+            return int(v.get("shape", [0])[0]), None
+        return (len(v), v) if isinstance(v, list) else (0, None)
+    out, mono = [], 1
+    keep = ("Line", "Scatter", "VArea", "VBar", "Segment", "Quad")
+    for rr in (fig or {}).get("attributes", {}).get("renderers", []):
+        r = res(rr).get("attributes", {})
+        g = res(r.get("glyph", {}))
+        if g.get("name") not in keep:
+            continue
+        ga = g.get("attributes", {})
+        data = res(r.get("data_source", {})).get("attributes", {}).get("data", {})
+        cols = dict(data.get("entries", [])) if isinstance(data, dict) else {}
+        xk = "x" if "x" in ga else ("x0" if "x0" in ga else "left")
+        n, xs = col(cols, ga.get(xk, {}))
+        if n == 0:
+            continue
+        if g["name"] == "Line" and xs is not None:
+            vals = [float(v) for v in xs if isinstance(v, (int, float))]
+            if vals != sorted(vals):
+                mono = 0
+        out.append("%s:%d" % (g["name"], n))
+    Macro.setGlobal("S45_GLYPHS", " ".join(out))
+    Macro.setGlobal("S45_MONO", str(mono))
+import sys as _s45_sys
+_s45_sys.modules["_dash_s45"] = type(_s45_sys)("_dash_s45")
+_s45_sys.modules["_dash_s45"].glyphs = _s45_glyphs
+end
+
+capture program drop _s45_data
+program define _s45_data
+    version 19
+    clear
+    quietly set obs 8
+    quietly generate double x = _n
+    quietly generate double y = .
+    local ys  3 5 2 6 4 7 1 8
+    forvalues i = 1/8 {
+        quietly replace y = `: word `i' of `ys'' in `i'
+    }
+    quietly generate double y2 = y + 3
+    quietly generate double t  = 9 - _n
+    quietly tsset t
+end
+
 * ==== S45 P1.8b: recast() ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S45") & `: list posof "S45" in w30_run' {
     display as text "S45 start " c(current_date) " " c(current_time)
+    local s45log "`w30_work'/s45.log"
+    local s45pg "`w30_work'/zrc.html"
+    // RC-20: base recasts draw the target (recast_truth.json W-sc-line,
+    // W-rl-line, W-ts-conn: equal to twoway's line y x, one path, and
+    // connected y t, sort).
+    foreach row in "scatter y x, recast(line)|Line:8" "rline y y2 x, recast(line)|Line:8" ///
+                   "tsline y, recast(connected)|Line:8 Scatter:8" {
+        gettoken c want : row, parse("|")
+        local want = substr("`want'", 2, .)
+        _s45_data
+        _s36_run `"dash `c' saving("`s45pg'", replace)"' "`s45log'"
+        local drc = r(rc)
+        global S45_GLYPHS ""
+        global S45_MONO 0
+        if !`drc' capture _s45_glyphs "`s45pg'"
+        _w30_expect RC-20 `"(`drc' == 0 & "${S45_GLYPHS}" == "`want'" & ${S45_MONO} == 1)"' `"`c': rc `drc', ${S45_GLYPHS} (want `want')"'
+    }
+    _w30_done RC-20 "scatter, rline and tsline recasts draw twoway's target"
+    // RC-21: derived recasts keep their points, drawn as the target
+    // (D-kdensity-area one filled path; D-lfit-scatter 3 markers;
+    // D-histogram-line one path; D-function-scatter 300 markers).
+    foreach row in "kdensity mpg, recast(area)|VArea" "lfit mpg weight, recast(scatter)|Scatter:3" ///
+                   "histogram mpg, recast(line)|Line" "function y=x^2, range(0 3) recast(scatter)|Scatter:300" {
+        gettoken c want : row, parse("|")
+        local want = substr("`want'", 2, .)
+        quietly sysuse auto, clear
+        _s36_run `"dash `c' saving("`s45pg'", replace)"' "`s45log'"
+        local drc = r(rc)
+        global S45_GLYPHS ""
+        if !`drc' capture _s45_glyphs "`s45pg'"
+        local got "${S45_GLYPHS}"
+        if !strpos("`want'", ":") local got = substr("`got'", 1, strpos("`got'", ":") - 1)
+        _w30_expect RC-21 `"(`drc' == 0 & "`got'" == "`want'")"' `"`c': rc `drc', ${S45_GLYPHS} (want `want')"'
+    }
+    _w30_done RC-21 "kdensity, lfit, histogram and function recasts draw twoway's target"
+    // RC-22: the fallbacks print twoway's notes and draw the fallback
+    // (FB-line = scatter y x, FB-rline = rspike y y2 x, FB-func = its line).
+    foreach row in "line y x, recast(rline)|Scatter:8|yxtype" "rline y y2 x, recast(pcspike)|Segment:8|y2xtype" ///
+                   "function y=x, range(1 5) recast(rline)|Line|functiontype" {
+        gettoken c row : row, parse("|")
+        gettoken _p row : row, parse("|")
+        gettoken want row : row, parse("|")
+        local cls = substr("`row'", 2, .)
+        _s45_data
+        _s36_run `"dash `c' saving("`s45pg'", replace)"' "`s45log'"
+        local drc = r(rc)
+        _s36_count "`s45log'" "(note:  `cls' not found in scheme, default attributes used)"
+        local nn = r(n)
+        global S45_GLYPHS ""
+        if !`drc' capture _s45_glyphs "`s45pg'"
+        local got "${S45_GLYPHS}"
+        if !strpos("`want'", ":") local got = substr("`got'", 1, strpos("`got'", ":") - 1)
+        _w30_expect RC-22 `"(`drc' == 0 & `nn' == 1 & "`got'" == "`want'")"' `"`c': rc `drc', notes `nn', ${S45_GLYPHS} (want `want')"'
+    }
+    _w30_done RC-22 "out-of-class recasts print twoway's notes and draw the fallback"
+    capture dash clear
+    capture erase "`s45log'"
+    capture erase "`s45pg'"
+    macro drop S45_*
     display as text "S45 end " c(current_date) " " c(current_time)
 }
 * ==== end S45 ====

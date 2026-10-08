@@ -16026,7 +16026,10 @@ class GlyphMapper:
         # straight line as 100, but stairs over it step twice, not 99
         # times (connect_truth.json F-lfit-J; WP-30 P1.8a).
         _lf_opts = options
-        if (_dash_join_spec(options)[0] in ("stairstep", "stepstair")
+        # So does a recast lfit: lfit y x, recast(scatter) draws three
+        # markers (recast_truth.json D-lfit-scatter; WP-30 P1.8b).
+        if ((_dash_join_spec(options)[0] in ("stairstep", "stepstair")
+                or options.get("recast"))
                 and not str(options.get("n", "") or "").strip()):
             _lf_opts = dict(options, n="3")
         x_fit = _fit_grid(x, _lf_opts, "lfit")
@@ -16040,6 +16043,11 @@ class GlyphMapper:
                                             x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return self._dash_draw_xy_as(fig, fit_source, "x", "y",
+                                         options["recast"], options,
+                                         color_idx)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"), line_dash="solid",
@@ -16116,6 +16124,11 @@ class GlyphMapper:
                                             x_fit, y_fit)
 
         fit_source = ColumnDataSource({"x": x_fit, "y": y_fit})
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return self._dash_draw_xy_as(fig, fit_source, "x", "y",
+                                         options["recast"], options,
+                                         color_idx)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=fit_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -16485,6 +16498,11 @@ class GlyphMapper:
             "x_lw": x_lw,
             "y_lw": y_lw,
         })
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return self._dash_draw_xy_as(fig, lw_source, "x_lw", "y_lw",
+                                         options["recast"], options,
+                                         color_idx)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_lw", y="y_lw", source=lw_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -16898,6 +16916,11 @@ class GlyphMapper:
             "x_lp": _xd.tolist(),
             "y_lp": _yd.tolist(),
         })
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return self._dash_draw_xy_as(fig, lp_src, "x_lp", "y_lp",
+                                         options["recast"], options,
+                                         color_idx)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_lp", y="y_lp", source=lp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -17445,6 +17468,11 @@ class GlyphMapper:
             "x_fp": _xd.tolist(),
             "y_fp": _yd.tolist(),
         })
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return self._dash_draw_xy_as(fig, fp_src, "x_fp", "y_fp",
+                                         options["recast"], options,
+                                         color_idx)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_fp", y="y_fp", source=fp_src,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -17679,6 +17707,17 @@ class GlyphMapper:
             "left":  axis_edges[i0:i1],
             "right": axis_edges[i0 + 1:i1 + 1],
         })
+        # recast(): the bars' midpoints and heights drawn as the target,
+        # as twoway draws histogram's serset (WP-30 P1.8b).
+        if options.get("recast"):
+            _mid = ColumnDataSource({
+                "x": (np.asarray(axis_edges[i0:i1], dtype=float)
+                      + np.asarray(axis_edges[i0 + 1:i1 + 1], dtype=float))
+                / 2.0,
+                "y": np.asarray(tops[i0:i1], dtype=float)})
+            return self._dash_draw_xy_as(fig, _mid, "x", "y",
+                                         options["recast"], options,
+                                         color_idx)
         r = _tag(self._histogram_quads(fig, hist_source, options, color_idx,
                                        yvar))
         if i1 <= i0:
@@ -18040,6 +18079,11 @@ class GlyphMapper:
             "kdensity", "point(s)", _off, x_draw, x_range, density)
 
         kd_source = ColumnDataSource({"x": x_draw, "y": density})
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return self._dash_draw_xy_as(fig, kd_source, "x", "y",
+                                         options["recast"], options,
+                                         color_idx)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x", y="y", source=kd_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
@@ -18991,6 +19035,11 @@ class GlyphMapper:
         # connect() joins the points, as twoway's scatteri joins them under
         # it, in the connected style's line (WP-30 P1.8a); the line has no
         # row id and no saved-page rebuild (the points are literals).
+        # recast(): the points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return [self._dash_draw_xy_as(fig, si_source, "x", "y",
+                                          options["recast"], options,
+                                          color_idx)]
         _si_line = None
         if str(options.get("connect", "") or "").strip():
             _si_line = _dash_join_glyph(self, fig, options, dict(
@@ -20095,6 +20144,11 @@ class GlyphMapper:
         x_grid, y_grid = self._drop_off_dates("mspline", "point(s)",
                                               _ox | _oy, x_grid, y_grid)
         ms_source = ColumnDataSource({"x_sp": x_grid, "y_sp": y_grid})
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return [self._dash_draw_xy_as(fig, ms_source, "x_sp", "y_sp",
+                                          options["recast"], options,
+                                          color_idx)]
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_sp", y="y_sp", source=ms_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
@@ -20216,6 +20270,11 @@ class GlyphMapper:
         x_mids, y_meds = self._drop_off_dates("mband", "point(s)",
                                               _ox | _oy, x_mids, y_meds)
         mb_source = ColumnDataSource({"x_mb": x_mids, "y_mb": y_meds})
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return [self._dash_draw_xy_as(fig, mb_source, "x_mb", "y_mb",
+                                          options["recast"], options,
+                                          color_idx)]
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_mb", y="y_mb", source=mb_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
@@ -20330,11 +20389,61 @@ class GlyphMapper:
         # bridges it, and broken under cmissing(n) (_dash_join_glyph; WP-30
         # P1.8a): dash drew it as a gap whatever was given.
         fn_source = ColumnDataSource({"x_fn": x_arr, "y_fn": y_arr})
+        # recast(): the computed points drawn as the target (WP-30 P1.8b).
+        if options.get("recast"):
+            return [self._dash_draw_xy_as(fig, fn_source, "x_fn", "y_fn",
+                                          options["recast"], options,
+                                          color_idx)]
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=text[:40]), role=None)
         return [r]
+
+    #: The types twoway draws a derived layer as under recast(): yxtype's
+    #: eight (Stata's style/yxtype-*.style; test/fixtures/
+    #: recast_truth.json).  dash.ado canonicalises the name
+    #: (_dash_recast_opt) and writes it as options.recast.
+    _RECAST_DRAWN = ("scatter", "line", "connected", "area", "bar", "spike",
+                     "dropline", "dot")
+
+    def _dash_draw_xy_as(self, fig, source, xcol, ycol, target, options,
+                         color_idx=0):
+        """Draw a derived layer's computed points as *target* (WP-30 P1.8b).
+
+        twoway draws ``kdensity x, recast(area)`` as an area under the
+        density's points and ``lfit y x, recast(scatter)`` as markers at
+        the fitted points (test/fixtures/recast_truth.json): the
+        computation is the derived type's, the drawing the target's.  The
+        points (*source*'s *xcol* and *ycol*, in axis units and x order)
+        are drawn by the target's own mapper on a fresh source with
+        columns ``x`` and ``y``, so the target's scheme chain, S14's
+        one-unit bar width and S40's join apply.  The layer keeps its type
+        in the spec, so its key, titles and the saved page's stale cue are
+        the derived type's (register A60).  *target* is checked by
+        membership in ``_RECAST_DRAWN`` and never reaches ``getattr``; any
+        other name (a hand-written spec) draws nothing and says so in the
+        words of the "no glyph mapper" path.
+
+        Returns the first renderer the target drew (None when it drew
+        none).
+        """
+        if not isinstance(target, str) or target not in self._RECAST_DRAWN:
+            warnings.warn(
+                "dash: no glyph mapper for plot type %r; nothing was drawn "
+                "for that layer." % (target,), UserWarning, stacklevel=2)
+            return None
+        data = source.data
+        pts = ColumnDataSource({"x": np.asarray(data[xcol], dtype=float),
+                                "y": np.asarray(data[ycol], dtype=float)})
+        opts = {k: v for k, v in (options or {}).items()
+                if k not in ("recast", "type")}
+        kw = {"order": None} if target in _DASH_JOIN_TYPES else {}
+        before = len(fig.renderers)
+        _dash_glyph_dispatch(self)[0][target](
+            fig, pts, "y", "x", opts, view=None, color_idx=color_idx, **kw)
+        added = list(fig.renderers[before:])
+        return added[0] if added else None
 
 
 # ---------------------------------------------------------------------------

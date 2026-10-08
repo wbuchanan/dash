@@ -529,8 +529,10 @@ class TestTheParsersFoundSomething:
         # 158 -> 161: P1.14b's Unsupported entry names dstyle(),
         # dlstyle() and bmlinestyle().
         # 161 -> 162: P1.8a's cmissings() entry.
-        assert len(found) == 162, (
-            f"{len(found)} options parsed out of dash.sthlp, 162 measured "
+        # 162 -> 163: P1.8b's Recast entry adds recastas() and type() and
+        # the Unsupported entry's recast() leaves.
+        assert len(found) == 163, (
+            f"{len(found)} options parsed out of dash.sthlp, 163 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -598,7 +600,8 @@ class TestTheParsersFoundSomething:
         # declared astyle, alstyle, bstyle, blstyle, clstyle and p.
         # 188 -> 191: P1.14b declared dstyle, dlstyle and bmlinestyle.
         # 191 -> 192: P1.8a declared cmissings(), twoway's spelling.
-        assert len(_ado_declarations()) == 192
+        # 192 -> 194: P1.8b declared recastas() and type().
+        assert len(_ado_declarations()) == 194
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -612,7 +615,8 @@ class TestTheParsersFoundSomething:
         # mlabvposition() per row (mlabvpos_truth.json A).
         # 47 -> 46: P1.24 mlabvposition() honoured
         # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
-        assert len(_ignored_options()) == 45
+        # 45 -> 44: P1.8b recast() honoured
+        assert len(_ignored_options()) == 44
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -624,7 +628,8 @@ class TestTheParsersFoundSomething:
         # mlabvposition() per row (mlabvpos_truth.json A).
         # 47 -> 46: P1.24 mlabvposition() honoured
         # 46 -> 45: P1.24 mlabtextstyle() honoured, its entry gone
-        assert len(_unsupported_section()) == 45
+        # 45 -> 44: P1.8b recast() honoured; its residual is cross-referenced
+        assert len(_unsupported_section()) == 44
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -668,8 +673,9 @@ class TestTheParsersFoundSomething:
         # 368 -> 369: P1.8a's cmissings() entry.
         # 369 -> 372: P1.7's {ul:Time-series operators.} paragraph and
         # its example's lines.
-        assert len(defs) == 372, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 372 "
+        # 372 -> 373: P1.8b's {ul:Recast.} entry.
+        assert len(defs) == 373, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 373 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

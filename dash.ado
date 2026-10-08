@@ -1156,7 +1156,7 @@ program define _dash_parse_plot_opts, sclass
         COLORLEVels(string)       COLORVARMINMax ///
         BWIDth(string)            DEGree(string)            PSTYle(string asis) ///
         CMISSing(string asis)     RECAST(string)            Connect(string asis) ///
-        CMISSINGS(string asis) ///
+        CMISSINGS(string asis)    RECASTAs(string)          TYpe(string) ///
         BIN(string)               BINS(string)              Width(string) ///
         START(string) ///
         DISCrete                  STDP                      STDF ///
@@ -1331,7 +1331,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local alpattern' local _dash_pending `"`_dash_pending' alpattern"'
     if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
     if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
-    if `: length local recast' local _dash_pending `"`_dash_pending' recast"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
     // sort(varlist) arrives in `sort1', -syntax-'s name for it, and is
     // returned in s(sort1); it is named here as sort().  _dash_sort_opt
@@ -1416,7 +1415,15 @@ program define _dash_parse_plot_opts, sclass
     sreturn local degree           : copy local degree
     sreturn local pstyle           : copy local pstyle
     sreturn local cmissing         : copy local cmissing
+    // recast() and recastas() are one option to twoway: the rightmost
+    // wins; type() is their synonym, read by _dash_recast_opt (P1.8b).
+    if `: length local recastas' {
+        local _rca_last 1
+        if `: length local recast' mata: st_local("_rca_last", strofreal(max((strrpos(st_local("0"), "recasta("), strrpos(st_local("0"), "recastas("))) > strrpos(st_local("0"), "recast(")))
+        if `_rca_last' local recast : copy local recastas
+    }
     sreturn local recast           : copy local recast
+    sreturn local type             : copy local type
     sreturn local connect          : copy local connect
     sreturn local bin              : copy local bin
     sreturn local width            : copy local width
@@ -2399,6 +2406,162 @@ program define _dash_sort_opt, sclass
             sreturn local _pending `"`_so_k'"'
         }
     }
+end
+
+// ================================================================
+// _dash_recast_opt <ptype>  -- recast(), recastas() and type() as twoway
+// reads them (WP-30 P1.8b)
+//
+// Called by _dash_process_segment right after _dash_opts_repeats (which
+// kept the rightmost copy of each) and before _dash_connect_opt, as
+// twoway sets the view type before its connect override
+// (twoway_yxview_parse.class:320-324, :1080).  Measured on StataNow 19.5
+// (test/fixtures/recast_truth.json, scripts/extract_recast_truth.do):
+//   * recast() and recastas() (one option, minimum recast) beat type()
+//     in either order; rec(), reca() and recas() are "option rec() not
+//     allowed", r(198), naming the spelling typed;
+//   * lfitci, qfitci, lpolyci and fpfitci refuse them: "recastas() option
+//     not allowed" or "type() option not allowed", r(198);
+//   * dot ignores them in silence;
+//   * the value is one name for every y; one distinct word repeated is
+//     that word, any other multi-word value an unknown name;
+//   * the name is read by the source's class (Stata's style/
+//     *type-*.style): yxtype, y2xtype (the yx eight and the range types),
+//     yxyxtype (the pc types) and functiontype (the yx eight and
+//     function), each with twoway's spellings, case-sensitive; a name not
+//     in the class prints twoway's two notes and falls back -- yxtype to
+//     scatter, y2xtype to rspike, yxyxtype to pcspike, functiontype to
+//     function's own line.
+// Returns s(_recast_type) (the type drawn: the target for a base, range,
+// pc or time-series source, the typed type for a derived one),
+// s(_recast_target) (the canonical target, empty when there is none) and
+// s(_recast_kind): base, range2yx (a range source drawn as a yx type: its
+// first bound), ts, derived or empty.  pci and pcarrowi, and a range
+// target or the fallback on histogram, are named (s(_pending)) and drawn
+// as typed.  The value is read by value; echoes go through _dash_say and
+// _dash_note.
+// ================================================================
+program define _dash_recast_opt, sclass
+    version 19
+    args ptype
+    sreturn local _recast_type "`ptype'"
+    sreturn local _recast_target ""
+    sreturn local _recast_kind ""
+    sreturn local _recast_ts ""
+    mata: st_local("_rc_bad", ustrregexm(" " + st_global("s(_unknown)"), "[ ,](rec|reca|recas)\(") ? ustrregexs(1) : "")
+    if "`_rc_bad'" != "" {
+        mata: _dash_say("err", "option ", st_local("_rc_bad"), "() not allowed")
+        exit 198
+    }
+    mata: st_local("_rc_r", strtrim(st_global("s(recast)")))
+    mata: st_local("_rc_t", strtrim(st_global("s(type)")))
+    local _rc_word "recast"
+    if `: length local _rc_r' == 0 {
+        local _rc_r : copy local _rc_t
+        local _rc_word "type"
+    }
+    sreturn local recast ""
+    sreturn local type ""
+    if `: length local _rc_r' == 0 exit
+    local _rc_ci "lfitci qfitci lpolyci fpfitci"
+    if `: list ptype in _rc_ci' {
+        if "`_rc_word'" == "recast" display as error "recastas() option not allowed"
+        else display as error "type() option not allowed"
+        exit 198
+    }
+    if "`ptype'" == "dot" exit
+    local _rc_lit "pci pcarrowi"
+    if `: list ptype in _rc_lit' {
+        _dash_recast_named `_rc_word'
+        exit
+    }
+    // One value for every y: one distinct word, else an unknown name.
+    mata: st_local("_rc_v", length(uniqrows(tokens(st_local("_rc_r"))')) == 1 ? tokens(st_local("_rc_r"))[1] : st_local("_rc_r"))
+    local _yx      "scatter line connected area bar spike dropline dot"
+    local _rng     "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
+    local _pc      "pcspike pccapsym pcarrow pcbarrow pcscatter"
+    local _derived "lfit qfit lowess lpoly fpfit mspline mband kdensity function histogram scatteri"
+    if `: list ptype in _pc' local _rc_class yxyxtype
+    else if "`ptype'" == "function" local _rc_class functiontype
+    else if `: list ptype in _rng' | "`ptype'" == "histogram" local _rc_class y2xtype
+    else local _rc_class yxtype
+    // name:minimum length, by class (twoway's spellings, measured).
+    local _sp_yx "scatter:2 line:2 connected:2 bar:1 area:4 spike:5 dropline:8 dot:3"
+    local _sp_rng "rscatter:3 rline:3 rconnected:3 rarea:5 rbar:4 rcap:4 rcapsym:7 rspike:6"
+    local _sp_pc "pcarrow:4 pcbarrow:5 pcline:3 pcspike:4 pccapsym:6 pcscatter:4"
+    if "`_rc_class'" == "yxyxtype" local _sp "`_sp_pc'"
+    else if "`_rc_class'" == "y2xtype" local _sp "`_sp_yx' `_sp_rng'"
+    else if "`_rc_class'" == "functiontype" local _sp "`_sp_yx' function:8"
+    else local _sp "`_sp_yx'"
+    local _rc_name ""
+    mata: st_local("_rb", strofreal(st_local("_rc_v") == "rbarm"))
+    if `_rb' & "`_rc_class'" == "y2xtype" local _rc_name rbar
+    foreach _e of local _sp {
+        if "`_rc_name'" != "" continue, break
+        gettoken _n _m : _e, parse(":")
+        local _m = substr("`_m'", 2, .)
+        mata: st_local("_hit", strofreal(strlen(st_local("_rc_v")) >= `_m' & st_local("_rc_v") == substr("`_n'", 1, strlen(st_local("_rc_v")))))
+        if `_hit' local _rc_name "`_n'"
+    }
+    // pcline is a name of the class's spellings that is not in the class.
+    if "`_rc_name'" == "pcline" {
+        local _rc_v pcline
+        local _rc_name ""
+    }
+    if "`_rc_name'" == "" {
+        if "`ptype'" == "histogram" {
+            _dash_recast_named `_rc_word'
+            exit
+        }
+        mata: _dash_note("named style ", st_local("_rc_v"), " not found in class `_rc_class', default attributes used")
+        mata: _dash_note("`_rc_class' not found in scheme, default attributes used", "", "")
+        if "`_rc_class'" == "yxtype" local _rc_name scatter
+        else if "`_rc_class'" == "y2xtype" local _rc_name rspike
+        else if "`_rc_class'" == "yxyxtype" local _rc_name pcspike
+        else exit
+    }
+    if `: list ptype in _derived' {
+        if "`_rc_name'" == "function" exit
+        if !`: list _rc_name in _yx' {
+            // histogram drawn as a range type (P2.44).
+            _dash_recast_named `_rc_word'
+            exit
+        }
+        sreturn local _recast_target "`_rc_name'"
+        sreturn local _recast_kind derived
+        exit
+    }
+    if "`_rc_name'" == "`ptype'" exit
+    sreturn local _recast_target "`_rc_name'"
+    sreturn local _recast_type "`_rc_name'"
+    local _ts "tsline tsrline"
+    if `: list ptype in _ts' {
+        sreturn local _recast_kind ts
+    }
+    else sreturn local _recast_kind base
+    if `: list ptype in _rng' & `: list _rc_name in _yx' {
+        sreturn local _recast_kind range2yx
+        if "`ptype'" == "tsrline" sreturn local _recast_ts 1
+    }
+end
+
+// _dash_recast_s <key> <value>: sets s(<key>) for _dash_process_segment,
+// an rclass program (WP-30 P1.8b).  <key> is recast or sort1, <value> a
+// type or variable name dash wrote, never the user's text.
+program define _dash_recast_s, sclass
+    version 19
+    args key value
+    sreturn local `key' "`value'"
+end
+
+// _dash_recast_named <word>: recast() (or type()) named as an option dash
+// does not draw on this plot (WP-30 P1.8b): pci, pcarrowi, and histogram
+// drawn as a range type.
+program define _dash_recast_named, sclass
+    version 19
+    args word
+    mata: st_local("_rn_p", st_global("s(_pending)"))
+    sreturn local _pending `"`_rn_p' `word'"'
 end
 
 // ================================================================
@@ -5107,6 +5270,8 @@ program define _dash_process_segment, rclass
 
     sreturn clear
     local _rp_gund_out ""
+    local _ptype_typed "`ptype'"
+    local _rc_kind ""
     local _fn_rtyped ""
     local _fn_rnorm ""
     local _fn_nval ""
@@ -5138,16 +5303,38 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // recast(), recastas() and type() as twoway reads them (WP-30
+        // P1.8b), before connect(), as twoway sets the view type first: a
+        // base, range, pc or time-series layer becomes the type it is
+        // drawn as (its typed type kept as recast_from), a derived layer
+        // keeps its type and is drawn as the target (options.recast).
+        _dash_recast_opt "`ptype'"
+        local _rc_kind   "`s(_recast_kind)'"
+        local _rc_target "`s(_recast_target)'"
+        local _rc_ts     "`s(_recast_ts)'"
+        if inlist("`_rc_kind'", "base", "range2yx", "ts") local ptype "`s(_recast_type)'"
+        if "`_rc_kind'" == "range2yx" local yvar "`yvar1'"
         // connect() and cmissing() as twoway reads them (WP-30 P1.8a): a
         // scatter y given a connect() element is twoway's connected type,
-        // and the folds, checks and sort below read it as connected.
+        // and the folds, checks and sort below read it as connected.  A
+        // derived layer's are judged on the type it is drawn as.
+        local _cn_judge "`ptype'"
+        if "`_rc_kind'" == "derived" local _cn_judge "`_rc_target'"
         local _cn_n 1
         if `"`yvarlist'"' != "" local _cn_n : word count `yvarlist'
-        _dash_connect_opt "`ptype'" `_cn_n'
+        _dash_connect_opt "`_cn_judge'" `_cn_n'
         local _cn_types `"`s(_cn_types)'"'
         local _cn_any   `"`s(_cn_any)'"'
-        local _cn_ptype "`ptype'"
-        if "`ptype'" == "scatter" & "`_cn_any'" == "1" local _cn_ptype connected
+        local _cn_ptype "`_cn_judge'"
+        if "`_cn_judge'" == "scatter" & "`_cn_any'" == "1" local _cn_ptype connected
+        // The derived layer's own options are checked as its own type;
+        // the drawn type goes to the JSON as options.recast.
+        local _rc_own "`_cn_ptype'"
+        if "`_rc_kind'" == "derived" {
+            local _rc_own "`ptype'"
+            local _cn_types ""
+            _dash_recast_s recast "`_cn_ptype'"
+        }
         // function's range() as typed, before validation normalises it
         // through numlist, which keeps 13 digits (WP-29 P0.6, S4-D5).
         if "`ptype'" == "function" mata: st_local("_fn_rtyped", st_global("s(range)"))
@@ -5178,13 +5365,13 @@ program define _dash_process_segment, rclass
         // mlabvposition() (WP-30 P1.24): checked and counted as twoway
         // counts it, before mlabel()'s own rule (_dash_fold_mlab).
         _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
-        _dash_fold_bw "`_cn_ptype'"
+        _dash_fold_bw "`_rc_own'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
         local _sl_n 1
         if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
-        _dash_validate_opts "`_cn_ptype'" `_sl_n'
+        _dash_validate_opts "`_rc_own'" `_sl_n'
         _dash_stylelist_check "`_cn_ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))
@@ -5197,6 +5384,12 @@ program define _dash_process_segment, rclass
         _dash_fold_typed "`_cn_ptype'"
         // sort(varlist): checked as twoway checks it, after the repeats
         // are reduced, and honoured on the six joining types (WP-29 P0.1).
+        // A time-series source recast joins in time order, as tsline's
+        // sort(t) (twoway_tsline_parse.class:32; WP-30 P1.8b).
+        if "`_rc_kind'" == "ts" | "`_rc_ts'" == "1" {
+            local _so_six "line connected area rline rarea rconnected"
+            if `: list ptype in _so_six' _dash_recast_s sort1 "`xvar'"
+        }
         _dash_sort_opt "`_cn_ptype'"
         // twoway__histogram_gen.ado:102-107: a start() above the variable's
         // minimum over the plot's sample is r(198), discrete or not.  dash
@@ -5413,6 +5606,10 @@ program define _dash_process_segment, rclass
     }
 
     // Options JSON
+    // recast(): the typed type, when the layer is drawn as another
+    // (WP-30 P1.8b); the renderer keys nothing on it.
+    local _rcf ""
+    if "`ptype'" != "`_ptype_typed'" local _rcf `","recast_from":"`_ptype_typed'""'
     _dash_plot_opts_to_json _opts_json 1
     // sort(varlist) on a joining type: the names unab gave
     // (_dash_sort_opt), which dash.ado ranks at export (_dash_sort_gen).
@@ -5451,14 +5648,14 @@ program define _dash_process_segment, rclass
             // A scatter y given a connect() element is connected (P1.8a).
             local _yt "`ptype'"
             if `"`_cn_types'"' != "" local _yt : word `_yi' of `_cn_types'
-            local seg_json `"`seg_json'{"type":"`_yt'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
+            local seg_json `"`seg_json'{"type":"`_yt'"`_rcf',`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
         }
     }
     else {
         local _nyv = 1
         local _yt "`ptype'"
         if `"`_cn_types'"' != "" local _yt : word 1 of `_cn_types'
-        local seg_json `"{"type":"`_yt'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
+        local seg_json `"{"type":"`_yt'"`_rcf',`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
     }
 
     c_local `plottype_out' "`ptype'"
