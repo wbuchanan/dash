@@ -867,7 +867,8 @@ class TestKdensityRange:
         # pstyle, lstyle, mstyle and mlstyle), among them the
         # genuinely-unsupported sort/text/scale, and never `range'.
         # 44 -> 47: P1.14b names dstyle, dlstyle and bmlinestyle.
-        assert len(pending) == 47, (len(pending), pending)
+        # 47 -> 45: P1.24 reads mlabvposition() and mlabtextstyle().
+        assert len(pending) == 45, (len(pending), pending)
         for really_pending in ("sort", "text", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

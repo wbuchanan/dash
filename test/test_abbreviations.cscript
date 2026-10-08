@@ -468,6 +468,10 @@ def doc_cmd(spelling, full):
     # P1.14a), so it is sent on line.
     if full == "clstyle":
         return "line mpg weight, " + spelling + "(p3) name(zqab)"
+    # mlabvposition() names a variable of clock positions (WP-30 P1.24):
+    # a number is refused r(198), as twoway refuses it.  rep78 holds 1-5.
+    if full == "mlabvposition":
+        return "scatter mpg weight, " + spelling + "(rep78) name(zqab)"
     v = value_of(full)
     if v is None:
         v = "1"
@@ -863,9 +867,10 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
     local faillist `"`faillist' size(R2+R3)"'
 }
 // 130 since WP-30 P1.14a documented the named styles' nine minimums and
-// their full names (18).
-if ${ZQA_NDOC} != 130 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (130 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// their full names (18); 134 since WP-30 P1.24 documented mlabv(),
+// mlabvposition(), mlabt() and mlabtextstyle().
+if ${ZQA_NDOC} != 134 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (134 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }
