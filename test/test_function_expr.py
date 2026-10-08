@@ -236,6 +236,15 @@ def _same(a, b):
                           np.asarray(b, dtype=float), equal_nan=True)
 
 
+def _bridged(vals):
+    """The points twoway's line joins: *vals* less its missing values.
+    WP-30 P1.8a: under the default cmissing(y) a function's missing
+    points are bridged, so the drawn source leaves them out; a value
+    where Stata has a missing one is still an extra point."""
+    a = np.asarray(vals, dtype=float)
+    return a[~np.isnan(a)]
+
+
 def _points_of(probe):
     return {"x0": _num(probe["x0"]), "dx": _num(probe["dx"]),
             "y": [_num(v) for v in probe["gen_y"]]}
@@ -487,12 +496,13 @@ class TestStataGrammarFallback:
     @pytest.mark.parametrize("expr", sorted(_SIGN_AFTER_CARET))
     def test_a_sign_after_caret_takes_one_operand(self, expr, mode):
         _x, y, _w, _ = _draw(mode, expr)
-        assert _same(y, _SIGN_AFTER_CARET[expr]), (expr, list(y))
+        assert _same(_bridged(y), _bridged(_SIGN_AFTER_CARET[expr])), (
+            expr, list(y))
 
     @pytest.mark.parametrize("expr", sorted(_UNARY))
     def test_unary_minus_binds_looser_than_caret(self, expr, mode):
         _x, y, _w, _ = _draw(mode, expr)
-        assert _same(y, _UNARY[expr]), (expr, list(y))
+        assert _same(_bridged(y), _bridged(_UNARY[expr])), (expr, list(y))
 
     def test_division_binds_tighter_than_multiplication(self, mode):
         _x, y, _w, _ = _draw(mode, "0.1*3/0.3")
@@ -561,9 +571,15 @@ class TestAgainstTheFixture:
         bad = []
         for p in probes:
             x, y = _xy(models, p["id"])
-            if not _same(y, _floats(p["gen_y"])):
+            gy = _floats(p["gen_y"])
+            if not _same(_bridged(y), _bridged(gy)):
                 bad.append((p["id"], "y", list(y)[:4]))
-            if sorted(x) != [float(v) for v in p["serset_x"]]:
+            # The x of each joined point (gen_y and serset_x share an order).
+            want_x = [float(v) for v, w in zip(p["serset_x"], gy)
+                      if not np.isnan(w)]
+            got_x = [float(v) for v, w in zip(x, np.asarray(y, dtype=float))
+                     if not np.isnan(w)]
+            if sorted(got_x) != want_x:
                 bad.append((p["id"], "x", list(x)[:4]))
         assert not bad, bad
 
@@ -585,7 +601,8 @@ class TestAgainstTheFixture:
                 if p["rc"] != 0:
                     bad.append((p["id"], "accepted what twoway refuses"))
                     continue
-                want = _floats(p["gen_y"])
+                want = _bridged(_floats(p["gen_y"]))
+                y = _bridged(y)
                 if _has_plain_arith(p["expr"]):
                     ok = _same(y, want)
                 else:

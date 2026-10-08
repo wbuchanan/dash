@@ -482,8 +482,9 @@ class TestTheNewProgramsKeepTheirConstraints:
 
     def test_validate_opts_follows_fold_bw(self):
         src = _ado()
-        i = src.index('_dash_fold_bw "`ptype\'"')
-        j = src.index('_dash_validate_opts "`ptype\'"')
+        # WP-30 P1.8a: both read the type connect() makes (_cn_ptype).
+        i = src.index('_dash_fold_bw "`_cn_ptype\'"')
+        j = src.index('_dash_validate_opts "`_cn_ptype\'"')
         assert i < j, "_dash_validate_opts must run after _dash_fold_bw"
 
     def test_the_old_level_text_is_gone_from_the_plot_parser(self):

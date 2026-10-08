@@ -1412,8 +1412,15 @@ def _fx_check(names, html, app):
             if y is None:
                 bad.append(mode + ":" + nm + ":missing")
                 continue
-            pairs = sorted(zip(x, y), key=lambda t: t[0])
-            if sorted(x) != want_x or not _fx_same([t[1] for t in pairs], want_y):
+            # Flipped (WP-30 P1.8a): under twoway's default cmissing(y) the
+            # line joins the defined points, so a missing point is left out
+            # of the drawn source: compare the points twoway joins.
+            want = [(u, v) for u, v in zip(want_x, want_y) if not _math.isnan(v)]
+            pairs = sorted(((u, v) for u, v in zip(x, y)
+                            if v is not None and not _math.isnan(v)),
+                           key=lambda t: t[0])
+            if [t[0] for t in pairs] != [t[0] for t in want] or \
+                    not _fx_same([t[1] for t in pairs], [t[1] for t in want]):
                 bad.append(mode + ":" + nm + ":" + repr(y[:4]))
     return bad
 

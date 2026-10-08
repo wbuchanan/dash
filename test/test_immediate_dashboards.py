@@ -363,9 +363,10 @@ class TestAFunctionIsDrawnWhereItIsDefined:
         figs, warns = _draw(mode, tmp_path, _spec([g]))
         (line,) = _one_line("Line", figs)
         ys = [_num(v) for v in line.data_source.data["y_fn"]]
-        assert [v is None for v in ys] == [w is None for w in want], ys
-        assert [v for v in ys if v is not None] == pytest.approx(
-            [w for w in want if w is not None])
+        # Flipped (WP-30 P1.8a): twoway's default cmissing(y) joins the
+        # defined points, so the missing ones are not in the line's source.
+        assert None not in ys, ys
+        assert ys == pytest.approx([w for w in want if w is not None])
         assert not _empty_reports(warns), warns
 
     def test_an_infinite_value_is_missing_as_in_stata(self, tmp_path, mode):
@@ -375,7 +376,9 @@ class TestAFunctionIsDrawnWhereItIsDefined:
         figs, _ = _draw(mode, tmp_path, _spec([g]))
         (line,) = _one_line("Line", figs)
         ys = [_num(v) for v in line.data_source.data["y_fn"]]
-        assert ys == [-2.0, None, 2.0]
+        # Flipped (WP-30 P1.8a): the missing point is bridged (cmissing(y)),
+        # and no inf reaches the page.
+        assert ys == [-2.0, 2.0]
 
 
 @pytest.mark.parametrize("mode", _MODES)

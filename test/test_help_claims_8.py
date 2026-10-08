@@ -1760,8 +1760,12 @@ class TestDashSetupHelpMatchesTheAdo:
                 "environment instead.") in help_
         assert ("Tornado is installed with Bokeh, which depends on it, so no "
                 "separate installation is needed") in help_
+        # WP-30 P1.30: and one at or above the verified window's ceiling
+        # is a warning.
         assert ("one below 3.8 is reported as an unmet requirement -- it is "
-                "not upgraded for you -- and the run ends with r(198).") in help_
+                "not upgraded for you -- and the run ends with r(198); one at "
+                "or above 3.10 is reported as outside the verified range, a "
+                "warning, and left as it is.") in help_
 
     def test_it_installs_only_what_is_missing(self):
         """Every pip install in dash_setup.ado sits in the branch a failed

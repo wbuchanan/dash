@@ -165,7 +165,8 @@ class TestTheParserReadsValueLists:
         chg = chg[:chg.index("\n        }\n")]
         assert "local _snap_`o' : copy local _dash_vnorm" in chg
         seg = _program_body(_read(_ADO), "_dash_process_segment")
-        call = seg.index('_dash_validate_opts "`ptype\'" `_sl_n\'')
+        # WP-30 P1.8a: the type connect() makes (_cn_ptype).
+        call = seg.index('_dash_validate_opts "`_cn_ptype\'" `_sl_n\'')
         assert seg.rindex("local _sl_n 1", 0, call) > seg.rindex(
             "_dash_fold_bw", 0, call)
 
