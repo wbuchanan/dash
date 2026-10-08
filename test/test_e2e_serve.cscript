@@ -312,7 +312,8 @@ macro drop ZSRV_WSO ZSRV_AUTH
 display `"P4-82: the launcher hands Server allow_websocket_origin=`p482wso'"'
 assert `"`p482wso'"' == `"['localhost:5006', '127.0.0.1:5006']"'
 display `"P4-82: the launcher hands Server auth_provider of type `p482auth'"'
-assert "`p482auth'" == "_DashTokenAuth"
+// WP-30 P1.31a: the provider is _DashCapAuth (the token check plus the session cap).
+assert "`p482auth'" == "_DashCapAuth"
 display "P4-82 PASS: generated .py contains 'allow_websocket_origin'"
 
 dash clear

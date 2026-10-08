@@ -1134,10 +1134,15 @@ if !`_o' local ok 0
 _sl_tally SL-21 `ok' "guards: empty quotes, (), \$ and one value as before; a comma colour refused as twoway"
 
 // SL-22 one value on every y for the options twoway does not list
+// WP-30 P1.8b: recast(line) is drawn now, as each y's type (line, its
+// typed scatter kept as recast_from), not carried in the options.
 capture noisily dash scatter mpg turn weight, malpha(50) recast(line) yaxis(2) sort name(sl22)
-mata: st_local("ok", strofreal(_sl_opts(st_global("dash_json_sl22"), 1) == _sl_opts(st_global("dash_json_sl22"), 2) & ///
-    strpos(_sl_opts(st_global("dash_json_sl22"), 1), "malpha") & strpos(_sl_opts(st_global("dash_json_sl22"), 1), "recast") & ///
-    strpos(_sl_opts(st_global("dash_json_sl22"), 1), "yaxis") & strpos(_sl_opts(st_global("dash_json_sl22"), 1), "sort")))
+mata: _sl22 = st_global("dash_json_sl22"); _sl22rc = char(34) + "type" + char(34) + ":" + char(34) + "line" + char(34) + "," + ///
+    char(34) + "recast_from" + char(34) + ":" + char(34) + "scatter" + char(34)
+mata: st_local("ok", strofreal(_sl_opts(_sl22, 1) == _sl_opts(_sl22, 2) & ///
+    strpos(_sl_opts(_sl22, 1), "malpha") & !strpos(_sl_opts(_sl22, 1), "recast") & ///
+    (strlen(_sl22) - strlen(subinstr(_sl22, _sl22rc, ""))) / strlen(_sl22rc) == 2 & ///
+    strpos(_sl_opts(_sl22, 1), "yaxis") & strpos(_sl_opts(_sl22, 1), "sort")))
 _sl_tally SL-22 `ok' "malpha, recast, yaxis and sort stay one value on every y"
 
 // SL-23 by() and numbering

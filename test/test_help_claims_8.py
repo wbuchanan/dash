@@ -1080,9 +1080,11 @@ class TestTheShippedFiles:
         # now carry the keys the text box styles read for mlabtextstyle().
         # 210..280 -> 250..320: P1.24 textbox keys (251 to 311, rounded
         # outward to ten).
-        assert 250 <= n <= 320, (name, n)
+        # WP-30 P1.20b: the margin ladder (gsize *margin) is read now:
+        # 250..320 -> 260..330 (262 to 322, rounded outward to ten).
+        assert 260 <= n <= 330, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"250\s+to\s+320\s+directives", help_text)
+        assert re.search(r"260\s+to\s+330\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1185,8 +1187,12 @@ class TestTheShippedFiles:
                    {k for pair in dr.SchemeParser._TEXTBOX_STYLES.values()
                     for k in pair} | {"pbarlabel", "pboxlabel"}
                    for c in ("gsize", "color")}
+        # WP-30 P1.20b: the margin ladder (gsize tinymargin ...) is read
+        # by margin_sides() for the marginstyle names now.
+        ladder = {f"gsize {k}" for k in dr.SchemeParser._MARGIN_LADDER}
         for name in dr.SchemeParser._BUILTIN_NAMES:
-            group = set(truth[name]["named_style_directives"]) | textbox
+            group = (set(truth[name]["named_style_directives"]) | textbox
+                     | ladder)
             named |= group
             keys |= {k for k, _v in _directives(
                 os.path.join(_SCHEMES, "dash-" + name + ".scheme"))

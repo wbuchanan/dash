@@ -306,7 +306,8 @@ class TestOneOptionsObjectPerSeries:
         body = _program_body(_read(_ADO), "_dash_process_segment")
         # P1.8a: validated as the connected type a scatter given connect()
         # is (_cn_ptype).
-        v = body.index('_dash_validate_opts "`_cn_ptype\'"')
+        # WP-30 P1.8b: validated as the recast() target (_rc_own) now.
+        v = body.index('_dash_validate_opts "`_rc_own\'"')
         c = body.index("_dash_stylelist_check")
         assert v < c
 

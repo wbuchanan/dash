@@ -5602,7 +5602,9 @@ def _s21_dash_margin():
         if _s21_M.getGlobal("S21_" + k.upper()):
             go[k] = _s21_M.getGlobal("S21_" + k.upper())
     g = int(_s21_M.getGlobal("S21_G") or "1")
-    _s21_M.setGlobal("S21_DM", repr(dr._dash_plot_margin(sch, go, panels=g)["y"]))
+    # WP-30 P1.20b: "y" is the (bottom, top) pair; S21_MF is the bottom
+    # side (curmin to the frame's low edge), so the bottom element.
+    _s21_M.setGlobal("S21_DM", repr(dr._dash_plot_margin(sch, go, panels=g)["y"][0]))
     _s21_M.setGlobal("S21_R", repr(sch.plot_margin_rs / 100.0))
     k1, b1, b2 = dr._DASH_BY_GMETRIC
     import math
