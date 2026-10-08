@@ -588,6 +588,29 @@ gsize pbarlabel         small
 gsize pboxlabel         small
 
 * ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1rcolor); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Stata's margin ladder, the sizes plotregion(margin()) names
+* (WP-30 P1.20b).
+gsize sidemargin    relative3
+gsize medmargin     relative3p5
+gsize medsmmargin   relative2p2
+gsize medlgmargin   relative5
+gsize largemargin   relative8
+gsize vlargemargin  relative12
+gsize smallmargin   relative1p2
+gsize vsmallmargin  relative0p6
+gsize tinymargin    relative0p3
+gsize emargin       relative1p5
+gsize esubmargin    relative4
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -655,6 +678,17 @@ gsize pboxlabel         small
 * provenance: numticks_g horizontal_major -- transcribed from scheme-s2color.scheme:291 `numticks_g horizontal_major 5'
 * provenance: numticks_g vertical_major -- transcribed from scheme-s2color.scheme:292 `numticks_g vertical_major 5'
 * provenance: margin twoway -- transcribed from scheme-s2color.scheme:719 `margin twoway medsmall'
+* provenance: gsize sidemargin -- transcribed from scheme-s2color.scheme:195 `gsize sidemargin relative3'
+* provenance: gsize medmargin -- transcribed from scheme-s2color.scheme:196 `gsize medmargin relative3p5'
+* provenance: gsize medsmmargin -- transcribed from scheme-s2color.scheme:197 `gsize medsmmargin relative2p2'
+* provenance: gsize medlgmargin -- transcribed from scheme-s2color.scheme:198 `gsize medlgmargin relative5'
+* provenance: gsize largemargin -- transcribed from scheme-s2color.scheme:199 `gsize largemargin relative8'
+* provenance: gsize vlargemargin -- transcribed from scheme-s2color.scheme:200 `gsize vlargemargin relative12'
+* provenance: gsize smallmargin -- transcribed from scheme-s2color.scheme:201 `gsize smallmargin relative1p2'
+* provenance: gsize vsmallmargin -- transcribed from scheme-s2color.scheme:202 `gsize vsmallmargin relative0p6'
+* provenance: gsize tinymargin -- transcribed from scheme-s2color.scheme:203 `gsize tinymargin relative0p3'
+* provenance: gsize emargin -- transcribed from scheme-s2color.scheme:204 `gsize emargin relative1p5'
+* provenance: gsize esubmargin -- transcribed from scheme-s2color.scheme:205 `gsize esubmargin relative4'
 * provenance: symbolsize p -- transcribed from scheme-s2color.scheme:274 `symbolsize p medium'
 * provenance: clockdir legend_position -- transcribed from scheme-s2color.scheme:1924 `clockdir legend_position 6'
 * provenance: numstyle legend_cols -- transcribed from scheme-s2color.scheme:39 `numstyle legend_cols 2'

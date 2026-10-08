@@ -1,0 +1,5136 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "c48a92c5b150c5f3f800bb18800aeb21f68dc39c",
+  "extracted": " 8 Oct 2026",
+  "ladders": {
+   "economist": {
+    "emargin": 1.5,
+    "esubmargin": 4.0,
+    "largemargin": 8.0,
+    "medlgmargin": 5.0,
+    "medmargin": 3.5,
+    "medsmmargin": 2.2,
+    "sidemargin": 3.0,
+    "smallmargin": 1.2,
+    "tinymargin": 0.3,
+    "vlargemargin": 12.0,
+    "vsmallmargin": 0.6
+   },
+   "s2color": {
+    "emargin": 1.5,
+    "esubmargin": 4.0,
+    "largemargin": 8.0,
+    "medlgmargin": 5.0,
+    "medmargin": 3.5,
+    "medsmmargin": 2.2,
+    "sidemargin": 3.0,
+    "smallmargin": 1.2,
+    "tinymargin": 0.3,
+    "vlargemargin": 12.0,
+    "vsmallmargin": 0.6
+   },
+   "stcolor": {
+    "emargin": 1.5,
+    "esubmargin": 4.0,
+    "largemargin": 8.0,
+    "medlgmargin": 5.0,
+    "medmargin": 3.5,
+    "medsmmargin": 2.2,
+    "sidemargin": 3.0,
+    "smallmargin": 1.2,
+    "tinymargin": 0.3,
+    "vlargemargin": 12.0,
+    "vsmallmargin": 0.6
+   }
+  },
+  "marginstyles": {
+   "10-pt": [
+    "10-pt",
+    "10-pt",
+    "10-pt",
+    "10-pt"
+   ],
+   "2-pt": [
+    "2-pt",
+    "2-pt",
+    "2-pt",
+    "2-pt"
+   ],
+   "3-pt": [
+    "3-pt",
+    "3-pt",
+    "3-pt",
+    "3-pt"
+   ],
+   "4-pt": [
+    "4-pt",
+    "4-pt",
+    "4-pt",
+    "4-pt"
+   ],
+   "allsides-ms": [
+    "medmargin",
+    "medmargin",
+    "smallmargin",
+    "smallmargin"
+   ],
+   "bargraph": [
+    "medmargin",
+    "medmargin",
+    "zero",
+    "medmargin"
+   ],
+   "bottom": [
+    "zero",
+    "zero",
+    "sidemargin",
+    "zero"
+   ],
+   "ebargraph": [
+    "emargin",
+    "emargin",
+    "zero",
+    "emargin"
+   ],
+   "esubhead": [
+    "medsmmargin",
+    "medsmmargin",
+    "esubmargin",
+    "zero"
+   ],
+   "horiz_bargraph": [
+    "zero",
+    "medmargin",
+    "medmargin",
+    "medmargin"
+   ],
+   "large": [
+    "largemargin",
+    "largemargin",
+    "largemargin",
+    "largemargin"
+   ],
+   "left": [
+    "sidemargin",
+    "zero",
+    "zero",
+    "zero"
+   ],
+   "medium": [
+    "medmargin",
+    "medmargin",
+    "medmargin",
+    "medmargin"
+   ],
+   "medlarge": [
+    "medlgmargin",
+    "medlgmargin",
+    "medlgmargin",
+    "medlgmargin"
+   ],
+   "medsmall": [
+    "medsmmargin",
+    "medsmmargin",
+    "medsmmargin",
+    "medsmmargin"
+   ],
+   "right": [
+    "zero",
+    "sidemargin",
+    "zero",
+    "zero"
+   ],
+   "side-2-pt": [
+    "2-pt",
+    "2-pt",
+    "zero",
+    "zero"
+   ],
+   "side-3-pt": [
+    "3-pt",
+    "3-pt",
+    "zero",
+    "zero"
+   ],
+   "side-4-pt": [
+    "4-pt",
+    "4-pt",
+    "zero",
+    "zero"
+   ],
+   "sides": [
+    "medmargin",
+    "medmargin",
+    "zero",
+    "zero"
+   ],
+   "small": [
+    "smallmargin",
+    "smallmargin",
+    "smallmargin",
+    "smallmargin"
+   ],
+   "tiny": [
+    "tinymargin",
+    "tinymargin",
+    "tinymargin",
+    "tinymargin"
+   ],
+   "top": [
+    "zero",
+    "zero",
+    "zero",
+    "sidemargin"
+   ],
+   "top_bottom": [
+    "zero",
+    "zero",
+    "medmargin",
+    "medmargin"
+   ],
+   "vlarge": [
+    "vlargemargin",
+    "vlargemargin",
+    "vlargemargin",
+    "vlargemargin"
+   ],
+   "vside-2-pt": [
+    "0",
+    "0",
+    "2-pt",
+    "2-pt"
+   ],
+   "vsmall": [
+    "vsmallmargin",
+    "vsmallmargin",
+    "vsmallmargin",
+    "vsmallmargin"
+   ],
+   "zero": [
+    "zero",
+    "zero",
+    "zero",
+    "zero"
+   ]
+  },
+  "source": "scripts/extract_margin_truth.do",
+  "stata_version": "19.5",
+  "units": "margin_rel = plot-region edge to curmin (or curmax) distance / min(canvas W, H); lo is the left or bottom side, hi the right or top"
+ },
+ "probes": {
+  "BOGUS": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(bogus))",
+   "data": "auto",
+   "notes": [
+    "(note:  named style bogus not found in class margin, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "BY_B10": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, by(foreign) plotregion(margin(b+10))",
+   "data": "auto",
+   "gmetric": 0.85,
+   "notes": [],
+   "panels": [
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    },
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "y": {
+    "edges": [
+     4.759450573878858,
+     41.943817201155944
+    ],
+    "frame_frac": {
+     "hi": 0.02538209701449089,
+     "lo": 0.14093421245144638
+    },
+    "margin_rel": {
+     "hi": 0.018673379629629568,
+     "lo": 0.1036840277777778
+    },
+    "plotregion": [
+     388.33,
+     258.27,
+     2071.83,
+     2377.06
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "BY_DEF": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, by(foreign)",
+   "data": "auto",
+   "gmetric": 0.85,
+   "notes": [],
+   "panels": [
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    },
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "y": {
+    "edges": [
+     9.170263271471732,
+     41.82933596399285
+    ],
+    "frame_frac": {
+     "hi": 0.025393738879265965,
+     "lo": 0.025406010034028804
+    },
+    "margin_rel": {
+     "hi": 0.01868194444444442,
+     "lo": 0.018690972222222185
+    },
+    "plotregion": [
+     388.33,
+     258.27,
+     2071.83,
+     2377.06
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "BY_L10": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, by(foreign) plotregion(margin(l+10))",
+   "data": "auto",
+   "gmetric": 0.85,
+   "notes": [],
+   "panels": [
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    },
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "y": {
+    "edges": [
+     9.170263271471732,
+     41.82933596399285
+    ],
+    "frame_frac": {
+     "hi": 0.025393738879265965,
+     "lo": 0.025406010034028804
+    },
+    "margin_rel": {
+     "hi": 0.01868194444444442,
+     "lo": 0.018690972222222185
+    },
+    "plotregion": [
+     388.33,
+     258.27,
+     2071.83,
+     2377.06
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "BY_ZERO": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, by(foreign) plotregion(margin(zero))",
+   "data": "auto",
+   "gmetric": 0.85,
+   "notes": [],
+   "panels": [
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    },
+    {
+     "x": {
+      "cur": [
+       1760.0,
+       5000.0
+      ],
+      "major": [
+       2000.0,
+       1000.0,
+       5000.0
+      ]
+     },
+     "y": {
+      "cur": [
+       10.0,
+       41.0
+      ],
+      "major": [
+       10.0,
+       10.0,
+       40.0
+      ]
+     }
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "y": {
+    "edges": [
+     10.0,
+     40.999575707033024
+    ],
+    "frame_frac": {
+     "hi": -1.3687057235415922e-05,
+     "lo": 0.0
+    },
+    "margin_rel": {
+     "hi": -1.006944444438434e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     388.33,
+     258.27,
+     2071.83,
+     2377.06
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "CAPL": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(L+10))",
+   "data": "auto",
+   "notes": [
+    "(note:  named style L not found in class gsize, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1641.4270936597559,
+     5378.572044308435
+    ],
+    "frame_frac": {
+     "hi": 0.10129980220401236,
+     "lo": 0.03172820639982474
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.12198958333333323,
+     "lo": 0.038208472222222276
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "COPY": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(zero)) plotregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1466.5645598937726,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 0.08304536621090937
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 0.10000680555555558
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "COPYR": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+10)) plotregion(margin(zero))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "DEF": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight,",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "ECON_DEF": {
+   "canvas": [
+    1584.0,
+    1584.0
+   ],
+   "cmd": "twoway scatter mpg weight,",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "economist",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ]
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ]
+   }
+  },
+  "ECON_L10": {
+   "canvas": [
+    1584.0,
+    1584.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "economist",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ]
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ]
+   }
+  },
+  "G1": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, graphregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1692.7443656890623,
+     5067.229744068589
+    ],
+    "frame_frac": {
+     "hi": 0.019922962031287114,
+     "lo": 0.019930634384089332
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.022000000000000294,
+     "lo": 0.022008472222222256
+    },
+    "plotregion": [
+     678.77,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     678.77,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "G2": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ]
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ]
+   }
+  },
+  "I1": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.000000000000005,
+      "left": 1760.0193923723336,
+      "right": 5000.0,
+      "top": 40.99908165083542
+     },
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null,
+     "w": 3341.5,
+     "x": 454.16,
+     "y": 164.22
+    },
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.039475307372838,
+      "left": 1762.8118939883648,
+      "right": 4997.207498383968,
+      "top": 40.95960634346258
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": 0.0,
+     "stroke_width": 5.76,
+     "w": 3335.74,
+     "x": 457.04,
+     "y": 167.1
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "I2": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(icolor(red))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.000000000000005,
+      "left": 1760.0193923723336,
+      "right": 5000.0,
+      "top": 40.99908165083542
+     },
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null,
+     "w": 3341.5,
+     "x": 454.16,
+     "y": 164.22
+    },
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.039475307372838,
+      "left": 1762.8118939883648,
+      "right": 4997.207498383968,
+      "top": 40.95960634346258
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#ff0000",
+     "stroke_opacity": null,
+     "stroke_width": 5.76,
+     "w": 3335.74,
+     "x": 457.04,
+     "y": 167.1
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "I3": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(ilcolor(red) ilwidth(thick))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.157901229491344,
+      "left": 1771.1893988364577,
+      "right": 4988.8299935358755,
+      "top": 40.84118042134408
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2238.56,
+     "stroke": "#ff0000",
+     "stroke_opacity": null,
+     "stroke_width": 23.04,
+     "w": 3318.46,
+     "x": 465.68,
+     "y": 175.74
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "I4": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red%50) ilpattern(dash))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.000000000000005,
+      "left": 1760.0193923723336,
+      "right": 5000.0,
+      "top": 40.99908165083542
+     },
+     "fill": "#ff0000",
+     "fill_opacity": 0.5,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null,
+     "w": 3341.5,
+     "x": 454.16,
+     "y": 164.22
+    },
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.039475307372838,
+      "left": 1762.8118939883648,
+      "right": 4997.207498383968,
+      "top": 40.95960634346258
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": 0.0,
+     "stroke_width": 5.76,
+     "w": 3335.74,
+     "x": 457.04,
+     "y": 167.1
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "I5": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(istyle(none) ifcolor(red))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.000000000000005,
+      "left": 1760.0193923723336,
+      "right": 5000.0,
+      "top": 40.99908165083542
+     },
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null,
+     "w": 3341.5,
+     "x": 454.16,
+     "y": 164.22
+    },
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.039475307372838,
+      "left": 1762.8118939883648,
+      "right": 4997.207498383968,
+      "top": 40.95960634346258
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": 0.0,
+     "stroke_width": 5.76,
+     "w": 3335.74,
+     "x": 457.04,
+     "y": 167.1
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "I6": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red) margin(zero))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.0,
+      "left": 1759.995142169395,
+      "right": 5000.0,
+      "top": 40.999022220683926
+     },
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2388.33,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null,
+     "w": 3468.22,
+     "x": 390.8,
+     "y": 100.86
+    },
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.03738058978264,
+      "left": 1762.6856329659859,
+      "right": 4997.309509203409,
+      "top": 40.96164163090129
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2382.57,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": 0.0,
+     "stroke_width": 5.76,
+     "w": 3462.46,
+     "x": 393.68,
+     "y": 103.74
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "I7": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(ifc(red) ilc(blue))",
+   "data": "auto",
+   "inner": [
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.000000000000005,
+      "left": 1760.0193923723336,
+      "right": 5000.0,
+      "top": 40.99908165083542
+     },
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "h": 2261.6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null,
+     "w": 3341.5,
+     "x": 454.16,
+     "y": 164.22
+    },
+    {
+     "dasharray": null,
+     "data": {
+      "bottom": 10.039475307372838,
+      "left": 1762.8118939883648,
+      "right": 4997.207498383968,
+      "top": 40.95960634346258
+     },
+     "fill": "none",
+     "fill_opacity": null,
+     "h": 2255.84,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 5.76,
+     "w": 3335.74,
+     "x": 457.04,
+     "y": 167.1
+    }
+   ],
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "L10": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1387.1864521879377,
+     5067.229744068589
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335596,
+     "lo": 0.1013068375131912
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.022000000000000297,
+     "lo": 0.12199805555555554
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "L5": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l5))",
+   "data": "auto",
+   "notes": [
+    "(note:  named style l5 not found in class margin, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "L5L5": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+5 l+5))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1387.1864521879377,
+     5067.229744068589
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335596,
+     "lo": 0.1013068375131912
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.022000000000000297,
+     "lo": 0.12199805555555554
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "LEQ0": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l=0))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1760.001903160833,
+     5060.292135187858
+    ],
+    "frame_frac": {
+     "hi": 0.01826873727733529,
+     "lo": -5.76664686824136e-07
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.02199999999999993,
+     "lo": -6.944444444920851e-07
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "LEQ10": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l=10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1460.6076986247258,
+     5065.863470514247
+    ],
+    "frame_frac": {
+     "hi": 0.01826873727733541,
+     "lo": 0.08304329021803691
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.02200000000000007,
+     "lo": 0.10000430555555553
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "LM5": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l-5))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1834.9260058005502,
+     5058.897895441362
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335346,
+     "lo": -0.023240278875042503
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.022,
+     "lo": -0.02798694444444441
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "LOG": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, yscale(log) plotregion(margin(b+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     7.7788333386612045,
+     42.89960502389646
+    ],
+    "frame_frac": {
+     "hi": 0.026525161230055685,
+     "lo": 0.14710697432934317
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.021996818861312117,
+     "lo": 0.1219930555555556
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "log10"
+   }
+  },
+  "LSP": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l +10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1387.1864521879377,
+     5067.229744068589
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335596,
+     "lo": 0.1013068375131912
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.022000000000000297,
+     "lo": 0.12199805555555554
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "MIX": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(zero) color(red)) plotregion(mar(t+5))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     42.98783154773689
+    ],
+    "frame_frac": {
+     "hi": 0.06025953979000668,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.049972106481481475,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_10_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(10-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1660.909132966314,
+     5099.124969433411
+    ],
+    "frame_frac": {
+     "hi": 0.028830351015794828,
+     "lo": 0.02882043238318214
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.03471874999999998,
+     "lo": 0.03470680555555554
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.58343564075928,
+     42.4156672018132
+    ],
+    "frame_frac": {
+     "hi": 0.04184374297800828,
+     "lo": 0.04187026080985455
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03470023148148143,
+     "lo": 0.034722222222222196
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_2_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(2-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1741.0555364787938,
+     5018.8261385938995
+    ],
+    "frame_frac": {
+     "hi": 0.005743580280374474,
+     "lo": 0.005779679489767094
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0069166666666667905,
+     "lo": 0.006960138888888899
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.736925473217351,
+     41.2627049288524
+    ],
+    "frame_frac": {
+     "hi": 0.008333019306377329,
+     "lo": 0.008344742979403989
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.0069104166666667235,
+     "lo": 0.006920138888888864
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_3_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(3-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1731.5478774474234,
+     5028.47075449876
+    ],
+    "frame_frac": {
+     "hi": 0.008635553684599048,
+     "lo": 0.008629902370668522
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.010399305555555594,
+     "lo": 0.010392499999999994
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.601253267415487,
+     41.39887543214205
+    ],
+    "frame_frac": {
+     "hi": 0.012544190571096394,
+     "lo": 0.012540143112551576
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.010402662037037031,
+     "lo": 0.010399305555555662
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_4_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(4-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1721.793511001463,
+     5038.220641249987
+    ],
+    "frame_frac": {
+     "hi": 0.011524643765389498,
+     "lo": 0.011520376446707547
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.013878472222221931,
+     "lo": 0.01387333333333335
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.463115487914056,
+     41.53558639212176
+    ],
+    "frame_frac": {
+     "hi": 0.016699255686330426,
+     "lo": 0.016739730271779843
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.013848379629629703,
+     "lo": 0.01388194444444443
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_allsides_ms": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(allsides-ms))",
+   "data": "auto",
+   "notes": [
+    "(note:  named style a not found in class gsize, default attributes used)",
+    "(note:  named style sides not found in class gsize, default attributes used)"
+   ],
+   "rc": 7,
+   "scheme": "s2color"
+  },
+  "NM_bargraph": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(bargraph))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1660.0092571164082,
+     5099.907428835918
+    ],
+    "frame_frac": {
+     "hi": 0.029043716949905228,
+     "lo": 0.029067936866750098
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497569444444455,
+     "lo": 0.03500486111111112
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     42.364534022332236
+    ],
+    "frame_frac": {
+     "hi": 0.042161398690019086,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03496365740740739,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_bottom": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(bottom))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.836737442204964,
+     40.99991022130448
+    ],
+    "frame_frac": {
+     "hi": -2.791350720728364e-06,
+     "lo": 0.03616753128755243
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.3148148148740186e-06,
+     "lo": 0.02999305555555559
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_ebargraph": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(ebargraph))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1718.65988369308,
+     5041.3780549727435
+    ],
+    "frame_frac": {
+     "hi": 0.01245307391111288,
+     "lo": 0.012441655950314571
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.014996527777777748,
+     "lo": 0.014982777777777777
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     41.57036919538407
+    ],
+    "frame_frac": {
+     "hi": 0.01806659883684419,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.014982291666666696,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_esubhead": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(esubhead))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.428711048480572,
+     40.99906811828079
+    ],
+    "frame_frac": {
+     "hi": -2.8611344886821892e-05,
+     "lo": 0.04824291450511463
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.3726851851924767e-05,
+     "lo": 0.04000694444444459
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_horiz_bargraph": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(horiz_bargraph))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.9622836360372,
+     5096.917585254698
+    ],
+    "frame_frac": {
+     "hi": 0.02904371694990516,
+     "lo": 1.1302627860935785e-05
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497569444444447,
+     "lo": 1.3611111111060662e-05
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.571955091857557,
+     42.427846450442274
+    ],
+    "frame_frac": {
+     "hi": 0.04217423890333404,
+     "lo": 0.042180100739847716
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497430555555548,
+     "lo": 0.03497916666666684
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_large": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(large))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1511.7892514202404,
+     5248.102156754311
+    ],
+    "frame_frac": {
+     "hi": 0.0664029386832439,
+     "lo": 0.06643200258345779
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.07996527777777783,
+     "lo": 0.08000027777777775
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     6.294046693649982,
+     44.70501514461093
+    ],
+    "frame_frac": {
+     "hi": 0.0964572176653422,
+     "lo": 0.09648164198414799
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.07999016203703706,
+     "lo": 0.08001041666666672
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_left": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(left))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1677.2818287203365,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 0.024894729861427455
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 0.029979305555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_medium": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(medium))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1660.0092571164082,
+     5099.907428835918
+    ],
+    "frame_frac": {
+     "hi": 0.029043716949905228,
+     "lo": 0.029067936866750098
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497569444444455,
+     "lo": 0.03500486111111112
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.571955091857557,
+     42.427846450442274
+    ],
+    "frame_frac": {
+     "hi": 0.04217423890333404,
+     "lo": 0.042180100739847716
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497430555555548,
+     "lo": 0.03497916666666684
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_medlarge": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(medlarge))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1613.3403061709614,
+     5146.61975848626
+    ],
+    "frame_frac": {
+     "hi": 0.04149679086101802,
+     "lo": 0.041508093488878996
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.04997222222222219,
+     "lo": 0.0499858333333333
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     7.875739179203606,
+     43.12506764535141
+    ],
+    "frame_frac": {
+     "hi": 0.060286755459532985,
+     "lo": 0.06026386638362369
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.04999467592592584,
+     "lo": 0.04997569444444443
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_medsmall": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(medsmall))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1698.584356819651,
+     5061.435035552682
+    ],
+    "frame_frac": {
+     "hi": 0.018268737277335217,
+     "lo": 0.01826297063046748
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021999999999999843,
+     "lo": 0.021993055555555526
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_right": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(right))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1760.0379386658237,
+     5082.756109945487
+    ],
+    "frame_frac": {
+     "hi": 0.024906147822225767,
+     "lo": -1.1417960798378425e-05
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0299930555555555,
+     "lo": -1.3750000000052784e-05
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_side_2_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(side-2-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1741.0555364787938,
+     5018.8261385938995
+    ],
+    "frame_frac": {
+     "hi": 0.005743580280374474,
+     "lo": 0.005779679489767094
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0069166666666667905,
+     "lo": 0.006960138888888899
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_side_3_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(side-3-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1731.5478774474234,
+     5028.47075449876
+    ],
+    "frame_frac": {
+     "hi": 0.008635553684599048,
+     "lo": 0.008629902370668522
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.010399305555555594,
+     "lo": 0.010392499999999994
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_side_4_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(side-4-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1721.793511001463,
+     5038.220641249987
+    ],
+    "frame_frac": {
+     "hi": 0.011524643765389498,
+     "lo": 0.011520376446707547
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.013878472222221931,
+     "lo": 0.01387333333333335
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_sides": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(sides))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1660.0092571164082,
+     5099.907428835918
+    ],
+    "frame_frac": {
+     "hi": 0.029043716949905228,
+     "lo": 0.029067936866750098
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497569444444455,
+     "lo": 0.03500486111111112
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_small": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(small))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1727.0448284736585,
+     5032.913612490587
+    ],
+    "frame_frac": {
+     "hi": 0.00995611581733567,
+     "lo": 0.009968687107507626
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.011989583333333304,
+     "lo": 0.012004722222222257
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.53847798871033,
+     41.460483932048135
+    ],
+    "frame_frac": {
+     "hi": 0.01442528182174713,
+     "lo": 0.014457801057642834
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.011962615740740737,
+     "lo": 0.011989583333333371
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_tiny": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(tiny))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1751.9519820245537,
+     5008.01759991488
+    ],
+    "frame_frac": {
+     "hi": 0.0024623582125701707,
+     "lo": 0.002471700180495997
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0029652777777778184,
+     "lo": 0.0029765277777777173
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.886648886099778,
+     41.11154690931911
+    ],
+    "frame_frac": {
+     "hi": 0.0035723706522968117,
+     "lo": 0.0036301516122144786
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.0029625000000000155,
+     "lo": 0.003010416666666738
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_top": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(top))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     42.16317277909952
+    ],
+    "frame_frac": {
+     "hi": 0.0361647399368317,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02999074074074071,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_top_bottom": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(top_bottom))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.571955091857557,
+     42.427846450442274
+    ],
+    "frame_frac": {
+     "hi": 0.04217423890333404,
+     "lo": 0.042180100739847716
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03497430555555548,
+     "lo": 0.03497916666666684
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_vlarge": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(vlarge))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1356.7978533094813,
+     5403.0994788830985
+    ],
+    "frame_frac": {
+     "hi": 0.09962170796546928,
+     "lo": 0.09964708121168782
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.11996874999999994,
+     "lo": 0.11999930555555552
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     3.688796074181404,
+     47.312324196631884
+    ],
+    "frame_frac": {
+     "hi": 0.14469999260292063,
+     "lo": 0.14467431217629068
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.11999699074074077,
+     "lo": 0.11997569444444456
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_vside_2_pt": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(vside-2-pt))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.736925473217351,
+     41.2627049288524
+    ],
+    "frame_frac": {
+     "hi": 0.008333019306377329,
+     "lo": 0.008344742979403989
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.0069104166666667235,
+     "lo": 0.006920138888888864
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_vsmall": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(vsmall))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1743.6961178087622,
+     5016.229528305744
+    ],
+    "frame_frac": {
+     "hi": 0.004959316306347224,
+     "lo": 0.004982036895006614
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.005972222222222072,
+     "lo": 0.005999583333333278
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.77334685438095,
+     41.22729846834626
+    ],
+    "frame_frac": {
+     "hi": 0.007226388313172826,
+     "lo": 0.007205871885376008
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.005992708333333352,
+     "lo": 0.005975694444444472
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "NM_zero": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(zero))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "Q3": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(1 2 3))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1732.4078598185458,
+     5055.126031098209
+    ],
+    "frame_frac": {
+     "hi": 0.016590643038792065,
+     "lo": 0.008304086822635257
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.019979166666666465,
+     "lo": 0.010000138888888906
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.803844094459109,
+     41.87648861727073
+    ],
+    "frame_frac": {
+     "hi": 0.026501921147133515,
+     "lo": 0.036167531287552505
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.021977546296296314,
+     "lo": 0.02999305555555565
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "Q4": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(1 2 3 4))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1732.4078598185458,
+     5055.126031098209
+    ],
+    "frame_frac": {
+     "hi": 0.016590643038792065,
+     "lo": 0.008304086822635257
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.019979166666666465,
+     "lo": 0.010000138888888906
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.77551599002041,
+     42.63140734860512
+    ],
+    "frame_frac": {
+     "hi": 0.048186808355629156,
+     "lo": 0.0361675312875525
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03996041666666659,
+     "lo": 0.029993055555555644
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "Q5": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(1 2 3 4 5))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1617.171950937283,
+     5057.070122656793
+    ],
+    "frame_frac": {
+     "hi": 0.016590643038792287,
+     "lo": 0.04152101077786298
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.019979166666666732,
+     "lo": 0.050001388888888866
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.77551599002041,
+     42.63140734860512
+    ],
+    "frame_frac": {
+     "hi": 0.048186808355629156,
+     "lo": 0.0361675312875525
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.03996041666666659,
+     "lo": 0.029993055555555644
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "REV": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, xscale(reverse) plotregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1692.8847296494355,
+     5372.77183600713
+    ],
+    "frame_frac": {
+     "hi": 0.018238404714810492,
+     "lo": 0.10129980220401248
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021963472222222235,
+     "lo": 0.12198958333333339
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": true,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "ST_L10": {
+   "canvas": [
+    5400.0,
+    3240.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "stcolor",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1462.090959581617,
+     5053.68761513195
+    ],
+    "frame_frac": {
+     "hi": 0.01494811925748488,
+     "lo": 0.08294612925368565
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021978395061728103,
+     "lo": 0.12195666666666674
+    },
+    "plotregion": [
+     522.79,
+     113.4,
+     5286.6,
+     2766.6600000000003
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.118645742014348,
+     41.87939102841126
+    ],
+    "frame_frac": {
+     "hi": 0.02684282731432267,
+     "lo": 0.026902753593692295
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02198179012345672,
+     "lo": 0.02203086419753087
+    },
+    "plotregion": [
+     522.79,
+     113.4,
+     5286.6,
+     2766.6600000000003
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "TD": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg d, plotregion(margin(r+10))",
+   "data": "td",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     14610.0,
+     16830.0
+    ],
+    "major": [
+     14610.0,
+     0.0,
+     16802.0
+    ]
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.131406170758119,
+     41.86753841303781
+    ],
+    "frame_frac": {
+     "hi": 0.026500944174381164,
+     "lo": 0.026533184275204822
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.02197673611111103,
+     "lo": 0.0220034722222222
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "XS": {
+   "canvas": [
+    7200.0,
+    2160.0
+   ],
+   "cmd": "twoway scatter mpg weight, xsize(10) ysize(3) plotregion(margin(l+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1629.1534643051764,
+     5023.592820123795
+    ],
+    "frame_frac": {
+     "hi": 0.006950432059819509,
+     "lo": 0.03854731871127156
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.021981481481481862,
+     "lo": 0.12190999999999982
+    },
+    "plotregion": [
+     293.18,
+     75.6,
+     7124.41,
+     1866.83
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     9.132309941520464,
+     41.86677631578947
+    ],
+    "frame_frac": {
+     "hi": 0.02647901162888068,
+     "lo": 0.026506925408797406
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.021958333333333305,
+     "lo": 0.021981481481481567
+    },
+    "plotregion": [
+     293.18,
+     75.6,
+     7124.41,
+     1866.83
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "Y2": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), plotregion(margin(t+10))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1692.8099717580108,
+     5067.271144331429
+    ],
+    "frame_frac": {
+     "hi": 0.019935373646669398,
+     "lo": 0.019911335412032327
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.02199999999999998,
+     "lo": 0.021973472222222217
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3569.07,
+     2233.63
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     8.856751051045627,
+     47.33981703686328
+    ],
+    "frame_frac": {
+     "hi": 0.16474303370733828,
+     "lo": 0.029707844727748553
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": 0.12199965277777773,
+     "lo": 0.0220000000000001
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3569.07,
+     2233.63
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  },
+  "ZERO": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cmd": "twoway scatter mpg weight, plotregion(margin(zero))",
+   "data": "auto",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color",
+   "x": {
+    "cur": [
+     1760.0,
+     5000.0
+    ],
+    "edges": [
+     1759.995142169395,
+     5000.0
+    ],
+    "frame_frac": {
+     "hi": 0.0,
+     "lo": 1.4993281856638083e-06
+    },
+    "major": [
+     2000.0,
+     1000.0,
+     5000.0
+    ],
+    "margin_rel": {
+     "hi": 0.0,
+     "lo": 1.8055555555843519e-06
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   },
+   "y": {
+    "cur": [
+     10.0,
+     41.0
+    ],
+    "edges": [
+     10.0,
+     40.999022220683926
+    ],
+    "frame_frac": {
+     "hi": -3.154226314342461e-05,
+     "lo": 0.0
+    },
+    "major": [
+     10.0,
+     10.0,
+     40.0
+    ],
+    "margin_rel": {
+     "hi": -2.6157407407408086e-05,
+     "lo": 0.0
+    },
+    "plotregion": [
+     390.8,
+     100.86,
+     3859.02,
+     2489.19
+    ],
+    "reversed": false,
+    "space": "linear"
+   }
+  }
+ }
+}

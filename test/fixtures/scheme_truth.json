@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-08T12:28:31Z",
+    "generated_utc": "2026-10-08T18:52:39Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11342,6 +11342,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -12220,6 +12231,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -14574,6 +14596,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -16962,6 +17061,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -17840,6 +17950,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -20194,6 +20315,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -22582,6 +22780,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -23460,6 +23669,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -25814,6 +26034,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -28280,6 +28577,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -29172,6 +29480,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -31510,6 +31829,83 @@
         "value": "small",
         "file": "scheme-stmono1.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -34076,6 +34472,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -34984,6 +35391,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -37338,6 +37756,83 @@
         "value": "small",
         "file": "scheme-stmono2.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -40013,6 +40508,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -40918,6 +41424,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -43272,6 +43789,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -45868,6 +46462,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -46743,6 +47348,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -49097,6 +49713,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -51561,6 +52254,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -52466,6 +53170,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -54820,6 +55535,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -57417,6 +58209,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -58292,6 +59095,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -60646,6 +61460,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -63033,6 +63924,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -63908,6 +64810,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -66262,6 +67175,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -68730,6 +69720,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -69619,6 +70620,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -71957,6 +72969,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -74446,6 +75535,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -75321,6 +76421,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -77675,6 +78786,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -80073,6 +81261,17 @@
       "sztype": "relative",
       "pt_at_4in": 7.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 12,
     "legend_cols": 3,
     "legend_rows": 0,
@@ -80961,6 +82160,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -83346,6 +84556,83 @@
         "value": "large",
         "file": "scheme-economist.scheme",
         "line": 95
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -85939,6 +87226,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -86844,6 +88142,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -89198,6 +90507,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -91873,6 +93259,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -92778,6 +94175,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -95132,6 +96540,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -97808,6 +99293,17 @@
       "sztype": "relative",
       "pt_at_4in": 6.34
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -98706,6 +100202,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -101044,6 +102551,83 @@
         "value": "2.2",
         "file": "scheme-s1manual.scheme",
         "line": 50
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -103596,6 +105180,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -104515,6 +106110,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -106853,6 +108459,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -109548,6 +111231,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -110423,6 +112117,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -112777,6 +114482,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -115164,6 +116946,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -116042,6 +117835,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -118396,6 +120200,83 @@
         "value": "small",
         "file": "scheme-sttrans.scheme",
         "line": 36
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -120785,6 +122666,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -121663,6 +123555,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -124017,6 +125920,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -126404,6 +128384,17 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 4,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -127279,6 +129270,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -129633,6 +131635,83 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -132021,6 +134100,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -132899,6 +134989,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -135253,6 +137354,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -137642,6 +139820,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -138520,6 +140709,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -140874,6 +143074,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -143262,6 +145539,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -144140,6 +146428,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -146494,6 +148793,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -148883,6 +151259,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 3,
     "legend_cols": 1,
     "legend_rows": 0,
@@ -149761,6 +152148,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -152115,6 +154513,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",
@@ -154505,6 +156980,17 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "margin_ladder_sidemargin": "relative3",
+    "margin_ladder_medmargin": "relative3p5",
+    "margin_ladder_medsmmargin": "relative2p2",
+    "margin_ladder_medlgmargin": "relative5",
+    "margin_ladder_largemargin": "relative8",
+    "margin_ladder_vlargemargin": "relative12",
+    "margin_ladder_smallmargin": "relative1p2",
+    "margin_ladder_vsmallmargin": "relative0p6",
+    "margin_ladder_tinymargin": "relative0p3",
+    "margin_ladder_emargin": "relative1p5",
+    "margin_ladder_esubmargin": "relative4",
     "legend_position": 6,
     "legend_cols": 2,
     "legend_rows": 0,
@@ -155383,6 +157869,17 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "margin_ladder_sidemargin": "gsize sidemargin",
+      "margin_ladder_medmargin": "gsize medmargin",
+      "margin_ladder_medsmmargin": "gsize medsmmargin",
+      "margin_ladder_medlgmargin": "gsize medlgmargin",
+      "margin_ladder_largemargin": "gsize largemargin",
+      "margin_ladder_vlargemargin": "gsize vlargemargin",
+      "margin_ladder_smallmargin": "gsize smallmargin",
+      "margin_ladder_vsmallmargin": "gsize vsmallmargin",
+      "margin_ladder_tinymargin": "gsize tinymargin",
+      "margin_ladder_emargin": "gsize emargin",
+      "margin_ladder_esubmargin": "gsize esubmargin",
       "legend_position": "clockdir legend_position",
       "legend_cols": "numstyle legend_cols",
       "legend_rows": "numstyle legend_rows",
@@ -157737,6 +160234,83 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "margin_ladder_sidemargin": {
+        "kind": "transcribed",
+        "directive": "gsize sidemargin",
+        "value": "relative3",
+        "file": "scheme-s2color.scheme",
+        "line": 195
+      },
+      "margin_ladder_medmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medmargin",
+        "value": "relative3p5",
+        "file": "scheme-s2color.scheme",
+        "line": 196
+      },
+      "margin_ladder_medsmmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medsmmargin",
+        "value": "relative2p2",
+        "file": "scheme-s2color.scheme",
+        "line": 197
+      },
+      "margin_ladder_medlgmargin": {
+        "kind": "transcribed",
+        "directive": "gsize medlgmargin",
+        "value": "relative5",
+        "file": "scheme-s2color.scheme",
+        "line": 198
+      },
+      "margin_ladder_largemargin": {
+        "kind": "transcribed",
+        "directive": "gsize largemargin",
+        "value": "relative8",
+        "file": "scheme-s2color.scheme",
+        "line": 199
+      },
+      "margin_ladder_vlargemargin": {
+        "kind": "transcribed",
+        "directive": "gsize vlargemargin",
+        "value": "relative12",
+        "file": "scheme-s2color.scheme",
+        "line": 200
+      },
+      "margin_ladder_smallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize smallmargin",
+        "value": "relative1p2",
+        "file": "scheme-s2color.scheme",
+        "line": 201
+      },
+      "margin_ladder_vsmallmargin": {
+        "kind": "transcribed",
+        "directive": "gsize vsmallmargin",
+        "value": "relative0p6",
+        "file": "scheme-s2color.scheme",
+        "line": 202
+      },
+      "margin_ladder_tinymargin": {
+        "kind": "transcribed",
+        "directive": "gsize tinymargin",
+        "value": "relative0p3",
+        "file": "scheme-s2color.scheme",
+        "line": 203
+      },
+      "margin_ladder_emargin": {
+        "kind": "transcribed",
+        "directive": "gsize emargin",
+        "value": "relative1p5",
+        "file": "scheme-s2color.scheme",
+        "line": 204
+      },
+      "margin_ladder_esubmargin": {
+        "kind": "transcribed",
+        "directive": "gsize esubmargin",
+        "value": "relative4",
+        "file": "scheme-s2color.scheme",
+        "line": 205
       },
       "legend_position": {
         "kind": "transcribed",

@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9425,10 +9425,11 @@ if inlist("`only'", "", "S38") & `: list posof "S38" in w30_run' {
     // RS-23: what twoway accepts and dash does not draw is named, once.
     _s36_run `"dash scatter mpg weight, plotregion(lalign(inside) ifcolor(red)) scheme(s2color) saving("`s38pg'", replace)"' "`s38log'"
     local drc = r(rc)
-    _s36_count "`s38log'" "plotregion() sub-option(s) not implemented and ignored: lalign(inside) ifcolor(red)"
+    // Flipped (WP-30 P1.20b): ifcolor() is drawn now (the inner box).
+    _s36_count "`s38log'" "plotregion() sub-option(s) not implemented and ignored: lalign(inside)"
     local nn = r(n)
     _w30_expect RS-23 "(`drc' == 0 & `nn' == 1)" "rc `drc', notes `nn'"
-    _w30_done RS-23 "plotregion(lalign() ifcolor()) is rc 0 and named in one note"
+    _w30_done RS-23 "plotregion(lalign() ifcolor()) is rc 0 and lalign() named in one note"
     capture dash clear
     capture erase "`s38log'"
     capture erase "`s38pg'"
@@ -10516,10 +10517,146 @@ if inlist("`only'", "", "S46") & `: list posof "S46" in w30_run' {
 }
 * ==== end S46 ====
 
+// _s47_check probe html -- the saved page's first figure against
+// test/fixtures/margin_truth.json's probe (WP-30 P1.20b): each side's
+// margin, as a share of min(W, H) measured from twoway's own scale ends
+// (curmin, curmax), within 0.0005 of twoway's margin_rel; for a probe
+// with an inner rect, the page's dash_inner_box at its edges (0.2% of the
+// span) with its fill and outline.  Globals S47_OK (1/0) and S47_MSG.
+capture program drop _s47_check
+program define _s47_check
+    version 19
+    args probe html
+    global S47_PROBE `"`probe'"'
+    global S47_HTML `"`html'"'
+    python: __import__("sys").modules["_dash_s47"].check()
+end
+python:
+def _s47_check():
+    import json, math, os, re
+    from sfi import Macro
+    probe, html = Macro.getGlobal("S47_PROBE"), Macro.getGlobal("S47_HTML")
+    fx = os.path.join(Macro.getGlobal("S47_REPO"), "test", "fixtures",
+                      "margin_truth.json")
+    with open(fx, encoding="utf-8") as fh:
+        row = json.load(fh)["probes"][probe]
+    with open(html, encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, figs = {}, []
+    def walk(o):
+        if isinstance(o, dict):
+            if "id" in o and "attributes" in o:
+                objs[o["id"]] = o
+                if o.get("name") == "Figure":
+                    figs.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        walk(json.loads(m.group(1)))
+    def ref(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    bad = []
+    fig = figs[0]["attributes"] if figs else {}
+    for letter, ext in (("x", 5.5), ("y", 4.0)):
+        want = (row.get(letter) or {}).get("margin_rel")
+        rng = ref(fig.get(letter + "_range")) or {}
+        at = rng.get("attributes", {})
+        if not want or "start" not in at:
+            continue
+        s, e = float(at["start"]), float(at["end"])
+        lo, hi = row[letter]["cur"]
+        tr = math.log10 if probe == "LOG" and letter == "y" else float
+        s, e, lo, hi = tr(s), tr(e), tr(lo), tr(hi)
+        span = abs(e - s)
+        if s <= e:
+            got = ((lo - s) / span, (e - hi) / span)
+        else:
+            got = ((s - hi) / span, (lo - e) / span)
+        got = [g * ext / 4.0 for g in got]
+        if abs(got[0] - want["lo"]) > 5e-4 or abs(got[1] - want["hi"]) > 5e-4:
+            bad.append("%s %s %.4f/%.4f twoway %.4f/%.4f" % (
+                probe, letter, got[0], got[1], want["lo"], want["hi"]))
+    rects = row.get("inner")
+    if rects is not None:
+        boxes = [ref(o) for o in objs.values() if o.get("name") == "BoxAnnotation"
+                 and "dash_inner_box" in (o["attributes"].get("tags") or [])]
+        if len(boxes) != 1:
+            bad.append("%s boxes %d" % (probe, len(boxes)))
+        else:
+            b = boxes[0]["attributes"]
+            fill = [r for r in rects if r["fill"] not in (None, "none")]
+            line = [r for r in rects if r["stroke"] not in (None, "none")]
+            d = (fill or line)[0]["data"]
+            for k, span in (("left", 3240.0), ("right", 3240.0),
+                            ("bottom", 31.0), ("top", 31.0)):
+                if abs(float(b.get(k, 0.0)) - d[k]) > 0.002 * span:
+                    bad.append("%s %s %r twoway %.1f" % (probe, k, b.get(k), d[k]))
+            if fill and str(b.get("fill_color", "")).lower() != fill[0]["fill"]:
+                bad.append("%s fill %r" % (probe, b.get("fill_color")))
+            if line and str(b.get("line_color", "")).lower() != line[0]["stroke"]:
+                bad.append("%s line %r" % (probe, b.get("line_color")))
+    Macro.setGlobal("S47_OK", "0" if bad else "1")
+    Macro.setGlobal("S47_MSG", "; ".join(bad)[:400] or "ok")
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s47_sys
+_s47_sys.modules["_dash_s47"] = type(_s47_sys)("_dash_s47")
+_s47_sys.modules["_dash_s47"].check = _s47_check
+end
+
 * ==== S47 P1.20b: Plot-region margin and inner box ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S47") & `: list posof "S47" in w30_run' {
     display as text "S47 start " c(current_date) " " c(current_time)
+    global S47_REPO "`c(pwd)'/.."
+    local s47log "`w30_work'/s47.log"
+    local s47pg "`w30_work'/zrm.html"
+    local s47ls = c(linesize)
+    set linesize 255
+    quietly sysuse auto, clear
+    // RM-20..RM-23: each probe of margin_truth.json drawn by dash, saved.
+    foreach row in ///
+        `"RM-20|ZERO|scatter mpg weight, plotregion(margin(zero))"' ///
+        `"RM-20|L10|scatter mpg weight, plotregion(margin(l+10))"' ///
+        `"RM-20|COPY|scatter mpg weight, plotregion(margin(zero)) plotregion(margin(l+10))"' ///
+        `"RM-20|Q4|scatter mpg weight, plotregion(margin(1 2 3 4))"' ///
+        `"RM-21|REV|scatter mpg weight, xscale(reverse) plotregion(margin(l+10))"' ///
+        `"RM-21|LOG|scatter mpg weight, yscale(log) plotregion(margin(b+10))"' ///
+        `"RM-21|Y2|(scatter mpg weight) (scatter price weight, yaxis(2)), plotregion(margin(t+10))"' ///
+        `"RM-23|I1|scatter mpg weight, plotregion(ifcolor(red))"' ///
+        `"RM-23|I7|scatter mpg weight, plotregion(ifc(red) ilc(blue))"' {
+        gettoken id rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken pid rest : rest, parse("|")
+        gettoken bar cmd : rest, parse("|")
+        _s36_run `"dash `cmd' scheme(s2color) saving("`s47pg'", replace)"' "`s47log'"
+        local drc = r(rc)
+        capture _s47_check "`pid'" "`s47pg'"
+        local prc = _rc
+        _w30_expect `id' "(`drc' == 0 & `prc' == 0 & ${S47_OK} == 1)" "`pid': rc `drc'/`prc', ${S47_MSG}"
+        _w30_done `id' "`pid': margins per side (and the inner box) as twoway draws them"
+    }
+    // RM-22: by() scales a user margin as the default (H-47.1).
+    _s36_run `"dash scatter mpg weight, by(foreign) plotregion(margin(b+10)) scheme(s2color) saving("`s47pg'", replace)"' "`s47log'"
+    local drc = r(rc)
+    python: from sfi import Macro; import dash_render as _d47; _m47 = _d47._dash_plot_margin(_d47.SchemeParser("s2color"), {"plotregion": "margin(b+10)"}, panels=2)["y"]; Macro.setGlobal("S47_B", "%.6f" % _m47[0])
+    local ok = (`drc' == 0 & abs(${S47_B} - 0.1037) < 0.0005)
+    _w30_expect RM-22 "(`ok')" "rc `drc', bottom ${S47_B} (twoway 0.1037)"
+    _w30_done RM-22 "by(foreign) plotregion(margin(b+10)) is (2.2 + 10)% x .85, as twoway draws it"
+    // RM-01 (notes): an unknown margin is twoway's note, once, drawn zero.
+    _s36_run `"dash scatter mpg weight, by(foreign) plotregion(margin(bogus)) scheme(s2color) saving("`s47pg'", replace)"' "`s47log'"
+    local drc = r(rc)
+    _s36_count "`s47log'" "named style bogus not found in class margin, default attributes used"
+    local nn = r(n)
+    _w30_expect RM-25 "(`drc' == 0 & `nn' == 1)" "rc `drc', notes `nn'"
+    _w30_done RM-25 "plotregion(margin(bogus)) prints twoway's note once"
+    capture dash clear
+    capture erase "`s47log'"
+    capture erase "`s47pg'"
+    macro drop S47_*
+    set linesize `s47ls'
     display as text "S47 end " c(current_date) " " c(current_time)
 }
 * ==== end S47 ====

@@ -583,15 +583,17 @@ def _digest(model):
 # Re-derived for WP-30 P1.3b: the filter callback carries the date model's
 # JavaScript port (_DASH_TSNATSCALE_JS inside _DASH_AXIS_FINISH_JS), and
 # again for its default-date-axis range() rule (the batch-15 gate).
+# Re-derived for WP-30 P1.20b: the axis plan's margin is a per-side pair
+# and each panel names its inner box; the finish code pads per side.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "6fb0cd8611eff5a2f6b02e26690e6c606397576be6412af7ef59418a07552ad5",
+        "b1f1f1ca2ceaff41b2817959b43818188ec7c7d7e6c26ada3849f181c1dbccf4",
     ("saved", "yaxis2"):
-        "6fb0cd8611eff5a2f6b02e26690e6c606397576be6412af7ef59418a07552ad5",
+        "b1f1f1ca2ceaff41b2817959b43818188ec7c7d7e6c26ada3849f181c1dbccf4",
     ("served", "plain"):
-        "8f160805511a8a9e507cdc5fb292acac9a6f3e33f54582aaf168824699d51216",
+        "18ec3d9d000839fed4879fab7fbd860ed657986489519aee514562b19d5fedf4",
     ("served", "yaxis2"):
-        "8f160805511a8a9e507cdc5fb292acac9a6f3e33f54582aaf168824699d51216",
+        "18ec3d9d000839fed4879fab7fbd860ed657986489519aee514562b19d5fedf4",
 }
 
 

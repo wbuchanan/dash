@@ -88,14 +88,22 @@ class TestTheSpec:
         assert "plotregion(lpattern(bogus))" in msgs
 
     def test_what_is_named(self):
+        """Flipped (WP-30 P1.20b): plotregion's ilcolor() and margin() were
+        named as not drawn; that was wrong because twoway draws them and
+        dash now does (margin_truth.json).  graphregion's stay named."""
         _, named = dr._dash_region_spec(
             "lalign(inside) ilcolor(red) margin(zero) shadestyle(x) "
             "intensity(50) marginonly", "plotregion", _BASE, _S2, 4.0)
+        assert named == ["lalign(inside)", "shadestyle(x)", "intensity(50)",
+                         "marginonly"]
+        _, named = dr._dash_region_spec(
+            "lalign(inside) ilcolor(red) margin(zero) marginonly",
+            "graphregion", _BASE, _S2, 4.0)
         assert named == ["lalign(inside)", "ilcolor(red)", "margin(zero)",
-                         "shadestyle(x)", "intensity(50)", "marginonly"]
-        _, named = dr._dash_region_spec(" ".join(["margin(1)"] * 25),
+                         "marginonly"]
+        _, named = dr._dash_region_spec(" ".join(["lalign(1)"] * 25),
                                         "plotregion", _BASE, _S2, 4.0)
-        assert named == ["margin(1)"] * 10 + ["(+15 more)"]
+        assert named == ["lalign(1)"] * 10 + ["(+15 more)"]
 
 
 class TestTheBlend:
@@ -125,11 +133,13 @@ class TestBothModes:
               "graphregion": "margin(zero)"}
         _, caught = _figs(mode, _spec(go))
         notes = [c for c in caught if "region() sub-option" in c]
+        # Flipped (WP-30 P1.20b): ifcolor(red) was named; that was wrong
+        # because twoway draws the plot region's inner box, and dash does.
         assert sorted(notes) == [
             "dash: graphregion() sub-option(s) not implemented and ignored: "
             "margin(zero)",
             "dash: plotregion() sub-option(s) not implemented and ignored: "
-            "lalign(inside) ifcolor(red)"], notes
+            "lalign(inside)"], notes
 
 
 _GO = {"plotregion": "c(red) lc(navy) lp(dash) lw(thick)",

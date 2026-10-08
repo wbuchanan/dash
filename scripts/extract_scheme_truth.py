@@ -566,6 +566,13 @@ def resolve_sized(r: SchemeResolver, cls: str, token: str | None):
     }
 
 
+#: WP-30 P1.20b: the gsize keys of Stata's margin ladder
+#: (scheme-s2color.scheme:195-205), which style/margin-*.style name.
+MARGIN_LADDER = ("sidemargin", "medmargin", "medsmmargin", "medlgmargin",
+                 "largemargin", "vlargemargin", "smallmargin",
+                 "vsmallmargin", "tinymargin", "emargin", "esubmargin")
+
+
 def resolve_margin_rs(r: SchemeResolver, token: str | None):
     """WP-30 P1.3a (D-21a): a marginstyle name -> its one relative size.
 
@@ -1805,6 +1812,11 @@ def extract(stata_base: str, scheme: str) -> dict:
                                 class_default=False),
         "symbolsize": scalar("symbolsize", "symbolsize", ["p"],
                              lambda t: resolve_sized(r, "symbolsize", t)),
+        # WP-30 P1.20b: Stata's margin ladder (`gsize <x>margin'), the
+        # sizes the marginstyles of plotregion(margin()) name.
+        **{f"margin_ladder_{k}": scalar(
+            f"margin_ladder_{k}", "gsize", [k], lambda t: t.strip(),
+            class_default=False, required=False) for k in MARGIN_LADDER},
 
         "legend_position": scalar("legend_position", "clockdir",
                                   ["legend_position"],
@@ -2108,6 +2120,9 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("numticks_g", "vertical_major", "numticks_vertical_major"),
         scalar("margin", "twoway", "margin_twoway"),
     ])
+    group(["Stata's margin ladder, the sizes plotregion(margin()) names",
+           "(WP-30 P1.20b)."],
+          [scalar("gsize", k, f"margin_ladder_{k}") for k in MARGIN_LADDER])
     group(["Marker size and legend placement."], [
         scalar("symbolsize", "p", "symbolsize", use_name=True),
         scalar("clockdir", "legend_position", "legend_position"),

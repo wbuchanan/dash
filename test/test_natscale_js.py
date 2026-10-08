@@ -121,6 +121,28 @@ class TestJsPaddingEqualsPython:
                 bad.append((c, g, w))
         assert not bad, (len(bad), bad[:5])
 
+    def test_padded_ranges_with_sides(self):
+        """WP-30 P1.20b (D-47a): a (start, end) pair -- negative, unequal,
+        over the bounds -- pads as Python does, reversed and log too."""
+        rnd = random.Random(2047)
+        cases = []
+        for _ in range(2000):
+            kind = rnd.choice([None, "log"])
+            lo = rnd.uniform(0.1, 1e4) if kind else rnd.uniform(-50, 50)
+            hi = lo * rnd.uniform(1, 30) if kind else lo + rnd.uniform(0, 99)
+            f = [rnd.uniform(-0.6, 0.6), rnd.uniform(-0.6, 0.6)]
+            cases.append((lo, hi, kind, rnd.random() < 0.3, f))
+        got = _js("for (const c of DATA) out.push(dash_axis_pad(c[0], c[1], "
+                  "c[2], c[3], c[4]));", cases)
+        bad = []
+        for c, g in zip(cases, got):
+            r = dr._dash_padded_range(c[0], c[1], c[2], c[3], margin=c[4])
+            w = (float(r.start), float(r.end))
+            if not all(abs(x - y) <= 1e-9 * max(abs(y), 1.0)
+                       for x, y in zip(g, w)):
+                bad.append((c, g, w))
+        assert not bad, (len(bad), bad[:5])
+
 
 class TestJsFinishEqualsPython:
     def test_random_moves(self):

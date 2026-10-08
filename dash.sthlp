@@ -3259,6 +3259,13 @@ full name, in lower case.
     the starting point, such as {cmd:none}; shortest {cmd:sty()}{p_end}
 {synopt:{cmd:plotregion(lstyle(}{it:name}{cmd:))}}a named line style for
     the outline; shortest {cmd:ls()}{p_end}
+{synopt:{cmd:plotregion(margin(}{it:marginstyle}{cmd:))}}the space
+    between the plot region's edge and its scale, per side; shortest
+    {cmd:m()}{p_end}
+{synopt:{cmd:plotregion(ifcolor(}{it:color}{cmd:))}}the inner box's
+    fill; with {cmd:icolor()}, {cmd:istyle()}, {cmd:ilcolor()},
+    {cmd:ilstyle()}, {cmd:ilwidth()} and {cmd:ilpattern()}, read as their
+    outer forms are; shortest {cmd:ifc()}{p_end}
 {synopt:{cmd:graphregion(color(}{it:color}{cmd:))}}the graph region's
     fill and outline; the sub-options above, as in {cmd:plotregion()}{p_end}
 {synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}the canvas under the graph
@@ -3294,12 +3301,34 @@ you can see and {cmd:bgcolor(red) graphregion(color(none))} shows red.
 than its minimum, one given twice in a copy, and a word after a comma
 inside the region; {cmd:graphregion()} is checked before
 {cmd:plotregion()}, and both before {cmd:legend()} and the axis options.
-{cmd:lalign()}, the inner-box options {cmd:istyle()}, {cmd:ilstyle()},
-{cmd:ilcolor()}, {cmd:ilwidth()}, {cmd:ilpattern()}, {cmd:ilalign()},
-{cmd:ifcolor()}, {cmd:icolor()}, {cmd:ishadestyle()},
-{cmd:iintensity()}, and {cmd:margin()}, {cmd:shadestyle()},
-{cmd:intensity()} and {cmd:marginonly} are accepted and named in a note,
-once per region.
+{cmd:lalign()}, {cmd:ilalign()}, {cmd:ishadestyle()},
+{cmd:iintensity()}, {cmd:shadestyle()}, {cmd:intensity()} and
+{cmd:marginonly} are accepted and named in a note, once per region, and
+so are {cmd:graphregion()}'s {cmd:margin()} and inner-box options, which
+are not drawn.
+
+{pstd}
+{ul:Plot-region margin.}  {cmd:plotregion(margin())} takes {cmd:twoway}'s
+{it:marginstyle}: one of its 28 names ({cmd:zero}, {cmd:small},
+{cmd:medium}, {cmd:sides}, {cmd:10-pt}, ...), four numbers for the left,
+right, bottom and top, or terms such as {cmd:l+10}, {cmd:b-2} and
+{cmd:t=0}, each side a percentage of the graph's smaller side, applied
+in order over the scheme's margin and over earlier copies, so
+{cmd:margin(zero)} then {cmd:margin(l+10)} leaves 10% on the left and
+none elsewhere.  {cmd:margin(zero)} puts the data and ticks on the plot
+region's edge.  Under {cmd:by()} the margin shrinks with the panels, as
+the default does.  An unknown margin, such as {cmd:L+10} or {cmd:l5}, is
+named in {cmd:twoway}'s note and drawn as zero.  A side is held within
+45% of the plot region.  {it:Difference from twoway:} the margin is a
+share of the graph's whole width or height, fixed when the page is
+built, so a wide margin is a little narrower on the page than in
+{cmd:twoway}, whose plot region is narrower than its graph.
+
+{pstd}
+{ul:Inner box.}  The {cmd:plotregion()} inner-box options draw one box at
+the plot region's scale, inside the margin, over the data and ticks; it
+follows the axes after every filter move and under {cmd:by()}.  Without
+an inner-box option no box is drawn.
 
 {pstd}
 {it:Example:}

@@ -297,7 +297,9 @@ class TestStataTruth:
             sch = dr.SchemeParser(scheme or "stcolor")
             g = len(row.get("panels") or [1])
             if row.get("gmetric") is not None:
-                f = dr._dash_plot_margin(sch, go, panels=g)["y"] / (
+                # Flipped (WP-30 P1.20b): a side of the pair, not one
+                # number per axis; twoway's margin is per side.
+                f = dr._dash_plot_margin(sch, go, panels=g)["y"][0] / (
                     sch.plot_margin_rs / 100.0 * min(
                         sch.graphsize_x, sch.graphsize_y) / sch.graphsize_y)
                 if abs(f - row["gmetric"]) > 1e-9:
@@ -312,7 +314,7 @@ class TestStataTruth:
                 # A6: a title, legend or note shrinks twoway's plot region
                 # (B02); dash's fraction is fixed at build.
                 if pid != "B02" and g == 1 \
-                        and abs(m["frame_frac"] - ours[letter]) > 0.008:
+                        and abs(m["frame_frac"] - ours[letter][0]) > 0.008:
                     bad.append("%s %s frame %r, dash %r"
                                % (pid, letter, m["frame_frac"],
                                   ours[letter]))
@@ -332,6 +334,9 @@ class TestTheHelpers:
             == dr._MAX_AXIS_TICKS
 
     def test_the_plot_margin(self):
+        """Flipped (WP-30 P1.20b): one number per axis was wrong because
+        twoway's plot-region margin is per side (margin_truth.json); the
+        scheme's default is the same on both sides of each axis."""
         bad = []
         for scheme, go, want in (("stcolor", {}, (0.0132, 0.022)),
                                  ("s2color", {}, (0.016, 0.022)),
@@ -339,13 +344,16 @@ class TestTheHelpers:
                                  ("stcolor", {"xsize": "4", "ysize": "4"},
                                   (0.022, 0.022))):
             m = dr._dash_plot_margin(dr.SchemeParser(scheme), go)
-            if abs(m["x"] - want[0]) > 1e-12 or abs(m["y"] - want[1]) > 1e-12:
+            if any(abs(v - want[0]) > 1e-12 for v in m["x"]) \
+                    or any(abs(v - want[1]) > 1e-12 for v in m["y"]):
                 bad.append((scheme, go, m))
         assert not bad
 
     def test_the_by_factor(self):
         sch = dr.SchemeParser("stcolor")
-        got = [round(dr._dash_plot_margin(sch, {}, panels=g)["y"] / 0.022, 12)
+        # Flipped (WP-30 P1.20b): a side of the per-side pair.
+        got = [round(dr._dash_plot_margin(sch, {}, panels=g)["y"][0] / 0.022,
+                     12)
                for g in (2, 3, 6, 10)]
         assert got == [0.85, 0.85, 0.8, 0.6]
 
@@ -362,8 +370,9 @@ class TestTheHelpers:
             t0 = time.perf_counter()
             m = dr._dash_plot_margin(sch, {"xsize": v, "ysize": v})
             assert time.perf_counter() - t0 < 0.1
+            # Flipped (WP-30 P1.20b): each axis is a (start, end) pair.
             assert all(math.isfinite(x) and 0 <= x <= 0.45
-                       for x in m.values())
+                       for pair in m.values() for x in pair)
 
     def test_padded_range_takes_a_margin(self):
         r = dr._dash_padded_range(10, 41, margin=0.022)
@@ -808,6 +817,13 @@ class TestNoNote:
 class TestPlotregionMarginIsStillIgnored:
     @pytest.mark.parametrize("mode", _MODES)
     def test_margin_zero_changes_nothing_yet(self, mode):
-        a = _axes_of(_figs(mode, _spec(_SC)))
-        b = _axes_of(_figs(mode, _spec(_SC, {"plotregion": "margin(zero)"})))
-        assert a == b
+        """Flipped (WP-30 P1.20b): twoway draws margin(zero) with no
+        margin; "the same ranges as no option" was wrong because twoway
+        draws plotregion(margin()) (margin_truth.json ZERO)."""
+        f = _figs(mode, _spec(_SC, {"plotregion": "margin(zero)"}))[0]
+        for letter in ("x", "y"):
+            rng = _range(f, letter)
+            assert rng._dash_margin_f == (0.0, 0.0)
+            assert f._dash_margin[letter] == (0.0, 0.0)
+            lo, hi = _inner(f, letter)
+            assert (float(rng.start), float(rng.end)) == (lo, hi)

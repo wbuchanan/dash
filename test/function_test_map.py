@@ -1069,6 +1069,10 @@ FUNCTIONS = {
  '_dash_session_release': 'test/test_served_resources.py::TestSessionsAreCapped::test_a_closed_session_frees_its_place',
  '_dash_shared_payload': 'test/test_served_resources.py::TestTheDataIsDecodedOncePerProcess::test_five_documents_decode_once',
  # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
+ 'SchemeParser.margin_sides': 'test/test_region_margins.py::TestTheMarginGrammar::test_form',
+ '_dash_inner_box': 'test/test_region_margins.py::TestTheInnerBox::test_probe',
+ '_dash_margin_pair': 'test/test_region_margins.py::TestTheHelpers::test_bounds',
+ '_dash_margin_sides': 'test/test_region_margins.py::TestTheMarginGrammar::test_form',
  # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
  # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
  # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)

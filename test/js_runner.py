@@ -66,9 +66,9 @@ import pandas as pd
 import pytest
 from bokeh.model import Model
 from bokeh.core.properties import value as _bk_value
-from bokeh.models import (BooleanFilter, ColumnDataSource, Div, FixedTicker,
-                          GlyphRenderer, LegendItem, Range1d, RangeSlider,
-                          Select, Slider, Title)
+from bokeh.models import (BooleanFilter, BoxAnnotation, ColumnDataSource,
+                          Div, FixedTicker, GlyphRenderer, LegendItem,
+                          Range1d, RangeSlider, Select, Slider, Title)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -180,6 +180,12 @@ def stand_in(m, models, objs):
         return {"__type__": "Range1d",
                 **{p: plain(getattr(m, p))
                    for p in ("start", "end", "reset_start", "reset_end")}}
+    # WP-30 P1.20b: the plot region's inner box, whose edges the
+    # re-finish writes.
+    if isinstance(m, BoxAnnotation):
+        return {"__type__": "BoxAnnotation",
+                **{p: plain(getattr(m, p))
+                   for p in ("left", "right", "bottom", "top")}}
     if isinstance(m, FixedTicker):
         return {"__type__": "FixedTicker",
                 "ticks": [plain(v) for v in (m.ticks or [])]}
@@ -229,6 +235,8 @@ for (const o of Object.values(REG)) {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   } else if (o.__type__ === "FixedTicker") {
     o.change = {emit() {}};
+  } else if (o.__type__ === "BoxAnnotation") {
+    o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   }
 }
 const args = resolve(RAW.args);
@@ -244,6 +252,8 @@ for (const [id, o] of Object.entries(REG)) {
     out[id] = {range: {start: o.start, end: o.end, reset_start: o.reset_start,
                        reset_end: o.reset_end}};
   else if (o.__type__ === "FixedTicker") out[id] = {ticks: Array.from(o.ticks)};
+  else if (o.__type__ === "BoxAnnotation")
+    out[id] = {box: {left: o.left, right: o.right, bottom: o.bottom, top: o.top}};
   else {
     const e = {};
     for (const k of ["text", "width", "visible", "muted", "label"])
@@ -350,8 +360,9 @@ class JsSession:
                               for c, col in state["data"].items()}
                 elif "booleans" in state:
                     m.booleans = list(state["booleans"])
-                elif "range" in state:
-                    for k, v in state["range"].items():
+                elif "range" in state or "box" in state:
+                    for k, v in (state.get("range")
+                                 or state.get("box")).items():
                         if isinstance(v, (int, float)) \
                                 and not isinstance(v, bool):
                             setattr(m, k, float(v))

@@ -315,7 +315,9 @@ class TestLogAndDateAxes:
         # Padded in log space by twoway's margin f / (1 - 2f) of the decades
         # a side (WP-30 P1.3a: the old 5% was wrong because twoway's
         # plot-region margin is r x min(W, H), a frame fraction f).
-        f = fig._dash_margin["y"]
+        # Flipped (WP-30 P1.20b): the margin is a per-side pair; the
+        # scheme's default is the same on both sides.
+        f = fig._dash_margin["y"][0]
         lo, hi = math.log10(1000.0), math.log10(20000.0)
         assert fig.y_range.start == pytest.approx(
             10 ** (lo - f / (1 - 2 * f) * (hi - lo)))
@@ -346,7 +348,9 @@ class TestLogAndDateAxes:
         assert fig.y_range.start < 20.0 < fig.y_range.end
         # WP-30 P1.3a: natscale on one value gives [19, 21] (reached), and
         # the hull is padded by twoway's margin, not 5%.
-        p = fig._dash_margin["y"] / (1 - 2 * fig._dash_margin["y"]) * 2.0
+        # Flipped (WP-30 P1.20b): a side of the per-side margin pair.
+        m = fig._dash_margin["y"][0]
+        p = m / (1 - 2 * m) * 2.0
         assert fig.y_range.start == pytest.approx(19.0 - p)
         assert fig.y_range.end == pytest.approx(21.0 + p)
 

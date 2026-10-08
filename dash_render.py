@@ -6490,9 +6490,12 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
     malformed one, or a bare ``*#``/``%#``, keeps the role's colour (S43
     passes the base colour at the one ``parse_color_alpha`` call below).
     *named* lists, as typed through ``_dash_display``, the sub-options
-    twoway accepts and dash does not draw (``lalign()``, the ``i*`` inner
-    box, ``margin()``, ``shadestyle()``, ``intensity()``, ``marginonly``)
-    and any word with no region name: ten, then ``(+n more)``.  Text after
+    twoway accepts and dash does not draw (``lalign()``, ``ilalign()``,
+    ``ishadestyle()``, ``iintensity()``, ``shadestyle()``,
+    ``intensity()``, ``marginonly``; for ``graphregion`` also ``margin()``
+    and the inner-box options, which plotregion draws elsewhere since
+    WP-30 P1.20b) and any word with no region name: ten, then
+    ``(+n more)``.  Text after
     a top-level comma is not read here (dash.ado refuses it).  Only
     ``#rrggbb``, None, numbers and dash lists reach *settings*.
     """
@@ -6502,6 +6505,12 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
     table = _dash_region_table()
     drawn = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color",
              "fcolor"}
+    # WP-30 P1.20b: the plot region's margin and inner box are drawn
+    # elsewhere (_dash_plot_margin, _dash_inner_box), so not named here;
+    # the graph region's stay named.
+    elsewhere = ({"margin", "istyle", "icolor", "ifcolor", "ilstyle",
+                  "ilcolor", "ilwidth", "ilpattern"}
+                 if option == "plotregion" else set())
     s = {k: base.get(k) for k in ("fill", "fill_alpha", "line",
                                   "line_alpha", "line_width", "line_dash")}
     vals, named = {}, []
@@ -6513,6 +6522,8 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
         full = _dash_subopt_canon(tok.split("(", 1)[0].strip(), table)
         if full in drawn and paren:
             vals[full] = _dash_unquoted(_dash_subopt_arg(tok))
+        elif full in elsewhere and paren:
+            continue
         else:
             named.append(_dash_display(tok))
     if len(named) > 10:
@@ -7774,6 +7785,18 @@ class SchemeParser:
         "numticks_g horizontal_major": "5",
         "numticks_g vertical_major":   "5",
         "margin twoway":          "medsmall",
+        # WP-30 P1.20b: Stata's margin ladder (scheme-s2color.scheme:195-205).
+        "gsize sidemargin":       "relative3",
+        "gsize medmargin":        "relative3p5",
+        "gsize medsmmargin":      "relative2p2",
+        "gsize medlgmargin":      "relative5",
+        "gsize largemargin":      "relative8",
+        "gsize vlargemargin":     "relative12",
+        "gsize smallmargin":      "relative1p2",
+        "gsize vsmallmargin":     "relative0p6",
+        "gsize tinymargin":       "relative0p3",
+        "gsize emargin":          "relative1p5",
+        "gsize esubmargin":       "relative4",
         "gsize axis_title":       "medsmall",
         "gsize heading":          "large",
         "gsize note":             "small",
@@ -8730,6 +8753,68 @@ class SchemeParser:
     # specifies.  Two more were corrected under WP-16: minuscule is
     # gsize-minuscule.style's 1pt (relative 0.3472, not half_tiny's
     # 0.6944), and vhuge is gsize-vhuge.style's 28pt, not 24.
+    #: WP-30 P1.20b: twoway's 28 marginstyles (style/margin-<name>.style,
+    #: StataNow 19.5) as (left, right, bottom, top): a ladder name, 0, or
+    #: ("pt", n) for an ``n-pt`` size.  Pinned against
+    #: test/fixtures/margin_truth.json ``_meta.marginstyles``.
+    _MARGINSTYLES: "dict[str, tuple]" = {
+        "zero": (0, 0, 0, 0),
+        "tiny": ("tinymargin",) * 4,
+        "vsmall": ("vsmallmargin",) * 4,
+        "small": ("smallmargin",) * 4,
+        "medsmall": ("medsmmargin",) * 4,
+        "medium": ("medmargin",) * 4,
+        "medlarge": ("medlgmargin",) * 4,
+        "large": ("largemargin",) * 4,
+        "vlarge": ("vlargemargin",) * 4,
+        "left": ("sidemargin", 0, 0, 0),
+        "right": (0, "sidemargin", 0, 0),
+        "bottom": (0, 0, "sidemargin", 0),
+        "top": (0, 0, 0, "sidemargin"),
+        "sides": ("medmargin", "medmargin", 0, 0),
+        "top_bottom": (0, 0, "medmargin", "medmargin"),
+        "allsides-ms": ("medmargin", "medmargin", "smallmargin",
+                        "smallmargin"),
+        "bargraph": ("medmargin", "medmargin", 0, "medmargin"),
+        "horiz_bargraph": (0, "medmargin", "medmargin", "medmargin"),
+        "ebargraph": ("emargin", "emargin", 0, "emargin"),
+        "esubhead": ("medsmmargin", "medsmmargin", "esubmargin", 0),
+        "2-pt": (("pt", 2.0),) * 4,
+        "3-pt": (("pt", 3.0),) * 4,
+        "4-pt": (("pt", 4.0),) * 4,
+        "10-pt": (("pt", 10.0),) * 4,
+        "side-2-pt": (("pt", 2.0), ("pt", 2.0), 0, 0),
+        "side-3-pt": (("pt", 3.0), ("pt", 3.0), 0, 0),
+        "side-4-pt": (("pt", 4.0), ("pt", 4.0), 0, 0),
+        "vside-2-pt": (0, 0, ("pt", 2.0), ("pt", 2.0)),
+    }
+    #: The ladder's keys and s2color's values, in relative units.
+    _MARGIN_LADDER: "dict[str, float]" = {
+        "sidemargin": 3.0, "medmargin": 3.5, "medsmmargin": 2.2,
+        "medlgmargin": 5.0, "largemargin": 8.0, "vlargemargin": 12.0,
+        "smallmargin": 1.2, "vsmallmargin": 0.6, "tinymargin": 0.3,
+        "emargin": 1.5, "esubmargin": 4.0}
+
+    def margin_sides(self, name):
+        """A marginstyle *name*'s four sides ``[left, right, bottom, top]``
+        (WP-30 P1.20b): each in relative units (% of min(W, H)) through
+        this scheme's margin ladder, or ``("pt", n)`` for a point size;
+        None for a name twoway does not know.  Exact lower-case names
+        only: twoway notes ``L`` (measured)."""
+        sides = self._MARGINSTYLES.get(str(name or ""))
+        if sides is None:
+            return None
+        lad = getattr(self, "margin_ladder", None) or self._MARGIN_LADDER
+        out = []
+        for v in sides:
+            if isinstance(v, tuple):
+                out.append(v)
+            elif isinstance(v, str):
+                out.append(float(lad.get(v, self._MARGIN_LADDER[v])))
+            else:
+                out.append(float(v))
+        return out
+
     _GSIZE_PT: dict[str, str] = {
         "zero":        "0pt",
         "minuscule":   "1pt",    # relative 0.3472
@@ -10287,6 +10372,25 @@ class SchemeParser:
             "numticks_g vertical_major") or 5
         self.plot_margin_rs: float = _DASH_MARGIN_RS.get(
             self._props.get("margin twoway", "").strip().lower(), 2.2)
+        # WP-30 P1.20b: the margin ladder (`gsize <x>margin relative<v>'),
+        # an unreadable value keeping s2color's, silently; and the four
+        # sides of `margin twoway' through it (S21's plot_margin_rs on
+        # every side for a style the table does not hold).
+        self.margin_ladder: dict = {}
+        for _k, _v in self._MARGIN_LADDER.items():
+            _raw = self._props.get("gsize " + _k, "").strip().lower()
+            _mm = re.fullmatch(r"relative([0-9]{1,4})(?:p([0-9]{1,4}))?",
+                               _raw)
+            try:
+                _rv = (float(_mm.group(1) + "." + (_mm.group(2) or "0"))
+                       if _mm else float(_raw[:32]))
+            except (TypeError, ValueError):
+                _rv = _v
+            self.margin_ladder[_k] = (_rv if math.isfinite(_rv)
+                                      and 0 <= _rv <= 100 else _v)
+        self.plot_margin_sides: list = (self.margin_sides(
+            self._props.get("margin twoway", "").strip().lower())
+            or [self.plot_margin_rs] * 4)
         # The reference length absolute sizes (#pt, #in, #cm) convert at
         # (WP-30 P1.12a, Evidence E2/E4): the smaller graphsize side, as a
         # Stata relative size is min(width, height)/100 of the graph.
@@ -28363,19 +28467,84 @@ def _dash_default_ticker(count):
                        tags=[_DASH_COUNT_TAG + str(n), _DASH_DEFAULT_TAG])
 
 
+def _dash_margin_sides(text, start, scheme=None, short_in=4.0):
+    """One ``margin()`` text applied over *start*, twoway's marginstyle
+    grammar (WP-30 P1.20b; marginstyle.sthlp, style/margin-*.style).
+
+    *start* is the current ``[left, right, bottom, top]`` in relative units
+    (% of min(W, H)); returns ``(sides, noted)``.  The forms read: a style
+    name (the 28 of ``SchemeParser._MARGINSTYLES``, through *scheme*'s
+    ladder; ``#-pt`` sides are points over *short_in* inches); numbers,
+    assigned to left, right, bottom, top in turn (measured: ``1 2 3``
+    keeps the top, a fifth number is the left again); or terms
+    ``{l|r|b|t}[ ]{+|-|=}[ ]#`` applied in order, so repeats add
+    (measured: ``l+5 l+5`` is ``l+10``; ``l5`` with no sign is an
+    unknown name to twoway).  Anything else -- ``L+10``, ``l5``, a
+    non-finite number, a text over 2,000 characters -- gives zeros and
+    *noted*, the text as typed (twoway's note; it draws such a text as
+    zero, measured ``margin(bogus)``).  Linear in the text; only floats
+    come out."""
+    num = r"[0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]{1,4})?"
+    term = re.compile(r"\s*([lrbt])\s*([+=-])\s*(" + num + ")")
+    cur = [float(v) for v in start]
+    raw = str(text if text is not None else "")
+    t = raw.strip()
+    if not t:
+        return cur, None
+    if len(t) > 2000:
+        return [0.0] * 4, raw[:80]
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    named = sch.margin_sides(t) if hasattr(sch, "margin_sides") else None
+    try:
+        ref_pt = max(float(short_in), 1e-6) * 72.0
+    except (TypeError, ValueError):
+        ref_pt = 288.0
+    if named is not None:
+        return [v[1] / ref_pt * 100.0 if isinstance(v, tuple) else v
+                for v in named], None
+    words = t.split()
+    if all(re.fullmatch("[+-]?" + num, w) for w in words):
+        vals = [float(w) for w in words]
+        if all(math.isfinite(v) for v in vals):
+            for i, v in enumerate(vals):
+                cur[i % 4] = v
+            return cur, None
+        return [0.0] * 4, t[:80]
+    pos, side = 0, {"l": 0, "r": 1, "b": 2, "t": 3}
+    while pos < len(t):
+        m = term.match(t, pos)
+        if m is None or m.end() == pos:
+            return [0.0] * 4, t[:80]
+        v = float(m.group(3))
+        if not math.isfinite(v):
+            return [0.0] * 4, t[:80]
+        i = side[m.group(1)]
+        cur[i] = (v if m.group(2) == "=" else
+                  cur[i] + v if m.group(2) == "+" else cur[i] - v)
+        pos = m.end()
+        while pos < len(t) and t[pos].isspace():
+            pos += 1
+    return cur, None
+
+
 def _dash_plot_margin(scheme, graph_opts, panels=1):
-    """twoway's plot-region margin as a fraction of the frame on each axis,
-    ``{"x": fx, "y": fy}`` (WP-30 P1.3a, D1 b).
+    """twoway's plot-region margin as fractions of the frame, per side:
+    ``{"x": (left, right), "y": (bottom, top)}`` (WP-30 P1.3a, D1 b;
+    per side since P1.20b, D-47a).
 
     twoway leaves r x min(W, H) between the plot region's edge and its
-    scale on every side, r the scheme's ``margin twoway`` (2.2%; 0.6% in
-    economist) times by()'s size multiplier f(*panels*) (grid.class
-    ``scale_gmetric``).  W and H are xsize()/ysize(), else the scheme's
-    graphsize, else 5.5 x 4.  As fractions of the frame, fx = r min(W,H)/W
-    and fy = r min(W,H)/H, each in [0, 0.45]: fixed at build, so a page
-    drawn at another size is off twoway's by up to about 0.8% of its width
-    (A6).  Silent: a bad size was named by :func:`_dash_figure_aspect`.
-    Pure: it reads no figure."""
+    scale on each side, r the scheme's ``margin twoway`` (2.2%; 0.6% in
+    economist) edited by each ``plotregion(margin())`` copy in order
+    (:func:`_dash_margin_sides`; an unknown text is noted once and drawn
+    as zero, as twoway draws it), all times by()'s size multiplier
+    f(*panels*) (grid.class ``scale_gmetric``; measured: ``by(foreign)
+    plotregion(margin(b+10))`` draws (2.2 + 10)% x .85).  W and H are
+    xsize()/ysize(), else the scheme's graphsize, else 5.5 x 4.  As
+    fractions of the frame, x sides are r min(W,H)/W and y sides
+    r min(W,H)/H, each clamped to [-0.45, 0.45] with an axis's two sides
+    summing to at most 0.9 (D-47b): fixed at build, so a page drawn at
+    another size is off twoway's by up to about 0.8% of its width (A6).
+    Pure apart from the note: it reads no figure."""
     go = graph_opts or {}
     sizes = []
     for raw in (go.get("xsize"), go.get("ysize"),
@@ -28390,13 +28559,33 @@ def _dash_plot_margin(scheme, graph_opts, panels=1):
                      else None)
     w = sizes[0] or sizes[2] or 5.5
     h = sizes[1] or sizes[3] or 4.0
-    rs = getattr(scheme, "plot_margin_rs", 2.2)
-    try:
-        rs = float(rs)
-    except (TypeError, ValueError):
-        rs = 2.2
-    if not math.isfinite(rs) or rs < 0:
-        rs = 2.2
+    short = min(w, h)
+    sides = getattr(scheme, "plot_margin_sides", None)
+    if not sides:
+        rs = getattr(scheme, "plot_margin_rs", 2.2)
+        try:
+            rs = float(rs)
+        except (TypeError, ValueError):
+            rs = 2.2
+        if not math.isfinite(rs) or rs < 0:
+            rs = 2.2
+        sides = [rs] * 4
+    sides = [float(v) for v in sides]
+    raw_pr = str(go.get("plotregion") or "")
+    if "m" in raw_pr.lower():
+        table = _dash_region_table()
+        for tok in _dash_by_tokens(_dash_by_tokens_commas(raw_pr)[0]):
+            if "(" not in tok or _dash_subopt_canon(
+                    tok.split("(", 1)[0].strip(), table) != "margin":
+                continue
+            arg = _dash_unquoted(_dash_subopt_arg(tok))
+            sides, noted = _dash_margin_sides(arg, sides, scheme, short)
+            if noted is not None:
+                shown = _dash_display(noted)
+                _dash_warn_once(
+                    ("plot-margin", shown),
+                    f"dash: named style {shown} not found in class margin, "
+                    "default attributes used")
     try:
         g = max(1, int(panels))
     except (TypeError, ValueError, OverflowError):
@@ -28407,15 +28596,97 @@ def _dash_plot_margin(scheme, graph_opts, panels=1):
     if n > k1:
         f -= (b2 - b1) * (n - k1) / n
     f = max(0.0, f)
-    r = rs / 100.0 * f
-    short = min(w, h)
     out = {}
-    for letter, side in (("x", w), ("y", h)):
-        v = r * short / side
-        if not math.isfinite(v):
-            v = 0.022
-        out[letter] = max(0.0, min(0.45, v))
+    for letter, extent, pair in (("x", w, sides[0:2]), ("y", h, sides[2:4])):
+        vs = []
+        for rs in pair:
+            v = rs / 100.0 * f * short / extent
+            if math.isnan(v):
+                v = 0.0
+            vs.append(max(-0.45, min(0.45, v)))
+        tot = vs[0] + vs[1]
+        if tot > 0.9:
+            vs = [v * 0.9 / tot for v in vs]
+        out[letter] = (vs[0], vs[1])
     return out
+
+
+def _dash_inner_box(fig):
+    """The plot region's inner box on *fig* (WP-30 P1.20b), as twoway
+    draws ``plotregion(istyle() icolor() ifcolor() ilstyle() ilcolor()
+    ilwidth() ilpattern())``: one ``BoxAnnotation`` (tag
+    ``dash_inner_box``, underlay) over the axes' hulls -- the scale before
+    the margin, data and ticks (measured: ``plotregion(ifcolor(red))``
+    fills 1760-5000 x 10-41 on auto's weight and mpg) -- styled by S38's
+    region reader with each inner name read as its outer one, over the
+    inner base: no fill, and the scheme's background colour at ``thin``
+    for the outline (measured: ``ifcolor(red)`` alone outlines in s2color's
+    #eaf2f3; ``ilcolor()`` alone draws no fill).  Created once, its edges
+    rewritten from ``fig._dash_hull_entries`` each time
+    :func:`_dash_hull_ranges` runs (build, by() sharing, the served
+    re-finish); an axis with no hull keeps its edge.  Without an inner
+    sub-option nothing is added and None is returned."""
+    from bokeh.models import BoxAnnotation
+    box = getattr(fig, "_dash_inner_box_model", None)
+    if box is None:
+        args = getattr(fig, "_dash_margin_args", None)
+        go = (args[1] if args else None) or {}
+        raw = str(go.get("plotregion") or "")
+        if "i" not in raw.lower():
+            return None
+        inner = {"istyle": "style", "icolor": "color", "ifcolor": "fcolor",
+                 "ilstyle": "lstyle", "ilcolor": "lcolor",
+                 "ilwidth": "lwidth", "ilpattern": "lpattern"}
+        table = _dash_region_table()
+        mapped = []
+        for tok in _dash_by_tokens(_dash_by_tokens_commas(raw)[0]):
+            if "(" not in tok:
+                continue
+            full = _dash_subopt_canon(tok.split("(", 1)[0].strip(), table)
+            arg = _dash_subopt_arg(tok)
+            # istyle(none) leaves the inner box as it is (measured: with
+            # ifcolor(red) it is filled and outlined as without it).
+            if full == "istyle" and _dash_unquoted(arg).strip() == "none":
+                continue
+            if full in inner:
+                mapped.append("%s(%s)" % (inner[full], arg))
+        if not mapped and "istyle" not in raw.lower():
+            return None
+        T = OptionTranslator
+        scheme = args[0] if args else None
+        sch = scheme if scheme is not None else SchemeParser.fallback()
+        ref_in = T.size_ref_of(fig)
+        st, _named = _dash_region_spec(" ".join(mapped), "plotregion", {
+            "fill": None, "fill_alpha": 1.0, "line": sch.background_color,
+            "line_alpha": 1.0,
+            "line_width": T.translate_lwidth("thin", ref_in=ref_in),
+            "line_dash": []}, scheme, ref_in)
+        box = BoxAnnotation(
+            level="underlay", tags=["dash_inner_box"],
+            fill_color=st["fill"] or "#ffffff",
+            fill_alpha=(0.0 if st["fill"] is None else
+                        float(1.0 if st["fill_alpha"] is None
+                              else st["fill_alpha"])),
+            line_color=st["line"] or "#ffffff",
+            line_alpha=(0.0 if st["line"] is None else
+                        float(1.0 if st["line_alpha"] is None
+                              else st["line_alpha"])),
+            line_width=float(st["line_width"] or 0.0),
+            line_dash=list(st["line_dash"] or []),
+            left=None, right=None, bottom=None, top=None)
+        fig.add_layout(box)
+        fig._dash_inner_box_model = box
+    for h in getattr(fig, "_dash_hull_entries", None) or ():
+        if h.get("name") != "default":
+            continue
+        lo, hi = float(h["lo"]), float(h["hi"])
+        if not (math.isfinite(lo) and math.isfinite(hi)):
+            continue
+        for attr, v in ((("left", lo), ("right", hi)) if h["letter"] == "x"
+                        else (("bottom", lo), ("top", hi))):
+            if getattr(box, attr) != v:
+                setattr(box, attr, v)
+    return box
 
 
 def _dash_by_numticks(scheme, graph_opts):
@@ -30081,19 +30352,38 @@ function dash_axis_shift(ms, months, days) {
     }
     return out;
 }
+function dash_axis_margin_pair(margin) {
+    // WP-30 P1.20b (D-47a, D-47b): [start, end] frame fractions; a number
+    // is both sides; each side in [-0.45, 0.45], the two summing to <= 0.9.
+    if (margin === null || margin === undefined) return null;
+    let a, b;
+    if (Array.isArray(margin)) {
+        if (margin.length < 2) return null;
+        a = Number(margin[0]); b = Number(margin[1]);
+    } else {
+        a = Number(margin); b = a;
+    }
+    if (!isFinite(a) || !isFinite(b)) return null;
+    a = Math.max(-0.45, Math.min(0.45, a));
+    b = Math.max(-0.45, Math.min(0.45, b));
+    if (a + b > 0.9) { const t = a + b; a = a * 0.9 / t; b = b * 0.9 / t; }
+    return [a, b];
+}
 function dash_axis_pad(lo, hi, kind, reverse, margin) {
     lo = Number(lo); hi = Number(hi);
     if (lo > hi) { const t = lo; lo = hi; hi = t; }
-    let f = (margin === null || margin === undefined) ? null : Number(margin);
-    if (f !== null && !isFinite(f)) f = null;
-    if (f !== null) f = Math.max(0.0, Math.min(f, 0.449));
-    const frac = f === null ? 0.05 : f / (1.0 - 2.0 * f);
+    const f = dash_axis_margin_pair(margin);
+    let fs = 0.05, fe = 0.05;
+    if (f !== null) {
+        const whole = 1.0 - f[0] - f[1];
+        fs = f[0] / whole; fe = f[1] / whole;
+    }
+    const plo = reverse ? fe : fs, phi = reverse ? fs : fe;
     let s, e;
     if (kind === "log") {
         let a = Math.log10(lo), b = Math.log10(hi);
         if (a === b) { a -= 1.0; b += 1.0; }
-        const pad = frac * (b - a);
-        s = Math.pow(10, a - pad); e = Math.pow(10, b + pad);
+        s = Math.pow(10, a - plo * (b - a)); e = Math.pow(10, b + phi * (b - a));
     } else {
         if (lo === hi) {
             const step = {tw: [0, 7], tm: [1, 0], tq: [3, 0], th: [6, 0], ty: [12, 0]}[kind];
@@ -30105,8 +30395,7 @@ function dash_axis_pad(lo, hi, kind, reverse, margin) {
             }
             lo = w[0]; hi = w[1];
         }
-        const pad = frac * (hi - lo);
-        s = lo - pad; e = hi + pad;
+        s = lo - plo * (hi - lo); e = hi + phi * (hi - lo);
     }
     return reverse ? [e, s] : [s, e];
 }
@@ -30143,7 +30432,7 @@ function dash_axis_place(a, lo, hi, cur) {
     return (t && t.length) ? t : cur;
 }
 function dash_axis_compute(plan, models) {
-    const tickers = {}, ranges = {}, tick_range = {}, fills = [];
+    const tickers = {}, ranges = {}, tick_range = {}, fills = [], boxes = [];
     for (const grp of plan) {
         const panels = grp.panels;
         const share = (panels.length > 1) ? (grp.share || []) : [];
@@ -30191,7 +30480,9 @@ function dash_axis_compute(plan, models) {
                 for (const s of es) s.ticks = dash_axis_place(s.a, lo, hi, s.ticks);
             }
         }
-        for (const row of st) {
+        for (let ri0 = 0; ri0 < st.length; ri0++) {
+            const row = st[ri0];
+            const bx0 = (typeof panels[ri0].box === "number") ? panels[ri0].box : -1;
             const groups = {};
             for (const s of row) {
                 const k = s.a.name + "\u0000" + s.a.letter;
@@ -30207,6 +30498,7 @@ function dash_axis_compute(plan, models) {
                 const hlo = dash_axis_min(hs.map((h) => h[0]));
                 const hhi = dash_axis_max(hs.map((h) => h[1]));
                 for (const s of es) fills.push([s.a, hlo, hhi]);
+                if (bx0 >= 0 && a0.name === "default") boxes.push([bx0, a0.letter, hlo, hhi]);
                 if (a0.range < 0) continue;
                 ranges[a0.range] = dash_axis_pad(hlo, hhi, a0.kind, a0.reverse, a0.margin);
             }
@@ -30233,6 +30525,10 @@ function dash_axis_compute(plan, models) {
                 const hi = dash_axis_max(hulls.map((h) => h[1]).concat(data));
                 const a0 = per.at[per.order[0]][0].a;
                 for (const pi of per.order) for (const s of per.at[pi]) fills.push([s.a, lo, hi]);
+                for (const pi of per.order) {
+                    const bxp = (typeof panels[pi].box === "number") ? panels[pi].box : -1;
+                    if (bxp >= 0 && per.at[pi][0].a.name === "default") boxes.push([bxp, per.at[pi][0].a.letter, lo, hi]);
+                }
                 if (a0.range < 0) continue;
                 ranges[a0.range] = dash_axis_pad(lo, hi, a0.kind, a0.reverse, a0.margin);
             }
@@ -30244,7 +30540,7 @@ function dash_axis_compute(plan, models) {
             }
         }
     }
-    return {tickers: tickers, ranges: ranges, tick_range: tick_range, fills: fills};
+    return {tickers: tickers, ranges: ranges, tick_range: tick_range, fills: fills, boxes: boxes};
 }
 function dash_axis_same(a, b) {
     if (!a || !b || a.length !== b.length) return false;
@@ -30287,6 +30583,18 @@ function dash_axis_finish(plan, models) {
         if (r && r.change) r.change.emit();
     }
     for (const f of tg.fills) dash_fill_auto_bases(f[0], models, f[1], f[2]);
+    // WP-30 P1.20b: each panel's inner box follows its axes' hulls.
+    for (const b of tg.boxes) {
+        const box = models[b[0]];
+        if (!box || !isFinite(b[2]) || !isFinite(b[3])) continue;
+        const ks = b[1] === "x" ? ["left", "right"] : ["bottom", "top"];
+        const at = {};
+        if (box[ks[0]] !== b[2]) at[ks[0]] = b[2];
+        if (box[ks[1]] !== b[3]) at[ks[1]] = b[3];
+        if (!Object.keys(at).length) continue;
+        if (typeof box.setv === "function") box.setv(at);
+        else for (const k of Object.keys(at)) box[k] = at[k];
+    }
 }
 """
 #: WP-30 P1.3a (D-21d): the zoom code, after _DASH_AXIS_FINISH_JS in ONE
@@ -31241,14 +31549,22 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         ax, "_dash_extra_ticks", None) or ()) if ok(v)],
                     "scale": [float(v) for v in scale if ok(v)],
                     "reverse": bool(rev),
-                    "margin": (float(margins[letter])
-                               if letter in margins else None),
+                    "margin": (list(_dash_margin_pair(margins[letter]))
+                               if letter in margins and _dash_margin_pair(
+                                   margins[letter]) is not None else None),
                     "range": ri, "ticker": ti,
                     "layers": layers, "bars": bars, "autobase": autobase})
                 if zoom and mode == "count" and ri >= 0 \
                         and rng not in zoom_ranges:
                     zoom_ranges.append(rng)
-            pg["panels"].append({"axes": axes})
+            bi = -1
+            box = getattr(f, "_dash_inner_box_model", None)
+            if box is not None:
+                bi = index.get(id(box))
+                if bi is None:
+                    bi = index[id(box)] = len(models)
+                    models.append(box)
+            pg["panels"].append({"axes": axes, "box": bi})
         plan.append(pg)
     plan_json = json.dumps(plan, allow_nan=False, separators=(",", ":"))
     if zoom and zoom_ranges:
@@ -31701,23 +32017,20 @@ def _dash_padded_range(lo, hi, kind=None, reverse=False, margin=None):
     lo, hi = float(lo), float(hi)
     if lo > hi:
         lo, hi = hi, lo
-    f = None
-    if margin is not None:
-        try:
-            f = float(margin)
-        except (TypeError, ValueError):
-            f = None
-        if f is not None and not math.isfinite(f):
-            f = None
-        if f is not None:
-            f = max(0.0, min(f, 0.449))
-    frac = 0.05 if f is None else f / (1.0 - 2.0 * f)
+    f = _dash_margin_pair(margin)
+    if f is None:
+        fs = fe = 0.05
+    else:
+        whole = 1.0 - f[0] - f[1]
+        fs, fe = f[0] / whole, f[1] / whole
+    # The start side is the left (bottom) one: on a reversed axis it pads
+    # the high end (D-47a).
+    plo, phi = (fe, fs) if reverse else (fs, fe)
     if kind == "log":
         a, b = math.log10(lo), math.log10(hi)
         if a == b:
             a, b = a - 1.0, b + 1.0
-        pad = frac * (b - a)
-        s, e = 10 ** (a - pad), 10 ** (b + pad)
+        s, e = 10 ** (a - plo * (b - a)), 10 ** (b + phi * (b - a))
     else:
         if lo == hi:
             step = {"tw": {"weeks": 1}, "tm": {"months": 1},
@@ -31737,13 +32050,34 @@ def _dash_padded_range(lo, hi, kind=None, reverse=False, margin=None):
                     "su:") else 1.0)
                 widened = (lo - one, hi + one)
             lo, hi = widened
-        pad = frac * (hi - lo)
-        s, e = lo - pad, hi + pad
+        s, e = lo - plo * (hi - lo), hi + phi * (hi - lo)
     if reverse:
         s, e = e, s
     rng = Range1d(start=s, end=e, reset_start=s, reset_end=e)
-    rng._dash_margin_f = f
+    rng._dash_margin_f = (None if f is None else f[0] if f[0] == f[1]
+                          and not isinstance(margin, (list, tuple)) else f)
     return rng
+
+
+def _dash_margin_pair(margin):
+    """*margin* as ``(start, end)`` frame fractions (WP-30 P1.20b, D-47a):
+    a number f is ``(f, f)``; each side is clamped to [-0.45, 0.45] and the
+    two to a sum of at most 0.9 (D-47b).  None, or anything not finite,
+    is None (the legacy 5% rule)."""
+    if margin is None:
+        return None
+    try:
+        pair = ((float(margin[0]), float(margin[1]))
+                if isinstance(margin, (list, tuple)) else
+                (float(margin), float(margin)))
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    if not all(math.isfinite(v) for v in pair):
+        return None
+    a, b = (max(-0.45, min(0.45, v)) for v in pair)
+    if a + b > 0.9:
+        a, b = a * 0.9 / (a + b), b * 0.9 / (a + b)
+    return a, b
 
 
 def _dash_range_hull(rng, kind=None, margin=None):
@@ -31755,8 +32089,8 @@ def _dash_range_hull(rng, kind=None, margin=None):
     and the certification block compare with twoway's inner hull; never
     called at run time (a page read back from JSON has no
     ``_dash_margin_f``, so a test passes *margin*)."""
-    f = margin if margin is not None else getattr(rng, "_dash_margin_f",
-                                                  None)
+    f = _dash_margin_pair(margin if margin is not None else getattr(
+        rng, "_dash_margin_f", None))
     s, e = float(rng.start), float(rng.end)
     a, b = min(s, e), max(s, e)
     if kind == "log":
@@ -31765,8 +32099,10 @@ def _dash_range_hull(rng, kind=None, margin=None):
         w = (b - a) / 1.1
         lo, hi = a + 0.05 * w, b - 0.05 * w
     else:
+        # Visual order: the start side is the high end on a reversed range.
+        flo, fhi = (f[1], f[0]) if s > e else f
         span = b - a
-        lo, hi = a + float(f) * span, b - float(f) * span
+        lo, hi = a + flo * span, b - fhi * span
     if kind == "log":
         return 10 ** lo, 10 ** hi
     return lo, hi
@@ -31996,6 +32332,7 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
         keep = [h for h in (getattr(fig, "_dash_hull_entries", None) or [])
                 if h["key"] not in common]
         fig._dash_hull_entries = keep + done
+    _dash_inner_box(fig)
     return done
 
 
@@ -44403,7 +44740,10 @@ class ServerAppBuilder:
                          "_dash_base_spec", "_dash_auto_base_props",
                          "_dash_axis_scale", "_dash_finish_auto_bases",
                          # WP-30 P1.3b: the date model's explicit order.
-                         "_dash_ts_pair", "_dash_ts_kind",
+                         "_dash_ts_pair",
+                         # WP-30 P1.20b: plot-region margin and inner box.
+                         "_dash_margin_sides", "_dash_margin_pair",
+                         "_dash_inner_box", "_dash_ts_kind",
                          # WP-28 B2: the extent after the layers, the
                          # scale sub-option names and the shared
                          # primary-renderers limit.

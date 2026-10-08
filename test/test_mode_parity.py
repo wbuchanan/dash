@@ -2213,6 +2213,9 @@ CORPUS = [
           [dict(plot_for("line"), recast_from="scatter"),
            plot_for("lfit", {"recast": "scatter"}),
            plot_for("kdensity", {"recast": "area"})]),
+    # WP-30 P1.20b: plot-region margin and inner box
+    _case("Plot-region margin and inner box (WP-30 P1.20b)", [_sc()], None,
+          {"plotregion": "margin(l+10) mar(t-1) ifcolor(red%50) ilc(blue)"}),
 ]
 
 
@@ -3070,6 +3073,10 @@ MOVE_CORPUS = [
     # WP-30 P1.8b: recast().
     _move_case("lfit recast scatter, dropdown (WP-30 P1.8b)", _MOVES[0],
                [plot_for("lfit", {"recast": "scatter"})]),
+    # WP-30 P1.20b: plot-region margin and inner box
+    _move_case("margin and box after a range move (WP-30 P1.20b)", _MOVES[1],
+               [_sc()], {"plotregion": "margin(l+10) ifcolor(red)",
+                         "by": "foreign"}),
 ]
 
 
