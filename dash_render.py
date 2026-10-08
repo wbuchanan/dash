@@ -28777,6 +28777,14 @@ for _tok, _val in (("@@DASH_TS_PARAMS@@", _DASH_TS_PARAMS),
 del _tok, _val
 
 
+def _dash_ts_kind(kind):
+    """True for a kind _tsnatscale ticks: a %td-%ty axis or a date beside a
+    number in Stata units (``"su:<kind>"``; WP-30 P1.3b)."""
+    return isinstance(kind, str) and (
+        kind in _DASH_TS_UNITS
+        or (kind.startswith("su:") and kind[3:] in _DASH_TS_UNITS))
+
+
 def _dash_ts_pair(x):
     """``math.floor(x)`` and ``math.ceil(x)`` in the order CPython iterates
     the set ``{math.floor(x), math.ceil(x)}`` (WP-30 P1.3b, D-44b).
@@ -30029,7 +30037,12 @@ function dash_axis_compute(plan, models) {
                 const s = {a: a, lo: ext ? ext[0] : null, hi: ext ? ext[1] : null,
                            bases: bx ? bx : []};
                 let lo = s.lo, hi = s.hi;
-                const sc = a.scale.filter((v) => a.kind !== "log" || v > 0);
+                // A default date axis is ticked over its data alone (P1.3b).
+                const tsd = a.dflt && typeof a.kind === "string"
+                    && (Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, a.kind)
+                        || (a.kind.indexOf("su:") === 0
+                            && Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, a.kind.slice(3))));
+                const sc = tsd ? [] : a.scale.filter((v) => a.kind !== "log" || v > 0);
                 if (sc.length) {
                     lo = dash_axis_min(sc.concat(lo !== null ? [lo] : []));
                     hi = dash_axis_max(sc.concat(hi !== null ? [hi] : []));
@@ -31912,6 +31925,13 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
                  else list(scale_vals2.get(e["name"], [])))
         if e["kind"] == "log":
             extra = [v for v in extra if v > 0]
+        if e.get("default") and _dash_ts_kind(e["kind"]):
+            # WP-30 P1.3b (measured 08oct2026): a default date axis is
+            # ticked over its data alone; range() widens only its scale
+            # (`yscale(range(14900 15500) axis(2))' over 15007-15370 keeps
+            # 14976(quarterly)15341 on 14900-15500; under #5 the range
+            # joins the ticks, 14884-15522).
+            extra = []
         if extra:
             lo = min(extra + ([lo] if lo is not None else []))
             hi = max(extra + ([hi] if hi is not None else []))
@@ -43865,7 +43885,7 @@ class ServerAppBuilder:
                          "_dash_base_spec", "_dash_auto_base_props",
                          "_dash_axis_scale", "_dash_finish_auto_bases",
                          # WP-30 P1.3b: the date model's explicit order.
-                         "_dash_ts_pair",
+                         "_dash_ts_pair", "_dash_ts_kind",
                          # WP-28 B2: the extent after the layers, the
                          # scale sub-option names and the shared
                          # primary-renderers limit.

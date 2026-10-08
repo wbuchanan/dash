@@ -197,6 +197,41 @@ class TestDefaultDateAxes:
         assert not bad, bad
 
 
+class TestTheRangeOption:
+    """Measured 08oct2026 (StataNow 19.5): a DEFAULT date axis is ticked
+    over its data alone and range() widens only the scale -- `twoway (line
+    close date) (line d2 date, yaxis(2)), yscale(range(14900 15500)
+    axis(2))' keeps 14976(quarterly)15341 on 14900-15500, and a date beside
+    a number under xscale(range(-3000 20000)) keeps 0 3653 ... 14610; under
+    #5 the range joins the ticks (14884 ... 15522; -3652 ... 18263)."""
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_default_ticks_the_data(self, tmp_path, mode):
+        bad = []
+        lo, hi = _bounds("TD", "td")
+        for i, (go, want) in enumerate((
+                ({"xscale": "range(14000 16000)"},
+                 dr._dash_axis_count_ticks(lo, hi, 5, "td")),
+                ({"xscale": "range(14000 16000)", "xlabel": "#5"},
+                 dr._dash_axis_count_ticks(
+                     dr._dash_units_to_axis([14000], "td")[0],
+                     dr._dash_units_to_axis([16000], "td")[0], 5, "td")))):
+            sub = tmp_path / str(i)
+            sub.mkdir()
+            _r, figs = _build(sub, mode, [_L("line", "close", "date")], go)
+            t = _major_ticks(_axis(figs[0], "x"))
+            h = dr._dash_range_hull(figs[0].x_range)
+            if t != want or h[0] > dr._dash_units_to_axis([14000], "td")[0]:
+                bad.append((go, t, want, h))
+        assert not bad, bad
+
+    def test_the_kinds(self):
+        assert all(dr._dash_ts_kind(k) for k in dr._DASH_TS_UNITS)
+        assert all(dr._dash_ts_kind("su:" + k) for k in dr._DASH_TS_UNITS)
+        assert not any(dr._dash_ts_kind(k) for k in (
+            None, "log", "tc", "tC", "su:", "su:tc", "su:x", 5))
+
+
 #: The moves: (probe, filter column, kept range) -- each IF probe's subset.
 _MOVES = (("IF1", "v", (_P["IF1"]["data_lo"], _P["IF1"]["data_hi"])),
           ("IF2", "v", (_P["IF2"]["data_lo"], _P["IF2"]["data_hi"])),

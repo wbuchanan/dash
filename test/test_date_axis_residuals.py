@@ -581,16 +581,17 @@ def _digest(model):
 # tree: P1.23a's formatter code (dash_stata_number_of), the plan's "units"
 # key and the date-units JS in the finish code; nothing else differs.
 # Re-derived for WP-30 P1.3b: the filter callback carries the date model's
-# JavaScript port (_DASH_TSNATSCALE_JS inside _DASH_AXIS_FINISH_JS).
+# JavaScript port (_DASH_TSNATSCALE_JS inside _DASH_AXIS_FINISH_JS), and
+# again for its default-date-axis range() rule (the batch-15 gate).
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "fabc0161d3a508264d5f7441d73eaea8e51b6489ae6976d3a14b9845c898e8be",
+        "6fb0cd8611eff5a2f6b02e26690e6c606397576be6412af7ef59418a07552ad5",
     ("saved", "yaxis2"):
-        "fabc0161d3a508264d5f7441d73eaea8e51b6489ae6976d3a14b9845c898e8be",
+        "6fb0cd8611eff5a2f6b02e26690e6c606397576be6412af7ef59418a07552ad5",
     ("served", "plain"):
-        "6eacceedd48173eaa08849c49e8de7f42d71d15e82deb5e0aa14056c11afc23a",
+        "8f160805511a8a9e507cdc5fb292acac9a6f3e33f54582aaf168824699d51216",
     ("served", "yaxis2"):
-        "6eacceedd48173eaa08849c49e8de7f42d71d15e82deb5e0aa14056c11afc23a",
+        "8f160805511a8a9e507cdc5fb292acac9a6f3e33f54582aaf168824699d51216",
 }
 
 

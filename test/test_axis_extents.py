@@ -329,9 +329,12 @@ class TestLogAndDateAxes:
         ep = dr._STATA_EPOCH_UNIX_MS
         # Flipped: test_a_td_range_is_in_milliseconds -- the range() ends
         # alone were wrong because twoway ticks a default date axis by
-        # tsnatscale over the widened scale and spans its ticks (P1.3b, M1).
+        # tsnatscale over its data and spans its ticks and range() (P1.3b,
+        # M1; measured 08oct2026: range() does not join a default date
+        # axis's ticks).
         lo, hi = ep + 14900 * _DAY, ep + 15400 * _DAY
-        ticks = dr._dash_axis_count_ticks(lo, hi, 5, "td")
+        ticks = dr._dash_axis_count_ticks(ep + 14977 * _DAY,
+                                          ep + 14985 * _DAY, 5, "td")
         assert [float(t) for t in fig.xaxis[0].ticker.ticks] == ticks
         assert _approx(hull(fig.x_range),
                        (min(ticks + [lo]), max(ticks + [hi])), rel=1e-9)
