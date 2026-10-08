@@ -1699,6 +1699,8 @@ _DASH_LIMITS = {
     "by_groups":      (100, 1_000, "dash_max_by_groups"),
     "tabs":           (50, 500, "dash_max_tabs"),
     "filters":        (20, 200, "dash_max_filters"),
+    # xline()/yline() positions times by() panels (WP-30 P1.21a, A68).
+    "reflines":       (10_000, 100_000, "dash_max_reflines"),
 }
 
 
@@ -3672,20 +3674,9 @@ def _dash_route_line_copies(raw):
     own: axis(1) drops the word, axis(2) moves the copy, any other axis or
     a refused axis word leaves it as typed on the first axis.
     """
-    copies = []
-    for seg in _dash_by_tokens_commas(str(raw)):
-        toks = _dash_by_tokens(seg.strip())
-        starts = False
-        if toks:
-            try:
-                float(toks[0])
-                starts = True
-            except ValueError:
-                starts = False
-        if starts or not copies:
-            copies.append([seg.strip()])
-        else:
-            copies[-1].append(seg.strip())
+    # The copies as _dash_refline_copies cuts them (WP-30 P1.21a): a copy
+    # starts at any run of positions, ``10(5)40`` included.
+    copies = [[pos] + subs for pos, subs in _dash_refline_copies(raw)]
     first, second, changed = [], [], False
     for parts in copies:
         subs = _dash_by_tokens(" ".join(parts[1:]))
@@ -34860,8 +34851,10 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
     return out_mapper
 
 
-#: xline()/yline() sub-options dash honours.
-_DASH_REFLINE_SUBOPTS = frozenset({"lcolor", "lpattern", "lwidth"})
+#: xline()/yline() sub-options dash honours (lstyle() and lalign(): WP-30
+#: P1.21a).
+_DASH_REFLINE_SUBOPTS = frozenset({"lcolor", "lpattern", "lwidth", "lstyle",
+                                   "lalign"})
 
 
 def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
@@ -34896,16 +34889,96 @@ def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
             # renderer has always accepted it.
             values = []
             for v in (graph_opts or {}).get(opt + "_values", []) or []:
-                try:
-                    values.append(float(v))
-                except (ValueError, TypeError):
-                    pass
+                values.extend(_dash_refline_positions(str(v), []))
             instances = [(values, {})] if values else []
         else:
             instances = _dash_refline_instances(raw, bad)
         _dash_report_suboptions(opt, bad, seen, key)
+        # Positions times panels, over the render (WP-30 P1.21a): dash.ado
+        # refuses past $dash_max_reflines; this is the ceiling for a spec
+        # that came another way.
+        total = _dash_refline_tally(
+            seen, sum(len(v) for v, _ in instances))
+        if total > _DASH_LIMITS["reflines"][1]:
+            raise DashLimitError(
+                "dash: this dashboard draws more than "
+                f"{_DASH_LIMITS['reflines'][1]:,} reference lines "
+                "(positions times by() panels), the most any dashboard "
+                "draws.")
         for values, style in instances:
             _dash_refline_draw(fig, opt, dim, values, style, scheme, Span)
+
+
+def _dash_refline_tally(seen, n, _slot=[None, 0]):
+    """The running count of reference-line positions drawn in one render
+    (WP-30 P1.21a): *n* added to the total kept for the render's *seen*
+    set, which is held in the slot so its ``id`` cannot be reused while
+    the slot keeps it.  A different set starts a new total; *seen* None
+    counts this call alone.  ``make_document`` and ``render`` are
+    synchronous, so one slot is enough.  Returns the running total."""
+    if seen is None:
+        return n
+    if _slot[0] is not seen:
+        _slot[0] = seen
+        _slot[1] = 0
+    _slot[1] += n
+    return _slot[1]
+
+
+def _dash_refline_copies(raw):
+    """``[(positions_text, [sub-option text, ...]), ...]``: the copies of
+    one xline()/yline() value (WP-30 P1.21a).
+
+    dash.ado joins the copies of a repeated option with ``", "``; a
+    top-level-comma segment whose first non-blank character is a digit,
+    ``+``, ``-``, ``.`` or ``(`` starts a copy -- ``10(5)40`` as well as
+    ``20`` -- and the first segment always does.  Any other segment holds
+    sub-options of the copy before it."""
+    out = []
+    for i, seg in enumerate(_dash_by_tokens_commas(str(raw))):
+        t = seg.strip()
+        if i == 0 or (t and (t[0].isdigit() or t[0] in "+-.(")):
+            out.append((t, []))
+        elif t:
+            out[-1][1].append(t)
+    return out
+
+
+def _dash_refline_positions(text, bad):
+    """The positions of one copy's text as Stata's numlist reads them
+    (WP-30 P1.21a): ``a(b)c``, ``a[b]c``, ``a/b``, ``x y to z``, ``x y:z``
+    through :func:`_dash_expand_numlist`, at most 2,500, each value once,
+    in order.  A token holding ``_`` or one that reads as a non-finite
+    number is appended to *bad*, as is the whole text when it asks for
+    more than 2,500 (then nothing is drawn); finite values only."""
+    toks, keep = [], []
+    for kind, tok in _dash_axis_tokens(str(text)):
+        if kind != "bare":
+            bad.append(tok)
+            continue
+        toks.append(tok)
+    for tok in toks:
+        if "_" in tok:
+            bad.append(tok)
+            continue
+        try:
+            if not math.isfinite(float(tok)):
+                bad.append(tok)
+                continue
+        except ValueError:
+            pass
+        keep.append(tok)
+    values, too_many, nbad = _dash_expand_numlist(keep, limit=2500)
+    if too_many:
+        bad.append(str(text).strip())
+        return []
+    bad.extend(nbad)
+    out, done = [], set()
+    for v in values:
+        if math.isfinite(v) and v not in done:
+            done.add(v)
+            out.append(v)
+    return out
 
 
 def _dash_refline_instances(raw, bad):
@@ -34916,19 +34989,19 @@ def _dash_refline_instances(raw, bad):
     yline(20, lcolor(red)) yline(30) is a red line at 20 and a default one
     at 30 (measured 24sep2026 from the SVG export; added_line_options.sthlp,
     "each is executed separately") -- and dash.ado joins the copies with a
-    comma between them (_dash_rep_merge): ``20, lcolor(red), 30``.  After a
-    comma, a position starts the next copy; a sub-option styles the copy it
-    follows.  A position after a comma is no sub-option twoway takes in one
-    copy, so a single copy reads as it always did.  Tokens that are neither
-    are appended to *bad*, as written.
+    comma between them (_dash_rep_merge): ``20, lcolor(red), 30``.  The
+    copies are :func:`_dash_refline_copies`' (any run of positions starts
+    one, WP-30 P1.21a), each copy's positions
+    :func:`_dash_refline_positions`'.  A copy whose positions are all bad
+    draws nothing, and its style never reaches another copy.  Sub-options
+    dash does not draw, and unreadable tokens, are appended to *bad*, as
+    written.
     """
     instances = []
-    values, style = [], {}
-    in_subs = False
-    for seg_i, seg in enumerate(_dash_by_tokens_commas(str(raw))):
-        if seg_i > 0:
-            in_subs = True
-        for tok in _dash_by_tokens(seg.strip()):
+    for text, subs in _dash_refline_copies(raw):
+        values = _dash_refline_positions(text, bad)
+        style = {}
+        for tok in _dash_by_tokens(" ".join(subs)):
             # twoway's spellings, lower case only (WP-30 P1.19): lc() is
             # lcolor(); a typed abbreviation is kept for the note.
             typed = tok.split("(", 1)[0].strip()
@@ -34939,18 +35012,9 @@ def _dash_refline_instances(raw, bad):
                 if typed != name:
                     style.setdefault("_typed", {})[name] = typed
                 continue
-            try:
-                pos = float(tok)
-            except ValueError:
-                bad.append(tok)
-                continue
-            if in_subs and (values or style):
-                instances.append((values, style))
-                values, style = [], {}
-            in_subs = False
-            values.append(pos)
-    if values:
-        instances.append((values, style))
+            bad.append(tok)
+        if values:
+            instances.append((values, style))
     return instances
 
 
@@ -34980,13 +35044,32 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
     range *range_name* -- ``"y2"``/``"x2"`` for a yline(#, axis(2)) copy
     (WP-29 P0.5); a second axis of dates reads dates, as the first does
     (WP-30 P1.23a)."""
-    if scheme is not None:
+    if style.get("lstyle"):
+        # lstyle(): any line style name, through the scheme's chain (WP-30
+        # P1.21a; S32/S36's style_bundle); an unknown name is foreground's
+        # attributes with twoway's note.  lcolor() etc. win below.
+        b = (scheme if scheme is not None
+             else SchemeParser.fallback()).style_bundle(
+                 "line", style["lstyle"]) or {}
+        kw = {"line_color": b.get("line"),
+              "line_dash": list(b.get("line_dash") or []),
+              "line_width": b.get("line_width",
+                                  OptionTranslator.translate_lwidth("medium"))}
+    elif scheme is not None:
         kw = {"line_color": scheme.xyline_color,
               "line_dash": list(scheme.xyline_dash),
               "line_width": scheme.xyline_width}
     else:
         kw = {"line_color": "#000000", "line_dash": "dashed",
               "line_width": OptionTranslator.translate_lwidth("medium")}
+    # lalign(): twoway draws no difference; another value is noted in
+    # twoway's words (class alignstroke) and drawn as without it.
+    la = str(style.get("lalign") or "").strip()
+    if la and la not in ("inside", "outside", "center"):
+        _dash_warn_once(
+            ("refline-lalign", _dash_display(la)),
+            f"dash: named style {_dash_display(la)} not found in class "
+            "alignstroke, default attributes used")
     # lcolor() in Stata's colour grammar with the scheme's bg/fg (WP-30
     # P1.13a): an unknown colour is black with the note, as twoway draws
     # yline(25, lcolor(bogus)); a malformed one keeps the default.
@@ -35034,8 +35117,14 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
         values = [p for p in pos if p is not None]
     if range_name != "default":
         kw["y_range_name" if dim == "width" else "x_range_name"] = range_name
-    for v in values:
-        fig.add_layout(Span(location=v, dimension=dim, **kw))
+    # lstyle(none) with no lcolor(): no line (WP-30 P1.21a).
+    if kw.get("line_color") is None or not values:
+        return
+    # Above the grid, below the glyphs, as twoway draws added lines; one
+    # assignment for the copy (WP-30 P1.21a).
+    spans = [Span(location=v, dimension=dim, level="underlay", **kw)
+             for v in values]
+    fig.center = [*fig.center, *spans]
 
 
 #: filter() widget types dash builds.
@@ -42559,6 +42648,8 @@ class ServerAppBuilder:
                          "_dash_reference_lines",
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
+                         "_dash_refline_copies", "_dash_refline_positions",
+                         "_dash_refline_tally", "DashLimitError",
                          "_dash_display",
                          # plotregion()/graphregion()/bgcolor(): the
                          # saved renderer's region reader, one for both

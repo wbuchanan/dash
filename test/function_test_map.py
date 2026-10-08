@@ -1018,6 +1018,9 @@ FUNCTIONS = {
  '_dash_region_spec.<locals>._read': 'test/test_region_options.py::TestTheSpec::test_a_wrong_case_none_is_black_with_a_note',
  '_dash_region_table': 'test/test_region_truth.py::TestTheTable::test_it_is_twoways_parser',
  # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
+ '_dash_refline_copies': 'test/test_reference_lines.py::TestPositions::test_a_copy_starts_at_any_position_run',
+ '_dash_refline_positions': 'test/test_reference_lines.py::TestPositions::test_the_fallback_reads_as_numlist',
+ '_dash_refline_tally': 'test/test_reference_lines.py::TestTheLimit::test_the_renderer_ceiling',
  # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
  # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
  # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)

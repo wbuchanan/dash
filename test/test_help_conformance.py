@@ -662,8 +662,9 @@ class TestTheParsersFoundSomething:
         # 363 -> 364: P1.24's mlabv:position() row.
         # 364 -> 367: WP-30 P1.20a's Region Styling rows (ten for seven:
         # each drawn sub-option, the graph region and the canvas).
-        assert len(defs) == 367, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 367 "
+        # 367 -> 368: WP-30 P1.21a's $dash_max_reflines row.
+        assert len(defs) == 368, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 368 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

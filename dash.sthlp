@@ -2256,6 +2256,11 @@ that moves it for the rest of the session:
     drawn.{p_end}
 {synopt:{cmd:$dash_max_filters}}filter widgets; default 20, at most 200.
     The first are built.{p_end}
+{synopt:{cmd:$dash_max_reflines}}reference lines over the dashboard: the
+    positions of every {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
+    {cmd:yline2()} times the graph's {cmd:by()} panels, counted over every
+    observation; default 10,000, at most 100,000.  Refused with
+    {cmd:r(134)}.{p_end}
 {synoptline}
 
 {pstd}
@@ -3189,8 +3194,9 @@ the plot specification).
 {synopt:{cmdab:zti:tle(}{it:string}{cmd:)}}title of the colour key; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...][{cmd:, format(}{it:%fmt}{cmd:)}]{cmd:)}}colour-key ticks and number format; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:zsc:ale(}{it:range() log reverse}{cmd:)}}colour-bar range, scale and direction; see {cmd:colorvar()}{p_end}
-{synopt:{cmdab:xli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw vertical reference lines at x = {it:#}{p_end}
-{synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
+{synopt:{cmdab:xli:ne(}{it:linearg}{cmd:)}}vertical reference lines; see
+    {it:Reference lines} below{p_end}
+{synopt:{cmdab:yli:ne(}{it:linearg}{cmd:)}}horizontal reference lines{p_end}
 {synopt:{cmd:note(}{it:string}{cmd:)}}footnote text below the figure{p_end}
 {synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
 {synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}HEIGHT divided by WIDTH, as in
@@ -3534,6 +3540,29 @@ one x axis is drawn at the bottom, styled the same way by the x forms.
 {synopt:{opt xline2(linelist)}}lines at the top x axis's values.  No
     abbreviation.{p_end}
 {synoptline}
+
+{pstd}
+{it:Reference lines.}  {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
+{cmd:yline2()} take a {it:linearg}, {it:numlist} [{cmd:,} {it:suboptions}],
+as {cmd:twoway} does: the positions are expanded by Stata's own
+{cmd:numlist} ({cmd:2000(500)3000}, {cmd:2000/2002},
+{cmd:2000 2500 to 3500}), each value once within a copy and at most 2,500
+in a copy.  Each copy of a repeated option keeps its own style.  The
+sub-options are {cmd:lcolor()} ({cmd:lc()}), {cmd:lwidth()} ({cmd:lw()}),
+{cmd:lpattern()} ({cmd:lp()}), {cmd:lstyle()} ({cmd:lst()}), which takes
+any line style name ({cmd:p1}, {cmd:refline}, {cmd:foreground},
+{cmd:grid}, {cmd:none}, ...) with {cmd:lcolor()}, {cmd:lwidth()} and
+{cmd:lpattern()} drawn over it, and {cmd:lalign()} ({cmd:la()}), accepted
+as {cmd:twoway} accepts it, with no visible change.  {cmd:extend},
+{cmd:noextend} and {cmd:style()} are read and named as not drawn.  What
+{cmd:twoway} refuses is refused in its words and order:
+{cmd:something required}, {cmd:r(100)}, for an empty list with a comma;
+{cmd:option }{it:name}{cmd: not allowed}, {cmd:r(198)}, for an unknown,
+short, capitalised or repeated sub-option; and
+{cmd:invalid line argument}, {cmd:r(198)}, for positions {cmd:numlist}
+refuses.  The lines are drawn above the grid and below the data, and
+never widen an axis.  See {cmd:$dash_max_reflines} under
+{it:Resource limits}.
 
 {pstd}
 {cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other

@@ -392,7 +392,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.20b -->
 
-<!-- WP-30 P1.21a -->
+- xline() and yline() draw what twoway draws, in both modes: `xline(2000(500)3000)` drew nothing and named the positions, and draws lines at 2000, 2500 and 3000; `xline(2000 2500 to 3500)` dropped 3000 and draws it; `xline(3000 3000)` drew two lines and draws one; `yline(20, lcolor(red)) yline(10(5)40, lcolor(blue))` drew one blue line and draws a red line at 20 and seven blue ones; `lstyle(foreground)` was named and is drawn in the foreground style; reference lines were drawn over the markers and are drawn behind them. (WP-30, P1.21a)
 
 <!-- WP-30 P1.21b -->
 
@@ -771,7 +771,7 @@ and now matches Stata.
 
 - plotregion() and graphregion() refuse what twoway refuses, r(198) in twoway's words (all rc 0 before, most with no note): an unknown sub-option (`option bogus() not allowed`), a capitalised one (`option COLOR() not allowed`), one shorter than twoway's minimum (`option st() not allowed`), a sub-option given twice in one copy (`option c() not allowed`) and a word after a comma inside the region (`invalid 'lcolor'`). (WP-30, P1.20a)
 
-<!-- WP-30 P1.21a -->
+- xline() and yline() refuse what twoway refuses, in its words (rc 0 before): `xline(abc)`, `xline(1(0)5)`, `xline(nan)` and more than 2,500 positions in one copy (`invalid line argument, …`, r(198)); `xline(, lcolor(red))` (`something required`, r(100)); an unknown, short, capitalised or repeated sub-option (`option foo not allowed`, `option LColor() not allowed`, r(198)). A dashboard whose reference-line positions times by() panels pass 10,000 is refused r(134); set global dash_max_reflines to draw more (at most 100,000). (WP-30, P1.21a)
 
 - `mlabvposition()` is refused where twoway refuses it, in twoway's words (all rc 0 with a note before): on rarea, rbar, rcap, rcapsym, rconnected, rline, rscatter, rspike and tsrline (`rscatter requires 3 variables: y y2 x p9`, r(103)), on lfit, qfit, fpfit, lfitci, qfitci, fpfitci, mspline and mband (`too many variables specified: y x p9`, r(103)) and on lowess, lpoly, lpolyci and kdensity (`too many variables specified`, r(103)); a second copy (`option mlabvposition() not allowed`, r(198)); two names (`option mlabvposition():  too many names specified`, r(103)); an expression (`* invalid name`, r(198)); a variable that does not exist (`variable nosuch not found`, r(111)). (WP-30, P1.24)
 

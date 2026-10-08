@@ -73,9 +73,11 @@ SUBOPTIONS = [
     ("ytitle size and justification",
      {"ytitle": "Miles, size(large) justification(left)"}, None, "ytitle",
      ["justification(left)"], ["size"]),
+    # Flipped (WP-30 P1.21a): lstyle(foreground) was named; that was
+    # wrong because twoway draws lstyle() (refline_truth.json S probes).
     ("xline lstyle noextend",
      {"xline": "3000, lcolor(red) lstyle(foreground) noextend"}, None,
-     "xline", ["lstyle(foreground)", "noextend"], ["lcolor"]),
+     "xline", ["noextend"], ["lcolor", "lstyle"]),
     # Flipped (WP-29 P0.5): axis(2) is honoured now -- the line is drawn
     # on the second axis's range -- so the entry names axis(3), which no
     # layer can use and which a hand-made spec still carries to the note.

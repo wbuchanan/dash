@@ -568,9 +568,11 @@ class TestTheLimitsTable:
     """One table: a default, a ceiling nothing moves, and the global."""
 
     def test_every_limit_has_a_default_within_its_ceiling(self):
+        # Flipped (WP-30 P1.21a): 8 -> 9 keys; the eight-key set was
+        # wrong because P1.21a adds the reflines limit (A68).
         assert set(dr._DASH_LIMITS) == {
             "cells", "bytes", "graphs", "plots", "filter_options",
-            "by_groups", "tabs", "filters"}
+            "by_groups", "tabs", "filters", "reflines"}
         for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():
             assert 1 <= default <= ceiling, key
             assert glob == "dash_max_" + key, key

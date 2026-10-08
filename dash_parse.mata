@@ -325,6 +325,11 @@
 *!       1 when the graph spec s names a plot type and every type it names
 *!       is a word of allowed: a graph that needs no data.
 *!
+*!   _dash_reflines_positions(gjson)
+*!       The reference-line positions of one graph's JSON: the tokens of
+*!       every copy of xline(), yline(), xline2() and yline2() (WP-30
+*!       P1.21a), for dash.ado's _dash_reflines_of.
+*!
 *!   _dash_computed_cells(gjson, nobs, bygroups, types)
 *!       -1 unless every plot of gjson is in types; else the cells its
 *!       computed layers draw (GAPS2 G3).  _dash_computed_plot_cells()
@@ -376,8 +381,14 @@
 *!       Refuses, r(198) with twoway's message and in twoway's order, the
 *!       first recorded axis option twoway refuses -- a second comma, an
 *!       axis no layer uses (ys, xs: the layers' axes), an axis word in
-*!       capitals or given twice, then (column 10) a label or tick
-*!       sub-option twoway refuses -- and clears the record; 0 otherwise.
+*!       capitals or given twice, then (column 10) a label, tick or line
+*!       sub-option twoway refuses, or r(100) for a line's empty list --
+*!       and clears the record; 0 otherwise.  Columns 11-12 hold a line's
+*!       positions (WP-30 P1.21a): -1 hands them to dash.ado's
+*!       _dash_line_check through its locals _ln_text and _ln_row.
+*!
+*!   _dash_axreq_accept_line(row)
+*!       Marks row's line positions as read by numlist (WP-30 P1.21a).
 *!
 *!   _dash_subreq_check(kind)
 *!       Refuses, r(198) with twoway's words, the first legend(), zlabel(),
@@ -6459,7 +6470,7 @@ void _dash_axreq_clear()
 {
     external string matrix _dash_axreq
 
-    _dash_axreq = J(0, 10, "")
+    _dash_axreq = J(0, 12, "")
     _dash_subreq_clear()
 }
 
@@ -6469,14 +6480,14 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
     string rowvector toks, words
     string matrix    fam, blk
     string rowvector snames
-    string scalar    d, v, body, dcw, badw, sm
-    real scalar      i, k, r, nax, n, axpos, sat
+    string scalar    d, v, body, dcw, badw, sm, lb, lb2, ls2, lnone
+    real scalar      i, j, k, r, nax, n, axpos, sat, nex
 
     _dash_subreq_add(opts, seg)
     toks = _dash_rep_toks(opts, 0)
     if (cols(toks) == 0) return
     fam = _dash_axfam()
-    blk = J(cols(toks), 10, "")
+    blk = J(cols(toks), 12, "")
     k   = 0
     for (i = 1; i <= cols(toks); i++) {
         if (!_dash_ax_parse(toks[i], fam, d, r, v, body, words, dcw, nax, n,
@@ -6496,13 +6507,45 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
             if (_dash_so_resolve(words, J(1, cols(words), 1), "axscale",
                                  snames, sm, sat) == 0) sm = ""
         }
+        // Columns 11-12 (WP-30 P1.21a): a line's positions, stripped, and
+        // "1" when there are none to check.  twoway's
+        // _gs_parse_and_log_lines reads the sub-options first ("option
+        // foo not allowed"; a second extend, typed as ex or extend, too,
+        // where a second noextend is accepted), then an empty list given
+        // a comma ("something required", r(100), tested first), then the
+        // positions through numlist (_dash_axreq_check hands them back).
+        lb    = ""
+        lnone = ""
+        if (fam[r, 1] == "line") {
+            if (_dash_rep_split(v, lb2, ls2)) {
+                if (strtrim(lb2) == "") sm = "100|something required"
+            }
+            else lb2 = v
+            lb = strtrim(lb2)
+            if (lb == "") lnone = "1"
+            if (sm == "" & cols(words)) {
+                if (_dash_so_resolve(words, J(1, cols(words), 1), "refline",
+                                     snames, sm, sat) == 0) {
+                    sm  = ""
+                    nex = 0
+                    for (j = 1; j <= cols(words); j++) {
+                        if (snames[j] != "extend") continue
+                        nex++
+                        if (nex == 2) {
+                            sm = "option " + strtrim(words[j]) + " not allowed"
+                            break
+                        }
+                    }
+                }
+            }
+        }
         blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
                      strofreal(i), strofreal(n, "%21.0f"), d + fam[r, 2], v,
-                     dcw, badw, sm)
+                     dcw, badw, sm, lb, lnone)
     }
     if (!k) return
-    blk = blk[|1, 1 \ k, 10|]
-    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 10) _dash_axreq = blk
+    blk = blk[|1, 1 \ k, 12|]
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 12) _dash_axreq = blk
     else _dash_axreq = _dash_axreq \ blk
 }
 
@@ -6515,8 +6558,8 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
     real colvector   o
     real scalar      i, n
 
-    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 10) {
-        _dash_axreq = J(0, 10, "")
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 12) {
+        _dash_axreq = J(0, 12, "")
         return(0)
     }
     a    = _dash_axreq
@@ -6546,14 +6589,44 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
             _dash_axreq_clear()
             return(198)
         }
+        if (substr(a[o[i], 10], 1, 4) == "100|") {
+            _dash_say("err", "", substr(a[o[i], 10], 5, .), "")
+            _dash_axreq_clear()
+            return(100)
+        }
         if (a[o[i], 10] != "") {
             _dash_say("err", "", a[o[i], 10], "")
             _dash_axreq_clear()
             return(198)
         }
+        // A line's positions (WP-30 P1.21a): text numlist must never see
+        // is refused here; the rest goes back to dash.ado's
+        // _dash_line_check (locals _ln_text, _ln_row), which runs Stata's
+        // own numlist and marks the row with _dash_axreq_accept_line.
+        if (a[o[i], 2] == "7" & a[o[i], 12] == "") {
+            if (_dash_so_unsafe(a[o[i], 11])) {
+                _dash_say("err", "invalid line argument, ", a[o[i], 11], "")
+                _dash_axreq_clear()
+                return(198)
+            }
+            st_local("_ln_text", a[o[i], 11])
+            st_local("_ln_row", strofreal(o[i]))
+            return(-1)
+        }
     }
-    _dash_axreq = J(0, 10, "")
+    _dash_axreq = J(0, 12, "")
     return(0)
+}
+
+// _dash_axreq_accept_line(row) -- marks row of _dash_axreq as a line
+// whose positions Stata's numlist read (WP-30 P1.21a).
+void _dash_axreq_accept_line(real scalar row)
+{
+    external string matrix _dash_axreq
+
+    if (row >= 1 & row <= rows(_dash_axreq) & cols(_dash_axreq) == 12) {
+        _dash_axreq[row, 12] = "1"
+    }
 }
 
 // ==== twoway's sub-option tables and resolver (WP-30 P1.19) ==============
@@ -7993,6 +8066,45 @@ real scalar _dash_computed_cells(string scalar gjson, real scalar nobs,
     cells = L * 2 * nobs + H * 4 * (wd ? nobs : bins) +
             (P - L - H) * _dash_computed_plot_cells()
     return(cells)
+}
+
+// _dash_reflines_positions(gjson) -- the reference-line positions of one
+// graph's JSON: the blank-separated tokens of every copy of xline(),
+// yline(), xline2() and yline2() (WP-30 P1.21a).  dash.ado has already
+// written each copy's positions as Stata's numlist expanded them
+// (_dash_line_expand); a copy is a top-level-comma segment whose first
+// non-blank byte is a digit, +, -, . or (.  The caller's local
+// _drl_val is used as scratch.  Linear in the text.
+real scalar _dash_reflines_positions(string scalar gjson)
+{
+    string rowvector keys
+    string scalar    rest, seg, c
+    real scalar      i, p, n
+
+    keys = ("xline", "yline", "xline2", "yline2")
+    n = 0
+    for (i = 1; i <= cols(keys); i++) {
+        _dash_json_get_str(gjson, keys[i], "_drl_val")
+        rest = st_local("_drl_val")
+        while (rest != "") {
+            p = _first_comma_pos(rest)
+            if (p) {
+                seg  = substr(rest, 1, p - 1)
+                rest = substr(rest, p + 1, .)
+            }
+            else {
+                seg  = rest
+                rest = ""
+            }
+            seg = strtrim(seg)
+            c   = substr(seg, 1, 1)
+            if (c != "" & (strpos("0123456789+-.(", c))) {
+                n = n + cols(tokens(seg))
+            }
+        }
+    }
+    st_local("_drl_val", "")
+    return(n)
 }
 
 // "" when every exclude() name of group is a bare word -- the registry

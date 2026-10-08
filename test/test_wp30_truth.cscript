@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3
+    S35 14 S36 6 S37 6 S38 3 S39 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9438,10 +9438,109 @@ if inlist("`only'", "", "S38") & `: list posof "S38" in w30_run' {
 }
 * ==== end S38 ====
 
+// _s39_spans html [probe] -- the Spans of a saved page, read from its
+// document JSON (WP-30 P1.21a): globals S39_N (count), S39_LEV (the
+// distinct levels), S39_W (the first Span's width) and, with probe given,
+// S39_MATCH (1 when the Spans' (axis, position, colour) multiset is the
+// refline_truth.json probe's lines).
+capture program drop _s39_spans
+program define _s39_spans
+    version 19
+    args html probe
+    global S39_HTML `"`html'"'
+    global S39_PROBE `"`probe'"'
+    python: __import__("sys").modules["_dash_s39"].spans()
+end
+python:
+def _s39_spans():
+    import json, re
+    from sfi import Macro
+    with open(Macro.getGlobal("S39_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    spans = []
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        stack = [json.loads(m.group(1))]
+        while stack:
+            o = stack.pop()
+            if isinstance(o, dict):
+                if o.get("name") == "Span" and isinstance(o.get("attributes"), dict):
+                    spans.append(o["attributes"])
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+    Macro.setGlobal("S39_N", str(len(spans)))
+    Macro.setGlobal("S39_LEV", " ".join(sorted({str(a.get("level", "annotation")) for a in spans})))
+    Macro.setGlobal("S39_W", str(spans[0].get("line_width", 1)) if spans else "")
+    probe = Macro.getGlobal("S39_PROBE")
+    if probe:
+        with open("fixtures/refline_truth.json", encoding="utf-8") as fh:
+            rec = json.load(fh)["probes"][probe]
+        got = sorted(("x" if a.get("dimension") == "height" else "y",
+                      round(float(a.get("location"))),
+                      str(a.get("line_color", "black")).lower()) for a in spans)
+        want = sorted((ln["axis"], round(ln["pos"]), ln["stroke"]) for ln in rec["lines"])
+        Macro.setGlobal("S39_MATCH", "1" if got == want else "0")
+        Macro.setGlobal("S39_GOT", str(got)[:200])
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s39_sys
+_s39_sys.modules["_dash_s39"] = type(_s39_sys)("_dash_s39")
+_s39_sys.modules["_dash_s39"].spans = _s39_spans
+end
+
 * ==== S39 P1.21a: xline/yline positions, refusals and lstyle ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S39") & `: list posof "S39" in w30_run' {
     display as text "S39 start " c(current_date) " " c(current_time)
+    local s39log "`w30_work'/s39.log"
+    local s39pg "`w30_work'/zxp.html"
+    quietly sysuse auto, clear
+
+    // XP-20 / XP-23: positions and colours equal twoway's
+    // (refline_truth.json P01, P05, P12, P13), every Span under the data.
+    local lev ""
+    foreach row in "P01|xline(2000(500)3000)" "P05|xline(2000 2500 to 3500)" ///
+            "P12|yline(20, lcolor(red)) yline(10(5)40, lcolor(blue))" ///
+            "P13|xline(2000(500)3000, lcolor(red)) xline(4000)" {
+        gettoken pid opt : row, parse("|")
+        local opt = substr(`"`opt'"', 2, .)
+        _s36_run `"dash scatter mpg weight, `opt' scheme(s2color) saving("`s39pg'", replace)"' "`s39log'"
+        local drc = r(rc)
+        capture _s39_spans "`s39pg'" `pid'
+        _w30_expect XP-20 "(`drc' == 0 & _rc == 0 & ${S39_MATCH} == 1)" "`pid' rc `drc': ${S39_GOT}"
+        local lev "`lev' ${S39_LEV}"
+    }
+    _w30_done XP-20 "numlist positions and each copy's colour equal twoway's"
+    local lev : list uniq lev
+    _w30_expect XP-23 `"("`lev'" == "underlay")"' "levels `lev'"
+    _w30_done XP-23 "every reference line is drawn under the data"
+
+    // XP-21: lstyle(foreground) lcolor(red): red, at foreground's width
+    // (twoway: 5.76 against xyline's 8.64).
+    _s36_run `"dash scatter mpg weight, xline(3000) scheme(s2color) saving("`s39pg'", replace)"' "`s39log'"
+    capture _s39_spans "`s39pg'"
+    local w0 = real("${S39_W}")
+    _s36_run `"dash scatter mpg weight, xline(3000, lstyle(foreground) lcolor(red)) scheme(s2color) saving("`s39pg'", replace)"' "`s39log'"
+    local drc = r(rc)
+    capture _s39_spans "`s39pg'" S13_s2color
+    local ratio = real("${S39_W}") / `w0'
+    _w30_expect XP-21 "(`drc' == 0 & ${S39_MATCH} == 1 & abs(`ratio' - 5.76 / 8.64) < 0.02 * 5.76 / 8.64)" "rc `drc', ${S39_GOT}, width ratio `ratio'"
+    _w30_done XP-21 "lstyle(foreground) lcolor(red) draws red at foreground's width"
+
+    // XP-22: lstyle(none) draws no line; lalign(inside) one, no note.
+    _s36_run `"dash scatter mpg weight, xline(3000, lstyle(none)) saving("`s39pg'", replace)"' "`s39log'"
+    local drc = r(rc)
+    capture _s39_spans "`s39pg'"
+    _w30_expect XP-22 "(`drc' == 0 & ${S39_N} == 0)" "lstyle(none): rc `drc', ${S39_N} Spans"
+    _s36_run `"dash scatter mpg weight, xline(3000, lalign(inside)) saving("`s39pg'", replace)"' "`s39log'"
+    local drc = r(rc)
+    capture _s39_spans "`s39pg'"
+    _s36_count "`s39log'" "xline() sub-option"
+    _w30_expect XP-22 "(`drc' == 0 & ${S39_N} == 1 & r(n) == 0)" "lalign(inside): rc `drc', ${S39_N} Spans, notes `r(n)'"
+    _w30_done XP-22 "lstyle(none) draws nothing; lalign(inside) draws with no note"
+    capture dash clear
+    capture erase "`s39log'"
+    capture erase "`s39pg'"
+    macro drop S39_*
     display as text "S39 end " c(current_date) " " c(current_time)
 }
 * ==== end S39 ====

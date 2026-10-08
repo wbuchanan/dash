@@ -465,6 +465,7 @@ program define _dash_require_mata
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
+        _dash_axreq_accept_line _dash_reflines_positions ///
         _dash_axbound_list ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
@@ -3597,7 +3598,8 @@ program define _dash_limit_table
         filter_options=1000,100000 ///
         by_groups=100,1000 ///
         tabs=50,500 ///
-        filters=20,200
+        filters=20,200 ///
+        reflines=10000,100000
     c_local _dash_limit_rows "`rows'"
 end
 
@@ -6268,7 +6270,16 @@ program define _dash_plot
     _dash_subopt_check region
     _dash_subopt_check legend
     mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
-    if `_axrc' exit 198
+    // A line's positions go to Stata's own numlist, one copy at a time, in
+    // twoway's order (WP-30 P1.21a): -1 hands one back in _ln_text/_ln_row.
+    while `_axrc' == -1 {
+        _dash_line_check `_ln_row' `"`macval(_ln_text)'"'
+        mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
+    }
+    if `_axrc' exit `_axrc'
+    foreach _lx in g_xline g_yline g_xline2 g_yline2 {
+        if `"`macval(`_lx')'"' != "" _dash_line_expand `_lx' `"`macval(`_lx')'"'
+    }
     _dash_subopt_check zlabel
     _dash_subopt_check title
 
@@ -6673,6 +6684,143 @@ program define _dash_plot
     else {
         _dash_render_immediate `"`graph_json'"' `_fp_sc'
     }
+end
+
+// ----------------------------------------------------------------
+// _dash_line_check <row> <text>  -- one xline()/yline() copy's positions
+// through Stata's own numlist (WP-30 P1.21a)
+//
+// twoway's _gs_parse_and_log_lines (1.1.6) reads a line's positions with
+// numlist and refuses any failure as "invalid line argument, <text>",
+// r(198) (its 2,500 cap included: xline(1(1)2501)).  _dash_axreq_check
+// hands the text back only after _dash_so_unsafe passed, and it is only
+// ever expanded inside macval(); on success the row is marked read.
+// ----------------------------------------------------------------
+program define _dash_line_check
+    version 19
+    args row t
+    capture numlist `"`macval(t)'"'
+    if _rc {
+        mata: _dash_axreq_clear()
+        mata: _dash_say("err", "invalid line argument, ", st_local("t"), "")
+        exit 198
+    }
+    mata: _dash_axreq_accept_line(`row')
+end
+
+// ----------------------------------------------------------------
+// _dash_line_expand <local> <value>  -- each copy's positions as numlist
+// expands them, each value once (WP-30 P1.21a)
+//
+// value is one option's copies joined ", " (_dash_rep_merge); the result
+// is written to the caller's local.  A top-level-comma segment whose first non-blank byte
+// is a digit, +, -, . or ( starts a copy: it is replaced by its positions
+// as numlist writes them, duplicates dropped (twoway's list uniq); other
+// segments are kept as typed.  Every copy was already accepted by
+// _dash_line_check, so this never refuses.
+// ----------------------------------------------------------------
+program define _dash_line_expand
+    version 19
+    args L v
+    if `"`macval(v)'"' == "" exit
+    local rest : copy local v
+    local out ""
+    local sep ""
+    local any 0
+    while `"`macval(rest)'"' != "" {
+        mata: _dash_comma_pos(st_local("rest"), "cpos")
+        if `cpos' {
+            mata: st_local("seg", substr(st_local("rest"), 1, `cpos' - 1))
+            mata: st_local("rest", substr(st_local("rest"), `cpos' + 1, .))
+        }
+        else {
+            local seg : copy local rest
+            local rest ""
+        }
+        mata: st_local("seg", strtrim(st_local("seg")))
+        mata: st_local("_lx_c", strofreal(strpos("0123456789+-.(", substr(st_local("seg"), 1, 1)) > 0 & st_local("seg") != ""))
+        if `_lx_c' {
+            numlist `"`macval(seg)'"'
+            local nl `r(numlist)'
+            local nl : list uniq nl
+            local seg `nl'
+            local any 1
+        }
+        local out `"`macval(out)'`sep'`macval(seg)'"'
+        local sep ", "
+    }
+    if `any' c_local `L' `"`macval(out)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_reflines_of <gjson>  -- r(n): one graph's reference-line
+// positions times its by() panels (WP-30 P1.21a)
+//
+// Positions are counted in the JSON, already expanded
+// (_dash_reflines_positions); the panels over every observation
+// (_dash_refline_panels), an upper bound of what is drawn.
+// ----------------------------------------------------------------
+program define _dash_reflines_of, rclass
+    version 19
+    args gjson
+    mata: st_local("_rl_p", strofreal(_dash_reflines_positions(st_local("gjson"))))
+    local _rl_k 1
+    if `_rl_p' > 0 {
+        mata: _dash_json_get_str(st_local("gjson"), "by", "_rl_by")
+        if `"`macval(_rl_by)'"' != "" {
+            _dash_refline_panels `"`macval(_rl_by)'"'
+            local _rl_k = max(r(n), 1)
+        }
+    }
+    return scalar n = `_rl_p' * `_rl_k'
+end
+
+// ----------------------------------------------------------------
+// _dash_refline_panels <by>  -- r(n): the panels a by() value asks for,
+// counted over every observation (WP-30 P1.21a)
+//
+// The groups of the by() variables (missing keeps a group holding a
+// missing value), one more for total, capped at the by_groups limit.
+// The names were validated when the spec was built; the value is read
+// through _dash_by_parts from a string scalar.
+// ----------------------------------------------------------------
+program define _dash_refline_panels, rclass
+    version 19
+    args by
+    tempname V
+    mata: st_strscalar(st_local("V"), st_local("by"))
+    _dash_by_parts `V'
+    tempvar tag one
+    local n 0
+    capture confirm variable `_by_vars'
+    if !_rc {
+        quietly gen byte `one' = 1
+        if !`_by_miss' markout `one' `_by_vars', strok
+        quietly egen byte `tag' = tag(`_by_vars') if `one'
+        quietly count if `tag' == 1
+        local n = r(N) + `_by_total'
+    }
+    _dash_limit, name(by_groups)
+    return scalar n = min(`n', r(value))
+end
+
+// ----------------------------------------------------------------
+// _dash_reflines_cap <n>  -- refuse r(134) a dashboard whose reference
+// lines pass the reflines limit (WP-30 P1.21a, A68)
+// ----------------------------------------------------------------
+program define _dash_reflines_cap
+    version 19
+    args n
+    _dash_limit, name(reflines)
+    local lim = r(value)
+    local ceil = r(ceiling)
+    if `n' <= `lim' exit
+    _dash_count_fmt _n_s `n'
+    _dash_count_fmt _lim_s `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    display as error "dash: this dashboard asks for up to `_n_s' reference lines (positions times by() panels), more than the `_lim_s' one dashboard draws."
+    display as error "      Draw fewer lines, or set global dash_max_reflines to a higher value (at most `_ceil_s')."
+    exit 134
 end
 
 
@@ -7752,6 +7900,10 @@ program define _dash_render_immediate
     else {
         _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n''
     }
+
+    // Reference lines: positions times by() panels (WP-30 P1.21a).
+    _dash_reflines_of `"`macval(json_spec)'"'
+    _dash_reflines_cap `r(n)'
     _dash_byte_cap `_cap_vars'
 
     // Collect display formats.  Each travels in the spec's formats map;
@@ -8599,6 +8751,7 @@ program define _dash_prepare_spec, rclass
     _dash_limit, name(by_groups)
     local _by_groups_lim = r(value)
     mata: _dash_qual_reset()
+    local _rl_sum 0
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
@@ -8685,6 +8838,13 @@ program define _dash_prepare_spec, rclass
                     st_local("_dq_err") + ". Run dash clear and register it again.")
                 exit 198
             }
+            // Reference lines (WP-30 P1.21a): this graph's positions times
+            // its by() panels, summed for _dash_reflines_cap below.
+            mata: st_local("_rl_json", st_global("dash_json_" + st_local("gname")))
+            _dash_reflines_of `"`macval(_rl_json)'"'
+            local _rl_sum = `_rl_sum' + r(n)
+            local _rl_json ""
+
             local gvars ""
             mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
             foreach v of local gvars {
@@ -8777,6 +8937,10 @@ program define _dash_prepare_spec, rclass
             }
         }
     }
+
+    // Reference lines: positions times by() panels over every graph
+    // (WP-30 P1.21a), refused before any export.
+    _dash_reflines_cap `_rl_sum'
 
     // ---- also include filter variables in the serialization ----
     // Filter variables (e.g. foreign from filter(foreign, type(dropdown)))

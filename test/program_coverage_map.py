@@ -359,6 +359,11 @@ COVERAGE = {
         "_dash_mlabv_parse": ("test_twoway_option_parity.cscript:MV-06", "test_twoway_option_parity.cscript:MV-07"),
         # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
+        "_dash_line_check": ("test_suboption_reporting.cscript:XP-01",),
+        "_dash_line_expand": ("test_suboption_reporting.cscript:XP-08", "test_suboption_reporting.cscript:XP-04"),
+        "_dash_refline_panels": ("test_suboption_reporting.cscript:XP-07",),
+        "_dash_reflines_cap": ("test_suboption_reporting.cscript:XP-07",),
+        "_dash_reflines_of": ("test_suboption_reporting.cscript:XP-07",),
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
@@ -779,6 +784,8 @@ COVERAGE = {
         "_dash_rep_region_word": ("test_twoway_option_parity.cscript:RS-10",),
         "_dash_subreq_region": ("test_twoway_option_parity.cscript:RS-01",),
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
+        "_dash_axreq_accept_line": ("test_suboption_reporting.cscript:XP-01",),
+        "_dash_reflines_positions": ("test_suboption_reporting.cscript:XP-07",),
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)

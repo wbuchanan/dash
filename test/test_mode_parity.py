@@ -1615,8 +1615,11 @@ CORPUS = [
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
                           "yscale": "reverse outergap(1)"}),
+    # Flipped (WP-30 P1.21a): lstyle(foreground) was the unimplemented
+    # sub-option; that was wrong because twoway draws lstyle()
+    # (refline_truth.json S probes).  noextend is still S50's.
     _case("xline with an unimplemented sub-option", [_sc()], None,
-          {"xline": "3000, lcolor(red) lstyle(foreground)"}),
+          {"xline": "3000, lcolor(red) noextend"}),
     _case("xlabel with an unimplemented sub-option", [_sc()], None,
           {"xlabel": "#5, labgap(2)", "ytitle": "Miles, orientation(vertical)"}),
     _case("graph title", [_sc()], None, {"title": "G"}),
@@ -2184,6 +2187,10 @@ CORPUS = [
     _case("Regions none over the canvas (WP-30 P1.20a)", [_sc()], None,
           {"bgcolor": "red", "graphregion": "color(none)",
            "plotregion": "fcolor(none)"}),
+    # WP-30 P1.21a: reference-line numlists and lstyle().
+    _case("Reference-line numlists and lstyle (WP-30 P1.21a)", [_sc()], None,
+          {"xline": "2000(500)3000, lc(red) lstyle(foreground), 4000",
+           "yline": "10/12, lstyle(grid)"}),
 ]
 
 
@@ -2310,7 +2317,7 @@ _MUST_WARN = {
         "outergap(1)",
     "xline with an unimplemented sub-option":
         "dash: xline() sub-option(s) not implemented and ignored: "
-        "lstyle(foreground)",
+        "noextend",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
         "labgap(2)",
