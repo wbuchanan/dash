@@ -176,7 +176,8 @@
 *!          folded onto the x axis as twoway reads them: values, order,
 *!          abbreviations, units, refusals, the first-plot rule, any graph,
 *!          lenient literals, hostile tokens, minor ticks, x-option literals
-*!          and the unit noted at build (WP-30 P1.6).
+*!          and the unit noted at build (WP-30 P1.6).  TA-11..TA-13:
+*!          axis(2) and the t...2() spellings, format() overrides, %-tm.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -4769,6 +4770,104 @@ if "`bad'" != "" {
     display as error "TA-16 FAIL:`bad'"
 }
 else display as text "TA-16 PASS: a format change after registration is noted once, and the line stays at 504"
+
+// TA-11: axis(2) and the t...2() spellings reach the second x axis, in
+// its own unit (a %td axis 2 beside the %tm axis 1); the plurals are
+// read; an axis no layer uses is refused in twoway's words, X then T
+// then Y; a second comma as twoway.  ttitle(, axis(2)) is routed as
+// xtitle(, axis(2)) is (twoway's own r(133) there is not followed).
+local bad ""
+local two "(tsline y) (line y2 d, xaxis(2)),"
+foreach c in ///
+    "`two' tline(2002m1)!xline!504" ///
+    "`two' tline(01jan2002, axis(2))!xline2!15341" ///
+    "`two' tlabel(01jan2001 01jan2003, axis(2))!xlabel2!14976 15706" ///
+    "`two' ttick(01jan2001, axis(2))!xtick2!14976" ///
+    "`two' tscale(range(01jan1999) axis(2))!xscale2!range(14245)" ///
+    "tsline y, tlabels(2001m1 2003m1)!xlabel!492 516" ///
+    "tsline y, tlines(2002m1)!xline!504" ///
+    "tsline y, tticks(2001m1 2003m1)!xtick!492 516" ///
+    "tsline y, tlabel(2001m1 2003m1, axis(1))!xlabel!492 516" {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "`two' tline(2002m1, axis(2))" "tsline y, tlabel(2001m1, axis(3))" ///
+    "tsline y, tline(2002m1, axis(2))" ///
+    "tsline y, xlabel(2001m1, axis(3)) tlabel(2001m1, axis(3))" ///
+    "tsline y, tlabel(2001m1, axis(3)) ylabel(100, axis(3))" ///
+    "tsline y, tlabel(2001m1, , foo)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+foreach c in "tline2(01jan2002)!xline2!15341" `"ttitle("A", axis(2))!xtitle2!\"A\""' {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _ztp_run `"dash `two' `a' name(zta)"' "$zta_log"
+    local drc = r(rc)
+    mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("k"), st_local("v"))))
+    if `drc' | !`ok' local bad `"`bad' [`a': rc `drc', `k' `ok']"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-11"
+    display as error `"TA-11 FAIL:`bad'"'
+}
+else display as text "TA-11 PASS: axis(2), t...2(), plurals, and twoway's axis refusals in X, T, Y order"
+
+// TA-12: format() decides the unit as twoway's ticksets do: an x
+// label's format() serves the t-options read after it; an option's own
+// format() applies after its own positions; lines read the first time
+// format among the major, minor, major-tick and minor-tick formats.
+local bad ""
+foreach c in "line y n, xlabel(, format(%tm)) tline(2002m1)!xline!504" ///
+    "line y n, xlabel(, format(%tm)) tlabel(2001m1 2003m1)!xlabel!492 516, format(%tm)" ///
+    "line y n, tlabel(, format(%tm)) tline(2002m1)!xline!504" ///
+    "line y n, xmlabel(, format(%tm)) tline(2002m1)!xline!504" {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "line y n, tlabel(2001m1 2003m1, format(%tm))" ///
+    "tsline y, xlabel(, format(%td)) tline(2002m1)" ///
+    "tsline y, xlabel(, format(%td)) tlabel(2002m1)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-12"
+    display as error `"TA-12 FAIL:`bad'"'
+}
+else display as text "TA-12 PASS: format() overrides read in twoway's tickset order"
+
+// TA-13: on a %-tm axis labels and ticks read m() literals; lines and
+// scale ranges do not (twoway's get_time_format tests only %t and %d).
+local bad ""
+_zta_val `"line y t2, tlabel(2001m1 2003m1)"' xlabel "492 516"
+local bad `"`bad'`_zta_bad'"'
+foreach a in "line y t2, tline(2002m1)" "line y t2, tscale(range(2006m1))" ///
+    "line y t2, ttick(2001m1) tline(2002m1)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-13"
+    display as error `"TA-13 FAIL:`bad'"'
+}
+else display as text "TA-13 PASS: %-tm reads dates in labels and ticks, numbers only in lines and ranges"
 
 restore
 capture erase "$zta_log"

@@ -565,7 +565,7 @@ and now matches Stata.
   percentile may be any `pNN` strictly between 0 and 100, and the twoway
   abbreviations `mbands` and `fn` are accepted (WP-23).
 
-<!-- WP-30 P1.6 -->
+- The time-axis options `tlabel()`, `ttick()`, `ttitle()`, `tscale()` and `tline()` (and `tlabel2()`-style and `axis(2)` forms) are drawn on every twoway graph, with date literals in the axis's own unit: `dash tsline y, tlabel(2000m1(12)2004m1) tline(2002m1)` named them in a note and drew neither, and now draws labels at 2000m1-2004m1 and a line at 2002m1, as twoway does, before and after filter moves; `tmlabel()` and `tmtick()` are accepted and named until minor ticks are drawn. (WP-30, P1.6)
 
 - Time-series operators in plot varlists are drawn, as twoway draws them: `dash line D.close date`, `dash tsline D.close`, `dash lfit close L.close` and `dash scatter L(1/2).close t` were refused r(101) and now draw in both modes on scatter, line, connected, area, bar, spike, dropline, dot, the lfit/qfit/mspline/mband fits, the range and paired types, tsline and tsrline; each series is computed by Stata at build under tsset, titles and keys read "Closing price, D", and the CSV column is headed D.close. (WP-30, P1.7)
 
@@ -739,7 +739,7 @@ and now matches Stata.
 - `xvarformat()` and `yvarformat()` written after the plot groups' comma are refused as twoway refuses them, `option xvarformat() not allowed`, r(198); dash named them in its note and drew the graph. Inside a plot they are now honoured. (WP-30, P1.5)
 
 
-<!-- WP-30 P1.6 -->
+- Date literals and time-axis forms twoway refuses are refused in twoway's words (all rc 0 before): a date literal in `xlabel()`, `xtick()`, `xmlabel()`, `xmtick()` (`invalid label specifier, :  2000m1:`, r(198)), `xline()` (`invalid line argument, 2002m1`, r(198)) or `xscale(range())` (`range() invalid -- invalid numlist`, r(121)); a t-option date literal when the first plot is lfit, qfit, lfitci, qfitci, lpoly, lpolyci, kdensity, function, scatteri, pci or pcarrowi, or on a numeric or `%tc` axis; an invalid literal (`tline(2000m13)`); `tline()` or `tscale(range())` literals on a `%-t` axis; `tm()` and `ts()` (`option tm() not allowed`, r(198)). (WP-30, P1.6)
 
 - Operated plot variables are refused where twoway refuses them, in its words (all r(101) "factor-variable and time-series operators not allowed" before): no tsset ("time variable not set", r(111)); a string variable ("make:  may not use time-series operators on string variables", r(109)); a factor variable ("factor-variable operators not allowed", r(101)); by() with an operated variable ("not sorted", r(5)); a bare sort with an operated x on scatter, line and the other types that sort on x ("option sort() incorrectly specified", r(198)). (WP-30, P1.7)
 

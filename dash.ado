@@ -471,7 +471,7 @@ program define _dash_require_mata
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_axreq_accept_line _dash_reflines_positions ///
         _dash_axbound_list ///
-        _dash_taxis_unit _dash_tdate_ticks _dash_tdate_lines ///
+        _dash_taxis_unit _dash_taxis_fmt _dash_tdate_ticks _dash_tdate_lines ///
         _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
@@ -959,6 +959,8 @@ program define _dash_parse_graph_opts, sclass
         TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
         TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
         TLIne(string asis) ///
+        TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
+        TSCALE2(string asis)      TTITLE2(string asis) ///
         * ///
     ]
 
@@ -1095,6 +1097,11 @@ program define _dash_parse_graph_opts, sclass
     sreturn local tscale       : copy local tscale
     sreturn local ttitle       : copy local ttitle
     sreturn local tline        : copy local tline
+    sreturn local tlabel2      : copy local tlabel2
+    sreturn local ttick2       : copy local ttick2
+    sreturn local tline2       : copy local tline2
+    sreturn local tscale2      : copy local tscale2
+    sreturn local ttitle2      : copy local ttitle2
     sreturn local t1title      : copy local t1title
     sreturn local t2title      : copy local t2title
     sreturn local b1title      : copy local b1title
@@ -1225,6 +1232,8 @@ program define _dash_parse_plot_opts, sclass
         TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
         TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
         TLIne(string asis) ///
+        TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
+        TSCALE2(string asis)      TTITLE2(string asis) ///
         * ///
     ]
     // The style options of _dash_stylelist_keys() are string asis so a
@@ -1574,6 +1583,11 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_tscale       : copy local tscale
     sreturn local g_ttitle       : copy local ttitle
     sreturn local g_tline        : copy local tline
+    sreturn local g_tlabel2      : copy local tlabel2
+    sreturn local g_ttick2       : copy local ttick2
+    sreturn local g_tline2       : copy local tline2
+    sreturn local g_tscale2      : copy local tscale2
+    sreturn local g_ttitle2      : copy local ttitle2
     sreturn local g_t1title      : copy local t1title
     sreturn local g_t2title      : copy local t2title
     sreturn local g_b1title      : copy local b1title
@@ -5741,7 +5755,7 @@ program define _dash_process_segment, rclass
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 zlabel ztitle zscale nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
@@ -6676,7 +6690,7 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
         local g_`gk' ""
@@ -6710,7 +6724,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
@@ -6811,7 +6825,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
@@ -6886,7 +6900,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             if !`: length local _sg_`gk'' continue
@@ -6918,7 +6932,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
         if `: length local _gafter_`gk'' {
@@ -6958,15 +6972,17 @@ program define _dash_plot
     // over by value, in globals, and come back as the g_ locals; the spec
     // never carries a t key.  tm() and ts() are no option of twoway's.
     foreach _tk in name xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
-            xtick2 xline2 xscale2 tlabel ttick tmlabel tmtick tscale ttitle tline {
+            xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ttitle ///
+            tline tlabel2 ttick2 tline2 tscale2 ttitle2 {
         mata: st_global("dash__tf_`_tk'", st_local("g_`_tk'"))
     }
     mata: st_global("dash__tf_ign", st_local("_dash_ignored_acc"))
     capture noisily _dash_taxis_fold `_tx_list'
     local _tf_rc = _rc
     if !`_tf_rc' {
-        foreach _tk in xlabel xtick xmlabel xmtick xline xscale xtitle tlabel ///
-                ttick tmlabel tmtick tscale ttitle tline {
+        foreach _tk in xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
+                xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ///
+                ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 {
             mata: st_local("g_`_tk'", st_global("dash__tf_`_tk'"))
         }
         mata: st_local("_dash_ignored_acc", st_global("dash__tf_ign"))
@@ -7298,7 +7314,7 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
+          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
         local gv : copy local g_`gk'
@@ -7379,7 +7395,7 @@ end
 
 // ================================================================
 // _dash_taxis_fold <type:variable:axis> ...  -- tlabel(), ttick(),
-// tmlabel(), tmtick(), ttitle(), tscale() and tline() onto x axis 1, as
+// tmlabel(), tmtick(), ttitle(), tscale() and tline() onto the x axes, as
 // twoway reads them (WP-30 P1.6)
 //
 // Called by _dash_plot after the axis check, with each plot segment's
@@ -7402,14 +7418,20 @@ end
 //     tick, mtick, title, line, and merges into its x twin as a second copy
 //     of it would (c14, c15, c34-c36, c46, c48);
 //   * a tline() list goes through numlist, whose cap gives twoway's r(123)
-//     "invalid numlist has too many elements" (m8).
-// The converter is Mata's (_dash_taxis_unit, _dash_tdate_ticks,
-// _dash_tdate_lines, _dash_tdate_range, _dash_xdate_find): a date token is
-// read by Mata's string date functions only, and the one command line
-// built here is numlist over the numbers it wrote (_tf_nl).  A value with
-// an axis() word is left unfolded and named in the note until axis 2 is
-// routed.  The unit read is kept in dash__tunit for _dash_register_graph,
-// and dash build notes a later change of the variable's date format.
+//     "invalid numlist has too many elements" (m8);
+//   * axis(2) puts them on the second x axis, read in its own unit (f07,
+//     f08); _dash_route_axis2 writes those copies as tlabel2() .. ttitle2(),
+//     and _dash_axreq_check refuses an axis no layer uses, X then T then Y
+//     (f09, f10, f12, f13);
+//   * a format() decides the unit as twoway's ticksets do (k01-k07), and a
+//     %-t format reads dates in labels and ticks only (g01-g04).
+// The converter is Mata's (_dash_taxis_unit, _dash_taxis_fmt,
+// _dash_tdate_ticks, _dash_tdate_lines, _dash_tdate_range,
+// _dash_xdate_find): a date token is read by Mata's string date functions
+// only, and the one command line built here is numlist over the numbers
+// it wrote (_tf_nl).  The units read are kept in dash__tunit for
+// _dash_register_graph, and dash build notes a later change of a
+// variable's date format.
 // ================================================================
 program define _dash_taxis_fold
     version 19
@@ -7446,83 +7468,105 @@ program define _dash_taxis_fold
         }
     }
 
-    // The base format of x axis 1: its first plot's.
-    local _tf_fmt ""
-    local _tf_var ""
-    local _tf_seen 0
+    // Each x axis in turn (WP-30 P1.6 part 2): its base format, the first
+    // plot's on it; the four tickset formats -- major (xlabel), minor
+    // (xmlabel), major ticks (xtick), minor ticks (xmtick) -- each the
+    // base until the last format() of its merged x option replaces it
+    // (k01, k02, k07); then each family in twoway's order, the label and
+    // tick families read in their own tickset's format, which their own
+    // format() replaces only after their positions (k03, k04), and the
+    // scale and lines in the first of the four that is a %t or %d format
+    // (axis.class get_time_format; k05, %-tm g02-g04).  Axis 2 has its own
+    // base and takes tlabel2() .. ttitle2(), axis(2)'s routed forms.
     local _tf_num "lfit qfit lfitci qfitci lpoly lpolyci kdensity function scatteri pci pcarrowi"
-    foreach s of local _tf_segs {
-        tokenize "`s'", parse(":")
-        if "`5'" != "1" | `_tf_seen' continue
-        local _tf_seen 1
-        if `: list 1 in _tf_num' | "`3'" == "." continue
-        capture confirm variable `3', exact
-        if _rc continue
-        local _tf_fmt : format `3'
-        local _tf_var `3'
-    }
-    mata: st_local("_tf_u1", _dash_taxis_unit(st_local("_tf_fmt"), 1))
-    mata: st_local("_tf_u2", _dash_taxis_unit(st_local("_tf_fmt"), 2))
-
-    // Each family in twoway's order, after the x copies.
-    local _tf_used 0
-    foreach fam in scale label mlabel tick mtick title line {
-        mata: st_local("_td_in", st_global("dash__tf_t`fam'"))
-        if !`: length local _td_in' continue
-        // An axis() word: not routed yet, so named, not folded.
-        mata: st_local("_tf_ax", strofreal(max(strpos(" " + subinstr(subinstr(st_local("_td_in"), ",", " "), char(9), " "), (" ax(", " axi(", " axis("))) > 0))
-        if `_tf_ax' {
-            mata: st_global("dash__tf_ign", st_global("dash__tf_ign") + " t`fam'")
-            global dash__tf_t`fam' ""
-            continue
+    local _tf_unit ""
+    forvalues a = 1/2 {
+        local s2 = cond(`a' == 2, "2", "")
+        local _tf_fmt ""
+        local _tf_var ""
+        local _tf_seen 0
+        foreach s of local _tf_segs {
+            tokenize "`s'", parse(":")
+            if "`5'" != "`a'" | `_tf_seen' continue
+            local _tf_seen 1
+            if `: list 1 in _tf_num' | "`3'" == "." continue
+            capture confirm variable `3', exact
+            if _rc continue
+            local _tf_fmt : format `3'
+            local _tf_var `3'
         }
-        local _td_rc 0
-        if "`fam'" == "title" local _td_out : copy local _td_in
-        else if "`fam'" == "scale" {
-            mata: _dash_tdate_range(st_local("_tf_u2"))
-            local _tf_used 1
+        foreach ts in label mlabel tick mtick {
+            local _tf_f_`ts' : copy local _tf_fmt
+            if `a' == 2 & inlist("`ts'", "mlabel", "mtick") continue
+            mata: st_local("_tf_x", _dash_taxis_fmt(st_global("dash__tf_x`ts'`s2'")))
+            if `: length local _tf_x' local _tf_f_`ts' : copy local _tf_x
         }
-        else if "`fam'" == "line" {
-            mata: _dash_tdate_lines(st_local("_tf_u2"))
-            if !`_td_rc' {
-                local _td_out ""
-                local _tf_sep ""
-                forvalues i = 1/`_td_n' {
-                    if "`_td_k`i''" == "1" {
-                        local _tf_nl : copy local _td_s`i'
-                        if `: length local _tf_nl' {
-                            capture noisily numlist "`_tf_nl'", max(2500)
-                            if _rc exit _rc
-                            local _tf_out `r(numlist)'
-                            local _tf_out : list uniq _tf_out
-                        }
-                        else local _tf_out ""
-                        local _td_out `"`macval(_td_out)'`_tf_sep'`_tf_out'"'
-                    }
-                    else local _td_out `"`macval(_td_out)'`_tf_sep'`macval(_td_s`i')'"'
-                    local _tf_sep ", "
-                }
+        local _tf_used 0
+        local _tf_fams "scale label mlabel tick mtick title line"
+        if `a' == 2 local _tf_fams "scale label tick title line"
+        foreach fam of local _tf_fams {
+            mata: st_local("_td_in", st_global("dash__tf_t`fam'`s2'"))
+            if !`: length local _td_in' continue
+            // get_time_format: the first time format of the four.
+            local _tf_tf ""
+            foreach ts in label mlabel tick mtick {
+                mata: st_local("_tf_ok", strofreal(st_local("_tf_tf") == "" & ///
+                    anyof(("%t", "%d"), substr(st_local("_tf_f_`ts'"), 1, 2))))
+                if `_tf_ok' local _tf_tf : copy local _tf_f_`ts'
             }
-            local _tf_used 1
+            mata: st_local("_tf_u2", _dash_taxis_unit(st_local("_tf_tf"), 2))
+            local _td_rc 0
+            if "`fam'" == "title" local _td_out : copy local _td_in
+            else if "`fam'" == "scale" {
+                mata: _dash_tdate_range(st_local("_tf_u2"))
+                local _tf_used 1
+            }
+            else if "`fam'" == "line" {
+                mata: _dash_tdate_lines(st_local("_tf_u2"))
+                if !`_td_rc' {
+                    local _td_out ""
+                    local _tf_sep ""
+                    forvalues i = 1/`_td_n' {
+                        if "`_td_k`i''" == "1" {
+                            local _tf_nl : copy local _td_s`i'
+                            if `: length local _tf_nl' {
+                                capture noisily numlist "`_tf_nl'", max(2500)
+                                if _rc exit _rc
+                                local _tf_out `r(numlist)'
+                                local _tf_out : list uniq _tf_out
+                            }
+                            else local _tf_out ""
+                            local _td_out `"`macval(_td_out)'`_tf_sep'`_tf_out'"'
+                        }
+                        else local _td_out `"`macval(_td_out)'`_tf_sep'`macval(_td_s`i')'"'
+                        local _tf_sep ", "
+                    }
+                }
+                local _tf_used 1
+            }
+            else {
+                mata: st_local("_tf_u1", _dash_taxis_unit(st_local("_tf_f_`fam'"), 1))
+                mata: _dash_tdate_ticks("t`fam'", st_local("_tf_u1"))
+                mata: st_local("_tf_x", _dash_taxis_fmt(st_local("_td_in")))
+                if `: length local _tf_x' local _tf_f_`fam' : copy local _tf_x
+                local _tf_used 1
+            }
+            if `_td_rc' {
+                mata: _dash_say("err", "", st_local("_td_msg"), "")
+                exit `_td_rc'
+            }
+            mata: st_local("_tf_x", st_global("dash__tf_x`fam'`s2'"))
+            mata: _dash_rep_merge_locals("x`fam'`s2'", "_tf_x", "_td_out", "_tf_x")
+            mata: st_global("dash__tf_x`fam'`s2'", st_local("_tf_x"))
+            global dash__tf_t`fam'`s2' ""
         }
-        else {
-            mata: _dash_tdate_ticks("t`fam'", st_local("_tf_u1"))
-            local _tf_used 1
+        // The unit this axis's variable gave the dates, for the registry.
+        mata: st_local("_tf_u1", _dash_taxis_unit(st_local("_tf_fmt"), 1))
+        if `_tf_used' & "`_tf_var'" != "" & "`_tf_u1'" != "" {
+            local _tf_unit `_tf_unit' `a':`_tf_var':`_tf_u1'
         }
-        if `_td_rc' {
-            mata: _dash_say("err", "", st_local("_td_msg"), "")
-            exit `_td_rc'
-        }
-        mata: st_local("_tf_x", st_global("dash__tf_x`fam'"))
-        mata: _dash_rep_merge_locals("x`fam'", "_tf_x", "_td_out", "_tf_x")
-        mata: st_global("dash__tf_x`fam'", st_local("_tf_x"))
-        global dash__tf_t`fam' ""
     }
-
-    // The unit the dates were read in, for the registry.
-    if `_tf_used' & "`_tf_u1'`_tf_u2'" != "" & "`_tf_var'" != "" {
-        global dash__tunit "1:`_tf_var':`_tf_u1'"
-    }
+    if "`_tf_unit'" != "" global dash__tunit "`: list retokenize _tf_unit'"
 end
 
 // ----------------------------------------------------------------
@@ -9744,8 +9788,9 @@ program define _dash_prepare_spec, rclass
             // date format of the axis variable changed since is noted
             // once, and the registered values are drawn.
             mata: st_local("_tu", st_global("dash_tunit_" + st_local("gname")))
-            if `: length local _tu' {
-                tokenize "`_tu'", parse(":")
+            local _tu_said 0
+            foreach _tu_t of local _tu {
+                tokenize "`_tu_t'", parse(":")
                 local _tu_v `3'
                 local _tu_u `5'
                 local _tu_now "?"
@@ -9754,7 +9799,8 @@ program define _dash_prepare_spec, rclass
                     local _tu_f : format `_tu_v'
                     mata: st_local("_tu_now", _dash_taxis_unit(st_local("_tu_f"), 1))
                 }
-                if "`_tu_now'" != "`_tu_u'" {
+                if "`_tu_now'" != "`_tu_u'" & !`_tu_said' {
+                    local _tu_said 1
                     mata: _dash_note("dash: graph " + st_local("gname") + ": the t-options' dates were read as " + st_local("_tu_u") + "() dates when it was registered; " + st_local("_tu_v"), " now has another date format, and they are drawn at the registered values", "")
                 }
             }

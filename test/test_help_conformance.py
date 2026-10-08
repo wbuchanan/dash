@@ -536,8 +536,9 @@ class TestTheParsersFoundSomething:
         # yaxis(2) (horizontal and vertical move there from Unsupported).
         # 166 -> 173: P1.6's time-axis rows name the seven t-options
         # (tmlabel() and tmtick() in the Unsupported entry too).
-        assert len(found) == 173, (
-            f"{len(found)} options parsed out of dash.sthlp, 173 measured "
+        # 173 -> 178: P1.6's tlabel2() .. ttitle2() rows.
+        assert len(found) == 178, (
+            f"{len(found)} options parsed out of dash.sthlp, 178 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -608,7 +609,8 @@ class TestTheParsersFoundSomething:
         # 192 -> 194: P1.8b declared recastas() and type(); 194 -> 196:
         # P1.31a declared maxsessions() and idletimeout().
         # 196 -> 203: P1.6 declared the seven time-axis options.
-        assert len(_ado_declarations()) == 203
+        # 203 -> 208: P1.6 part 2 declared tlabel2() .. ttitle2().
+        assert len(_ado_declarations()) == 208
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -692,9 +694,10 @@ class TestTheParsersFoundSomething:
         # six by() rows (rows(), holes(), colfirst, compact, iscale(),
         # imargin()); 383 -> 384: P1.9a's {ul:Orientation.} entry (the
         # Unsupported entry it replaces stays, as "Bar labels and positions").
-        # 384 -> 391: P1.6's seven time-axis option rows.
-        assert len(defs) == 391, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 391 "
+        # 384 -> 391: P1.6's seven time-axis option rows; 391 -> 396: its
+        # five axis-2 rows (part 2).
+        assert len(defs) == 396, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 396 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

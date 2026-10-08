@@ -1548,7 +1548,6 @@ class TestWp29Tracking:
 #: on a key whose entry is missing, closed or not in the WP-30 open form, so
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
-    "P1.6": "The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note",
     "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",
     "P1.10": "text() and ttext() annotations are not drawn",
     "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",

@@ -373,6 +373,12 @@ _SHARED_SPELLINGS = {
     "xla": ("xlabel", "xla2"),            "yla": ("ylabel", "yla2"),
     "xsc": ("xscale", "xsc2"),            "ysc": ("yscale", "ysc2"),
     "sort": ("sort", "sort1"),
+    # WP-30 P1.6 part 2: dash's axis-2 spellings of the time-axis options,
+    # as XLABEL2 is; a repeat is merged before -syntax- (TA-02's
+    # tlabel(2001m1) tlabel(2003m1)).
+    "tlabel": ("tlabel", "tlabel2"),      "ttick": ("ttick", "ttick2"),
+    "tline": ("tline", "tline2"),         "tscale": ("tscale", "tscale2"),
+    "ttitle": ("ttitle", "ttitle2"),
 }
 
 

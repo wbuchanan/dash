@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "answers": 1528,
+  "answers": 1554,
   "born_date": "12 Aug 2026",
-  "dash_commit": "87ec2a5da965e2c2440aa9e7fee0a5b8505e637e",
+  "dash_commit": "9a72553ece6ffddfcd9311375b1f30990b187089",
   "extracted": " 8 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_twoway_option_parity.cscript",
@@ -3005,6 +3005,30 @@
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway (tsline y) (line y2 d, xaxis(2)), tlabel(01jan2001 01jan2003, axis(2)) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (tsline y) (line y2 d, xaxis(2)), tline(01jan2002, axis(2)) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (tsline y) (line y2 d, xaxis(2)), tline(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (tsline y) (line y2 d, xaxis(2)), tline(2002m1, axis(2)) nodraw": {
+   "log": "invalid argument \"2002m1\" must be a number or valid argument for d() function\n",
+   "rc": 198
+  },
+  "log|TA|twoway (tsline y) (line y2 d, xaxis(2)), tscale(range(01jan1999) axis(2)) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (tsline y) (line y2 d, xaxis(2)), ttick(01jan2001, axis(2)) nodraw": {
+   "log": "",
+   "rc": 0
+  },
   "log|TA|twoway (tsline y) (line y2 t, xaxis(2)), xlabel(2000m1, axis(2)) nodraw": {
    "log": "invalid label specifier, :  2000m1:\n",
    "rc": 198
@@ -3069,13 +3093,33 @@
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway line y n, tlabel(, format(%tm)) tline(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
   "log|TA|twoway line y n, tlabel(2000m1) nodraw": {
    "log": "invalid ticklist \"2000m1\" must be number\n",
+   "rc": 198
+  },
+  "log|TA|twoway line y n, tlabel(2001m1 2003m1, format(%tm)) nodraw": {
+   "log": "invalid ticklist \"2001m1\" must be number\n",
    "rc": 198
   },
   "log|TA|twoway line y n, tline(2002m1) nodraw": {
    "log": "invalid number, (2002m1)\n",
    "rc": 198
+  },
+  "log|TA|twoway line y n, xlabel(, format(%tm)) tlabel(2001m1 2003m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway line y n, xlabel(, format(%tm)) tline(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway line y n, xmlabel(, format(%tm)) tline(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
   },
   "log|TA|twoway line y q, tline(2001q1) nodraw": {
    "log": "",
@@ -3088,6 +3132,22 @@
   "log|TA|twoway line y t, tline(2002m1) nodraw": {
    "log": "",
    "rc": 0
+  },
+  "log|TA|twoway line y t2, tlabel(2001m1 2003m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway line y t2, tline(2002m1) nodraw": {
+   "log": "invalid number, (2002m1)\n",
+   "rc": 198
+  },
+  "log|TA|twoway line y t2, tscale(range(2006m1)) nodraw": {
+   "log": "range() invalid -- invalid numlist\n",
+   "rc": 121
+  },
+  "log|TA|twoway line y t2, ttick(2001m1) tline(2002m1) nodraw": {
+   "log": "invalid number, (2002m1)\n",
+   "rc": 198
   },
   "log|TA|twoway line y tc, tlabel(2000m1) nodraw": {
    "log": "invalid ticklist \"2000m1\" must be number\n",
@@ -3185,17 +3245,37 @@
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway tsline y, tlabel(2001m1 2003m1, axis(1)) nodraw": {
+   "log": "",
+   "rc": 0
+  },
   "log|TA|twoway tsline y, tlabel(2001m1) tlabel(2003m1) nodraw": {
    "log": "",
    "rc": 0
+  },
+  "log|TA|twoway tsline y, tlabel(2001m1, , foo) nodraw": {
+   "log": "invalid 'foo' \n",
+   "rc": 198
   },
   "log|TA|twoway tsline y, tlabel(2001m1, add) nodraw": {
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway tsline y, tlabel(2001m1, axis(3)) nodraw": {
+   "log": "tlabels(2001m1, axis(3)) not allowed, xaxis3 does not exist\n",
+   "rc": 198
+  },
+  "log|TA|twoway tsline y, tlabel(2001m1, axis(3)) ylabel(100, axis(3)) nodraw": {
+   "log": "tlabels(2001m1, axis(3)) not allowed, xaxis3 does not exist\n",
+   "rc": 198
+  },
   "log|TA|twoway tsline y, tlabel(foo) nodraw": {
    "log": "invalid label specifier, :  foo:\n",
    "rc": 198
+  },
+  "log|TA|twoway tsline y, tlabels(2001m1 2003m1) nodraw": {
+   "log": "",
+   "rc": 0
   },
   "log|TA|twoway tsline y, tli(2002m1) nodraw": {
    "log": "",
@@ -3229,9 +3309,17 @@
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway tsline y, tline(2002m1, axis(2)) nodraw": {
+   "log": "tlines(2002m1, axis(2)) not allowed, xaxis2 does not exist\n",
+   "rc": 198
+  },
   "log|TA|twoway tsline y, tline(foo) nodraw": {
    "log": "invalid line argument, foo\n",
    "rc": 198
+  },
+  "log|TA|twoway tsline y, tlines(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
   },
   "log|TA|twoway tsline y, tm(2001m1) nodraw": {
    "log": "option tm() not allowed\n",
@@ -3289,6 +3377,10 @@
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway tsline y, tticks(2001m1 2003m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
   "log|TA|twoway tsline y, ttit(M) nodraw": {
    "log": "",
    "rc": 0
@@ -3297,12 +3389,24 @@
    "log": "",
    "rc": 0
   },
+  "log|TA|twoway tsline y, xlabel(, format(%td)) tlabel(2002m1) nodraw": {
+   "log": "invalid ticklist \"2002m1\" must be a number or valid argument for d() function\n",
+   "rc": 198
+  },
+  "log|TA|twoway tsline y, xlabel(, format(%td)) tline(2002m1) nodraw": {
+   "log": "invalid argument \"2002m1\" must be a number or valid argument for d() function\n",
+   "rc": 198
+  },
   "log|TA|twoway tsline y, xlabel(2000m1(12)2004m1) nodraw": {
    "log": "invalid label specifier, :  2000m1(12)2004m1:\n",
    "rc": 198
   },
   "log|TA|twoway tsline y, xlabel(2000m1) nodraw": {
    "log": "invalid label specifier, :  2000m1:\n",
+   "rc": 198
+  },
+  "log|TA|twoway tsline y, xlabel(2001m1, axis(3)) tlabel(2001m1, axis(3)) nodraw": {
+   "log": "xlabels(2001m1, axis(3)) not allowed, xaxis3 does not exist\n",
    "rc": 198
   },
   "log|TA|twoway tsline y, xlabel(480(12)528) tlabel(2001m1 2003m1) nodraw": {

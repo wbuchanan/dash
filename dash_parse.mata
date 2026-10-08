@@ -445,6 +445,10 @@
 *!       A tscale() value with its range() words made one range() of
 *!       numbers; r(121) in _td_rc for a position the unit cannot read.
 *!
+*!   _dash_taxis_fmt(v)
+*!       The argument of the last format() of a label or tick value, the
+*!       format its tickset reads the t-options' dates in (WP-30 P1.6).
+*!
 *!   _dash_xdate_find(v, family)
 *!       1 when an x label/tick (1), line (2) or scale (3) value holds a
 *!       date literal, which twoway refuses there; _xd_tok names it.
@@ -6058,7 +6062,7 @@ string scalar _dash_rep_bare(string scalar key)
 // mcolor(red) p(p3) p(bogus) in p3, WP-30 P1.14a), "R" everything else
 // (the last copy).  The t-options take their x twins' categories (WP-30
 // P1.6): tlabel() ttick() tmlabel() tmtick() "L", ttitle() "T", tscale()
-// "S", tline() "X".
+// "S", tline() "X", and their axis-2 forms alike.
 string scalar _dash_rep_cat(string scalar key)
 {
     string scalar k
@@ -6067,14 +6071,16 @@ string scalar _dash_rep_cat(string scalar key)
     if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
                "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
                "b2title", "l1title", "l2title", "r1title", "r2title",
-               "title2", "subtitle2", "ztitle", "ttitle"), k)) return("T")
+               "title2", "subtitle2", "ztitle", "ttitle", "ttitle2"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
                "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
-               "zlabel", "tlabel", "ttick", "tmlabel", "tmtick"), k)) return("L")
+               "zlabel", "tlabel", "ttick", "tmlabel", "tmtick", "tlabel2",
+               "ttick2"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
-    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale", "tscale"), k)) return("S")
+    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale", "tscale",
+               "tscale2"), k)) return("S")
     if (k == "by") return("B")
-    if (anyof(("xline", "yline", "xline2", "yline2", "tline"), k)) return("X")
+    if (anyof(("xline", "yline", "xline2", "yline2", "tline", "tline2"), k)) return("X")
     if (k == "text") return("A")
     if (k == "p") return("F")
     return("R")
@@ -6796,10 +6802,13 @@ string scalar _dash_ax_word(string scalar s)
 }
 
 // _dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n, badw, axpos)
-// -- 1 when the option word tok is one of twoway's axis options (an x or y
-// option of a family of _dash_axfam(), its name typed in lower case, at
-// least the family's minimum long and a prefix of twoway's full name),
-// else 0.  Sets, by reference: d the side letter; r the family's row; v
+// -- 1 when the option word tok is one of twoway's axis options (an x, t
+// or y option of a family of _dash_axfam(), its name typed in lower case,
+// at least the family's minimum long and a prefix of twoway's full name),
+// else 0.  t is twoway's time axis, its x axis read with dates (WP-30
+// P1.6: tlabels, tticks, tlines ... ; the rows of _dash_axfam serve it as
+// they serve x and y, so tt, tl, tml, ttic, tmt, tli and tsc are its
+// minimums).  Sets, by reference: d the side letter; r the family's row; v
 // the value as typed; body the text before the first comma (not for a
 // scale); words the sub-option words the axis words are read from (after
 // the first comma, or every word of a scale); dcw the word after a second
@@ -6822,7 +6831,7 @@ real scalar _dash_ax_parse(string scalar tok, string matrix fam,
     nm = _dash_rep_optname(tok)
     if (nm == "" | nm != strlower(nm)) return(0)
     d = substr(nm, 1, 1)
-    if (d != "x" & d != "y") return(0)
+    if (d != "x" & d != "y" & d != "t") return(0)
     r = 0
     for (i = 1; i <= rows(fam); i++) {
         full = d + fam[i, 2]
@@ -6955,7 +6964,9 @@ string scalar _dash_route_axis2(string scalar opts)
 // (WP-29 P0.5).  _dash_axreq_add records, from the RAW option text of plot
 // segment seg (the options after the top-level comma are segment n_segs+1,
 // read after every segment, as twoway reads them), one row per axis option
-// in the external string matrix _dash_axreq: side (1 x, 2 y), twoway's
+// in the external string matrix _dash_axreq: side (1 x, 2 t, 3 y: twoway's
+// X, T, Y order, f12/f13 of taxis_truth.json; a t option names the x
+// axes, "tlabels(...) not allowed, xaxis3 does not exist"), twoway's
 // family order (scale 1 .. lines 7), seg, the word's place, the axis
 // number, the name twoway's message uses (ylabels, ytitle, yscale ...),
 // the value as typed, the word after a second comma and the first axis
@@ -7026,7 +7037,8 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
             }
             else lb2 = v
             lb = strtrim(lb2)
-            if (lb == "") lnone = "1"
+            // A tline()'s positions are dates: _dash_taxis_fold reads them.
+            if (lb == "" | d == "t") lnone = "1"
             if (sm == "" & cols(words)) {
                 if (_dash_so_resolve(words, J(1, cols(words), 1), "refline",
                                      snames, sm, sat) == 0) {
@@ -7043,7 +7055,7 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
                 }
             }
         }
-        blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
+        blk[k, .] = ((d == "x" ? "1" : (d == "t" ? "2" : "3")), fam[r, 5], strofreal(seg),
                      strofreal(i), strofreal(n, "%21.0f"), d + fam[r, 2], v,
                      dcw, badw, sm, lb, lnone)
     }
@@ -7073,7 +7085,7 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
     if (cols(xset) == 0) xset = 1
     o = order(strtoreal(a[., (1, 2, 3, 4)]), (1, 2, 3, 4))
     for (i = 1; i <= rows(o); i++) {
-        d = (a[o[i], 1] == "1" ? "x" : "y")
+        d = (a[o[i], 1] == "3" ? "y" : "x")
         if (a[o[i], 8] != "") {
             _dash_say("err", "invalid '", a[o[i], 8], "'")
             _dash_axreq_clear()
@@ -7483,6 +7495,31 @@ void _dash_tdate_range(string scalar unit)
     st_local("_td_out", out)
     st_local("_td_rc", strofreal(rc))
     st_local("_td_msg", rc ? "range() invalid -- invalid numlist" : "")
+}
+
+// _dash_taxis_fmt(v) -- the argument of the last format() among the
+// sub-options of the label or tick value v (format, for, forma, ...: the
+// axis-label table's spellings), or "" when there is none.  twoway's
+// tickset keeps the label format its last format() set (tickset_g.class
+// 1129-1180; taxis_truth.json k01-k07), and _dash_taxis_fold reads the
+// t-options' dates in it (WP-30 P1.6).
+string scalar _dash_taxis_fmt(string scalar v)
+{
+    string rowvector w
+    string scalar    body, sub, out
+    real scalar      i, p
+
+    out = ""
+    if (!_dash_rep_split(v, body, sub)) return(out)
+    w = _dash_rep_toks(sub, 0)
+    for (i = 1; i <= cols(w); i++) {
+        p = strpos(w[i], "(")
+        if (!p) continue
+        if (_dash_so_canon(substr(w[i], 1, p - 1), "axlabel") == "format") {
+            out = strtrim(_dash_rep_value(w[i]))
+        }
+    }
+    return(out)
 }
 
 // _dash_xdate_find(v, family) -- 1 when the value v of an x label or tick

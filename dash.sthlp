@@ -3798,6 +3798,25 @@ copy (r(123)); and {cmd:tm()} and {cmd:ts()}, which are no option of
 registered; if the axis variable's date format changes before
 {cmd:dash build}, a note says so and the registered values are drawn.
 
+{pstd}
+As with the x options, {cmd:axis(2)} puts a time-axis option on the second
+x axis, whose dates are read in that axis's own unit (its first plot's
+format), and {cmd:dash}'s own spellings {opt tlabel2()}, {opt ttick2()},
+{opt tline2()}, {opt tscale2()} and {opt ttitle2()} do the same, as
+{cmd:xlabel2()} does; {cmd:twoway}'s plurals ({cmd:tlabels()},
+{cmd:tticks()}, {cmd:tlines()}) are read.  An {cmd:axis()} no layer uses is
+refused in {cmd:twoway}'s words, the x options' first, then the time
+axis's, then the y options' ({cmd:tlabels(2001m1, axis(3)) not allowed,}
+{cmd:xaxis3 does not exist}).  A {cmd:format()} decides the unit as
+{cmd:twoway}'s tick sets do: {cmd:line y n, xlabel(, format(%tm))}
+{cmd:tline(2002m1)} reads a month on an unformatted {cmd:n}; an option's
+own {cmd:format()} applies only after its own positions, so
+{cmd:tlabel(2001m1, format(%tm))} on {cmd:n} is refused; and lines and
+{cmd:range()} take the first {cmd:%t} or {cmd:%d} format among the label,
+minor label, tick and minor tick formats.  A left-aligned {cmd:%-tm} axis
+reads dates in labels and ticks, but its lines and {cmd:range()} take
+numbers only, as in {cmd:twoway}.
+
 {synoptset 38}{...}
 {synopt:{cmdab:tl:abel(}{it:rule_or_values}{cmd:)}}{cmd:xlabel()} with date
     literals{p_end}
@@ -3812,6 +3831,14 @@ registered; if the axis variable's date format changes before
     {cmd:range()} read as dates{p_end}
 {synopt:{cmdab:tli:ne(}{it:linearg}{cmd:)}}{cmd:xline()} with date
     literals{p_end}
+{synopt:{opt tlabel2(rule_or_values)}}{cmd:tlabel()} on the second x
+    axis; no abbreviation{p_end}
+{synopt:{opt ttick2(rule_or_values)}}{cmd:ttick()} on the second x
+    axis{p_end}
+{synopt:{opt tline2(linearg)}}{cmd:tline()} on the second x axis{p_end}
+{synopt:{opt tscale2(axis_suboptions)}}{cmd:tscale()} on the second x
+    axis{p_end}
+{synopt:{opt ttitle2(tinfo)}}{cmd:ttitle()} on the second x axis{p_end}
 {synoptline}
 
 {pstd}

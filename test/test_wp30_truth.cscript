@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 3
+    S48 11 S49 4 S50 5 S51 4
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11213,14 +11213,17 @@ def _s51_read():
         walk(json.loads(m.group(1)))
     def ref(o):
         return objs.get(o.get("id"), o) if isinstance(o, dict) else o
-    def mon(v):
-        if isinstance(v, dict):
-            v = v.get("value")
-        return "%g" % round(dr._dash_unix_ms_to_unit(float(v), "m"), 3)
     figs = [f for f in figs if f["attributes"].get("name") not in ("dash_by_head", "dash_by_foot")]
     at = figs[0]["attributes"]
     ax = [ref(a) for a in at.get("below") or []]
-    ax = [a for a in ax if "ticker" in a.get("attributes", {})][0]["attributes"]
+    ax = [a for a in ax if "ticker" in a.get("attributes", {})][0]
+    dated = ax.get("name") == "DatetimeAxis"
+    ax = ax["attributes"]
+    def mon(v):
+        if isinstance(v, dict):
+            v = v.get("value")
+        v = float(v)
+        return "%g" % round(dr._dash_unix_ms_to_unit(v, "m") if dated else v, 3)
     tk = ref(ax["ticker"])["attributes"]
     args = tk.get("args", {})
     if isinstance(args, dict) and args.get("type") == "map":
@@ -11287,6 +11290,25 @@ if inlist("`only'", "", "S51") & `: list posof "S51" in w30_run' {
     local dhi = real(word("${S51_RANGE}", 2))
     _w30_expect TA-21 "(`drc' == 0 & `prc' == 0 & `dlo' <= `lo' + 1e-6 & `dhi' >= `hi' - 1e-6)" "rc `drc'/`prc', range ${S51_RANGE} against twoway `lo' `hi'"
     _w30_done TA-21 "tscale(range()) holds twoway's scale"
+    // TA-22: k01, xlabel(, format(%tm)) lets tline(2002m1) read a month
+    // on an unformatted x: twoway's ticks, and the line at 504.
+    quietly generate n = _n
+    quietly graph drop _all
+    twoway line y n, xlabel(, format(%tm)) tline(2002m1) name(ta22, replace)
+    local tw ""
+    forvalues i = 1/`.ta22.xaxis1.major.dlg_tickpos.arrnels' {
+        local tw "`tw' `.ta22.xaxis1.major.dlg_tickpos[`i']'"
+    }
+    local tw = strtrim("`tw'")
+    quietly graph drop _all
+    _s36_run `"dash line y n, xlabel(, format(%tm)) tline(2002m1) saving("`s51pg'", replace)"' "`s51log'"
+    local drc = r(rc)
+    capture _s51_read "`s51pg'"
+    local prc = _rc
+    local ok = (`drc' == 0 & `prc' == 0)
+    if `ok' local ok = ("${S51_TICKS}" == "`tw'" & "${S51_SPANS}" == "504")
+    _w30_expect TA-22 "`ok'" "rc `drc'/`prc', ticks ${S51_TICKS} (twoway `tw'), spans ${S51_SPANS}"
+    _w30_done TA-22 "an x label's format() decides the t-option's unit, as twoway reads it"
     capture dash clear
     capture erase "`s51log'"
     capture erase "`s51pg'"

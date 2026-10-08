@@ -823,6 +823,7 @@ COVERAGE = {
         "_dash_tdate_tok": ("test_twoway_option_parity.cscript:TA-02", "test_twoway_option_parity.cscript:TA-05"),
         "_dash_tdate_range": ("test_twoway_option_parity.cscript:TA-02",),
         "_dash_xdate_find": ("test_twoway_option_parity.cscript:TA-15",),
+        "_dash_taxis_fmt": ("test_twoway_option_parity.cscript:TA-12",),
         # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
         # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
         # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)

@@ -138,6 +138,7 @@ _T_OPTS = ("tlabel", "ttick", "tmlabel", "tmtick", "tscale", "ttitle",
            "tline")
 _T_DECL = ("TLabel", "TTICk", "TMLabel", "TMTick", "TSCale", "TTitle",
            "TLIne")
+_T2 = ("tlabel2", "ttick2", "tline2", "tscale2", "ttitle2")
 _MATA = ("_dash_taxis_unit", "_dash_tdate_value", "_dash_tdate_ticks",
          "_dash_tdate_lines", "_dash_tdate_range", "_dash_xdate_find")
 
@@ -183,6 +184,28 @@ class TestTheDeclarations:
             for opt in _T_OPTS:
                 if opt not in words:
                     bad.append(f"key list {i + 1} lacks {opt}")
+        assert not bad, bad
+
+    def test_the_axis2_forms(self):
+        """dash's spellings of the axis(2) forms, as XLABEL2 is: declared
+        in both blocks, returned and in the seven key lists."""
+        src = _source("dash.ado")
+        bad = []
+        for prog in ("_dash_parse_graph_opts", "_dash_parse_plot_opts"):
+            body = _program(src, prog)
+            pre = "g_" if prog == "_dash_parse_plot_opts" else ""
+            for opt in _T2:
+                if not re.search(r"\b%s\(string asis\)" % opt.upper(), body):
+                    bad.append(f"{prog}: no {opt.upper()}(string asis)")
+                if not re.search(r"sreturn local %s%s\s+: copy local %s\b"
+                                 % (pre, opt, opt), body):
+                    bad.append(f"{prog}: no sreturn of {opt}")
+        lists = [l for l in re.findall(r"foreach gk(?:ey)? in (.*?)\{", src,
+                                       re.S) if "xmlabel" in l]
+        for i, l in enumerate(lists):
+            words = l.replace("///", " ").split()
+            bad += [f"key list {i + 1} lacks {o}" for o in _T2
+                    if o not in words]
         assert not bad, bad
 
 
@@ -333,3 +356,11 @@ class TestTheHelp:
         i = hlp.index("Minor ticks and minor labels.")
         par = hlp[i:hlp.index("\n\n", i)]
         assert "{opt tmlabel()}" in par and "{opt tmtick()}" in par
+
+    def test_it_documents_axis2_format_and_left_aligned(self):
+        grp = _source("dash.sthlp")
+        grp = grp[grp.index("{marker taxis}"):]
+        grp = grp[:grp.index("{marker", 5)]
+        for word in ("axis(2)", "{opt tlabel2()}", "{opt tline2()}",
+                     "format()", "%-tm"):
+            assert word in grp, word

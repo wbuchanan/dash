@@ -412,7 +412,9 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            "recastas", "type",
            # The time-axis options, folded at registration onto their x
            # twins (WP-30 P1.6; test_twoway_option_parity.cscript TA-01).
-           "tlabel", "ttick", "tscale", "ttitle", "tline"}
+           "tlabel", "ttick", "tscale", "ttitle", "tline",
+           # and their axis-2 forms, onto xlabel2() .. xtitle2() (part 2).
+           "tlabel2", "ttick2", "tline2", "tscale2", "ttitle2"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -697,9 +699,10 @@ class TestEveryDeclaredOptionIsClassified:
         # 180 -> 181: P1.8a cmissings() declared
         # 181 -> 183: P1.8b recastas() and type() declared
         # 183 -> 190 and 72 -> 79: P1.6 the seven time-axis options
-        # declared in both blocks
-        assert len(_declared_plot()) == 190, len(_declared_plot())
-        assert len(_declared_graph()) == 79, len(_declared_graph())
+        # declared in both blocks; 190 -> 195 and 79 -> 84: part 2's five
+        # axis-2 forms
+        assert len(_declared_plot()) == 195, len(_declared_plot())
+        assert len(_declared_graph()) == 84, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

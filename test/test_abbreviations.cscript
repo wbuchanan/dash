@@ -480,6 +480,10 @@ def doc_cmd(spelling, full):
     # a number is refused r(198), as twoway refuses it.  rep78 holds 1-5.
     if full == "mlabvposition":
         return "scatter mpg weight, " + spelling + "(rep78) name(zqab)"
+    # tscale() takes xscale()'s words, and a word twoway does not take --
+    # tscale(1) -- is refused, r(198), as xscale(1) is (WP-30 P1.6).
+    if full == "tscale":
+        return "scatter mpg weight, " + spelling + "(log) name(zqab)"
     v = value_of(full)
     if v is None:
         v = "1"
