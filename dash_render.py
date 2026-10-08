@@ -5252,16 +5252,20 @@ def _parse_scale_range(raw, option="yscale"):
 
 
 def _dash_scale_name(tok):
-    """The canonical name of one xscale()/yscale() sub-option token:
-    ``range`` for ``r(...)`` to ``range(...)``, ``reverse`` for ``rev`` to
-    ``reverse`` (axis_scale_options.sthlp:47-77), else its own name
-    (:func:`_dash_subopt_name`), so ``log`` stays ``log``."""
-    n = _dash_subopt_name(tok)
-    if n and "range".startswith(n) and "(" in str(tok):
-        return "range"
-    if len(n) >= 3 and "reverse".startswith(n):
-        return "reverse"
-    return n
+    """The canonical name of one xscale()/yscale() sub-option token, read
+    with twoway's own table (:data:`_DASH_AXSCALE_SUBOPT_TABLE`; WP-30
+    P1.18a): in lower case only, from each minimum to the full name, so
+    ``rev`` is ``reverse``, ``r(1)`` ``range``, ``noli`` ``noline``,
+    ``lc(red)`` ``lcolor`` and ``alt`` ``alternate``.  A word the table
+    does not know is returned as typed (``OFF`` stays ``OFF``, ``re``
+    ``re``) and is named; ``range`` needs its parentheses."""
+    typed = str(tok).split("(", 1)[0].strip()
+    canon = _dash_subopt_canon(typed, _DASH_AXSCALE_SUBOPT_TABLE)
+    if canon is None:
+        return typed
+    if canon == "range" and "(" not in str(tok):
+        return typed
+    return canon
 
 
 #: Stata's textbox sub-option table (WP-28 B3, corrected WP-30 P1.19):
@@ -5646,11 +5650,15 @@ def _dash_anglestyle_degrees(raw) -> "float | None":
 def _parse_axis_angle(raw: str) -> "float | None":
     """Extract angle sub-option from a Stata xlabel()/ylabel() option string.
 
-    Looks for ``angle(#)`` or ``angle(name)`` within the raw axis option string.
-
-    Named orientations:
-        horizontal → 0.0 radians
-        vertical   → π/2 radians (90°)
+    Looks for ``angle(#)`` or ``angle(name)`` within the raw axis option
+    string and reads the value as twoway's axis labels read it (WP-30
+    P1.18a, measured in StataNow 19.5): every anglestyle name of
+    :data:`_DASH_ANGLESTYLES` by its full name, a number from -360 to 360,
+    and twoway's axis abbreviations ``h`` to ``horizontal`` (0), ``v`` to
+    ``vertical`` (90), ``rh`` to ``rhorizontal`` (180) and ``rv`` to
+    ``rvertical`` (270) -- in lower case only.  ``Vertical``, ``r``,
+    ``stacked``, ``forty`` and ``45deg`` are no angle (twoway notes them and
+    draws 0); the caller decides that.
 
     Args:
         raw: Full xlabel()/ylabel() option value string.
@@ -5662,15 +5670,19 @@ def _parse_axis_angle(raw: str) -> "float | None":
     m = re.search(r'\bangle\s*\(\s*([^)]+)\s*\)', raw, re.IGNORECASE)
     if not m:
         return None
-    val = m.group(1).strip().lower()
-    if val == "horizontal":
-        return 0.0
-    if val == "vertical":
-        return _math.pi / 2
-    try:
-        return _math.radians(float(val))
-    except ValueError:
+    val = m.group(1).strip()
+    deg = _dash_anglestyle_degrees(val)
+    if deg is None and val:
+        for word, minimum, d in (("horizontal", 1, 0.0),
+                                 ("vertical", 1, 90.0),
+                                 ("rhorizontal", 2, 180.0),
+                                 ("rvertical", 2, 270.0)):
+            if len(val) >= minimum and word.startswith(val):
+                deg = d
+                break
+    if deg is None:
         return None
+    return _math.radians(deg)
 
 
 def _dash_unquoted(text: str) -> str:
@@ -8773,6 +8785,10 @@ class SchemeParser:
         # (HasProps.__setattr__ short-circuits _private names), so it is
         # Python-only and never reaches the page.
         fig._dash_size_ref_in = getattr(self, "size_ref_in", 4.0)
+        # The scheme's colour context, for the axis look's labcolor() and
+        # lcolor() (WP-30 P1.18a; S30's one context, P1.13.5).  Python-only.
+        fig._dash_scheme_colours = OptionTranslator.scheme_colour_context(
+            self)
         fig.background_fill_color = self.plotregion_color
         fig.border_fill_color = self.background_color
         # The plot region's border is the scheme's own line, not the axis
@@ -8890,6 +8906,17 @@ class SchemeParser:
         else:
             axis.major_tick_in, axis.major_tick_out = 0, length
         axis.minor_tick_line_color = self.minortick_color
+        # WP-30 P1.18a: the scheme's tick and line look before any option,
+        # the base of tlength(*#), tposition(), ticks, line and of the
+        # xtick()/ytick() positions.  Python-only (underscore attribute).
+        _draws_ticks = (which not in ("x", "y")
+                        or bool(self.axis_flags(which, number)[1]))
+        axis._dash_scheme_look = {
+            "tick_length": float(self.tick_length_px) if _draws_ticks
+            else 0.0,
+            "tick_position": self.tick_position or "outside",
+            "tick_color": self.tick_color,
+            "line_color": self.axis_line_color}
         if which not in ("x", "y"):
             return
         angle = self.tick_angle_x if which == "x" else self.tick_angle_y
@@ -25368,7 +25395,10 @@ def _dash_parse_axis_spec(raw):
     out = {"mode": "default", "ticks": [], "count": None,
            "labels": {}, "format": None, "labsize": None,
            "angle": None, "grid": None, "valuelabel": False,
-           "norescale": False, "unsupported": []}
+           "norescale": False, "unsupported": [],
+           # WP-30 P1.18a: the label and tick look (None: not given).
+           "show_labels": None, "show_ticks": None, "labcolor": None,
+           "tlength": None, "tposition": None, "angle_bad": None}
     if not raw or not str(raw).strip():
         return out
     text = str(raw)
@@ -25403,13 +25433,30 @@ def _dash_parse_axis_spec(raw):
                 out["labsize"] = _arg
             elif _nm == "angle":
                 out["angle"] = _parse_axis_angle("angle(" + _arg + ")")
+                out["angle_bad"] = None
+                if out["angle"] is None:
+                    # twoway notes a name it does not know (Vertical,
+                    # stacked) and draws the labels level (WP-30 P1.18a).
+                    out["angle"] = 0.0
+                    out["angle_bad"] = _arg
             elif _nm == "norescale":
                 out["norescale"] = True
+            elif _nm in ("labcolor", "tlength", "tposition"):
+                out[_nm] = _arg
         if "grid" in _seen:
             out["grid"] = True
         elif "nogrid" in _seen:
             out["grid"] = False
         out["valuelabel"] = "valuelabels" in _seen
+        # The positive word wins within one copy, as for grid.
+        if "labels" in _seen:
+            out["show_labels"] = True
+        elif "nolabels" in _seen:
+            out["show_labels"] = False
+        if "ticks" in _seen:
+            out["show_ticks"] = True
+        elif "noticks" in _seen:
+            out["show_ticks"] = False
 
     head = head.strip()
 
@@ -25467,7 +25514,8 @@ def _dash_parse_axis_spec(raw):
 def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                           fmt_fallback="", grid_color=None,
                           value_labels=None, fmt_cache=None, ref_in=4.0,
-                          date_kind=None, option="axis"):
+                          date_kind=None, option="axis", by_graph=False,
+                          colours=None):
     """Apply a parsed ``axis_label`` spec to one axis.
 
     Args:
@@ -25499,6 +25547,10 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                       sp500's ``%td`` axis writes ``14,976``).
         option:       The option's name for the note an unwritable
                       format gets (``xlabel``, ``ylabel2`` ...).
+        by_graph:     True under by(), where twoway draws ``nolabels`` and
+                      ``noticks`` as if absent (WP-30 P1.18a, M6).
+        colours:      The scheme's colour context for ``labcolor()``
+                      (``OptionTranslator.scheme_colour_context``).
     """
     from bokeh.models.tickers import FixedTicker, BasicTicker
     from bokeh.models.formatters import CustomJSTickFormatter
@@ -25637,6 +25689,20 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
                     "medium")
                 _ax.major_label_text_font_size = T.css_pt(
                     T.size_medium_pt("text"))
+    # WP-30 P1.18a: the label and tick look, after labsize (nolabels wins).
+    if spec.get("show_labels") is False and not by_graph:
+        axis_obj.major_label_text_font_size = "0px"
+        axis_obj.major_label_standoff = 0
+    if spec.get("labcolor") is not None:
+        _hex, _alpha = OptionTranslator.parse_color_alpha(
+            spec["labcolor"], f"{option}(labcolor)", **(colours or {}))
+        axis_obj.major_label_text_color = _hex or "#000000"
+        if _alpha is not None:
+            axis_obj.major_label_text_alpha = _alpha
+    _dash_tick_look(axis_obj, spec, False, by_graph, option, ref_in)
+    if spec.get("angle_bad") is not None:
+        _dash_style_note(f"{option}(angle)", spec["angle_bad"], "angle",
+                         "0 degrees")
     if spec["angle"] is not None:
         axis_obj.major_label_orientation = spec["angle"]
     if spec["grid"] is not None:
@@ -25660,6 +25726,206 @@ def _dash_primary_axes(axes, range_attr):
     """
     return type(axes)(a for a in axes
                       if getattr(a, range_attr, "default") == "default")
+
+
+def _dash_tick_geometry(position, length_px):
+    """``(tick_in, tick_out)``, whole pixels, for a tick of *length_px* on
+    *position*'s side (WP-30 P1.18a).
+
+    Bokeh's tick lengths are Int properties, so the length is rounded and
+    held to 100 px; a non-finite length is 0.  twoway draws a negative
+    ``tlength()`` into the plot region whatever ``tposition()`` says
+    (measured: ``tlength(-1)`` is 1 unit inside under outside and inside),
+    and a crossing tick half on each side.
+    """
+    try:
+        L = float(length_px)
+    except (TypeError, ValueError, OverflowError):
+        L = 0.0
+    if not math.isfinite(L):
+        L = 0.0
+    a = min(abs(L), 100.0)
+    n = int(round(a))
+    if L < 0:
+        return (n, 0)
+    if position == "outside":
+        return (0, n)
+    if position == "inside":
+        return (n, 0)
+    h = int(round(a / 2.0))
+    return (h, h)
+
+
+def _dash_tick_position(raw):
+    """``"outside"``, ``"inside"`` or ``"crossing"`` for a ``tposition()``
+    value, or None (WP-30 P1.18a).
+
+    twoway reads each word from its first letter to its full name, in
+    lower case only (measured: ``o``, ``out``, ``i``, ``ins``, ``c``,
+    ``cross`` read; ``Inside``, ``O``, ``bogus`` are noted and cross the
+    axis).  At most 32 characters are read.
+    """
+    t = str(raw if raw is not None else "")[:33].strip()
+    if not t or len(t) > 32 or t != t.lower():
+        return None
+    for word in ("outside", "inside", "crossing"):
+        if word.startswith(t):
+            return word
+    return None
+
+
+def _dash_tick_look(axis_obj, spec, minor=False, by_graph=False, option="",
+                    ref_in=4.0):
+    """Draw a label or tick option's ``noticks``/``ticks``, ``tlength()``
+    and ``tposition()`` on the major ticks (or, with *minor*, the minor
+    ticks that draw xtick()/ytick() positions), from the scheme's own tick
+    geometry (WP-30 P1.18a).
+
+    *axis_obj* is one axis or Bokeh's splattable list; each member is read
+    and written by itself.  The base is the scheme's snapshot
+    (``_dash_scheme_look``, :meth:`SchemeParser.apply_to_axis`), never the
+    current major ticks, which a label option may already have changed: a
+    tick-only position keeps the scheme's look unless its own option gives
+    one (twoway: ``ylabel(, noticks) ytick(25)`` draws the 25 tick).
+    Under by() twoway draws ``noticks`` as if absent (M6).  A length is
+    read in Stata's size units, ``*#`` of the scheme's; an unknown length
+    is medium and an unknown side crossing, each with one note.
+    """
+    show = spec.get("show_ticks")
+    tl = spec.get("tlength")
+    tp = spec.get("tposition")
+    if by_graph and show is False:
+        show = None
+    if not minor and show is None and tl is None and tp is None:
+        return
+    T = OptionTranslator
+    pos_given = None
+    if tp is not None:
+        pos_given = _dash_tick_position(tp)
+        if pos_given is None:
+            _dash_style_note(f"{option}(tposition)", tp, "tick position",
+                             "crossing")
+            pos_given = "crossing"
+    members = list(axis_obj) if isinstance(axis_obj, list) else [axis_obj]
+    pre = "minor" if minor else "major"
+    for ax in members:
+        look = getattr(ax, "_dash_scheme_look", None)
+        if isinstance(look, dict):
+            base_len = float(look.get("tick_length") or 0.0)
+            base_pos = look.get("tick_position") or "outside"
+            base_col = look.get("tick_color")
+        else:
+            t_in = int(getattr(ax, "major_tick_in", 0) or 0)
+            t_out = int(getattr(ax, "major_tick_out", 0) or 0)
+            base_len = float(max(t_in, t_out))
+            base_pos = ("outside" if t_in == 0 else
+                        "inside" if t_out == 0 else "crossing")
+            base_col = getattr(ax, "major_tick_line_color", None)
+        L = base_len
+        if tl is not None:
+            try:
+                L = T.resolve_size(str(tl), "gap", base_len * 0.75,
+                                   ref_in) * T.PX_PER_PT
+            except (ValueError, TypeError):
+                _dash_style_note(f"{option}(tlength)", tl, "size", "medium")
+                L = T.size_medium_pt("gap") * T.PX_PER_PT
+        pos = pos_given or base_pos
+        if show is False:
+            t_in, t_out = 0, 0
+        else:
+            t_in, t_out = _dash_tick_geometry(pos, L)
+        setattr(ax, pre + "_tick_in", t_in)
+        setattr(ax, pre + "_tick_out", t_out)
+        if show is True and getattr(ax, pre + "_tick_line_color") is None:
+            setattr(ax, pre + "_tick_line_color", base_col or "#000000")
+
+
+def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
+                           by_graph=False, ref_in=4.0, colours=None):
+    """Draw an xscale()/yscale() (or second-axis) look on one axis (WP-30
+    P1.18a), as twoway draws it: ``off`` hides the axis (its grid stays);
+    the line's ``lcolor()``, ``lwidth()`` and ``lpattern()``; ``noline``
+    unless an ``lcolor()`` is given, and ``line`` on an axis the scheme
+    draws bare; ``titlegap()`` in Stata's size units; ``alt`` to the other
+    side.  Under by() twoway draws ``off`` and ``titlegap()`` as if absent
+    (M6); a bad value is still noted.  *look* is :func:`_dash_scale_look`'s.
+    """
+    T = OptionTranslator
+    if not look:
+        return
+    if look.get("off") and not by_graph:
+        axis_obj.visible = False
+    v = look.get("lcolor")
+    if v is not None:
+        _hex, _alpha = T.parse_color_alpha(v, f"{option}(lcolor)",
+                                           **(colours or {}))
+        axis_obj.axis_line_color = _hex or "#000000"
+        if _alpha is not None:
+            axis_obj.axis_line_alpha = _alpha
+    v = look.get("lwidth")
+    if v is not None:
+        try:
+            axis_obj.axis_line_width = T.translate_lwidth(
+                v, axis_obj.axis_line_width, ref_in)
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(lwidth)", v, "line width",
+                             "the scheme's width")
+    v = look.get("lpattern")
+    if v is not None:
+        dash = None
+        if v == v.lower():
+            try:
+                dash = T.translate_lpattern(v)
+            except ValueError:
+                dash = None
+        if dash is None:
+            _dash_style_note(f"{option}(lpattern)", v, "line pattern",
+                             "solid")
+            dash = []
+        axis_obj.axis_line_dash = dash
+    if look.get("line_off"):
+        axis_obj.axis_line_color = None
+    elif look.get("line_on") and axis_obj.axis_line_color is None:
+        base = getattr(axis_obj, "_dash_scheme_look", None) or {}
+        axis_obj.axis_line_color = base.get("line_color") or "#000000"
+    v = look.get("titlegap")
+    if v is not None:
+        try:
+            px = T.resolve_size(str(v), "gap",
+                                float(axis_obj.axis_label_standoff) * 0.75,
+                                ref_in) * T.PX_PER_PT
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(titlegap)", v, "size", "medium")
+            px = T.size_medium_pt("gap") * T.PX_PER_PT
+        if not by_graph:
+            axis_obj.axis_label_standoff = int(round(
+                max(-100.0, min(100.0, px))))
+    if look.get("alternate"):
+        _dash_axis_alternate(fig, axis_obj, number)
+
+
+def _dash_axis_alternate(fig, axis_obj, number=1):
+    """Move *axis_obj* to the other side of *fig* (``alt``; WP-30 P1.18a).
+
+    Axis 1 goes innermost on the other side, inside a second axis there;
+    axis 2 goes outermost, outside the first (measured in twoway:
+    ``yscale(alt)`` with a yaxis(2) layer puts y1 right, inside y2;
+    ``yscale(alt axis(2))`` puts y2 left, outside y1).  An axis on neither
+    side is left alone.  Each side list is reassigned whole.
+    """
+    for a, b in (("left", "right"), ("below", "above")):
+        for here, there in ((a, b), (b, a)):
+            cur = list(getattr(fig, here))
+            if not any(x is axis_obj for x in cur):
+                continue
+            setattr(fig, here, [x for x in cur if x is not axis_obj])
+            other = list(getattr(fig, there))
+            if number == 2:
+                other.append(axis_obj)
+            else:
+                other.insert(0, axis_obj)
+            setattr(fig, there, other)
+            return
 
 
 #: The CustomJSTicker code xtick()/ytick() install.  Constant text: the
@@ -26127,7 +26393,8 @@ _FILTER_JS = (_FILTER_JS + _DASH_AXIS_FINISH_JS
 
 
 def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
-                            key="", grid_color=None, date_kind=None):
+                            key="", grid_color=None, date_kind=None,
+                            by_graph=False, ref_in=4.0):
     """xtick()/ytick(): ticks WITHOUT labels, beside whatever labels the axis
     already has, as twoway draws them.
 
@@ -26150,8 +26417,10 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     text = str(raw or "")
     spec = _dash_parse_axis_spec(text)
     bad = list(spec.get("unsupported", []))
-    # A tick draws no label: its format/labsize/angle are named as typed.
-    for _sub in ("format", "labsize", "angle"):
+    # A tick draws no label: its format/labsize/angle and its label look
+    # (labcolor, labels, nolabels; WP-30 P1.18a) are named as typed.
+    for _sub in ("format", "labsize", "angle", "labcolor", "labels",
+                 "nolabels"):
         if _sub in spec.get("typed", {}):
             bad.append(spec["typed"][_sub])
     _dash_report_suboptions(option, bad, seen, key)
@@ -26194,13 +26463,15 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
         if mode == "explicit":
             ax._dash_hull_tick_extra = list(args["extra"])
         # A tick-only position is a major tick without its label: the same
-        # length and stroke (measured in Stata, labelled or not).
-        ax.minor_tick_in = ax.major_tick_in
-        ax.minor_tick_out = ax.major_tick_out
+        # stroke, and the scheme's length and side -- never the label
+        # option's noticks/tlength()/tposition(), which twoway keeps off
+        # these positions -- unless this option gives its own (WP-30
+        # P1.18a; measured: ylabel(, noticks) ytick(25) draws the 25 tick).
         ax.minor_tick_line_color = ax.major_tick_line_color
         ax.minor_tick_line_width = ax.major_tick_line_width
         ax.minor_tick_line_alpha = ax.major_tick_line_alpha
         ax.minor_tick_line_dash = ax.major_tick_line_dash
+        _dash_tick_look(ax, spec, True, by_graph, option, ref_in)
     if spec.get("grid"):
         for g in grids:
             g.minor_grid_line_color = grid_color or "#e5e5e5"
@@ -26281,6 +26552,11 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
     fmts = (None if plots is None else
             _dash_axis_tick_formats(plots, numeric_formats or {},
                                     date_vars or {}))
+    # WP-30 P1.18a: under by() twoway draws off, nolabels, noticks and
+    # titlegap() as if absent (M6); colours read in the scheme's context.
+    by_graph = bool(str(graph_opts.get("by", "") or "").strip())
+    colours = getattr(fig, "_dash_scheme_colours", None)
+    ref_in = OptionTranslator.size_ref_of(fig)
     for ax_key, tick_key, axes, grids, var, rattr in (
             ("xlabel", "xtick", fig.xaxis, fig.xgrid, xvar, "x_range_name"),
             ("ylabel", "ytick", fig.yaxis, fig.ygrid, yvar, "y_range_name")):
@@ -26318,8 +26594,9 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
             _dash_apply_axis_spec(axis_obj, grid_obj, spec,
                                   col, fb,
                                   grid_color, vlabels, fmt_cache=fmt_cache,
-                                  ref_in=OptionTranslator.size_ref_of(fig),
-                                  date_kind=kind, option=ax_key)
+                                  ref_in=ref_in,
+                                  date_kind=kind, option=ax_key,
+                                  by_graph=by_graph, colours=colours)
         elif fb and fmts is not None:
             _dash_apply_axis_spec(axis_obj, grid_obj,
                                   _dash_parse_axis_spec(""), col, fb,
@@ -26329,7 +26606,20 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
         traw = graph_opts.get(tick_key, "")
         if traw:
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
-                                    seen, key, grid_color, date_kind=kind)
+                                    seen, key, grid_color, date_kind=kind,
+                                    by_graph=by_graph, ref_in=ref_in)
+    # The scale look, after the labels and ticks; the sub-option note was
+    # printed where the figure was made (_dash_scale_spec), so it is read
+    # here without one.  A list copy: alt edits the side lists.
+    for opt, axes, rattr in (("xscale", fig.xaxis, "x_range_name"),
+                             ("yscale", fig.yaxis, "y_range_name")):
+        sraw = str(graph_opts.get(opt, "") or "")
+        if not sraw.strip():
+            continue
+        look = _dash_scale_look(sraw)
+        for _a in list(_dash_primary_axes(axes, rattr)):
+            _dash_apply_scale_look(fig, _a, look, opt, 1, by_graph, ref_in,
+                                   colours)
 
 
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
@@ -26416,8 +26706,13 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
 #: A glyph's coordinates along each axis, by property name.
 _DASH_Y_COORDS = ("y", "y0", "y1", "y2", "top", "bottom")
 _DASH_X_COORDS = ("x", "x0", "x1", "left", "right")
+#: The xscale()/yscale() look sub-options dash draws (WP-30 P1.18a).
+_DASH_SCALE_LOOK_SUBOPTS = frozenset({
+    "off", "on", "noline", "line", "lcolor", "lwidth", "lpattern",
+    "alternate", "titlegap"})
 #: yscale2()/xscale2() sub-options _dash_finish_secondary_axes honours.
-_DASH_SCALE2_SUBOPTS = frozenset({"log", "reverse", "range"})
+_DASH_SCALE2_SUBOPTS = (frozenset({"log", "reverse", "range"})
+                        | _DASH_SCALE_LOOK_SUBOPTS)
 
 
 def _dash_secondary_values(fig, range_attr, name):
@@ -27008,6 +27303,9 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
     """
     from bokeh.models import Grid, LinearAxis, LogAxis
     plots = plots or []
+    by_graph = bool(str(graph_opts.get("by", "") or "").strip())
+    colours = getattr(fig, "_dash_scheme_colours", None)
+    ref_in = OptionTranslator.size_ref_of(fig)
     fmts2 = (None if numeric_formats is None else
              _dash_axis_tick_formats(plots, numeric_formats,
                                      date_vars or {}))
@@ -27127,8 +27425,9 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                 fb2 = _dash_varformat_writable(fb2, _by2, n)
             _dash_apply_axis_spec(ax, grids, spec, col_vals or None, fb2,
                                   grid_color, vlabels2, fmt_cache=fmt_cache,
-                                  ref_in=OptionTranslator.size_ref_of(fig),
-                                  option=f"{n}label2")
+                                  ref_in=ref_in,
+                                  option=f"{n}label2", by_graph=by_graph,
+                                  colours=colours)
         elif fmts2 is not None and ax is not None:
             fb2, _by2 = fmts2[name]
             fb2 = _dash_varformat_writable(fb2, _by2, n)
@@ -27149,7 +27448,13 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                 tgrids.append(g)
             _dash_apply_tick_option([ax], tgrids, tick_raw, f"{n}tick2",
                                     col_vals or None, seen, key, grid_color,
-                                    date_kind=None)
+                                    date_kind=None, by_graph=by_graph,
+                                    ref_in=ref_in)
+        if ax is not None and scale_raw:
+            # WP-30 P1.18a: the second axis's own look.
+            _dash_apply_scale_look(fig, ax, _dash_scale_look(scale_raw),
+                                   f"{n}scale2", 2, by_graph, ref_in,
+                                   colours)
 
 
 def _dash_keep_primary_ranges(fig):
@@ -30707,7 +31012,10 @@ _DASH_AXTITLE_SUBOPT_TABLE = (
 #: The axis-label sub-options the renderer draws.
 _DASH_AXLABEL_HONOURED = frozenset({
     "format", "labsize", "angle", "grid", "nogrid", "valuelabels",
-    "novaluelabels", "norescale"})
+    "novaluelabels", "norescale",
+    # WP-30 P1.18a: the label and tick look.
+    "labels", "nolabels", "ticks", "noticks", "labcolor", "tlength",
+    "tposition"})
 
 #: twoway's real and integer literals, fullmatched on the stripped argument
 #: (float() would take 1_0, inf and nan).
@@ -31314,14 +31622,40 @@ def _dash_scale_spec(raw, option="", seen=None, key=""):
     toks = _dash_by_tokens(str(raw or "").strip())
     names = [_dash_scale_name(t) for t in toks]
     if option:
+        # xscale()/yscale() draw the look (WP-30 P1.18a); zscale() names it.
+        honoured = (_DASH_SCALE_SUBOPTS | _DASH_SCALE_LOOK_SUBOPTS
+                    if option in ("xscale", "yscale")
+                    else _DASH_SCALE_SUBOPTS)
         _dash_report_suboptions(
             option, [t for t, n in zip(toks, names)
-                     if n not in _DASH_SCALE_SUBOPTS], seen, key)
+                     if n not in honoured], seen, key)
     vals = _parse_scale_range(raw or "", option or "scale")
     return {"log": "log" in names, "reverse": "reverse" in names,
             "values": vals,
             "lo": min(vals) if vals else None,
-            "hi": max(vals) if vals else None}
+            "hi": max(vals) if vals else None,
+            "look": _dash_scale_look(raw)}
+
+
+def _dash_scale_look(raw):
+    """The look an xscale()/yscale() value asks for (WP-30 P1.18a):
+    ``off``, ``line_off`` (``noline`` without an ``lcolor()``, which
+    re-enables the line in twoway), ``line_on``, the last ``lcolor()``,
+    ``lwidth()``, ``lpattern()`` and ``titlegap()`` argument (or None) and
+    ``alternate``.  ``off`` beside ``on`` in one copy is off, as twoway
+    draws it.  It never notes and never reads range(), so reading the look
+    again prints no second note."""
+    toks = _dash_by_tokens(str(raw or "").strip())
+    names = [_dash_scale_name(t) for t in toks]
+    out = {"off": "off" in names,
+           "line_off": "noline" in names and "lcolor" not in names,
+           "line_on": "line" in names,
+           "lcolor": None, "lwidth": None, "lpattern": None,
+           "titlegap": None, "alternate": "alternate" in names}
+    for t, n in zip(toks, names):
+        if n in ("lcolor", "lwidth", "lpattern", "titlegap") and "(" in t:
+            out[n] = _dash_subopt_arg(t)
+    return out
 
 
 def _dash_apply_scale_ranges(fig, xspec, yspec, frame, xvar, yvar,
@@ -31444,6 +31778,8 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
                          and not _dspec.get("labsize")
                          and not _dspec.get("angle")
                          and not _dspec.get("grid")
+                         and not (set(_dspec.get("typed", {}))
+                                  - {"format"})
                          and _kbad is None)
             if not _fmt_only:
                 _dash_report_suboptions("zlabel", [zlabel_raw], seen, key)
@@ -31477,7 +31813,11 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
                         "medium")
                     key_obj.major_label_text_font_size = _T.css_pt(
                         _T.size_medium_pt("text"))
-            for _sub in ("angle", "grid", "nogrid"):
+            # The label and tick look (WP-30 P1.18a) is honoured on an
+            # axis and not drawn on the colour bar: named as typed.
+            for _sub in ("angle", "grid", "nogrid", "labels", "nolabels",
+                         "ticks", "noticks", "labcolor", "tlength",
+                         "tposition"):
                 if _sub in _typed:
                     _bad.append(_typed[_sub])
             _dash_report_suboptions("zlabel", _bad, seen, key)
@@ -38691,6 +39031,8 @@ class ServerAppBuilder:
                       # yscale2()/xscale2() sub-options honoured (WP-23).
                       "_DASH_Y_COORDS", "_DASH_X_COORDS",
                       "_DASH_SCALE2_SUBOPTS",
+                      # WP-30 P1.18a: the axis look
+                      "_DASH_SCALE_LOOK_SUBOPTS",
                       # range()'s spellings (WP-28 B2).
                       "_DASH_SCALE_RANGE_RE",
                       # xtick()/ytick()'s constant CustomJSTicker code.
@@ -39028,6 +39370,10 @@ class ServerAppBuilder:
                          "_dash_hover_text_column", "_dash_add_hover_text",
                          "_dash_primary_axes", "_dash_apply_tick_option",
                          "_dash_apply_axis_options",
+                         # WP-30 P1.18a: the axis look
+                         "_dash_tick_geometry", "_dash_tick_position",
+                         "_dash_tick_look", "_dash_scale_look",
+                         "_dash_apply_scale_look", "_dash_axis_alternate",
                          "_dash_add_secondary_axes",
                          "_dash_secondary_values",
                          "_dash_finish_secondary_axes",

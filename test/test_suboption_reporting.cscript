@@ -18,9 +18,11 @@
 *!   SR-01  legend(span stack holes(1)) names all three, once, and not the
 *!          honoured position(6).
 *!   SR-02  xlabel(, valuelabel) is drawn (WP-28 S14, G16), not named.
-*!   SR-03  ylabel(, labcolor(red)) names labcolor(red).
-*!   SR-04  yscale(reverse noline titlegap(2)) names noline and titlegap(2),
-*!          not the honoured reverse.
+*!   SR-03  ylabel(, labgap(2)) names labgap(2) (flipped, WP-30 P1.18a:
+*!          labcolor() is drawn).
+*!   SR-04  yscale(reverse noline titlegap(2) outergap(1)) names
+*!          outergap(1), not the drawn reverse, noline and titlegap()
+*!          (flipped, WP-30 P1.18a).
 *!   SR-05  xtitle("Weight", orientation(vertical)) names orientation() and
 *!          titles the axis "Weight" -- not "Weight, orientation(vertical)".
 *!   SR-06  xline(3000, lcolor(red) lstyle(foreground)) names lstyle() only.
@@ -41,6 +43,17 @@
 *!   SA-09  xline(, LCOLOR()) is drawn and named (guard; S39 refuses).
 *!   SA-10  127 legend() copies draw; a 3,000-word legend() is refused.
 *!   SA-15  title and axis-title refusals.
+*!   AXL-01 ylabel(, angle(400)): r(198), twoway's line then dash's
+*!          (WP-30 P1.18a).
+*!   AXL-02 angle() out of range on every label and tick family, axis 2,
+*!          by() and nodraw: r(198).
+*!   AXL-03 a scale lwidth() out of range: r(198), gm_linewidth.
+*!   AXL-04 yscale(OFF), yscale(Alt), xscale(bogus), yscale(alt alt) and
+*!          a repeated lwidth(): r(198), "option ... not allowed".
+*!   AXL-05 the refusals come in twoway's order.
+*!   AXL-06 the bounds are checked on the merged option.
+*!   AXL-07 the bounds draw; angle(Vertical) is noted once and drawn at 0.
+*!   AXL-08 the axis look sub-options draw with no note.
 *!
 *! Every render is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_by_suboptions.cscript does.
@@ -208,25 +221,25 @@ if r(bad) {
 }
 else display as text "SR-02 PASS: xlabel(, valuelabel) is drawn and not named"
 
-_sr_render `"dash scatter mpg weight, ylabel(, labcolor(red))"'
+_sr_render `"dash scatter mpg weight, ylabel(, labgap(2))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-03 "`lg'" ylabel "labcolor(red)" ""
+_sr_check SR-03 "`lg'" ylabel "labgap(2)" ""
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-03"
 }
-else display as text "SR-03 PASS: ylabel(, labcolor(red)) is named"
+else display as text "SR-03 PASS: ylabel(, labgap(2)) is named"
 
-_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2))"'
+_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-04 "`lg'" yscale "noline titlegap(2)" "reverse"
+_sr_check SR-04 "`lg'" yscale "outergap(1)" "reverse noline titlegap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-04"
 }
-else display as text "SR-04 PASS: yscale(noline titlegap(2)) is named, reverse is not"
+else display as text "SR-04 PASS: yscale(outergap(1)) is named, reverse noline titlegap are not"
 
 _sr_render `"dash scatter mpg weight, xtitle("Weight", orientation(vertical))"'
 local lg `"`r(logfile)'"'
@@ -607,6 +620,168 @@ if `b' {
     local faillist "`faillist' SA-15"
 }
 else display as text "SA-15 PASS: the titles refuse what twoway refuses"
+
+// ----------------------------------------------------------------
+// AXL-01 .. AXL-08 (WP-30 P1.18a): the axis look.  twoway refuses an
+// angle() outside -360..360, a scale lwidth() outside 0..10000 and a
+// scale word it does not know, r(198), in its words and order; dash
+// refuses the same, and draws the look sub-options unnamed.  Each case
+// runs twoway's twin in the same session and compares rc and line.
+// ----------------------------------------------------------------
+// _axl_twin id want needle opts [y2]: dash and twoway, the same options.
+capture program drop _axl_twin
+program define _axl_twin, rclass
+    version 19
+    args id want needle opts y2
+    local plots "scatter mpg weight"
+    if "`y2'" != "" local plots "(scatter mpg weight) (scatter price weight, yaxis(2) xaxis(2))"
+    _sa_expect `id' `want' `"`macval(needle)'"' `"dash `plots', `macval(opts)'"'
+    local bad = r(bad)
+    local logfile "`c(tmpdir)'dash_axl_tw.log"
+    capture log close _axltw
+    log using "`logfile'", name(_axltw) text replace
+    capture noisily twoway `plots', `opts'
+    local trc = _rc
+    log close _axltw
+    if `trc' != `want' {
+        display as error `"`id' FAIL: twoway rc `trc', expected `want': `macval(opts)'"'
+        local bad = 1
+    }
+    if `"`macval(needle)'"' != "" {
+        _sr_count "`logfile'" `"`macval(needle)'"'
+        if r(n) < 1 {
+            display as error `"`id' FAIL: twoway's log lacks `macval(needle)'"'
+            local bad = 1
+        }
+    }
+    capture graph drop _all
+    return scalar bad = `bad'
+end
+
+// AXL-01: angle(400) is refused, twoway's line then dash's.
+_axl_twin AXL-01 198 "textangle must be between -360.000 and 360.000" "ylabel(, angle(400))"
+local b = r(bad)
+_sr_count "`c(tmpdir)'dash_sr.log" "dash: ylabel(): angle()"
+if `b' | r(n) < 1 {
+    if r(n) < 1 display as error "AXL-01 FAIL: dash's own line is missing"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-01"
+}
+else display as text "AXL-01 PASS: ylabel(, angle(400)) is refused r(198) in twoway's words"
+
+// AXL-02: every label and tick family, axis 2, by() and nodraw.
+local b = 0
+foreach o in "xlabel(, ang(-361))" "ylabel(, angle(1e3))" "ytick(25, angle(400))" ///
+        "ymlabel(25, angle(400))" "ymtick(25, angle(400))" ///
+        "xlabel(, angle(400)) by(foreign)" {
+    _axl_twin AXL-02 198 "textangle must be between" `"`o'"'
+    if r(bad) local b = 1
+}
+_axl_twin AXL-02 198 "textangle must be between" "ylabel(, axis(2) angle(400))" y2
+if r(bad) local b = 1
+// twoway checks only when it draws; dash always draws the page.
+_sa_expect AXL-02 198 "textangle must be between" `"dash scatter mpg weight, ylabel(, angle(400)) nodraw"'
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-02"
+}
+else display as text "AXL-02 PASS: angle() out of range is refused on every family"
+
+// AXL-03: a scale lwidth() out of range.
+local b = 0
+foreach o in "yscale(lwidth(-1))" "yscale(lw(20000))" "yscale(lwidth(-1)) by(foreign)" {
+    _axl_twin AXL-03 198 "gm_linewidth must be between 0.000 and" `"`o'"'
+    if r(bad) local b = 1
+}
+_axl_twin AXL-03 198 "gm_linewidth must be between 0.000 and" "yscale(axis(2) lwidth(-1))" y2
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-03"
+}
+else display as text "AXL-03 PASS: a scale lwidth() out of range is refused"
+
+// AXL-04: scale words twoway refuses.
+local b = 0
+foreach row in "OFF|yscale(OFF)" "Alt|yscale(Alt)" "bogus|xscale(bogus)" ///
+        "alt|yscale(alt alt)" "lwidth()|yscale(lwidth(1) lwidth(2))" {
+    gettoken w o : row, parse("|")
+    local o = substr(`"`o'"', 2, .)
+    _axl_twin AXL-04 198 "option `w' not allowed" `"`o'"'
+    if r(bad) local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-04"
+}
+else display as text "AXL-04 PASS: the scale words twoway refuses are refused"
+
+// AXL-05: the order of the refusals.
+local b = 0
+_axl_twin AXL-05 198 "gm_linewidth" "xlabel(, angle(400)) yscale(lwidth(-1))"
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "textangle" "ylabel(, angle(400)) xscale(lwidth(-1))"
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "option OFF not allowed" "ylabel(, angle(400)) yscale(OFF)"
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "gm_linewidth" "ylabel(, axis(2) angle(400)) xscale(lwidth(-1))" y2
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "textangle" "ylabel(, axis(2) angle(400)) xscale(axis(2) lwidth(-1))" y2
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-05"
+}
+else display as text "AXL-05 PASS: the refusals come in twoway's order"
+
+// AXL-06: the merged option is checked.
+local b = 0
+_sa_expect AXL-06 0 "" `"dash (scatter mpg weight, ylabel(, angle(400))), ylabel(, angle(0))"'
+if r(bad) local b = 1
+_sa_expect AXL-06 0 "" `"dash (scatter mpg weight, yscale(lw(-1))), yscale(lw(1))"'
+if r(bad) local b = 1
+_sa_expect AXL-06 198 "textangle" `"dash (scatter mpg weight, ylabel(, angle(0))), ylabel(, angle(400))"'
+if r(bad) local b = 1
+capture noisily twoway (scatter mpg weight, ylabel(, angle(400))), ylabel(, angle(0))
+if _rc local b = 1
+capture noisily twoway (scatter mpg weight, ylabel(, angle(0))), ylabel(, angle(400))
+if _rc != 198 local b = 1
+capture graph drop _all
+if `b' {
+    display as error "AXL-06 FAIL: the merged option was not the one checked"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-06"
+}
+else display as text "AXL-06 PASS: the bounds are checked on the merged option"
+
+// AXL-07: the bounds themselves and the forms twoway accepts.
+local b = 0
+foreach o in "ylabel(, angle(360))" "ylabel(, angle(-360))" "ylabel(, angle(400deg))" ///
+        "yscale(lwidth(10000))" "ylabel(, tlength(-1))" "yscale(titlegap(-2))" {
+    _axl_twin AXL-07 0 "" `"`o'"'
+    if r(bad) local b = 1
+}
+_sa_expect AXL-07 0 "ylabel(angle(Vertical)) is not a recognised angle" `"dash scatter mpg weight, ylabel(, angle(Vertical))"'
+if r(bad) local b = 1
+_sr_count "`c(tmpdir)'dash_sr.log" "is not a recognised angle"
+if r(n) != 1 local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-07"
+}
+else display as text "AXL-07 PASS: the bounds draw; angle(Vertical) is noted once"
+
+// AXL-08: the look sub-options are drawn, not named.
+_sa_expect AXL-08 0 "" `"dash scatter mpg weight, yscale(off noline alt lcolor(red) lwidth(thick) lpattern(dash) titlegap(5))"' yscale
+local b = r(bad)
+_sa_expect AXL-08 0 "" `"dash scatter mpg weight, ylabel(, nolabels noticks labcolor(red) tlength(3) tposition(inside) angle(rvertical))"' ylabel
+if `b' | r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-08"
+}
+else display as text "AXL-08 PASS: the axis look draws with no not-implemented note"
+capture erase "`c(tmpdir)'dash_axl_tw.log"
 
 // ----------------------------------------------------------------
 // Summary

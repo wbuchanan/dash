@@ -55,15 +55,19 @@ SUBOPTIONS = [
      ["cols"]),
     ("legend colfirst", {"legend": "colfirst on"}, None, "legend",
      ["colfirst"], ["on"]),
-    ("ylabel labcolor", {"ylabel": ", labcolor(red)"}, None, "ylabel",
-     ["labcolor(red)"], []),
+    # Flipped (WP-30 P1.18a): labcolor(), tlength(), noline, titlegap()
+    # and off are drawn as twoway draws them, so each row names a word
+    # dash still does not draw (labgap, outergap, extend).
+    ("ylabel labcolor", {"ylabel": ", labcolor(red) labgap(2)"}, None,
+     "ylabel", ["labgap(2)"], ["labcolor"]),
     ("ylabel labgap tlength", {"ylabel": "10(10)30, labgap(2) tlength(3)"},
-     None, "ylabel", ["labgap(2)", "tlength(3)"], []),
+     None, "ylabel", ["labgap(2)"], ["tlength"]),
     ("yscale reverse noline titlegap",
-     {"yscale": "reverse noline titlegap(2)"}, None, "yscale",
-     ["noline", "titlegap(2)"], ["reverse"]),
-    ("xscale log range and off", {"xscale": "log range(1000 5000) off"},
-     None, "xscale", ["off"], ["log", "range"]),
+     {"yscale": "reverse noline titlegap(2) outergap(1)"}, None, "yscale",
+     ["outergap(1)"], ["reverse", "noline", "titlegap"]),
+    ("xscale log range and off",
+     {"xscale": "log range(1000 5000) off extend"},
+     None, "xscale", ["extend"], ["log", "range", "off"]),
     ("xtitle orientation", {"xtitle": "Weight, orientation(vertical)"}, None,
      "xtitle", ["orientation(vertical)"], []),
     ("ytitle size and justification",
@@ -121,6 +125,11 @@ class TestTheHonouredOnesStayQuiet:
         # G16 (WP-28 S14): valuelabel is drawn, so it is no longer named.
         ({"xlabel": ", valuelabel"}, None),
         ({"xscale": "log", "yscale": "reverse range(10 40)"}, None),
+        # WP-30 P1.18a: the axis look is drawn, never named.
+        ({"ylabel": ", nolabels noticks labcolor(red) tlength(3) "
+                    "tposition(inside) angle(rvertical)",
+          "yscale": "off noline lcolor(red) lwidth(thick) lpattern(dash) "
+                    "alt titlegap(5)"}, None),
         ({"xtitle": "Weight", "ytitle": "Miles, size(large) color(red)"},
          None),
         ({"xline": "3000, lcolor(red) lpattern(dash) lwidth(thick)",

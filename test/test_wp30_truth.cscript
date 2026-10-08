@@ -7262,10 +7262,248 @@ if inlist("`only'", "", "S30") {
 }
 * ==== end S30 ====
 
+// S31 helpers (WP-30 P1.18a): the saved page's axes, read back from the
+// page, against the same command's twoway members.  _axl_saved is
+// test_bug_regressions.cscript's _br_saved, its helpers renamed _axl_, and
+// returns the page's plots that carry axes.
+python:
+import html, json, math, re, warnings
+from bokeh.document import Document
+from bokeh.models import Plot
+from sfi import Macro
+
+def _axl_plots(roots):
+    seen, out = set(), []
+    for root in roots:
+        for m in root.references():
+            if isinstance(m, Plot) and m.id not in seen:
+                seen.add(m.id)
+                out.append(m)
+    return out
+
+def _axl_saved(page_path):
+    page = open(page_path, encoding="utf-8").read()
+    m = re.search(r'<script type="application/json" id="[^"]*">(.*?)</script>',
+                  page, re.S)
+    if m is not None:
+        docs = json.loads(html.unescape(m.group(1)))
+    else:
+        m = re.search(r"const docs_json = '(.*?)';", page, re.S)
+        if m is None:
+            return []
+        bs = chr(92)
+        docs = json.loads(html.unescape(m.group(1).replace(bs + bs, bs)))
+    figs = []
+    for dj in docs.values():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            figs += _axl_plots(Document.from_json(dj).roots)
+    sides = ("left", "right", "below", "above")
+    return [f for f in figs
+            if any(type(a).__name__.endswith("Axis")
+                   for s in sides for a in getattr(f, s))]
+
+def _axl_profile(fig):
+    out = {}
+    for s in ("left", "right", "below", "above"):
+        for a in getattr(fig, s):
+            if not type(a).__name__.endswith("Axis"):
+                continue
+            letter = "y" if s in ("left", "right") else "x"
+            rn = getattr(a, letter + "_range_name", "default")
+            key = letter + ("1" if rn == "default" else "2")
+            o = a.major_label_orientation
+            out[key] = {
+                "orientation": 0.0 if o == "horizontal" else float(o),
+                "font": a.major_label_text_font_size,
+                "tick": [a.major_tick_in, a.major_tick_out],
+                "label_color": a.major_label_text_color,
+                "label_alpha": a.major_label_text_alpha,
+                "visible": a.visible, "line_color": a.axis_line_color,
+                "line_width": a.axis_line_width,
+                "title_gap": a.axis_label_standoff, "side": s,
+                "index": [x for x in getattr(fig, s)
+                          if type(x).__name__.endswith("Axis")].index(a)}
+    return out
+
+def _axl_geom(rs, pos):
+    n = int(round(min(abs(rs * 3.84), 100.0)))
+    if pos == "inside":
+        return [n, 0]
+    if pos == "crossing":
+        h = int(round(min(abs(rs * 3.84), 100.0) / 2.0))
+        return [h, h]
+    return [0, n]
+
+def _axl_hex(rgb):
+    return "#%02x%02x%02x" % tuple(int(float(v)) for v in rgb.split())
+
+def _axl_case():
+    # AXL_WANT: {"<axis>.<check>": value} for every panel's axis.
+    want = json.loads(Macro.getGlobal("AXL_WANT"))
+    figs = _axl_saved(Macro.getGlobal("AXL_PAGE"))
+    bad = [] if figs else ["no figure on the page"]
+    for f in figs:
+        prof = _axl_profile(f)
+        for k, v in want.items():
+            ax, check = k.split(".", 1)
+            p = prof.get(ax)
+            if p is None:
+                bad.append(ax + " missing")
+                continue
+            if check == "orientation_deg":
+                ok = math.isclose(p["orientation"], math.radians(float(v)),
+                                  abs_tol=1e-6)
+                got = p["orientation"]
+            elif check == "tick_rs":
+                got, ok = p["tick"], p["tick"] == _axl_geom(float(v[0]), v[1])
+            elif check == "label_rgb":
+                got, ok = p["label_color"], p["label_color"] == _axl_hex(v)
+            elif check == "line_rgb":
+                got, ok = p["line_color"], p["line_color"] == _axl_hex(v)
+            elif check == "line_su":
+                got = p["line_width"]
+                ok = math.isclose(got, float(v) * 3.84, rel_tol=1e-6)
+            elif check == "title_gap_rs":
+                got = p["title_gap"]
+                ok = got == int(round(float(v) * 3.84))
+            else:
+                got, ok = p.get(check), p.get(check) == v
+            if not ok:
+                bad.append("%s %s: %r, want %r" % (ax, check, got, v))
+    Macro.setGlobal("AXL_OK", "0" if bad else "1")
+    Macro.setGlobal("AXL_MSG", "; ".join(bad)[:240] or "ok")
+    Macro.setGlobal("AXL_NFIG", str(len(figs)))
+    Macro.setGlobal("AXL_PROF", json.dumps([_axl_profile(f) for f in figs],
+                                           sort_keys=True))
+end
+
+// _axl_dash <page> <log> `"<dash command>"': runs it with its log; r(rc).
+capture program drop _axl_dash
+program define _axl_dash, rclass
+    version 19
+    args page lg cmd
+    quietly graph drop _all
+    capture dash clear
+    capture erase "`page'"
+    capture log close _axl
+    quietly log using "`lg'", text replace name(_axl)
+    capture noisily `cmd' saving("`page'")
+    local rc = _rc
+    quietly log close _axl
+    global AXL_PAGE "`page'"
+    return scalar rc = `rc'
+end
+
 * ==== S31 P1.18a: Axis look sub-options ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S31") {
     display as text "S31 start " c(current_date) " " c(current_time)
+    sysuse auto, clear
+    local pg "`w30_work'/axl.html"
+    local lg "`w30_work'/axl.log"
+    local Y "yaxis1"
+    local mt ".style.majorstyle.tickstyle"
+
+    // AXL-20: anglestyle names and twoway's abbreviations.
+    foreach v in rvertical forty_five ninety two_seventy stdarrow v rh rv Vertical stacked {
+        quietly twoway scatter mpg weight, ylabel(, angle(`v'))
+        local deg "`.Graph.`Y'.style.majorstyle.tickangle.val'"
+        _axl_dash "`pg'" "`lg'" `"dash scatter mpg weight, ylabel(, angle(`v'))"'
+        _w30_expect AXL-20 "(r(rc) == 0)" `"angle(`v'): rc `=r(rc)'"'
+        global AXL_WANT `"{"y1.orientation_deg": "`deg'"}"'
+        python: __import__("__main__")._axl_case()
+        _w30_expect AXL-20 "(${AXL_OK} == 1)" `"angle(`v') (twoway `deg'): ${AXL_MSG}"'
+    }
+    _w30_done AXL-20 "every anglestyle name, v, rh and rv, and Vertical and stacked at 0, as twoway draws them"
+
+    // AXL-21: the label look.
+    foreach o in "nolabels" "noticks" "labcolor(red%50)" "tlength(3)" "tposition(inside)" {
+        quietly twoway scatter mpg weight, ylabel(, `o')
+        local sl "`.Graph.`Y'`mt'.show_labels.istrue'"
+        local st "`.Graph.`Y'`mt'.show_ticks.istrue'"
+        local tl "`.Graph.`Y'`mt'.length.val'"
+        local ps "`.Graph.`Y'`mt'.position.stylename'"
+        local lc "`.Graph.`Y'`mt'.textstyle.color.rgb'"
+        _axl_dash "`pg'" "`lg'" `"dash scatter mpg weight, ylabel(, `o')"'
+        _w30_expect AXL-21 "(r(rc) == 0)" `"`o': rc `=r(rc)'"'
+        if "`sl'" == "0" global AXL_WANT `"{"y1.font": "0px"}"'
+        else if "`st'" == "0" global AXL_WANT `"{"y1.tick": [0, 0]}"'
+        else if "`o'" == "labcolor(red%50)" global AXL_WANT `"{"y1.label_rgb": "`lc'", "y1.label_alpha": 0.5}"'
+        else global AXL_WANT `"{"y1.tick_rs": ["`tl'", "`ps'"]}"'
+        python: __import__("__main__")._axl_case()
+        _w30_expect AXL-21 "(${AXL_OK} == 1)" `"`o': ${AXL_MSG}"'
+    }
+    _w30_done AXL-21 "nolabels, noticks, labcolor(red%50), tlength(3) and tposition(inside) are twoway's"
+
+    // AXL-22: the scale look.
+    foreach o in "off" "noline" "noli lc(red)" "lwidth(thick)" "alt" "titlegap(5)" {
+        quietly twoway scatter mpg weight, yscale(`o')
+        local dv "`.Graph.`Y'.draw_view.istrue'"
+        local lc "`.Graph.`Y'.style.linestyle.color.rgb'"
+        local lw "`.Graph.`Y'.style.linestyle.width.val'"
+        local ap "`.Graph.`Y'.position.stylename'"
+        local tg "`.Graph.`Y'.style.title_gap.val'"
+        _axl_dash "`pg'" "`lg'" `"dash scatter mpg weight, yscale(`o')"'
+        _w30_expect AXL-22 "(r(rc) == 0)" `"yscale(`o'): rc `=r(rc)'"'
+        if "`o'" == "off" global AXL_WANT `"{"y1.visible": false}"'
+        else if "`o'" == "noline" global AXL_WANT `"{"y1.line_color": null}"'
+        else if "`o'" == "noli lc(red)" global AXL_WANT `"{"y1.line_rgb": "`lc'"}"'
+        else if "`o'" == "lwidth(thick)" global AXL_WANT `"{"y1.line_su": "`lw'"}"'
+        else if "`o'" == "alt" global AXL_WANT `"{"y1.side": "`ap'"}"'
+        else global AXL_WANT `"{"y1.title_gap_rs": "`tg'"}"'
+        if "`o'" == "off" _w30_expect AXL-22 "(`dv' == 0)" "twoway draws yscale(off)"
+        python: __import__("__main__")._axl_case()
+        _w30_expect AXL-22 "(${AXL_OK} == 1)" `"yscale(`o'): ${AXL_MSG}"'
+    }
+    _w30_done AXL-22 "off, noline, noli lc(red), lwidth(thick), alt and titlegap(5) are twoway's"
+
+    // AXL-23: by(): the four forms twoway ignores, ignored and unnamed.
+    quietly twoway scatter mpg weight, by(foreign)
+    local dv0 "`.Graph.graphs[1].`Y'.draw_view.istrue'"
+    quietly twoway scatter mpg weight, by(foreign) yscale(off) ylabel(, nolabels noticks) yscale(titlegap(10))
+    local dv1 "`.Graph.graphs[1].`Y'.draw_view.istrue'"
+    _w30_expect AXL-23 `"("`dv0'" == "`dv1'")"' "twoway's by() panel draw_view `dv0' `dv1'"
+    _axl_dash "`pg'" "`lg'" `"dash scatter mpg weight, by(foreign)"'
+    global AXL_WANT "{}"
+    python: __import__("__main__")._axl_case()
+    python: Macro.setGlobal("AXL_BASE", Macro.getGlobal("AXL_PROF"))
+    _axl_dash "`pg'" "`lg'" `"dash scatter mpg weight, by(foreign) yscale(off) ylabel(, nolabels noticks) yscale(titlegap(10))"'
+    _w30_expect AXL-23 "(r(rc) == 0)" "by() with the ignored forms: rc `=r(rc)'"
+    python: __import__("__main__")._axl_case()
+    python: Macro.setGlobal("AXL_OK", "1" if Macro.getGlobal("AXL_PROF") == Macro.getGlobal("AXL_BASE") else "0")
+    _w30_expect AXL-23 "(${AXL_OK} == 1 & ${AXL_NFIG} == 2)" "the panels' axes differ from by(foreign) alone"
+    capture cert_log_has "`lg'", needle("sub-option")
+    local hrc = _rc
+    local hn = cond(`hrc', -1, r(found))
+    _w30_expect AXL-23 "(`hn' == 0)" "a sub-option was named under by() (`hn')"
+    _axl_dash "`pg'" "`lg'" `"dash scatter mpg weight, by(foreign) yscale(noline alt)"'
+    global AXL_WANT `"{"y1.line_color": null, "y1.side": "right"}"'
+    python: __import__("__main__")._axl_case()
+    _w30_expect AXL-23 "(${AXL_OK} == 1 & ${AXL_NFIG} == 2)" `"yscale(noline alt) under by(): ${AXL_MSG}"'
+    _w30_done AXL-23 "under by() off, nolabels, noticks and titlegap() draw as absent, unnamed; noline and alt are drawn"
+
+    // AXL-24: the second axis.
+    local Y2 "(scatter mpg weight) (scatter price weight, yaxis(2))"
+    quietly twoway `Y2', yscale(alt axis(2))
+    local p2 "`.Graph.yaxis2.position.stylename'"
+    _axl_dash "`pg'" "`lg'" `"dash `Y2', yscale(alt axis(2))"'
+    global AXL_WANT `"{"y2.side": "`p2'", "y2.index": 1, "y1.side": "left"}"'
+    python: __import__("__main__")._axl_case()
+    _w30_expect AXL-24 "(${AXL_OK} == 1)" `"yscale(alt axis(2)) (twoway `p2'): ${AXL_MSG}"'
+    quietly twoway `Y2', yscale(off axis(2))
+    local d2 "`.Graph.yaxis2.draw_view.istrue'"
+    _axl_dash "`pg'" "`lg'" `"dash `Y2', yscale(off axis(2))"'
+    global AXL_WANT `"{"y2.visible": false}"'
+    python: __import__("__main__")._axl_case()
+    _w30_expect AXL-24 "(${AXL_OK} == 1 & `d2' == 0)" `"yscale(off axis(2)): ${AXL_MSG}"'
+    _w30_done AXL-24 "yscale(alt axis(2)) puts y2 left, outside y1, and yscale(off axis(2)) hides it, as twoway draws them"
+
+    capture graph drop _all
+    capture dash clear
+    capture erase "`pg'"
+    capture erase "`lg'"
+    macro drop AXL_*
     display as text "S31 end " c(current_date) " " c(current_time)
 }
 * ==== end S31 ====

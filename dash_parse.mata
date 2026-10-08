@@ -348,9 +348,18 @@
 *!   _dash_axreq_add(opts, seg)
 *!       Records each axis option of the raw option text opts of plot
 *!       segment seg (the options after the comma are segment n_segs+1);
-*!       column 10 holds twoway's refusal of a label or tick sub-option.
+*!       column 10 holds twoway's refusal of a label or tick sub-option,
+*!       or of a scale word (WP-30 P1.18a).
 *!       Records the legend(), zlabel() and title sub-options too
 *!       (_dash_subreq_add).
+*!
+*!   _dash_axbound_list()
+*!       Lists, in the caller's locals _axb_n, _axb_k<j>, _axb_o<j> and
+*!       _axb_v<j>, the merged axis options twoway bounds when it draws:
+*!       each scale's last lwidth() and each label or tick family's last
+*!       angle() outside -360..360, axis by axis y1, x1, y2, x2, the scale
+*!       first (WP-30 P1.18a).  _dash_angle_out(s) (1 when s is a number
+*!       outside -360..360) is its internal helper.
 *!
 *!   _dash_axreq_check(ys, xs)
 *!       Refuses, r(198) with twoway's message and in twoway's order, the
@@ -6414,11 +6423,17 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
                             badw, axpos)) continue
         k++
         // Column 10 (WP-30 P1.19): twoway's refusal of a label, mlabel,
-        // tick or mtick sub-option (_dash_so_resolve's message), or "".
+        // tick or mtick sub-option (_dash_so_resolve's message), or "";
+        // and of a scale word (WP-30 P1.18a: yscale(OFF), xscale(bogus),
+        // yscale(alt alt) are "option OFF not allowed", r(198)).
         sm = ""
         if (anyof(("label", "mlabel", "tick", "mtick"), fam[r, 1]) &
             cols(words)) {
             if (_dash_so_resolve(words, J(1, cols(words), 1), "axlabel",
+                                 snames, sm, sat) == 0) sm = ""
+        }
+        else if (fam[r, 1] == "scale" & cols(words)) {
+            if (_dash_so_resolve(words, J(1, cols(words), 1), "axscale",
                                  snames, sm, sat) == 0) sm = ""
         }
         blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
@@ -7813,6 +7828,90 @@ string scalar _dash_qual_cols_in(string scalar gjson) {
         }
     }
     return(out)
+}
+
+// _dash_angle_out(s) -- 1 when s, stripped, is twoway's real literal and
+// lies outside -360..360, else 0 (WP-30 P1.18a).  twoway refuses such an
+// angle() on every axis label and tick family when it draws, r(198),
+// "textangle must be between -360.000 and 360.000"; a name, or a number
+// within the bounds, is no refusal.  No regex.
+real scalar _dash_angle_out(string scalar s)
+{
+    real scalar a
+
+    if (!_dash_so_isnum(strtrim(s), 0)) return(0)
+    a = strtoreal(strtrim(s))
+    if (a >= .) return(0)
+    return(a < -360 | a > 360)
+}
+
+// _dash_axbound_list() -- the merged axis options twoway bounds when it
+// draws (WP-30 P1.18a), listed in the calling program's locals: _axb_n
+// and, per finding j, _axb_k<j> ("l" a scale's lwidth(), "a" an angle()),
+// _axb_o<j> the option's name and _axb_v<j> the argument as typed.  The
+// order is twoway's, measured in StataNow 19.5: axis by axis y1, x1, y2,
+// x2, and on one axis the scale first, then the label, tick, mlabel and
+// mtick families (axis 2: label2, tick2).  It reads the caller's merged
+// locals g_<option>; each value is parsed under twoway's axis-1 spelling
+// (_dash_axfam knows no label2 row) and resolved with _dash_so_resolve.  A
+// scale's last lwidth() is always listed (the caller bounds it 0..10000
+// with _dash_validate_value); a label or tick family's last angle() only
+// when _dash_angle_out is 1.  Linear in the words; no regex.
+void _dash_axbound_list()
+{
+    string matrix    fam, plan
+    string rowvector words, names
+    string scalar    d, v, body, dcw, badw, msg, val, opt, last, sd, fw
+    real scalar      i, j, k, r, nax, n, axpos, at, sc
+
+    fam  = _dash_axfam()
+    plan = ("y", "scale", "scale" \ "y", "label", "label" \
+            "y", "tick", "tick" \ "y", "mlabel", "mlabel" \
+            "y", "mtick", "mtick" \
+            "x", "scale", "scale" \ "x", "label", "label" \
+            "x", "tick", "tick" \ "x", "mlabel", "mlabel" \
+            "x", "mtick", "mtick" \
+            "y", "scale2", "scale" \ "y", "label2", "label" \
+            "y", "tick2", "tick" \
+            "x", "scale2", "scale" \ "x", "label2", "label" \
+            "x", "tick2", "tick")
+    k = 0
+    for (i = 1; i <= rows(plan); i++) {
+        sd  = plan[i, 1]
+        opt = sd + plan[i, 2]
+        fw  = plan[i, 3]
+        val = st_local("g_" + opt)
+        if (strtrim(val) == "") continue
+        if (!_dash_ax_parse(sd + fw + "(" + val + ")", fam, d, r, v, body,
+                            words, dcw, nax, n, badw, axpos)) continue
+        if (!cols(words)) continue
+        sc = (fw == "scale")
+        (void) _dash_so_resolve(words, J(1, cols(words), 1),
+                                (sc ? "axscale" : "axlabel"), names, msg, at)
+        last = ""
+        for (j = 1; j <= cols(words); j++) {
+            if (names[j] == (sc ? "lwidth" : "angle") &
+                strpos(words[j], "(")) last = _dash_rep_value(words[j])
+        }
+        if (last == "" & !sc) continue
+        if (!sc) {
+            if (!_dash_angle_out(last)) continue
+        }
+        else {
+            // A scale with no lwidth() lists nothing.
+            if (last == "") {
+                for (j = 1; j <= cols(words); j++) {
+                    if (names[j] == "lwidth") break
+                }
+                if (j > cols(words)) continue
+            }
+        }
+        k++
+        st_local("_axb_k" + strofreal(k), (sc ? "l" : "a"))
+        st_local("_axb_o" + strofreal(k), opt)
+        st_local("_axb_v" + strofreal(k), last)
+    }
+    st_local("_axb_n", strofreal(k))
 }
 
 end

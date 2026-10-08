@@ -370,8 +370,9 @@ class TestSecondaryAxisLabelGrammar:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_suboption_it_does_not_honour_is_named(self, mode):
-        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labcolor(red)"})
-        assert any("ylabel2() sub-option" in w and "labcolor(red)" in w
+        # Flipped (WP-30 P1.18a): labcolor() is drawn; labgap() is not.
+        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labgap(2)"})
+        assert any("ylabel2() sub-option" in w and "labgap(2)" in w
                    for w in caught), caught
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -1101,8 +1102,9 @@ class TestTheSecondAxisIsItsOwn:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_an_unhonoured_yscale2_suboption_is_named(self, mode):
-        _, caught = _render(mode, _Y2, {"yscale2": "noline"})
-        assert any("yscale2() sub-option" in w and "noline" in w
+        # Flipped (WP-30 P1.18a): noline is drawn; outergap() is not.
+        _, caught = _render(mode, _Y2, {"yscale2": "outergap(1)"})
+        assert any("yscale2() sub-option" in w and "outergap(1)" in w
                    for w in caught), caught
 
 

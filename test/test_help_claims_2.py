@@ -532,9 +532,10 @@ class TestAnUnknownStyleInsideAStructuredOption:
     ({"xscale": "bogus"}, "xscale", "bogus"),
 ])
 class TestAnUnknownSubOptionWordIsNamedAndDrawnWithout:
-    """dash.sthlp: "an unknown sub-option word, which twoway refuses
-    (legend(garbage), xscale(bogus): r(198)), dash names in its sub-option
-    note and draws without" (twoway: HC2-21h/k)."""
+    """An unknown sub-option word, which twoway refuses (legend(garbage),
+    xscale(bogus): r(198), HC2-21h/k), and which dash.ado now refuses too
+    (WP-30 P1.19, P1.18a), still reaches the renderer in a hand-written
+    spec: there it is named once and the graph is drawn without it."""
 
     def test_named_once_in_both_modes(self, tmp_path, go, option, word):
         spec = _spec([plot_for("scatter"), plot_for("lfit")], go)

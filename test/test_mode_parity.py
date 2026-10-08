@@ -726,6 +726,16 @@ def _axes(fig):
                 "tick_width": _num(float(a.major_tick_line_width)),
                 "line_color": a.axis_line_color,
                 "minor_tick_color": a.minor_tick_line_color,
+                # WP-30 P1.18a: the axis look.
+                "minor_tick_in": a.minor_tick_in,
+                "minor_tick_out": a.minor_tick_out,
+                "label_color": a.major_label_text_color,
+                "label_alpha": _num(float(a.major_label_text_alpha)),
+                "label_standoff": a.major_label_standoff,
+                "axis_label_standoff": a.axis_label_standoff,
+                "line_dash": (a.axis_line_dash if isinstance(
+                    a.axis_line_dash, str) else list(a.axis_line_dash)),
+                "line_width": _num(float(a.axis_line_width)),
                 "panel": next((side for side in ("left", "right", "above",
                                                  "below")
                                if a in getattr(fig, side)), None)}
@@ -1526,11 +1536,11 @@ CORPUS = [
           {"legend": "position(6) span holes(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
-                          "yscale": "reverse noline"}),
+                          "yscale": "reverse outergap(1)"}),
     _case("xline with an unimplemented sub-option", [_sc()], None,
           {"xline": "3000, lcolor(red) lstyle(foreground)"}),
     _case("xlabel with an unimplemented sub-option", [_sc()], None,
-          {"xlabel": "#5, labcolor(red)", "ytitle": "Miles, orientation(vertical)"}),
+          {"xlabel": "#5, labgap(2)", "ytitle": "Miles, orientation(vertical)"}),
     _case("graph title", [_sc()], None, {"title": "G"}),
     _case("graph title and subtitle with an ampersand", [_sc()], None,
           {"title": "R&D", "subtitle": "a & b"}),
@@ -2033,6 +2043,23 @@ CORPUS = [
           [plot_for("line", {"lcolor": "bogus"})]),
     _case("bar, an unknown fill", [plot_for("bar", {"fcolor": "bogus"})]),
     _case("s1rcolor, fg", [_sc(mcolor="fg*.5")], {"scheme": "s1rcolor"}),
+    # WP-30 P1.18a: the axis look sub-options
+    _case("axis look: label sub-options", [_sc()], None,
+          {"ylabel": ", nolabels noticks labcolor(red%50) tlength(3) "
+                     "tposition(inside)",
+           "xlabel": ", labcolor(blue) tposition(crossing)",
+           "ytick": "25, tlength(5)"}),
+    _case("axis look: scale sub-options", [_sc()], None,
+          {"yscale": "noline alt titlegap(5)",
+           "xscale": "lcolor(red) lwidth(thick) lpattern(dash) off"}),
+    _case("axis look: anglestyle names", [_sc()], None,
+          {"ylabel": ", angle(rvertical)", "xlabel": ", angle(Vertical)"}),
+    _case("axis look: second axis alt and off",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
+          {"yscale": "alt", "yscale2": "alt noline", "ylabel2": ", nolabels"}),
+    _case("axis look: under by()", [_sc()], None,
+          {"by": "foreign", "yscale": "off noline alt titlegap(10)",
+           "ylabel": ", nolabels noticks labcolor(red) tlength(5)"}),
 ]
 
 
@@ -2143,13 +2170,14 @@ _MUST_WARN = {
         "dash: legend() sub-option(s) not implemented and ignored: "
         "span holes(1)",
     "xscale(range()) and yscale with an unimplemented sub-option":
-        "dash: yscale() sub-option(s) not implemented and ignored: noline",
+        "dash: yscale() sub-option(s) not implemented and ignored: "
+        "outergap(1)",
     "xline with an unimplemented sub-option":
         "dash: xline() sub-option(s) not implemented and ignored: "
         "lstyle(foreground)",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
-        "labcolor(red)",
+        "labgap(2)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
         "rows(2) compact",
@@ -2843,6 +2871,11 @@ MOVE_CORPUS = [
                [plot_for("bar")]),
     _move_case("area under by(), range", _MOVES[1], [plot_for("area")],
                {"by": "foreign"}),
+    # WP-30 P1.18a: the axis look holds after a move
+    _move_case("axis look after a move, dropdown", _MOVES[0],
+               [plot_for("scatter")],
+               {"ylabel": ", noticks labcolor(red) angle(rvertical)",
+                "yscale": "noline alt"}),
 ]
 
 

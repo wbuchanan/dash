@@ -465,6 +465,7 @@ program define _dash_require_mata
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
+        _dash_axbound_list ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_abs_path _dash_graph_names
@@ -6121,6 +6122,23 @@ program define _dash_plot
         if !`: length local _vval' continue
         _dash_validate_value "dash" "`_vopt'" "`_vspec'" `"`macval(_vval)'"' ""
         local g_`_vopt' : copy local _dash_vnorm
+    }
+    // WP-30 P1.18a: the bounds twoway checks when it draws, on the merged
+    // options, in its order (y1, x1, y2, x2; the scale's lwidth() before
+    // a label's or tick's angle()): an angle() outside -360..360 and a
+    // scale lwidth() outside 0..10000, r(198) in twoway's words.  dash
+    // always draws the page, so it checks under nodraw too.
+    mata: _dash_axbound_list()
+    forvalues _j = 1/`_axb_n' {
+        local _axv : copy local _axb_v`_j'
+        if "`_axb_k`_j''" == "l" {
+            _dash_validate_value "dash: `_axb_o`_j''()" "lwidth" "style,0,10000,u" `"`macval(_axv)'"' ""
+        }
+        else {
+            mata: _dash_say("err", "textangle must be between -360.000 and 360.000", "", "")
+            mata: _dash_say("err", "dash: `_axb_o`_j''(): angle() must be an anglestyle or a number from -360 to 360 (got: ", st_local("_axv"), ")")
+            exit 198
+        }
     }
     // legend()'s direction words, refused as twoway refuses them -- here for
     // the legend() written after the graph's comma, which no segment's

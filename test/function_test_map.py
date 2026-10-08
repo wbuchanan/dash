@@ -947,6 +947,12 @@ FUNCTIONS = {
  'OptionTranslator.stata_colour': 'test/test_colour_grammar.py::TestOutputIsAlwaysHex::test_hostile_inputs',
  'SchemeParser._named_lookup': 'test/test_colour_grammar.py::TestStataTruth::test_each_probe',
  # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
+ '_dash_apply_scale_look': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_apply_scale_look',
+ '_dash_axis_alternate': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_axis_alternate',
+ '_dash_scale_look': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_scale_look',
+ '_dash_tick_geometry': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_geometry',
+ '_dash_tick_look': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_look',
+ '_dash_tick_position': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_position',
  # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
  # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
  # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)

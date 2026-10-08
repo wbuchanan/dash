@@ -383,7 +383,7 @@ and now matches Stata.
 
 - Bars, spikes, droplines and areas stand where twoway stands them. With no base(), dash drew them from 0 and stretched the y axis to 0: bar, spike, dropline and area of a y from 10 to 14 were drawn up from 0 on a y axis reaching 0; they are now drawn from 10, the end of twoway's scale (10 to 14) nearest 0, and the axis stops there, as twoway draws them (dash bar mpg weight now stands on 10). 0 is still used when the scale holds it (yscale(range(0)), a layer reaching 0); on a log axis the base is the scale's lower end, where dash drew from 0; on a date axis 0 is 01jan1960 (dash used 01jan1970); under by() the panels share the base of their common scale, each its own with yrescale; a yaxis(2) layer takes its own axis's. The base follows the axis when a filter moves, in both modes. (WP-30, P1.17b)
 
-<!-- WP-30 P1.18a -->
+- xlabel(), ylabel(), xtick(), ytick() and their second-axis forms draw nolabels, noticks (labels and ticks win within one option), labcolor() with %# opacity, tlength() in Stata's size units and tposition(); xscale(), yscale() and their second-axis forms draw off, noline, the axis line's lcolor(), lwidth() and lpattern(), alt and titlegap(). Each was named in a "not implemented" note and not drawn. dash scatter mpg weight, ylabel(, angle(rvertical)) drew the labels at the scheme's own angle and now draws them at 270 degrees; every anglestyle name and twoway's h, v, rh and rv are read. ylabel(, angle(Vertical)) drew 90 degrees and is now noted and drawn at 0, also over a scheme's vertical labels. Under by(), xscale(off), yscale(off), nolabels, noticks and titlegap() are drawn as if absent, with no note, as twoway draws them. (WP-30, P1.18a)
 
 <!-- WP-30 P1.18b -->
 
@@ -759,7 +759,11 @@ and now matches Stata.
 
 - barwidth() on rcap and rcapsym is refused, r(198), with twoway's message option barwidth() not allowed, naming the spelling given (barw() to barwidth()); dash accepted it and drew nothing different. (WP-30, P1.17a)
 
-<!-- WP-30 P1.18a -->
+- angle() outside -360 to 360 in xlabel(), ylabel(), xtick(), ytick(), xmlabel(), ymlabel(), xmtick(), ymtick() and their axis(2) forms is refused, r(198), with twoway's message textangle must be between -360.000 and 360.000; it was drawn. dash refuses it under nodraw too, where twoway checks it only when the graph is drawn. (WP-30, P1.18a)
+
+- An xscale() or yscale() lwidth() below 0 or above 10000 is refused, r(198), with twoway's message gm_linewidth must be between 0.000 and 1.0e+04. (WP-30, P1.18a)
+
+- An xscale() or yscale() sub-option twoway refuses, such as yscale(OFF), yscale(Alt), xscale(bogus) or a word given twice in one option, is refused, r(198), with twoway's message (option OFF not allowed); it was named in a note and drawn. (WP-30, P1.18a)
 
 - `legend()` and the axis label and tick options (`xlabel()`, `ylabel()`, `xtick()`, `ytick()`, `xmlabel()`, `ymlabel()`, `xmtick()`, `ymtick()`, `zlabel()`) refuse what `twoway` refuses, with its return code and words, where `dash` named and ignored it: a sub-option in capitals (`legend(OFF)`: `option OFF not allowed`, r(198)); a spelling `twoway` does not accept (`legend(po(9))`, `ylabel(, a(45))`, `legend(garbage)`); one given twice in one option (`legend(c(2) cols(1))`: `option cols() not allowed`); the wrong form (`ylabel(, labs)`: `option labs incorrectly specified`); a bad `cols()`/`rows()`/`holes()` (`legend(c(red))`: r(121) `cols() invalid -- invalid number`); and a `label()` key that is no positive integer (r(198)). The titles and axis titles refuse the same three forms (`title("T", SIZE(small))`: `option SIZE() not allowed`, r(198)), and `ytitle("Y", prefix suffix)` is refused with `options prefix and suffix may not be combined`. A capitalised sub-option of `xline()`/`yline()` is no longer applied; it is named. (WP-30, P1.19)
 

@@ -54,7 +54,8 @@
 *!   HC2-20  a weight the plot type does not take is r(101), as in twoway
 *!   HC2-21  colours, msymbol(), lpattern() and the sub-options are not
 *!           checked in Stata; twoway notes an unknown style and refuses an
-*!           unknown sub-option word
+*!           unknown sub-option word, as dash refuses legend(garbage) and
+*!           (HC2-21l, flipped WP-30 P1.18a) xscale(bogus)
 *! Subcommands and Dashboard Options:
 *!   HC2-22  the plot definition: name() registers and renders nothing;
 *!           without it the graph is written at once
@@ -650,7 +651,8 @@ _hc2_dash   "HC2-21i" 198 `"dash scatter mpg weight, legend(garbage) name(hc)"' 
 mata: st_local("_hit", strofreal(st_global("dash_json_hc") == ""))
 _hc2_ok     "HC2-21j" `_hit' "no graph hc is registered"
 _hc2_expect "HC2-21k" 198 `"twoway scatter mpg weight, xscale(bogus)"' "option bogus not allowed"
-_hc2_dash   "HC2-21l" 0 `"dash scatter mpg weight, xscale(bogus) name(hc)"'
+// Flipped (WP-30 P1.18a): refused as twoway refuses it.
+_hc2_dash   "HC2-21l" 198 `"dash scatter mpg weight, xscale(bogus) name(hc)"' "option bogus not allowed"
 graph drop _all
 
 // ================================================================

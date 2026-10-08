@@ -903,10 +903,9 @@ named in a note and drawn around -- because it is what would be drawn.
     inside one ({cmd:title(T, size(bogus))}) gets a note and the default
     in {cmd:twoway} and in {cmd:dash} alike.  An unknown sub-option word
     of {cmd:legend()} is refused as {cmd:twoway} refuses it
-    ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198));
-    one of {cmd:xscale()}, which {cmd:twoway} refuses too
-    ({cmd:xscale(bogus)}), {cmd:dash} names in its sub-option note and
-    draws without.  A colour written with commas in a plot colour option,
+    ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198)),
+    and so is one of {cmd:xscale()} or {cmd:yscale()}
+    ({cmd:xscale(bogus)}, {cmd:yscale(OFF)}: {cmd:option bogus not allowed}).  A colour written with commas in a plot colour option,
     {cmd:mcolor(255,0,0)}, is refused as {cmd:twoway} refuses it,
     {cmd:invalid '0'}, r(198); a triplet is written with blanks and quoted,
     {cmd:mcolor("255 0 0")}, as in {cmd:twoway} (see
@@ -3204,6 +3203,22 @@ Any of those may be followed by a comma and the sub-options
 {cmd:norescale}, under {cmd:twoway}'s spellings in lower case
 ({cmd:ylabel(, for(%9.1f) labs(large) ang(0) nog)}, {cmd:ylabel(, g)},
 {cmd:xlabel(0 1, val)}; {cmd:ylabel(, grid nogrid)} draws the grid, as {cmd:twoway} does).
+{cmd:nolabels} and {cmd:labels} hide and show the labels, {cmd:noticks}
+and {cmd:ticks} the ticks (the positive word wins within one option),
+{cmd:labcolor(}{it:colorstyle}{cmd:)} colours the labels ({cmd:%}{it:#}
+sets their opacity), {cmd:tlength(}{it:size}{cmd:)} sets the tick length
+in Stata's size units ({cmd:*}{it:#} multiplies the scheme's) and
+{cmd:tposition(outside}|{cmd:inside}|{cmd:crossing)} the side, each word
+from its first letter.  {cmd:angle()} takes a number from -360 to 360,
+every anglestyle name ({cmd:horizontal}, {cmd:vertical}, {cmd:forty_five},
+{cmd:rvertical} ...) and {cmd:twoway}'s {cmd:h}, {cmd:v}, {cmd:rh} and
+{cmd:rv}; another name ({cmd:Vertical}, {cmd:stacked}) gets a note and
+level labels, as in {cmd:twoway}, and a number outside -360 to 360 is
+refused, {cmd:r(198)}, with {cmd:twoway}'s
+{cmd:textangle must be between -360.000 and 360.000}.
+{cmd:xtick()} and {cmd:ytick()} take their own {cmd:noticks},
+{cmd:tlength()} and {cmd:tposition()}; the label option's tick look never
+reaches their positions.
 Without {cmd:angle()} the labels take the scheme's
 {cmd:anglestyle horizontal_tick} and {cmd:anglestyle vertical_tick}: the y labels are
 vertical under {cmd:s2color}, {cmd:s2mono}, {cmd:s2gcolor}, {cmd:s1color},
@@ -3222,7 +3237,18 @@ value listed, in any order; they never narrow it or hide data.  One value
 is one value to include ({cmd:yscale(range(0))} reaches 0 and keeps the
 data's top), a missing value is ignored, {cmd:r()} is the abbreviation
 and {cmd:rev} that of {cmd:reverse}; a value that is not a number is named
-and ignored.  The axis then runs, as {cmd:twoway}'s scale does, over the
+and ignored.  {cmd:xscale()} and {cmd:yscale()} also draw {cmd:off} (the
+line, ticks, labels and title go; the grid stays), {cmd:noline} and
+{cmd:line}, the axis line's {cmd:lcolor()} (which draws the line beside
+{cmd:noline}, as in {cmd:twoway}), {cmd:lwidth()} and {cmd:lpattern()},
+{cmd:alt} (the axis on the other side) and {cmd:titlegap(}{it:size}{cmd:)};
+an {cmd:lwidth()} outside 0 to 10000 is refused, {cmd:r(198)}, with
+{cmd:twoway}'s {cmd:gm_linewidth} message, and a word {cmd:twoway} refuses
+({cmd:xscale(bogus)}, {cmd:yscale(OFF)}, {cmd:yscale(alt alt)}) is refused
+as it refuses it.  Under {cmd:by()}, {cmd:off}, {cmd:nolabels},
+{cmd:noticks} and {cmd:titlegap()} are drawn as if absent, with no note, as
+{cmd:twoway} draws them; the rest of the look is drawn on every panel.
+The axis then runs, as {cmd:twoway}'s scale does, over the
 hull of every layer it draws (fits, confidence bands, {cmd:scatteri} and
 {cmd:function} included; reference lines, text, marker labels and the default
 base of a {cmd:bar}, {cmd:area}, {cmd:spike} or {cmd:dropline} not), its
@@ -3447,13 +3473,14 @@ title, as in {cmd:twoway}.
 {cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with
 the parser {cmd:ylabel()} uses: a numlist, {cmd:#}{it:N},
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, {cmd:minmax}, {cmd:none}, value-label
-pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()} and {cmd:grid},
-under the same spellings, which draws gridlines at the second axis's
-ticks; any other sub-option is named
+pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()}, {cmd:grid} (which
+draws gridlines at the second axis's ticks) and the label and tick look of
+{cmd:ylabel()}, under the same spellings; any other sub-option is named
 in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
 {cmd:reverse} ({cmd:rev}) and {cmd:range(}{it:numlist}{cmd:)} ({cmd:r()}),
-which widens the second axis only, as {cmd:yscale(range())} does, and
-name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
+which widens the second axis only, as {cmd:yscale(range())} does, and the
+look of {cmd:yscale()}, where {cmd:alt} puts the second axis on the first
+axis's side, outside it; they name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
 the second axis unless {cmd:norescale} is given.  With or without them, a
 second axis's ticks are written in the format of the first layer on it,
 as {cmd:twoway} writes them.
@@ -4414,8 +4441,8 @@ Some names that reach the note are not {cmd:twoway} options where they were
 written, and {cmd:twoway} itself refuses them with {cmd:r(198)}: it spells
 {cmd:xreverse} and {cmd:yreverse} as {cmd:xscale(reverse)} and
 {cmd:yscale(reverse)}, which {cmd:dash} honours, and {cmd:xalternate} and
-{cmd:yalternate} as {cmd:xscale(alt)} and {cmd:yscale(alt)}, whose
-{cmd:alt} {cmd:dash} names as a sub-option it does not implement;
+{cmd:yalternate} as {cmd:xscale(alt)} and {cmd:yscale(alt)}, which
+{cmd:dash} draws;
 {cmd:xcommon} and {cmd:ycommon} are options of {cmd:graph combine};
 {cmd:margin()} is a sub-option of {cmd:plotregion()}, {cmd:graphregion()}
 and the title options, {cmd:region()} of {cmd:legend()}, and {cmd:altaxis}

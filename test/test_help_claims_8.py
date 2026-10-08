@@ -1432,19 +1432,22 @@ class TestTheUnsupportedProseIsTrue:
         assert fig.x_range.start <= 1000.0 and fig.x_range.end >= 6000.0
         assert _tick_plan(fig.xaxis[0])[1] == [1000.0, 6000.0]
 
-    def test_xscale_alt_is_named_and_reverse_honoured(self, tmp_path, mode):
+    def test_xscale_alt_is_drawn_and_reverse_honoured(self, tmp_path, mode):
+        # Flipped (WP-30 P1.18a), was test_xscale_alt_is_named_and_reverse_
+        # honoured: twoway draws xscale(alt) above the plot, unnamed.
         spec = _scatter({"xscale": "alt"})
         if mode == "saved":
-            _fig, _html, msgs = _saved_figure(tmp_path, spec)
+            fig, _html, msgs = _saved_figure(tmp_path, spec)
         else:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                d = tmp_path / "served"
-                d.mkdir()
-                _document_for(_load_app(_app_source(d, spec, _DF), "alt"))
+                fig = _served_figure(tmp_path, spec, tag="alt")[0]
             msgs = [str(x.message) for x in w]
-        assert any("xscale() sub-option(s) not implemented and ignored: alt"
-                   in m for m in msgs), msgs
+        assert not any("xscale() sub-option" in m for m in msgs), msgs
+        xs = [a for a in fig.above
+              if getattr(a, "x_range_name", "default") == "default"
+              and type(a).__name__.endswith("Axis")]
+        assert xs, fig.above
         fig = _figure(mode, tmp_path / "rev", _scatter({"xscale": "reverse"}),
                       tag="rev")
         # WP-30 P1.3a: a flipped DataRange1d is now a Range1d high to low.

@@ -762,6 +762,8 @@ COVERAGE = {
         # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)
         # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
         # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
+        "_dash_angle_out": ("test_suboption_reporting.cscript:AXL-01",),
+        "_dash_axbound_list": ("test_suboption_reporting.cscript:AXL-05",),
         # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
         # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
         # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
