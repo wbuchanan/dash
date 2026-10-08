@@ -1566,7 +1566,8 @@ if inlist("`only'", "", "S08") {
     cert_log_has "`w30_work'/su16d.log", needle("(note:")
     local s08_n4 = r(count)
     local s08_z "${S08_MSZ}|${S08_SMSZ}"
-    _w30_expect SU-16 "(`s08_n1' >= 1 & `s08_n2' == 1)" "notes: twoway `s08_n1', dash `s08_n2'"
+    // Once per build: dash build and (WP-30 P1.26b) dash build, server.
+    _w30_expect SU-16 "(`s08_n1' >= 1 & `s08_n2' == 2)" "notes: twoway `s08_n1', dash `s08_n2'"
     _w30_expect SU-16 `"(abs(real(word(subinstr("`s08_h'", "|", " ", .), 1)) - 5.8667) < 0.001 & word(subinstr("`s08_h'", "|", " ", .), 1) == word(subinstr("`s08_h'", "|", " ", .), 2))"' "dash HUGE `s08_h'"
     _w30_expect SU-16 `"(`s08_n3' == 0 & `s08_n4' == 0 & "`s08_z'" == "0|0")"' "msize(-1): notes `s08_n3' / `s08_n4', size `s08_z'"
     _w30_done SU-16 "an unknown name draws medium with one note; a negative size draws nothing in silence"

@@ -83,7 +83,12 @@ class TestTheTrial:
         got, _ = _built(tmp_path, _SPEC, False)
         assert not [w for w in got if "mcolor" in w], got
 
-    def test_the_trial_leaves_the_session_as_it_found_it(self, tmp_path):
+    def test_the_trial_leaves_the_session_as_it_found_it(self, tmp_path,
+                                                         monkeypatch):
+        # A served app run earlier in this worker installs the holder;
+        # the trial must not.
+        monkeypatch.delitem(sys.modules, "_dash_app_notes", raising=False)
+
         def snap():
             return (warnings.showwarning, list(warnings.filters),
                     len(curdoc().roots),

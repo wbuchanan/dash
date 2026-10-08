@@ -622,6 +622,9 @@ mata: _cs_write_quoted(st_local("cs_src"), "myquoted50.scheme", ///
 mata: _cs_write_quoted(st_local("cs_src"), "myp1.scheme", "", ///
     "color p1 " + char(34) + "31 119 180" + char(34))
 
+// WP-30 P1.28a: CS-15's nodraw twoway graph would add dash's graph
+// export note to the counts below (setup only; the counts are unchanged).
+quietly graph drop _all
 capture erase "q1.html"
 _cs_run "" `"dash scatter mpg weight, scheme(myquoted) saving(q1.html, replace)"'
 local rc = r(rc)
