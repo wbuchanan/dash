@@ -1562,7 +1562,6 @@ WP30_OPEN = {
     "P1.20b": "plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn",
     "P1.21b": "xline() and yline() noextend, extend and style() are only named, so every line spans the whole frame",
     "P1.28b": "Neither mode offers a vector export: the toolbar saves only a PNG at the screen's resolution",
-    "P1.30": "The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals dash's security relies on are not checked",
     "P1.31a": "The served app has no session cap or idle lifetime and decodes the whole dataset again for every session",
     "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
 }

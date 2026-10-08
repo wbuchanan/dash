@@ -218,6 +218,58 @@ _DASH_BOKEH_FLOOR = (3, 8)
 _DASH_BOKEH_CEIL = (3, 10)
 _DASH_BOKEH_VERIFIED = ((3, 8), (3, 9))
 
+#: Every Bokeh internal dash depends on (WP-30 P1.30, A109), as
+#: (internal, guard, test): the guard fails closed when a Bokeh release
+#: changes the internal, and the test pins it.  S54 appends its Save as
+#: SVG APIs; S46 and S57 verify theirs across the window.
+_DASH_BOKEH_INTERNALS = (
+    ("bokeh.core.templates.FILE blocks preamble, js_resources, inner_body",
+     "_dash_served_template, _dash_check_served_template",
+     "test/test_bokeh_internals.py::TestTheTemplateFailsClosed"
+     "::test_a_template_without_the_blocks_is_refused"),
+    ("the <head> of file_html's page",
+     "_dash_seal_saved_page",
+     "test/test_bokeh_internals.py::TestTheSavedHeadFailsClosed"
+     "::test_a_page_without_its_policy_is_not_written"),
+    ("bokeh.server.util.match_host and check_allowlist (imported by the "
+     "websocket handler at call time)",
+     "_dash_harden_origin_check (python app.py and every bokeh serve "
+     "session)",
+     "test/test_bokeh_internals.py::TestTheOriginCheckFailsClosed"
+     "::test_a_missing_matcher_is_a_named_error"),
+    ("bokeh.server.auth_provider.AuthProvider.get_user_async and "
+     "get_login_url (properties)",
+     "_dash_check_auth_internals, _dash_token_auth",
+     "test/test_bokeh_internals.py::TestTheKeyCheckFailsClosed"
+     "::test_a_renamed_hook_is_a_named_error"),
+    ("bokeh.util.token get_token_payload and generate_jwt_token; the "
+     "__bk__zlib_ header; the 'bokeh, <jwt>' subprotocol",
+     "_dash_check_auth_internals",
+     "test/test_bokeh_internals.py::TestTheKeyCheckFailsClosed"
+     "::test_a_changed_token_layout_is_a_named_error"),
+    ("doc.session_context.request.arguments",
+     "_dash_session_token_ok (fails closed by construction)",
+     "test/test_serve_token.py::TestTheSessionGate"
+     "::test_a_session_without_the_token_gets_only_the_refusal"),
+    ("bokeh.__version__",
+     "_dash_bokeh_check",
+     "test/test_bokeh_window.py::TestTheRuntimeCheck"
+     "::test_below_the_floor_is_refused_naming_dash_setup"),
+    ("BokehJS Range1d start, end, reset_start, reset_end writes and "
+     "change.emit() (S21's _DASH_AXIS_FINISH_JS)",
+     "browser test",
+     "test/test_default_axes_chrome.py"),
+    ("BokehJS CustomJSTransform func and v_func with args (S35's "
+     "_DASH_DATE_UNITS_JS)",
+     "browser test",
+     "test/test_csp_browser.py::TestTheDateTransformUnderTheCsp"
+     "::test_saved_page"),
+    ("bokeh.models.CustomJSTicker (imported by every render; the floor's "
+     "reason)",
+     "_dash_dep_fail",
+     "test/test_dependency_guards.py"),
+)
+
 
 def _dash_bokeh_window(version):
     """Where a bokeh version falls in the verified window (WP-30 P1.30):
@@ -4759,10 +4811,27 @@ def _dash_seal_saved_page(page: str, hashes) -> str:
     names the count and the digests (at most 200 characters), never the
     page's text.
 
+    WP-30 P1.30 (A109): the page's head must hold exactly one
+    Content-Security-Policy <meta>.  dash splices its policy in at Bokeh's
+    literal ``<head>``; a Bokeh writing that tag otherwise would get none,
+    which the digests alone do not show.  Only the head is counted, so
+    user text (the body's JSON) cannot move the count.
+
     Raises:
         DashScriptPolicyError: if the page holds an inline script whose
-            digest is not in ``hashes``; nothing is written.
+            digest is not in ``hashes``, or its head does not hold exactly
+            one policy; nothing is written.
     """
+    end = page.lower().find("</head>")
+    head = page if end < 0 else page[:end]
+    n = len(re.findall(r'<meta\s+http-equiv="Content-Security-Policy"',
+                       head, re.I))
+    if n != 1:
+        raise DashScriptPolicyError(
+            "dash: refusing to write a page whose head holds %d "
+            "Content-Security-Policy elements (bokeh %s); dash writes "
+            "exactly one, so this Bokeh's page is not one dash was verified "
+            "on; nothing was written." % (n, _dash_bokeh_shown()))
     extra = sorted(set(_dash_script_hashes(page)) - set(hashes))
     if extra:
         shown = " ".join(extra)
@@ -4901,9 +4970,23 @@ def _dash_served_template(nonce=None):
 
     Raises:
         TypeError, ValueError: as :func:`_dash_csp_served` does.
+        RuntimeError: if Bokeh's FILE lacks one of the three blocks (WP-30
+            P1.30, A109: fail closed rather than serve without a policy).
     """
     import functools
     from bokeh.core.templates import FILE
+    # WP-30 P1.30 (A109): Jinja drops a child block its parent lacks, so a
+    # Bokeh whose FILE had no preamble would serve a page with no policy
+    # and raise nothing.  One dict lookup per session.
+    missing = [b for b in ("preamble", "js_resources", "inner_body")
+               if b not in getattr(FILE, "blocks", {})]
+    if missing:
+        raise RuntimeError(
+            "dash: this Bokeh's page template (bokeh %s) has no %s block, "
+            "where dash puts the page's Content-Security-Policy and script "
+            "nonce; the served page would have no policy, so it is not "
+            "served. Run dash_setup for a verified bokeh."
+            % (_dash_bokeh_shown(), ", ".join(missing)))
     if nonce is None:
         nonce = _dash_new_nonce()
     policy = _dash_csp_served(nonce)
@@ -4920,6 +5003,77 @@ def _dash_served_template(nonce=None):
         globals={"base": FILE,
                  "dash_nonce_scripts": functools.partial(
                      _dash_nonce_scripts, nonce=nonce)})
+
+
+def _dash_bokeh_shown():
+    """The running bokeh's version for a message: at most 40 printable
+    characters (WP-30 P1.30)."""
+    import sys
+    v = getattr(sys.modules.get("bokeh"), "__version__", "")
+    return "".join(c for c in str(v)[:40] if c.isprintable()) or "unknown"
+
+
+def _dash_unsigned_scripts(markup, nonce):
+    """How many script elements of ``markup`` lack ``nonce="<nonce>"`` in
+    their opening tag (WP-30 P1.30).  Elements are found as
+    :func:`_dash_nonce_scripts` finds them -- the opening tag, then on to
+    the next ``</script`` -- so the text of a tag inside a script's body is
+    never counted as an element."""
+    text = str(markup)
+    open_re = re.compile(r"<script(?=[\s>/])", re.I)
+    close_re = re.compile(r"</script", re.I)
+    want = 'nonce="%s"' % nonce
+    n, pos = 0, 0
+    while True:
+        m = open_re.search(text, pos)
+        if m is None:
+            return n
+        end = text.find(">", m.end())
+        tag = text[m.start():len(text) if end < 0 else end]
+        if want not in tag:
+            n += 1
+        close = close_re.search(text, m.end())
+        pos = len(text) if close is None else close.end()
+
+
+def _dash_check_served_template():
+    """Render one probe page through :func:`_dash_served_template` and
+    check what dash's served policy rests on (WP-30 P1.30, A109).
+
+    Threat: a Bokeh release whose page no longer carries the policy or the
+    nonce where dash puts them, so a served page has no CSP.  The page's
+    head must hold exactly one Content-Security-Policy <meta> naming the
+    nonce, and every script element must carry it.  The probe is a real
+    ``file_html`` page with server resources (3 ms measured), never a
+    template rendered on an empty context.  Called by the ``python app.py``
+    launcher before the Server and by the ``bokeh serve`` branch per
+    session.
+
+    Raises:
+        RuntimeError: naming what was found, the bokeh version and
+            dash_setup.
+    """
+    from bokeh.embed import file_html
+    from bokeh.models import Div
+    from bokeh.resources import Resources
+    nonce = _dash_new_nonce()
+    page = file_html(Div(text=""), Resources(mode="server", root_url="/"),
+                     "dash", template=_dash_served_template(nonce))
+    i = page.lower().find("</head>")
+    head = page[:i] if i >= 0 else ""
+    metas = len(re.findall(r'<meta\s+http-equiv="Content-Security-Policy"',
+                           head, re.I))
+    scripts = len(re.findall(r"<script(?=[\s>/])", page, re.I))
+    unsigned = _dash_unsigned_scripts(page, nonce)
+    if i < 0 or metas != 1 or ("'nonce-%s'" % nonce) not in head or \
+            scripts == 0 or unsigned:
+        raise RuntimeError(
+            "dash: this Bokeh's served page (bokeh %s) holds %d "
+            "Content-Security-Policy element(s) in its head and %d of %d "
+            "script element(s) without the page's nonce; dash writes one "
+            "policy and signs every script, so it is not served. Run "
+            "dash_setup for a verified bokeh."
+            % (_dash_bokeh_shown(), metas, unsigned, scripts))
 
 
 def _dash_server_transforms(settings: "dict | None" = None) -> list:
@@ -5017,15 +5171,40 @@ def _dash_harden_origin_check() -> bool:
     must refuse, and only when it admits it is it replaced, so a Bokeh that
     already matches label for label is left as it is.
 
+    WP-30 P1.30 (A109, critic C2): a Bokeh without either name is a named
+    error, and after any replacement ``check_allowlist`` -- the handler's
+    own path, imported at call time -- must refuse the probe, else a
+    handler that stopped calling ``match_host`` would keep a lenient check.
+    Idempotent: the bokeh serve branch calls it for every session.
+
     Returns:
         True when the matcher was replaced.
+
+    Raises:
+        RuntimeError: naming the internal, the bokeh version and
+            dash_setup; the server is not started.
     """
     import bokeh.server.util as _bokeh_util
-    if not _bokeh_util.match_host("localhost.dash-origin-check.invalid:1",
-                                  "localhost:1"):
-        return False
-    _bokeh_util.match_host = _dash_strict_match_host
-    return True
+    for _name in ("match_host", "check_allowlist"):
+        if not callable(getattr(_bokeh_util, _name, None)):
+            raise RuntimeError(
+                "dash: this Bokeh (bokeh %s) has no bokeh.server.util.%s, "
+                "which dash's websocket origin check relies on; the server "
+                "was not started. Run dash_setup for a verified bokeh."
+                % (_dash_bokeh_shown(), _name))
+    replaced = False
+    if _bokeh_util.match_host("localhost.dash-origin-check.invalid:1",
+                              "localhost:1"):
+        _bokeh_util.match_host = _dash_strict_match_host
+        replaced = True
+    if _bokeh_util.check_allowlist("localhost.dash-origin-check.invalid:1",
+                                   ["localhost:1"]):
+        raise RuntimeError(
+            "dash: this Bokeh (bokeh %s) admits a websocket origin that only "
+            "begins with an allowed host, and dash could not make the check "
+            "exact; the server was not started. Run dash_setup for a "
+            "verified bokeh." % (_dash_bokeh_shown(),))
+    return replaced
 
 
 # ---------------------------------------------------------------------------
@@ -5211,12 +5390,59 @@ def _dash_request_token(handler):
         return None
 
 
+def _dash_check_auth_internals():
+    """Check the Bokeh internals the key check uses (WP-30 P1.30, A109).
+
+    Threat: a Bokeh release that renames the AuthProvider hook (dash's
+    override would be ignored and Gate A would admit every request) or
+    changes the session token's layout (Gate A would refuse every
+    websocket).  The imports must succeed, ``get_user_async`` and
+    ``get_login_url`` must be properties of ``AuthProvider``, and a token
+    Bokeh makes with the key in its arguments must read back through
+    :func:`_dash_ws_payload`.
+
+    Raises:
+        RuntimeError: naming the internal, the bokeh version and
+            dash_setup; the server is not started.
+    """
+    def _fail(what):
+        return RuntimeError(
+            "dash: this Bokeh (bokeh %s) lacks %s, which the served app's "
+            "key check uses; the server was not started. Run dash_setup "
+            "for a verified bokeh." % (_dash_bokeh_shown(), what))
+    try:
+        from bokeh.server.auth_provider import AuthProvider
+        from bokeh.util.token import (generate_jwt_token,
+                                      generate_session_id, get_token_payload)
+    except Exception as e:
+        raise _fail("%s (%s)" % (type(e).__name__, str(e)[:200])) from None
+    del get_token_payload
+    for hook in ("get_user_async", "get_login_url"):
+        if not isinstance(getattr(AuthProvider, hook, None), property):
+            raise _fail("the AuthProvider hook %s" % hook)
+    try:
+        tok = generate_jwt_token(
+            generate_session_id(),
+            extra_payload={"arguments": {_DASH_TOKEN_ARG: [b"dash-probe"]}})
+        got = _dash_one_value(((_dash_ws_payload("bokeh, " + tok) or {})
+                               .get("arguments") or {}).get(_DASH_TOKEN_ARG))
+    except Exception:
+        got = None
+    if got not in (b"dash-probe", "dash-probe"):
+        raise _fail("the session token's layout")
+
+
 def _dash_token_auth(expected):
     """Gate A (WP-29 P0.12a): a Bokeh ``AuthProvider`` that admits a
     request only with the key *expected*, and refuses every other with a
     constant 403 in ``prepare``, before any handler body and before the
     websocket upgrade.  Built here so tornado is imported only when a
-    Server is.  Threat: another account reading the data over loopback."""
+    Server is.  Threat: another account reading the data over loopback.
+
+    WP-30 P1.30 (A109): the internals it rests on are checked first
+    (:func:`_dash_check_auth_internals`), and the built provider must
+    answer with dash's own hooks, else RuntimeError."""
+    _dash_check_auth_internals()
     from bokeh.server.auth_provider import AuthProvider
     from tornado.web import HTTPError
     if not _dash_token_valid(expected):
@@ -5239,7 +5465,13 @@ def _dash_token_auth(expected):
         def get_login_url(self):
             return _refuse
 
-    return _DashTokenAuth()
+    prov = _DashTokenAuth()
+    if prov.get_user_async is not _admit or prov.get_login_url is not _refuse:
+        raise RuntimeError(
+            "dash: this Bokeh (bokeh %s) does not use the AuthProvider hook "
+            "dash's key check overrides; the server was not started. Run "
+            "dash_setup for a verified bokeh." % (_dash_bokeh_shown(),))
+    return prov
 
 
 def _dash_session_token_ok(doc, expected):
@@ -42571,6 +42803,7 @@ class ServerAppBuilder:
                       "_DASH_LINK_UNWRITTEN",
                       # WP-30 P1.30: the verified bokeh window.
                       "_DASH_BOKEH_FLOOR", "_DASH_BOKEH_CEIL", "_DASH_BOKEH_VERIFIED",
+                      "_DASH_BOKEH_INTERNALS",
                       # SchemeParser._parse_file's include bound; the app
                       # is handed properties and never parses a file, but
                       # the method's source travels with the class.
@@ -42961,6 +43194,8 @@ class ServerAppBuilder:
                          "_dash_strict_match_host",
                          "_dash_harden_origin_check",
                          "_dash_bokeh_window", "_dash_bokeh_check",
+                         "_dash_bokeh_shown", "_dash_unsigned_scripts",
+                         "_dash_check_served_template", "_dash_check_auth_internals",
                          # The resource limits, read from the spec and
                          # applied where the app groups and lists (WP-19).
                          "_dash_limits", "_dash_limit_hint",
@@ -46213,6 +46448,13 @@ class ServerAppBuilder:
             "if _dash_bk_note and not _DASH_TRIAL:",
             "    warnings.warn(_dash_bk_note, UserWarning)",
             "",
+            "# WP-30 P1.30 (A109, Q-41.1): bokeh serve runs this module for each",
+            "# session before its websocket connects, so the page template is",
+            "# checked and the origin check made exact here too (idempotent).",
+            "if __name__ != '__main__':",
+            "    _dash_check_served_template()",
+            "    _dash_harden_origin_check()",
+            "",
             "if __name__ != '__main__':",
             "    make_document(curdoc())",
             "",
@@ -46283,6 +46525,8 @@ class ServerAppBuilder:
             "              'only begins with an allowed host; dash checks '",
             "              'each websocket origin label for label instead.',",
             "              flush=True)",
+            "    # WP-30 P1.30 (A109): no server for a page without its policy.",
+            "    _dash_check_served_template()",
             "    _dash_srv = Server(",
             "        {'/': Application(FunctionHandler(make_document))},",
             "        port=_p,",

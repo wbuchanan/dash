@@ -793,7 +793,10 @@ class TestAHostileFragmentIsNotAdmitted:
         assert not out.exists()
 
     def test_the_seal_refuses_an_unhashed_script(self, where):
-        page = ("<html><head><script>a();</script></head><body>"
+        # Fixture updated (WP-30 P1.30): a saved page's head holds its one
+        # policy, which the seal now also requires.
+        page = ("<html><head><meta http-equiv=\"Content-Security-Policy\" "
+                "content=\"x\"><script>a();</script></head><body>"
                 + ("<p>x</p>" if where == "bs_header" else "")
                 + "</body></html>")
         hashes = dr._dash_script_hashes(page)

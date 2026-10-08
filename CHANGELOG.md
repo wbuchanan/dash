@@ -520,7 +520,7 @@ and now matches Stata.
   reads `%NAME%` even inside quotes, so it could open another file than the
   one written. dash prints the path instead. (WP-30, P1.29)
 
-<!-- WP-30 P1.30 -->
+- The served app refuses to start, and a saved page is not written, when a bokeh release changes what dash's protections rely on: the page template's blocks that carry the Content-Security-Policy and script nonce (a template without them served a page with no policy), the saved page's head, the websocket origin matcher (a handler that stopped using it re-admitted look-alike origins; `bokeh serve app.py` now makes Bokeh's origin check exact as `python app.py` does, where under bokeh 3.8 it admitted any origin that began with an allowed host), and the key check's AuthProvider hook and token layout (a renamed hook let every request in). Each stops with one message naming the internal and `dash_setup`. The label, legend and tooltip injection checks run in a browser for every bokeh version in the window. (WP-30, P1.30)
 
 <!-- WP-30 P1.31a -->
 
@@ -851,7 +851,7 @@ and now matches Stata.
 - `dash_setup, garbage(1)` is r(198), was r(101), because the command now
   takes an option. (WP-29, P0.19)
 
-<!-- WP-30 P1.30 -->
+- bokeh has a ceiling: `dash_setup` installs `bokeh>=3.8,<3.10` (it installed `bokeh>=3.8`, which resolved to the unverified 3.10.0), the versions dash was verified on (any patch release of 3.8 or 3.9). A bokeh at or above 3.10 that you already have is left as it is and reported as "outside the verified range", a warning; `dash` then draws and prints one note. A bokeh below 3.8 is refused when `dash` runs (it used to render with no word). Only bokeh has a ceiling. (WP-30, P1.30)
 
 - Python and its packages are checked before a dash command starts. Every command but `dash clear` stops with r(198) and one message naming what is missing, the Python it looked in and `dash_setup` when the linked Python cannot be started, is older than 3.11, or lacks numpy, pandas or bokeh or has one that fails to import; it used to stop with r(7102) and a Python traceback (`ModuleNotFoundError: No module named 'numpy'`) that named no remedy. A registration such as `dash scatter mpg weight, name(g1)` is now refused the same way. numpy or pandas below `dash_setup`'s minimum is named in a note and the command goes on. `dash serve` and a dashboard app run by hand (`python app.py`, `bokeh serve`) stop with the same one line instead of a traceback. `dash_setup` tries a first Python call that fails once more and reports a Python that cannot be started, with its path and, on a Mac, the processor it must be built for, instead of stopping before its summary. `dash clear` prunes dash's temporary files with the packages missing. (WP-30, P1.32)
 

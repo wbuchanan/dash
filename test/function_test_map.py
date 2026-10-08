@@ -1027,6 +1027,11 @@ FUNCTIONS = {
  '_dash_join_spec': 'test/test_connect_options.py::TestHandWrittenSpecs::test_defaults',
  '_dash_join_vertices': 'test/test_connect_options.py::TestTheVertices::test_every_rule',
  # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
+ '_dash_bokeh_shown': 'test/test_bokeh_internals.py::TestTheTemplateFailsClosed::test_a_template_without_the_blocks_is_refused',
+ '_dash_check_auth_internals': 'test/test_bokeh_internals.py::TestTheKeyCheckFailsClosed::test_a_changed_token_layout_is_a_named_error',
+ '_dash_check_auth_internals.<locals>._fail': 'test/test_bokeh_internals.py::TestTheKeyCheckFailsClosed::test_a_changed_token_layout_is_a_named_error',
+ '_dash_check_served_template': 'test/test_bokeh_internals.py::TestTheTemplateFailsClosed::test_the_probe_page_is_counted',
+ '_dash_unsigned_scripts': 'test/test_bokeh_internals.py::TestTheTemplateFailsClosed::test_the_probe_page_is_counted',
  '_dash_bokeh_check': 'test/test_bokeh_window.py::TestTheRuntimeCheck::test_below_the_floor_is_refused_naming_dash_setup',
  '_dash_bokeh_window': 'test/test_bokeh_window.py::TestTheWindowVerdict::test_each_version_gets_its_verdict',
  # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)

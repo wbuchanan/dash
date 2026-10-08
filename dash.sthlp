@@ -2024,8 +2024,15 @@ label: {cmd:localhost.example.com} is not {cmd:localhost}.  Bokeh before 3.9
 matched only the first labels, so a page from any name that begins with an
 allowed host was admitted; the app checks origins itself whatever Bokeh it
 runs under, and says so when it starts under such a Bokeh.
-{cmd:bokeh serve app.py} uses Bokeh's own check, so run it under Bokeh 3.9
-or later.
+{cmd:bokeh serve app.py} makes Bokeh's check exact in the same way for
+every session, and {cmd:dash} notes any bokeh newer than it was verified on.
+
+{pstd}
+If a bokeh release changes what this protection relies on -- the page
+template's blocks, the origin matcher, the key check's hook or its token
+layout -- the app refuses to start ({cmd:python app.py}) or refuses each
+session ({cmd:bokeh serve}) with a message naming it, and a saved page is
+not written; {helpb dash_setup} installs a verified bokeh.
 
 {pstd}
 Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
