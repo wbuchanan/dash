@@ -660,8 +660,10 @@ class TestTheParsersFoundSomething:
         # 361 -> 363: P1.14b's {ul:Named styles.} scheme paragraph and
         # its Unsupported Dot and marker back-line styles entry.
         # 363 -> 364: P1.24's mlabv:position() row.
-        assert len(defs) == 364, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 364 "
+        # 364 -> 367: WP-30 P1.20a's Region Styling rows (ten for seven:
+        # each drawn sub-option, the graph region and the canvas).
+        assert len(defs) == 367, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 367 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

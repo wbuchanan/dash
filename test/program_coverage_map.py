@@ -775,6 +775,9 @@ COVERAGE = {
         # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
         # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
         # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
+        "_dash_rep_region": ("test_twoway_option_parity.cscript:RS-12",),
+        "_dash_rep_region_word": ("test_twoway_option_parity.cscript:RS-10",),
+        "_dash_subreq_region": ("test_twoway_option_parity.cscript:RS-01",),
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
         # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)

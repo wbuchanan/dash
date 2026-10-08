@@ -1560,7 +1560,6 @@ WP30_OPEN = {
     "P1.15b": "by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout",
     "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",
     "P1.18b": "The add sub-option replaces the default ticks instead of adding to them, and an axis(2) add is named and not drawn",
-    "P1.20a": "plotregion() and graphregion() styling sub-options such as style(none), lcolor(), lwidth(), fc() and lc() are dropped with no note",
     "P1.20b": "plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn",
     "P1.21a": "xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() and lalign() are only named",
     "P1.21b": "xline() and yline() noextend, extend and style() are only named, so every line spans the whole frame",

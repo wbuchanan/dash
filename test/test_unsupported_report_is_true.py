@@ -556,7 +556,11 @@ LIVE_VALUES = {
               {"ytitle2": "Second"}),
     # ---- graph-level --------------------------------------------------------
     "aspectratio": ({}, {}, "scatter", ("aspectratio", "0.5", "2")),
-    "bgcolor": ({}, {}, "scatter", ("bgcolor", "red", "blue")),
+    # Flipped (WP-30 P1.20a): two lone bgcolor() pages differing was wrong
+    # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); under graphregion(color(none))
+    # the canvas shows.
+    "bgcolor": ({}, {}, "scatter", ("bgcolor", "red", "blue",
+                                    {"graphregion": "color(none)"})),
     "by": ({}, {}, "scatter", ("by", "foreign", "rep78")),
     "caption": ({}, {}, "scatter", ("caption", "A", "B")),
     "graphregion": ({}, {}, "scatter", ("graphregion", "color(red)",
@@ -619,8 +623,9 @@ def _live_pair(opt):
     """``(popts_a, gopts_a, popts_b, gopts_b, ptype)`` for one live option."""
     pa, pb, ptype, g = LIVE_VALUES[opt]
     if isinstance(g, tuple):
-        key, a, b = g
-        return dict(pa), {key: a}, dict(pb), {key: b}, ptype
+        key, a, b, *extra = g
+        more = dict(extra[0]) if extra else {}
+        return dict(pa), {**more, key: a}, dict(pb), {**more, key: b}, ptype
     return dict(pa), dict(g), dict(pb), dict(g), ptype
 
 

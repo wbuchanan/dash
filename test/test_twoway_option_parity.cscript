@@ -150,6 +150,13 @@
 *!   MV-12  mlabtextstyle() (part 2) is taken in silence on line, lfit and
 *!          rscatter, the rightmost copy kept, mlabt() read; MV-13 it is a
 *!          style list, one element per y.
+*!   RS-01  the region refusals twoway gives, rc and words (WP-30 P1.20a).
+*!   RS-02  graphregion() before plotregion(), both before legend()/axes.
+*!   RS-03  every region sub-option from its minimum spelling to its name.
+*!   RS-04  what twoway takes with rc 0 (a trailing comma, bad style names).
+*!   RS-10  repeated region copies merge as twoway applies them.
+*!   RS-11  two abbreviated copies are written under their full names.
+*!   RS-12  the measured copy pairs (region_truth.json M) merge as drawn.
 *!   BG-07  barwidth() on rcap and rcapsym is refused r(198) in twoway's words,
 *!          in comma mode, in a plot group and after || (WP-30 P1.17a).
 *!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
@@ -3618,6 +3625,139 @@ else display as text "MV-13 PASS: mlabtextstyle() is a style list, one element p
 capture dash clear
 capture erase "`mvlog'"
 set linesize `mv_ls'
+// RS: plotregion()/graphregion() sub-options, read as twoway reads them (WP-30 P1.20a)
+// ----------------------------------------------------------------
+// twoway's answers here are the region fixture's (test/fixtures/
+// region_truth.json, scripts/extract_region_truth.do): its R probes'
+// return codes and first error lines, its S probes' spellings.  Each row
+// is written by Python to a tab file and read back by -file read-, so no
+// typed region text is expanded as a macro inside Python.
+local rsrows "`c(tmpdir)'dash_rs_rows.txt"
+global ZRS_ROWS "`rsrows'"
+python:
+import json as _zrs_json
+from sfi import Macro as _zrs_M
+with open("fixtures/region_truth.json", encoding="utf-8") as _zrs_fh:
+    _zrs_p = _zrs_json.load(_zrs_fh)["probes"]
+# Each row's shortest spelling twoway takes (its minimum).
+_zrs_min = {}
+for _zrs_k, _zrs_r in _zrs_p.items():
+    if _zrs_k.startswith("S|") and _zrs_r["rc"] == 0:
+        _zrs_f, _zrs_t = _zrs_k.split("|")[1:]
+        _zrs_min[_zrs_f] = min(_zrs_min.get(_zrs_f, 99), len(_zrs_t))
+with open(_zrs_M.getGlobal("ZRS_ROWS"), "w", encoding="utf-8") as _zrs_out:
+    for _zrs_k in sorted(_zrs_p):
+        _zrs_r = _zrs_p[_zrs_k]
+        _zrs_kind = _zrs_k
+        if _zrs_k.startswith("S|"):
+            # The minimum, the full name, one letter short and the capitals.
+            _zrs_f, _zrs_t = _zrs_k.split("|")[1:]
+            _zrs_kind = "S"
+            if _zrs_t == _zrs_t.lower() and len(_zrs_t) not in (
+                    _zrs_min[_zrs_f], _zrs_min[_zrs_f] - 1, len(_zrs_f)):
+                continue
+        elif not _zrs_k.startswith("R"):
+            continue
+        _zrs_opts = _zrs_r["cmd"].split(",", 1)[1].strip()
+        _zrs_out.write("\t".join((_zrs_kind, str(_zrs_r["rc"]), _zrs_r["err"],
+                                  _zrs_opts)) + "\n")
+end
+local b01 = 0
+local b02 = 0
+local b03 = 0
+local b04 = 0
+local n03 = 0
+tempname rsfh
+file open `rsfh' using "`rsrows'", read text
+file read `rsfh' line
+while r(eof) == 0 {
+    mata: _zrs_f = tokens(st_local("line"), char(9)); _zrs_f = select(_zrs_f, _zrs_f :!= char(9))
+    mata: st_local("rid", _zrs_f[1]); st_local("trc", _zrs_f[2])
+    mata: st_local("terr", cols(_zrs_f) == 4 ? _zrs_f[3] : ""); st_local("ropts", _zrs_f[cols(_zrs_f)])
+    _ztp_run `"dash scatter mpg weight, `ropts' name(zrs)"' "`logfile'"
+    local drc = r(rc)
+    local ok = (`drc' == `trc')
+    if `ok' & `trc' & `"`terr'"' != "" {
+        _ztp_logged "`logfile'" `"`terr'"'
+        local ok = r(found)
+    }
+    local grp "04"
+    if "`rid'" == "S" {
+        local grp "03"
+        local ++n03
+    }
+    else if inlist("`rid'", "R14", "R15", "R16", "R17") local grp "02"
+    else if `trc' local grp "01"
+    if !`ok' {
+        display as error `"RS-`grp' FAIL `rid' `ropts': twoway r(`trc') `terr', dash r(`drc')"'
+        local b`grp' = 1
+    }
+    file read `rsfh' line
+}
+file close `rsfh'
+capture erase "`rsrows'"
+macro drop ZRS_ROWS
+capture dash clear
+foreach g in 01 02 03 04 {
+    if `b`g'' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' RS-`g'"
+    }
+}
+if !`b01' display as text "RS-01 PASS: the region refusals twoway gives (unknown, capitalised, short, repeated, a comma) are dash's, rc and words"
+if !`b02' display as text "RS-02 PASS: graphregion() is checked before plotregion(), both before legend() and the axis options"
+if !`b03' display as text "RS-03 PASS: `n03' spellings: each sub-option from its minimum to its full name, and one letter short and the capitals refused, as twoway"
+if !`b04' display as text "RS-04 PASS: a trailing comma, lalign(bogus), lpattern(bogus), margin(bogus), lcolor(notacolour) and lwidth(abc) are rc 0, as twoway"
+
+// RS-10 and RS-12: copies merged by _dash_rep_merge as twoway applies them.
+local b10 = 0
+foreach row in ///
+    "RS-10|plotregion|color(red)|c(blue)|color(blue)" ///
+    "RS-10|plotregion|color(red)|lcolor(blue)|fcolor(red) lcolor(blue)" ///
+    "RS-10|plotregion|lcolor(blue)|color(red)|color(red)" ///
+    "RS-10|plotregion|fcolor(red)|style(none)|style(none)" ///
+    "RS-10|plotregion|margin(zero)|margin(l+10)|margin(zero) margin(l+10)" ///
+    "RS-10|graphregion|color(red)|margin(zero)|color(red) margin(zero)" ///
+    "RS-12|plotregion|color(red)|lcolor(blue)|fcolor(red) lcolor(blue)" ///
+    "RS-12|plotregion|lcolor(blue)|color(red)|color(red)" ///
+    "RS-12|plotregion|color(red)|c(blue)|color(blue)" ///
+    "RS-12|plotregion|fcolor(red)|style(none)|style(none)" ///
+    "RS-12|plotregion|lcolor(red)|lstyle(none)|lstyle(none)" ///
+    "RS-12|plotregion|fcolor(blue)|color(red)|color(red)" ///
+    "RS-12|plotregion|color(red)|fcolor(blue)|lcolor(red) fcolor(blue)" ///
+    "RS-12|plotregion|style(none)|fcolor(red)|style(none) fcolor(red)" ///
+    "RS-12|graphregion|color(red)|lcolor(blue)|fcolor(red) lcolor(blue)" {
+    mata: _zrs_f = tokens(st_local("row"), "|"); _zrs_f = select(_zrs_f, _zrs_f :!= "|")
+    mata: st_local("mid", _zrs_f[1]); st_local("mgot", _dash_rep_merge(_zrs_f[2], _zrs_f[3], _zrs_f[4])); st_local("mwant", _zrs_f[5])
+    if `"`mgot'"' != `"`mwant'"' {
+        display as error `"`mid' FAIL `row': got `mgot'"'
+        if "`mid'" == "RS-10" local b10 = 1
+        else local b12 = 1
+    }
+}
+if `b10' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RS-10"
+}
+else display as text "RS-10 PASS: repeated region copies merge as twoway applies them, every margin() kept"
+if 0`b12' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RS-12"
+}
+else display as text "RS-12 PASS: the nine measured copy pairs (region_truth.json M01-M09) merge to the strings test_region_truth.py draws"
+
+// RS-11: the spec of two abbreviated copies holds the merged full names.
+_ztp_run `"dash scatter mpg weight, plotregion(c(red)) plotregion(lc(blue)) name(zrs11)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("hv", strofreal(_ztp_hasval("zrs11", "plotregion", "fcolor(red) lcolor(blue)")))
+capture dash clear
+if `rc' | !`hv' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RS-11"
+    display as error "RS-11 FAIL: r(`rc'), plotregion fcolor(red) lcolor(blue) `hv'"
+}
+else display as text "RS-11 PASS: plotregion(c(red)) plotregion(lc(blue)) is written fcolor(red) lcolor(blue)"
+capture mata: mata drop _zrs_f
 
 // ----------------------------------------------------------------
 // Summary

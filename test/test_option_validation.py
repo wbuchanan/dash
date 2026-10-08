@@ -1093,7 +1093,10 @@ class TestTheRemainingSilentSites:
         assert line.startswith("dash: color(notacolour) is not a recognised colour")
 
     @pytest.mark.parametrize("go,text,prop", [
-        ({"bgcolor": "notacolour"}, "bgcolor(notacolour)", "border_fill_color"),
+        # Flipped (WP-30 P1.20a): bgcolor() on the border was wrong because
+        # twoway paints bgcolor() under the graph region (region_truth.json D26-D29); graphregion(color(none)) shows it.
+        ({"bgcolor": "notacolour", "graphregion": "color(none)"},
+         "bgcolor(notacolour)", "border_fill_color"),
         ({"plotbgcolor": "notacolour"}, "plotbgcolor(notacolour)",
          "background_fill_color"),
         ({"plotregion": "color(notacolour)"}, "plotregion(color(notacolour))",
@@ -1122,9 +1125,15 @@ class TestTheRemainingSilentSites:
         assert std_w == srv_w
         assert not [w for w in std_w if "recognised colour" in w], std_w
         std, srv = _figures(r, doc)
-        # graphregion(color()) is applied after bgcolor(), so it wins.
+        # Flipped (WP-30 P1.20a): "graphregion(color()) is applied after
+        # bgcolor(), so it wins" was wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29):
+        # the graph region is drawn over the canvas.
         assert std.border_fill_color == srv.border_fill_color == \
             dr.OptionTranslator.translate_mcolor("gs14")
+        r2, doc2, _, _ = _both([plot_for("scatter")], {"bgcolor": "ltblue"})
+        std2, srv2 = _figures(r2, doc2)
+        assert std2.border_fill_color == srv2.border_fill_color == \
+            dr.SchemeParser("s2color").background_color
         assert std.outline_line_color == srv.outline_line_color == "#1a476f"
 
     @pytest.mark.parametrize("sub,what,using", [

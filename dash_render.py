@@ -6128,50 +6128,218 @@ def _dash_unquoted(text: str) -> str:
     return t
 
 
-def _extract_region_color(val: str) -> str:
-    """Extract color name from region option value like 'color(ltblue) lwidth(thin)'.
+def _dash_region_table():
+    """twoway's region sub-options, as S10's six-column rows (WP-30 P1.20a).
 
-    Accepts color() or fcolor() sub-option.  Returns the raw color string,
-    without the quotes an RGB triplet is written in, or ''.
+    ``(full, minimum, 1, kind, False, "")`` in the declaration order of
+    ``_fr_area_parse_and_log.ado:33-43`` (StataNow 19.5): one unstarred
+    stage; *kind* ``"a"`` takes an argument, ``"w"`` is a word.  Names are
+    read by ``_dash_subopt_canon(name, _dash_region_table())``: lower case
+    only, from the minimum (the parser's capitals) to the full name.  A
+    function, not a constant, so the served app copies it by name.
     """
-    m = re.search(r'\bf?color\s*\(([^)]+)\)', val, re.IGNORECASE)
-    return _dash_unquoted(m.group(1)) if m else ""
+    rows = (("style", "sty"), ("istyle", "isty"), ("lstyle", "ls"),
+            ("ilstyle", "ils"), ("lcolor", "lc"), ("ilcolor", "ilc"),
+            ("lwidth", "lw"), ("ilwidth", "ilw"), ("lpattern", "lp"),
+            ("ilpattern", "ilp"), ("lalign", "la"), ("ilalign", "ila"),
+            ("shadestyle", "shades"), ("ishadestyle", "ishades"),
+            ("fcolor", "fc"), ("ifcolor", "ifc"), ("color", "c"),
+            ("icolor", "ic"), ("intensity", "inten"),
+            ("iintensity", "iinten"), ("margin", "m"))
+    return tuple((f, m, 1, "a", False, "") for f, m in rows) + (
+        ("marginonly", "marginonly", 1, "w", False, ""),)
 
 
-def _extract_region_lcolor(val: str) -> str:
-    """Extract line-color name from region option value (lcolor() sub-option),
-    without the quotes an RGB triplet is written in."""
-    m = re.search(r'\blcolor\s*\(([^)]+)\)', val, re.IGNORECASE)
-    return _dash_unquoted(m.group(1)) if m else ""
+def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
+    """One (merged) copy of plotregion()/graphregion() read as twoway's
+    region parser reads it (WP-30 P1.20a; ``_fr_area_parse_and_log.ado``).
 
-
-def _extract_region_lwidth(val: str, default_px: "float | None" = None,
-                           ref_in: float = 4.0) -> float | None:
-    """Extract line-width from region option value (lwidth() sub-option).
-
-    Returns numeric pixels or None if absent/invalid.  Stata units on
-    Stata's ladder (WP-30 P1.12b); ``*#`` multiplies *default_px*, ``thin``
-    (every shipped scheme's ``linewidth plotregion``) when None, and an
-    absolute unit is read at *ref_in*, until section 38 passes the scheme's
-    width and the figure's reference.
+    Returns ``(settings, named)``.  *settings* starts as a copy of *base*
+    (``fill``, ``fill_alpha``, ``line``, ``line_alpha``, ``line_width``,
+    ``line_dash``) and is edited in twoway's order, whatever the typed
+    order (E3): ``style()`` (an area style, through ``style_bundle``),
+    ``lstyle()`` (a line style), ``lcolor()``, ``lwidth()``,
+    ``lpattern()``, then ``color()`` for the outline, then ``color()`` and
+    ``fcolor()`` for the fill.  ``none`` as typed draws nothing (None);
+    ``%NN`` is the alpha; an unknown colour is black with S30's note; a
+    malformed one, or a bare ``*#``/``%#``, keeps the role's colour (S43
+    passes the base colour at the one ``parse_color_alpha`` call below).
+    *named* lists, as typed through ``_dash_display``, the sub-options
+    twoway accepts and dash does not draw (``lalign()``, the ``i*`` inner
+    box, ``margin()``, ``shadestyle()``, ``intensity()``, ``marginonly``)
+    and any word with no region name: ten, then ``(+n more)``.  Text after
+    a top-level comma is not read here (dash.ado refuses it).  Only
+    ``#rrggbb``, None, numbers and dash lists reach *settings*.
     """
-    m = re.search(r'\blwidth\s*\(([^)]+)\)', val, re.IGNORECASE)
-    if not m:
-        return None
-    raw = m.group(1).strip()
-    if not raw:
-        return None
-    # A word that is neither a number nor a width keyword raised out of
-    # here and aborted the whole standalone render (the served app was
-    # silent for the same value).  Named, and the default kept, in both.
-    try:
-        return OptionTranslator.translate_lwidth(
-            raw, default_px if default_px is not None
-            else OptionTranslator.translate_lwidth("thin"), ref_in)
-    except (ValueError, TypeError):
-        _dash_style_note("plotregion(lwidth)", raw, "line width",
-                         "the default")
-        return None
+    T = OptionTranslator
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    ctx = T.scheme_colour_context(scheme)
+    table = _dash_region_table()
+    drawn = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color",
+             "fcolor"}
+    s = {k: base.get(k) for k in ("fill", "fill_alpha", "line",
+                                  "line_alpha", "line_width", "line_dash")}
+    vals, named = {}, []
+    text = _dash_by_tokens_commas(str(raw or ""))[0]
+    for tok in _dash_by_tokens(text):
+        if not tok.strip():
+            continue
+        paren = "(" in tok
+        full = _dash_subopt_canon(tok.split("(", 1)[0].strip(), table)
+        if full in drawn and paren:
+            vals[full] = _dash_unquoted(_dash_subopt_arg(tok))
+        else:
+            named.append(_dash_display(tok))
+    if len(named) > 10:
+        named = named[:10] + ["(+%d more)" % (len(named) - 10)]
+
+    def _bundle(cls, keys, arg):
+        b = sch.style_bundle(cls, arg)
+        if b is None:
+            return
+        for k in keys:
+            v = b.get(k)
+            if k.endswith("_alpha"):
+                v = 1.0 if v is None else v
+            if k == "line_dash":
+                v = list(v) if isinstance(v, (list, tuple)) else []
+            s[k] = v
+
+    def _read(arg, role, full):
+        # The role's colour at this point of the edit order; S43 (P1.13b)
+        # composes a bare *#/%# with it here.
+        if arg.strip() == "none":
+            s[role] = None
+            return
+        hx, al = T.parse_color_alpha(arg, f"{option}({full})", **ctx)
+        if hx is None:
+            return
+        s[role] = hx
+        s[role + "_alpha"] = 1.0 if al is None else al
+
+    if "style" in vals:
+        _bundle("area", ("fill", "fill_alpha", "line", "line_alpha",
+                         "line_width", "line_dash"), vals["style"])
+    if "lstyle" in vals:
+        _bundle("line", ("line", "line_alpha", "line_width", "line_dash"),
+                vals["lstyle"])
+    if "lcolor" in vals:
+        _read(vals["lcolor"], "line", "lcolor")
+    if "lwidth" in vals:
+        try:
+            s["line_width"] = T.translate_lwidth(
+                vals["lwidth"], default_px=s["line_width"], ref_in=ref_in)
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(lwidth)", vals["lwidth"],
+                             "line width", "the default")
+    if "lpattern" in vals:
+        try:
+            d = T.translate_lpattern(vals["lpattern"])
+            s["line_dash"] = list(d) if isinstance(d, (list, tuple)) else []
+        except (ValueError, TypeError):
+            _dash_style_note(f"{option}(lpattern)", vals["lpattern"],
+                             "line pattern", "the default")
+    if "color" in vals:
+        _read(vals["color"], "line", "color")
+        _read(vals["color"], "fill", "color")
+    if "fcolor" in vals:
+        _read(vals["fcolor"], "fill", "fcolor")
+    return s, named
+
+
+def _dash_region_blend(top, alpha, under):
+    """``#rrggbb`` of *top* drawn at *alpha* over *under* (WP-30 P1.20a).
+
+    BokehJS paints the figure's border with a clip that leaves the frame
+    out, so a translucent or absent fill would show the page, not what
+    twoway shows beneath it; the region colours are composited here
+    instead.  *alpha* None or at least 1 returns *top*.
+
+    Raises:
+        ValueError: *top* or *under* is not ``#rrggbb`` (every caller
+            passes ``stata_colour`` output).
+    """
+    for c in (top, under):
+        if not (isinstance(c, str) and len(c) == 7 and c[0] == "#"
+                and all(ch in "0123456789abcdef" for ch in c[1:])):
+            raise ValueError(f"not a #rrggbb colour: {c!r}")
+    if alpha is None or alpha >= 1:
+        return top
+    a = max(0.0, float(alpha))
+    out = "#"
+    for i in (1, 3, 5):
+        t, u = int(top[i:i + 2], 16), int(under[i:i + 2], 16)
+        out += "%02x" % int(round(a * t + (1 - a) * u))
+    return out
+
+
+def _dash_apply_regions(fig, graph_opts, scheme, seen=None, key=""):
+    """plotregion(), graphregion(), bgcolor() and plotbgcolor() on *fig*,
+    as twoway draws them (WP-30 P1.20a), in both modes.
+
+    bgcolor() is the canvas under the graph region (IR-2): it shows only
+    where the graph region is none or translucent; ``bgcolor(none)`` is
+    the colour none, black.  The graph region is drawn over the canvas
+    (``border_fill_color``, its outline ``border_line_*`` when an outline
+    sub-option is given), the plot region over the graph region
+    (``background_fill_color``, ``outline_line_*``); ``plotbgcolor()``
+    (dash's own) is the plot fill before plotregion().  Fills are
+    composited to opaque colours (``_dash_region_blend``).  The
+    sub-options dash does not draw are named once per region per graph.
+    A graph with none of the four options is left untouched.
+    """
+    go = graph_opts or {}
+    if not any(str(go.get(k) or "").strip() for k in
+               ("plotregion", "graphregion", "bgcolor", "plotbgcolor")):
+        return
+    T = OptionTranslator
+    sch = scheme if scheme is not None else SchemeParser.fallback()
+    ctx = T.scheme_colour_context(scheme)
+    ref_in = T.size_ref_of(fig)
+    canvas = sch.background_color
+    raw_bg = _dash_unquoted(str(go.get("bgcolor") or ""))
+    if raw_bg:
+        hx, al = T.parse_color_alpha(raw_bg, "bgcolor", **ctx)
+        if hx is not None:
+            canvas = _dash_region_blend(hx, al, "#ffffff")
+    raw_g = str(go.get("graphregion") or "")
+    g, named_g = _dash_region_spec(raw_g, "graphregion", {
+        "fill": sch.background_color, "fill_alpha": 1.0,
+        "line": sch.background_color, "line_alpha": 1.0,
+        "line_width": T.translate_lwidth("thin", ref_in=ref_in),
+        "line_dash": []}, scheme, ref_in)
+    gfill = (canvas if g["fill"] is None
+             else _dash_region_blend(g["fill"], g["fill_alpha"], canvas))
+    fig.border_fill_color = gfill
+    fig.border_fill_alpha = 1.0
+    table = _dash_region_table()
+    outline = {"style", "lstyle", "lcolor", "lwidth", "lpattern", "color"}
+    if any(_dash_subopt_canon(t.split("(", 1)[0].strip(), table) in outline
+           for t in _dash_by_tokens(_dash_by_tokens_commas(raw_g)[0])):
+        fig.border_line_color = g["line"]
+        fig.border_line_alpha = g["line_alpha"] if g["line_alpha"] is not None else 1.0
+        fig.border_line_width = g["line_width"]
+        fig.border_line_dash = g["line_dash"]
+    pbase = {"fill": sch.plotregion_color, "fill_alpha": 1.0,
+             "line": sch.plotregion_line_color, "line_alpha": 1.0,
+             "line_width": sch.plotregion_line_width, "line_dash": []}
+    raw_pb = _dash_unquoted(str(go.get("plotbgcolor") or ""))
+    if raw_pb:
+        hx, al = T.parse_color_alpha(raw_pb, "plotbgcolor", **ctx)
+        if hx is not None:
+            pbase["fill"], pbase["fill_alpha"] = hx, (1.0 if al is None else al)
+    p, named_p = _dash_region_spec(go.get("plotregion", ""), "plotregion",
+                                   pbase, scheme, ref_in)
+    fig.background_fill_color = (
+        gfill if p["fill"] is None
+        else _dash_region_blend(p["fill"], p["fill_alpha"], gfill))
+    fig.background_fill_alpha = 1.0
+    fig.outline_line_color = p["line"]
+    fig.outline_line_alpha = p["line_alpha"] if p["line_alpha"] is not None else 1.0
+    fig.outline_line_width = p["line_width"]
+    fig.outline_line_dash = p["line_dash"]
+    _dash_report_suboptions("graphregion", named_g, seen, key)
+    _dash_report_suboptions("plotregion", named_p, seen, key)
 
 
 # _extract_finite stood here: a source column's finite values, left a
@@ -39090,53 +39258,10 @@ class DashRenderer:
         _dash_figure_title(fig, graph_opts, _seen, _gkey)
         _dash_style_axis_titles(fig, graph_opts, _seen, _gkey)
 
-        # Figure background colors
-        # bgcolor  → border_fill_color  (outer area around the plot)
-        # plotbgcolor → background_fill_color (inner plot canvas)
-        # Every colour through _dash_graph_color, the helper the generated
-        # app runs as well: an unknown name is named, and the scheme's
-        # chrome kept.  Each of these was an `except ...: pass'.
-        raw_bgcolor = graph_opts.get("bgcolor", "")
-        if raw_bgcolor:
-            _c = _dash_graph_color("bgcolor", raw_bgcolor)
-            if _c:
-                fig.border_fill_color = _c
-
-        raw_plotbgcolor = graph_opts.get("plotbgcolor", "")
-        if raw_plotbgcolor:
-            _c = _dash_graph_color("plotbgcolor", raw_plotbgcolor)
-            if _c:
-                fig.background_fill_color = _c
-
-        # plotregion() — inner plot canvas background/border
-        # Accepts sub-options: color(X)/fcolor(X) → background_fill_color
-        #                      lcolor(X)           → outline_line_color
-        #                      lwidth(X)           → outline_line_width
-        raw_plotregion = graph_opts.get("plotregion", "")
-        if raw_plotregion:
-            _pr_bg = _extract_region_color(raw_plotregion)
-            if _pr_bg:
-                _c = _dash_graph_color("plotregion(color)", _pr_bg)
-                if _c:
-                    fig.background_fill_color = _c
-            _pr_lc = _extract_region_lcolor(raw_plotregion)
-            if _pr_lc:
-                _c = _dash_graph_color("plotregion(lcolor)", _pr_lc)
-                if _c:
-                    fig.outline_line_color = _c
-            _pr_lw = _extract_region_lwidth(raw_plotregion)
-            if _pr_lw is not None:
-                fig.outline_line_width = _pr_lw
-
-        # graphregion() — outer graph border / margin area background
-        # Accepts sub-options: color(X)/fcolor(X) → border_fill_color
-        raw_graphregion = graph_opts.get("graphregion", "")
-        if raw_graphregion:
-            _gr_bg = _extract_region_color(raw_graphregion)
-            if _gr_bg:
-                _c = _dash_graph_color("graphregion(color)", _gr_bg)
-                if _c:
-                    fig.border_fill_color = _c
+        # plotregion(), graphregion(), bgcolor() and plotbgcolor(): one
+        # reader for both modes (WP-30 P1.20a); bgcolor() is the canvas
+        # under the graph region, as twoway paints it (IR-2).
+        _dash_apply_regions(fig, graph_opts, self.scheme, _seen, _gkey)
 
         # Secondary axes (yaxis(2) / xaxis(2)), through the helper the
         # generated app runs as well -- it used to build no second axis.
@@ -42435,14 +42560,12 @@ class ServerAppBuilder:
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
                          "_dash_display",
-                         # plotregion(lwidth()) and the KPI colour: the
-                         # saved renderer's readers, so a keyword width is
-                         # honoured and an unknown colour is named here too.
-                         "_extract_region_lwidth",
-                         # plotregion()/graphregion() colours, quotes off
-                         # an RGB triplet, one reader for both modes.
-                         "_dash_unquoted", "_extract_region_color",
-                         "_extract_region_lcolor",
+                         # plotregion()/graphregion()/bgcolor(): the
+                         # saved renderer's region reader, one for both
+                         # modes (WP-30 P1.20a), quotes off an RGB triplet.
+                         "_dash_unquoted", "_dash_region_table",
+                         "_dash_region_spec", "_dash_region_blend",
+                         "_dash_apply_regions",
                          "_resolve_kpi_color", "_sanitize_css_color",
                          "_dash_kpi_card_html",
                          "_dash_warn_filter_missing", "_dash_warn_filter_type",
@@ -44399,44 +44522,9 @@ class ServerAppBuilder:
             "        _leg_bounds = []",
             "        # range() and reverse are applied by _dash_apply_scale_ranges,",
             "        # after the region colours below, as the saved figure does.",
-            "        # bgcolor / plotbgcolor — figure background colors",
-            "        # Every colour through _dash_graph_color, the reader the saved",
-            "        # figure uses: an unknown name is named, the scheme's kept.",
-            "        # The app's own _resolve_color, which this replaced (deleted",
-            "        # by WP-26), returned '' for it without a word.",
-            "        _raw_bgc = go.get('bgcolor', '')",
-            "        if _raw_bgc:",
-            "            _bgc_resolved = _dash_graph_color('bgcolor', _raw_bgc)",
-            "            if _bgc_resolved: fig.border_fill_color = _bgc_resolved",
-            "        _raw_pbgc = go.get('plotbgcolor', '')",
-            "        if _raw_pbgc:",
-            "            _pbgc_resolved = _dash_graph_color('plotbgcolor', _raw_pbgc)",
-            "            if _pbgc_resolved: fig.background_fill_color = _pbgc_resolved",
-            "        # plotregion() / graphregion() -- Stata-standard region styling,",
-            "        # through the saved renderer's own readers (copied in above):",
-            "        # this app carried two hand-written ones that kept the quotes",
-            "        # of an RGB triplet, so color(\"255 0 0\") was named unknown.",
-            "        _raw_pr = go.get('plotregion', '')",
-            "        if _raw_pr:",
-            "            _pr_bg = _extract_region_color(_raw_pr)",
-            "            if _pr_bg:",
-            "                _c = _dash_graph_color('plotregion(color)', _pr_bg)",
-            "                if _c: fig.background_fill_color = _c",
-            "            _pr_lc = _extract_region_lcolor(_raw_pr)",
-            "            if _pr_lc:",
-            "                _c = _dash_graph_color('plotregion(lcolor)', _pr_lc)",
-            "                if _c: fig.outline_line_color = _c",
-            "            # lwidth(): the saved renderer's reader, so a keyword",
-            "            # (thick) is honoured and a word is named; a bare float()",
-            "            # here took neither.",
-            "            _pr_lw = _extract_region_lwidth(_raw_pr)",
-            "            if _pr_lw is not None: fig.outline_line_width = _pr_lw",
-            "        _raw_gr = go.get('graphregion', '')",
-            "        if _raw_gr:",
-            "            _gr_bg = _extract_region_color(_raw_gr)",
-            "            if _gr_bg:",
-            "                _c = _dash_graph_color('graphregion(color)', _gr_bg)",
-            "                if _c: fig.border_fill_color = _c",
+            "        # plotregion(), graphregion(), bgcolor(), plotbgcolor(): the",
+            "        # saved figure's one reader (WP-30 P1.20a).",
+            "        _dash_apply_regions(fig, go, _DASH_SCHEME, _reported_subopts, gname)",
             "        _dash_apply_scale_ranges(fig, _xsc, _ysc, g_df, xv, yv,",
             "                                 rescale=_rescale)",
             "        # note(), caption(), subtitle(): the helper the saved renderer",

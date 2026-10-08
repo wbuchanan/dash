@@ -2018,7 +2018,10 @@ class TestServerNamedColors:
         from bokeh.models import Plot
         borders = {}
         for bg in ("", "navy"):
-            go = {"name": "g1"}
+            # Flipped (WP-30 P1.20a): bgcolor() on the border alone was
+            # wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); the graph region
+            # is none in both runs, so the canvas is what shows.
+            go = {"name": "g1", "graphregion": "color(none)"}
             if bg:
                 go["bgcolor"] = bg
             spec = _make_spec_json(graphs=[{
@@ -6762,6 +6765,10 @@ class TestLogScalePreservesStyle:
             "graph_options": {
                 "name": "g1",
                 "bgcolor": bgcolor,
+                # Flipped (WP-30 P1.20a): a lone bgcolor() showing was wrong
+                # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); the graph region is none
+                # so the canvas shows.
+                "graphregion": "color(none)",
                 "plotbgcolor": plotbgcolor,
                 "xscale": xscale,
                 "yscale": yscale,

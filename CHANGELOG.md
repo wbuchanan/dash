@@ -388,7 +388,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.18b -->
 
-<!-- WP-30 P1.20a -->
+- plotregion() and graphregion() are drawn as twoway draws them, in both modes: `plotregion(c(red))` drew nothing (abbreviations were not read) and `plotregion(color(red))` filled only, and now both fill and outline in red; `fc()`, `lc()`, `lw()`, `lp()`, `ls()`, `sty()` and the other spellings work; `none` drew black and now draws nothing; `fcolor(red%50)` drew opaque red and now draws it at half opacity; `style(none)`, `lstyle(none)`, `lpattern()` and the graph region's outline were ignored and are drawn; repeated copies combine as twoway combines them (`plotregion(color(red)) plotregion(c(blue))` was red and is blue). `bgcolor()` is now twoway's canvas under the graph region: `bgcolor(red)` alone coloured the graph region red and now changes nothing visible, and `bgcolor(red) graphregion(color(none))` shows red. (WP-30, P1.20a)
 
 <!-- WP-30 P1.20b -->
 
@@ -769,7 +769,7 @@ and now matches Stata.
 
 - `legend()` and the axis label and tick options (`xlabel()`, `ylabel()`, `xtick()`, `ytick()`, `xmlabel()`, `ymlabel()`, `xmtick()`, `ymtick()`, `zlabel()`) refuse what `twoway` refuses, with its return code and words, where `dash` named and ignored it: a sub-option in capitals (`legend(OFF)`: `option OFF not allowed`, r(198)); a spelling `twoway` does not accept (`legend(po(9))`, `ylabel(, a(45))`, `legend(garbage)`); one given twice in one option (`legend(c(2) cols(1))`: `option cols() not allowed`); the wrong form (`ylabel(, labs)`: `option labs incorrectly specified`); a bad `cols()`/`rows()`/`holes()` (`legend(c(red))`: r(121) `cols() invalid -- invalid number`); and a `label()` key that is no positive integer (r(198)). The titles and axis titles refuse the same three forms (`title("T", SIZE(small))`: `option SIZE() not allowed`, r(198)), and `ytitle("Y", prefix suffix)` is refused with `options prefix and suffix may not be combined`. A capitalised sub-option of `xline()`/`yline()` is no longer applied; it is named. (WP-30, P1.19)
 
-<!-- WP-30 P1.20a -->
+- plotregion() and graphregion() refuse what twoway refuses, r(198) in twoway's words (all rc 0 before, most with no note): an unknown sub-option (`option bogus() not allowed`), a capitalised one (`option COLOR() not allowed`), one shorter than twoway's minimum (`option st() not allowed`), a sub-option given twice in one copy (`option c() not allowed`) and a word after a comma inside the region (`invalid 'lcolor'`). (WP-30, P1.20a)
 
 <!-- WP-30 P1.21a -->
 

@@ -330,10 +330,16 @@ class TestTheRendererBound:
 
 class TestTheRegionAndReflineDefaults:
     def test_region_star_multiplies_the_default_it_is_given(self):
-        assert dr._extract_region_lwidth(
-            "lwidth(*2)", default_px=3.0) == pytest.approx(6.0)
-        assert dr._extract_region_lwidth("lwidth(*2)") == pytest.approx(
-            1.536)
+        # Flipped (WP-30 P1.20a): _extract_region_lwidth was wrong because
+        # the region reader is _dash_region_spec, whose *# multiplies the
+        # width the copy holds (the scheme's, thin under s2color).
+        base = {"fill": None, "fill_alpha": 1.0, "line": "#ffffff",
+                "line_alpha": 1.0, "line_width": 3.0, "line_dash": []}
+        s, _ = dr._dash_region_spec("lwidth(*2)", "plotregion", base)
+        assert s["line_width"] == pytest.approx(6.0)
+        s, _ = dr._dash_region_spec("lwidth(*2)", "plotregion",
+                                    dict(base, line_width=0.768))
+        assert s["line_width"] == pytest.approx(1.536)
 
     def test_refline_without_a_scheme_is_medium(self):
         from bokeh.models import Span

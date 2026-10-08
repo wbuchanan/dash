@@ -684,9 +684,6 @@ FUNCTIONS = {
  '_dash_weight_spec': 'test/test_statistical_helpers.py::TestWeightSpec::test_an_unknown_type_is_unweighted',
  '_dash_wls': 'test/test_statistical_helpers.py::TestWls::test_a_frequency_weight_is_the_replicated_regression',
  '_date_slider_step_days': 'test/test_filter_widget_data.py::TestTheRangeableTest::test_it_is_the_test_the_builder_both_modes_run_applies',
- '_extract_region_color': 'test/test_help_claims_7.py::TestTheNewHelpers::test_the_region_readers_unquote',
- '_extract_region_lcolor': 'test/test_help_claims_7.py::TestTheNewHelpers::test_the_region_readers_unquote',
- '_extract_region_lwidth': 'test/test_help_claims_7.py::TestRegionColours::test_the_option_sets_the_property',
  '_fit_grid': 'test/test_help_claims_6.py::TestRangeOnTheFits::test_without_range_the_grid_is_the_observed_range',
  '_fp_grid': 'test/test_statistical_helpers.py::TestFpPlotGrid::test_the_same_rows_give_every_distinct_x',
  '_fp_report_unsupported': 'test/test_statistical_truth.py::TestFpfitAgainstStata::test_dash_reports_them_rather_than_pretending',
@@ -1014,6 +1011,12 @@ FUNCTIONS = {
  'GlyphMapper._mlabel_vpos_columns': 'test/test_mlabvposition.py::TestThePerRowColumns::test_every_clock_and_the_fallbacks',
  '_dash_mlabvpos_name': 'test/test_mlabvposition.py::TestTheName::test_one_stata_name_or_nothing',
  # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
+ '_dash_apply_regions': 'test/test_region_truth.py::TestAgainstTwoway::test_probe',
+ '_dash_region_blend': 'test/test_region_options.py::TestTheBlend::test_over_under',
+ '_dash_region_spec': 'test/test_region_options.py::TestTheSpec::test_abbreviations_read_as_full_names',
+ '_dash_region_spec.<locals>._bundle': 'test/test_region_truth.py::TestAgainstTwoway::test_probe',
+ '_dash_region_spec.<locals>._read': 'test/test_region_options.py::TestTheSpec::test_a_wrong_case_none_is_black_with_a_note',
+ '_dash_region_table': 'test/test_region_truth.py::TestTheTable::test_it_is_twoways_parser',
  # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
  # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
  # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)

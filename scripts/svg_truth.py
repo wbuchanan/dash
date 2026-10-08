@@ -364,6 +364,35 @@ def svg_fills(path, *, elements=("circle", "path", "polygon", "rect")):
     return out
 
 
+def svg_rects(path):
+    """Every ``<rect>`` of *path* in document order (WP-30 P1.20a), each
+    with the ten keys ``x``, ``y``, ``w``, ``h``, ``fill``, ``fill_opacity``,
+    ``stroke``, ``stroke_width``, ``stroke_opacity`` and ``dasharray``
+    (colours lower-cased; an absent attribute is None).  Stata writes the
+    canvas first, then the graph region's fill and outline, then the plot
+    region's, so the region roles are read from the order and position."""
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        txt = fh.read()
+    out = []
+    for m in _RE_RECT.finditer(txt):
+        a = _attrs(m.group(1))
+        st = _style_of(a)
+
+        def get(k):
+            return st.get(k, a.get(k))
+        out.append({
+            "x": _fnum(a.get("x")), "y": _fnum(a.get("y")),
+            "w": _fnum(a.get("width")), "h": _fnum(a.get("height")),
+            "fill": _lower(get("fill")),
+            "fill_opacity": _fnum(get("fill-opacity")),
+            "stroke": _lower(get("stroke")),
+            "stroke_width": _fnum(get("stroke-width")),
+            "stroke_opacity": _fnum(get("stroke-opacity")),
+            "dasharray": get("stroke-dasharray"),
+        })
+    return out
+
+
 def svg_marker_fills(path):
     """:func:`svg_fills` restricted to circles, paths and polygons -- the
     element kinds Stata draws markers with -- so canvas, region and bar

@@ -901,7 +901,11 @@ class TestAnExplicitOptionBeatsTheScheme:
     """Under economist, whose every default differs from s2color's."""
 
     def test_bgcolor_and_plotregion(self, tmp_path, mode):
-        spec = _scatter({"bgcolor": "red", "plotregion": "color(blue)"},
+        # Flipped (WP-30 P1.20a): a lone bgcolor(red) on the border was
+        # wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); it shows where the
+        # graph region is none, and alone it changes nothing visible.
+        spec = _scatter({"bgcolor": "red", "plotregion": "color(blue)",
+                         "graphregion": "color(none)"},
                         build={"scheme": "economist"})
         fig = _figure(mode, tmp_path, spec, tag="regions")
         assert fig.border_fill_color.lower() == "#ff0000"

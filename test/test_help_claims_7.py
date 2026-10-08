@@ -220,9 +220,15 @@ _REGION = [
     ("graphregion", "color(#1a476f)", "border_fill_color", "#1a476f"),
     ("graphregion", "fcolor(navy)", "border_fill_color", "#1a476f"),
     ("graphregion", 'fcolor("0 0 255")', "border_fill_color", "#0000ff"),
-    ("bgcolor", "navy", "border_fill_color", "#1a476f"),
-    ("bgcolor", "255 0 0", "border_fill_color", "#ff0000"),
-    ("bgcolor", "#1a476f", "border_fill_color", "#1a476f"),
+    # Flipped (WP-30 P1.20a): bgcolor() setting the border was wrong
+    # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); alone it leaves the scheme's
+    # graph region (test_region_truth.py carries the canvas cases).
+    ("bgcolor", "navy", "border_fill_color",
+     dr.SchemeParser("s2color").background_color),
+    ("bgcolor", "255 0 0", "border_fill_color",
+     dr.SchemeParser("s2color").background_color),
+    ("bgcolor", "#1a476f", "border_fill_color",
+     dr.SchemeParser("s2color").background_color),
     ("plotbgcolor", "maroon", "background_fill_color", "#90353b"),
     ("plotbgcolor", "255 0 0", "background_fill_color", "#ff0000"),
     ("plotbgcolor", "#ff0000", "background_fill_color", "#ff0000"),
@@ -232,7 +238,7 @@ _REGION = [
 #: The rows whose SERVED half TestRegionColours keeps (WP-30 test
 #: performance E): each option, each colour notation and a width once.  The
 #: saved half keeps every row; both modes read the options through the same
-#: _extract_region_color, _extract_region_lcolor and _extract_region_lwidth.
+#: reader, _dash_apply_regions (WP-30 P1.20a).
 _REGION_SERVED = ("plotregion(color(navy))", 'plotregion(lcolor("255 0 0"))',
                   "plotregion(lwidth(thick))", "graphregion(color(#1a476f))",
                   "bgcolor(255 0 0)", "plotbgcolor(maroon)")
@@ -1192,12 +1198,16 @@ class TestTheNewHelpers:
         assert dr._dash_unquoted(raw) == want
 
     def test_the_region_readers_unquote(self):
-        assert dr._extract_region_color('lwidth(2) color("0 0 255")') == \
-            "0 0 255"
-        assert dr._extract_region_color('fcolor(navy)') == "navy"
-        assert dr._extract_region_lcolor('lcolor("1 2 3") color(red)') == \
-            "1 2 3"
-        assert dr._extract_region_color("lcolor(red)") == ""
+        # Flipped (WP-30 P1.20a): _extract_region_color/_lcolor were wrong
+        # because the region reader is _dash_region_spec; an RGB triplet's
+        # quotes still come off.
+        base = {"fill": "#ffffff", "fill_alpha": 1.0, "line": "#ffffff",
+                "line_alpha": 1.0, "line_width": 0.768, "line_dash": []}
+        s, _ = dr._dash_region_spec('lwidth(2) color("0 0 255")',
+                                    "plotregion", base)
+        assert s["fill"] == "#0000ff"
+        s, _ = dr._dash_region_spec('lcolor("1 2 3")', "plotregion", base)
+        assert (s["line"], s["fill"]) == ("#010203", "#ffffff")
 
     def test_dash_legend_parts(self):
         words, calls = dr._dash_legend_parts(

@@ -1603,6 +1603,10 @@ class TestBgcolorPlotbgcolor:
         """bgcolor(#aabbcc) sets border_fill_color; sentinel hex must appear in Bokeh JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["bgcolor"] = "#aabbcc"
+        # Flipped (WP-30 P1.20a): a lone bgcolor() on the border was wrong
+        # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); graphregion(color(none))
+        # lets the canvas show.
+        spec["graphs"][0]["graph_options"]["graphregion"] = "color(none)"
         html = _render_to_html(spec, data)
         assert "#aabbcc" in html.lower(), \
             "bgcolor(#aabbcc) must appear as border_fill_color in Bokeh model JSON"
@@ -1625,6 +1629,10 @@ class TestBgcolorPlotbgcolor:
         border is not navy without the option.
         """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        # Flipped (WP-30 P1.20a): a lone bgcolor() on the border was wrong
+        # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); graphregion(color(none))
+        # lets the canvas show, in the control too.
+        spec["graphs"][0]["graph_options"]["graphregion"] = "color(none)"
         before = _figure_colors(_render_to_html(spec, data),
                                 "border_fill_color")
         spec["graphs"][0]["graph_options"]["bgcolor"] = "navy"

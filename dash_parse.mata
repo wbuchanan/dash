@@ -217,7 +217,10 @@
 *!
 *!   _dash_rep_merge_locals(key, m1, m2, out)
 *!       Two copies of option key, the caller's locals m1 then m2, merged
-*!       as twoway merges them, into the caller's local out.
+*!       as twoway merges them, into the caller's local out; two region
+*!       copies through _dash_rep_region, each copy editing the last as
+*!       twoway's region parser applies them, every margin() kept (WP-30
+*!       P1.20a).
 *!
 *!   _dash_immediate(vals, w)
 *!       Read the immediate values of scatteri (w = 2) or of pci and
@@ -377,8 +380,9 @@
 *!       sub-option twoway refuses -- and clears the record; 0 otherwise.
 *!
 *!   _dash_subreq_check(kind)
-*!       Refuses, r(198) with twoway's words, the first legend(), zlabel()
-*!       or title sub-option twoway refuses (kind legend, zlabel or title);
+*!       Refuses, r(198) with twoway's words, the first legend(), zlabel(),
+*!       title or region sub-option twoway refuses (kind legend, zlabel,
+*!       title or region; the region's helper is _dash_subreq_region);
 *!       -1 hands a cols()/rows()/holes() value to dash.ado's
 *!       _dash_subopt_check through its locals _so_name, _so_value and
 *!       _so_kind; prints twoway's legend notes (WP-30 P1.19).  Its helpers
@@ -6866,6 +6870,32 @@ string matrix _dash_so_rows(string scalar fam)
                   "noastextbox", "noast", "1", "a", "1", "" \
                   "nospan", "nospan", "1", "a", "1", "")
     }
+    if (fam == "region") {
+        // _fr_area_parse_and_log.ado:33-43 (WP-30 P1.20a): one unstarred
+        // stage, in declaration order; twin of _dash_region_table().
+        t = t \ ("style", "sty", "1", "a", "0", "" \
+                  "istyle", "isty", "1", "a", "0", "" \
+                  "lstyle", "ls", "1", "a", "0", "" \
+                  "ilstyle", "ils", "1", "a", "0", "" \
+                  "lcolor", "lc", "1", "a", "0", "" \
+                  "ilcolor", "ilc", "1", "a", "0", "" \
+                  "lwidth", "lw", "1", "a", "0", "" \
+                  "ilwidth", "ilw", "1", "a", "0", "")
+        t = t \ ("lpattern", "lp", "1", "a", "0", "" \
+                  "ilpattern", "ilp", "1", "a", "0", "" \
+                  "lalign", "la", "1", "a", "0", "" \
+                  "ilalign", "ila", "1", "a", "0", "" \
+                  "shadestyle", "shades", "1", "a", "0", "" \
+                  "ishadestyle", "ishades", "1", "a", "0", "" \
+                  "fcolor", "fc", "1", "a", "0", "" \
+                  "ifcolor", "ifc", "1", "a", "0", "")
+        t = t \ ("color", "c", "1", "a", "0", "" \
+                  "icolor", "ic", "1", "a", "0", "" \
+                  "intensity", "inten", "1", "a", "0", "" \
+                  "iintensity", "iinten", "1", "a", "0", "" \
+                  "margin", "m", "1", "a", "0", "" \
+                  "marginonly", "marginonly", "1", "w", "0", "")
+    }
     return(t)
 }
 
@@ -7038,12 +7068,14 @@ real scalar _dash_so_resolve(string rowvector toks, real rowvector cid,
 
 // _dash_so_family(key) -- the sub-option table a merge key reads: legend()
 // "legend", an axis label or tick list "axlabel", an axis scale
-// "axscale", a title "textbox"; "" for a region, by(), text() and lines.
+// "axscale", a title "textbox", plotregion() and graphregion() "region"
+// (WP-30 P1.20a); "" for by(), text() and lines.
 string scalar _dash_so_family(string scalar key)
 {
     string scalar cat
 
     if (_dash_rep_bare(key) == "legend") return("legend")
+    if (anyof(("plotregion", "graphregion"), _dash_rep_bare(key))) return("region")
     cat = _dash_rep_cat(key)
     if (cat == "L") return("axlabel")
     if (cat == "S") return("axscale")
@@ -7122,6 +7154,13 @@ void _dash_subreq_add(string scalar opts, real scalar seg)
             if (_dash_rep_split(v, body, sub)) {
                 if (_dash_rep_split(sub, b2, s2)) sub = b2
             }
+        }
+        else if ((strlen(nm) >= 6 & substr("graphregion", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 5 & substr("plotregion", 1, strlen(nm)) == nm)) {
+            // A region's whole value (WP-30 P1.20a): graphr() and plotr()
+            // are the minimums dash.sthlp states.
+            kind = "region:" + (substr(nm, 1, 1) == "g" ? "graphregion" : "plotregion")
+            sub  = v
         }
         else {
             k = 0
@@ -7205,6 +7244,7 @@ real scalar _dash_subreq_check(string scalar kind)
     string rowvector toks, names, w, kinds
     string scalar    msg, f, arg, lastpos, lastring, lastorder, m, fam
     real rowvector   cid
+    real colvector   o
     real scalar      rc, at, i, j, k, c, q, hasp, hass
 
     if (rows(_dash_subreq) == 0 | cols(_dash_subreq) != 4) {
@@ -7296,6 +7336,27 @@ real scalar _dash_subreq_check(string scalar kind)
         _dash_subreq_drop("legend")
         return(0)
     }
+    if (kind == "region") {
+        // WP-30 P1.20a: every graphregion() copy, then every plotregion()
+        // copy, in (seg, place) order, each read alone, as twoway's
+        // twowaygraph_g.class:183 and :456 call the region parser.
+        o = order(strtoreal(_dash_subreq[., (2, 3)]), (1, 2))
+        for (k = 1; k <= 2; k++) {
+            f = (k == 1 ? "region:graphregion" : "region:plotregion")
+            for (q = 1; q <= rows(o); q++) {
+                if (_dash_subreq[o[q], 1] != f) continue
+                m = _dash_subreq_region(_dash_subreq[o[q], 4])
+                if (m != "") {
+                    _dash_say("err", "", m, "")
+                    _dash_subreq_clear()
+                    return(198)
+                }
+            }
+        }
+        _dash_subreq_drop("region:graphregion")
+        _dash_subreq_drop("region:plotregion")
+        return(0)
+    }
     if (kind == "zlabel") {
         for (i = 1; i <= rows(_dash_subreq); i++) {
             if (_dash_subreq[i, 1] != "zlabel") continue
@@ -7348,6 +7409,40 @@ real scalar _dash_subreq_check(string scalar kind)
         return(0)
     }
     return(0)
+}
+
+// _dash_subreq_region(v) -- twoway's refusal of one region copy's value v,
+// or "" (WP-30 P1.20a): a word after a top-level comma is "invalid
+// '<word>'" (blanks after it are ignored); then the words are read with
+// twoway's region table (_dash_so_resolve: an unknown, capitalised or
+// too-short name, or one given twice, "option c() not allowed"); then a
+// word option given twice, "option marginonly not allowed".
+string scalar _dash_subreq_region(string scalar v)
+{
+    string rowvector w, names
+    string scalar    body, sub, msg
+    real scalar      at, i, j, p
+
+    body = v
+    if (_dash_rep_split(v, body, sub)) {
+        w = _dash_rep_toks(sub, 1)
+        if (cols(w)) {
+            p = strpos(w[1], "(")
+            return("invalid '" + (p ? substr(w[1], 1, p - 1) : w[1]) + "'")
+        }
+    }
+    w = _dash_rep_toks(body, 0)
+    if (cols(w) == 0) return("")
+    if (_dash_so_resolve(w, J(1, cols(w), 1), "region", names, msg, at)) {
+        return(msg)
+    }
+    for (i = 1; i <= cols(w); i++) {
+        if (names[i] != "marginonly") continue
+        for (j = i + 1; j <= cols(w); j++) {
+            if (names[j] == "marginonly") return("option " + w[j] + " not allowed")
+        }
+    }
+    return("")
 }
 
 // _dash_subreq_drop(kind) -- the record less its rows of kind, once that
@@ -7421,17 +7516,26 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
                              string scalar cat, string rowvector drop,
                              | string scalar key)
 {
-    string rowvector w, keys, full
+    string rowvector w, keys, full, rw1, rw2, rn1, rn2
     string scalar    out, k, fam, msg, nm
     real scalar      i, j, keep, lo, hi, v, nr, rng, ok, n1, at, p, hasrows
     real rowvector   nums, cid, alive
 
+    // A region (WP-30 P1.20a): each copy read alone, then copy 2 applied
+    // to copy 1 as twoway's parser applies it (_dash_rep_region).
+    fam = (args() >= 5 ? _dash_so_family(key) : "")
+    if (fam == "region") {
+        rw1 = _dash_rep_toks(s1, 1)
+        rw2 = _dash_rep_toks(s2, 1)
+        (void) _dash_so_resolve(rw1, J(1, cols(rw1), 1), "region", rn1, msg, at)
+        (void) _dash_so_resolve(rw2, J(1, cols(rw2), 1), "region", rn2, msg, at)
+        return(_dash_rep_region(rw1, rn1, rw2, rn2))
+    }
     n1 = cols(_dash_rep_toks(s1, 1))
     w = _dash_rep_toks(s1, 1), _dash_rep_toks(s2, 1)
     keys  = J(1, cols(w), "")
     full  = J(1, cols(w), "")
     alive = J(1, cols(w), 1)
-    fam   = (args() >= 5 ? _dash_so_family(key) : "")
     if (fam != "" & cols(w)) {
         cid = J(1, n1, 1), J(1, cols(w) - n1, 2)
         (void) _dash_so_resolve(w, cid, fam, full, msg, at)
@@ -7504,6 +7608,101 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
         out = out + (out == "" ? "" : " ") + w[i]
     }
     return(out)
+}
+
+// _dash_rep_region(w1, n1, w2, n2) -- two copies of plotregion() or
+// graphregion() as one (WP-30 P1.20a): w1/w2 each copy's words, n1/n2
+// their full names ("" for a word twoway refuses, which keeps its typed
+// form and its typed name).  twoway's _fr_area_parse_and_log.ado applies
+// each copy to the result of the one before (.style.editstyle), so a name
+// in copy 2 drops what it overrides in copy 1 -- style() everything but
+// margin(); lstyle() the outline; shadestyle() the fill; color() color,
+// fcolor and lcolor; fcolor() and lcolor() their own name, leaving copy
+// 1's color() the other half (written fcolor()/lcolor(), or dropped when
+// copy 1 sets that half itself); the rest their own name -- and every
+// margin() is kept, in order, for section 47.  The i* twins follow the same
+// rules among themselves.  Returns copy 1's survivors then copy 2, each as
+// full(arg).  Byte loops, no regular expression.
+string scalar _dash_rep_region(string rowvector w1, string rowvector n1,
+                               string rowvector w2, string rowvector n2)
+{
+    string rowvector a, an, drop
+    string scalar    out, nm, base, pre, rw, tn
+    real rowvector   alive
+    real scalar      i, j, k, has
+
+    a     = w1
+    an    = n1
+    alive = J(1, cols(a), 1)
+    for (j = 1; j <= cols(w2); j++) {
+        nm = n2[j]
+        if (nm == "margin" | nm == "imargin") continue
+        if (nm == "") {
+            tn = _dash_rep_optname(w2[j])
+            for (i = 1; i <= cols(a); i++) {
+                if (an[i] == "" & _dash_rep_optname(a[i]) == tn) alive[i] = 0
+            }
+            continue
+        }
+        pre  = ""
+        base = nm
+        if (substr(nm, 1, 1) == "i" & nm != "intensity") {
+            pre  = "i"
+            base = substr(nm, 2, .)
+        }
+        rw   = ""
+        drop = (base)
+        if (base == "style") {
+            drop = ("style", "lstyle", "lcolor", "lwidth", "lpattern",
+                    "lalign", "shadestyle", "color", "fcolor", "intensity")
+        }
+        else if (base == "lstyle") {
+            drop = ("lstyle", "lcolor", "lwidth", "lpattern", "lalign")
+            rw   = "fcolor"
+        }
+        else if (base == "shadestyle") {
+            drop = ("shadestyle", "fcolor", "intensity")
+            rw   = "lcolor"
+        }
+        else if (base == "color") drop = ("color", "fcolor", "lcolor")
+        else if (base == "fcolor") rw = "lcolor"
+        else if (base == "lcolor") rw = "fcolor"
+        for (k = 1; k <= cols(drop); k++) drop[k] = pre + drop[k]
+        for (i = 1; i <= cols(a); i++) {
+            if (alive[i] & anyof(drop, an[i])) alive[i] = 0
+        }
+        if (rw == "") continue
+        for (i = 1; i <= cols(a); i++) {
+            if (!alive[i] | an[i] != pre + "color") continue
+            has = 0
+            for (k = 1; k <= cols(a); k++) {
+                if (alive[k] & an[k] == pre + rw) has = 1
+            }
+            if (has) alive[i] = 0
+            else {
+                a[i]  = pre + rw + "(" + _dash_rep_value(a[i]) + ")"
+                an[i] = pre + rw
+            }
+        }
+    }
+    out = ""
+    for (i = 1; i <= cols(a); i++) {
+        if (!alive[i]) continue
+        out = out + (out == "" ? "" : " ") + _dash_rep_region_word(a[i], an[i])
+    }
+    for (j = 1; j <= cols(w2); j++) {
+        out = out + (out == "" ? "" : " ") + _dash_rep_region_word(w2[j], n2[j])
+    }
+    return(out)
+}
+
+// _dash_rep_region_word(w, full) -- a region word as full(arg), or as
+// typed when twoway gave it no full name; marginonly bare.
+string scalar _dash_rep_region_word(string scalar w, string scalar full)
+{
+    if (full == "") return(w)
+    if (!strpos(w, "(")) return(full)
+    return(full + substr(w, strpos(w, "("), .))
 }
 
 // _dash_rep_merge(key, v1, v2) -- the value twoway draws for option key

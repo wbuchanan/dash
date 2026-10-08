@@ -832,6 +832,12 @@ def _chrome(fig):
         "background_fill_color": fig.background_fill_color,
         "border_fill_color": fig.border_fill_color,
         "outline_line_color": fig.outline_line_color,
+        # WP-30 P1.20a: the rest of the region styling.
+        "outline_line_alpha": _num(float(fig.outline_line_alpha)),
+        "outline_line_width": _num(float(fig.outline_line_width)),
+        "outline_line_dash": list(fig.outline_line_dash),
+        "border_line_color": fig.border_line_color,
+        "border_line_width": _num(float(fig.border_line_width)),
         "xgrid": [g.grid_line_color for g in fig.xgrid],
         "ygrid": [g.grid_line_color for g in fig.ygrid],
         "xgrid_minor": [g.minor_grid_line_color for g in fig.xgrid],
@@ -2171,6 +2177,13 @@ CORPUS = [
           [_sc(mlabel="rep", mlabtextstyle="heading"),
            plot_for("dropline", {"mlabel": "rep", "mlabtextstyle": "p3"})],
           bo={"scheme": "stcolor"}),
+    # WP-30 P1.20a: region styling, and regions none over the canvas.
+    _case("Region styling (WP-30 P1.20a)", [_sc()], None,
+          {"plotregion": "c(red) lc(navy) lp(dash)",
+           "graphregion": "fc(gs14) lcolor(red)", "bgcolor": "blue"}),
+    _case("Regions none over the canvas (WP-30 P1.20a)", [_sc()], None,
+          {"bgcolor": "red", "graphregion": "color(none)",
+           "plotregion": "fcolor(none)"}),
 ]
 
 

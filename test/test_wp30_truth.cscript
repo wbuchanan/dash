@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6
+    S35 14 S36 6 S37 6 S38 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9338,10 +9338,102 @@ if inlist("`only'", "", "S37") & `: list posof "S37" in w30_run' {
 }
 * ==== end S37 ====
 
+// _s38_page html -- the first figure of a saved page, read from its
+// document JSON (WP-30 P1.20a): globals S38_BG, S38_BORDER, S38_OL,
+// S38_OLW, S38_OLD (1 when dashed), S38_BL; a property the page leaves at
+// Bokeh's default reads as its default ("" for no colour).
+capture program drop _s38_page
+program define _s38_page
+    version 19
+    args html
+    global S38_HTML `"`html'"'
+    python: __import__("sys").modules["_dash_s38"].page()
+end
+python:
+def _s38_page():
+    import json, re
+    from sfi import Macro
+    with open(Macro.getGlobal("S38_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    fig = {}
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        stack = [json.loads(m.group(1))]
+        while stack and not fig:
+            o = stack.pop()
+            if isinstance(o, dict):
+                if o.get("name") == "Figure" and isinstance(o.get("attributes"), dict):
+                    fig = o["attributes"]
+                    break
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+        if fig:
+            break
+    def g(k, d=""):
+        v = fig.get(k, d)
+        return "" if v is None else str(v)
+    Macro.setGlobal("S38_BG", g("background_fill_color", "#ffffff"))
+    Macro.setGlobal("S38_BORDER", g("border_fill_color", "#ffffff"))
+    Macro.setGlobal("S38_OL", g("outline_line_color", "#e5e5e5"))
+    Macro.setGlobal("S38_OLW", g("outline_line_width", "1"))
+    d = fig.get("outline_line_dash", [])
+    Macro.setGlobal("S38_OLD", "1" if isinstance(d, list) and d else "0")
+    Macro.setGlobal("S38_BL", g("border_line_color", ""))
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s38_sys
+_s38_sys.modules["_dash_s38"] = type(_s38_sys)("_dash_s38")
+_s38_sys.modules["_dash_s38"].page = _s38_page
+end
+
 * ==== S38 P1.20a: plotregion()/graphregion() styling ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S38") & `: list posof "S38" in w30_run' {
     display as text "S38 start " c(current_date) " " c(current_time)
+    local s38log "`w30_work'/s38.log"
+    local s38pg "`w30_work'/zrs.html"
+    local s38ls = c(linesize)
+    set linesize 255
+    quietly sysuse auto, clear
+
+    // RS-20: every abbreviation drawn: fill red, outline navy, dashed,
+    // thick over the scheme's thin (twoway: 23.04 / 5.76 SVG units).
+    _s36_run `"dash scatter mpg weight, plotregion(fc(red) lc(navy) lw(thick) lp(dash)) scheme(s2color) saving("`s38pg'", replace)"' "`s38log'"
+    local drc = r(rc)
+    capture _s38_page "`s38pg'"
+    local prc = _rc
+    local ratio = real("${S38_OLW}") / 0.768
+    local ok = (`drc' == 0 & `prc' == 0 & "${S38_BG}" == "#ff0000" & "${S38_OL}" == "#1a476f" & "${S38_OLD}" == "1" & abs(`ratio' - 23.04 / 5.76) < 0.08)
+    _w30_expect RS-20 "(`ok')" "rc `drc'/`prc', fill ${S38_BG}, outline ${S38_OL} dashed ${S38_OLD} width ratio `ratio'"
+    _w30_done RS-20 "plotregion(fc() lc() lw() lp()) draws twoway's fill, outline, width and dash"
+
+    // RS-21: bgcolor() is the canvas; it shows through regions that are none.
+    _s36_run `"dash scatter mpg weight, bgcolor(red) graphregion(color(none)) plotregion(fcolor(none)) scheme(s2color) saving("`s38pg'", replace)"' "`s38log'"
+    local drc = r(rc)
+    capture _s38_page "`s38pg'"
+    local ok = (`drc' == 0 & "${S38_BORDER}" == "#ff0000" & "${S38_BG}" == "#ff0000")
+    _w30_expect RS-21 "(`ok')" "rc `drc', border ${S38_BORDER}, background ${S38_BG}"
+    _w30_done RS-21 "bgcolor(red) under graphregion(color(none)) plotregion(fcolor(none)) shows red, as twoway's canvas"
+
+    // RS-22: style(none) leaves the plot region unpainted.
+    _s36_run `"dash scatter mpg weight, plotregion(style(none)) scheme(s2color) saving("`s38pg'", replace)"' "`s38log'"
+    local drc = r(rc)
+    capture _s38_page "`s38pg'"
+    local ok = (`drc' == 0 & "${S38_BG}" == "${S38_BORDER}" & "${S38_OL}" == "")
+    _w30_expect RS-22 "(`ok')" "rc `drc', background ${S38_BG}, border ${S38_BORDER}, outline ${S38_OL}"
+    _w30_done RS-22 "plotregion(style(none)) draws no fill and no outline"
+
+    // RS-23: what twoway accepts and dash does not draw is named, once.
+    _s36_run `"dash scatter mpg weight, plotregion(lalign(inside) ifcolor(red)) scheme(s2color) saving("`s38pg'", replace)"' "`s38log'"
+    local drc = r(rc)
+    _s36_count "`s38log'" "plotregion() sub-option(s) not implemented and ignored: lalign(inside) ifcolor(red)"
+    local nn = r(n)
+    _w30_expect RS-23 "(`drc' == 0 & `nn' == 1)" "rc `drc', notes `nn'"
+    _w30_done RS-23 "plotregion(lalign() ifcolor()) is rc 0 and named in one note"
+    capture dash clear
+    capture erase "`s38log'"
+    capture erase "`s38pg'"
+    macro drop S38_*
+    set linesize `s38ls'
     display as text "S38 end " c(current_date) " " c(current_time)
 }
 * ==== end S38 ====

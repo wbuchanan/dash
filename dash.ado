@@ -6263,6 +6263,9 @@ program define _dash_plot
     // segments before the options after the comma.  The options after the
     // comma are read last, as segment n_segs+1.
     mata: _dash_axreq_add(st_local("_gopts_axraw"), `n_segs' + 1)
+    // graphregion() then plotregion() before legend() and the axes, as
+    // twoway parses them (WP-30 P1.20a).
+    _dash_subopt_check region
     _dash_subopt_check legend
     mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
     if `_axrc' exit 198

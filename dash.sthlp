@@ -3092,38 +3092,70 @@ exported.
 {title:Region Styling Options}
 
 {pstd}
-{cmd:dash} reads the {helpb twoway} region options that color the inner
-plot area and the outer graph region, in the saved dashboard and the served
-app alike.
+{cmd:dash} reads {cmd:plotregion()} and {cmd:graphregion()} as
+{helpb twoway} reads them, in the saved dashboard and the served app
+alike, before and after a filter move.  Each sub-option is read under
+every spelling {cmd:twoway} takes, from the underlined minimum to the
+full name, in lower case.
 
 {synoptset 35}{...}
-{synopt:{cmd:plotregion(color(}{it:color}{cmd:))}}background color of the
-    inner plot canvas; Bokeh {cmd:background_fill_color}.
-    {cmd:plotregion(fcolor())} is read the same way{p_end}
-{synopt:{cmd:plotregion(lcolor(}{it:color}{cmd:))}}border line color
-    of the inner plot area; Bokeh {cmd:outline_line_color}{p_end}
-{synopt:{cmd:plotregion(lwidth(}{it:#}{cmd:))}}border line width
-    of the inner plot area, a number or a width name such as {cmd:thick};
-    Bokeh {cmd:outline_line_width}{p_end}
-{synopt:{cmd:graphregion(color(}{it:color}{cmd:))}}background color of the
-    outer margin area; Bokeh {cmd:border_fill_color}{p_end}
-{synopt:{cmd:graphregion(fcolor(}{it:color}{cmd:))}}fill color alias for
-    {cmd:graphregion(color())}{p_end}
-{synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}read as
-    {cmd:graphregion(color())}{p_end}
-{synopt:{opt plotbgcolor(color)}}{cmd:dash}'s own shorthand for
-    {cmd:plotregion(color())}; {cmd:twoway} refuses {cmd:plotbgcolor()}.
-    Synonym: {cmd:pbgc()}{p_end}
+{synopt:{cmd:plotregion(color(}{it:color}{cmd:))}}the fill and the
+    outline; shortest {cmd:c()}; every sub-option reads the same in
+    {cmd:graphregion()}{p_end}
+{synopt:{cmd:plotregion(fcolor(}{it:color}{cmd:))}}the fill; shortest
+    {cmd:fc()}{p_end}
+{synopt:{cmd:plotregion(lcolor(}{it:color}{cmd:))}}the outline's color;
+    shortest {cmd:lc()}{p_end}
+{synopt:{cmd:plotregion(lwidth(}{it:lw}{cmd:))}}the outline's width, on
+    Stata's line-width ladder, {cmd:*}{it:#} multiplying the region's;
+    shortest {cmd:lw()}{p_end}
+{synopt:{cmd:plotregion(lpattern(}{it:lp}{cmd:))}}the outline's pattern;
+    shortest {cmd:lp()}{p_end}
+{synopt:{cmd:plotregion(style(}{it:name}{cmd:))}}a named area style as
+    the starting point, such as {cmd:none}; shortest {cmd:sty()}{p_end}
+{synopt:{cmd:plotregion(lstyle(}{it:name}{cmd:))}}a named line style for
+    the outline; shortest {cmd:ls()}{p_end}
+{synopt:{cmd:graphregion(color(}{it:color}{cmd:))}}the graph region's
+    fill and outline; the sub-options above, as in {cmd:plotregion()}{p_end}
+{synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}the canvas under the graph
+    region{p_end}
+{synopt:{opt plotbgcolor(color)}}{cmd:dash}'s own: the plot region's
+    fill, before {cmd:plotregion()}; {cmd:twoway} refuses
+    {cmd:plotbgcolor()}.  Synonym: {cmd:pbgc()}{p_end}
 {synoptline}
 
 {pstd}
-Each of these takes any Stata colour (see {help dash##colours:Colours}):
-a named color ({cmd:navy}, {cmd:maroon}, {cmd:forest_green}, etc.), an RGB
-triplet in quotes ({cmd:"255 0 0"}), or a hex string ({cmd:#1a476f}).  An
-unknown color is named in a note and drawn black, as {cmd:twoway} draws
-it.  {cmd:twoway}'s own {cmd:bgcolor()} paints the
-canvas under the graph region, which shows only where the graph region has
-no color of its own; {cmd:dash} colors the graph region itself.
+Within one copy the outline is {cmd:color()} over {cmd:lcolor()} over
+{cmd:lstyle()}, and the fill {cmd:fcolor()} over {cmd:color()} over
+{cmd:style()}, whatever the typed order, as {cmd:twoway} applies them.
+Colors take Stata's grammar (see {help dash##colours:Colours}):
+{cmd:none} draws nothing and shows what lies beneath,
+{it:color}{cmd:%}{it:#} draws at that opacity over it, and an unknown
+color is named in a note and drawn black.  {cmd:lstyle(none)} removes
+the outline until a color gives it back.  The graph region's outline is
+drawn when an outline sub-option is given.  Repeated copies combine as
+{cmd:twoway} combines them, each copy editing the last:
+{cmd:plotregion(color(red))} {cmd:plotregion(c(blue))} is blue.
+
+{pstd}
+{cmd:bgcolor()} is {cmd:twoway}'s canvas under the graph region.  It
+shows only where the graph region (or, through it, the plot region) is
+{cmd:none} or translucent, so {cmd:bgcolor(red)} alone changes nothing
+you can see and {cmd:bgcolor(red) graphregion(color(none))} shows red.
+{cmd:bgcolor(none)} is the color {cmd:none}, black.
+
+{pstd}
+{cmd:dash} refuses, with {cmd:twoway}'s words and r(198), what
+{cmd:twoway} refuses: an unknown or capitalised sub-option, one shorter
+than its minimum, one given twice in a copy, and a word after a comma
+inside the region; {cmd:graphregion()} is checked before
+{cmd:plotregion()}, and both before {cmd:legend()} and the axis options.
+{cmd:lalign()}, the inner-box options {cmd:istyle()}, {cmd:ilstyle()},
+{cmd:ilcolor()}, {cmd:ilwidth()}, {cmd:ilpattern()}, {cmd:ilalign()},
+{cmd:ifcolor()}, {cmd:icolor()}, {cmd:ishadestyle()},
+{cmd:iintensity()}, and {cmd:margin()}, {cmd:shadestyle()},
+{cmd:intensity()} and {cmd:marginonly} are accepted and named in a note,
+once per region.
 
 {pstd}
 {it:Example:}
