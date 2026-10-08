@@ -71,6 +71,8 @@
 *!   NP-30..NP-33 (WP-30 P1.14a) the named styles' minimums land on their
 *!       keys and are not named; pst() ps() as() are named as typed, rc 0;
 *!       ml(p3) is r(111) as in twoway.
+*!   OS-07 (WP-30 P1.14b) dst() dl() dls() bml() land on dstyle, dlstyle
+*!       and bmlinestyle and are named by their full names.
 *!
 *! Usage:  do test/test_abbreviations.cscript   (run from test/)
 *! Version: 1.0
@@ -960,6 +962,36 @@ if `rc' != 111 | _rc != 111 {
     display as error "NP-33 FAIL: dash r(`rc'), twoway r(`=_rc')"
 }
 else display as text "NP-33 PASS: ml(p3) is r(111) in dash and in twoway"
+capture dash clear
+
+// OS-07 (WP-30 P1.14b): twoway's minimums of dstyle(), dlstyle() and
+// bmlinestyle() (test/fixtures/style_name_truth.json D grid: dst(), dl(),
+// dls() and bml() are rc 0) land on the full keys, by value, and the note
+// names each by its full name; dash draws none of them (P2.9, P2.8).
+local os07 0
+local i 0
+foreach c in "dst(p3)|dstyle" "dl(p3)|dlstyle" "dls(p3)|dlstyle" "bml(p3)|bmlinestyle" {
+    local ++i
+    gettoken opt key : c, parse("|")
+    local key = substr("`key'", 2, .)
+    capture dash clear
+    capture log close _znp
+    quietly log using "`znp_log'", text replace name(_znp)
+    capture noisily dash scatter mpg weight, `opt' name(zos`i')
+    local rc = _rc
+    quietly log close _znp
+    mata: st_local("hit", strofreal(strpos(st_global("dash_json_zos`i'"), char(34) + "`key'" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
+    mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "`key'()")))
+    if `rc' | !`hit' | !`nn' {
+        display as error "OS-07 FAIL: `opt': rc `rc', key `hit', named `nn'"
+        local os07 1
+    }
+}
+if `os07' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' OS-07"'
+}
+else display as text "OS-07 PASS: dst() dl() dls() bml() land on their keys and are named in full"
 capture dash clear
 
 // ----------------------------------------------------------------

@@ -7358,6 +7358,746 @@ class SchemeParser:
         "clockdir note_position": "7",
         "clockdir caption_position": "7",
         "system naturally_white": "1",
+        # Named styles (WP-30 S36): every key the style table reads, at
+        # s2color's values (scheme-s2color.scheme; scheme_truth.json
+        # "named_style_directives").
+        # The p-chain steps those keys stop at (scheme.class), as
+        # dash-s2color.scheme carries them.
+        "linepattern p": "solid",
+        "linewidth pbar": "thin",
+        "symbol p": "circle",
+        "color ci2_symbol": "#cac27e",
+        "color ci_symbol": "#808080",
+        "color clegend_line": "#000000",
+        "color cvcvline": "#ff0000",
+        "color cvlsline": "#000000",
+        "color cvseline": "#0000ff",
+        "color dot_arealine": "#808080",
+        "color dot_line": "#808080",
+        "color dotmarkline": "#000000",
+        "color dots": "#000000",
+        "color fp_line": "#1a476f",
+        "color fpall": "#55752f",
+        "color fpall_line": "#55752f",
+        "color fpesinside_line": "#e37e00",
+        "color fpesrefline": "#c10534",
+        "color fpgraph": "#ffffff",
+        "color fpgrp_line": "#90353b",
+        "color fphrule": "#000000",
+        "color fpnullrefline": "#808080",
+        "color fpspacer": "none",
+        "color hrule": "#000000",
+        "color matplotregion_line": "#000000",
+        "color matrixmarkline": "#1a476f",
+        "color pieline": "none",
+        "color refline": "#2d6d66",
+        "color refmarkline": "#000000",
+        "color reverse_big_line": "#1a476f",
+        "color sunflower": "#0000ff",
+        "color sunflowerdb": "#ff7f00",
+        "color sunflowerdf": "#000000",
+        "color sunflowerlb": "#eaffaa",
+        "color sunflowerlf": "#804000",
+        "color text_option_line": "#000000",
+        "color zyx2": "#000000",
+        "intensity background": "inten100",
+        "intensity foreground": "inten100",
+        "linepattern axisline": "solid",
+        "linepattern background": "solid",
+        "linepattern clegend": "solid",
+        "linepattern cvcvline": "solid",
+        "linepattern cvlsline": "solid",
+        "linepattern cvseline": "solid",
+        "linepattern dendrogram": "solid",
+        "linepattern dot": "solid",
+        "linepattern dot_area": "solid",
+        "linepattern dotmark": "solid",
+        "linepattern dots": "solid",
+        "linepattern foreground": "solid",
+        "linepattern fp": "solid",
+        "linepattern fpall": "solid",
+        "linepattern fpesrefline": "solid",
+        "linepattern fpgrp": "solid",
+        "linepattern fphrule": "solid",
+        "linepattern fpnullrefline": "solid",
+        "linepattern fpspacer": "blank",
+        "linepattern grid": "solid",
+        "linepattern histogram": "solid",
+        "linepattern hrule": "solid",
+        "linepattern legend": "solid",
+        "linepattern matrix_plotregion": "solid",
+        "linepattern matrixmark": "solid",
+        "linepattern minortick": "solid",
+        "linepattern pie": "solid",
+        "linepattern pmark": "solid",
+        "linepattern refline": "solid",
+        "linepattern refmarker": "solid",
+        "linepattern sunflower": "solid",
+        "linepattern text_option": "solid",
+        "linepattern tick": "solid",
+        "linepattern zyx2": "solid",
+        "linewidth background": "thin",
+        "linewidth clegend": "thin",
+        "linewidth cvcvline": "thin",
+        "linewidth cvlsline": "thin",
+        "linewidth cvseline": "thin",
+        "linewidth dendrogram": "medium",
+        "linewidth dot_area": "medium",
+        "linewidth dot_line": "medthick",
+        "linewidth dotmark": "thin",
+        "linewidth dots": "vvthin",
+        "linewidth foreground": "thin",
+        "linewidth fp": "medium",
+        "linewidth fpall": "medium",
+        "linewidth fpesrefline": "thin",
+        "linewidth fpgrp": "medium",
+        "linewidth fphrule": "medium",
+        "linewidth fpnullrefline": "thin",
+        "linewidth fpspacer": "medium",
+        "linewidth grid": "medium",
+        "linewidth hrule": "medium",
+        "linewidth legend": "thin",
+        "linewidth matrix_plotregion": "thin",
+        "linewidth matrixmark": "medium",
+        "linewidth medium": "medium",
+        "linewidth minortick": "thin",
+        "linewidth pie": "medium",
+        "linewidth refline": "medium",
+        "linewidth refmarker": "medium",
+        "linewidth reverse_big": "thin",
+        "linewidth text_option": "thin",
+        "linewidth zyx2": "medium",
+        "symbol ci": "circle",
+        "symbol ci2": "circle",
+        "symbol histogram": "circle",
+        "symbolsize ci": "medium",
+        "symbolsize ci2": "medium",
+        "symbolsize histogram": "medlarge",
+        "symbolsize parrow": "medium",
+    }
+
+    # The named-style table (WP-30 P1.14b; register P1.14.1, IR-14): each
+    # style file's set lines for the names style_bundle resolves, as
+    # (attr, "scheme"|"literal", key-or-token), transcribed from StataNow
+    # 19.5's ado/base/style (plan E7) by scripts/extract_scheme_truth.py
+    # (_meta.style_files) and held equal to it by test_style_names.py.  A
+    # key keeps Stata's "#", replaced only by a validated plot number 1-15;
+    # a style name typed by a user is matched against these sets and never
+    # used as a path, a format or a _props key.  label, dots, connect,
+    # align, angle, back* and fill are not transcribed (D-36f).
+    _STYLE_TABLE: "dict[str, dict[str, tuple]]" = {
+        "seriesstyle": {
+            "ci": (
+                ("marker", "scheme", "ci"),
+                ("line", "scheme", "ci"),
+                ("area", "scheme", "ci"),
+            ),
+            "ci2": (
+                ("marker", "scheme", "ci2"),
+                ("line", "scheme", "ci2"),
+                ("area", "scheme", "ci2"),
+            ),
+            "histogram": (
+                ("marker", "scheme", "histogram"),
+                ("line", "scheme", "histogram"),
+                ("area", "scheme", "histogram"),
+            ),
+            "p#line": (
+                ("marker", "scheme", "p#"),
+                ("line", "scheme", "p#line"),
+                ("area", "scheme", "p#"),
+            ),
+            "p#bar": (
+                ("marker", "scheme", "p#"),
+                ("line", "scheme", "p#connect"),
+                ("area", "scheme", "p#bar"),
+            ),
+            "p#area": (
+                ("marker", "scheme", "p#"),
+                ("line", "scheme", "p#connect"),
+                ("area", "scheme", "p#area"),
+            ),
+            "p#box": (
+                ("marker", "scheme", "p#box"),
+                ("line", "scheme", "p#connect"),
+                ("area", "scheme", "p#box"),
+            ),
+            "p#dot": (
+                ("marker", "scheme", "p#dot"),
+                ("line", "scheme", "p#connect"),
+                ("area", "scheme", "p#"),
+            ),
+            "p#arrow": (
+                ("marker", "scheme", "p#arrow"),
+                ("line", "scheme", "p#arrowline"),
+                ("area", "scheme", "p#"),
+            ),
+        },
+        "markerstyle": {
+            "ci": (
+                ("symbol", "scheme", "ci"),
+                ("size", "scheme", "ci"),
+                ("fillcolor", "scheme", "ci_symbol"),
+                ("linestyle", "scheme", "ci"),
+            ),
+            "ci2": (
+                ("symbol", "scheme", "ci2"),
+                ("size", "scheme", "ci2"),
+                ("fillcolor", "scheme", "ci2_symbol"),
+                ("linestyle", "scheme", "ci2"),
+            ),
+            "histogram": (
+                ("symbol", "scheme", "histogram"),
+                ("size", "scheme", "histogram"),
+                ("fillcolor", "scheme", "histogram"),
+                ("linestyle", "scheme", "histogram"),
+            ),
+            "none": (
+                ("symbol", "literal", "none"),
+                ("size", "scheme", "symbol"),
+                ("fillcolor", "scheme", "symbol"),
+                ("linestyle", "scheme", "symbol"),
+            ),
+            "p#box": (
+                ("symbol", "scheme", "p#box"),
+                ("size", "scheme", "p#box"),
+                ("fillcolor", "scheme", "p#boxmarkfill"),
+                ("linestyle", "scheme", "p#boxmark"),
+            ),
+            "p#dot": (
+                ("symbol", "scheme", "p#dot"),
+                ("size", "scheme", "p#dot"),
+                ("fillcolor", "scheme", "p#dotmarkfill"),
+                ("linestyle", "scheme", "p#dotmark"),
+            ),
+            "p#arrow": (
+                ("symbol", "scheme", "p#arrow"),
+                ("size", "scheme", "p#arrow"),
+                ("fillcolor", "scheme", "p#arrowfill"),
+                ("linestyle", "scheme", "p#arrow"),
+            ),
+        },
+        "areastyle": {
+            "background": (
+                ("linestyle", "scheme", "background"),
+                ("shadestyle", "scheme", "background"),
+            ),
+            "ci": (
+                ("linestyle", "scheme", "ci_area"),
+                ("shadestyle", "scheme", "ci"),
+            ),
+            "ci2": (
+                ("linestyle", "scheme", "ci2_area"),
+                ("shadestyle", "scheme", "ci2"),
+            ),
+            "foreground": (
+                ("linestyle", "scheme", "foreground"),
+                ("shadestyle", "scheme", "foreground"),
+            ),
+            "histogram": (
+                ("linestyle", "scheme", "histogram"),
+                ("shadestyle", "scheme", "histogram"),
+            ),
+            "none": (
+                ("linestyle", "literal", "none"),
+                ("shadestyle", "literal", "none"),
+            ),
+            "p#area": (
+                ("linestyle", "scheme", "p#area"),
+                ("shadestyle", "scheme", "p#area"),
+            ),
+            "p#bar": (
+                ("linestyle", "scheme", "p#bar"),
+                ("shadestyle", "scheme", "p#bar"),
+            ),
+            "p#box": (
+                ("linestyle", "scheme", "p#box"),
+                ("shadestyle", "scheme", "p#box"),
+            ),
+        },
+        "shadestyle": {
+            "background": (
+                ("color", "scheme", "background"),
+                ("intensity", "scheme", "background"),
+            ),
+            "ci": (
+                ("color", "scheme", "ci_area"),
+                ("intensity", "scheme", "ci_area"),
+            ),
+            "ci2": (
+                ("color", "scheme", "ci2_area"),
+                ("intensity", "scheme", "ci_area"),
+            ),
+            "foreground": (
+                ("color", "scheme", "foreground"),
+                ("intensity", "scheme", "foreground"),
+            ),
+            "histogram": (
+                ("color", "scheme", "histogram"),
+                ("intensity", "scheme", "histogram"),
+            ),
+            "none": (
+                ("color", "literal", "none"),
+                ("intensity", "literal", "inten100"),
+            ),
+            "p#area": (
+                ("color", "scheme", "p#area"),
+                ("intensity", "scheme", "p#area"),
+            ),
+            "p#bar": (
+                ("color", "scheme", "p#bar"),
+                ("intensity", "scheme", "p#bar"),
+            ),
+            "p#box": (
+                ("color", "scheme", "p#box"),
+                ("intensity", "scheme", "p#box"),
+            ),
+        },
+        "linestyle": {
+            "axisline": (
+                ("width", "scheme", "axisline"),
+                ("color", "scheme", "axisline"),
+                ("pattern", "scheme", "axisline"),
+            ),
+            "background": (
+                ("width", "scheme", "background"),
+                ("color", "scheme", "background"),
+                ("pattern", "scheme", "background"),
+            ),
+            "ci": (
+                ("width", "scheme", "ci"),
+                ("color", "scheme", "ci_line"),
+                ("pattern", "scheme", "ci"),
+            ),
+            "ci2": (
+                ("width", "scheme", "ci"),
+                ("color", "scheme", "ci_line"),
+                ("pattern", "scheme", "ci"),
+            ),
+            "ci2_area": (
+                ("width", "scheme", "ci2_area"),
+                ("color", "scheme", "ci2_arealine"),
+                ("pattern", "scheme", "ci_area"),
+            ),
+            "ci_area": (
+                ("width", "scheme", "ci_area"),
+                ("color", "scheme", "ci_arealine"),
+                ("pattern", "scheme", "ci_area"),
+            ),
+            "clegend": (
+                ("width", "scheme", "clegend"),
+                ("color", "scheme", "clegend_line"),
+                ("pattern", "scheme", "clegend"),
+            ),
+            "cvcvline": (
+                ("width", "scheme", "cvcvline"),
+                ("color", "scheme", "cvcvline"),
+                ("pattern", "scheme", "cvcvline"),
+            ),
+            "cvlsline": (
+                ("width", "scheme", "cvlsline"),
+                ("color", "scheme", "cvlsline"),
+                ("pattern", "scheme", "cvlsline"),
+            ),
+            "cvseline": (
+                ("width", "scheme", "cvseline"),
+                ("color", "scheme", "cvseline"),
+                ("pattern", "scheme", "cvseline"),
+            ),
+            "dendrogram": (
+                ("width", "scheme", "dendrogram"),
+                ("color", "scheme", "p1"),
+                ("pattern", "scheme", "dendrogram"),
+            ),
+            "dot": (
+                ("width", "scheme", "foreground"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "literal", "dot"),
+            ),
+            "dotchart": (
+                ("width", "scheme", "dot_line"),
+                ("color", "scheme", "dot_line"),
+                ("pattern", "scheme", "dot"),
+            ),
+            "dotchart_area": (
+                ("width", "scheme", "dot_area"),
+                ("color", "scheme", "dot_arealine"),
+                ("pattern", "scheme", "dot_area"),
+            ),
+            "dotmark": (
+                ("width", "scheme", "dotmark"),
+                ("color", "scheme", "dotmarkline"),
+                ("pattern", "scheme", "dotmark"),
+            ),
+            "dots": (
+                ("width", "scheme", "dots"),
+                ("color", "scheme", "dots"),
+                ("pattern", "scheme", "dots"),
+            ),
+            "editor": (
+                ("width", "literal", "thin"),
+                ("color", "literal", "black"),
+                ("pattern", "literal", "solid"),
+            ),
+            "foreground": (
+                ("width", "scheme", "foreground"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "scheme", "foreground"),
+            ),
+            "foreground_center": (
+                ("width", "scheme", "foreground"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "scheme", "foreground"),
+            ),
+            "fpall": (
+                ("width", "scheme", "fpall"),
+                ("color", "scheme", "fpall_line"),
+                ("pattern", "scheme", "fpall"),
+            ),
+            "fpall_area": (
+                ("width", "scheme", "fpall"),
+                ("color", "scheme", "fpall_line"),
+                ("pattern", "scheme", "fpall"),
+            ),
+            "fpci": (
+                ("width", "scheme", "fp"),
+                ("color", "scheme", "fp_line"),
+                ("pattern", "scheme", "fp"),
+            ),
+            "fpcumul": (
+                ("width", "scheme", "fpall"),
+                ("color", "scheme", "fpall"),
+                ("pattern", "scheme", "fpall"),
+            ),
+            "fpes": (
+                ("width", "scheme", "fp"),
+                ("color", "scheme", "fp_line"),
+                ("pattern", "scheme", "fp"),
+            ),
+            "fpesinside": (
+                ("width", "scheme", "fp"),
+                ("color", "scheme", "fpesinside_line"),
+                ("pattern", "scheme", "fp"),
+            ),
+            "fpesrefline": (
+                ("width", "scheme", "fpesrefline"),
+                ("color", "scheme", "fpesrefline"),
+                ("pattern", "scheme", "fpesrefline"),
+            ),
+            "fpgraph": (
+                ("width", "scheme", "foreground"),
+                ("color", "scheme", "fpgraph"),
+                ("pattern", "literal", "solid"),
+            ),
+            "fpgrp": (
+                ("width", "scheme", "fpgrp"),
+                ("color", "scheme", "fpgrp_line"),
+                ("pattern", "scheme", "fpgrp"),
+            ),
+            "fpgrp_area": (
+                ("width", "scheme", "fpgrp"),
+                ("color", "scheme", "fpgrp_line"),
+                ("pattern", "scheme", "fpgrp"),
+            ),
+            "fphrule": (
+                ("width", "scheme", "fphrule"),
+                ("color", "scheme", "fphrule"),
+                ("pattern", "scheme", "fphrule"),
+            ),
+            "fpnullrefline": (
+                ("width", "scheme", "fpnullrefline"),
+                ("color", "scheme", "fpnullrefline"),
+                ("pattern", "scheme", "fpnullrefline"),
+            ),
+            "fpspacer": (
+                ("width", "scheme", "fpspacer"),
+                ("color", "scheme", "fpspacer"),
+                ("pattern", "scheme", "fpspacer"),
+            ),
+            "grid": (
+                ("width", "scheme", "grid"),
+                ("color", "scheme", "grid"),
+                ("pattern", "scheme", "grid"),
+            ),
+            "grid_foreground": (
+                ("width", "scheme", "major_grid"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "literal", "solid"),
+            ),
+            "histogram": (
+                ("width", "scheme", "histogram"),
+                ("color", "scheme", "histogram_line"),
+                ("pattern", "scheme", "histogram"),
+            ),
+            "hrule": (
+                ("width", "scheme", "hrule"),
+                ("color", "scheme", "hrule"),
+                ("pattern", "scheme", "hrule"),
+            ),
+            "legend": (
+                ("width", "scheme", "legend"),
+                ("color", "scheme", "legend_line"),
+                ("pattern", "scheme", "legend"),
+            ),
+            "major_grid": (
+                ("width", "scheme", "major_grid"),
+                ("color", "scheme", "major_grid"),
+                ("pattern", "scheme", "major_grid"),
+            ),
+            "mat_label_box": (
+                ("width", "scheme", "foreground"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "scheme", "foreground"),
+            ),
+            "matrix_plotregion": (
+                ("width", "scheme", "matrix_plotregion"),
+                ("color", "scheme", "matplotregion_line"),
+                ("pattern", "scheme", "matrix_plotregion"),
+            ),
+            "matrixmark": (
+                ("width", "scheme", "matrixmark"),
+                ("color", "scheme", "matrixmarkline"),
+                ("pattern", "scheme", "matrixmark"),
+            ),
+            "medforeground": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "scheme", "foreground"),
+            ),
+            "minor_grid": (
+                ("width", "scheme", "minor_grid"),
+                ("color", "scheme", "minor_grid"),
+                ("pattern", "scheme", "minor_grid"),
+            ),
+            "minortick": (
+                ("width", "scheme", "minortick"),
+                ("color", "scheme", "minortick"),
+                ("pattern", "scheme", "minortick"),
+            ),
+            "none": (
+                ("width", "scheme", "foreground"),
+                ("color", "literal", "none"),
+                ("pattern", "literal", "solid"),
+            ),
+            "p#area": (
+                ("width", "scheme", "p#area"),
+                ("color", "scheme", "p#arealine"),
+                ("pattern", "scheme", "p#area"),
+            ),
+            "p#arrow": (
+                ("width", "scheme", "p#arrow"),
+                ("color", "scheme", "p#arrow"),
+                ("pattern", "scheme", "p#arrow"),
+            ),
+            "p#arrowline": (
+                ("width", "scheme", "p#arrowline"),
+                ("color", "scheme", "p#arrowline"),
+                ("pattern", "scheme", "p#arrowline"),
+            ),
+            "p#bar": (
+                ("width", "scheme", "p#bar"),
+                ("color", "scheme", "p#barline"),
+                ("pattern", "scheme", "p#bar"),
+            ),
+            "p#box": (
+                ("width", "scheme", "p#box"),
+                ("color", "scheme", "p#boxline"),
+                ("pattern", "scheme", "p#box"),
+            ),
+            "p#boxmark": (
+                ("width", "scheme", "p#boxmark"),
+                ("color", "scheme", "p#boxmarkline"),
+                ("pattern", "scheme", "p#boxmark"),
+            ),
+            "p#dotmark": (
+                ("width", "scheme", "p#dotmark"),
+                ("color", "scheme", "p#dotmarkline"),
+                ("pattern", "scheme", "p#dotmark"),
+            ),
+            "p#line": (
+                ("width", "scheme", "p#lineplot"),
+                ("color", "scheme", "p#lineplot"),
+                ("pattern", "scheme", "p#lineplot"),
+            ),
+            "p#mark": (
+                ("width", "scheme", "p#mark"),
+                ("color", "scheme", "p#markline"),
+                ("pattern", "scheme", "p#mark"),
+            ),
+            "p#other": (
+                ("width", "scheme", "p#other"),
+                ("color", "scheme", "p#otherline"),
+                ("pattern", "scheme", "p#other"),
+            ),
+            "p#solid": (
+                ("width", "scheme", "p#solid"),
+                ("color", "scheme", "p#mark"),
+                ("pattern", "literal", "solid"),
+            ),
+            "pie": (
+                ("width", "scheme", "pie"),
+                ("color", "scheme", "pieline"),
+                ("pattern", "scheme", "pie"),
+            ),
+            "plotregbg": (
+                ("width", "scheme", "background"),
+                ("color", "scheme", "plotregion"),
+                ("pattern", "scheme", "background"),
+            ),
+            "plotregion": (
+                ("width", "scheme", "plotregion"),
+                ("color", "scheme", "plotregion_line"),
+                ("pattern", "scheme", "plotregion"),
+            ),
+            "refline": (
+                ("width", "scheme", "refline"),
+                ("color", "scheme", "refline"),
+                ("pattern", "scheme", "refline"),
+            ),
+            "refmarker": (
+                ("width", "scheme", "refmarker"),
+                ("color", "scheme", "refmarkline"),
+                ("pattern", "scheme", "refmarker"),
+            ),
+            "reverse_big": (
+                ("width", "scheme", "reverse_big"),
+                ("color", "scheme", "reverse_big_line"),
+                ("pattern", "literal", "solid"),
+            ),
+            "solid": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "scheme", "foreground"),
+            ),
+            "sunflower": (
+                ("width", "scheme", "p1"),
+                ("color", "scheme", "sunflower"),
+                ("pattern", "scheme", "sunflower"),
+            ),
+            "sunflowerdb": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "sunflowerdb"),
+                ("pattern", "scheme", "sunflower"),
+            ),
+            "sunflowerdf": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "sunflowerdf"),
+                ("pattern", "scheme", "sunflower"),
+            ),
+            "sunflowerlb": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "sunflowerlb"),
+                ("pattern", "scheme", "sunflower"),
+            ),
+            "sunflowerlf": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "sunflowerlf"),
+                ("pattern", "scheme", "sunflower"),
+            ),
+            "symbol": (
+                ("width", "scheme", "medium"),
+                ("color", "scheme", "foreground"),
+                ("pattern", "scheme", "foreground"),
+            ),
+            "text_option": (
+                ("width", "scheme", "text_option"),
+                ("color", "scheme", "text_option_line"),
+                ("pattern", "scheme", "text_option"),
+            ),
+            "tick": (
+                ("width", "scheme", "tick"),
+                ("color", "scheme", "tick"),
+                ("pattern", "scheme", "tick"),
+            ),
+            "wide_background": (
+                ("width", "literal", "medthick"),
+                ("color", "scheme", "background"),
+                ("pattern", "scheme", "background"),
+            ),
+            "xyline": (
+                ("width", "scheme", "xyline"),
+                ("color", "scheme", "xyline"),
+                ("pattern", "scheme", "xyline"),
+            ),
+            "yxline": (
+                ("width", "scheme", "xyline"),
+                ("color", "scheme", "xyline"),
+                ("pattern", "scheme", "xyline"),
+            ),
+            "zyx2": (
+                ("width", "scheme", "zyx2"),
+                ("color", "scheme", "zyx2"),
+                ("pattern", "scheme", "zyx2"),
+            ),
+        },
+    }
+    # Every style file of the four option classes (_meta.style_known): a
+    # name here outside the table is Stata's but not drawn by dash (D-36c).
+    _STYLE_KNOWN: "dict[str, frozenset]" = {
+        "seriesstyle": frozenset((
+            "ci", "ci2", "dendrogram", "editor", "fpall", "fpallarrow",
+            "fpallci", "fpci", "fpciarrow", "fpcumul", "fpes", "fpesinside",
+            "fpgrp", "fpgrparrow", "fpgrpci", "fpgrps", "histogram",
+            "ilabel", "line_circle", "matrix", "p#", "p#area", "p#arrow",
+            "p#bar", "p#box", "p#dot", "p#line", "p#pie",
+        )),
+        "markerstyle": frozenset((
+            "ci", "ci2", "dots", "ed_arrow", "editor", "fpall", "fpallarrow",
+            "fpallci", "fpci", "fpciarrow", "fpcumul", "fpes", "fpesinside",
+            "fpgrp", "fpgrparrow", "fpgrpci", "fpgrps", "histogram",
+            "ilabel", "matrix", "none", "p#", "p#arrow", "p#box", "p#dot",
+            "refmarker", "star", "sunflower",
+        )),
+        "areastyle": frozenset((
+            "background", "boxed_bg", "ci", "ci2", "clegend_inner",
+            "clegend_outer", "clegend_preg", "dendrogram", "dotchart",
+            "foreground", "fpall", "fpciarea", "fpgraph", "fpgrp",
+            "fpspacer", "histogram", "legend", "matrix_plotregion", "none",
+            "outline", "p#", "p#area", "p#bar", "p#box", "p#pie",
+            "plotregion", "sunflower", "sunflowerdb", "sunflowerlb",
+        )),
+        "linestyle": frozenset((
+            "axisline", "background", "ci", "ci2", "ci2_area", "ci_area",
+            "clegend", "cvcvline", "cvlsline", "cvseline", "dendrogram",
+            "dot", "dotchart", "dotchart_area", "dotmark", "dots", "editor",
+            "foreground", "foreground_center", "fpall", "fpall_area", "fpci",
+            "fpcumul", "fpes", "fpesinside", "fpesrefline", "fpgraph",
+            "fpgrp", "fpgrp_area", "fphrule", "fpnullrefline", "fpspacer",
+            "grid", "grid_foreground", "histogram", "hrule", "legend",
+            "major_grid", "mat_label_box", "matrix_plotregion", "matrixmark",
+            "medforeground", "minor_grid", "minortick", "none", "p#",
+            "p#area", "p#arrow", "p#arrowline", "p#bar", "p#box",
+            "p#boxmark", "p#dotmark", "p#line", "p#mark", "p#other",
+            "p#solid", "pie", "plotregbg", "plotregion", "refline",
+            "refmarker", "reverse_big", "solid", "sunflower", "sunflowerdb",
+            "sunflowerdf", "sunflowerlb", "sunflowerlf", "symbol",
+            "text_option", "tick", "wide_background", "xyline", "yxline",
+            "zyx2",
+        )),
+    }
+    # twoway's default attributes for a name it does not know, measured
+    # over all 26 schemes (plan E9.3): series and marker p1, line the
+    # scheme's foreground line, area its background area.
+    _STYLE_DEFAULT: "dict[str, str]" = {
+        "seriesstyle": "p1", "markerstyle": "p1",
+        "linestyle": "foreground", "areastyle": "background"}
+    #: style_bundle's class tokens; a series.* token is the named
+    #: seriesstyle's marker, line or area (D-36b).
+    _STYLE_CLASS: "dict[str, str]" = {
+        "marker": "markerstyle", "line": "linestyle", "area": "areastyle",
+        "series.marker": "seriesstyle", "series.line": "seriesstyle",
+        "series.area": "seriesstyle"}
+    #: The class each transcribed attr is read in: a style class (a hop,
+    #: D-36h) or a scheme class (a leaf).
+    _STYLE_ATTR: "dict[str, dict[str, str]]" = {
+        "seriesstyle": {"marker": "markerstyle", "line": "linestyle",
+                        "area": "areastyle"},
+        "markerstyle": {"symbol": "symbol", "size": "symbolsize",
+                        "fillcolor": "color", "linestyle": "linestyle"},
+        "areastyle": {"linestyle": "linestyle", "shadestyle": "shadestyle"},
+        "shadestyle": {"color": "color", "intensity": "intensity"},
+        "linestyle": {"width": "linewidth", "color": "color",
+                      "pattern": "linepattern"},
     }
 
     @classmethod
@@ -9430,10 +10170,34 @@ class SchemeParser:
           (``default_symbol_traits``); a hollow symbol's fill opacity is 0.
 
         Each call returns a new dict; nothing is shared with the parser.
+
+        WP-30 P1.14b (register P1.14.1, P1.14.3; plan E7-E9): *cls* may
+        also be ``"series.marker"``, ``"series.line"`` or ``"series.area"``,
+        a named seriesstyle's role (D-36b), and every other name resolves:
+        a name of ``_STYLE_TABLE`` through Stata's own chain
+        (``_style_resolve``), any other non-blank name to twoway's default
+        attributes for its class with twoway's note (``_style_note``).
+        One enclosing pair of double quotes is unwrapped first (D-36j).
+        None is returned only for an unknown *cls* or a blank name.
         """
-        m = re.fullmatch(r"p([1-9]|1[0-5])", str(name).strip())
+        stata_class = self._STYLE_CLASS.get(cls)
+        if stata_class is None:
+            return None
+        s = str(name).strip(" \t")
+        if len(s) >= 4 and s.startswith('`"') and s.endswith('"\''):
+            s = s[2:-2]
+        elif len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+            s = s[1:-1]
+        role = cls.rsplit(".", 1)[-1]
+        kind = self._style_kind(stata_class, s)
+        if kind == "blank":
+            return None
+        if kind != "p":
+            return self._style_named(cls, stata_class, s, kind)
+        m = re.fullmatch(r"p([1-9]|1[0-5])", s)
         if m is None:
             return None
+        cls = role
         i = int(m.group(1)) - 1
         if cls == "line":
             return {"line": self.default_color(i, "connected"),
@@ -9458,6 +10222,330 @@ class SchemeParser:
                     "size": self.default_marker_size(i),
                     "hollow": bool(hollow), "factor": factor}
         return None
+
+    # ------------------------------------------------------------------
+    # Named styles other than p1-p15 (WP-30 P1.14b; register P1.14.1,
+    # P1.14.3; plan E7-E10)
+    # ------------------------------------------------------------------
+
+    _STYLE_P_RE = re.compile(r"p([1-9]|1[0-5])([a-z_]*)")
+
+    def _style_kind(self, stata_class: str, name: Any) -> str:
+        """What *name* is in Stata class *stata_class*: ``"blank"``,
+        ``"p"`` (p1-p15, S32's bundles), ``"table"`` (a name of
+        ``_STYLE_TABLE``), ``"known"`` (a Stata style file outside the
+        table, D-36c) or ``"unknown"``.
+
+        Case-sensitive, as Stata's lookup is: ``P3``, ``p0``, ``p03`` and
+        ``p16line`` are unknown (plan E9.2).  *name* is only matched against
+        fixed sets and one anchored regex (TR-36.20)."""
+        s = str(name).strip(" \t")
+        if not s:
+            return "blank"
+        if len(s) > 64 or "#" in s:
+            return "unknown"
+        m = self._STYLE_P_RE.fullmatch(s)
+        if m is not None and not m.group(2):
+            return "p"
+        table = self._STYLE_TABLE.get(stata_class, {})
+        known = self._STYLE_KNOWN.get(stata_class, frozenset())
+        file = "p#" + m.group(2) if m is not None else s
+        if file in table and (m is not None or not s.startswith("p#")):
+            return "table"
+        if file in known:
+            return "known"
+        return "unknown"
+
+    @staticmethod
+    def _style_steps(key: str) -> "list[str]":
+        """scheme.class's lookup steps for *key* (plan E8): a key starting
+        ``p`` walks p<num><stub>, p<stub>, p<num>, p and the key; any other
+        key is exact."""
+        if not key.startswith("p"):
+            return [key]
+        m = re.match(r"p(\d*)(.*)", key)
+        num, stub = m.group(1), m.group(2)
+        out: list = []
+        for st in (f"p{num}{stub}", f"p{stub}", f"p{num}", "p", key):
+            if st not in out:
+                out.append(st)
+        return out
+
+    def _style_leaf(self, leaf_class: str, key: str,
+                    hop: bool = False) -> "str | None":
+        """The raw value of ``<leaf_class> <key>`` along scheme.class's
+        chain (plan E8), *key* taken only from ``_STYLE_TABLE`` with ``#``
+        replaced by a validated number.
+
+        A leaf a user scheme does not declare at any step draws s2color's
+        value (``_FALLBACK_PROPS``) and is noted once in scheme.class's
+        words (D-36g).  A hop (*hop*, *leaf_class* a style class) takes
+        the declared value of the first step that has one, else the first
+        step that names a style of that class (D-36h); it is never noted,
+        and None means the class default."""
+        steps = self._style_steps(key)
+        props = self._props
+        for st in steps:
+            v = props.get(f"{leaf_class} {st}" if st else leaf_class, "")
+            if str(v).strip():
+                return str(v).strip().strip('"').strip()
+            if hop and st and self._style_kind(leaf_class, st) in (
+                    "p", "table", "known"):
+                return st
+        if hop:
+            return None
+        for st in steps:
+            v = self._FALLBACK_PROPS.get(
+                f"{leaf_class} {st}" if st else leaf_class, "")
+            if v.strip():
+                shown = f"{leaf_class} {key}" if key else leaf_class
+                text = (f"dash: {shown} not found in scheme, default "
+                        f"attributes used -- s2color's value")
+                nk = ("named-style-key", shown)
+                _dash_warn_once(nk, text)
+                pending = self.__dict__.get("_style_pending")
+                if pending is not None:
+                    pending.append((nk, text))
+                return v.strip()
+        return None
+
+    def _style_raw_colour(self, raw: "str | None"
+                          ) -> "tuple[str | None, float | None]":
+        """``(hex, opacity)`` of a scheme colour token, ``(None, None)``
+        for Stata's ``none``; read as ``_color_alpha`` reads a key."""
+        if raw is None:
+            return "#000000", None
+        if raw.split("%")[0].split("*")[0].strip().lower() == "none":
+            return None, None
+        _st, hx, alpha = OptionTranslator.stata_colour(
+            raw, context="scheme",
+            background=getattr(self, "_colour_bg", None),
+            foreground=getattr(self, "_colour_fg", None),
+            naturally_white=getattr(self, "naturally_white", True))
+        return hx, alpha
+
+    @staticmethod
+    def _style_raw_width(raw: "str | None") -> float:
+        """A linewidth token in pixels, as ``_lwidth`` reads one; medium
+        when it is absent or not a width."""
+        T = OptionTranslator
+        medium = T.translate_lwidth("medium")
+        if not raw:
+            return medium
+        try:
+            val = float(raw)
+        except ValueError:
+            try:
+                return T.translate_lwidth(raw)
+            except ValueError:
+                return medium
+        if not math.isfinite(val) or val < 0:
+            return medium
+        try:
+            return T.line_px(val * T.PT_PER_RS)
+        except ValueError:
+            return medium
+
+    def _style_resolve(self, stata_class: str, file: str, num: str,
+                       depth: int = 0) -> dict:
+        """The named style *file* (``#`` meaning plot *num*) of Stata class
+        *stata_class*, resolved through the scheme: a linestyle is S32's
+        line bundle, a markerstyle its marker bundle, an areastyle its area
+        bundle, a shadestyle ``{fill, fill_alpha, intensity}`` and a
+        seriesstyle ``{"marker", "line", "area"}`` of those (plan E7).
+
+        A leaf converts through the parser's own readers; a ``none`` colour
+        is None (not drawn); a style-name attr is a literal name or a hop
+        (``_style_leaf(..., hop=True)``): ``none`` is not drawn, p1-p15 is
+        S32's bundle, a table name recurses (depth at most 6) and anything
+        else is the class default (E9.3)."""
+        rows = self._STYLE_TABLE[stata_class][file]
+        attrs = self._STYLE_ATTR[stata_class]
+        vals: dict = {}
+        for attr, kind, val in rows:
+            sub = attrs.get(attr)
+            if sub is None:
+                continue
+            key = val.replace("#", num)
+            if sub in self._STYLE_TABLE:
+                name = key if kind == "literal" else \
+                    self._style_leaf(sub, key, hop=True)
+                vals[attr] = self._style_sub(sub, name, depth)
+            elif kind == "literal":
+                vals[attr] = key
+            else:
+                vals[attr] = self._style_leaf(sub, key)
+        if stata_class == "linestyle":
+            c, a = self._style_raw_colour(vals.get("color"))
+            pat = (vals.get("pattern") or "solid").lower()
+            try:
+                dash = list(OptionTranslator.translate_lpattern(pat))
+            except ValueError:
+                dash = []
+            return {"line": c, "line_alpha": a,
+                    "line_width": self._style_raw_width(vals.get("width")),
+                    "line_dash": dash}
+        if stata_class == "shadestyle":
+            c, a = self._style_raw_colour(vals.get("color"))
+            raw = (vals.get("intensity") or "").strip().lower()
+            if raw in self._INTENSITY:
+                f = self._INTENSITY[raw]
+            else:
+                try:
+                    f = max(0.0, float(raw) / 100.0)
+                except ValueError:
+                    f = 1.0
+                if not math.isfinite(f):
+                    f = 1.0
+            return {"fill": c, "fill_alpha": a, "intensity": f}
+        if stata_class == "areastyle":
+            sh = vals.get("shadestyle") or {"fill": None, "fill_alpha": None,
+                                            "intensity": 1.0}
+            ln = vals.get("linestyle") or self._style_none("line")
+            out = {"fill": sh["fill"], "fill_alpha": sh["fill_alpha"],
+                   "intensity": sh["intensity"]}
+            out.update(ln)
+            return out
+        if stata_class == "markerstyle":
+            raw = (vals.get("symbol") or "circle").strip()
+            ln = vals.get("linestyle") or self._style_none("line")
+            fc, fa = self._style_raw_colour(vals.get("fillcolor"))
+            invisible = raw.lower() in OptionTranslator._INVISIBLE_SYMBOLS
+            try:
+                sym, hollow, factor = OptionTranslator.symbol_traits(raw)
+            except ValueError:
+                sym, hollow, factor = "circle", False, 1.0
+            fa = 1.0 if fa is None else fa
+            return {"fill": None if invisible else fc,
+                    "fill_alpha": 0.0 if hollow else fa,
+                    "line": None if invisible else ln["line"],
+                    "line_alpha": (fa if ln["line_alpha"] is None
+                                   else ln["line_alpha"]),
+                    "line_width": ln["line_width"],
+                    "symbol": sym,
+                    "size": self._markersize_px(vals.get("size") or ""),
+                    "hollow": bool(hollow), "factor": factor}
+        return {r: vals.get(a) or self._style_none(r)
+                for r, a in (("marker", "marker"), ("line", "line"),
+                             ("area", "area"))}
+
+    _STYLE_ROLE_OF: "dict[str, str]" = {
+        "markerstyle": "marker", "linestyle": "line", "areastyle": "area",
+        "shadestyle": "area"}
+
+    def _style_sub(self, sub: str, name: "str | None", depth: int) -> dict:
+        """The bundle a style-name attr of class *sub* names (see
+        ``_style_resolve``); None for ``none``."""
+        if name == "none":
+            return None
+        role = self._STYLE_ROLE_OF[sub]
+        kind = self._style_kind(sub, name) if name else "unknown"
+        if kind == "table" and depth < 6:
+            m = self._STYLE_P_RE.fullmatch(name)
+            file, num = (("p#" + m.group(2), m.group(1)) if m is not None
+                         else (name, ""))
+            return self._style_resolve(sub, file, num, depth + 1)
+        if kind != "p":
+            name = self._STYLE_DEFAULT.get(sub, "p1")
+            if self._style_kind(sub, name) == "table" and depth < 6:
+                return self._style_resolve(sub, name, "", depth + 1)
+            name = "p1"
+        b = self.style_bundle(role, name)
+        if sub == "shadestyle":
+            return {k: b[k] for k in ("fill", "fill_alpha", "intensity")}
+        return b
+
+    @staticmethod
+    def _style_none(role: str) -> dict:
+        """A role's bundle that draws nothing (Stata's ``none``)."""
+        if role == "line":
+            return {"line": None, "line_alpha": None, "line_width": 0.0,
+                    "line_dash": []}
+        if role == "area":
+            return {"fill": None, "fill_alpha": None, "intensity": 1.0,
+                    "line": None, "line_alpha": None, "line_width": 0.0,
+                    "line_dash": []}
+        return {"fill": None, "fill_alpha": 0.0, "line": None,
+                "line_alpha": 0.0, "line_width": 0.0, "symbol": "circle",
+                "size": 0.0, "hollow": False, "factor": 1.0}
+
+    def _style_shape(self, cls: str, resolved: dict) -> dict:
+        """*resolved* (``_style_resolve``'s form) as style_bundle's *cls*
+        returns it: S32's line, area or marker shape (plan E3), a series.*
+        token taking the seriesstyle's role.  A new dict."""
+        if cls.startswith("series."):
+            role = cls.split(".", 1)[1]
+            out = resolved.get(role) or self._style_none(role)
+        else:
+            out = resolved
+        out = dict(out)
+        if "line_dash" in out:
+            out["line_dash"] = list(out.get("line_dash") or [])
+        return out
+
+    def _style_note(self, stata_class: str, name: Any, kind: str) -> None:
+        """Note once per command a name dash draws as the class default:
+        twoway's words for a name Stata does not know, dash's for a Stata
+        name outside the table (D-36c).  The name is shown through
+        ``_dash_display`` only (D-36d, TR-36.20)."""
+        shown = _dash_display(name)
+        if kind == "known":
+            text = (f"dash: named style {shown} of class {stata_class} is "
+                    f"not drawn by dash; default attributes used")
+        else:
+            text = (f"dash: named style {shown} not found in class "
+                    f"{stata_class}, default attributes used")
+        _dash_warn_once(("named-style", stata_class, shown), text)
+
+    def _style_named(self, cls: str, stata_class: str, s: str,
+                     kind: str) -> dict:
+        """style_bundle's answer for a table, known or unknown name: the
+        resolved table style, or the class default with ``_style_note``.
+
+        Memoised on the instance (created lazily: the served app rebuilds
+        the parser without ``__init__``), keyed by the bundle class and a
+        table name or ``"<default>"``, never by other user text; a hit
+        re-emits the D-36g notes its resolution raised."""
+        memo = self.__dict__.setdefault("_style_memo", {})
+        if kind == "table":
+            mk = (cls, s)
+        else:
+            self._style_note(stata_class, s, kind)
+            mk = (cls, "<default>")
+        hit = memo.get(mk)
+        if hit is None:
+            prev = self.__dict__.get("_style_pending")
+            self.__dict__["_style_pending"] = []
+            try:
+                if kind == "table":
+                    m = self._STYLE_P_RE.fullmatch(s)
+                    file, num = (("p#" + m.group(2), m.group(1))
+                                 if m is not None else (s, ""))
+                    res = self._style_resolve(stata_class, file, num)
+                    bundle = self._style_shape(cls, res)
+                else:
+                    d = self._STYLE_DEFAULT[stata_class]
+                    if d == "p1":
+                        bundle = self.style_bundle(cls.rsplit(".", 1)[-1],
+                                                   "p1")
+                    else:
+                        bundle = self._style_shape(
+                            cls, self._style_resolve(stata_class, d, ""))
+                notes = tuple(self.__dict__["_style_pending"])
+            finally:
+                cur = self.__dict__.pop("_style_pending", None) or []
+                if prev is not None:
+                    prev.extend(cur)
+                    self.__dict__["_style_pending"] = prev
+            hit = (bundle, notes)
+            memo[mk] = hit
+        else:
+            for nk, text in hit[1]:
+                _dash_warn_once(nk, text)
+        out = dict(hit[0])
+        if "line_dash" in out:
+            out["line_dash"] = list(out["line_dash"] or [])
+        return out
 
     def apply_to_figure(self, fig: Any) -> None:
         """Apply scheme defaults to *fig*.
@@ -10559,8 +11647,9 @@ class GlyphMapper:
     def _ci_pstyle(self, options: "dict[str, str]"
                    ) -> "tuple[str, int | None]":
         """What a ci layer's ``pstyle()`` names: ``("", None)`` for none,
-        ``("ci", None)`` or ``("ci2", None)``, or ``("p", index)`` for
-        p1..p15.
+        ``("ci", None)`` or ``("ci2", None)``, ``("p", index)`` for
+        p1..p15, or ``("named", name)`` for another seriesstyle of
+        ``SchemeParser._STYLE_TABLE`` (WP-30 P1.14b).
 
         Any other name is Stata's "named style ... not found in class
         seriesstyle, default attributes used", which draws the band and
@@ -10585,12 +11674,14 @@ class GlyphMapper:
             return s, None
         if s in self._CI_PSTYLE_P:
             return "p", self._CI_PSTYLE_P[s]
-        _shown = _dash_display(s)
-        _dash_warn_once(
-            ("ci-pstyle", _shown),
-            f"dash: {_opt}({_shown}): named style not found; default "
-            f"attributes used -- p1's, as twoway draws them.",
-            stacklevel=4)
+        # Any other seriesstyle of the named-style table (histogram, p3bar,
+        # p3line ...; WP-30 P1.14b, D-36e) draws as that style; anything
+        # else is p1 with twoway's note (or D-36c's for a Stata name dash
+        # does not draw).
+        k = self.scheme._style_kind("seriesstyle", s)
+        if k == "table":
+            return "named", s
+        self.scheme._style_note("seriesstyle", s, k)
         return "p", 0
 
     @staticmethod
@@ -10680,6 +11771,8 @@ class GlyphMapper:
         sch = self.scheme
         if ps == "p":
             st = dict(sch.p_other_band_styles[int(pi) % 15])
+        elif ps == "named":
+            st = dict(sch.style_bundle("series.area", pi))
         else:
             st = dict(sch.ci_band_styles["ci2" if ps == "ci2" else "ci"])
         # The other named styles over that base, in twoway's factor order
@@ -10697,9 +11790,6 @@ class GlyphMapper:
             if _w is not None:
                 for k in ("line", "line_alpha", "line_width", "line_dash"):
                     st[k] = _w[2].get(k)
-            for key, value, kroles in _plan["unresolved"]:
-                if {"area", "aline"} & set(kroles):
-                    self._style_unresolved(key, value)
         oa = self._style_options(_o, ("area",))
         ol = self._style_options(_o, ("aline",))
         if st.get("intensity") is None:
@@ -10852,6 +11942,19 @@ class GlyphMapper:
                 g.line_alpha = _want
             g.line_width = self.scheme.plot_line_width(pi, "")
             g.line_dash = list(self.scheme.default_connect_pattern(pi))
+        elif ps == "named":
+            # The named seriesstyle's line (WP-30 P1.14b, D-36e).
+            ls = self.scheme.style_bundle("series.line", pi)
+            if ls.get("line") is None:
+                g.line_alpha = 0.0
+            else:
+                g.line_color = ls["line"]
+                _a = ls.get("line_alpha")
+                _want = _a if _a is not None else 1.0
+                if g.line_alpha != _want:
+                    g.line_alpha = _want
+            g.line_width = ls["line_width"]
+            g.line_dash = list(ls["line_dash"])
         # lstyle()/clstyle() over pstyle(): the line role's winner, read
         # from options without pstyle() and p() (WP-30 P1.14a, TR-32.11).
         self._style_restyle(line_r, {k: v for k, v in (options or {}).items()
@@ -10862,9 +11965,15 @@ class GlyphMapper:
     # Named styles p1-p15 (WP-30 P1.14a; register P1.14.1-P1.14.8)
     # ------------------------------------------------------------------
 
-    _PSTYLE_ROLES: "dict[str, str]" = {"marker": "marker", "mline": "marker",
-                                       "line": "line", "area": "area",
-                                       "aline": "area"}
+    #: pstyle() and p() name a seriesstyle, whose roles are a markerstyle,
+    #: a linestyle and an areastyle of their own (seriesstyle-p#bar is
+    #: marker p#, line p#connect, area p#bar; D-36b, WP-30 P1.14b), so
+    #: each role reads its series.* bundle class.
+    _PSTYLE_ROLES: "dict[str, str]" = {"marker": "series.marker",
+                                       "mline": "series.marker",
+                                       "line": "series.line",
+                                       "area": "series.area",
+                                       "aline": "series.area"}
     #: twoway's factor order (twoway_yxview_parse.class; research p1-14
     #: §2.5).  A style entry maps each role it reaches to the bundle class
     #: it reads; an explicit entry is the tuple of roles it styles.  An
@@ -10910,22 +12019,30 @@ class GlyphMapper:
         ("fintensity", ("area",)),
         ("p", _PSTYLE_ROLES),
     )
-    _STYLE_UNREAD_NOTE: str = ("dash: {opt}({name}): only the named styles "
-                               "p1-p15 are drawn; this layer keeps its own "
-                               "style.")
+    #: Declared options dash does not draw (dot rows P2.9, marker back
+    #: lines P2.8) whose names twoway still notes (plan E9.7, D-36i): read
+    #: for the note only.
+    _STYLE_NOTE_ONLY: tuple = (("dstyle", "marker"), ("dlstyle", "line"),
+                               ("bmlinestyle", "line"))
 
     def _style_plan(self, options: "dict[str, str]") -> "dict | None":
         """Each role's winning named style in twoway's factor order, or
         None when no style option of ``_STYLE_FACTORS`` holds a value.
 
-        Returns ``{"win": {role: (key, position, bundle)}, "unresolved":
-        [(key, value, roles)]}``: a role's winner is the last style option
-        covering it whose name ``SchemeParser.style_bundle`` resolves; a
-        name it does not resolve is unresolved and ignored (D-32b, until
-        section 36).  A pure function of *options* and the scheme.
+        Returns ``{"win": {role: (key, position, bundle)}}``: a role's
+        winner is the last style option covering it; every non-blank name
+        has a bundle (WP-30 P1.14b: a name dash does not draw is the class
+        default, noted by ``style_bundle``).  ``dstyle()``, ``dlstyle()``
+        and ``bmlinestyle()`` are read for their note only (D-36i).  A
+        pure function of *options* and the scheme, but for its notes.
         """
         if not options:
             return None
+        for key, c in self._STYLE_NOTE_ONLY:
+            v = str(options.get(key, "") or "").strip()
+            if v:
+                for tok in v.split():
+                    self.scheme.style_bundle(c, tok)
         present = []
         for pos, (key, spec) in enumerate(self._STYLE_FACTORS):
             if isinstance(spec, dict):
@@ -10935,16 +12052,14 @@ class GlyphMapper:
         if not present:
             return None
         win: dict = {}
-        unresolved: list = []
         for pos, key, spec, v in present:
             got = {c: self.scheme.style_bundle(c, v)
                    for c in set(spec.values())}
             if any(b is None for b in got.values()):
-                unresolved.append((key, v, tuple(spec)))
                 continue
             for role, c in spec.items():
                 win[role] = (key, pos, got[c])
-        return {"win": win, "unresolved": unresolved}
+        return {"win": win}
 
     def _style_options(self, options: "dict[str, str]",
                        roles: tuple) -> "dict[str, str]":
@@ -10989,18 +12104,20 @@ class GlyphMapper:
 
     def _style_value(self, options: "dict[str, str]", role: str, attr: str,
                      default: Any) -> Any:
-        """The *attr* of *role*'s winning named style, else *default*."""
+        """The *attr* of *role*'s winning named style, else *default*; a
+        style that draws nothing there (a None colour: ``none``, WP-30
+        P1.14b) keeps *default*, its alpha 0 being ``_style_restyle``'s."""
         plan = self._style_plan(options)
         if plan is None or role not in plan["win"]:
             return default
-        return plan["win"][role][2].get(attr, default)
+        v = plan["win"][role][2].get(attr, default)
+        return default if v is None else v
 
     def _style_restyle(self, renderer: Any, options: "dict[str, str]",
                        roles: tuple) -> None:
         """Give *renderer*'s glyph each of *roles*' winning named style,
         once per glyph and role (D-32e), before any explicit option is
-        read for it; then note each unresolved name a role of *roles*
-        draws (D-32b).
+        read for it.
 
         A role already restyled (``renderer._dash_named_roles``) is left
         alone, so a mapper that restyles right after building the glyph
@@ -11052,17 +12169,6 @@ class GlyphMapper:
             for attr, val in sets:
                 if g is not None and hasattr(g, attr) and val is not None:
                     setattr(g, attr, val)
-        for key, value, kroles in plan["unresolved"]:
-            if set(kroles) & set(roles):
-                self._style_unresolved(key, value)
-
-    def _style_unresolved(self, key: str, value: Any) -> None:
-        """Note once per render a named style dash does not draw yet
-        (D-32b): the layer keeps its own style.  The name is echoed through
-        ``_dash_display`` (printable, at most 80 characters)."""
-        _dash_warn_once(("named-style", key, str(value)),
-                        self._STYLE_UNREAD_NOTE.format(
-                            opt=key, name=_dash_display(value)))
 
     @staticmethod
     def _bootstrap_ci(

@@ -1546,3 +1546,60 @@ def test_the_parser_axisstyle_table_is_statas():
     want = {n: (mod.axis_style_flags(r, n)["line"],
                 mod.axis_style_flags(r, n)["ticks"]) for n in _AXISSTYLES}
     assert SchemeParser._AXISSTYLE_FLAGS == want
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.14b (section 36): the keys the named styles read
+# ---------------------------------------------------------------------------
+
+def test_the_named_style_directives_are_carried():
+    """Every shipped file carries its Named styles group (the scheme's
+    named_style_directives less the keys an earlier group carries), value
+    for value (one loop over the 26)."""
+    mod = _extractor()
+    bad = []
+    for name in sorted(SchemeParser._BUILTIN_NAMES):
+        props = SchemeParser(name)._props
+        groups = [g for g in mod.expected_directives(TRUTH[name])
+                  if g[0][0].startswith("Named styles (WP-30 S36)")]
+        assert len(groups) == 1, name
+        for cls, key, v, _ref in groups[0][1]:
+            if props.get(f"{cls} {key}", "").strip() != v:
+                bad.append((name, cls, key, v))
+    assert not bad, bad[:20]
+
+
+def test_the_style_name_hops_are_identity():
+    """D-36h (E10): no shipped file carries a hop key, and for every hop
+    Stata's chain declares, the rule SchemeParser follows (the declared
+    value, else the chain step that names a style) gives that value."""
+    bad = []
+    for name in sorted(SchemeParser._BUILTIN_NAMES):
+        sp = SchemeParser(name)
+        if [k for k in sp._props if k.split(" ", 1)[0] in (
+                "markerstyle", "linestyle", "areastyle", "shadestyle",
+                "seriesstyle")]:
+            bad.append((name, "carries a hop key"))
+        for k, v in TRUTH["_meta"]["style_hops"][name].items():
+            cls, key = k.split(" ", 1)
+            if sp._style_leaf(cls, key, hop=True) != v:
+                bad.append((name, k, v))
+    assert not bad, bad[:20]
+
+
+def test_the_named_style_walk_follows_scheme_class(tmp_path):
+    """E8: a key no step declares is unresolvable -- a bare `color' class
+    default is not taken (linked() would take it)."""
+    mod = _extractor()
+    base = tmp_path / "base"
+    shutil.copytree(os.path.join(mod.DEFAULT_STATA_BASE, "style"),
+                    base / "style")
+    (base / "s").mkdir()
+    (base / "s" / "scheme-zz.scheme").write_text(
+        "color black\nlinewidth refline medium\nlinepattern refline solid\n",
+        encoding="utf-8")
+    r = mod.SchemeResolver(str(base))
+    r.load("zz")
+    out, _hops, bad = mod.named_style_directives(r, {}, {})
+    assert "color refline" not in out
+    assert [m for m in bad if "color refline" in m]

@@ -1165,6 +1165,7 @@ program define _dash_parse_plot_opts, sclass
         COLor(string asis)        MLWidth(string asis)      MSTyle(string asis) ///
         LStyle(string asis)       MLStyle(string asis)      MLPattern(string) ///
         ASTyle(string asis) ALstyle(string asis) BSTyle(string asis) BLstyle(string asis) CLStyle(string asis) P(string) ///
+        DSTyle(string asis)       DLstyle(string asis)      BMLinestyle(string asis) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
         SORT1(string)             CLColor(string asis)      CLPattern(string asis) ///
@@ -1304,6 +1305,12 @@ program define _dash_parse_plot_opts, sclass
     if `: length local mlabvposition' local _dash_pending `"`_dash_pending' mlabvposition"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
+    // WP-30 P1.14b: dstyle() and dlstyle() style the dots of a dot plot
+    // (P2.9) and bmlinestyle() a marker's back line (P2.8); dash draws
+    // neither, so each is kept in the spec and named here.
+    if `: length local dstyle' local _dash_pending `"`_dash_pending' dstyle"'
+    if `: length local dlstyle' local _dash_pending `"`_dash_pending' dlstyle"'
+    if `: length local bmlinestyle' local _dash_pending `"`_dash_pending' bmlinestyle"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
     // fitarea_options, the look of a ci fit's band: twoway takes ac(),
     // alc(), alw() and alp() (measured 24sep2026; al() is alstyle()).
@@ -1431,6 +1438,10 @@ program define _dash_parse_plot_opts, sclass
     sreturn local alstyle          : copy local alstyle
     sreturn local bstyle           : copy local bstyle
     sreturn local blstyle          : copy local blstyle
+    // WP-30 P1.14b: kept and named, not drawn (P2.9, P2.8).
+    sreturn local dstyle           : copy local dstyle
+    sreturn local dlstyle          : copy local dlstyle
+    sreturn local bmlinestyle      : copy local bmlinestyle
     sreturn local clstyle          : copy local clstyle
     sreturn local p                : copy local p
     sreturn local mlpattern        : copy local mlpattern
@@ -3876,6 +3887,9 @@ program define _dash_plot_opts_to_json, rclass
     local _dash_p_drops "`_dash_p_drops' acolor alcolor alwidth alpattern astyle alstyle"
     // area, fcolor(red) p(p3): p3's fill.
     local _dash_p_drops "`_dash_p_drops' bstyle blstyle bfcolor blcolor fcolor fintensity falpha"
+    // p() sets the whole seriesstyle, dots and marker back line included
+    // (twoway_yxview_parse.class:631, 729, 740; WP-30 P1.14b).
+    local _dash_p_drops "`_dash_p_drops' dstyle dlstyle bmlinestyle"
     // p(p3) mcolor(red%50): p3, opacity 100.
     local _dash_p_drops "`_dash_p_drops' mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat mlabwidth"
     // mlabcolor(red), mlabposition(9), mlabformat(), mlabgap(5) p(p3): each
@@ -3897,7 +3911,7 @@ program define _dash_plot_opts_to_json, rclass
                    bwidth degree pstyle cmissing recast connect bin width start ///
                    percent frequency density fraction kernel n level bands at ciopts ///
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
-                   clstyle astyle alstyle bstyle blstyle p mlpattern ///
+                   clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///

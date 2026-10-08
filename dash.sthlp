@@ -3961,8 +3961,17 @@ the plot number colours (its marker labels and the immediate types
 included); the layers after it keep their numbers.
 
 {pstd}
-Not drawn yet: a name other than {cmd:p1} to {cmd:p15} is named in a
-note and the layer keeps its own style; the outline half of a named style
+Stata's other style names are drawn too, as {cmd:twoway} draws them under
+the scheme: every line style ({cmd:lstyle(refline)}, {cmd:lstyle(grid)},
+{cmd:lstyle(xyline)}, {cmd:lstyle(none)} ...), and {cmd:ci}, {cmd:ci2},
+{cmd:histogram}, {cmd:none} and the {cmd:p}{it:#}{cmd:line},
+{cmd:p}{it:#}{cmd:bar}, {cmd:p}{it:#}{cmd:area}, {cmd:p}{it:#}{cmd:box},
+{cmd:p}{it:#}{cmd:dot} and {cmd:p}{it:#}{cmd:arrow} forms (see
+{help dash##scheme:Stata scheme support}).  A name {cmd:twoway} does not
+know draws its default attributes, with its note.
+
+{pstd}
+Not drawn yet: the outline half of a named style
 on {cmd:area} and {cmd:rarea} ({cmd:lstyle()}, {cmd:alstyle()} and
 {cmd:blstyle()} are named there); and the arrowheads of {cmd:pcarrow},
 {cmd:pcbarrow} and {cmd:pcarrowi} ({cmd:mstyle()} and {cmd:mlstyle()} are
@@ -4094,6 +4103,38 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     draws two plots, its band and its line, so
     {cmd:lfitci} || {cmd:lfitci} || {cmd:lfit} draws its lines in
     {cmd:p1}, {cmd:p3} and {cmd:p5}, as {cmd:twoway} does.{p_end}
+
+{phang2}{ul:Named styles.}  {cmd:pstyle()} and {cmd:p()} take
+    {cmd:ci}, {cmd:ci2}, {cmd:histogram} and the {cmd:p}{it:#}{cmd:line},
+    {cmd:p}{it:#}{cmd:bar}, {cmd:p}{it:#}{cmd:area},
+    {cmd:p}{it:#}{cmd:box}, {cmd:p}{it:#}{cmd:dot} and
+    {cmd:p}{it:#}{cmd:arrow} series styles; {cmd:mstyle()} takes
+    {cmd:ci}, {cmd:ci2}, {cmd:histogram}, {cmd:none},
+    {cmd:p}{it:#}{cmd:box}, {cmd:p}{it:#}{cmd:dot} and
+    {cmd:p}{it:#}{cmd:arrow}; {cmd:astyle()} and {cmd:bstyle()} take
+    {cmd:background}, {cmd:foreground}, {cmd:ci}, {cmd:ci2},
+    {cmd:histogram}, {cmd:none}, {cmd:p}{it:#}{cmd:area},
+    {cmd:p}{it:#}{cmd:bar} and {cmd:p}{it:#}{cmd:box}; and
+    {cmd:lstyle()}, {cmd:clstyle()}, {cmd:mlstyle()}, {cmd:alstyle()} and
+    {cmd:blstyle()} take every one of Stata's 76 line styles
+    ({cmd:refline}, {cmd:grid}, {cmd:major_grid}, {cmd:foreground},
+    {cmd:xyline}, {cmd:none}, {cmd:p}{it:#}{cmd:line} and the rest).
+    Each is drawn as {cmd:twoway} draws it, through the scheme's own keys
+    along Stata's {cmd:p}{it:#}{it:stub} chain, so a scheme of your own
+    that includes a shipped one and sets, say, {cmd:color refline} reaches
+    {cmd:lstyle(refline)}; a key your scheme does not reach at all is
+    drawn at {cmd:s2color}'s value with the note
+    {cmd:(note: dash: color refline not found in scheme, default attributes used -- s2color's value)}.
+    A name {cmd:twoway} does not know draws {cmd:twoway}'s default
+    attributes -- {cmd:p1} for a series or marker style, the scheme's
+    foreground line for a line style and its background area for an area
+    style -- with
+    {cmd:(note: dash: named style} {it:name} {cmd:not found in class} {it:class}{cmd:, default attributes used)}
+    once.  A name Stata knows that {cmd:dash} does not draw ({cmd:fpall},
+    {cmd:dendrogram}, {cmd:sunflower}, {cmd:star}, {cmd:plotregion},
+    {cmd:outline}, {cmd:legend} and the rest of Stata's style files
+    outside these lists) draws the same defaults, with
+    {cmd:(note: dash: named style} {it:name} {cmd:of class} {it:class} {cmd:is not drawn by dash; default attributes used)}.
 
 {phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
     scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,
@@ -4313,14 +4354,15 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 100 to 170 directives (more for the monochrome schemes, whose
+scheme: 210 to 280 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
 has 2060, the {cmd:#include} chain flattened into the file, every colour
 resolved to {cmd:#rrggbb} ({cmd:sttrans}'s with the {cmd:%20} opacity
 Stata declares kept as {cmd:#rrggbb%20}, and {cmd:economist}'s plot-region
-border written as Stata's {cmd:none}), and a {cmd:* provenance:}
+border, and the {cmd:pieline} and {cmd:fpspacer} line colours, written as
+Stata's {cmd:none}), and a {cmd:* provenance:}
 comment for every
 directive saying whether it was transcribed from Stata's file, and from
 which directive, or inferred by {cmd:dash} where Stata resolves the key
@@ -4333,7 +4375,9 @@ out: each file carries only the keys
 Stata's own chain declares, and {cmd:dash} follows the
 {cmd:p}{it:#}{it:stub} fallback itself, as Stata does.  Most of the
 directives {cmd:dash} does not carry govern what it does not draw: the styling of {cmd:graph bar}, {cmd:box}, {cmd:pie},
-{cmd:dot} and {cmd:matrix} charts, and margins.  Some govern
+{cmd:dot} and {cmd:matrix} charts, and margins (the line styles of those
+names, such as {cmd:tick} and {cmd:pie}, are carried for {cmd:lstyle()}).
+Some govern
 what it draws in its own way, so those can look different from Stata's.
 A confidence band's keys are carried -- {cmd:color ci_area},
 {cmd:ci_arealine} and {cmd:ci_line}, {cmd:intensity ci_area},
@@ -4341,7 +4385,8 @@ A confidence band's keys are carried -- {cmd:color ci_area},
 {cmd:ci}, and {cmd:ci2}'s colours and width -- and drawn as Stata draws
 them (see {help dash##ciband:The band's look}), and so are a histogram's:
 {cmd:color histogram} and {cmd:histogram_line}, {cmd:intensity histogram}
-and {cmd:linewidth histogram}.  {cmd:graph} never reads
+and {cmd:linewidth histogram}; and so are the keys Stata's style files
+read for the named styles, {cmd:color refline} among them.  {cmd:graph} never reads
 these files (see below).
 
 {pstd}
@@ -4436,6 +4481,13 @@ disagree in either direction.
     {cmd:lpolyci} and {cmd:fpfitci}, and does not name them there;
     {cmd:twoway} accepts them on every plot type, and on the others
     {cmd:dash} names them.
+
+{phang2}{ul:Dot and marker back-line styles.}
+    {opt dstyle(markerstyle)}, {opt dlstyle(linestyle)} and
+    {opt bmlinestyle(linestyle)} -- the dots of a {cmd:dot} plot and a
+    marker's back line; {cmd:dash} keeps them, for each y, and names
+    them, but does not draw dot rows or marker back lines.  A name
+    {cmd:twoway} does not know is noted as {cmd:twoway} notes it.
 
 {phang2}{ul:A marker's outline pattern, and a label width.}
     {opt mlpattern(linepatternstyle)} -- the pattern of a marker's outline,

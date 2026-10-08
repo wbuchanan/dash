@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14
+    S35 14 S36 6
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -8972,10 +8972,108 @@ if inlist("`only'", "", "S35") & `: list posof "S35" in w30_run' {
 }
 * ==== end S35 ====
 
+// S36 (WP-30 P1.14b): Stata's other style names.  OS-01, OS-02 and OS-05
+// reuse S32's _s32_case (twoway, the saved page, the served app before and
+// after a price range move); _s36_run runs one dash command under a text
+// log and _s36_count counts a needle's lines in it (r(n)).
+capture program drop _s36_run
+program define _s36_run, rclass
+    version 19
+    args cmd log
+    capture log close _s36
+    capture dash clear
+    quietly graph drop _all
+    quietly log using "`log'", text replace name(_s36)
+    capture noisily `cmd'
+    local rc = _rc
+    quietly log close _s36
+    return scalar rc = `rc'
+end
+
+capture program drop _s36_count
+program define _s36_count, rclass
+    version 19
+    args log needle
+    mata: _s36_fh = fopen(st_local("log"), "r"); _s36_n = 0
+    mata: while ((_s36_ln = fget(_s36_fh)) != J(0, 0, "")) _s36_n = _s36_n + (strpos(_s36_ln, st_local("needle")) > 0)
+    mata: fclose(_s36_fh); st_local("n", strofreal(_s36_n))
+    return scalar n = `n'
+end
+
 * ==== S36 P1.14b: Other style names ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S36") & `: list posof "S36" in w30_run' {
     display as text "S36 start " c(current_date) " " c(current_time)
+    global S32_REPO "`c(pwd)'/.."
+    local s36log "`w30_work'/s36.log"
+    foreach row in ///
+        `"OS-01|s2color|line mpg weight, sort lstyle(refline)|#2d6d66|lstyle(refline) is s2color's refline, #2D6D66"' ///
+        `"OS-02|stcolor|scatter mpg weight, pstyle(ci)|#a0a0a0|pstyle(ci) on scatter is stcolor's ci, #A0A0A0"' ///
+        `"OS-05|stcolor|lfitci mpg weight, pstyle(histogram)|#3191ff #5faaff|lfitci's band and line under pstyle(histogram)"' {
+        gettoken id rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken sch rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken cmd rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken exp rest : rest, parse("|")
+        gettoken bar rest : rest, parse("|")
+        local what `"`rest'"'
+        _s32_case `sch' `"`cmd'"' `"`exp'"' "`w30_work'"
+        _w30_expect `id' "(${S32_RC} == 0 & ${S32_OK} == 1 & ${S32_SAME_AFTER} == 1)" `"${S32_MSG} after-move ${S32_SAME_AFTER}"'
+        _w30_done `id' `"`what', in twoway, the saved page and the served app before and after a move"'
+    }
+    macro drop S32_*
+
+    // OS-03: a name twoway does not know: its note, once in dash.
+    quietly sysuse auto, clear
+    quietly graph drop _all
+    capture log close _s36
+    quietly log using "`s36log'", text replace name(_s36)
+    capture noisily twoway area mpg weight, sort astyle(bogus) scheme(s2color) nodraw
+    local trc = _rc
+    quietly log close _s36
+    _s36_count "`s36log'" "named style bogus not found in class areastyle"
+    local tw_n = r(n)
+    _s36_run `"dash area mpg weight, sort astyle(bogus) scheme(s2color) saving("`w30_work'/zos3.html", replace)"' "`s36log'"
+    local drc = r(rc)
+    _s36_count "`s36log'" "dash: named style bogus not found in class areastyle"
+    _w30_expect OS-03 "(`trc' == 0 & `tw_n' >= 1 & `drc' == 0 & r(n) == 1)" "twoway rc `trc' notes `tw_n'; dash rc `drc' notes `r(n)'"
+    _w30_done OS-03 "astyle(bogus): twoway's note, once in dash"
+
+    // OS-04: a Stata name outside dash's table: no note in twoway, D-36c's
+    // in dash, rc 0 in both.
+    quietly graph drop _all
+    quietly log using "`s36log'", text replace name(_s36)
+    capture noisily twoway scatter mpg weight, pstyle(fpall) scheme(stcolor) nodraw
+    local trc = _rc
+    quietly log close _s36
+    _s36_count "`s36log'" "named style"
+    local tw_n = r(n)
+    _s36_run `"dash scatter mpg weight, pstyle(fpall) scheme(stcolor) saving("`w30_work'/zos4.html", replace)"' "`s36log'"
+    local drc = r(rc)
+    _s36_count "`s36log'" "dash: named style fpall of class seriesstyle is not drawn by dash"
+    _w30_expect OS-04 "(`trc' == 0 & `tw_n' == 0 & `drc' == 0 & r(n) == 1)" "twoway rc `trc' notes `tw_n'; dash rc `drc' notes `r(n)'"
+    _w30_done OS-04 "pstyle(fpall) is named as not drawn by dash, rc 0 as in twoway"
+
+    // OS-06: dstyle(), dlstyle() and bmlinestyle() are kept by value and
+    // named.
+    _s36_run `"dash dot mpg weight, dstyle(p3) dlstyle(p3) name(zos6a)"' "`s36log'"
+    local drc = r(rc)
+    _s36_count "`s36log'" "dstyle() dlstyle()"
+    local n1 = r(n)
+    mata: st_local("k1", strofreal(strpos(st_global("dash_json_zos6a"), char(34) + "dstyle" + char(34) + ":" + char(34) + "p3" + char(34)) > 0 & strpos(st_global("dash_json_zos6a"), char(34) + "dlstyle" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
+    _s36_run `"dash pcbarrow mpg weight price length in 1/5, bmlinestyle(p3) name(zos6b)"' "`s36log'"
+    local drc = `drc' + r(rc)
+    _s36_count "`s36log'" "bmlinestyle()"
+    local n2 = r(n)
+    mata: st_local("k2", strofreal(strpos(st_global("dash_json_zos6b"), char(34) + "bmlinestyle" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
+    _w30_expect OS-06 "(`drc' == 0 & `n1' == 1 & `n2' == 1 & `k1' & `k2')" "rc `drc', named `n1' `n2', kept `k1' `k2'"
+    _w30_done OS-06 "dstyle() dlstyle() bmlinestyle() are kept by value and named"
+    capture dash clear
+    capture erase "`s36log'"
+    capture erase "`w30_work'/zos3.html"
+    capture erase "`w30_work'/zos4.html"
     display as text "S36 end " c(current_date) " " c(current_time)
 }
 * ==== end S36 ====

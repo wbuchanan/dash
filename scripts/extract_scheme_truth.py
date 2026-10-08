@@ -770,6 +770,204 @@ def axis_style_flags(r: SchemeResolver, role_key: str) -> dict:
 # Per-scheme extraction
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# Named styles (WP-30 P1.14b, section 36): the style table and the keys it
+# reads along scheme.class's chain
+# --------------------------------------------------------------------------- #
+
+#: The option classes and the attrs of each style file S36 transcribes; a
+#: value is the class the attr's name is read in (a style class: a hop) or
+#: the scheme class its key is read in (a leaf).  label, dots, connect,
+#: align, angle, back* and fill are not transcribed (D-36f).
+NAMED_STYLE_CLASSES = {
+    "seriesstyle": {"marker": "markerstyle", "line": "linestyle",
+                    "area": "areastyle"},
+    "markerstyle": {"symbol": "symbol", "size": "symbolsize",
+                    "fillcolor": "color", "linestyle": "linestyle"},
+    "areastyle": {"linestyle": "linestyle", "shadestyle": "shadestyle"},
+    "shadestyle": {"color": "color", "intensity": "intensity"},
+    "linestyle": {"width": "linewidth", "color": "color",
+                  "pattern": "linepattern"},
+}
+#: The curated names per class (StataNow 19.5 style files, plan E7);
+#: linestyle is every file but S32's p#.  shadestyle is the hops the
+#: curated areastyles reach.
+NAMED_STYLE_CURATED = {
+    "seriesstyle": ("ci", "ci2", "histogram", "p#line", "p#bar", "p#area",
+                    "p#box", "p#dot", "p#arrow"),
+    "markerstyle": ("ci", "ci2", "histogram", "none", "p#box", "p#dot",
+                    "p#arrow"),
+    "areastyle": ("background", "ci", "ci2", "foreground", "histogram",
+                  "none", "p#area", "p#bar", "p#box"),
+    "shadestyle": ("background", "ci", "ci2", "foreground", "histogram",
+                   "none", "p#area", "p#bar", "p#box"),
+    "linestyle": None,
+}
+_STYLE_LEAVES = frozenset({"color", "linewidth", "linepattern", "symbol",
+                           "symbolsize", "intensity"})
+
+
+def _style_files(r: SchemeResolver, cls: str) -> list:
+    """The file names of style/<cls>-*.style, sorted."""
+    pre = cls + "-"
+    return sorted(f[len(pre):-len(".style")] for f in os.listdir(r.style_dir)
+                  if f.startswith(pre) and f.endswith(".style"))
+
+
+def style_table(r: SchemeResolver) -> dict:
+    """``{class: {file: [[attr, "scheme"|"literal", value], ...]}}`` for the
+    names S36 resolves, transcribed from the style files."""
+    out: dict = {}
+    for cls, attrs in NAMED_STYLE_CLASSES.items():
+        names = NAMED_STYLE_CURATED[cls]
+        if names is None:
+            names = [n for n in _style_files(r, cls) if n != "p#"]
+        out[cls] = {}
+        for n in names:
+            path = os.path.join(r.style_dir, f"{cls}-{n}.style")
+            rows = []
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                for raw in fh:
+                    bits = raw.split()
+                    if len(bits) < 3 or bits[0] != "set" or bits[1] not in attrs:
+                        continue
+                    if bits[2] == "scheme":
+                        rows.append([bits[1], "scheme",
+                                     bits[3] if len(bits) > 3 else ""])
+                    else:
+                        rows.append([bits[1], "literal", bits[2]])
+            out[cls][n] = rows
+    return out
+
+
+def style_known(r: SchemeResolver) -> dict:
+    """``{class: sorted file names}`` for the four option classes."""
+    return {cls: _style_files(r, cls) for cls in
+            ("seriesstyle", "markerstyle", "areastyle", "linestyle")}
+
+
+def _scheme_chain(key: str) -> list:
+    """scheme.class's lookup steps for *key* (E8): a key starting ``p`` walks
+    p<num><stub>, p<stub>, p<num>, p, then the key itself; any other key is
+    exact."""
+    if not key.startswith("p"):
+        return [key]
+    m = re.match(r"p(\d*)(.*)", key)
+    num, stub = m.group(1), m.group(2)
+    out = []
+    for s in (f"p{num}{stub}", f"p{stub}", f"p{num}", "p", key):
+        if s not in out:
+            out.append(s)
+    return out
+
+
+def _style_file_of(name: str) -> "tuple[str, str]":
+    """``(file name, number)`` of a style name: ``p3bar`` -> ``("p#bar",
+    "3")``; a plain name is itself with no number."""
+    m = re.fullmatch(r"p([1-9]|1[0-5])([a-z_]*)", name)
+    if m:
+        return "p#" + m.group(2), m.group(1)
+    return name, ""
+
+
+def named_style_directives(r: SchemeResolver, provenance: dict,
+                           sources: dict) -> "tuple[dict, dict, list]":
+    """The leaf keys the scheme DECLARES along each table name's chain,
+    ``{"<class> <key>": value}``, the hops it declares, and the keys no step
+    resolves.
+
+    A scheme.class-faithful walk (E8), not ``linked()``'s class default: a
+    leaf key walks the p#stub chain (or is exact) and a key no step declares
+    is unresolvable; a hop (a style-name attr) takes the declared value of
+    the first step that has one, else the first step that names a style of
+    its class (D-36h).  A colour is spelled ``#rrggbb[%NN]``, Stata's ``none``
+    as ``none``; any other value is Stata's own token.
+    """
+    c = ColorResolver(r)
+    table = style_table(r)
+    found: dict = {}
+    hops: dict = {}
+    bad: list = []
+    known = {cls: set(_style_files(r, cls)) for cls in
+             ("seriesstyle", "markerstyle", "areastyle", "linestyle",
+              "shadestyle")}
+
+    def names_style(hcls, step):
+        f, _n = _style_file_of(step)
+        return f in known[hcls]
+
+    def walk(cls, name, depth=0):
+        if depth > 6 or name == "none":
+            return
+        file, num = _style_file_of(name)
+        if file == "p#" or file not in table.get(cls, {}):
+            return
+        for attr, kind, val in table[cls][file]:
+            sub = NAMED_STYLE_CLASSES[cls][attr]
+            if kind == "literal":
+                if sub not in _STYLE_LEAVES:
+                    walk(sub, val, depth + 1)
+                continue
+            key = val.replace("#", num)
+            if sub in _STYLE_LEAVES:
+                hit = None
+                for step in _scheme_chain(key):
+                    if (sub, step) in r.settings:
+                        hit = step
+                        break
+                if hit is None and key == "" and (sub, "") in r.settings:
+                    hit = ""
+                if hit is None:
+                    msg = (f"named style {cls} {name}: {sub} {key} is not "
+                           "declared at any step of scheme.class's chain")
+                    if msg not in bad:
+                        bad.append(msg)
+                    continue
+                found[(sub, hit)] = r.settings[(sub, hit)]
+                continue
+            target = None
+            for step in _scheme_chain(key):
+                if (sub, step) in r.settings:
+                    target = r.settings[(sub, step)].strip().strip('"')
+                    hops[f"{sub} {step}"] = target
+                    break
+                if names_style(sub, step):
+                    target = step
+                    break
+            if target is not None:
+                walk(sub, target, depth + 1)
+
+    for cls in ("seriesstyle", "markerstyle", "areastyle", "linestyle"):
+        for file in table[cls]:
+            nums = range(1, N_PLOTS + 1) if "#" in file else [None]
+            for n in nums:
+                walk(cls, file.replace("#", str(n)) if n else file)
+
+    out: dict = {}
+    for (cls, key) in sorted(found):
+        tok = found[(cls, key)].strip().strip('"').strip()
+        if cls == "color":
+            if tok.split("%")[0].split("*")[0].strip() == "none":
+                val = "none"
+            else:
+                hexval, pct = c.resolve_with_opacity(tok)
+                val = _color_token(hexval, pct)
+                if val is None:
+                    bad.append(f"color {key}: {tok!r} is not a colour")
+                    continue
+        else:
+            val = tok
+        k = f"{cls} {key}" if key else cls
+        out[k] = val
+        o = r.origins.get((cls, key))
+        sources[f"named_style_directives.{k}"] = k
+        provenance[f"named_style_directives.{k}"] = {
+            "kind": "transcribed", "directive": k, "value": tok,
+            "file": f"scheme-{o[0]}.scheme" if o else None,
+            "line": o[1] if o else None}
+    return out, hops, bad
+
+
 def extract(stata_base: str, scheme: str) -> dict:
     r = SchemeResolver(stata_base)
     r.load(scheme)
@@ -1615,6 +1813,11 @@ def extract(stata_base: str, scheme: str) -> dict:
     out.update(note_truth())
     out.update(chrome_truth())
     out.update(opacities)
+    # WP-30 P1.14b: the keys the named styles read (scheme.class chain).
+    _nsd, _hops, _bad = named_style_directives(r, provenance, sources)
+    out["named_style_directives"] = _nsd
+    out["style_hops"] = _hops
+    unresolvable.extend(_bad)
 
     out["sources"] = sources
     out["provenance"] = provenance
@@ -2083,8 +2286,26 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
          ("symbolsize_default", None)),
     ], optional=True)
 
+    # WP-30 P1.14b: the keys Stata's style files read for the named styles,
+    # as the scheme declares them along scheme.class's chain; last, so a key
+    # an earlier group carries is not carried twice.
+    _nsd = e.get("named_style_directives") or {}
+    group(["Named styles (WP-30 S36): the keys Stata's style files read for the",
+           "named styles dash draws"],
+          [(k.split(" ", 1)[0], k.split(" ", 1)[1], _nsd[k],
+            (f"named_style_directives.{k}", None))
+           for k in sorted(_nsd) if " " in k])
+
     # A directive an earlier group already carries is not carried twice
     # (note()'s small_body box is `gsize small_body' above).
+    # An optional group (checked where a file carries it, never appended)
+    # gives way to a later group that must carry the same key (WP-30
+    # P1.14b: the named styles read `color grid').
+    must = {(i[0], i[1].lower()) for _c, its, opt in groups if not opt
+            for i in its}
+    groups = [(c, [i for i in its if not opt
+                   or (i[0], i[1].lower()) not in must], opt)
+              for c, its, opt in groups]
     seen: set = set()
     out_groups = []
     for comment, items, optional in groups:
@@ -2670,6 +2891,13 @@ def main(argv=None) -> int:
 
     for s in args.schemes:
         doc[s] = extract(base, s)
+    # WP-30 P1.14b: the style table, the known names and each scheme's
+    # declared hops (D-36h), for test_scheme_fidelity.py and SchemeParser.
+    _r = SchemeResolver(base)
+    doc["_meta"]["style_files"] = style_table(_r)
+    doc["_meta"]["style_known"] = style_known(_r)
+    doc["_meta"]["style_hops"] = {s: doc[s].pop("style_hops")
+                                  for s in args.schemes}
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:

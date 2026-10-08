@@ -633,7 +633,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # minimum.
     # 117 -> 120: P1.14a's note on the named styles in the sreturn
     # block and the fitarea comment's rewording.
-    assert comments == {"_dash_parse_plot_opts": 120,
+    # 120 -> 124: P1.14b's notes on dstyle/dlstyle/bmlinestyle (pending
+    # three lines, sreturn one).
+    assert comments == {"_dash_parse_plot_opts": 124,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

@@ -957,7 +957,6 @@ FUNCTIONS = {
  'GlyphMapper._style_options': 'test/test_named_styles.py::TestPlanUnits::test_shadowed_options_are_dropped',
  'GlyphMapper._style_plan': 'test/test_named_styles.py::TestMeasuredRows::test_each_factor_order_row',
  'GlyphMapper._style_restyle': 'test/test_named_styles.py::TestPlanUnits::test_only_named_roles_change',
- 'GlyphMapper._style_unresolved': 'test/test_named_styles.py::TestOtherNames::test_noted_once_and_drawn_as_the_layer',
  'GlyphMapper._style_value': 'test/test_named_styles.py::TestPlanUnits::test_style_value_falls_back',
  'SchemeParser.style_bundle': 'test/test_named_styles.py::TestStyleBundle::test_against_stata',
  # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
@@ -999,6 +998,17 @@ FUNCTIONS = {
  '_dash_spec_units': 'test/test_date_axis_residuals.py::TestTheDateTransform::test_spec_units_reads_only_dash_transforms',
  '_dash_stata_number_of': 'test/test_date_axis_residuals.py::TestOffDateLiterals::test_the_number_reader',
  # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
+ 'SchemeParser._style_kind': 'test/test_style_names.py::TestKinds::test_p0_p03_p16line_p3other_are_unknown',
+ 'SchemeParser._style_leaf': 'test/test_style_names.py::TestAUserScheme::test_a_missing_key_takes_s2colors_value',
+ 'SchemeParser._style_named': 'test/test_style_names.py::TestTheNote::test_known_not_drawn_is_named',
+ 'SchemeParser._style_none': 'test/test_style_names.py::TestNone::test_none_draws_nothing',
+ 'SchemeParser._style_note': 'test/test_style_names.py::TestTheNote::test_twoways_words_once',
+ 'SchemeParser._style_raw_colour': 'test/test_style_names.py::TestTheTableNames::test_s2color_lstyle_refline',
+ 'SchemeParser._style_raw_width': 'test/test_style_names.py::TestTheTableNames::test_s2color_lstyle_refline',
+ 'SchemeParser._style_resolve': 'test/test_style_names.py::TestAgainstStata::test_every_n_record',
+ 'SchemeParser._style_shape': 'test/test_style_names.py::TestTheShapes::test_each_class_has_p1s_keys',
+ 'SchemeParser._style_steps': 'test/test_style_names.py::TestAgainstStata::test_every_n_record',
+ 'SchemeParser._style_sub': 'test/test_style_names.py::TestMarkerForms::test_stcolor_mstyle_histogram',
  # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
  # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
  # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)

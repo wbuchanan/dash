@@ -866,7 +866,8 @@ class TestKdensityRange:
         # batch's four fitarea options; 44 again since WP-30 P1.14a reads
         # pstyle, lstyle, mstyle and mlstyle), among them the
         # genuinely-unsupported sort/text/scale, and never `range'.
-        assert len(pending) == 44, (len(pending), pending)
+        # 44 -> 47: P1.14b names dstyle, dlstyle and bmlinestyle.
+        assert len(pending) == 47, (len(pending), pending)
         for really_pending in ("sort", "text", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

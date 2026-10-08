@@ -282,24 +282,31 @@ class TestLists:
         assert [_hex(g.fill_color) for g in gs] == [P3, P4]
 
 
-_NOTE = ("dash: lstyle(refline): only the named styles p1-p15 are drawn; "
-         "this layer keeps its own style.")
+_NOTE = ("dash: named style bogus not found in class linestyle, default "
+         "attributes used")
 
 
 @pytest.mark.parametrize("mode", MODES)
 class TestOtherNames:
     def test_noted_once_and_drawn_as_the_layer(self, mode):
+        # Flipped (WP-30 P1.14b): "noted, drawn as the layer's p1" was
+        # wrong because twoway draws lstyle(refline) as refline, silently
+        # (stcolor: black at .3; plan E9.1); D-32b's interim rule retired.
         rs, notes = _draw(plot_for("line", {"lstyle": "refline"}),
                           "stcolor", mode)
-        assert notes.count(_NOTE) == 1, notes
+        assert not [n for n in notes if "refline" in n], notes
         [g] = [r.glyph for r in rs]
-        assert _hex(g.line_color) == P1
+        assert _hex(g.line_color) == BLACK
+        assert g.line_width == pytest.approx(W03)
 
     def test_unused_option_is_silent(self, mode):
         """M6: lstyle() on scatter is a role scatter does not draw."""
+        # Flipped (WP-30 P1.14b): "silent" was wrong because twoway notes
+        # an unknown name even on a role the layer does not draw
+        # (`scatter, lstyle(bogus)', plan E9.4): once, in its words.
         _, notes = _draw(plot_for("scatter", {"lstyle": "bogus"}),
                          "stcolor", mode)
-        assert not [n for n in notes if "bogus" in n], notes
+        assert [n for n in notes if "bogus" in n] == [_NOTE], notes
 
 
 class TestAfterAFilterMove:
@@ -416,15 +423,20 @@ class TestAdversarial:
     def test_hostile_names_are_noted_shortened_and_inert(self, mode):
         """Every name outside p1-p15 is drawn as the layer and, unless
         blank, noted once with the name shown printable."""
+        # Flipped (WP-30 P1.14b): D-32b's "dash: mstyle(...)" text was
+        # wrong because the note is now twoway's "named style ... not found
+        # in class markerstyle" (D-36d), and '"p3"' is p3, silently, as
+        # twoway unwraps one pair of quotes (D-36j, plan E9.6).
         bad = []
         for name in _HOSTILE:
             rs, notes = _draw(plot_for("scatter", {"mstyle": name}),
                               "stcolor", mode)
             g = [r.glyph for r in rs][0]
-            if _hex(g.fill_color) != P1:
+            if _hex(g.fill_color) != (P3 if name == '"p3"' else P1):
                 bad.append((name, g.fill_color))
-            mine = [n for n in notes if n.startswith("dash: mstyle(")]
-            if len(mine) != (0 if not name.strip() else 1):
+            mine = [n for n in notes if n.startswith("dash: named style")]
+            if len(mine) != (0 if not name.strip() or name == '"p3"'
+                             else 1):
                 bad.append((name, mine))
             if any(len(n) > 200 or any(ord(ch) < 32 for ch in n)
                    for n in mine):
@@ -437,7 +449,9 @@ class TestAdversarial:
         _, notes = _draw(plot_for("scatter", {"pstyle": name}), "stcolor",
                          mode)
         assert time.monotonic() - t0 < 2.0 + (3.0 if mode == "served" else 0)
-        [n] = [n for n in notes if n.startswith("dash: pstyle(")]
+        # Flipped (WP-30 P1.14b): the "dash: pstyle(" prefix was wrong
+        # because the note is twoway's "named style ..." (D-36d).
+        [n] = [n for n in notes if n.startswith("dash: named style")]
         assert len(n) < 200
 
 
@@ -553,9 +567,17 @@ class TestStyleBundle:
         assert not bad
 
     def test_names_are_exact(self):
+        # Flipped (WP-30 P1.14b): None for a name outside p1-p15 was wrong
+        # because twoway draws it in the class's default attributes (the
+        # foreground line, plan E9.3); only a blank name or an unknown
+        # class gives None.
         sp = dr.SchemeParser("stcolor")
-        for name in ("P3", "p16", "p03", "p 3", "", "p0", "p3x"):
-            assert sp.style_bundle("line", name) is None, name
+        fg = sp.style_bundle("line", "foreground")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for name in ("P3", "p16", "p03", "p 3", "p0", "p3x"):
+                assert sp.style_bundle("line", name) == fg, name
+        assert sp.style_bundle("line", "") is None
         assert sp.style_bundle("line", " p15 ") is not None
         assert sp.style_bundle("nonsense", "p3") is None
 
@@ -761,8 +783,10 @@ class TestTheEmptyPlanIsInert:
         corpus's (test_mode_parity) with no style key present."""
         keys = {k for k, v in dr.GlyphMapper._STYLE_FACTORS
                 if isinstance(v, dict)}
+        # WP-30 P1.14b adds section 36's two cases (other named styles).
         own = {"named styles p1-p15", "p() and the plot index",
-               "named styles on a ci fit"}
+               "named styles on a ci fit", "other named styles",
+               "an unknown named style"}
         holders = {ps.values[0] for ps in tp.CORPUS
                    for g in ps.values[1].get("graphs", [])
                    for p in g.get("plots", [])

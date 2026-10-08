@@ -2136,6 +2136,14 @@ CORPUS = [
           graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
                   ("g2", [_sc()], {"scheme": "s1rcolor"})]),
     _case("graph-level theme alias mono", [_sc()], go={"scheme": "mono"}),
+    # WP-30 P1.14b: Stata's other style names, and a name twoway does not
+    # know.
+    _case("other named styles",
+          [plot_for("line", {"lstyle": "refline"}), _sc(pstyle="ci"),
+           plot_for("scatter", {"mstyle": "histogram"}, yvar="price")],
+          {"scheme": "s2color"}),
+    _case("an unknown named style",
+          [plot_for("area", {"astyle": "bogus"})], {"scheme": "s2color"}),
 ]
 
 
@@ -2240,6 +2248,8 @@ DATE_CORPUS = [
 #: but a layer drawn empty (the lpoly entries' "drew nothing" is not what
 #: they exist for).
 _MUST_WARN = {
+    "an unknown named style":
+        "dash: named style bogus not found in class areastyle",
     "line, an unknown colour drawn black":
         "dash: lcolor(bogus) is not a recognised colour; using black",
     "line, a colour clcolor() cannot name":

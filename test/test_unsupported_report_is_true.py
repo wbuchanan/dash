@@ -122,6 +122,11 @@ PLOT_VALUES = {
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
+    # WP-30 P1.14b: kept and named, not drawn (P2.9 dot rows, P2.8 marker
+    # back lines); twoway accepts all three on scatter (plan E9.7).
+    "dstyle": ("p3", "p5", "scatter"),
+    "dlstyle": ("p3", "p5", "scatter"),
+    "bmlinestyle": ("p3", "p5", "scatter"),
     "mlwidth": ("thick", "vthin", "scatter"),
     "n": ("30", "70", "kdensity"),
     "nodraw": ("nodraw", "", "scatter"),
@@ -241,7 +246,8 @@ class TestTheListIsCoveredAndHonest:
         # a silent no-op.
         # Flipped (WP-30 P1.14a): 48 -> 44: pstyle(), lstyle(), mstyle()
         # and mlstyle() are drawn (p1-p15), so they leave the list.
-        assert len(_plot_pending()) == 44, sorted(_plot_pending())
+        # 44 -> 47: P1.14b dstyle dlstyle bmlinestyle declared and named
+        assert len(_plot_pending()) == 47, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -634,7 +640,8 @@ class TestEveryDeclaredOptionIsClassified:
         # 169 -> 171: P1.5 xvarformat() and yvarformat() declared
         # Flipped (WP-30 P1.14a): 171 -> 177: astyle(), alstyle(),
         # bstyle(), blstyle(), clstyle() and p() declared.
-        assert len(_declared_plot()) == 177, len(_declared_plot())
+        # 177 -> 180: P1.14b dstyle dlstyle bmlinestyle declared and named
+        assert len(_declared_plot()) == 180, len(_declared_plot())
         assert len(_declared_graph()) == 72, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

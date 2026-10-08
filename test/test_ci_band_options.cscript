@@ -300,6 +300,17 @@ if r(found) != 1 {
     display as error "CB-04 FAIL: al(red) did not reach alstyle"
     local bad = 1
 }
+// WP-30 P1.14b: red is no line style, so twoway notes it in its words
+// and draws the foreground line; dash prints the same note when it draws.
+tempfile cb04
+quietly graph drop _all
+_zcb_run `"dash lfitci mpg weight, al(red) saving("`cb04'.html", replace)"' "`logfile'"
+capture erase "`cb04'.html"
+_zcb_logged "`logfile'" "named style red not found in class linestyle, default attributes used"
+if r(found) != 1 {
+    display as error "CB-04 FAIL: al(red) did not print twoway's linestyle note"
+    local bad = 1
+}
 if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' CB-04"

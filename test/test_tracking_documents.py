@@ -1557,7 +1557,6 @@ WP30_OPEN = {
     "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",
     "P1.10": "text() and ttext() annotations are not drawn",
     "P1.13b": "A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default",
-    "P1.14b": "Style names other than p1-p15, such as ci, histogram, refline and p1bar, are not read by pstyle() and the other style options",
     "P1.15b": "by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout",
     "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",
     "P1.18b": "The add sub-option replaces the default ticks instead of adding to them, and an axis(2) add is named and not drawn",

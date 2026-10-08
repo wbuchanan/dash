@@ -4993,7 +4993,8 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // of them: the style options (P1.1a), then the value lists mlabel jitter
 // base barwidth (P1.1b), then the named styles pstyle lstyle clstyle mstyle
 // mlstyle astyle alstyle bstyle blstyle (P1.14a; p() is one name and is
-// not split).  Later sections add their names here: mlabtextstyle (P1.24)
+// not split), and dstyle dlstyle bmlinestyle (P1.14b, kept and named).
+// Later sections add their names here: mlabtextstyle (P1.24)
 // and connect cmissing (P1.8a).
 string scalar _dash_stylelist_keys()
 {
@@ -5002,7 +5003,8 @@ string scalar _dash_stylelist_keys()
            "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
            "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +
            "mlabel jitter base barwidth " +
-           "pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle")
+           "pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle " +
+           "dstyle dlstyle bmlinestyle")
 }
 
 // _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k

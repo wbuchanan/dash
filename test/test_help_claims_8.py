@@ -1062,13 +1062,19 @@ class TestTheShippedFiles:
         and area do not read.  WP-30 P1.4b added `gsize plabel' to every
         file and `color plabel' to the nine monochrome ones (s2gmanual
         168 -> 170, the bound).  Renamed (WP-30 P1.4a) from
-        test_80_to_140_directives, whose name had outlived its bounds."""
+        test_80_to_140_directives, whose name had outlived its bounds.
+        WP-30 P1.14b carried the keys the named styles read: 219 to 279
+        directives, measured over the 26 regenerated files."""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
                                                         "dash-" + name + ".scheme"))
                 if not k.startswith(("sequence", "label")))
-        assert 100 <= n <= 170, (name, n)
+        # Flipped (WP-30 P1.14b): 100 to 170 was wrong because the files
+        # now carry the keys Stata's style files read for the named styles.
+        # 100..170 -> 210..280: P1.14b named-style keys (219 to 279,
+        # rounded outward to ten).
+        assert 210 <= n <= 280, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"100\s+to\s+170\s+directives", help_text)
+        assert re.search(r"210\s+to\s+280\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1102,6 +1108,13 @@ class TestTheShippedFiles:
                 if k == "color plotregion_line" and v.split()[0] == "none":
                     assert name == "economist", (name, k, v)
                     continue
+                # Flipped (WP-30 P1.14b): "only economist's plot-region
+                # border is none" was wrong because the named styles carry
+                # `color pieline' and `color fpspacer', which every Stata
+                # scheme declares as none.
+                if k in ("color pieline", "color fpspacer"):
+                    assert v.split()[0] == "none", (name, k, v)
+                    continue
                 # sttrans' histogram keys carry the %20 too (WP-30 P1.4a).
                 pat = (r"#[0-9a-f]{6}%20" if name == "sttrans"
                        and re.fullmatch(r"color (p\d*(line|bar|mark)?"
@@ -1126,7 +1139,8 @@ class TestTheShippedFiles:
     def test_some_uncarried_directives_govern_what_dash_draws_its_own_way_in_dash(
             self, tmp_path, mode):
         """The half that needs no Stata (see TestTheSchemeTableSaysWhat-
-        StataSays): no shipped file carries `color refline', every one
+        StataSays): every shipped file carries `color refline' (WP-30
+        P1.14b: lstyle(refline) draws it) and
         carries `color ci_area' (the S3 batch's ci band); xline()
         takes the scheme's `color xyline' and `linepattern xyline' --
         s2color's cranberry and solid, as twoway draws it (measured
@@ -1134,7 +1148,9 @@ class TestTheShippedFiles:
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
                 os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
-            assert "color refline" not in keys, name
+            # Flipped (WP-30 P1.14b): "not in keys" was wrong because
+            # lstyle(refline) draws `color refline' now.
+            assert "color refline" in keys, name
             assert "color ci_area" in keys, name
             assert {"color xyline", "linepattern xyline"} <= keys, name
         fig = _figure(mode, tmp_path, _scatter({"xline": "3000"},
@@ -1146,10 +1162,24 @@ class TestTheShippedFiles:
 
     def test_no_directive_for_what_dash_does_not_draw(self):
         """graph bar/box/pie/dot/matrix styling, margins."""
+        # Flipped (WP-30 P1.14b): "no key matches" was wrong because the
+        # named styles' group carries the line styles of those names
+        # (lstyle(tick), lstyle(pie), lstyle(dot) ... draw them); the
+        # pattern holds outside that group, read from the fixture.
+        with open(os.path.join(_ROOT, "test", "fixtures",
+                               "scheme_truth.json"), encoding="utf-8") as fh:
+            truth = json.load(fh)
         keys = set()
+        named = set()
         for name in dr.SchemeParser._BUILTIN_NAMES:
+            group = set(truth[name]["named_style_directives"])
+            named |= group
             keys |= {k for k, _v in _directives(
-                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
+                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))
+                if k not in group}
+        assert {k for k in named if k.split()[0] in
+                ("color", "linewidth", "linepattern")
+                and re.search(r"pie|\bdot|matrix|tick", k)}, named
         bad = sorted(k for k in keys if re.search(
             # WP-30 P1.3a: `margin twoway' is drawn now (the plot-region
             # margin), so it is no longer in this list.

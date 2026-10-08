@@ -444,7 +444,10 @@ class TestAdversarial:
             dr._DASH_NOTED.clear()
             gm.map_lfitci(figure(), ColumnDataSource(_DF), "y", "x",
                           {"pstyle": "x" * 5000 + "\n<b>"})
-        msgs = [str(m.message) for m in w if "pstyle" in str(m.message)]
+        # Flipped (WP-30 P1.14b): the filter "pstyle" was wrong because the
+        # note is now twoway's "named style ... not found in class
+        # seriesstyle" (D-36d), which names the class, not the option.
+        msgs = [str(m.message) for m in w if "named style" in str(m.message)]
         assert msgs, [str(m.message) for m in w]
         assert all(len(m) < 400 and "\n<b>" not in m for m in msgs)
 

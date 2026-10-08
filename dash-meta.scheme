@@ -284,6 +284,127 @@ linewidth histogram       medium
 gsize plabel  small
 
 * ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> meta); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Named styles (WP-30 S36): the keys Stata's style files read for the
+* named styles dash draws
+color ci2_symbol          #cac27e
+color ci_symbol           #808080
+color clegend_line        #000000
+color cvcvline            #ff0000
+color cvlsline            #000000
+color cvseline            #0000ff
+color dot_arealine        #808080
+color dot_line            #808080
+color dotmarkline         #000000
+color dots                #000000
+color fp_line             #1a476f
+color fpall               #55752f
+color fpall_line          #55752f
+color fpesinside_line     #e37e00
+color fpesrefline         #c10534
+color fpgraph             #ffffff
+color fpgrp_line          #90353b
+color fphrule             #000000
+color fpnullrefline       #808080
+color fpspacer            none
+color grid                #eaf2f3
+color hrule               #000000
+color matplotregion_line  #000000
+color matrixmarkline      #1a476f
+color pieline             none
+color refline             #2d6d66
+color refmarkline         #000000
+color reverse_big_line    #1a476f
+color sunflower           #0000ff
+color sunflowerdb         #ff7f00
+color sunflowerdf         #000000
+color sunflowerlb         #eaffaa
+color sunflowerlf         #804000
+color text_option_line    #000000
+color zyx2                #000000
+intensity background          inten100
+intensity foreground          inten100
+linepattern axisline            solid
+linepattern background          solid
+linepattern clegend             solid
+linepattern cvcvline            solid
+linepattern cvlsline            solid
+linepattern cvseline            solid
+linepattern dendrogram          solid
+linepattern dot                 solid
+linepattern dot_area            solid
+linepattern dotmark             solid
+linepattern dots                solid
+linepattern foreground          solid
+linepattern fp                  solid
+linepattern fpall               solid
+linepattern fpesrefline         solid
+linepattern fpgrp               solid
+linepattern fphrule             solid
+linepattern fpnullrefline       solid
+linepattern fpspacer            blank
+linepattern grid                solid
+linepattern histogram           solid
+linepattern hrule               solid
+linepattern legend              solid
+linepattern matrix_plotregion   solid
+linepattern matrixmark          solid
+linepattern minortick           solid
+linepattern pie                 solid
+linepattern pmark               solid
+linepattern refline             solid
+linepattern refmarker           solid
+linepattern sunflower           solid
+linepattern text_option         solid
+linepattern tick                solid
+linepattern zyx2                solid
+linewidth background          thin
+linewidth clegend             thin
+linewidth cvcvline            thin
+linewidth cvlsline            thin
+linewidth cvseline            thin
+linewidth dendrogram          medium
+linewidth dot_area            medium
+linewidth dot_line            medthick
+linewidth dotmark             thin
+linewidth dots                vvthin
+linewidth foreground          thin
+linewidth fp                  medium
+linewidth fpall               medium
+linewidth fpesrefline         thin
+linewidth fpgrp               medium
+linewidth fphrule             medium
+linewidth fpnullrefline       thin
+linewidth fpspacer            medium
+linewidth grid                medium
+linewidth hrule               medium
+linewidth legend              vvthin
+linewidth matrix_plotregion   thin
+linewidth matrixmark          medium
+linewidth medium              medium
+linewidth minortick           thin
+linewidth pie                 medium
+linewidth refline             medium
+linewidth refmarker           medium
+linewidth reverse_big         thin
+linewidth text_option         thin
+linewidth zyx2                medium
+symbol ci                  circle
+symbol ci2                 circle
+symbol histogram           circle
+symbolsize ci                  medium
+symbolsize ci2                 medium
+symbolsize histogram           medlarge
+symbolsize parrow              medium
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -407,5 +528,114 @@ gsize plabel  small
 * provenance: clockdir note_position -- transcribed from scheme-s2color.scheme:1923 `clockdir note_position 7'
 * provenance: clockdir caption_position -- transcribed from scheme-s2color.scheme:1922 `clockdir caption_position 7'
 * provenance: system naturally_white -- transcribed from scheme-s2color.scheme:28 `system naturally_white 1'
+* provenance: color ci2_symbol -- transcribed from scheme-s2color.scheme:359 `color ci2_symbol khaki'
+* provenance: color ci_symbol -- transcribed from scheme-s2color.scheme:355 `color ci_symbol gs8'
+* provenance: color clegend_line -- transcribed from scheme-s2color.scheme:417 `color clegend_line black'
+* provenance: color cvcvline -- transcribed from scheme-s2color.scheme:403 `color cvcvline red'
+* provenance: color cvlsline -- transcribed from scheme-s2color.scheme:404 `color cvlsline black'
+* provenance: color cvseline -- transcribed from scheme-s2color.scheme:405 `color cvseline blue'
+* provenance: color dot_arealine -- transcribed from scheme-s2color.scheme:397 `color dot_arealine gs8'
+* provenance: color dot_line -- transcribed from scheme-s2color.scheme:396 `color dot_line gs8'
+* provenance: color dotmarkline -- transcribed from scheme-s2color.scheme:399 `color dotmarkline black'
+* provenance: color dots -- transcribed from scheme-s2color.scheme:406 `color dots black'
+* provenance: color fp_line -- transcribed from scheme-s2color.scheme:365 `color fp_line navy'
+* provenance: color fpall -- transcribed from scheme-s2color.scheme:372 `color fpall forest_green'
+* provenance: color fpall_line -- transcribed from scheme-s2color.scheme:375 `color fpall_line forest_green'
+* provenance: color fpesinside_line -- transcribed from scheme-s2color.scheme:385 `color fpesinside_line dkorange'
+* provenance: color fpesrefline -- transcribed from scheme-s2color.scheme:380 `color fpesrefline cranberry'
+* provenance: color fpgraph -- transcribed from scheme-s2color.scheme:363 `color fpgraph white'
+* provenance: color fpgrp_line -- transcribed from scheme-s2color.scheme:370 `color fpgrp_line maroon'
+* provenance: color fphrule -- transcribed from scheme-s2color.scheme:377 `color fphrule black'
+* provenance: color fpnullrefline -- transcribed from scheme-s2color.scheme:381 `color fpnullrefline gs8'
+* provenance: color fpspacer -- transcribed from scheme-s2color.scheme:379 `color fpspacer none'
+* provenance: color grid -- transcribed from scheme-s2color.scheme:344 `color grid ltbluishgray'
+* provenance: color hrule -- transcribed from scheme-s2color.scheme:314 `color hrule black'
+* provenance: color matplotregion_line -- transcribed from scheme-s2color.scheme:411 `color matplotregion_line black'
+* provenance: color matrixmarkline -- transcribed from scheme-s2color.scheme:390 `color matrixmarkline navy'
+* provenance: color pieline -- transcribed from scheme-s2color.scheme:387 `color pieline none'
+* provenance: color refline -- transcribed from scheme-s2color.scheme:402 `color refline emerald'
+* provenance: color refmarkline -- transcribed from scheme-s2color.scheme:392 `color refmarkline black'
+* provenance: color reverse_big_line -- transcribed from scheme-s2color.scheme:341 `color reverse_big_line navy'
+* provenance: color sunflower -- transcribed from scheme-s2color.scheme:423 `color sunflower blue'
+* provenance: color sunflowerdb -- transcribed from scheme-s2color.scheme:426 `color sunflowerdb orange'
+* provenance: color sunflowerdf -- transcribed from scheme-s2color.scheme:427 `color sunflowerdf black'
+* provenance: color sunflowerlb -- transcribed from scheme-s2color.scheme:424 `color sunflowerlb sunflowerlime'
+* provenance: color sunflowerlf -- transcribed from scheme-s2color.scheme:425 `color sunflowerlf chocolate'
+* provenance: color text_option_line -- transcribed from scheme-s2color.scheme:333 `color text_option_line black'
+* provenance: color zyx2 -- transcribed from scheme-s2color.scheme:421 `color zyx2 black'
+* provenance: intensity background -- transcribed from scheme-s2color.scheme:1269 `intensity background inten100'
+* provenance: intensity foreground -- transcribed from scheme-s2color.scheme:1268 `intensity foreground inten100'
+* provenance: linepattern axisline -- transcribed from scheme-s2color.scheme:567 `linepattern axisline solid'
+* provenance: linepattern background -- transcribed from scheme-s2color.scheme:559 `linepattern background solid'
+* provenance: linepattern clegend -- transcribed from scheme-s2color.scheme:583 `linepattern clegend solid'
+* provenance: linepattern cvcvline -- transcribed from scheme-s2color.scheme:572 `linepattern cvcvline solid'
+* provenance: linepattern cvlsline -- transcribed from scheme-s2color.scheme:573 `linepattern cvlsline solid'
+* provenance: linepattern cvseline -- transcribed from scheme-s2color.scheme:574 `linepattern cvseline solid'
+* provenance: linepattern dendrogram -- transcribed from scheme-s2color.scheme:563 `linepattern dendrogram solid'
+* provenance: linepattern dot -- transcribed from scheme-s2color.scheme:578 `linepattern dot solid'
+* provenance: linepattern dot_area -- transcribed from scheme-s2color.scheme:579 `linepattern dot_area solid'
+* provenance: linepattern dotmark -- transcribed from scheme-s2color.scheme:580 `linepattern dotmark solid'
+* provenance: linepattern dots -- transcribed from scheme-s2color.scheme:577 `linepattern dots solid'
+* provenance: linepattern foreground -- transcribed from scheme-s2color.scheme:558 `linepattern foreground solid'
+* provenance: linepattern fp -- transcribed from scheme-s2color.scheme:591 `linepattern fp solid'
+* provenance: linepattern fpall -- transcribed from scheme-s2color.scheme:593 `linepattern fpall solid'
+* provenance: linepattern fpesrefline -- transcribed from scheme-s2color.scheme:596 `linepattern fpesrefline solid'
+* provenance: linepattern fpgrp -- transcribed from scheme-s2color.scheme:592 `linepattern fpgrp solid'
+* provenance: linepattern fphrule -- transcribed from scheme-s2color.scheme:594 `linepattern fphrule solid'
+* provenance: linepattern fpnullrefline -- transcribed from scheme-s2color.scheme:597 `linepattern fpnullrefline solid'
+* provenance: linepattern fpspacer -- transcribed from scheme-s2color.scheme:595 `linepattern fpspacer blank'
+* provenance: linepattern grid -- transcribed from scheme-s2color.scheme:564 `linepattern grid solid'
+* provenance: linepattern histogram -- transcribed from scheme-s2color.scheme:562 `linepattern histogram solid'
+* provenance: linepattern hrule -- transcribed from scheme-s2color.scheme:589 `linepattern hrule solid'
+* provenance: linepattern legend -- transcribed from scheme-s2color.scheme:582 `linepattern legend solid'
+* provenance: linepattern matrix_plotregion -- transcribed from scheme-s2color.scheme:586 `linepattern matrix_plotregion solid'
+* provenance: linepattern matrixmark -- transcribed from scheme-s2color.scheme:576 `linepattern matrixmark solid'
+* provenance: linepattern minortick -- transcribed from scheme-s2color.scheme:569 `linepattern minortick solid'
+* provenance: linepattern pie -- transcribed from scheme-s2color.scheme:581 `linepattern pie solid'
+* provenance: linepattern pmark -- transcribed from scheme-s2color.scheme:600 `linepattern pmark solid'
+* provenance: linepattern refline -- transcribed from scheme-s2color.scheme:571 `linepattern refline solid'
+* provenance: linepattern refmarker -- transcribed from scheme-s2color.scheme:575 `linepattern refmarker solid'
+* provenance: linepattern sunflower -- transcribed from scheme-s2color.scheme:585 `linepattern sunflower solid'
+* provenance: linepattern text_option -- transcribed from scheme-s2color.scheme:587 `linepattern text_option solid'
+* provenance: linepattern tick -- transcribed from scheme-s2color.scheme:568 `linepattern tick solid'
+* provenance: linepattern zyx2 -- transcribed from scheme-s2color.scheme:588 `linepattern zyx2 solid'
+* provenance: linewidth background -- transcribed from scheme-s2color.scheme:1201 `linewidth background thin'
+* provenance: linewidth clegend -- transcribed from scheme-s2color.scheme:1227 `linewidth clegend thin'
+* provenance: linewidth cvcvline -- transcribed from scheme-s2color.scheme:1216 `linewidth cvcvline thin'
+* provenance: linewidth cvlsline -- transcribed from scheme-s2color.scheme:1217 `linewidth cvlsline thin'
+* provenance: linewidth cvseline -- transcribed from scheme-s2color.scheme:1218 `linewidth cvseline thin'
+* provenance: linewidth dendrogram -- transcribed from scheme-s2color.scheme:1213 `linewidth dendrogram medium'
+* provenance: linewidth dot_area -- transcribed from scheme-s2color.scheme:1223 `linewidth dot_area medium'
+* provenance: linewidth dot_line -- transcribed from scheme-s2color.scheme:1222 `linewidth dot_line medthick'
+* provenance: linewidth dotmark -- transcribed from scheme-s2color.scheme:1224 `linewidth dotmark thin'
+* provenance: linewidth dots -- transcribed from scheme-s2color.scheme:1221 `linewidth dots vvthin'
+* provenance: linewidth foreground -- transcribed from scheme-s2color.scheme:1200 `linewidth foreground thin'
+* provenance: linewidth fp -- transcribed from scheme-s2color.scheme:1241 `linewidth fp medium'
+* provenance: linewidth fpall -- transcribed from scheme-s2color.scheme:1238 `linewidth fpall medium'
+* provenance: linewidth fpesrefline -- transcribed from scheme-s2color.scheme:1243 `linewidth fpesrefline thin'
+* provenance: linewidth fpgrp -- transcribed from scheme-s2color.scheme:1236 `linewidth fpgrp medium'
+* provenance: linewidth fphrule -- transcribed from scheme-s2color.scheme:1240 `linewidth fphrule medium'
+* provenance: linewidth fpnullrefline -- transcribed from scheme-s2color.scheme:1244 `linewidth fpnullrefline thin'
+* provenance: linewidth fpspacer -- transcribed from scheme-s2color.scheme:1242 `linewidth fpspacer medium'
+* provenance: linewidth grid -- transcribed from scheme-s2color.scheme:1202 `linewidth grid medium'
+* provenance: linewidth hrule -- transcribed from scheme-s2color.scheme:1234 `linewidth hrule medium'
+* provenance: linewidth legend -- transcribed from scheme-meta.scheme:46 `linewidth legend vvthin'
+* provenance: linewidth matrix_plotregion -- transcribed from scheme-s2color.scheme:1231 `linewidth matrix_plotregion thin'
+* provenance: linewidth matrixmark -- transcribed from scheme-s2color.scheme:1220 `linewidth matrixmark medium'
+* provenance: linewidth medium -- transcribed from scheme-s2color.scheme:1198 `linewidth medium medium'
+* provenance: linewidth minortick -- transcribed from scheme-s2color.scheme:1207 `linewidth minortick thin'
+* provenance: linewidth pie -- transcribed from scheme-s2color.scheme:1228 `linewidth pie medium'
+* provenance: linewidth refline -- transcribed from scheme-s2color.scheme:1215 `linewidth refline medium'
+* provenance: linewidth refmarker -- transcribed from scheme-s2color.scheme:1219 `linewidth refmarker medium'
+* provenance: linewidth reverse_big -- transcribed from scheme-s2color.scheme:1229 `linewidth reverse_big thin'
+* provenance: linewidth text_option -- transcribed from scheme-s2color.scheme:1232 `linewidth text_option thin'
+* provenance: linewidth zyx2 -- transcribed from scheme-s2color.scheme:1233 `linewidth zyx2 medium'
+* provenance: symbol ci -- transcribed from scheme-s2color.scheme:513 `symbol ci circle'
+* provenance: symbol ci2 -- transcribed from scheme-s2color.scheme:514 `symbol ci2 circle'
+* provenance: symbol histogram -- transcribed from scheme-s2color.scheme:510 `symbol histogram circle'
+* provenance: symbolsize ci -- transcribed from scheme-s2color.scheme:256 `symbolsize ci medium'
+* provenance: symbolsize ci2 -- transcribed from scheme-s2color.scheme:257 `symbolsize ci2 medium'
+* provenance: symbolsize histogram -- transcribed from scheme-s2color.scheme:253 `symbolsize histogram medlarge'
+* provenance: symbolsize parrow -- transcribed from scheme-s2color.scheme:276 `symbolsize parrow medium'
 * END provenance (WP-17)
 * ---------------------------------------------------------------------------
