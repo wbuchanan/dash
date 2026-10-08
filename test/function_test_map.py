@@ -1041,6 +1041,7 @@ FUNCTIONS = {
  '_dash_tsop_labels': 'test/test_ts_operators.py::TestTheLabels::test_the_label_rule',
  # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
  # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
+ '_dash_ts_pair': 'test/test_date_axis_ticks.py::TestTheModelIsUnchanged::test_the_pair_is_cpythons_order',
  # WP-30 S45 (P1.8b): recast() (P1.8 part b)
  # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
  # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)

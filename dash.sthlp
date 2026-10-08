@@ -3417,9 +3417,9 @@ is built, so it is placed within about 0.8% of the figure's width of
 {cmd:twoway}'s.  After a filter move a default or {cmd:#}{it:N} axis, a second
 axis included, is ticked and spanned again over the rows kept, in the saved
 page and the served app alike, and an axis with explicit positions keeps them
-and spans its data again; {cmd:%td}-{cmd:%ty} {cmd:#}{it:N} ticks,
-{cmd:xtick(#}{it:N}{cmd:)}/{cmd:ytick(#}{it:N}{cmd:)} marks and {cmd:minmax}
-positions keep their places.  On the saved page a fit, histogram or grid that
+and spans its data again; {cmd:xtick(#}{it:N}{cmd:)}/{cmd:ytick(#}{it:N}{cmd:)}
+marks and {cmd:minmax} positions keep their places.  On the saved page a fit,
+histogram or grid that
 the page does not recompute after a move, marked "(unfiltered)", stays inside
 the axis as drawn.
 
@@ -3454,8 +3454,21 @@ as {cmd:#5} (the scheme's tick count; a {cmd:by()} graph's panels take one
 fewer on y, as {cmd:twoway} draws them), with no minor ticks, so
 {cmd:scatter mpg weight} labels 10 20 30 40 and 2,000 3,000 4,000 5,000.  A
 zoom or pan ticks the visible range by the same rule, and Reset returns to
-the current extent.  A {cmd:%td}-{cmd:%ty} axis with no rule keeps Bokeh's
-calendar ticks.
+the current extent.
+
+{pstd}
+A {cmd:%td}, {cmd:%tw}, {cmd:%tm}, {cmd:%tq}, {cmd:%th} or {cmd:%ty} axis
+with no rule, and a second date axis with none, is ticked as {cmd:#5} (the
+scheme's tick count) by {cmd:twoway}'s calendar rule as {cmd:dash} models
+it, with no minor ticks: {cmd:line close date} on {cmd:sp500} labels
+01jan2001 01apr2001 01jul2001 01oct2001 01jan2002, as {cmd:twoway} does.
+The model agrees with Stata on about 52-66% of daily to half-yearly ranges
+and 98% of yearly ones; otherwise it chooses another calendar step or end
+tick.  A date that shares an axis with a plain number is ticked on the
+date's calendar in its Stata values, by default and under {cmd:#}{it:N}
+alike ({cmd:01jan1960 01jan1970} ... {cmd:01jan2000}).  The axis
+re-ticks after a filter move and on zoom, in the saved page and the
+served app alike.
 
 {pstd}
 A numeric axis's ticks are written in the display format {cmd:twoway}
@@ -4326,9 +4339,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     line nor ticks, its x ticks point inward, and a {cmd:yaxis(2)} axis
     is on the left with its line and ticks.  An axis with its default
     labels draws no minor ticks, as Stata draws them only when
-    {cmd:xmtick()}, {cmd:xmlabel()} or their {it:y} twins ask for them; a
-    {cmd:%td}-{cmd:%ty} axis, whose labels Bokeh still places, carries
-    Bokeh's minor ticks in {cmd:color minortick}.{p_end}
+    {cmd:xmtick()}, {cmd:xmlabel()} or their {it:y} twins ask for them,
+    a date axis's default labels included.{p_end}
 
 {phang2}{ul:Text.}  Each piece of text takes the size and colour of the
     Stata textbox style that draws it: {cmd:title()} is {cmd:heading},

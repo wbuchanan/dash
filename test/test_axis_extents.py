@@ -327,8 +327,14 @@ class TestLogAndDateAxes:
                    df=_td_frame([14977, 14979, 14985]),
                    formats={"date": "%td"})
         ep = dr._STATA_EPOCH_UNIX_MS
+        # Flipped: test_a_td_range_is_in_milliseconds -- the range() ends
+        # alone were wrong because twoway ticks a default date axis by
+        # tsnatscale over the widened scale and spans its ticks (P1.3b, M1).
+        lo, hi = ep + 14900 * _DAY, ep + 15400 * _DAY
+        ticks = dr._dash_axis_count_ticks(lo, hi, 5, "td")
+        assert [float(t) for t in fig.xaxis[0].ticker.ticks] == ticks
         assert _approx(hull(fig.x_range),
-                       (ep + 14900 * _DAY, ep + 15400 * _DAY), rel=1e-9)
+                       (min(ticks + [lo]), max(ticks + [hi])), rel=1e-9)
 
     def test_a_degenerate_hull_is_widened_by_one_unit(self, mode, tmp_path):
         df = pd.DataFrame({"mpg": [20.0], "weight": [3000.0]})

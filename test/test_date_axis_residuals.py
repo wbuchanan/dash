@@ -580,15 +580,17 @@ def _digest(model):
 # axis plan key (autobase) and finish code.  Re-derived on the batch-12
 # tree: P1.23a's formatter code (dash_stata_number_of), the plan's "units"
 # key and the date-units JS in the finish code; nothing else differs.
+# Re-derived for WP-30 P1.3b: the filter callback carries the date model's
+# JavaScript port (_DASH_TSNATSCALE_JS inside _DASH_AXIS_FINISH_JS).
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "ba9d9c327d883d345b2e1d73f68966c0862e4b6a1c4df409329dea1132af0c48",
+        "fabc0161d3a508264d5f7441d73eaea8e51b6489ae6976d3a14b9845c898e8be",
     ("saved", "yaxis2"):
-        "ba9d9c327d883d345b2e1d73f68966c0862e4b6a1c4df409329dea1132af0c48",
+        "fabc0161d3a508264d5f7441d73eaea8e51b6489ae6976d3a14b9845c898e8be",
     ("served", "plain"):
-        "1ca6ecd81437011c1cec7a47ee281b256d38f16ba1a53e5f2abb7e87bd25bdc9",
+        "6eacceedd48173eaa08849c49e8de7f42d71d15e82deb5e0aa14056c11afc23a",
     ("served", "yaxis2"):
-        "1ca6ecd81437011c1cec7a47ee281b256d38f16ba1a53e5f2abb7e87bd25bdc9",
+        "6eacceedd48173eaa08849c49e8de7f42d71d15e82deb5e0aa14056c11afc23a",
 }
 
 
@@ -1392,7 +1394,16 @@ class TestASecondDateAxis:
         assert dict(ax.formatter.args)["fmt"] == "%td"
         assert dr._dash_axis_date_kind(fig, "y2") == "td"
         lo, hi = _da_inner(fig, "y", "y2")
-        assert _ms(15007) - 1 <= lo and hi <= _ms(15337) + 1, (lo, hi)
+        # Flipped: test_a_date_second_axis_is_a_date_axis -- a hull of the
+        # data alone (Bokeh's DatetimeTicker) was wrong because twoway ticks
+        # date axes by tsnatscale over the data and spans its ticks (P1.3b,
+        # M1).
+        dlo, dhi = dr._dash_layer_extent(fig.renderers, "y_range_name", "y2",
+                                         "td")
+        ticks = tb_major(ax)
+        assert ticks == dr._dash_axis_count_ticks(dlo, dhi, 5, "td"), ticks
+        assert abs(lo - min(ticks + [dlo])) <= 1 \
+            and abs(hi - max(ticks + [dhi])) <= 1, (lo, hi)
         fig, _w, _o = _da_fig(tmp_path, mode, [
             _L("scatter", "close", "obs"),
             _L("scatter", "close", "date", xaxis="2")])
@@ -1537,8 +1548,12 @@ class TestADateBesideANumber:
             if not (-1 <= lo and hi <= 16001):
                 bad.append((go, lo, hi))
             if go.get("xlabel") == "#5":
+                # Flipped: test_explicit_labels_count_and_range -- natscale's
+                # 0(5000)15000 was wrong because twoway ticks a date beside
+                # a number by tsnatscale in Stata units, 01jan1960 ...
+                # 01jan2000 (P1.3b, M1).
                 t = tb_major(_da_axis(fig, "below"))
-                if t != dr._dash_natscale_ticks(1, 15307, 5):
+                if t != [0.0, 3653.0, 7305.0, 10958.0, 14610.0]:
                     bad.append((go, t))
         assert not bad, bad
 

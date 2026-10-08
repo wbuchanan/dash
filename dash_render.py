@@ -28415,6 +28415,384 @@ _DASH_TS_LIMITS = {
     "y": (100, 9999),
 }
 
+#: WP-30 P1.3b (D-44a, TR-44.4): the saved page's twin of the date model,
+#: _dash_tsnatscale_ticks and its parts line for line (dash_tsnatscale),
+#: with _dash_unix_ms_to_unit (dash_ms_to_ts_unit) and one value of
+#: _stata_dates_to_datetime (dash_ts_unit_to_ms).  The same loop order
+#: (_dash_ts_pair, D-44b), round-half-even for round() and %.12g as
+#: dash_g12 (D-44d); integer civil-day arithmetic for every date.  Pure
+#: arithmetic over numbers: no DOM, no eval, no user text.  The @@DASH_TS_*@@
+#: tokens are the Python constants, written in at import by json.dumps,
+#: so no weight is typed twice.  Prepended to _DASH_AXIS_FINISH_JS.
+_DASH_TSNATSCALE_JS = r"""
+var DASH_TS_PARAMS = @@DASH_TS_PARAMS@@;
+var DASH_TS_PER = @@DASH_TS_PER@@;
+var DASH_TS_SUB = @@DASH_TS_SUB@@;
+var DASH_TS_GRIDS = @@DASH_TS_GRIDS@@;
+var DASH_TS_YEARS = @@DASH_TS_YEARS@@;
+var DASH_TS_LIMITS = @@DASH_TS_LIMITS@@;
+var DASH_TS_UNITS = @@DASH_TS_UNITS@@;
+var DASH_TS_MAXT = @@DASH_TS_MAXT@@;
+function dash_round_half_even(x) {
+    const f = Math.floor(x), d = x - f;
+    if (d < 0.5) return f;
+    if (d > 0.5) return f + 1;
+    return (f % 2 === 0) ? f : f + 1;
+}
+// float("%.12g" % x): toPrecision(12) rounds an exact tie up, Python to even.
+function dash_g12(x) {
+    if (!isFinite(x) || x === 0) return x;
+    const c = Number(x.toPrecision(12));
+    const t = Math.abs(x).toExponential(99).split("e");
+    const dg = t[0].replace(".", "");
+    if (dg.charAt(12) !== "5" || !/^0*$/.test(dg.slice(13))) return c;
+    if (Number(dg.charAt(11)) % 2 === 1) return c;
+    const v = Number(dg.charAt(0) + "." + dg.slice(1, 12) + "e" + t[1]);
+    return x < 0 ? -v : v;
+}
+// _dash_ts_pair: CPython's order of {floor(x), ceil(x)}.
+function dash_ts_pair(x) {
+    const a = Math.floor(x), b = Math.ceil(x);
+    if (a === b) return [a];
+    return (((b % 8) + 8) % 8 === 0) ? [b, a] : [a, b];
+}
+// Days after 01jan1970 of a proleptic Gregorian date, and back.
+function dash_days_from_civil(y, m, d) {
+    y -= m <= 2 ? 1 : 0;
+    const era = Math.floor(y / 400);
+    const yoe = y - era * 400;
+    const doy = Math.floor((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1;
+    const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+    return era * 146097 + doe - 719468;
+}
+function dash_civil_from_days(z) {
+    z += 719468;
+    const era = Math.floor(z / 146097);
+    const doe = z - era * 146097;
+    const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524)
+                            - Math.floor(doe / 146096)) / 365);
+    const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+    const mp = Math.floor((5 * doy + 2) / 153);
+    const d = doy - Math.floor((153 * mp + 2) / 5) + 1;
+    const m = mp < 10 ? mp + 3 : mp - 9;
+    return [yoe + era * 400 + (m <= 2 ? 1 : 0), m, d];
+}
+function dash_ts_next_month(y, m) {
+    return m === 12 ? dash_days_from_civil(y + 1, 1, 1) : dash_days_from_civil(y, m + 1, 1);
+}
+function dash_ms_to_ts_unit(ms, unit) {
+    if (ms === null || ms === undefined || typeof ms === "boolean") return null;
+    ms = Number(ms);
+    const E = @@DASH_TS_EPOCH@@;
+    if (!(isFinite(ms) && @@DASH_TS_MSMIN@@ + E <= ms && ms <= @@DASH_TS_MSMAX@@ + E)) return null;
+    if (unit === "d") return (ms - E) / 86400000.0;
+    const day = Math.floor(ms / 86400000.0);
+    const frac_day = ms / 86400000.0 - day;
+    const c = dash_civil_from_days(day);
+    const y = c[0], mon = c[1] - 1;
+    const first = dash_days_from_civil(y, c[1], 1);
+    const nxt = dash_ts_next_month(y, c[1]);
+    const in_month = (day - first + frac_day) / (nxt - first);
+    if (unit === "w") {
+        const jan1 = dash_days_from_civil(y, 1, 1);
+        return (y - 1960) * 52 + Math.min(51.999, (day - jan1 + frac_day) / 7.0);
+    }
+    const months = (y - 1960) * 12 + mon + in_month;
+    const per = {m: 1, q: 3, h: 6, y: 12}[unit];
+    if (per === undefined) return null;
+    if (unit === "y") return 1960 + months / 12.0;
+    return months / per;
+}
+// One value of _stata_dates_to_datetime, as epoch ms; NaN for no date.
+function dash_ts_unit_to_ms(v, kind) {
+    v = Number(v);
+    const E = @@DASH_TS_EPOCH@@;
+    let ms = NaN;
+    if (kind === "td") {
+        ms = Math.floor(v * 86400000.0);
+    } else {
+        const per = {tw: 52, tm: 12, tq: 4, th: 2}[kind];
+        const idx = Math.floor(v);
+        let year, sub;
+        if (kind === "ty") { year = idx; sub = 0; }
+        else if (per) { year = 1960.0 + Math.floor(idx / per); sub = idx - (year - 1960.0) * per; }
+        else return NaN;
+        if (isFinite(year) && year >= @@DASH_TS_YMIN@@ && year <= @@DASH_TS_YMAX@@) {
+            let days;
+            if (kind === "tm") days = dash_days_from_civil(year, sub + 1, 1);
+            else if (kind === "tq") days = dash_days_from_civil(year, 3 * sub + 1, 1);
+            else if (kind === "th") days = dash_days_from_civil(year, 6 * sub + 1, 1);
+            else if (kind === "tw") days = dash_days_from_civil(year, 1, 1) + 7 * sub;
+            else days = dash_days_from_civil(year, 1, 1);
+            ms = (days + 3653) * 86400000.0;
+        }
+    }
+    if (!(isFinite(ms) && ms >= @@DASH_TS_MSMIN@@ && ms <= @@DASH_TS_MSMAX@@)) return NaN;
+    return ms + E;
+}
+function dash_ts_ladder(unit) {
+    const per = DASH_TS_PER[unit];
+    const out = [];
+    for (const s of DASH_TS_SUB[unit]) out.push([s, s <= 2 ? 1.0 : s, 0.0]);
+    for (const yrs of DASH_TS_YEARS) {
+        const d = yrs * per, o = (-(1960 % yrs)) * per;
+        out.push([d, d, ((o % d) + d) % d]);
+    }
+    return out;
+}
+function dash_ts_cost(lo, hi, n, d, t0, t1, k, fb, params) {
+    const w = params[0], lim = params[1];
+    if (k < 2 || k > DASH_TS_MAXT + 1) return null;
+    const r = hi - lo;
+    const ulo = Math.max(0.0, t0 - lo), wlo = Math.max(0.0, lo - t0);
+    const uhi = Math.max(0.0, hi - t1), whi = Math.max(0.0, t1 - hi);
+    const dk = k - n;
+    const f = [ulo / r, wlo / r, uhi / r, whi / r,
+               Math.max(dk, 0), Math.max(-dk, 0), Math.max(dk - 2, 0), Math.max(-dk - 2, 0),
+               Math.max(dk, 0) / n, Math.max(-dk, 0) / n,
+               fb, fb * Math.abs(dk),
+               ulo / d, uhi / d, wlo / d, whi / d,
+               k === 2 ? 1.0 : 0.0, dk === 0 ? 1.0 : 0.0];
+    if (fb === 0.0 && (dk > lim[0] || f[12] > lim[1] || f[13] > lim[2] || f[14] > lim[3]
+                       || f[15] > lim[4])) return null;
+    let s = 0;
+    for (let i = 0; i < w.length && i < f.length; i++) s += w[i] * f[i];
+    return s;
+}
+function dash_ts_candidates(unit, lo, hi, n, kcap) {
+    const out = [];
+    const r = hi - lo;
+    const kmax = Math.min(DASH_TS_MAXT + 1, n + kcap);
+    for (const L of dash_ts_ladder(unit)) {
+        const d = L[0], g = L[1], o = L[2];
+        if (r / d > kmax + 1) continue;
+        const fl = Math.floor((lo - o) / g) * g + o;
+        for (const t0 of (fl < lo ? [fl, fl + g] : [fl])) {
+            const fh = (hi - t0) / d;
+            for (const m of dash_ts_pair(fh)) {
+                const k = m + 1;
+                if (2 <= k && k <= kmax) out.push([d, t0, k, 0.0]);
+            }
+        }
+        if (d > 4 * r + 1) break;
+    }
+    const c = (lo + hi) / 2.0;
+    const ks = [];
+    for (let k = 2; k <= Math.min(n + 1, 14); k++) ks.push(k);
+    for (let k = Math.max(2, n - 10); k < n + 2; k++) if (ks.indexOf(k) < 0) ks.push(k);
+    ks.sort((a, b) => a - b);
+    for (const g of DASH_TS_GRIDS[unit]) {
+        for (const k of ks) {
+            const base = r / (k - 1) / g;
+            for (const mult of dash_ts_pair(base)) {
+                if (mult < 1) continue;
+                const d = mult * g;
+                const t0 = Math.floor((c - d * (k - 1) / 2.0) / g + 0.5) * g;
+                out.push([d, t0, k, 1.0]);
+            }
+        }
+    }
+    return out;
+}
+function dash_ts_tiny(lo, hi, n, unit) {
+    const r = dash_round_half_even(hi - lo);
+    const dd = n - r - 1;
+    let e = dd > 0 ? Math.min(5, Math.floor((2 * dd) / 3)) : 0;
+    if (unit === "q" && 4 <= n && n <= 6) e = Math.max(e, 4 - r);
+    const up = Math.min(Math.floor((e + 1) / 2), 2);
+    const start = Math.floor(lo + 1e-9) - (e - up);
+    const out = [];
+    for (let i = 0; i < r + 1 + e; i++) out.push(start + i);
+    return out;
+}
+function dash_ts_calendar(unit, lo, hi, n) {
+    const params = DASH_TS_PARAMS[unit];
+    let best = null;
+    for (const C of dash_ts_candidates(unit, lo, hi, n, Math.trunc(params[1][0]))) {
+        const d = C[0], t0 = C[1], k = C[2], fb = C[3];
+        const cst = dash_ts_cost(lo, hi, n, d, t0, t0 + (k - 1) * d, k, fb, params);
+        if (cst !== null && (best === null || cst < best[0] - 1e-12)) best = [cst, d, t0, k];
+    }
+    if (best === null) return [lo, hi];
+    const out = [];
+    for (let i = 0; i < best[3]; i++) out.push(best[2] + i * best[1]);
+    return out;
+}
+function dash_ts_yearly(lo, hi, n) {
+    const t = dash_natscale(lo, hi, n);
+    if (t !== null && t.length > 1 && t[1] - t[0] >= 1 - 1e-9) return t;
+    const a = Math.ceil(lo - 1e-9), b = Math.floor(hi + 1e-9);
+    if (b - a >= 1) {
+        const out = [];
+        for (let v = a; v <= b; v++) out.push(v);
+        return out;
+    }
+    return [Math.floor(lo), Math.ceil(hi)];
+}
+function dash_ts_frac_month(td) {
+    const fd = Math.floor(td);
+    const c = dash_civil_from_days(fd - 3653);
+    const y = c[0], mo = c[1], dy = c[2];
+    if (y < 1 || y > 9999) throw new RangeError("no date");
+    const first = dash_days_from_civil(y, mo, 1);
+    const dim = (y < 9999 || mo < 12) ? dash_ts_next_month(y, mo) - first : 31;
+    return (y - 1960) * 12 + mo - 1 + (dy - 1 + (td - fd)) / dim;
+}
+function dash_ts_month_day(j) {
+    const y = 1960 + Math.floor(j / 12), mo = ((j % 12) + 12) % 12 + 1;
+    if (y < @@DASH_TS_YMIN@@ || y > @@DASH_TS_YMAX@@) return null;
+    return dash_days_from_civil(y, mo, 1) + 3653;
+}
+function dash_ts_month_week(j) {
+    const td = dash_ts_month_day(j);
+    if (td === null) return null;
+    const c = dash_civil_from_days(td - 3653);
+    const yday0 = td - 3653 - dash_days_from_civil(c[0], 1, 1);
+    return (c[0] - 1960) * 52 + Math.min(Math.floor(yday0 / 7), 51);
+}
+function dash_ts_week_day(w) {
+    const y = 1960 + Math.trunc(Math.floor(w / 52.0));
+    const wk = Math.trunc(w - (y - 1960) * 52);
+    if (y < 1 || y > 9999) throw new RangeError("no date");
+    return dash_days_from_civil(y, 1, 1) + 3653 + 7 * wk;
+}
+function dash_ts_daily(unit, lo, hi, n) {
+    const params = DASH_TS_PARAMS.m;
+    const kcap = Math.trunc(params[1][0]);
+    const r = hi - lo;
+    let best = null;
+    const own = unit === "d" ? [1, 2, 3, 7, 14, 21] : [1, 2, 4];
+    const kmax = Math.min(DASH_TS_MAXT + 1, n + kcap);
+    for (const d of own) {
+        if (r / d > kmax + 1) continue;
+        for (const t0 of dash_ts_pair(lo)) {
+            const fh = (hi - t0) / d;
+            for (const m of dash_ts_pair(fh)) {
+                const k = m + 1;
+                if (2 <= k && k <= kmax) {
+                    const cst = dash_ts_cost(lo, hi, n, d, t0, t0 + (k - 1) * d, k, 0.0, params);
+                    if (cst !== null && (best === null || cst < best[0] - 1e-12)) {
+                        const t = [];
+                        for (let i = 0; i < k; i++) t.push(t0 + i * d);
+                        best = [cst, t];
+                    }
+                }
+            }
+        }
+    }
+    let flo, fhi, tomap, per_step;
+    if (unit === "d") {
+        flo = dash_ts_frac_month(lo); fhi = dash_ts_frac_month(hi);
+        tomap = dash_ts_month_day; per_step = 30.436875;
+    } else {
+        flo = dash_ts_frac_month(dash_ts_week_day(Math.floor(lo)));
+        fhi = dash_ts_frac_month(dash_ts_week_day(Math.floor(hi)));
+        tomap = dash_ts_month_week; per_step = 365.25 / 12.0 / 7.0;
+    }
+    if (fhi > flo) {
+        for (const C of dash_ts_candidates("m", flo, fhi, n, kcap)) {
+            const d = C[0], t0 = C[1], k = C[2], fb = C[3];
+            if (fb) continue;
+            let ticks = [];
+            for (let i = 0; i < k; i++) {
+                const v = tomap(dash_round_half_even(t0 + i * d));
+                if (v === null) { ticks = null; break; }
+                ticks.push(v);
+            }
+            if (!ticks || !ticks.length) continue;
+            const cst = dash_ts_cost(lo, hi, n, d * per_step, ticks[0], ticks[ticks.length - 1],
+                                     k, 0.0, params);
+            if (cst !== null && (best === null || cst < best[0] - 1e-12)) best = [cst, ticks];
+        }
+    }
+    if (best === null) return [lo, hi];
+    return best[1];
+}
+function dash_tsnatscale(lo, hi, n, unit) {
+    lo = Number(lo); hi = Number(hi); n = Math.trunc(Number(n));
+    if (!isFinite(lo) || !isFinite(hi) || !isFinite(n)
+            || !Object.prototype.hasOwnProperty.call(DASH_TS_LIMITS, unit)) return null;
+    n = Math.max(1, Math.min(n, DASH_TS_MAXT));
+    if (hi < lo) { const t = lo; lo = hi; hi = t; }
+    const ab = DASH_TS_LIMITS[unit];
+    if (lo < ab[0] || hi > ab[1]) return null;
+    if (hi === lo) return [lo - 1.0, lo + 1.0];
+    if (n === 1) return [lo, hi];
+    let out;
+    try {
+        const r = hi - lo;
+        const whole = Math.abs(lo - dash_round_half_even(lo)) < 1e-9
+            && Math.abs(hi - dash_round_half_even(hi)) < 1e-9;
+        if (unit === "y") out = dash_ts_yearly(lo, hi, n);
+        else if (r <= n && whole && ("dwm".indexOf(unit) >= 0 || n >= 7
+                 || (unit === "q" && (n >= 5 || r >= 2) && n >= 4))) out = dash_ts_tiny(lo, hi, n, unit);
+        else if (unit === "d" || unit === "w") out = dash_ts_daily(unit, lo, hi, n);
+        else out = dash_ts_calendar(unit, lo, hi, n);
+    } catch (err) {
+        return null;
+    }
+    if (!out || !out.length || out.length > DASH_TS_MAXT + 1) return null;
+    return out.map((v) => dash_g12(v));
+}
+// _dash_axis_count_ticks' date branches: a %td-%ty axis (epoch ms) or a
+// date beside a number ("su:<kind>", Stata units); undefined otherwise.
+function dash_ts_axis_ticks(lo, hi, n, kind) {
+    if (typeof kind !== "string") return undefined;
+    if (kind.indexOf("su:") === 0) {
+        const k = kind.slice(3);
+        const su = Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, k) ? DASH_TS_UNITS[k] : null;
+        if (su === null) return dash_natscale(lo, hi, n);
+        return dash_tsnatscale(lo, hi, n, su) || dash_natscale(lo, hi, n);
+    }
+    if (!Object.prototype.hasOwnProperty.call(DASH_TS_UNITS, kind)) return undefined;
+    const unit = DASH_TS_UNITS[kind];
+    const a = dash_ms_to_ts_unit(lo, unit), b = dash_ms_to_ts_unit(hi, unit);
+    // Past Stata's dates S35's off-date ticks are kept (hold).
+    if (a === null || b === null) return null;
+    const t = dash_tsnatscale(a, b, n, unit);
+    if (!t) return null;
+    const out = [];
+    for (const v of t) {
+        const ms = dash_ts_unit_to_ms(v, kind);
+        if (isFinite(ms)) out.push(ms);
+    }
+    return out.length ? out : null;
+}
+"""
+for _tok, _val in (("@@DASH_TS_PARAMS@@", _DASH_TS_PARAMS),
+                   ("@@DASH_TS_PER@@", _DASH_TS_PER),
+                   ("@@DASH_TS_SUB@@", _DASH_TS_SUB),
+                   ("@@DASH_TS_GRIDS@@", _DASH_TS_GRIDS),
+                   ("@@DASH_TS_YEARS@@", _DASH_TS_YEARS),
+                   ("@@DASH_TS_LIMITS@@", _DASH_TS_LIMITS),
+                   ("@@DASH_TS_UNITS@@", _DASH_TS_UNITS),
+                   ("@@DASH_TS_MAXT@@", _MAX_AXIS_TICKS),
+                   ("@@DASH_TS_YMIN@@", _STATA_YEAR_MIN),
+                   ("@@DASH_TS_YMAX@@", _STATA_YEAR_MAX),
+                   ("@@DASH_TS_MSMIN@@", _STATA_MS_MIN),
+                   ("@@DASH_TS_MSMAX@@", _STATA_MS_MAX),
+                   ("@@DASH_TS_EPOCH@@", _STATA_EPOCH_UNIX_MS)):
+    _DASH_TSNATSCALE_JS = _DASH_TSNATSCALE_JS.replace(
+        _tok, "(%s)" % json.dumps(_val))
+del _tok, _val
+
+
+def _dash_ts_pair(x):
+    """``math.floor(x)`` and ``math.ceil(x)`` in the order CPython iterates
+    the set ``{math.floor(x), math.ceil(x)}`` (WP-30 P1.3b, D-44b).
+
+    The model's ties go to the first candidate, so the order the sets were
+    iterated in decided ties; it is written out here so the saved page's
+    port (``dash_ts_pair``) can follow it.  CPython orders two consecutive
+    integers ``a, a + 1`` as ``a + 1, a`` exactly when ``(a + 1) & 7 ==
+    0`` (measured over every ``a`` in [-3,000,000, 3,000,000], which holds
+    every %td value of 0100-9999, ``hash(-1) == -2`` included): an int's
+    hash is itself, so only its low three bits place it."""
+    a, b = math.floor(x), math.ceil(x)
+    if a == b:
+        return (a,)
+    return (b, a) if b & 7 == 0 else (a, b)
+
 
 def _dash_ts_ladder(unit):
     """(step, grid, offset) of each calendar step of *unit* ("m", "q" or
@@ -28465,7 +28843,7 @@ def _dash_ts_candidates(unit, lo, hi, n, kcap):
         fl = math.floor((lo - o) / g) * g + o
         for t0 in ((fl, fl + g) if fl < lo else (fl,)):
             fh = (hi - t0) / d
-            for m in {math.floor(fh), math.ceil(fh)}:
+            for m in _dash_ts_pair(fh):
                 k = int(m) + 1
                 if 2 <= k <= kmax:
                     out.append((d, t0, k, 0.0))
@@ -28475,9 +28853,9 @@ def _dash_ts_candidates(unit, lo, hi, n, kcap):
     ks = set(range(2, min(n + 1, 14) + 1)) | set(range(max(2, n - 10),
                                                        n + 2))
     for g in _DASH_TS_GRIDS[unit]:
-        for k in ks:
+        for k in sorted(ks):
             base = r / (k - 1) / g
-            for mult in {math.floor(base), math.ceil(base)}:
+            for mult in _dash_ts_pair(base):
                 if mult < 1:
                     continue
                 d = mult * g
@@ -28584,9 +28962,9 @@ def _dash_ts_daily(unit, lo, hi, n):
         d = float(d)
         if r / d > kmax + 1:
             continue
-        for t0 in {math.floor(lo), math.ceil(lo)}:
+        for t0 in _dash_ts_pair(lo):
             fh = (hi - t0) / d
-            for m in {math.floor(fh), math.ceil(fh)}:
+            for m in _dash_ts_pair(fh):
                 k = int(m) + 1
                 if 2 <= k <= kmax:
                     cst = _dash_ts_cost(lo, hi, n, d, t0, t0 + (k - 1) * d,
@@ -28693,8 +29071,18 @@ def _dash_axis_count_ticks(lo, hi, n, kind=None):
     off the axis) -- or a Stata date kind, whose positions are epoch
     milliseconds: %tc and %tC take natscale over Stata's milliseconds, the
     rest _tsnatscale in the variable's own unit (tickset_g.class
-    set_ticks).  Anything else is read as linear.
+    set_ticks).  A kind ``"su:<k>"`` (WP-30 P1.3b, D-44c) is an axis
+    that draws a date of kind *k* beside a number in Stata units: its
+    positions are those units, ticked by _tsnatscale directly (``"su:"``
+    with no date kind is linear).  Anything else is read as linear.
     """
+    if isinstance(kind, str) and kind.startswith("su:"):
+        su = _DASH_TS_UNITS.get(kind[3:])
+        if su is None:
+            return _dash_natscale_ticks(lo, hi, n)
+        # Past 0100-9999 the values are no dates: natscale, as linear.
+        return (_dash_tsnatscale_ticks(lo, hi, n, su)
+                or _dash_natscale_ticks(lo, hi, n))
     if kind == "log":
         t = _dash_natscale_ticks(lo, hi, n)
         t = [v for v in (t or ()) if v > 0]
@@ -29370,7 +29758,7 @@ _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
 #: _dash_natscale_ticks (dash_natscale, line for line: the same candidate
 #: order, the same 1e-12 tie rule, %.15g as toPrecision(15)),
 #: _dash_axis_count_ticks (dash_axis_ticks: the log and %tc rules; a
-#: %td-%ty axis's ticks are held), the reader (dash_axis_extent), the hull
+#: %td-%ty or "su:" axis through _DASH_TSNATSCALE_JS, WP-30 P1.3b), the reader (dash_axis_extent), the hull
 #: (dash_axis_hull), _dash_padded_range (dash_axis_pad), and the per-figure
 #: and by() steps (dash_axis_compute).  dash_axis_finish(plan, models)
 #: writes the ticks, then each range with ONE setv under a
@@ -29378,7 +29766,7 @@ _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
 #: the plan (_dash_axis_plan) and the models it names: no DOM, no eval, no
 #: BokehJS view internals, no user text.  The __DASH_*__ tokens are the
 #: Python constants, written in at import.
-_DASH_AXIS_FINISH_JS = _DASH_DATE_UNITS_JS + r"""
+_DASH_AXIS_FINISH_JS = _DASH_DATE_UNITS_JS + _DASH_TSNATSCALE_JS + r"""
 // The date kind a plan layer draws field *f* in (its [field, kind] pairs;
 // WP-30 P1.23a), or null: a field not listed is read as stored.
 function dash_axis_unit_of(units, f) {
@@ -29454,6 +29842,8 @@ function dash_axis_ticks(lo, hi, n, kind) {
                                 Number(hi) - (@@DASH_EPOCH@@), n);
         return t ? t.map((v) => v + (@@DASH_EPOCH@@)) : null;
     }
+    const ts = dash_ts_axis_ticks(lo, hi, n, kind);
+    if (ts !== undefined) return ts;
     if (kind) return null;
     return dash_natscale(lo, hi, n);
 }
@@ -29583,7 +29973,7 @@ function dash_axis_pad(lo, hi, kind, reverse, margin) {
             let w = null;
             if (step) w = dash_axis_shift(lo, step[0], step[1]);
             if (w === null || !isFinite(w[0]) || !isFinite(w[1])) {
-                const one = kind ? 86400000.0 : 1.0;
+                const one = (kind && String(kind).indexOf("su:") !== 0) ? 86400000.0 : 1.0;
                 w = [lo - one, hi + one];
             }
             lo = w[0]; hi = w[1];
@@ -30021,13 +30411,21 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                 fb = _dash_axis_unit_format(plots, ax_key[0], date_vars,
                                             formats)
             fb = _dash_varformat_writable(fb, by_opt, ax_key[0])
+            if not kind and not by_opt \
+                    and _stata_date_kind(fb) in _DASH_TS_UNITS:
+                # WP-30 P1.3b (D-44c): a date beside a number, in Stata
+                # units, is ticked on the date's calendar.
+                fig._dash_unit_kind = {
+                    **(getattr(fig, "_dash_unit_kind", None) or {}),
+                    ax_key[0]: "su:" + _stata_date_kind(fb)}
         spec = _dash_parse_axis_spec(raw) if raw else None
         if (spec is None or spec.get("mode") == "default") \
-                and kind in (None, "tc", "tC"):
+                and (kind in (None, "tc", "tC") or kind in _DASH_TS_UNITS):
             # WP-30 P1.3a: no label rule -- twoway's #N for the scheme's
             # tick count (numticks_g), placed by natscale over every drawn
             # layer once they are drawn (_dash_finish_count_ticks); no
-            # minor ticks.  A %td-%ty axis keeps its DatetimeTicker (S44).
+            # minor ticks.  A %td-%ty axis takes _tsnatscale's #N as dash
+            # models it (WP-30 P1.3b).
             from bokeh.models.axes import ContinuousAxis as _CA
             _n = (getattr(fig, "_dash_numticks", None) or {}).get(
                 ax_key[0], 5)
@@ -30513,7 +30911,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
     holds, per graph (a by() graph's panels, with the letters they share,
     else one figure), per axis: ``letter``, ``name``, ``kind``, ``mode``
     (``"count"`` for a placed ``#N`` or default ticker, else ``"none"``),
-    ``n``, ``hold`` (a ``%td``-``%ty`` axis's ``#N`` ticks), ``key``,
+    ``n``, ``hold`` (a placeholder that is no FixedTicker; a date axis
+    re-ticks, WP-30 P1.3b), ``key``,
     ``held`` and ``explicit`` (positions that join the hull as they are),
     ``extra`` (the ``#N`` list's union ticks), ``scale`` (the range()
     values the ticks are placed over), ``reverse``, ``margin``, ``range``
@@ -30701,7 +31100,8 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                         getattr(base, "tags", None) or ())),
                     "n": int(_dash_count_of(base) or 0) if mode == "count"
                     else 0,
-                    "hold": bool(kind in _DASH_TS_UNITS),
+                    "hold": bool(base is not None
+                                 and not isinstance(base, FixedTicker)),
                     "held": [float(v) for v in (getattr(
                         ax, "_dash_every_extra", None) or ()) if ok(v)],
                     "explicit": [float(v) for v in explicit if ok(v)],
@@ -30871,7 +31271,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         fig._dash_scale_reverse2 = _sr2
         if ax is not None and (spec is None
                                or spec.get("mode") == "default") \
-                and kind in (None, "tc", "tC"):
+                and (kind in (None, "tc", "tC") or kind in _DASH_TS_UNITS):
             # No ylabel2()/xlabel2() rule: ticked as the first axes are.
             _nt = getattr(fig, "_dash_numticks", None) or {}
             ax.ticker = _dash_default_ticker(_nt.get(name, _nt.get(n, 5)))
@@ -30925,6 +31325,12 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                     fb2 = _dash_axis_unit_format(plots, name, date_vars,
                                                  formats)
                 fb2 = _dash_varformat_writable(fb2, _by2, n)
+                if not kind and not _by2 \
+                        and _stata_date_kind(fb2) in _DASH_TS_UNITS:
+                    # WP-30 P1.3b (D-44c): a mixed second date axis.
+                    fig._dash_unit_kind = {
+                        **(getattr(fig, "_dash_unit_kind", None) or {}),
+                        name: "su:" + _stata_date_kind(fb2)}
             _dash_apply_axis_spec(ax, grids, spec, col_vals or None, fb2,
                                   grid_color, vlabels2, fmt_cache=fmt_cache,
                                   ref_in=ref_in, date_kind=kind,
@@ -30937,6 +31343,12 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             elif not kind and not fb2 and not _by2 and formats is not None:
                 fb2 = _dash_axis_unit_format(plots, name, date_vars, formats)
             fb2 = _dash_varformat_writable(fb2, _by2, n)
+            if not kind and not _by2 \
+                    and _stata_date_kind(fb2) in _DASH_TS_UNITS:
+                # WP-30 P1.3b (D-44c): a mixed second date axis.
+                fig._dash_unit_kind = {
+                    **(getattr(fig, "_dash_unit_kind", None) or {}),
+                    name: "su:" + _stata_date_kind(fb2)}
             if fb2:
                 _dash_apply_axis_spec(ax, [], _dash_parse_axis_spec(""),
                                       None, fb2, grid_color, None,
@@ -31013,8 +31425,10 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
     (_fit_grid draws over the observed range, not 10% past it).  An entry
     also records ``default`` (its placeholder is a default axis's,
     :func:`_dash_default_ticker`) and, on a *refinish* (after a filter
-    move), ``hold``: a ``%td``-``%ty`` axis's ``#N`` ticks keep their
-    build-time places (S44 lifts this)."""
+    move), ``hold``: an axis whose ``#N`` placeholder is no FixedTicker
+    keeps its ticks; a ``%td``-``%ty`` axis re-ticks (WP-30 P1.3b).  An
+    axis with no date kind whose layers draw a date in Stata units
+    (``fig._dash_unit_kind``) has the kind ``"su:<kind>"``."""
     from bokeh.models import (CustomJSTicker, DatetimeAxis, FixedTicker,
                               LogAxis)
     from bokeh.models.axes import ContinuousAxis
@@ -31057,6 +31471,11 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                 ext = _dash_layer_extent(pool, range_attr, name, kind)
                 bext = _dash_layer_extent(pool, range_attr, name, kind,
                                           role="base")
+                if kind is None:
+                    # WP-30 P1.3b (D-44c): a date beside a number is
+                    # ticked on its calendar, in Stata units.
+                    kind = (getattr(fig, "_dash_unit_kind", None) or {}).get(
+                        letter if name == "default" else name)
                 default = (base is not None and _DASH_DEFAULT_TAG in
                            (getattr(base, "tags", None) or ()))
                 out.append({"key": (side, pos), "ax": ax, "t": t,
@@ -31064,9 +31483,9 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                             "kind": kind, "letter": letter, "name": name,
                             "pool": pool, "default": default,
                             "refinish": bool(refinish),
-                            "hold": bool(refinish and (
-                                kind in _DASH_TS_UNITS
-                                or not isinstance(base, FixedTicker))),
+                            "hold": bool(refinish
+                                         and not isinstance(base,
+                                                            FixedTicker)),
                             "lo": ext[0] if ext else None,
                             "hi": ext[1] if ext else None,
                             "bases": list(bext) if bext else []})
@@ -31182,7 +31601,8 @@ def _dash_padded_range(lo, hi, kind=None, reverse=False, margin=None):
                 except (ValueError, OverflowError, TypeError):
                     widened = None
             if widened is None:
-                one = 86_400_000.0 if kind else 1.0
+                one = (86_400_000.0 if kind and not str(kind).startswith(
+                    "su:") else 1.0)
                 widened = (lo - one, hi + one)
             lo, hi = widened
         pad = frac * (hi - lo)
@@ -43137,6 +43557,8 @@ class ServerAppBuilder:
                       "_DASH_NATSCALE_INT_LIMIT", "_DASH_TS_UNITS",
                       "_DASH_TS_PARAMS", "_DASH_TS_PER", "_DASH_TS_SUB",
                       "_DASH_TS_GRIDS", "_DASH_TS_YEARS", "_DASH_TS_LIMITS",
+                      # WP-30 P1.3b: the date model's JavaScript port.
+                      "_DASH_TSNATSCALE_JS",
                       # The blanks _dash_grid_dims and _dash_placement_map
                       # strip (WP-20).
                       "_DASH_ASCII_BLANKS",
@@ -43442,6 +43864,8 @@ class ServerAppBuilder:
                          # WP-30 P1.17b: twoway's default base.
                          "_dash_base_spec", "_dash_auto_base_props",
                          "_dash_axis_scale", "_dash_finish_auto_bases",
+                         # WP-30 P1.3b: the date model's explicit order.
+                         "_dash_ts_pair",
                          # WP-28 B2: the extent after the layers, the
                          # scale sub-option names and the shared
                          # primary-renderers limit.

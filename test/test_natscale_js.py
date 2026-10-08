@@ -84,12 +84,15 @@ class TestJsNatscaleEqualsPython:
         cases = [(3291.0, 15906.0, 5, "log"), (0.5, 2.0, 5, "log"),
                  (-5.0, -1.0, 5, "log"),
                  (1.293951600e12 + e, 1.296e12 + e, 5, "tc"),
-                 (e + 1.0, e + 7.0e9, 4, "tC")]
-        got = _ticks_js(cases + [(0.0, 1.0e12, 5, "td")])
+                 (e + 1.0, e + 7.0e9, 4, "tC"),
+                 # Flipped: test_log_and_tc_rules -- a held (null) %td answer
+                 # was wrong because twoway ticks date axes by tsnatscale
+                 # over the data (P1.3b, M1).
+                 (0.0, 1.0e12, 5, "td")]
+        got = _ticks_js(cases)
         bad = _mismatches(cases, got, dr._dash_axis_count_ticks)
         assert not bad, bad
-        # A %td-%ty axis's ticks are held after a move (S44 ports them).
-        assert got[-1] is None
+        assert got[-1]
 
 
 class TestJsPaddingEqualsPython:
@@ -155,3 +158,130 @@ class TestJsFinishEqualsPython:
                     bad.append((spec["graphs"][0]["plots"][0]["type"],
                                 (a, b), got, want))
         assert not bad, bad[:3]
+
+
+def _ts_js(cases):
+    """dash_tsnatscale over *cases* ``(lo, hi, n, unit)`` in one node run."""
+    return _js("for (const c of DATA) out.push(dash_tsnatscale(c[0], c[1], "
+               "c[2], c[3]));", cases)
+
+
+def _ts_ranges(rnd, unit, count):
+    """*count* seeded ``(lo, hi, n, unit)`` inside 0100-9999, n 2-62: whole
+    and fractional ends, one period, and ranges at either limit."""
+    a, b = dr._DASH_TS_LIMITS[unit]
+    out = []
+    for i in range(count):
+        span = (b - a) * 10 ** rnd.uniform(-6.5, -0.3)
+        lo = rnd.uniform(a, b - span)
+        if i % 7 == 0:
+            lo = a if i % 2 else b - span
+        hi = lo + span
+        if i % 3 == 0:
+            lo, hi = float(math.ceil(lo)), float(math.floor(hi))
+        if i % 11 == 0:
+            hi = lo + 1.0
+        out.append((lo, hi, rnd.randint(2, 62), unit))
+    return out
+
+
+class TestJsTsnatscaleEqualsPython:
+    """WP-30 P1.3b (D-44a): the saved page's date model is the Python one."""
+
+    def test_the_fixture(self):
+        with open(os.path.join(_HERE, "fixtures", "natscale_axes_truth.json"),
+                  encoding="utf-8") as fh:
+            t = json.load(fh)
+        cases = [(r[1], r[2], r[3], r[0]) for part in
+                 ("tsnatscale", "tsnatscale_sweeps", "date_graph")
+                 for r in t[part]]
+        assert len(cases) == 12000 + 15711 + 280
+        bad = _mismatches(cases, _ts_js(cases),
+                          lambda lo, hi, n, u:
+                          dr._dash_tsnatscale_ticks(lo, hi, n, u))
+        assert not bad, (len(bad), bad[:5])
+
+    def test_random_ranges(self):
+        rnd = random.Random(4401)
+        cases = [c for u in ("d", "w", "m", "q", "h", "y")
+                 for c in _ts_ranges(rnd, u, 2000)]
+        bad = _mismatches(cases, _ts_js(cases),
+                          lambda lo, hi, n, u:
+                          dr._dash_tsnatscale_ticks(lo, hi, n, u))
+        assert not bad, (len(bad), bad[:5])
+
+    def test_the_calendar(self):
+        """ms -> unit and unit -> ms at month firsts 0100-9999 (every
+        seventh month) and seeded instants, every unit."""
+        e = dr._STATA_EPOCH_UNIX_MS
+        rnd = random.Random(4402)
+        months = list(range((100 - 1960) * 12, (9999 - 1960) * 12 + 12, 7))
+        firsts = dr._stata_dates_to_datetime(
+            __import__("pandas").Series(months, dtype="float64"), "tm")
+        stamps = [float(v) for v in firsts.astype("int64").tolist()]
+        stamps += [rnd.uniform(dr._STATA_MS_MIN, dr._STATA_MS_MAX) + e
+                   for _ in range(10000)]
+        stamps += [dr._STATA_MS_MIN + e - 1.0, dr._STATA_MS_MAX + e + 1.0]
+        units = ("d", "w", "m", "q", "h", "y")
+        to_unit = _js("for (const c of DATA) out.push(dash_ms_to_ts_unit("
+                      "c[0], c[1]));", [(m, u) for m in stamps[::3]
+                                         for u in units])
+        bad = [(c, g) for c, g in zip(((m, u) for m in stamps[::3]
+                                       for u in units), to_unit)
+               if dr._dash_unix_ms_to_unit(*c) != g]
+        kinds = ("td", "tw", "tm", "tq", "th", "ty")
+        vals = {k: [rnd.uniform(*dr._DASH_TS_LIMITS[u]) for _ in range(2000)]
+                + list(dr._DASH_TS_LIMITS[u])
+                + [dr._DASH_TS_LIMITS[u][1] + 1.0]
+                for k, u in zip(kinds, units)}
+        vals["td"] += [v / 86400000.0 for v in stamps[:500]]
+        cases = [(v, k) for k in kinds for v in vals[k]]
+        to_ms = _js("for (const c of DATA) { const v = dash_ts_unit_to_ms("
+                    "c[0], c[1]); out.push(isFinite(v) ? v : null); }", cases)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            want = []
+            for k in kinds:
+                s = dr._stata_dates_to_datetime(
+                    __import__("pandas").Series(vals[k], dtype="float64"), k)
+                want += [None if v is None or v != v else float(v)
+                         for v in (s.astype("int64").where(s.notna(), None)
+                                   .tolist())]
+        bad += [(c, g, w) for c, g, w in zip(cases, to_ms, want) if g != w]
+        assert not bad, (len(bad), bad[:5])
+
+    def test_the_float_helpers(self):
+        rnd = random.Random(4403)
+        xs = [rnd.uniform(-1e7, 1e7) for _ in range(5000)]
+        xs += [rnd.randint(-10 ** 6, 10 ** 6) + 0.5 for _ in range(2500)]
+        xs += [rnd.randint(1, 10 ** 7) + rnd.randint(0, 63) / 64.0
+               for _ in range(2500)]
+        xs += [12345678901.25, 1234567.890625, -1234567.890625, 0.0]
+        got = _js("for (const x of DATA) out.push([dash_round_half_even(x), "
+                  "dash_g12(x)]);", xs)
+        bad = [(x, g) for x, g in zip(xs, got)
+               if g != [round(x), float("%.12g" % x)]]
+        assert not bad, (len(bad), bad[:5])
+
+    def test_the_axis_rule(self):
+        """dash_axis_ticks equals _dash_axis_count_ticks for the six date
+        kinds (epoch ms) and the six "su:" kinds (Stata units)."""
+        rnd = random.Random(4404)
+        e = dr._STATA_EPOCH_UNIX_MS
+        cases = []
+        for k, u in dr._DASH_TS_UNITS.items():
+            for lo, hi, n, _ in _ts_ranges(rnd, u, 300):
+                cases.append((lo, hi, 5, "su:" + k))
+            for _ in range(300):
+                a = rnd.uniform(dr._STATA_MS_MIN, dr._STATA_MS_MAX) + e
+                b = min(a + 86400000.0 * 10 ** rnd.uniform(0, 5),
+                        dr._STATA_MS_MAX + e)
+                cases.append((a, b, rnd.randint(2, 12), k))
+        cases.append((-1.0e6, 10.0, 5, "su:td"))
+        past = (dr._STATA_MS_MAX + e - 1.0e12, dr._STATA_MS_MAX + e + 1.0e12,
+                5, "td")
+        got = _ticks_js(cases + [past])
+        bad = _mismatches(cases, got, dr._dash_axis_count_ticks)
+        assert not bad, (len(bad), bad[:5])
+        # Past 31dec9999 the page keeps S35's off-date ticks (null: hold).
+        assert got[-1] is None

@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -10197,10 +10197,165 @@ if inlist("`only'", "", "S43") & `: list posof "S43" in w30_run' {
 }
 * ==== end S43 ====
 
+// WP-30 S44 (P1.3b) helpers.  _s44_case draws a twoway command, reads its
+// date axis's ticks (.major.dlg_tickpos, Stata units) into S44_TW, builds
+// dash's saved page and served app of the same command (moving the one
+// range filter S44_MOVE first, through S21's readers) and compares each
+// mode's ticks, in Stata units, with S44_WANT: twoway's list ("tw") or
+// dash's model over the axis variable's range ("model").  A backtick here
+// is spelled \x60.
+python:
+def _s44_units(ticks, kind):
+    import dash_render as dr
+    if kind.startswith("su:"):
+        return [float(t) for t in ticks]
+    u = dr._DASH_TS_UNITS[kind]
+    return [round(dr._dash_unix_ms_to_unit(t, u), 6) for t in ticks]
+
+
+def _s44_check():
+    import dash_render as dr
+    from bokeh.models import CustomJSTicker, FixedTicker
+    M = _s21_M
+    kind, axis = M.getGlobal("S44_KIND"), M.getGlobal("S44_AXIS")
+    tw = [float(v) for v in (M.getGlobal("S44_TW") or "").split()]
+    if M.getGlobal("S44_RULE") == "model":
+        lo, hi = float(M.getGlobal("S44_LO")), float(M.getGlobal("S44_HI"))
+        u = dr._DASH_TS_UNITS[kind[3:] if kind.startswith("su:") else kind]
+        want = dr._dash_tsnatscale_ticks(lo, hi, 5, u) or []
+    else:
+        want = tw
+    msgs, got_all = [], {}
+    for mode, reader, path in (("saved", _s21_doc_of_page, M.getGlobal("S44_PAGE")),
+                               ("served", _s21_doc_of_app, M.getGlobal("S44_APP"))):
+        doc = reader(path)
+        if doc is None:
+            msgs.append(mode + ": no document")
+            continue
+        _s21_M.setGlobal("S21_MOVE", M.getGlobal("S44_MOVE") or "")
+        if M.getGlobal("S44_MOVE") and not _s21_move(doc, mode):
+            msgs.append(mode + ": the move did not fire")
+            continue
+        for k, f in enumerate([f for f in _s21_figs(doc) if f.renderers]):
+            side = "above" if axis == "x2" else "below"
+            name = "x2" if axis == "x2" else "default"
+            axs = [a for a in getattr(f, side) if hasattr(a, "ticker")
+                   and getattr(a, "x_range_name", "default") == name]
+            t = axs[0].ticker if axs else None
+            if isinstance(t, CustomJSTicker):
+                t = (t.args or {}).get("base")
+            got = (_s44_units(t.ticks, kind) if isinstance(t, FixedTicker)
+                   else None)
+            got_all[mode] = got
+            if got != want:
+                msgs.append("%s panel %d: %s, want %s" % (mode, k, got, want))
+    M.setGlobal("S44_OK", "0" if msgs else "1")
+    M.setGlobal("S44_GOT", " ".join("%g" % v for v in (got_all.get("saved") or [])))
+    M.setGlobal("S44_MSG", "; ".join(msgs)[:240].replace('"', "'"))
+end
+
+capture program drop _s44_data
+program define _s44_data
+    version 19
+    args which
+    if "`which'" == "yearly" {
+        clear
+        quietly set obs 40
+        quietly generate y = 1960 + _n
+        format y %ty
+        quietly generate val = mod(_n * 7, 23)
+        exit
+    }
+    sysuse sp500, clear
+    quietly generate w = wofd(date)
+    format w %tw
+    quietly generate m = mofd(date)
+    format m %tm
+    quietly generate q = qofd(date)
+    format q %tq
+    quietly generate h = hofd(date)
+    format h %th
+    quietly generate obs = _n
+    quietly generate v = date
+end
+
+capture program drop _s44_case
+program define _s44_case
+    // _s44_case <id> <data> <var> <kind> <axis> <rule> `"<cmd>"' `"<if>"' [move]
+    version 19
+    args id data var kind axis rule cmd cond move
+    _s44_data `data'
+    capture graph drop _all
+    capture dash clear
+    capture noisily twoway `cmd' `cond'
+    _w30_expect `id' "(_rc == 0)" "twoway rc `=_rc'"
+    local a = cond("`axis'" == "x2", "xaxis2", "xaxis1")
+    capture graph export "${S44_WORK}/`id'.svg", replace
+    local n "`.Graph.`a'.major.dlg_tickpos.arrnels'"
+    if "`n'" == "" | "`n'" == "." local n 0
+    local tw ""
+    forvalues i = 1/`n' {
+        local tw "`tw' `.Graph.`a'.major.dlg_tickpos[`i']'"
+    }
+    capture erase "${S44_WORK}/`id'.svg"
+    quietly summarize `var' `cond'
+    global S44_LO = r(min)
+    global S44_HI = r(max)
+    global S44_TW "`tw'"
+    global S44_KIND "`kind'"
+    global S44_AXIS "`axis'"
+    global S44_RULE "`rule'"
+    global S44_MOVE "`move'"
+    capture graph drop _all
+    global S44_SEQ = ${S44_SEQ} + 1
+    capture noisily dash `cmd', name(tn${S44_SEQ})
+    _w30_expect `id' "(_rc == 0)" "dash rc `=_rc'"
+    local f "${S44_WORK}/tn${S44_SEQ}"
+    local filt ""
+    if "`move'" != "" local filt "filter(v, type(range))"
+    capture noisily dash build, saving("`f'.html") replace nobrowser `filt'
+    _w30_expect `id' "(_rc == 0)" "saved build rc `=_rc'"
+    capture noisily dash build, saving("`f'_app.py") server replace `filt'
+    _w30_expect `id' "(_rc == 0)" "served build rc `=_rc'"
+    global S44_PAGE "`f'.html"
+    global S44_APP "`f'_app.py"
+    python: import __main__; __main__._s44_check()
+    display as text "`id' `cmd' `cond': twoway`tw'; dash ${S44_GOT}"
+    _w30_expect `id' "(${S44_OK} == 1)" `"`cmd' `cond': ${S44_MSG}"'
+    capture erase "`f'.html"
+    capture erase "`f'_app.py"
+    capture dash clear
+end
+
 * ==== S44 P1.3b: tsnatscale on %td-%ty default axes ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S44") & `: list posof "S44" in w30_run' {
     display as text "S44 start " c(current_date) " " c(current_time)
+    global S44_WORK "`w30_work'/s44"
+    capture mkdir "${S44_WORK}"
+    global S44_SEQ 0
+    // TN-01: line close date (sp500): twoway's quarterly ticks, both modes.
+    _s44_case TN-01 sp500 date td x tw "line close date" ""
+    _w30_done TN-01 "line close date: dash's saved and served x ticks are twoway's 01jan2001(quarterly)01jan2002"
+    // TN-02: %tw-%ty default axes: dash's model over the data (A8).
+    _s44_case TN-02 sp500 w tw x model "scatter close w" ""
+    _s44_case TN-02 sp500 m tm x model "scatter close m" ""
+    _s44_case TN-02 sp500 q tq x model "scatter close q" ""
+    _s44_case TN-02 sp500 h th x model "scatter close h" ""
+    _s44_case TN-02 yearly y ty x model "line val y" ""
+    _w30_done TN-02 "%tw, %tm, %tq, %th and %ty default axes take dash's model over the data"
+    // TN-03: a date beside a number, in Stata units: 01jan1960 ... 01jan2000.
+    _s44_case TN-03 sp500 date su:td x tw "(scatter close date) (scatter close obs)" ""
+    _w30_done TN-03 "a date beside a number is ticked as twoway ticks it, in Stata units"
+    // TN-04: a second date axis takes the model over its layer's dates.
+    _s44_case TN-04 sp500 date td x2 model "(line close date) (line volume date, xaxis(2))" ""
+    _w30_done TN-04 "a second date axis takes dash's model"
+    // TN-05: after a move to date <= 15100 the axis re-ticks over the kept
+    // rows by the model (twoway's IF1 list is printed beside it).
+    _s44_case TN-05 sp500 date td x model "line close date" "if date <= 15100" "range 14977 15100"
+    _w30_done TN-05 "after a filter move the date axis re-ticks over the kept rows in both modes"
+    capture rmdir "${S44_WORK}"
+    macro drop S44_*
     display as text "S44 end " c(current_date) " " c(current_time)
 }
 * ==== end S44 ====

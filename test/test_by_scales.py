@@ -364,10 +364,15 @@ class TestPanelsShareOneScale:
         lo, hi = _emulated_hull(figs, "x")
         # the axis is epoch milliseconds; the fixture is Stata days
         days = ((lo / 86400000.0) + 3653, (hi / 86400000.0) + 3653)
-        # A %td default axis keeps Bokeh's DatetimeTicker until WP-30 S44
-        # (P1.3b), so its hull is the data's, not twoway's tick-wide scale.
+        # Flipped: test_date_and_log_axes_share -- the data's hull was wrong
+        # because twoway ticks date axes by tsnatscale over the data and
+        # spans its ticks (P1.3b, M1).  The span is dash's model's: twoway's
+        # c23 runs to 01jan2003 (curmax 15706); the model ticks half-yearly
+        # to 01jul2002, inside the data.
         c23 = _probe("c23")["panels"][0]["x"]
-        assert _close(days, (c23["min"], c23["max"]))
+        t = dr._dash_tsnatscale_ticks(c23["min"], c23["max"], 5, "d")
+        assert t[0] == c23["curmin"]
+        assert _close(days, (min(t[0], c23["min"]), max(t[-1], c23["max"])))
         figs, _ = _draw(mode, _spec(SC, {"by": "foreign",
                                          "yscale": "log"}))
         assert _one_object(figs, "y")
