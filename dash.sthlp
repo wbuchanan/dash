@@ -3975,15 +3975,15 @@ the opacity, from 0 to 100; the two may be given in either order.  An
 unknown colour, or a number out of range, is drawn black with a note (a
 bar at its intensity), as {cmd:twoway} draws it; a malformed hex code,
 multiplier or opacity keeps the default in silence; a colour written with
-commas is refused (see {help dash##validation:Option values}).  Not yet
-as {cmd:twoway}: a bare {cmd:*}{it:#} or {cmd:%}{it:#} keeps the default
-colour; at {cmd:mlabcolor()}, {cmd:colormissing()}, {cmd:color()},
-{cmd:bfcolor()} and {cmd:blcolor()} on {cmd:bar} and {cmd:rbar},
-{cmd:color()} on {cmd:area}, {cmd:rarea} and {cmd:histogram}, and the
-colour options of the {cmd:pc} plots, {cmd:dropline}, {cmd:rcapsym} and
-{cmd:scatteri}, an unknown colour keeps the scheme's colour with the note;
-and title and region colours read {cmd:bg}, {cmd:fg} and {cmd:*}{it:#}
-with {cmd:s2color}'s.
+commas is refused (see {help dash##validation:Option values}).  A bare
+{cmd:*}{it:#}, {cmd:%}{it:#} or both, with no colour of its own, adjusts
+the colour the element would draw without the option, as {cmd:twoway}
+does, at every colour option: {cmd:mcolor(*.5)} lightens the marker's
+own colour (a named style's included), {cmd:fcolor(*.7)} on a bar
+lightens the bar's colour before the bar's intensity is applied, and
+{cmd:title("T", color(*.5))} lightens the scheme's title colour.  A
+{cmd:%}{it:#} sets that element's opacity wherever it is written; without
+one, the scheme's own opacity is kept.
 
 {pstd}
 These plot-level options are honoured on the plot types named, in the

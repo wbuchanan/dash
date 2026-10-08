@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -10057,10 +10057,142 @@ if inlist("`only'", "", "S42") & `: list posof "S42" in w30_run' {
 }
 * ==== end S42 ====
 
+// _s43_cmp tw0 tw1 page -- 1 in S43_OK when every (colour, opacity) the
+// option introduced in twoway's SVG (tw1 against tw0, a multiset
+// difference over fills, strokes and text) is a (colour, alpha) pair of
+// dash's saved page at page, read from its document JSON (WP-30 P1.13b).
+capture program drop _s43_cmp
+program define _s43_cmp
+    version 19
+    args tw0 tw1 page
+    global S43_TW0 `"`tw0'"'
+    global S43_TW1 `"`tw1'"'
+    global S43_PAGE `"`page'"'
+    python: __import__("sys").modules["_dash_s43"].cmp()
+end
+python:
+def _s43_cmp():
+    import collections, json, re
+    from sfi import Macro
+    el = re.compile(r'<(circle|path|polygon|polyline|rect|line|text|use)\b([^>]*?)/?>', re.S)
+    at = re.compile(r'([\w:-]+)="([^"]*)"')
+    def num(x, d=1.0):
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return d
+    def svg(path):
+        out = collections.Counter()
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            txt = fh.read()
+        for m in el.finditer(txt):
+            a = dict(at.findall(m.group(2)))
+            st = dict(p.split(":", 1) for p in a.get("style", "").split(";") if ":" in p)
+            g = lambda k: (st.get(k) or a.get(k) or "").strip()
+            op = num(g("opacity"))
+            f, s_ = g("fill").lower(), g("stroke").lower()
+            if f.startswith("#"):
+                out[(f, round(num(g("fill-opacity")) * op, 2))] += 1
+            if s_.startswith("#"):
+                out[(s_, round(num(g("stroke-opacity")) * op, 2))] += 1
+        return out
+    new = svg(Macro.getGlobal("S43_TW1")) - svg(Macro.getGlobal("S43_TW0"))
+    want = set(new)
+    with open(Macro.getGlobal("S43_PAGE"), encoding="utf-8") as fh:
+        txt = fh.read()
+    got = set()
+    def val(v):
+        if isinstance(v, dict) and "value" in v:
+            v = v["value"]
+        return v
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        stack = [json.loads(m.group(1))]
+        while stack:
+            o = stack.pop()
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    v = val(v)
+                    if k.endswith("_color") and isinstance(v, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", v):
+                        a = val(o.get(k[:-len("color")] + "alpha", 1.0))
+                        got.add((v.lower(), round(num(a), 2)))
+                stack.extend(o.values())
+            elif isinstance(o, list):
+                stack.extend(o)
+    miss = sorted(w for w in want if w not in got)
+    Macro.setGlobal("S43_OK", "1" if want and not miss else "0")
+    Macro.setGlobal("S43_GOT", ("twoway " + str(sorted(want)) + " missing " + str(miss))[:240])
+import sys as _s43_sys
+_s43_sys.modules["_dash_s43"] = type(_s43_sys)("_dash_s43")
+_s43_sys.modules["_dash_s43"].cmp = _s43_cmp
+end
+
+// _s43_case id scheme twoway-command dash-command option -- runs twoway
+// without and with option, exports both SVGs, saves dash's page with it,
+// and compares (_s43_cmp); the result is in S43_OK, dash's rc in S43_RC.
+capture program drop _s43_case
+program define _s43_case
+    version 19
+    args id sch tw dc opt work
+    quietly graph drop _all
+    quietly `tw' scheme(`sch') name(s43tw, replace)
+    quietly graph export "`work'/s43_0.svg", name(s43tw) replace
+    quietly `tw' `opt' scheme(`sch') name(s43tw, replace)
+    quietly graph export "`work'/s43_1.svg", name(s43tw) replace
+    quietly graph drop _all
+    _s36_run `"`dc' `opt' scheme(`sch') saving("`work'/s43.html", replace)"' "`work'/s43.log"
+    global S43_RC = r(rc)
+    capture _s43_cmp "`work'/s43_0.svg" "`work'/s43_1.svg" "`work'/s43.html"
+    if _rc global S43_OK 0
+end
+
 * ==== S43 P1.13b: Default colour and opacity at every colour site ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S43") & `: list posof "S43" in w30_run' {
     display as text "S43 start " c(current_date) " " c(current_time)
+    quietly sysuse auto, clear
+    local w "`w30_work'"
+
+    // BI-01: mcolor(*.5) under four schemes equals twoway's fill.
+    foreach sch in s2color stcolor sttrans s1rcolor {
+        _s43_case BI-01 `sch' "twoway scatter mpg weight," "dash scatter mpg weight," "mcolor(*.5)" "`w'"
+        _w30_expect BI-01 "(${S43_RC} == 0 & ${S43_OK} == 1)" "`sch' rc ${S43_RC}: ${S43_GOT}"
+    }
+    _w30_done BI-01 "mcolor(*.5) adjusts the marker's own colour under four schemes"
+
+    // BI-02: bar fcolor(*.7) is #7f98ae, navy*.7 at the bar's intensity.
+    _s43_case BI-02 s2color "twoway bar mpg rep78 if rep78<.," "dash bar mpg rep78 if rep78<.," "fcolor(*.7)" "`w'"
+    _w30_expect BI-02 "(${S43_RC} == 0 & ${S43_OK} == 1)" "rc ${S43_RC}: ${S43_GOT}"
+    _w30_done BI-02 "fcolor(*.7) on a bar is blended after the adjustment"
+
+    // BI-03: title color(*.5) and graphregion(color(*.5)).
+    _s43_case BI-03 s2color "twoway scatter mpg weight, title(T)" "dash scatter mpg weight, title(T)" "title(T, color(*.5))" "`w'"
+    _w30_expect BI-03 "(${S43_RC} == 0 & ${S43_OK} == 1)" "title: rc ${S43_RC}: ${S43_GOT}"
+    _s43_case BI-03 s2color "twoway scatter mpg weight," "dash scatter mpg weight," "graphregion(color(*.5))" "`w'"
+    _w30_expect BI-03 "(${S43_RC} == 0 & ${S43_OK} == 1)" "graphregion: rc ${S43_RC}: ${S43_GOT}"
+    _w30_done BI-03 "title and graph-region colours adjust the scheme's own"
+
+    // BI-04: xline(3000, lcolor(%50)): the xyline colour at 0.50.
+    _s43_case BI-04 s2color "twoway scatter mpg weight," "dash scatter mpg weight," "xline(3000, lcolor(%50))" "`w'"
+    _w30_expect BI-04 "(${S43_RC} == 0 & ${S43_OK} == 1)" "rc ${S43_RC}: ${S43_GOT}"
+    _w30_done BI-04 "xline(, lcolor(%50)) draws the reference-line colour at half opacity"
+
+    // BI-05: mlabcolor(red%50): opacity 0.50.
+    _s43_case BI-05 s2color "twoway scatter mpg weight, mlabel(make)" "dash scatter mpg weight, mlabel(make)" "mlabcolor(red%50)" "`w'"
+    _w30_expect BI-05 "(${S43_RC} == 0 & ${S43_OK} == 1)" "rc ${S43_RC}: ${S43_GOT}"
+    _w30_done BI-05 "mlabcolor(red%50) keeps its opacity"
+
+    // BI-06: bar color(bogus) is black at the bar's intensity, noted.
+    _s43_case BI-06 s2color "twoway bar mpg rep78 if rep78<.," "dash bar mpg rep78 if rep78<.," "color(bogus)" "`w'"
+    _s36_count "`w'/s43.log" "color(bogus)"
+    _w30_expect BI-06 "(${S43_RC} == 0 & ${S43_OK} == 1 & r(n) >= 1)" "rc ${S43_RC}, notes `r(n)': ${S43_GOT}"
+    _w30_done BI-06 "an unknown colour at a bar draws black, with the note"
+
+    capture dash clear
+    quietly graph drop _all
+    foreach f in s43_0.svg s43_1.svg s43.html s43.log {
+        capture erase "`w'/`f'"
+    }
+    macro drop S43_*
     display as text "S43 end " c(current_date) " " c(current_time)
 }
 * ==== end S43 ====

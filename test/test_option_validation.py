@@ -1081,8 +1081,10 @@ class TestTheRemainingSilentSites:
         line = _the_one(std_w, srv_w, "color")
         assert line.startswith("dash: color(notacolour) is not a recognised colour")
         std, srv = _figures(r, doc)
-        # The scheme's p1 at its p1area intensity, #486c8c (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
-        assert std.renderers[0].glyph.fill_color == "#486c8c"
+        # Flipped (WP-30 P1.13b): the scheme's #486c8c was wrong because
+        # twoway draws an unknown area colour black at the area's
+        # intensity, #333333 (bare_intensity_truth.json U02).
+        assert std.renderers[0].glyph.fill_color == "#333333"
 
     @pytest.mark.parametrize("ptype", ["bar", "histogram"])
     def test_bar_color_beside_blcolor(self, ptype):

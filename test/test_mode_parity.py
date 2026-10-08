@@ -2202,6 +2202,12 @@ CORPUS = [
            plot_for("rline", {"cmissing": "n"}),
            {"type": "function", "expr": "sqrt(x^2-1)",
             "options": {"range": "-2 2"}}]),
+    # WP-30 P1.13b: a bare *# and %# at the colour sites.
+    _case("Bare intensity at every site (WP-30 P1.13b)",
+          [_sc(mcolor="*.5", mlabel="foreign", mlabcolor="red%50"),
+           plot_for("bar", {"fcolor": "*.7"}),
+           plot_for("line", {"lcolor": "%50"})],
+          go={"title": "T, color(*.5)", "xline": "3000, lcolor(%50)"}),
 ]
 
 
@@ -3050,6 +3056,10 @@ MOVE_CORPUS = [
     _move_case("two graphs, two schemes, dropdown", _MOVES[0],
                graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
                        ("g2", [_sc()], {"scheme": "s1rcolor"})]),
+    # WP-30 P1.13b: a bare *# and %# hold after a move.
+    _move_case("bare intensity after a move, dropdown", _MOVES[0],
+               [_sc(mcolor="*.5"), plot_for("bar", {"fcolor": "*.7"})],
+               {"title": "T, color(*.5)", "xline": "3000, lcolor(%50)"}),
     # WP-30 P1.23a (section 35): date positions on every axis.
     *_P123A_MOVES,
 ]

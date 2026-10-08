@@ -6217,20 +6217,29 @@ def _textbox_size(opts: dict, default: "Any" = None, ref_in: float = 4.0,
         return T.css_pt(T.size_medium_pt("text"))
 
 
-def _textbox_color(opts: dict, default: "str | None") -> "str | None":
+def _textbox_color(opts: dict, default: "str | None", *, base=None,
+                   colours=None, with_alpha=False):
     """Resolve a textbox color() sub-option to CSS; *default* (None from
     every caller, which then keeps the scheme's colour) when it is not
     given or is refused.  ``color`` only (WP-28 B3): ``colour`` is not one
-    of Stata's spellings and is named, never read, by ``_dash_textbox``."""
+    of Stata's spellings and is named, never read, by ``_dash_textbox``.
+
+    *base* is the colour the text would draw without the option: a bare
+    ``*#``/``%#`` adjusts it (WP-30 P1.13b; twoway's title("T",
+    color(*.5)) on s2color's heading #1e2d53 is #8f96a9).  *colours* are
+    the figure's scheme keywords for ``stata_colour`` (``bg``/``fg``,
+    ``naturally_white``).  With *with_alpha* the answer is ``(colour,
+    opacity or None)``."""
     raw = opts.get("color", "")
     if not raw:
-        return default
+        return (default, None) if with_alpha else default
     # Stata's colour grammar (WP-30 P1.13a): an unknown colour is black
     # with the note, as twoway draws title("T", color(bogus)); a malformed
-    # one keeps the default in silence.  The opacity, a bare *#/%# and the
-    # figure's own scheme are section 43's.
-    hx, _alpha = OptionTranslator.parse_color_alpha(str(raw), "color")
-    return hx if hx is not None else default
+    # one keeps the default in silence.
+    hx, alpha = OptionTranslator.parse_color_alpha(
+        str(raw), "color", base=base, **(colours or {}))
+    out = hx if hx is not None else default
+    return (out, alpha) if with_alpha else out
 
 
 def _parse_textbox_opt(raw: str) -> "tuple[str, dict]":
@@ -6517,7 +6526,10 @@ def _dash_region_spec(raw, option, base, scheme=None, ref_in=4.0):
         if arg.strip() == "none":
             s[role] = None
             return
-        hx, al = T.parse_color_alpha(arg, f"{option}({full})", **ctx)
+        base_hex = s.get(role) or base.get(role)
+        hx, al = T.parse_color_alpha(
+            arg, f"{option}({full})",
+            base=base_hex if isinstance(base_hex, str) else None, **ctx)
         if hx is None:
             return
         s[role] = hx
@@ -7382,9 +7394,18 @@ class OptionTranslator:
     def stata_colour(value: Any, *, context: str = "option",
                      background: "str | None" = "#eaf2f3",
                      foreground: "str | None" = "#000000",
-                     naturally_white: Any = True
+                     naturally_white: Any = True,
+                     base: Any = None,
                      ) -> "tuple[str, str | None, float | None]":
         """``(status, hex, opacity)`` of a colour as twoway reads it.
+
+        *base* (WP-30 P1.13b) is the colour the site would draw without the
+        option.  A value with no colour of its own (a bare ``*#``, ``%#`` or
+        both) takes it when it fullmatches ``#rrggbb``; the multiplier and
+        opacity then apply as to any colour (twoway: ``mcolor(*.5)`` on
+        s2color's navy is ``#8da3b7``, ``*.5%50`` that at 0.5).  *base* is
+        never parsed as text; without a usable one the answer is ``hex``
+        None and the site keeps its colour.
 
         ``status`` is ``"ok"`` (``hex`` is the colour, None only for a bare
         ``*#``/``%#``, whose base colour is section 43's), ``"keep"`` (an
@@ -7405,6 +7426,7 @@ class OptionTranslator:
         evaluates text; every hex fullmatches ``#[0-9a-f]{6}``.
         """
         T = OptionTranslator
+        given = base
         if context not in ("option", "scheme"):
             raise ValueError(f"stata_colour: context {context!r}")
         scheme = context == "scheme"
@@ -7426,6 +7448,13 @@ class OptionTranslator:
                 return keep
             alpha = p / 100.0
         if not base:
+            if (not scheme and isinstance(given, str)
+                    and T._HEX6_RE.fullmatch(given)):
+                hx = given.lower()
+                if f is not None:
+                    hx = GlyphMapper._blend_intensity(
+                        hx, f, bool(naturally_white))
+                return "ok", hx, alpha
             return "ok", ("#ffffff" if scheme else None), alpha
         st, hx = T._colour_base(base, context, background, foreground)
         if st == "malformed":
@@ -12401,8 +12430,13 @@ class GlyphMapper:
                 for k in keys:
                     none[k] = True
                 return
-            c, a = self.tr.parse_color_alpha(str(val), key)
-            for k in keys:
+            for i, k in enumerate(keys):
+                # A bare *#/%# takes each role's own colour (P1.13b); the
+                # note, if any, is printed once.
+                b = st.get(k)
+                c, a = self.tr.parse_color_alpha(
+                    str(val), key if i == 0 else "",
+                    base=b if isinstance(b, str) else None)
                 if c:
                     st[k] = c
                     none[k] = False
@@ -12892,8 +12926,11 @@ class GlyphMapper:
                     glyph.line_alpha = 0.0
             else:
                 try:
+                    # A bare *#/%# takes the line's own colour (P1.13b).
+                    _lb = getattr(glyph, "line_color", None)
                     color, alpha = self.tr.parse_color_alpha(
-                        options["lcolor"], _lc_name)
+                        options["lcolor"], _lc_name,
+                        base=_lb if isinstance(_lb, str) else None)
                     if color:
                         glyph.line_color = color
                     if alpha is not None and hasattr(glyph, "line_alpha"):
@@ -13009,11 +13046,20 @@ class GlyphMapper:
                         setattr(glyph, _attr, 0.0)
             else:
                 try:
+                    # A bare *#/%# takes each role's own colour (P1.13b):
+                    # the fill's and the outline's, read once per role.
+                    _fb = getattr(glyph, "fill_color", None)
+                    _ob = getattr(glyph, "line_color", None)
                     color, alpha = self.tr.parse_color_alpha(
-                        options["mcolor"], _mc_name)
+                        options["mcolor"], _mc_name,
+                        base=_fb if isinstance(_fb, str) else None)
+                    _oc, _oa = self.tr.parse_color_alpha(
+                        options["mcolor"], "",
+                        base=_ob if isinstance(_ob, str) else None)
                     if color:
                         glyph.fill_color = color
-                        glyph.line_color = color
+                    if _oc:
+                        glyph.line_color = _oc
                     if alpha is not None:
                         if hasattr(glyph, "fill_alpha"):
                             glyph.fill_alpha = alpha
@@ -13063,8 +13109,10 @@ class GlyphMapper:
                     glyph.fill_alpha = 0.0
             else:
                 try:
+                    _fb = getattr(glyph, "fill_color", None)
                     color, alpha = self.tr.parse_color_alpha(
-                        options["mfcolor"], "mfcolor")
+                        options["mfcolor"], "mfcolor",
+                        base=_fb if isinstance(_fb, str) else None)
                     if color:
                         glyph.fill_color = color
                     if alpha is not None and hasattr(glyph, "fill_alpha"):
@@ -13096,8 +13144,10 @@ class GlyphMapper:
                     glyph.line_alpha = 0.0
             else:
                 try:
+                    _ob = getattr(glyph, "line_color", None)
                     color, alpha = self.tr.parse_color_alpha(
-                        options["mlcolor"], "mlcolor")
+                        options["mlcolor"], "mlcolor",
+                        base=_ob if isinstance(_ob, str) else None)
                     if color and hasattr(glyph, "line_color"):
                         glyph.line_color = color
                     if alpha is not None and hasattr(glyph, "line_alpha"):
@@ -13212,8 +13262,10 @@ class GlyphMapper:
                     glyph.fill_alpha = 0.0
             else:
                 try:
+                    # A bare *#/%# takes the pre-intensity fill (P1.13b).
                     color, alpha = self.tr.parse_color_alpha(
-                        options["fcolor"], "fcolor")
+                        options["fcolor"], "fcolor",
+                        base=base if isinstance(base, str) else None)
                     if color:
                         base = color
                         _user_fill = True
@@ -13410,13 +13462,16 @@ class GlyphMapper:
         _raw_missing = options.get("colormissing", "").strip()
         missing_color = "#808080"
         if _raw_missing:
-            try:
-                missing_color = self.tr.translate_mcolor(_raw_missing)
-            except (ValueError, TypeError):
-                warnings.warn(
-                    f"dash: colormissing({_raw_missing}) is not a recognised "
-                    f"colour; using grey.", UserWarning,
-                )
+            # A bare *# takes the grey; an unknown name is black, noted
+            # (P1.13b).  The colour mapper has no missing-value opacity, so
+            # a %# is named and the colour drawn opaque.
+            _c, _a = self.tr.parse_color_alpha(
+                _raw_missing, "colormissing", base=missing_color)
+            if _c:
+                missing_color = _c
+            if _a is not None:
+                _dash_style_note("colormissing", _raw_missing, "opacity",
+                                 "opaque")
 
         # Stata label metadata, populated by DashRenderer after _load_data().
         # Used to render value labels on legend entries and to display the
@@ -13994,10 +14049,16 @@ class GlyphMapper:
         # An unknown colour, size, position or gap is NAMED and the default
         # kept; each of these was an `except ValueError: pass'.
         if "mlabcolor" in options:
-            try:
-                kwargs["text_color"] = self.tr.translate_mcolor(options["mlabcolor"])
-            except ValueError:
-                _dash_style_note("mlabcolor", options["mlabcolor"], "colour")
+            # A bare *#/%# takes the label's own colour and a %# is its
+            # opacity; an unknown name is black, noted (P1.13b).
+            _lb = kwargs.get("text_color")
+            _c, _a = self.tr.parse_color_alpha(
+                options["mlabcolor"], "mlabcolor",
+                base=_lb if isinstance(_lb, str) else None)
+            if _c:
+                kwargs["text_color"] = _c
+            if _a is not None:
+                kwargs["text_alpha"] = _a
 
         T = OptionTranslator
         _ref = getattr(self.scheme, "size_ref_in", 4.0)
@@ -14893,11 +14954,14 @@ class GlyphMapper:
         _oa = self._style_options(options, ("area",))
         # Honour fill color option.  An unknown name was dropped in silence
         # here, and nothing downstream reads color() for an area.
+        # A bare *#/%# takes the area's own fill and a %# is kept; an
+        # unknown name is black, noted (P1.13b).
+        _fill_a = None
         if "color" in _oa:
-            try:
-                _fill_base = self.tr.translate_mcolor(_oa["color"])
-            except ValueError:
-                _dash_style_note("color", _oa["color"], "colour")
+            _c, _fill_a = self.tr.parse_color_alpha(
+                _oa["color"], "color", base=_fill_base)
+            if _c:
+                _fill_base = _c
         r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
                       fill_color=self._blend_intensity(
                           _fill_base, _f, self.scheme.naturally_white),
@@ -14905,6 +14969,8 @@ class GlyphMapper:
                       legend_label=yvar)
         self._style_restyle(r, options, ("area",))
         self._tag_base(r, "y1", _base is None, _zero)
+        if _fill_a is not None:
+            r.glyph.fill_alpha = _fill_a
 
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
 
@@ -15064,32 +15130,49 @@ class GlyphMapper:
         # per role: the fill from the area's options, the outline from its.
         self._style_restyle(r, options, ("area", "aline"))
         self._tag_base(r, "bottom", _base is None, _zero)
+        # A bare *#/%# takes each role's own colour and a %# is kept; an
+        # unknown name is black, noted once (P1.13b).
+        _fill_a = None
         for _o, _fill in ((_oa, True), (_ol, False)):
+            if not _fill and "blcolor" not in _ol:
+                # _apply_line_opts folds color() onto the outline below,
+                # from the outline's own colour; reading it here too would
+                # adjust a bare *# twice.
+                continue
             if "color" in _o:
-                try:
-                    c = self.tr.translate_mcolor(_o["color"])
-                    if _fill:
-                        _fill_base = c
-                    else:
-                        r.glyph.line_color = c
-                except ValueError:
-                    # _apply_line_opts names color() too, when it folds it
-                    # onto lcolor() -- which it does not when blcolor() is
-                    # given, so the note is raised here; once per render
-                    # either way.
-                    _dash_style_note("color", _o["color"], "colour")
+                _lb = getattr(r.glyph, "line_color", None)
+                c, _a = self.tr.parse_color_alpha(
+                    _o["color"], "color",
+                    base=_fill_base if _fill else (
+                        _lb if isinstance(_lb, str) else None))
+                if c and _fill:
+                    _fill_base = c
+                elif c:
+                    r.glyph.line_color = c
+                if _a is not None and _fill:
+                    _fill_a = _a
+                elif _a is not None:
+                    r.glyph.line_alpha = _a
         # bfcolor / blcolor — bar-specific fill / line color overrides.
         # An unknown name is noted, as every other colour option's is.
         if "bfcolor" in _oa:
-            try:
-                _fill_base = self.tr.translate_mcolor(_oa["bfcolor"])
-            except ValueError:
-                _dash_style_note("bfcolor", _oa["bfcolor"], "colour")
+            _c, _a = self.tr.parse_color_alpha(
+                _oa["bfcolor"], "bfcolor", base=_fill_base)
+            if _c:
+                _fill_base = _c
+            if _a is not None:
+                _fill_a = _a
         if "blcolor" in _ol:
-            try:
-                r.glyph.line_color = self.tr.translate_mcolor(_ol["blcolor"])
-            except ValueError:
-                _dash_style_note("blcolor", _ol["blcolor"], "colour")
+            _lb = getattr(r.glyph, "line_color", None)
+            _c, _a = self.tr.parse_color_alpha(
+                _ol["blcolor"], "blcolor",
+                base=_lb if isinstance(_lb, str) else None)
+            if _c:
+                r.glyph.line_color = _c
+            if _a is not None:
+                r.glyph.line_alpha = _a
+        if _fill_a is not None:
+            r.glyph.fill_alpha = _fill_a
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
         # are applied after bfcolor/blcolor so blcolor retains priority for line color.
@@ -17484,13 +17567,14 @@ class GlyphMapper:
         _f = self._style_value(options, "area", "intensity",
                                scheme.histogram_intensity)
         _oa = self._style_options(options, ("area",))
+        # A bare *#/%# takes the histogram's own fill and a %# is kept; an
+        # unknown name is black, noted (P1.13b).
+        _fill_a = None
         if "color" in _oa:
-            try:
-                _fill_base = self.tr.translate_mcolor(_oa["color"])
-            except ValueError:
-                # As map_bar: named here because the lcolor() fold that
-                # would name it is skipped when blcolor() is given.
-                _dash_style_note("color", _oa["color"], "colour")
+            _c, _fill_a = self.tr.parse_color_alpha(
+                _oa["color"], "color", base=_fill_base)
+            if _c:
+                _fill_base = _c
         r = fig.quad(top="top", bottom=0, left="left", right="right",
                      source=source,
                      fill_color=self._blend_intensity(
@@ -17506,6 +17590,8 @@ class GlyphMapper:
                         else {"line_alpha": scheme.histogram_line_alpha}
                         if scheme.histogram_line_alpha is not None else {}))
         self._style_restyle(r, options, ("area", "aline"))
+        if _fill_a is not None:
+            r.glyph.fill_alpha = _fill_a
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # Quad supports line_width/line_dash/line_color for bin border styling
         self._apply_line_opts(r, options, role="aline")
@@ -18068,13 +18154,14 @@ class GlyphMapper:
         # color(red) is filled #FF3333 and stroked #FF0000 (SVG, 23sep2026),
         # and dash drew the scheme's colour -- nothing read color() here.
         # fcolor(), the specific option, still wins in _apply_fill_opts.
+        # A bare *#/%# takes the band's own fill and a %# is kept; an
+        # unknown name is black, noted (P1.13b).
+        _fill_a = None
         if "color" in _oa and "fcolor" not in _oa:
-            try:
-                _fill_base = self.tr.translate_mcolor(_oa["color"])
-            except ValueError:
-                _dash_style_note("color", _oa["color"], "colour")
-            except AttributeError:
-                pass
+            _c, _fill_a = self.tr.parse_color_alpha(
+                _oa["color"], "color", base=_fill_base)
+            if _c:
+                _fill_base = _c
         _varea_kwargs: dict = dict(x=xvar, y1=y1var, y2=y2var, source=source,
                                     fill_color=self._blend_intensity(
                                         _fill_base, _f,
@@ -18089,6 +18176,8 @@ class GlyphMapper:
             _varea_kwargs["view"] = view
         r = fig.varea(**_varea_kwargs)
         self._style_restyle(r, options, ("area",))
+        if _fill_a is not None:
+            r.glyph.fill_alpha = _fill_a
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # No marker labels: twoway draws none on rarea (measured).
         return [r]
@@ -18175,18 +18264,29 @@ class GlyphMapper:
         # #FF0000 (SVG, 23sep2026).  Only _apply_line_opts read color()
         # here, so the outline turned red and the fill kept the scheme's.
         # Read per role, after the named style (D-32e).
+        # A bare *#/%# takes each role's own colour and a %# is kept; an
+        # unknown name is black, noted once (P1.13b).
+        _fill_a = None
         for _o, _fill in ((_oa, True), (_ol, False)):
+            if not _fill and "blcolor" not in _ol:
+                # _apply_line_opts folds color() onto the outline below,
+                # from the outline's own colour; reading it here too would
+                # adjust a bare *# twice.
+                continue
             if "color" in _o:
-                try:
-                    c = self.tr.translate_mcolor(_o["color"])
-                    if _fill:
-                        _fill_base = c
-                    else:
-                        r.glyph.line_color = c
-                except ValueError:
-                    _dash_style_note("color", _o["color"], "colour")
-                except AttributeError:
-                    pass
+                _lb = getattr(r.glyph, "line_color", None)
+                c, _a = self.tr.parse_color_alpha(
+                    _o["color"], "color",
+                    base=_fill_base if _fill else (
+                        _lb if isinstance(_lb, str) else None))
+                if c and _fill:
+                    _fill_base = c
+                elif c:
+                    r.glyph.line_color = c
+                if _a is not None and _fill:
+                    _fill_a = _a
+                elif _a is not None:
+                    r.glyph.line_alpha = _a
 
         # bfcolor / blcolor -- the bar-specific fill and line overrides, and
         # then the generic appliers, exactly as map_bar does.  map_rbar had
@@ -18197,19 +18297,23 @@ class GlyphMapper:
         # branch, which is how test_server.py's rbar cases caught it the
         # moment rbar started going through the mapper.
         if "bfcolor" in _oa:
-            try:
-                _fill_base = self.tr.translate_mcolor(_oa["bfcolor"])
-            except ValueError:
-                _dash_style_note("bfcolor", _oa["bfcolor"], "colour")
-            except AttributeError:
-                pass
+            _c, _a = self.tr.parse_color_alpha(
+                _oa["bfcolor"], "bfcolor", base=_fill_base)
+            if _c:
+                _fill_base = _c
+            if _a is not None:
+                _fill_a = _a
         if "blcolor" in _ol:
-            try:
-                r.glyph.line_color = self.tr.translate_mcolor(_ol["blcolor"])
-            except ValueError:
-                _dash_style_note("blcolor", _ol["blcolor"], "colour")
-            except AttributeError:
-                pass
+            _lb = getattr(r.glyph, "line_color", None)
+            _c, _a = self.tr.parse_color_alpha(
+                _ol["blcolor"], "blcolor",
+                base=_lb if isinstance(_lb, str) else None)
+            if _c:
+                r.glyph.line_color = _c
+            if _a is not None:
+                r.glyph.line_alpha = _a
+        if _fill_a is not None:
+            r.glyph.fill_alpha = _fill_a
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
         self._apply_line_opts(r, options, role="aline")
@@ -18611,6 +18715,8 @@ class GlyphMapper:
         for _who, _o in (("seg", self._style_options(options, ("aline",))),
                          ("dot", self._style_options(options,
                                                      ("marker", "mline")))):
+            # A bare *#/%# has no colour here: the appliers below adjust
+            # the glyph's own (P1.13b).
             try:
                 if "mcolor" in _o:
                     _dl_explicit[_who] = self.tr.translate_mcolor(_o["mcolor"])
@@ -18718,6 +18824,8 @@ class GlyphMapper:
         for _who, _o in (("spine", self._style_options(options, ("aline",))),
                          ("dot", self._style_options(options,
                                                      ("marker", "mline")))):
+            # A bare *#/%# has no colour here: the appliers below adjust
+            # the glyph's own (P1.13b).
             try:
                 if "mcolor" in _o:
                     _rcs_explicit[_who] = self.tr.translate_mcolor(_o["mcolor"])
@@ -18847,6 +18955,8 @@ class GlyphMapper:
 
         color = self.scheme.default_color(color_idx, "scatter")
         line_color = self.scheme.default_markline(color_idx)[0]
+        # A bare *#/%# has no colour here: _apply_marker_opts adjusts the
+        # glyph's own (P1.13b).
         try:
             if "mcolor" in options:
                 color = line_color = self.tr.translate_mcolor(
@@ -19280,18 +19390,23 @@ class GlyphMapper:
             clean.index.to_numpy()))
 
         color = self.scheme.default_color(color_idx, "pcarrow")
-        try:
-            if "lcolor" in options:
-                color = self.tr.translate_lcolor(options["lcolor"])
-            elif "color" in options:
-                color = self.tr.translate_mcolor(options["color"])
-        except ValueError:
-            pass
+        # A bare *#/%# takes the arrow's own colour and a %# is kept; an
+        # unknown name is black, noted (P1.13b).
+        _pca_alpha = None
+        for _k in ("lcolor", "color"):
+            if _k in options:
+                _c, _pca_alpha = self.tr.parse_color_alpha(
+                    options[_k], _k, base=color)
+                if _c:
+                    color = _c
+                break
 
         _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
                                       legend_label=y1var,
                                       **self._scheme_alpha_kw(color_idx, "pcarrow"))
+        if _pca_alpha is not None:
+            _pca_seg_kwargs["line_alpha"] = _pca_alpha
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pca_seg_kwargs)
         # The shaft takes a named style first (WP-30 P1.14a, D-32e); the
@@ -19369,18 +19484,23 @@ class GlyphMapper:
             clean.index.to_numpy()))
 
         color = self.scheme.default_color(color_idx, "pcbarrow")
-        try:
-            if "lcolor" in options:
-                color = self.tr.translate_lcolor(options["lcolor"])
-            elif "color" in options:
-                color = self.tr.translate_mcolor(options["color"])
-        except ValueError:
-            pass
+        # A bare *#/%# takes the arrow's own colour and a %# is kept; an
+        # unknown name is black, noted (P1.13b).
+        _pcb_alpha = None
+        for _k in ("lcolor", "color"):
+            if _k in options:
+                _c, _pcb_alpha = self.tr.parse_color_alpha(
+                    options[_k], _k, base=color)
+                if _c:
+                    color = _c
+                break
 
         _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
                                       legend_label=y1var,
                                       **self._scheme_alpha_kw(color_idx, "pcbarrow"))
+        if _pcb_alpha is not None:
+            _pcb_seg_kwargs["line_alpha"] = _pcb_alpha
         # No view here: pc_source already holds only the selected rows.
         seg = fig.segment(**_pcb_seg_kwargs)
         # The shaft takes a named style first (WP-30 P1.14a, D-32e); the
@@ -22483,9 +22603,15 @@ def _resolve_kpi_color(val: str, default: str, option: str = "") -> str:
     raw = (val or "").strip()
     if not raw:
         return default
+    # A bare *#/%# adjusts the default when it is #rrggbb (WP-30 P1.13b);
+    # bgcolor()'s default is "", so a bare form there keeps it, silently.
+    _kb = (default if isinstance(default, str)
+           and OptionTranslator._HEX6_RE.fullmatch(default) else None)
+    if _kb is None and OptionTranslator.stata_colour(raw)[:2] == ("ok", None):
+        return default
     try:
-        return _sanitize_css_color(OptionTranslator.translate_mcolor(raw),
-                                   default)
+        return _sanitize_css_color(
+            OptionTranslator.translate_mcolor(raw, base=_kb), default)
     except (ValueError, TypeError):
         pass
     # The card is dash's own, so it keeps the leniency it always had (WP-30
@@ -28985,9 +29111,13 @@ def _dash_apply_axis_spec(axis_obj, grid_obj, spec, values=None,
         axis_obj.major_label_text_font_size = "0px"
         axis_obj.major_label_standoff = 0
     if spec.get("labcolor") is not None:
+        # A bare *#/%# takes the labels' own colour (WP-30 P1.13b).
+        _cur = axis_obj.major_label_text_color
         _hex, _alpha = OptionTranslator.parse_color_alpha(
-            spec["labcolor"], f"{option}(labcolor)", **(colours or {}))
-        axis_obj.major_label_text_color = _hex or "#000000"
+            spec["labcolor"], f"{option}(labcolor)",
+            base=_cur if isinstance(_cur, str) else None, **(colours or {}))
+        axis_obj.major_label_text_color = _hex or (
+            _cur if _alpha is not None else "#000000")
         if _alpha is not None:
             axis_obj.major_label_text_alpha = _alpha
     _dash_tick_look(axis_obj, spec, False, by_graph, option, ref_in)
@@ -29148,9 +29278,15 @@ def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
         axis_obj.visible = False
     v = look.get("lcolor")
     if v is not None:
-        _hex, _alpha = T.parse_color_alpha(v, f"{option}(lcolor)",
-                                           **(colours or {}))
-        axis_obj.axis_line_color = _hex or "#000000"
+        # A bare *#/%# takes the line's own colour (WP-30 P1.13b).
+        _cur = axis_obj.axis_line_color or (
+            getattr(axis_obj, "_dash_scheme_look", {}) or {}).get(
+                "line_color")
+        _hex, _alpha = T.parse_color_alpha(
+            v, f"{option}(lcolor)",
+            base=_cur if isinstance(_cur, str) else None, **(colours or {}))
+        axis_obj.axis_line_color = _hex or (
+            _cur if _alpha is not None else "#000000")
         if _alpha is not None:
             axis_obj.axis_line_alpha = _alpha
     v = look.get("lwidth")
@@ -30028,9 +30164,14 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
              else OptionTranslator.size_ref_of(fig)), f"{n}title2(size)")
         if px is not None:
             ax.axis_label_text_font_size = px
-        colour = _textbox_color(opts, None)
+        colour, alpha = _textbox_color(
+            opts, None, base=ax.axis_label_text_color,
+            colours=getattr(fig, "_dash_scheme_colours", None),
+            with_alpha=True)
         if colour is not None:
             ax.axis_label_text_color = colour
+        if alpha is not None:
+            ax.axis_label_text_alpha = alpha
         fig.add_layout(ax, side)
     return has["y2"], has["x2"]
 
@@ -34629,9 +34770,13 @@ def _dash_figure_title(fig, graph_opts, seen=None, key=""):
                           OptionTranslator.size_ref_of(fig), "title(size)")
     if _t_px is not None:
         fig.title.text_font_size = _t_px
-    _t_col = _textbox_color(_t_opts, None)
+    _t_col, _t_a = _textbox_color(
+        _t_opts, None, base=fig.title.text_color,
+        colours=getattr(fig, "_dash_scheme_colours", None), with_alpha=True)
     if _t_col is not None:
         fig.title.text_color = _t_col
+    if _t_a is not None:
+        fig.title.text_alpha = _t_a
 
 
 def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
@@ -34656,12 +34801,18 @@ def _dash_style_axis_titles(fig, graph_opts, seen=None, key=""):
         px = _textbox_size(
             opts, _prim[0].axis_label_text_font_size if _prim else None,
             OptionTranslator.size_ref_of(fig), f"{opt}(size)")
-        colour = _textbox_color(opts, None)
+        colour, alpha = _textbox_color(
+            opts, None,
+            base=_prim[0].axis_label_text_color if _prim else None,
+            colours=getattr(fig, "_dash_scheme_colours", None),
+            with_alpha=True)
         for ax in _prim:
             if px is not None:
                 ax.axis_label_text_font_size = px
             if colour is not None:
                 ax.axis_label_text_color = colour
+            if alpha is not None:
+                ax.axis_label_text_alpha = alpha
 
 
 #: Where the note, the caption and the subtitle sit, and their defaults.
@@ -34802,7 +34953,10 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
         px = _textbox_size(opts, size_default,
                            OptionTranslator.size_ref_of(fig),
                            f"{ann_key}(size)")
-        colour = _textbox_color(opts, None)
+        colour, alpha = _textbox_color(
+            opts, None, base=color_default,
+            colours=getattr(fig, "_dash_scheme_colours", None),
+            with_alpha=True)
         size = px if px is not None else size_default
         color = colour if colour is not None else color_default
         title = getattr(fig, "title", None)
@@ -34819,12 +34973,14 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
                 anchor="top_" + align, text=text,
                 text_font_size=size, text_color=color,
                 background_fill_color=fill,
+                **({"text_alpha": alpha} if alpha is not None else {}),
             )] + list(fig.center)
         else:
             fig.add_layout(Title(
                 text=text, align=align, text_font_style="normal",
                 text_font_size=size, text_color=color,
                 background_fill_color=fill,
+                **({"text_alpha": alpha} if alpha is not None else {}),
             ), side)
 
 
@@ -34864,11 +35020,14 @@ def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
         size_default, color_default = "13px", "#444444"
     px = _textbox_size(opts, size_default, OptionTranslator.size_ref_of(fig),
                        "subtitle(size)")
-    colour = _textbox_color(opts, None)
+    colour, alpha = _textbox_color(
+        opts, None, base=color_default,
+        colours=getattr(fig, "_dash_scheme_colours", None), with_alpha=True)
     title = Title(name="dash_by_label", text=text, align=align,
                   text_font_style="normal",
                   text_font_size=px if px is not None else size_default,
-                  text_color=colour if colour is not None else color_default)
+                  text_color=colour if colour is not None else color_default,
+                  **({"text_alpha": alpha} if alpha is not None else {}))
     fig.add_layout(title, side)
     return title
 
@@ -35147,11 +35306,16 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
         key_obj.title = text
         px = _textbox_size(topts, key_obj.title_text_font_size,
                            OptionTranslator.size_ref_of(fig), "ztitle(size)")
-        colour = _textbox_color(topts, None)
+        colour, alpha = _textbox_color(
+            topts, None, base=key_obj.title_text_color,
+            colours=getattr(fig, "_dash_scheme_colours", None),
+            with_alpha=True)
         if px is not None:
             key_obj.title_text_font_size = px
         if colour is not None:
             key_obj.title_text_color = colour
+        if alpha is not None:
+            key_obj.title_text_alpha = alpha
 
     zlabel_raw = zopts.get("zlabel", "")
     _kfmt, _kbad = _dash_key_format(zopts)
@@ -35511,12 +35675,18 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
     # P1.13a): an unknown colour is black with the note, as twoway draws
     # yline(25, lcolor(bogus)); a malformed one keeps the default.
     if style.get("lcolor"):
+        # A bare *#/%# takes the line's own colour and a %# is its
+        # opacity (WP-30 P1.13b).
+        _lb = kw.get("line_color")
         hx, _alpha = OptionTranslator.parse_color_alpha(
             str(style["lcolor"]),
             f"{opt}({style.get('_typed', {}).get('lcolor', 'lcolor')})",
+            base=_lb if isinstance(_lb, str) else None,
             **OptionTranslator.scheme_colour_context(scheme))
         if hx is not None:
             kw["line_color"] = hx
+        if _alpha is not None:
+            kw["line_alpha"] = _alpha
     # An unknown style inside xline()/yline() is named through the one
     # helper, as a plot option's is: lpattern() and lwidth() were
     # dropped in silence.
