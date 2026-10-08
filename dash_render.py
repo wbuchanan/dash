@@ -11290,6 +11290,10 @@ class GlyphMapper:
     # label at 12 o'clock, under s2color, s2mono, s1mono, stcolor and
     # economist.
     _MLABEL_CLOCK_NAMES = frozenset(str(_p) for _p in range(13))
+    # The reserved column a mapper that stacks or derives x/y columns
+    # carries mlabvposition()'s values under (WP-30 P1.24), so a position
+    # variable named x, y or y0 is never read as the coordinates.
+    _MLABVPOS_VALUES = "__dash_mlabvpos_values"
 
     def __init__(
         self,
@@ -13183,11 +13187,13 @@ class GlyphMapper:
         label_col: "str | None" = None,
         radius_px: "float | None" = None,
         color_idx: int = 0,
+        vpos_col: "str | None" = None,
     ) -> None:
         """Add a LabelSet annotation when the mlabel() option is set.
 
         Reads ``mlabel``, ``mlabcolor``, ``mlabsize``, ``mlabposition``,
-        ``mlabgap``, ``mlabangle`` and ``mlabformat`` from *options* and adds
+        ``mlabvposition``, ``mlabgap``, ``mlabangle`` and ``mlabformat``
+        from *options* and adds
         a Bokeh ``LabelSet`` to *fig*, at (*xvar*, *yvar*) of each row.
 
         Which layers call this is each mapper's business, and follows what
@@ -13229,6 +13235,10 @@ class GlyphMapper:
                        labels in p2's colour).  ``mlabcolor()`` replaces the
                        colour and keeps the opacity; ``mlabsize(*#)``
                        multiplies the scheme's size.
+            vpos_col:  The column of *source* holding mlabvposition()'s
+                       values, when it is not named after the variable (as
+                       *label_col*: a stacked source's derived x/y columns
+                       must not stand in for it).
         """
         from bokeh.models import LabelSet
 
@@ -13428,14 +13438,22 @@ class GlyphMapper:
                 _dash_style_note("mlabgap", options["mlabgap"], "size",
                                  "medium")
                 gap = T.size_medium_pt("gap") * T.PX_PER_PT
+        _d = float(radius_px) + gap
         if p == 0:
             kwargs["x_offset"], kwargs["y_offset"] = 0, 0
         else:
-            _d = float(radius_px) + gap
             kwargs["x_offset"] = _d * ux
             kwargs["y_offset"] = _d * uy
         kwargs["text_align"] = align
         kwargs["text_baseline"] = baseline
+        # mlabvposition() (WP-30 P1.24): each row at its own clock, the
+        # scalar position above as its fallback.
+        _vp = self._mlabel_vpos_columns(source, options, p, _d, vpos_col)
+        if _vp is not None:
+            from bokeh.core.properties import field as _bk_field
+            for _k, _c in zip(("x_offset", "y_offset", "text_align",
+                               "text_baseline"), _vp):
+                kwargs[_k] = _bk_field(_c)
 
         # mlabwidth: Stata label width in character units.  Bokeh's LabelSet
         # does not support text wrapping, so this option is accepted but has
@@ -13462,6 +13480,92 @@ class GlyphMapper:
         T = OptionTranslator
         return T.resolve_size(raw if isinstance(raw, str) else str(raw),
                               "gap", default_pt, ref_in) * T.PX_PER_PT
+
+    def _mlabel_vpos_columns(self, source, options, fallback, distance,
+                             vpos_col=None):
+        """The four per-row columns of ``mlabvposition()``: x and y offset,
+        align and baseline, written into *source*; or None (WP-30 P1.24).
+
+        twoway reads the variable row by row (measured, StataNow 19.5,
+        test/fixtures/mlabvpos_truth.json): a whole number 0-12 is that
+        clock; a missing value, and every row of a string variable, takes
+        ``mlabposition()`` (*fallback*), silently; any other number is drawn
+        at 12 and named once.  The offset is *distance* (marker radius plus
+        gap) along each row's own clock, none at 0.  A date variable is read
+        in its Stata units.
+
+        The columns are named by the variable, the fallback and the
+        distance, because the layers of one saved graph share a source: two
+        layers with different ``mlabposition()`` or ``mlabgap()`` must not
+        hand each other their columns.  The names are deterministic, so a
+        served redraw writes the same ones.
+        """
+        raw = options.get("mlabvposition", "")
+        raw = raw.strip() if isinstance(raw, str) else str(raw or "").strip()
+        if not raw:
+            return None
+        name = _dash_mlabvpos_name(options)
+        if not name:
+            _dash_warn_once(
+                ("mlabvposition", raw, "name"),
+                f"dash: mlabvposition({_dash_display(raw)}) must name one "
+                f"variable; the labels are drawn at mlabposition().")
+            return None
+        col = vpos_col or name
+        if col not in source.data:
+            _dash_warn_once(
+                ("mlabvposition", name, "missing"),
+                f"dash: mlabvposition({_dash_display(name)}): the variable "
+                f"is not in the data; the labels are drawn at "
+                f"mlabposition().")
+            return None
+        column = source.data[col]
+        _is_text, _miss = self._mlabel_column_kind(column)
+        if _is_text:
+            return None
+        _kind = getattr(self, "date_vars", {}).get(name)
+        v = (_dash_date_units(column, _kind) if _kind
+             else _dash_float_values(column, coerce=True))
+        v = np.asarray(v, dtype=float)
+        fb = int(fallback)
+        k = np.full(v.shape[0], fb, dtype=int)
+        fin = np.isfinite(v)
+        whole = np.zeros(v.shape[0], dtype=bool)
+        whole[fin] = ((v[fin] == np.floor(v[fin])) & (v[fin] >= 0)
+                      & (v[fin] <= 12))
+        k[whole] = v[whole].astype(int)
+        bad = fin & ~whole
+        k[bad] = 12
+        if bad.any():
+            seen = []
+            for x in v[bad]:
+                if x not in seen:
+                    seen.append(x)
+            shown = ", ".join(_dash_fmt_text(x, "%9.0g") for x in seen[:10])
+            more = (f" and {len(seen) - 10} more" if len(seen) > 10 else "")
+            _dash_warn_once(
+                ("mlabvposition", name, "range"),
+                f"dash: mlabvposition({_dash_display(name)}): {shown}{more} "
+                f"are not a whole number from 0 to 12; those labels are "
+                f"drawn at 12 (above), where twoway draws them.")
+        clock = GlyphMapper._MLABEL_CLOCK
+        ux = np.array([clock[i][1][0] for i in range(13)])
+        uy = np.array([clock[i][1][1] for i in range(13)])
+        al = np.array([clock[i][2][0] for i in range(13)], dtype=object)
+        bl = np.array([clock[i][2][1] for i in range(13)], dtype=object)
+        d = float(distance)
+        dk = int(round(d * 1e6))
+        dks = f"m{-dk}" if dk < 0 else str(dk)
+        base = f"__dash_mlabvpos_{name}_p{fb}_d{dks}"
+        names = (base + "_x", base + "_y", base + "_a", base + "_b")
+        if names[0] not in source.data:
+            xo = np.where(k == 0, 0.0, d * ux[k]).astype(np.float64)
+            yo = np.where(k == 0, 0.0, d * uy[k]).astype(np.float64)
+            source.data[names[0]] = xo
+            source.data[names[1]] = yo
+            source.data[names[2]] = al[k]
+            source.data[names[3]] = bl[k]
+        return names
 
     def _mlabel_radius_px(self, options: dict, base_px: float) -> float:
         """Half the layer's marker size in signed px: the origin of a
@@ -17849,6 +17953,14 @@ class GlyphMapper:
             _dcol = np.asarray(source.data[_dv])
             if _dcol.dtype.kind == "M":
                 _dl_cols[_dv] = _dcol[mask]
+        # mlabvposition()'s values under a reserved name (WP-30 P1.24): a
+        # position variable named x, y or y0 is not the derived columns.
+        _vpn = _dash_mlabvpos_name(options)
+        _dl_vpos = None
+        if _vpn and _vpn in source.data:
+            _dl_cols[self._MLABVPOS_VALUES] = np.asarray(
+                source.data[_vpn])[mask]
+            _dl_vpos = self._MLABVPOS_VALUES
         # _apply_mlabel_opts reads the label column out of THIS source, and
         # the figure's hover tool reads the variables hover() names out of
         # it too, so a source carrying only the two plot variables meant
@@ -17912,7 +18024,8 @@ class GlyphMapper:
         # drew a default circle whatever was asked for.
         self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f))
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx,
+                                vpos_col=_dl_vpos)
         return [seg, dot]
 
     def map_rcapsym(
@@ -18330,6 +18443,15 @@ class GlyphMapper:
             clean[_DASH_MLABEL_VALUES] = (
                 _lv if getattr(_lv, "dtype", None) is not None
                 and _lv.dtype.kind == "M" else list(_lv))
+        # mlabvposition()'s values ride beside the labels, under a reserved
+        # name (WP-30 P1.24): a variable named x or y is not the endpoints.
+        _vpn = _dash_mlabvpos_name(options)
+        _has_vp = _has_lab and bool(_vpn) and _vpn in source.data
+        if _has_vp:
+            _vv = source.data[_vpn]
+            clean[self._MLABVPOS_VALUES] = (
+                _vv if getattr(_vv, "dtype", None) is not None
+                and _vv.dtype.kind == "M" else list(_vv))
         # The row identity rides along, for the saved page's filter callback.
         _pc_has_ids = _ROW_ID_COLUMN in source.data
         if _pc_has_ids:
@@ -18368,6 +18490,9 @@ class GlyphMapper:
             else:
                 _labs = list(clean[_DASH_MLABEL_VALUES])
                 _pc_cols[_DASH_MLABEL_VALUES] = _labs + _labs
+            if _has_vp:
+                _vps = clean[self._MLABVPOS_VALUES].to_numpy()
+                _pc_cols[self._MLABVPOS_VALUES] = np.concatenate([_vps, _vps])
         # Both markers of an observation carry its other columns -- the
         # variables hover() names; clean's index is the row in *source*.
         _pc_rows = clean.index.to_numpy()
@@ -18392,7 +18517,9 @@ class GlyphMapper:
         self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f))
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
                                 _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx,
+                                vpos_col=(self._MLABVPOS_VALUES if _has_vp
+                                          else None))
         return [r]
 
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
@@ -33041,7 +33168,9 @@ def _dash_header_models(title_text, subtitle_text, css=""):
 #: it here carries the column into the layer's source in both render modes
 #: -- the standalone CDS through _collect_plot_vars, the served one through
 #: _dash_layer_source's extra_cols -- so the mappers can read it.
-_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "wexp")
+#: mlabvposition() names a variable of per-row clock positions (WP-30
+#: P1.24), read by the label applier from the layer's source.
+_DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "mlabvposition", "wexp")
 #: Plot KEYS that name a dataset column: one tuple for the saved column
 #: lists, the served app and the embed plan (WP-29 P0.11).  The served
 #: placeholder listed five of them, so a paired-coordinate layer's columns
@@ -33068,14 +33197,33 @@ def _dash_mlabel_names(options):
     return (names[0] if names else ""), names[1:]
 
 
+def _dash_mlabvpos_name(options):
+    """The variable a layer's ``mlabvposition()`` names, or ``""``.
+
+    dash.ado refuses two names, an expression and a variable that does not
+    exist, as twoway refuses them (WP-30 P1.24), so from a command the
+    value is one Stata name.  A spec written by hand may carry anything;
+    only a value ``_dash_is_stata_name`` accepts becomes a column name, so
+    no other text reaches a source or a Bokeh field.
+    """
+    v = (options or {}).get("mlabvposition", "")
+    if not isinstance(v, str):
+        return ""
+    v = v.strip()
+    return v if _dash_is_stata_name(v) else ""
+
+
 def _dash_option_columns(options, columns=None):
-    """The columns a layer's options name -- colorvar() and mlabel() -- in
+    """The columns a layer's options name -- colorvar(), mlabel(),
+    mlabvposition() (one Stata name, else none) and the weight -- in
     ``_DASH_OPT_VAR_KEYS`` order, de-duplicated, restricted to *columns*
     when one is given."""
     out = []
     for key in _DASH_OPT_VAR_KEYS:
         if key == "mlabel":
             v = _dash_mlabel_names(options)[0]
+        elif key == "mlabvposition":
+            v = _dash_mlabvpos_name(options)
         else:
             v = str((options or {}).get(key, "") or "").strip()
         if not v or v in out:
@@ -42121,6 +42269,7 @@ class ServerAppBuilder:
                          "_dash_reflow",
                          # The columns a layer's options name.
                          "_dash_mlabel_names", "_dash_option_columns",
+                         "_dash_mlabvpos_name",
                          "_dash_attach_labels",
                          "_dash_is_swatch",
                          # Sub-options: honoured or named, in one text.
@@ -43842,7 +43991,8 @@ class ServerAppBuilder:
             "                _ly_src, _ok = _dash_pc_source(",
             "                    g_df, plot.get('y1var', ''), plot.get('x1var', ''),",
             "                    plot.get('y2var', ''), plot.get('x2var', ''),",
-            "                    _dash_mlabel_names(opts)[0], extra_cols=_hv)",
+            "                    _dash_mlabel_names(opts)[0],",
+            "                    extra_cols=_hv + _dash_option_columns(opts, g_df.columns))",
             "                if _ok:",
             "                    _dash_add_pc_glyph(",
             "                        _DASH_MAPPER, fig, _ly_src, ptype,",

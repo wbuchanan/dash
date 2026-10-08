@@ -1,9 +1,9 @@
 {
  "_meta": {
-  "answers": 1299,
+  "answers": 1352,
   "born_date": "12 Aug 2026",
-  "dash_commit": "957d00c8d4a5ef292f6dcda757461d66e3c0f3c2",
-  "extracted": " 7 Oct 2026",
+  "dash_commit": "e3680f61ee5b69299576da4ea30abd29b6cd78b2",
+  "extracted": " 8 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_twoway_option_parity.cscript",
   "stata_version": "19.5"
@@ -2417,6 +2417,218 @@
    "log": "",
    "rc": 0
   },
+  "log|MV-01|twoway fpfit mpg weight, mlabvposition(p9)": {
+   "log": "",
+   "rc": 103
+  },
+  "log|MV-01|twoway fpfitci mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified: mpg weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway kdensity mpg, mlabvposition(p9)": {
+   "log": "too many variables specified\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway lfit mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified: mpg weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway lfitci mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified: mpg weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway lowess mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway lpoly mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway lpolyci mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway mband mpg weight, mlabvposition(p9)": {
+   "log": "",
+   "rc": 103
+  },
+  "log|MV-01|twoway mspline mpg weight, mlabvposition(p9)": {
+   "log": "",
+   "rc": 103
+  },
+  "log|MV-01|twoway qfit mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified: mpg weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway qfitci mpg weight, mlabvposition(p9)": {
+   "log": "too many variables specified: mpg weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rarea lo hi weight, mlabvposition(p9)": {
+   "log": "rarea requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rbar lo hi weight, mlabvposition(p9)": {
+   "log": "rbar requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rcap lo hi weight, mlabvposition(p9)": {
+   "log": "rcap requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rcapsym lo hi weight, mlabvposition(p9)": {
+   "log": "rcapsym requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rconnected lo hi weight, mlabvposition(p9)": {
+   "log": "rconnected requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rline lo hi weight, mlabvposition(p9)": {
+   "log": "rline requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rscatter lo hi weight, mlabvposition(p9)": {
+   "log": "rscatter requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway rspike lo hi weight, mlabvposition(p9)": {
+   "log": "rspike requires 3 variables: lo hi weight p9\n",
+   "rc": 103
+  },
+  "log|MV-01|twoway tsrline lo hi, mlabvposition(p9)": {
+   "log": "rline requires 3 variables: lo hi t p9\n",
+   "rc": 103
+  },
+  "log|MV-02|twoway lfit mp wei, mlabel(ma) mlabvposition(q)": {
+   "log": "too many variables specified: mpg weight make q9\n",
+   "rc": 103
+  },
+  "log|MV-02|twoway lowess mp wei, mlabel(ma) mlabvposition(q)": {
+   "log": "too many variables specified\n",
+   "rc": 103
+  },
+  "log|MV-02|twoway mspline mp wei, mlabel(ma) mlabvposition(q)": {
+   "log": "",
+   "rc": 103
+  },
+  "log|MV-02|twoway rscatter mp tu wei, mlabel(ma) mlabvposition(q)": {
+   "log": "rscatter requires 3 variables: mpg turn weight make q9\n",
+   "rc": 103
+  },
+  "log|MV-03|twoway lfit mpg weight, mlabvposition(sp9)": {
+   "log": "too many variables specified: mpg weight sp9\n",
+   "rc": 103
+  },
+  "log|MV-03|twoway rscatter lo hi weight, mlabvposition(sp9)": {
+   "log": "rscatter requires 3 variables: lo hi weight sp9\n",
+   "rc": 103
+  },
+  "log|MV-04|twoway lfit mpg weight, mlabvposition(nosuch)": {
+   "log": "variable nosuch not found\n",
+   "rc": 111
+  },
+  "log|MV-04|twoway line mpg weight, mlabvposition(nosuch)": {
+   "log": "variable nosuch not found\n",
+   "rc": 111
+  },
+  "log|MV-04|twoway rscatter lo hi weight, mlabvposition(nosuch)": {
+   "log": "variable nosuch not found\n",
+   "rc": 111
+  },
+  "log|MV-05|twoway scatter mpg weight, mlabel(make) mlabv(p9) mlabvposition(pos)": {
+   "log": "option mlabvposition() not allowed\n",
+   "rc": 198
+  },
+  "log|MV-05|twoway scatter mpg weight, mlabel(make) mlabvposition(p9) mlabvposition(pos)": {
+   "log": "option mlabvposition() not allowed\n",
+   "rc": 198
+  },
+  "log|MV-06|twoway scatter mpg weight, mlabel(make) mlabvposition(p9 pos)": {
+   "log": "option mlabvposition():  too many names specified\n",
+   "rc": 103
+  },
+  "log|MV-07|twoway scatter mpg weight, mlabel(make) mlabvposition(p9*1)": {
+   "log": "* invalid name\n",
+   "rc": 198
+  },
+  "log|MV-08|twoway scatter mpg weight, mlabel(make) mlabv(po) mcolor(red)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-08|twoway scatter mpg weight, mlabel(make) mlabvp(pos) mcolor(red)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-08|twoway scatter mpg weight, mlabel(make) mlabvposi(pos) mcolor(red)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-08|twoway scatter mpg weight, mlabel(make) mlabvposition() mcolor(red)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-09|twoway function y = x, mlabvposition(nosuch)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-09|twoway histogram mpg, mlabvposition(nosuch)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-09|twoway pcarrowi 1 1 2 2, mlabvposition(nosuch)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-09|twoway pci 1 1 2 2, mlabvposition(nosuch)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-09|twoway scatteri 1 1 2 2, mlabvposition(nosuch)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-10|twoway area mpg weight, mlabvposition(p9)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-10|twoway line mpg weight, mlabvposition(p9)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-10|twoway pcspike mpg weight turn length, mlabvposition(p9)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-10|twoway spike mpg weight, mlabvposition(p9)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-10|twoway tsline mpg, mlabvposition(p9)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-11b|twoway rscatter lo hi weight, mlabel(. make) mlabvposition(p9)": {
+   "log": "rscatter requires 3 variables: lo hi weight make p9\n",
+   "rc": 103
+  },
+  "log|MV-11|twoway lfit mpg weight, mlabvposition(weight)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-11|twoway rscatter lo hi weight, mlabel(lo) mlabvposition(p9)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-11|twoway rscatter lo hi weight, mlabel(make) mlabvposition(make)": {
+   "log": "",
+   "rc": 0
+  },
+  "log|MV-11|twoway rscatter lo hi weight, mlabvposition(lo)": {
+   "log": "",
+   "rc": 0
+  },
   "log|TP-14f|twoway (lfit mpg weight, atobs) (lfit price weight, atobs), title(T) nodraw": {
    "log": "",
    "rc": 0
@@ -3367,10 +3579,10 @@
   "rc|TP-06b|twoway scatter mpg weight, sort nodraw": 0,
   "rc|TP-06b|twoway tsline mpg, sort nodraw": 0,
   "rc|TP-06b|twoway tsrline lo hi, sort nodraw": 0,
+  "rc|TP-06h|twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw": 0,
   "rc|TP-06|twoway (scatter mpg weight) (line mpg weight), xoverhang nodraw": 0,
   "rc|TP-06|twoway (scatter mpg weight) (line mpg weight), yoverhangs nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw": 0,
-  "rc|TP-06|twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, sort(mpg) nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, xoverhang nodraw": 0,
   "rc|TP-06|twoway scatter mpg weight, yoverhang nodraw": 0,

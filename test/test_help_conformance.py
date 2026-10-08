@@ -606,7 +606,10 @@ class TestTheParsersFoundSomething:
         # the four fitarea options off the ci types.
         # Flipped (WP-30 P1.14a): 48 -> 44, the four named styles drawn.
         # 44 -> 47: P1.14b dstyle, dlstyle and bmlinestyle, kept and named.
-        assert len(_ignored_options()) == 47
+        # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
+        # mlabvposition() per row (mlabvpos_truth.json A).
+        # 47 -> 46: P1.24 mlabvposition() honoured
+        assert len(_ignored_options()) == 46
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -614,7 +617,10 @@ class TestTheParsersFoundSomething:
         # above "3".  48 with the fitarea options' entry (S3 batch).
         # Flipped (WP-30 P1.14a): 48 -> 44, the Named styles entry gone.
         # 44 -> 47: P1.14b's Dot and marker back-line styles entry.
-        assert len(_unsupported_section()) == 47
+        # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
+        # mlabvposition() per row (mlabvpos_truth.json A).
+        # 47 -> 46: P1.24 mlabvposition() honoured
+        assert len(_unsupported_section()) == 46
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -651,8 +657,9 @@ class TestTheParsersFoundSomething:
         # Unsupported Named styles entry.
         # 361 -> 363: P1.14b's {ul:Named styles.} scheme paragraph and
         # its Unsupported Dot and marker back-line styles entry.
-        assert len(defs) == 363, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 363 "
+        # 363 -> 364: P1.24's mlabv:position() row.
+        assert len(defs) == 364, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 364 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

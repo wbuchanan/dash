@@ -524,12 +524,26 @@ def _annotations(fig):
             _src = getattr(r, "source", None)
             _col = (list(_src.data.get(_tf[1], []))
                     if _tf[0] == "field" and _src is not None else [])
+            # WP-30 P1.24: mlabvposition() sets the offsets, align and
+            # baseline per row, as fields; their values are recorded beside
+            # the texts, so a per-row clock that drifts is seen.
+            def _rows_of(v):
+                _sv = _spec_of(v)
+                if _sv[0] == "field" and _src is not None:
+                    return [_num(x) if isinstance(x, (int, float))
+                            else str(x)
+                            for x in list(_src.data.get(_sv[1], []))]
+                return None
             out.append({"kind": "LabelSet", "text": _tf,
                         "font": r.text_font_size,
                         "color": _spec_of(r.text_color),
                         # WP-30 P1.4b: the scheme's label opacity.
                         "alpha": _spec_of(r.text_alpha),
                         "x_offset": r.x_offset, "y_offset": r.y_offset,
+                        "per_row": [_rows_of(r.x_offset),
+                                    _rows_of(r.y_offset),
+                                    _rows_of(r.text_align),
+                                    _rows_of(r.text_baseline)],
                         "angle": _spec_of(r.angle),
                         "angle_units": r.angle_units,
                         "texts": [_drawn_text(v) for v in _col],
@@ -2144,6 +2158,15 @@ CORPUS = [
           {"scheme": "s2color"}),
     _case("an unknown named style",
           [plot_for("area", {"astyle": "bogus"})], {"scheme": "s2color"}),
+    # WP-30 P1.24: each label at its row's clock, on a stacked-source type
+    # and a derived-column type too.
+    _case("Per-row label clocks (WP-30 P1.24)",
+          [_sc(mlabel="rep", mlabvposition="rep"),
+           plot_for("dropline", {"mlabel": "rep",
+                                 "mlabvposition": "foreign"})]),
+    _case("Per-row clocks on pc types (WP-30 P1.24)",
+          [plot_for("pcscatter", {"mlabel": "rep", "mlabvposition": "rep"}),
+           plot_for("pcarrow", {"mlabel": "rep", "mlabvposition": "rep"})]),
 ]
 
 

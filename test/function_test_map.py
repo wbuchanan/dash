@@ -1010,6 +1010,8 @@ FUNCTIONS = {
  'SchemeParser._style_steps': 'test/test_style_names.py::TestAgainstStata::test_every_n_record',
  'SchemeParser._style_sub': 'test/test_style_names.py::TestMarkerForms::test_stcolor_mstyle_histogram',
  # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
+ 'GlyphMapper._mlabel_vpos_columns': 'test/test_mlabvposition.py::TestThePerRowColumns::test_every_clock_and_the_fallbacks',
+ '_dash_mlabvpos_name': 'test/test_mlabvposition.py::TestTheName::test_one_stata_name_or_nothing',
  # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
  # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
  # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)

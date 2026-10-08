@@ -2497,6 +2497,13 @@ the per-plot specification (not to {cmd:dash build} options).
     the hours between at the corners, and 0 centred on the point.  Anything
     else -- {cmd:13}, {cmd:2.5}, {cmd:03} or a name -- is reported and the
     label drawn at 12, where {cmd:twoway}, noting it, draws it{p_end}
+{synopt:{cmdab:mlabv:position(}{it:varname}{cmd:)}}the clock position of
+    each observation's label, read row by row: a whole number from 0 to 12
+    is that position; a missing value, and every row of a string variable,
+    takes {cmd:mlabposition()} (3 by default), without a note; any other
+    number is drawn at 12 and the values are reported once, as {cmd:twoway}
+    notes them.  One variable serves every {it:y} of the layer, and
+    {cmd:mlabgap()} moves each label along its own row's direction{p_end}
 {synopt:{cmdab:mlabg:ap(}{it:size}{cmd:)}}space between the marker's
     edge and the label, in the direction of the clock position: a
     {cmd:gsize} in Stata's units, {cmd:half_tiny} (2 point) by default, as
@@ -2555,6 +2562,20 @@ r(111), as {cmd:twoway} refuses it, except on {cmd:histogram} and
 {cmd:function}, where {cmd:twoway} never reads the option.  On
 {cmd:mspline} and {cmd:mband} {cmd:twoway} refuses {cmd:mlabel()} -- "too
 many variables specified", r(103) -- and so does {cmd:dash}.
+
+{pstd}
+{cmd:mlabvposition()} places the labels of {cmd:scatter}, {cmd:connected},
+{cmd:bar}, {cmd:dot}, {cmd:dropline}, {cmd:pcscatter}, {cmd:pccapsym},
+{cmd:pcarrow} and {cmd:pcbarrow}.  On {cmd:line}, {cmd:spike},
+{cmd:area}, {cmd:pcspike} and {cmd:tsline} it is checked and draws
+nothing; {cmd:histogram}, {cmd:function}, {cmd:scatteri}, {cmd:pci} and
+{cmd:pcarrowi} never read it.  As in {cmd:twoway}, the variable counts as
+one more plotted variable, so the range types, {cmd:tsrline}, the fits,
+{cmd:mspline}, {cmd:mband}, the smooths and {cmd:kdensity} refuse it,
+r(103), in {cmd:twoway}'s words ("rscatter requires 3 variables: ...",
+"too many variables specified: ..."); a second copy is refused r(198),
+two names r(103), an expression r(198), and a variable that does not
+exist r(111).
 
 {pstd}
 {ul:What a label says.}  A string variable is drawn as it is.  A numeric
@@ -4528,11 +4549,9 @@ disagree in either direction.
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
     refused on every type, as {cmd:twoway} refuses it.
 
-{phang2}{ul:Marker-label placement and text style.}
-    {opt mlabvposition(varname)} -- a layer's labels all sit at the one
-    clock position {cmd:mlabposition()} gives; a position per observation
-    is not read.  {opt mlabtextstyle(textstyle)} -- a named text style in
-    a {cmd:.scheme} file; set the size and colour with {cmd:mlabsize()} and
+{phang2}{ul:Marker-label text style.}
+    {opt mlabtextstyle(textstyle)} -- a named text style in a
+    {cmd:.scheme} file; set the size and colour with {cmd:mlabsize()} and
     {cmd:mlabcolor()}.
 
 {phang2}{ul:Room for long end labels.}

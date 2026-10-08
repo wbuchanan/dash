@@ -118,7 +118,6 @@ PLOT_VALUES = {
     # WP-22 TR-22.3: twoway options that used to land in the note as
     # unknown, now declared -- named by their full names -- and not drawn.
     "mlabtextstyle": ("heading", "body", "scatter"),
-    "mlabvposition": ("rep78", "foreign", "scatter"),
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
@@ -247,7 +246,10 @@ class TestTheListIsCoveredAndHonest:
         # Flipped (WP-30 P1.14a): 48 -> 44: pstyle(), lstyle(), mstyle()
         # and mlstyle() are drawn (p1-p15), so they leave the list.
         # 44 -> 47: P1.14b dstyle dlstyle bmlinestyle declared and named
-        assert len(_plot_pending()) == 47, sorted(_plot_pending())
+        # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
+        # mlabvposition() per row (mlabvpos_truth.json A).
+        # 47 -> 46: P1.24 mlabvposition() honoured
+        assert len(_plot_pending()) == 46, sorted(_plot_pending())
         assert len(_graph_pending()) == 23, sorted(_graph_pending())
 
 
@@ -507,6 +509,11 @@ LIVE_VALUES = {
                      {**_ML, "mlabposition": "9"}, "scatter", {}),
     "mlabsize": ({**_ML, "mlabsize": "tiny"}, {**_ML, "mlabsize": "vlarge"},
                  "scatter", {}),
+    # Flipped (WP-30 P1.24): mlabvposition() was reported unsupported,
+    # which was wrong because twoway draws it per row
+    # (mlabvpos_truth.json A).
+    "mlabvposition": ({**_ML, "mlabvposition": "rep78"},
+                      {**_ML, "mlabvposition": "foreign"}, "scatter", {}),
     "mlcolor": ({"mlcolor": "navy"}, {"mlcolor": "maroon"}, "scatter", {}),
     "mlwidth": ({"mlwidth": "thick"}, {"mlwidth": "vthin"}, "scatter", {}),
     "msangle": ({"msymbol": "T", "msangle": "0"},

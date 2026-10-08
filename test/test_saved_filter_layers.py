@@ -226,6 +226,12 @@ _CORPUS = [
             bo={"link": "g1 g2"})
       for t in ("scatter", "connected", "dot", "rspike", "rconnected",
                 "line", "area", "bar", "rcap")],
+    # WP-30 P1.24: each kept label keeps its own row's clock.
+    _case("a scatter labelled at per-row clocks, dropdown", _MOVES[0],
+          [plot_for("scatter", {"mlabel": "rep", "mlabvposition": "rep"})]),
+    _case("a pcscatter labelled at per-row clocks, range", _MOVES[1],
+          [plot_for("pcscatter", {"mlabel": "rep",
+                                  "mlabvposition": "rep"})]),
 ]
 
 

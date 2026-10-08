@@ -1298,11 +1298,9 @@ program define _dash_parse_plot_opts, sclass
     if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
-    // WP-22: mlabtextstyle() names a text style in a .scheme file, and
-    // mlabvposition() a variable of clock positions, one per observation;
-    // dash draws a layer's labels at one position in the scheme's style.
+    // WP-22: mlabtextstyle() names a text style in a .scheme file; dash
+    // draws a layer's labels in the scheme's marker-label style.
     if `: length local mlabtextstyle' local _dash_pending `"`_dash_pending' mlabtextstyle"'
-    if `: length local mlabvposition' local _dash_pending `"`_dash_pending' mlabvposition"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
     // WP-30 P1.14b: dstyle() and dlstyle() style the dots of a dot plot
@@ -1460,6 +1458,9 @@ program define _dash_parse_plot_opts, sclass
     sreturn local clwidth          : copy local clwidth
     sreturn local mlabangle        : copy local mlabangle
     sreturn local mlabformat       : copy local mlabformat
+    // WP-30 P1.24: one variable of clock positions, read row by row
+    // (_dash_fold_mlabv checks it as twoway does).
+    sreturn local mlabvposition    : copy local mlabvposition
     sreturn local xvarformat       : copy local xvarformat
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
@@ -1970,6 +1971,93 @@ program define _dash_fold_mlab, sclass
         display as error "dash: mlabel() is not allowed on `ptype' (twoway: too many variables specified)"
         exit 103
     }
+end
+
+// ================================================================
+// _dash_mlabv_parse  -- twoway's own reading of mlabvposition().
+//
+// twoway_yxview_parse.class declares MLABVposition(name) and unabbreviates
+// it with unab, so its messages and codes are Stata's: two names
+// "option mlabvposition():  too many names specified" r(103), an
+// expression "<tok> invalid name" r(198), a missing variable "variable
+// <x> not found" r(111).  Not sclass, and never touches s(): the caller's
+// s() survives.  Returns the unabbreviated name in the caller's _mv_name.
+// ================================================================
+program define _dash_mlabv_parse
+    version 19
+    syntax [, MLABVposition(name)]
+    if "`mlabvposition'" != "" unab mlabvposition : `mlabvposition'
+    c_local _mv_name `mlabvposition'
+end
+
+// ================================================================
+// _dash_fold_mlabv  -- mlabvposition() where twoway refuses it, or never
+//                      reads it (WP-30 P1.24).
+//
+// Measured (StataNow 19.5; test/fixtures/mlabvpos_truth.json and the MV
+// cases of test_twoway_option_parity.cscript): twoway appends the
+// variable to the layer's varlist (twoway_yxview_parse.class:308-317), so
+// the types that count their variables refuse it -- the range types and
+// tsrline "<type> requires 3 variables: <varlist>", the fits, mspline and
+// mband "too many variables specified: <varlist>", lowess, lpoly, lpolyci
+// and kdensity "too many variables specified", each r(103).  The range
+// types and lfit-like fits subtract the label variables before counting
+// (twoway_y2xview_parse.class:36-44, twoway_lfit_parse.class:35-41);
+// mspline and mband do not (twoway_mspline_parse.class:25-26).  A name
+// already in the list adds nothing, so rscatter y y2 x, mlabvposition(y)
+// is accepted, as twoway accepts it.  histogram, function, scatteri, pci
+// and pcarrowi never read the option.  Called by _dash_process_segment
+// before _dash_fold_bw (so before _dash_fold_mlab); the value is read
+// from s() by value and reaches a command line only inside macval(),
+// where syntax's name type refuses anything but one name.
+// ================================================================
+program define _dash_fold_mlabv, sclass
+    version 19
+    args ptype pvars
+    mata: st_local("v", st_global("s(mlabvposition)"))
+    if !`: length local v' exit
+    local mv_unread "histogram function scatteri pci pcarrowi"
+    if `: list ptype in mv_unread' {
+        sreturn local mlabvposition ""
+        exit
+    }
+    capture noisily _dash_mlabv_parse , mlabvposition(`macval(v)')
+    if _rc exit _rc
+    sreturn local mlabvposition `"`_mv_name'"'
+    if "`_mv_name'" == "" exit
+    local mv_range "rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline"
+    local mv_fit   "lfit qfit fpfit lfitci qfitci fpfitci mspline mband"
+    local mv_smooth "lowess lpoly lpolyci kdensity"
+    local mv_all : list mv_range | mv_fit
+    local mv_all : list mv_all | mv_smooth
+    if !`: list ptype in mv_all' exit
+    // The label variables, without mlabel()'s "." placeholders.
+    mata: st_local("ml", invtokens(select(tokens(st_global("s(mlabel)")), tokens(st_global("s(mlabel)")) :!= ".")))
+    local labs ""
+    if `: length local ml' {
+        capture unab labs : `macval(ml)'
+        if _rc exit
+    }
+    local pvars : list retokenize pvars
+    local all : list pvars | labs
+    local all : list all | _mv_name
+    local mv_nosub "mspline mband"
+    if `: list ptype in mv_nosub' local counted : copy local all
+    else local counted : list all - labs
+    local limit 2
+    if `: list ptype in mv_range' local limit 3
+    if "`ptype'" == "kdensity" local limit 1
+    if `: word count `counted'' <= `limit' exit
+    if `: list ptype in mv_range' {
+        local shown "`ptype'"
+        if "`ptype'" == "tsrline" local shown "rline"
+        mata: _dash_say("err", st_local("shown") + " requires 3 variables: ", st_local("all"), "")
+    }
+    else if `: list ptype in mv_fit' {
+        mata: _dash_say("err", "too many variables specified: ", st_local("all"), "")
+    }
+    else display as error "too many variables specified"
+    exit 103
 end
 
 // ================================================================
@@ -3915,6 +4003,7 @@ program define _dash_plot_opts_to_json, rclass
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
+                   mlabvposition ///
                    xvarformat yvarformat ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
@@ -4902,6 +4991,9 @@ program define _dash_process_segment, rclass
                 exit 198
             }
         }
+        // mlabvposition() (WP-30 P1.24): checked and counted as twoway
+        // counts it, before mlabel()'s own rule (_dash_fold_mlab).
+        _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
         _dash_fold_bw "`ptype'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"

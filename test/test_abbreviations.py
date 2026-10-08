@@ -500,7 +500,8 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # 68 since WP-30 P1.14a documented the named styles' minimums: psty,
     # mst, mls, ls, cls, ast, al, bst and bl (twoway's, A01-A10 of
     # test/fixtures/named_style_truth.json).
-    assert len(seen) == 68, (
+    # 68 -> 69: WP-30 P1.24 documented mlabv:position(), twoway's minimum.
+    assert len(seen) == 69, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -610,7 +611,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # _dash_stylelist_bind, the probe that binds a quoted stylelist value.
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 16, with_syntax
+    # 16 -> 17: WP-30 P1.24's _dash_mlabv_parse declares MLABVposition(name),
+    # twoway's own reading of mlabvposition().
+    assert len(with_syntax) == 17, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
@@ -635,7 +638,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # block and the fitarea comment's rewording.
     # 120 -> 124: P1.14b's notes on dstyle/dlstyle/bmlinestyle (pending
     # three lines, sreturn one).
-    assert comments == {"_dash_parse_plot_opts": 124,
+    # 124 -> 125: P1.24's pending comment is one line shorter (two), and
+    # the mlabvposition sreturn gains two.
+    assert comments == {"_dash_parse_plot_opts": 125,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

@@ -355,6 +355,8 @@ COVERAGE = {
         # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
         # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
         # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
+        "_dash_fold_mlabv": ("test_twoway_option_parity.cscript:MV-01", "test_twoway_option_parity.cscript:MV-02"),
+        "_dash_mlabv_parse": ("test_twoway_option_parity.cscript:MV-06", "test_twoway_option_parity.cscript:MV-07"),
         # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)

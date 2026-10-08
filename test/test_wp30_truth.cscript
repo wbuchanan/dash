@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6
+    S35 14 S36 6 S37 4
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -9078,10 +9078,134 @@ if inlist("`only'", "", "S36") & `: list posof "S36" in w30_run' {
 }
 * ==== end S36 ====
 
+// S37 (WP-30 P1.24): mlabvposition().  _s37_cmp compares, label by label,
+// the text-anchor twoway's SVG (S37_SVG) gives each label with the
+// text_align dash's saved page (S37_PAGE) draws it at, as multisets of
+// (text, anchor): left is start, center middle, right end.  It sets
+// S37_OK and S37_MSG.  Every argument crosses through sfi.Macro.
+python:
+import html as _s37_html
+import json as _s37_json
+import os as _s37_os
+import re as _s37_re
+import sys as _s37_sys
+import warnings as _s37_w
+from sfi import Macro as _s37_M
+
+
+def _s37_page():
+    from bokeh.document import Document
+    from bokeh.models import LabelSet
+    with open(_s37_M.getGlobal("S37_PAGE"), encoding="utf-8") as fh:
+        page = fh.read()
+    out = []
+    for blob in _s37_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _s37_re.S):
+        try:
+            docs = _s37_json.loads(_s37_html.unescape(blob))
+        except ValueError:
+            continue
+        for dj in (docs.values() if isinstance(docs, dict) else []):
+            if not (isinstance(dj, dict) and "roots" in dj):
+                continue
+            with _s37_w.catch_warnings():
+                _s37_w.simplefilter("ignore")
+                doc = Document.from_json(dj)
+            for ls in doc.select({"type": LabelSet}):
+                data = ls.source.data
+
+                def col(v, n):
+                    f = getattr(v, "field", None)
+                    if isinstance(v, dict):
+                        f = v.get("field")
+                    if f is None and isinstance(v, str) and v in data:
+                        f = v
+                    if f is not None:
+                        return list(data[f])
+                    return [getattr(v, "value", v)] * n
+                tx = col(ls.text, 0)
+                n = len(tx)
+                xs, al = col(ls.x, n), col(ls.text_align, n)
+                for t, x, a in zip(tx, xs, al):
+                    if x is None or (isinstance(x, float) and x != x):
+                        continue
+                    out.append((str(t), {"left": "start", "center": "middle", "right": "end"}.get(str(a), str(a))))
+    return sorted(out)
+
+
+def _s37_cmp():
+    _s37_sys.path.insert(0, _s37_os.path.join(_s37_M.getGlobal("S37_REPO"), "scripts"))
+    import svg_truth as st
+    pat = _s37_re.compile(r"^R[0-9]+$")
+    tw = sorted((t["text"], t["anchor"] or "start")
+                for t in st.svg_texts(_s37_M.getGlobal("S37_SVG"))
+                if pat.match(t["text"]))
+    got = [x for x in _s37_page() if pat.match(x[0])]
+    bad = [x for x in tw if x not in got] + [x for x in got if x not in tw]
+    _s37_M.setGlobal("S37_OK", "1" if (tw and tw == got) else "0")
+    _s37_M.setGlobal("S37_MSG", "twoway %d labels, dash %d, differing %s" % (len(tw), len(got), bad[:6]))
+end
+
+capture program drop _s37_case
+program define _s37_case
+    version 19
+    args id cmd work what
+    quietly graph drop _all
+    capture twoway `cmd' name(_s37g, replace)
+    local trc = _rc
+    capture graph export "`work'/s37_`id'.svg", name(_s37g) replace
+    quietly graph drop _all
+    capture dash clear
+    capture noisily dash `cmd' saving("`work'/s37_`id'.html", replace)
+    local drc = _rc
+    global S37_SVG "`work'/s37_`id'.svg"
+    global S37_PAGE "`work'/s37_`id'.html"
+    global S37_OK 0
+    global S37_MSG "not compared"
+    if !`trc' & !`drc' capture noisily python: __import__("__main__")._s37_cmp()
+    _w30_expect `id' "(`trc' == 0 & `drc' == 0 & ${S37_OK} == 1)" `"twoway rc `trc', dash rc `drc': ${S37_MSG}"'
+    _w30_done `id' `"`what'"'
+    capture erase "`work'/s37_`id'.svg"
+    capture erase "`work'/s37_`id'.html"
+end
+
 * ==== S37 P1.24: mlabvposition() and mlabtextstyle() ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S37") & `: list posof "S37" in w30_run' {
     display as text "S37 start " c(current_date) " " c(current_time)
+    global S37_REPO "`c(pwd)'/.."
+    // The data of test/fixtures/mlabvpos_truth.json: 18 points on a
+    // diagonal, positions 0..12 then ., 3.5, 13, -1, .a.
+    quietly {
+        clear
+        set obs 18
+        gen double x = _n
+        gen double y = _n
+        gen str3 lab = "R" + string(_n)
+        gen double pos = _n - 1 in 1/13
+        replace pos = 3.5 in 15
+        replace pos = 13 in 16
+        replace pos = -1 in 17
+        replace pos = .a in 18
+        gen double p9 = 9
+        gen byte g = mod(_n, 2)
+        gen double y2 = y + 20
+    }
+    // MV-20: the abbreviations reach the spec as the full name.
+    capture dash clear
+    capture noisily dash scatter y x, mlabel(lab) mlabv(po) name(zmv20)
+    local drc = _rc
+    capture twoway scatter y x, mlabel(lab) mlabv(po) nodraw
+    local trc = _rc
+    mata: st_local("k", strofreal(strpos(st_global("dash_json_zmv20"), char(34) + "mlabvposition" + char(34) + ":" + char(34) + "pos" + char(34)) > 0))
+    _w30_expect MV-20 "(`drc' == 0 & `trc' == 0 & `k' == 1)" "dash rc `drc', twoway rc `trc', key `k'"
+    _w30_done MV-20 "mlabv(po) is written as mlabvposition pos, rc 0 as in twoway"
+    capture dash clear
+    _s37_case MV-21 "scatter y x, mlabel(lab) mlabvposition(pos) scheme(stcolor)" "`w30_work'" "each row's label at its own clock, as twoway draws it"
+    _s37_case MV-22 "scatter y x, mlabel(lab) mlabvposition(pos) mlabposition(9) scheme(stcolor)" "`w30_work'" "a missing position takes mlabposition()"
+    _s37_case MV-23 "scatter y y2 x, mlabel(lab lab) mlabvposition(p9) scheme(stcolor)" "`w30_work'" "one variable places every y's labels"
+    _s37_case MV-24 "scatter y x, mlabel(lab) mlabvposition(pos) by(g) scheme(stcolor)" "`w30_work'" "each by() panel's rows at their own clocks"
+    macro drop S37_*
+    capture dash clear
     display as text "S37 end " c(current_date) " " c(current_time)
 }
 * ==== end S37 ====

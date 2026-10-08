@@ -56,9 +56,10 @@
 *!   TP-06  the declared-but-not-honoured ones are named in the note by
 *!          their full names, however they were abbreviated, in comma mode
 *!          and after the paren-mode comma: sort(varlist) where dash does
-*!          not join (scatter), mlabvposition(), mlabtextstyle(),
-*!          xoverhangs, yoverhangs; sort sort(varlist) on line is honoured,
-*!          silent and written as "sortvars" (WP-29 P0.1).
+*!          not join (scatter), mlabtextstyle(), xoverhangs, yoverhangs;
+*!          sort sort(varlist) on line is honoured, silent and written as
+*!          "sortvars" (WP-29 P0.1).  TP-06h: mlabvposition() is honoured
+*!          (WP-30 P1.24): not named, written to the spec.
 *!   TP-07  what twoway itself refuses stays UNKNOWN and is named as typed:
 *!          xreverse yreverse xalternate yalternate xcommon ycommon
 *!          lockaspect zoom() altaxis ddensity addplot() margin() region()
@@ -136,6 +137,15 @@
 *!          plot groups, by(), the plurals) dash accepts.
 *!   AX-07  the stored spec keeps each axis's copy through the repeat merge.
 *!   AX-08  10,000 copies end r(1003) quickly and leave nothing behind.
+*!   MV-01  mlabvposition() (WP-30 P1.24) is refused r(103) in twoway's
+*!          words on the 21 types that count their variables; MV-02 with
+*!          abbreviated variables and mlabel(); MV-03 a string variable;
+*!   MV-04  a missing variable r(111); MV-05 a second copy r(198); MV-06
+*!          two names r(103); MV-07 an expression r(198); MV-08 the empty
+*!          option and the abbreviations taken, s() kept; MV-09 not read on
+*!          histogram, function, scatteri, pci, pcarrowi; MV-10 taken in
+*!          silence on line, spike, area, pcspike, tsline; MV-11 (and 11b)
+*!          twoway's count quirks.
 *!   BG-07  barwidth() on rcap and rcapsym is refused r(198) in twoway's words,
 *!          in comma mode, in a plot group and after || (WP-30 P1.17a).
 *!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
@@ -543,10 +553,8 @@ local ++n6
 local c6_`n6' `"dash scatter mpg weight, sort(mpg) name(zqtp)"'
 local t6_`n6' `"twoway scatter mpg weight, sort(mpg) nodraw"'
 local w6_`n6' "sort()"
-local ++n6
-local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
-local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw"'
-local w6_`n6' "mlabvposition()"
+// Flipped (WP-30 P1.24): mlabv(pos) named in the note was wrong, because
+// dash draws mlabvposition() per row as twoway does; it is TP-06h's row.
 local ++n6
 local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabt(heading) name(zqtp)"'
 local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw"'
@@ -583,6 +591,31 @@ forvalues i = 1/`n6' {
         local faillist "`faillist' TP-06(`i')"
     }
     else display as text `"TP-06 PASS: `w6_`i'' named in the note"'
+}
+// TP-06h -- declared and honoured (WP-30 P1.24): rc as twoway's, not
+// named in the note, and the full name with its value in the spec.
+// id | dash command | twoway command | option | value
+local n6h = 0
+local ++n6h
+local c6h_`n6h' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
+local t6h_`n6h' `"twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw"'
+local o6h_`n6h' "mlabvposition"
+local v6h_`n6h' "pos"
+cert_truth_ctx "TP-06h"
+forvalues i = 1/`n6h' {
+    capture cert_tw `t6h_`i''
+    local tw_rc = _rc
+    _ztp_run `"`c6h_`i''"' "`logfile'"
+    local drc = r(rc)
+    _ztp_logged "`logfile'" "`o6h_`i''()"
+    local named = r(found)
+    mata: st_local("_zv", strofreal(_ztp_hasval("zqtp", st_local("o6h_`i'"), st_local("v6h_`i'"))))
+    if `tw_rc' != `drc' | `named' != 0 | `_zv' != 1 {
+        display as error `"TP-06h FAIL: `c6h_`i'' -- twoway r(`tw_rc'), dash rc `drc', named `named', `o6h_`i'' `v6h_`i'' in the spec `_zv'"'
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06h(`i')"
+    }
+    else display as text `"TP-06h PASS: `o6h_`i''() honoured, not named"'
 }
 // Flipped (WP-29 P0.1): sort sort(mpg) on line was named sort() once
 // and carried nowhere, which was wrong: twoway joins the line in mpg's
@@ -1414,8 +1447,10 @@ assert `n13' == 4
 // mlab(heading) is r(111), no variable heading (measured 24sep2026).  So
 // dash must read it as mlabel() and never as mlabformat(),
 // mlabtextstyle() or mlabvposition().  The controls: mlabf(%9.2f)
-// records mlabformat, and mlabt(heading) and mlabv(pos) are named in the
-// note by their full names.
+// records mlabformat, mlabt(heading) is named in the note by its full
+// name, and mlabv(pos) is recorded as mlabvposition and not named.
+// Flipped (WP-30 P1.24): c2v expected 1 (named), which was wrong because
+// dash draws mlabvposition() per row as twoway does.
 _ztp_run `"dash scatter mpg weight, mlabf(%9.2f) name(zqtp)"' "`logfile'"
 local c1 = r(rc)
 _ztp_has zqtp mlabformat
@@ -1426,8 +1461,9 @@ _ztp_logged "`logfile'" "mlabtextstyle()"
 local c2t = r(found)
 _ztp_logged "`logfile'" "mlabvposition()"
 local c2v = r(found)
-if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 1 | `c2v' != 1 {
-    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v'"
+mata: st_local("c2vk", strofreal(_ztp_hasval("zqtp", "mlabvposition", "pos")))
+if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 1 | `c2v' != 0 | `c2vk' != 1 {
+    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v', mlabvposition pos `c2vk'"
     local bad = 1
 }
 capture cert_tw twoway scatter mpg weight, mlab(pos) nodraw
@@ -3352,6 +3388,181 @@ if r(rc) != 0 | r(note) {
 }
 else display as text "NP-25 PASS: scatter, astyle(p3) is silent, rc 0"
 capture dash clear
+
+// ----------------------------------------------------------------
+// MV: mlabvposition(), read as twoway reads it (WP-30 P1.24)
+// ----------------------------------------------------------------
+// twoway appends the variable to the layer's varlist, so the types that
+// count their variables refuse it, in its words; a second copy, two names,
+// an expression and a missing variable are refused as twoway refuses
+// them.  Each case: twoway's rc and first error line, dash's rc, and
+// twoway's line in dash's log.
+local mv_ls = c(linesize)
+set linesize 255
+capture drop p9
+capture drop q9
+capture drop sp9
+generate double p9 = 9
+generate double q9 = 9
+generate str4 sp9 = "9"
+quietly tsset t
+local mvlog "`c(tmpdir)'dash_mv_twoway.log"
+capture program drop _zmv_pair
+program define _zmv_pair, rclass
+    args c twlog logfile
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    // twoway's {p 0 8} message leaves its paragraph open; closed here, so
+    // dash's log is not run into it.
+    display as text "{p_end}"
+    _ztp_run `"dash `c' name(zmv)"' "`logfile'"
+    local rc = r(rc)
+    local note = r(note)
+    display as text "{p_end}"
+    // twoway's fit types print their line through {p}: the tags are not
+    // words.  lowess, lpoly, lpolyci and kdensity print theirs where the
+    // quiet log does not keep it; their words (measured, E9) stand in.
+    mata: st_local("err", strtrim(ustrregexra(st_local("err"), "[{][^}]*[}]", "")))
+    if `tw' == 103 & `"`macval(err)'"' == "" local err "too many variables specified"
+    local hit 1
+    if `tw' {
+        local hit 0
+        if `"`macval(err)'"' != "" {
+            cert_log_has "`logfile'", needle(`"`macval(err)'"')
+            local hit = r(found)
+        }
+    }
+    return scalar tw = `tw'
+    return scalar rc = `rc'
+    return scalar hit = `hit'
+    return scalar note = `note'
+    return local err `"`macval(err)'"'
+end
+// Each case group: the commands, the rc twoway and dash must both give.
+cert_truth_ctx "MV-01"
+local mv_cases ""
+foreach tt in rarea rbar rcap rcapsym rconnected rline rscatter rspike {
+    local mv_cases `"`mv_cases' `"`tt' lo hi weight, mlabvposition(p9)"'"'
+}
+local mv_cases `"`mv_cases' `"tsrline lo hi, mlabvposition(p9)"'"'
+foreach tt in lfit qfit fpfit lfitci qfitci fpfitci mspline mband lowess lpoly lpolyci {
+    local mv_cases `"`mv_cases' `"`tt' mpg weight, mlabvposition(p9)"'"'
+}
+local mv_cases `"`mv_cases' `"kdensity mpg, mlabvposition(p9)"'"'
+local mv_want_01 103
+local mv_02 `"`"rscatter mp tu wei, mlabel(ma) mlabvposition(q)"' `"lfit mp wei, mlabel(ma) mlabvposition(q)"' `"mspline mp wei, mlabel(ma) mlabvposition(q)"' `"lowess mp wei, mlabel(ma) mlabvposition(q)"'"'
+local mv_03 `"`"rscatter lo hi weight, mlabvposition(sp9)"' `"lfit mpg weight, mlabvposition(sp9)"'"'
+local mv_04 `"`"rscatter lo hi weight, mlabvposition(nosuch)"' `"lfit mpg weight, mlabvposition(nosuch)"' `"line mpg weight, mlabvposition(nosuch)"'"'
+local mv_05 `"`"scatter mpg weight, mlabel(make) mlabvposition(p9) mlabvposition(pos)"' `"scatter mpg weight, mlabel(make) mlabv(p9) mlabvposition(pos)"'"'
+local mv_06 `"`"scatter mpg weight, mlabel(make) mlabvposition(p9 pos)"'"'
+local mv_07 `"`"scatter mpg weight, mlabel(make) mlabvposition(p9*1)"'"'
+local mv_11b `"`"rscatter lo hi weight, mlabel(. make) mlabvposition(p9)"'"'
+foreach id in 01 02 03 04 05 06 07 11b {
+    local want 103
+    if "`id'" == "04" local want 111
+    if inlist("`id'", "05", "07") local want 198
+    local list : copy local mv_`id'
+    if "`id'" == "01" local list : copy local mv_cases
+    if "`id'" != "01" cert_truth_ctx "MV-`id'"
+    local bad 0
+    foreach c of local list {
+        _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+        if r(tw) != `want' | r(rc) != `want' | r(hit) != 1 {
+            display as error `"MV-`id' FAIL `c': twoway r(`r(tw)') dash r(`r(rc)'), twoway's line in dash's log `r(hit)': `r(err)'"'
+            local bad 1
+        }
+    }
+    if `bad' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' MV-`id'"
+    }
+    else if "`id'" == "01" display as text "MV-01 PASS: refused r(103) on the 21 counting types, in twoway's words"
+    else if "`id'" == "02" display as text "MV-02 PASS: abbreviated variables and mlabel() named in full, as twoway names them"
+    else if "`id'" == "03" display as text "MV-03 PASS: a string variable counts as a variable, r(103)"
+    else if "`id'" == "04" display as text "MV-04 PASS: a variable that does not exist is r(111)"
+    else if "`id'" == "05" display as text "MV-05 PASS: a second copy is r(198), option mlabvposition() not allowed"
+    else if "`id'" == "06" display as text "MV-06 PASS: two names are r(103), too many names specified"
+    else if "`id'" == "07" display as text "MV-07 PASS: an expression is r(198), invalid name"
+    else if "`id'" == "11b" display as text "MV-11b PASS: mlabel(. make) counts make, r(103) as twoway"
+}
+// MV-08: the empty option and the abbreviations are taken, the variable
+// unabbreviated, and the layer's other options kept (s() survives).
+cert_truth_ctx "MV-08"
+local bad 0
+foreach c in `"scatter mpg weight, mlabel(make) mlabvposition() mcolor(red)"' `"scatter mpg weight, mlabel(make) mlabv(po) mcolor(red)"' `"scatter mpg weight, mlabel(make) mlabvp(pos) mcolor(red)"' `"scatter mpg weight, mlabel(make) mlabvposi(pos) mcolor(red)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    local note = r(note)
+    mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabvposition", "pos")))
+    mata: st_local("m", strofreal(_ztp_hasval("zmv", "mlabel", "make") & _ztp_hasval("zmv", "mcolor", "red")))
+    if strpos(`"`c'"', "mlabvposition()") local v = !`v'
+    if `tw' | `rc' | `note' | !`v' | !`m' {
+        display as error `"MV-08 FAIL `c': twoway r(`tw') dash r(`rc'), note `note', mlabvposition pos `v', mlabel and mcolor kept `m'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-08"
+}
+else display as text "MV-08 PASS: mlabvposition() and its abbreviations taken, the name unabbreviated, the other options kept"
+// MV-09: never read on histogram, function, scatteri, pci, pcarrowi.
+cert_truth_ctx "MV-09"
+local bad 0
+foreach c in `"histogram mpg, mlabvposition(nosuch)"' `"function y = x, mlabvposition(nosuch)"' `"scatteri 1 1 2 2, mlabvposition(nosuch)"' `"pci 1 1 2 2, mlabvposition(nosuch)"' `"pcarrowi 1 1 2 2, mlabvposition(nosuch)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    _ztp_has zmv mlabvposition
+    if `tw' | `rc' | r(found) {
+        display as error `"MV-09 FAIL `c': twoway r(`tw') dash r(`rc'), the key in the spec `r(found)'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-09"
+}
+else display as text "MV-09 PASS: not read where twoway never reads it"
+// MV-10: checked, taken and silent where twoway draws no label.
+cert_truth_ctx "MV-10"
+local bad 0
+foreach c in `"line mpg weight, mlabvposition(p9)"' `"spike mpg weight, mlabvposition(p9)"' `"area mpg weight, mlabvposition(p9)"' `"pcspike mpg weight turn length, mlabvposition(p9)"' `"tsline mpg, mlabvposition(p9)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    local note = r(note)
+    mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabvposition", "p9")))
+    if `tw' | `rc' | `note' | !`v' {
+        display as error `"MV-10 FAIL `c': twoway r(`tw') dash r(`rc'), note `note', key `v'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-10"
+}
+else display as text "MV-10 PASS: taken in silence where twoway draws no label"
+// MV-11: twoway's count quirks -- a name already in the list adds nothing.
+cert_truth_ctx "MV-11"
+local bad 0
+foreach c in `"rscatter lo hi weight, mlabvposition(lo)"' `"lfit mpg weight, mlabvposition(weight)"' `"rscatter lo hi weight, mlabel(lo) mlabvposition(p9)"' `"rscatter lo hi weight, mlabel(make) mlabvposition(make)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    if r(tw) | r(rc) {
+        display as error `"MV-11 FAIL `c': twoway r(`r(tw)') dash r(`r(rc)')"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-11"
+}
+else display as text "MV-11 PASS: twoway's count quirks are accepted as twoway accepts them"
+capture dash clear
+capture erase "`mvlog'"
+set linesize `mv_ls'
 
 // ----------------------------------------------------------------
 // Summary
