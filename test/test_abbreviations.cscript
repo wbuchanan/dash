@@ -382,6 +382,10 @@ def opt_cmd(abb, name):
     # scatter it rewrites the type (WP-30 P1.8b).
     if name == "recast":
         return "lfit mpg weight, " + tok + " name(zqab)"
+    # horizontal and vertical are refused on scatter, as twoway refuses
+    # them there (WP-30 P1.9a); bar takes both.
+    if name in ("horizontal", "vertical"):
+        return "bar mpg weight, " + tok + " name(zqab)"
     return "scatter mpg weight, " + tok + " name(zqab)"
 
 CASES = []

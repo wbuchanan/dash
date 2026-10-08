@@ -296,7 +296,9 @@ class TestSubOptionsKeepTheDefault:
         assert ys
         for a in ys:
             assert a.axis_label == "y1"
-            assert a.axis_label_text_font_size == LARGE
+            # WP-30 P1.15b: panel text takes twoway's by() multiplier, 0.85
+            # for two panels (14pt large is 11.9pt).
+            assert a.axis_label_text_font_size == "11.9pt"
 
     @pytest.mark.parametrize("mode", MODES)
     def test_merged_values(self, mode, tmp_path):

@@ -391,7 +391,9 @@ class TestUnderBy:
             assert _side(f, ax) == "right"
             assert ax.axis_line_color == "#ff0000"
             assert ax.major_label_text_color == "#ff0000"
-            assert ax.major_tick_out == 19
+            # WP-30 P1.15b: under by() twoway scales panel ticks by its
+            # by() multiplier, 0.85 for two panels: tlength(5)'s 19 px is 16.
+            assert ax.major_tick_out == 16
             assert math.isclose(ax.major_label_orientation, math.pi / 2)
         b2, _c = _figs(mode, {"by": "foreign"}, _y2_plots())
         f2, caught = _figs(mode, {"by": "foreign", "ylabel2": ", nolabels",
