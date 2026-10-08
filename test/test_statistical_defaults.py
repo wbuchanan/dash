@@ -870,7 +870,8 @@ class TestKdensityRange:
         # 47 -> 45: P1.24 reads mlabvposition() and mlabtextstyle().
         # 45 -> 44: P1.8b reads recast() (_dash_recast_opt).
         # 44 -> 42: P1.9a draws horizontal and refuses vertical as twoway does.
-        assert len(pending) == 42, (len(pending), pending)
+        # 42 -> 44: P1.6 stores and names tmlabel() and tmtick().
+        assert len(pending) == 44, (len(pending), pending)
         for really_pending in ("sort", "text", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

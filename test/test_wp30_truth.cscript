@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5
+    S48 11 S49 4 S50 5 S51 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11179,10 +11179,118 @@ if inlist("`only'", "", "S50") & `: list posof "S50" in w30_run' {
 }
 * ==== end S50 ====
 
+// S51 (P1.6): the saved page's x axis -- its major ticks, extra ticks,
+// vertical Spans and title, in Stata months, and its range -- written to
+// globals S51_TICKS, S51_SPANS, S51_TITLE and S51_RANGE.
+capture program drop _s51_read
+program define _s51_read
+    version 19
+    args html
+    global S51_HTML `"`html'"'
+    python: __import__("sys").modules["_dash_s51"].read()
+end
+python:
+def _s51_read():
+    import json, os, re, sys
+    from sfi import Macro
+    sys.path.insert(0, Macro.getGlobal("S51_REPO"))
+    import dash_render as dr
+    with open(Macro.getGlobal("S51_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, figs = {}, []
+    def walk(o):
+        if isinstance(o, dict):
+            if "id" in o and "attributes" in o:
+                objs[o["id"]] = o
+                if o.get("name") == "Figure":
+                    figs.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        walk(json.loads(m.group(1)))
+    def ref(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    def mon(v):
+        if isinstance(v, dict):
+            v = v.get("value")
+        return "%g" % round(dr._dash_unix_ms_to_unit(float(v), "m"), 3)
+    figs = [f for f in figs if f["attributes"].get("name") not in ("dash_by_head", "dash_by_foot")]
+    at = figs[0]["attributes"]
+    ax = [ref(a) for a in at.get("below") or []]
+    ax = [a for a in ax if "ticker" in a.get("attributes", {})][0]["attributes"]
+    tk = ref(ax["ticker"])["attributes"]
+    args = tk.get("args", {})
+    if isinstance(args, dict) and args.get("type") == "map":
+        args = dict(args.get("entries", []))
+    base = ref(args.get("base", {})).get("attributes", {}).get("ticks", tk.get("ticks", []))
+    spans = sorted(float(mon(ref(c)["attributes"]["location"])) for c in at.get("center") or []
+                   if ref(c).get("name") == "Span" and ref(c)["attributes"].get("dimension") == "height")
+    rng = ref(at["x_range"])["attributes"]
+    Macro.setGlobal("S51_TICKS", " ".join(mon(v) for v in base))
+    Macro.setGlobal("S51_SPANS", " ".join("%g" % v for v in spans))
+    Macro.setGlobal("S51_TITLE", str(ax.get("axis_label", "")))
+    Macro.setGlobal("S51_RANGE", mon(rng["start"]) + " " + mon(rng["end"]))
+import sys as _s51_sys
+_s51_sys.modules["_dash_s51"] = type(_s51_sys)("_dash_s51")
+_s51_sys.modules["_dash_s51"].read = _s51_read
+end
+
 * ==== S51 P1.6: tsline time-axis options ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S51") & `: list posof "S51" in w30_run' {
     display as text "S51 start " c(current_date) " " c(current_time)
+    global S51_REPO "`c(pwd)'/.."
+    local s51log "`w30_work'/s51.log"
+    local s51pg "`w30_work'/zta.html"
+    clear
+    quietly set obs 60
+    quietly generate t = tm(2000m1) + _n - 1
+    format t %tm
+    quietly tsset t
+    quietly generate y = 100 + _n
+    // TA-20: c01 + c05 + c07, drawn by twoway (its recorder) and by the
+    // saved page: the same label positions, the line at 2002m1 and the
+    // title.
+    local o `"tlabel(2000m1(12)2004m1) ttitle("Month") tline(2002m1)"'
+    quietly graph drop _all
+    twoway tsline y, `o' name(ta20, replace)
+    local tw ""
+    forvalues i = 1/`.ta20.xaxis1.major.dlg_tickpos.arrnels' {
+        local tw "`tw' `.ta20.xaxis1.major.dlg_tickpos[`i']'"
+    }
+    local tw = strtrim("`tw'")
+    local tt `"`.ta20.xaxis1.title.text[1]'"'
+    quietly graph drop _all
+    _s36_run `"dash tsline y, `o' saving("`s51pg'", replace)"' "`s51log'"
+    local drc = r(rc)
+    capture _s51_read "`s51pg'"
+    local prc = _rc
+    local ok = (`drc' == 0 & `prc' == 0)
+    if `ok' local ok = ("${S51_TICKS}" == "`tw'" & "${S51_SPANS}" == "504")
+    if `ok' mata: st_local("ok", strofreal(st_global("S51_TITLE") == st_local("tt")))
+    _w30_expect TA-20 "`ok'" "rc `drc'/`prc', ticks ${S51_TICKS} (twoway `tw'), spans ${S51_SPANS}, title ${S51_TITLE}"
+    _w30_done TA-20 "the folded labels, line and title drawn where twoway draws them"
+    // TA-21: c06's tscale(range()) widens the axis to hold twoway's scale.
+    quietly graph drop _all
+    twoway tsline y, tscale(range(1999m1 2006m1)) name(ta21, replace)
+    local lo `.ta21.plotregion1.xscale.curmin'
+    local hi `.ta21.plotregion1.xscale.curmax'
+    quietly graph drop _all
+    _s36_run `"dash tsline y, tscale(range(1999m1 2006m1)) saving("`s51pg'", replace)"' "`s51log'"
+    local drc = r(rc)
+    capture _s51_read "`s51pg'"
+    local prc = _rc
+    local dlo = real(word("${S51_RANGE}", 1))
+    local dhi = real(word("${S51_RANGE}", 2))
+    _w30_expect TA-21 "(`drc' == 0 & `prc' == 0 & `dlo' <= `lo' + 1e-6 & `dhi' >= `hi' - 1e-6)" "rc `drc'/`prc', range ${S51_RANGE} against twoway `lo' `hi'"
+    _w30_done TA-21 "tscale(range()) holds twoway's scale"
+    capture dash clear
+    capture erase "`s51log'"
+    capture erase "`s51pg'"
+    macro drop S51_*
     display as text "S51 end " c(current_date) " " c(current_time)
 }
 * ==== end S51 ====

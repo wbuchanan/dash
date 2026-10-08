@@ -18,7 +18,7 @@
   "summary": {
     "commands_probed": 299,
     "bad_probes_twoway_rejected": 0,
-    "dash_failures": 143,
+    "dash_failures": 136,
     "distinct_rejected_option_keys": 115,
     "rejected_syntax_constructs": 3,
     "accepted_but_discarded": 9,
@@ -27,9 +27,11 @@
       "honoured-nobrowser": 1,
       "implement-S06": 3,
       "implement-S07": 25,
-      "implement-S09-axes-text": 28,
+      "implement-S09-axes-text": 21,
       "implement-S09-style": 50,
-      "implement-S10": 5
+      "implement-S10": 5,
+      "implemented-WP-30-P1.6": 5,
+      "stored-and-named-WP-30-P1.6": 2
     }
   },
   "blocking_defects": [
@@ -2002,17 +2004,17 @@
       "option": "tlabel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option tlabel() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "implemented-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto its x twin at registration, date literals read in the axis's unit (WP-30 P1.6).",
       "probes": [
         {
           "id": "tlabel",
           "command": "twoway tsline y, tlabel(2000m1(12)2004m1) nodraw",
           "dash_command": "dash tsline y, tlabel(2000m1(12)2004m1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2020,17 +2022,17 @@
       "option": "tline",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option tline() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "implemented-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto its x twin at registration, date literals read in the axis's unit (WP-30 P1.6).",
       "probes": [
         {
           "id": "tline",
           "command": "twoway tsline y, tline(2002m1) nodraw",
           "dash_command": "dash tsline y, tline(2002m1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2038,17 +2040,17 @@
       "option": "tmlabel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option tmlabel() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "stored-and-named-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto the x minor key at registration (WP-30 P1.6); named in the note until minor ticks are drawn.",
       "probes": [
         {
           "id": "tmlabel",
           "command": "twoway tsline y, tmlabel(2000m1(6)2004m1) nodraw",
           "dash_command": "dash tsline y, tmlabel(2000m1(6)2004m1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2056,17 +2058,17 @@
       "option": "tmtick",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option tmtick() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "stored-and-named-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto the x minor key at registration (WP-30 P1.6); named in the note until minor ticks are drawn.",
       "probes": [
         {
           "id": "tmtick",
           "command": "twoway tsline y, tmtick(2000m1(6)2004m1) nodraw",
           "dash_command": "dash tsline y, tmtick(2000m1(6)2004m1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2074,17 +2076,17 @@
       "option": "tscale",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option tscale() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "implemented-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto its x twin at registration, date literals read in the axis's unit (WP-30 P1.6).",
       "probes": [
         {
           "id": "tscale",
           "command": "twoway tsline y, tscale(range(2000m1 2005m1)) nodraw",
           "dash_command": "dash tsline y, tscale(range(2000m1 2005m1)) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2110,17 +2112,17 @@
       "option": "ttick",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option ttick() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "implemented-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto its x twin at registration, date literals read in the axis's unit (WP-30 P1.6).",
       "probes": [
         {
           "id": "ttick",
           "command": "twoway tsline y, ttick(2000m1(12)2004m1) nodraw",
           "dash_command": "dash tsline y, ttick(2000m1(12)2004m1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2128,17 +2130,17 @@
       "option": "ttitle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
-      "dash_message": "option ttitle() not allowed",
-      "disposition": "implement-S09-axes-text",
-      "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
+      "dash_rc": 0,
+      "dash_message": "",
+      "disposition": "implemented-WP-30-P1.6",
+      "reason": "Declared with twoway's abbreviations and folded onto its x twin at registration, date literals read in the axis's unit (WP-30 P1.6).",
       "probes": [
         {
           "id": "ttitle",
           "command": "twoway tsline y, ttitle(\"Month\") nodraw",
           "dash_command": "dash tsline y, ttitle(\"Month\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -5417,12 +5419,12 @@
     {
       "id": "tline",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "tline(2002m1)",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option tline() not allowed"
+      "dash_message": ""
     },
     {
       "id": "ttext",
@@ -5437,62 +5439,62 @@
     {
       "id": "tlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "tlabel(2000m1(12)2004m1)",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option tlabel() not allowed"
+      "dash_message": ""
     },
     {
       "id": "ttick",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "ttick(2000m1(12)2004m1)",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option ttick() not allowed"
+      "dash_message": ""
     },
     {
       "id": "tmlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "tmlabel(2000m1(6)2004m1)",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option tmlabel() not allowed"
+      "dash_message": ""
     },
     {
       "id": "tmtick",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "tmtick(2000m1(6)2004m1)",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option tmtick() not allowed"
+      "dash_message": ""
     },
     {
       "id": "ttitle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "ttitle(\"Month\")",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option ttitle() not allowed"
+      "dash_message": ""
     },
     {
       "id": "tscale",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "tscale(range(2000m1 2005m1))",
       "twoway_only_extra": "",
       "spec_json": "",
-      "dash_message": "option tscale() not allowed"
+      "dash_message": ""
     },
     {
       "id": "abd_title_size",

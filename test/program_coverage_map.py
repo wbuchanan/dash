@@ -384,6 +384,7 @@ COVERAGE = {
         "_dash_hz_check": ("test_option_validation.cscript:HZ-03",),
         # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
+        "_dash_taxis_fold": ("test_twoway_option_parity.cscript:TA-01", "test_twoway_option_parity.cscript:TA-05"),
         # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
         # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
         # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
@@ -815,6 +816,13 @@ COVERAGE = {
         "_dash_hz_order": ("test_option_validation.cscript:HZ-03",),
         # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
+        "_dash_taxis_unit": ("test_twoway_option_parity.cscript:TA-04",),
+        "_dash_tdate_value": ("test_twoway_option_parity.cscript:TA-08", "test_twoway_option_parity.cscript:TA-09"),
+        "_dash_tdate_ticks": ("test_twoway_option_parity.cscript:TA-01",),
+        "_dash_tdate_lines": ("test_twoway_option_parity.cscript:TA-05",),
+        "_dash_tdate_tok": ("test_twoway_option_parity.cscript:TA-02", "test_twoway_option_parity.cscript:TA-05"),
+        "_dash_tdate_range": ("test_twoway_option_parity.cscript:TA-02",),
+        "_dash_xdate_find": ("test_twoway_option_parity.cscript:TA-15",),
         # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
         # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
         # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)

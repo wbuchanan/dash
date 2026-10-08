@@ -534,8 +534,10 @@ class TestTheParsersFoundSomething:
         # dash serve maxsessions() and idletimeout().
         # 165 -> 166: P1.9a's Orientation entry names xaxis(2) beside
         # yaxis(2) (horizontal and vertical move there from Unsupported).
-        assert len(found) == 166, (
-            f"{len(found)} options parsed out of dash.sthlp, 166 measured "
+        # 166 -> 173: P1.6's time-axis rows name the seven t-options
+        # (tmlabel() and tmtick() in the Unsupported entry too).
+        assert len(found) == 173, (
+            f"{len(found)} options parsed out of dash.sthlp, 173 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -605,7 +607,8 @@ class TestTheParsersFoundSomething:
         # 191 -> 192: P1.8a declared cmissings(), twoway's spelling.
         # 192 -> 194: P1.8b declared recastas() and type(); 194 -> 196:
         # P1.31a declared maxsessions() and idletimeout().
-        assert len(_ado_declarations()) == 196
+        # 196 -> 203: P1.6 declared the seven time-axis options.
+        assert len(_ado_declarations()) == 203
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -621,7 +624,8 @@ class TestTheParsersFoundSomething:
         # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
         # 45 -> 44: P1.8b recast() honoured
         # 44 -> 42: P1.9a horizontal drawn, vertical silent
-        assert len(_ignored_options()) == 42
+        # 42 -> 44: P1.6 tmlabel() and tmtick() stored and named
+        assert len(_ignored_options()) == 44
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -636,7 +640,9 @@ class TestTheParsersFoundSomething:
         # 45 -> 44: P1.8b recast() honoured; its residual is cross-referenced
         # 44 -> 42: P1.9a horizontal drawn, vertical silent; the entry is
         # "Bar labels and positions"
-        assert len(_unsupported_section()) == 42
+        # 42 -> 44: P1.6 names tmlabel() and tmtick() in "Minor ticks and
+        # minor labels"
+        assert len(_unsupported_section()) == 44
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -686,8 +692,9 @@ class TestTheParsersFoundSomething:
         # six by() rows (rows(), holes(), colfirst, compact, iscale(),
         # imargin()); 383 -> 384: P1.9a's {ul:Orientation.} entry (the
         # Unsupported entry it replaces stays, as "Bar labels and positions").
-        assert len(defs) == 384, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 384 "
+        # 384 -> 391: P1.6's seven time-axis option rows.
+        assert len(defs) == 391, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 391 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

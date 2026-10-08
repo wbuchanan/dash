@@ -172,6 +172,11 @@
 *!   NP-23  pcarrow: mstyle() and mlstyle() named.
 *!   NP-24  spike, clstyle(p3) writes no clstyle.
 *!   NP-25  scatter, astyle(p3) is silent, rc 0 (WP-30 P1.14a, NP-20..25).
+*!   TA-01..TA-10, TA-15, TA-16  the t-options (tlabel() .. tline())
+*!          folded onto the x axis as twoway reads them: values, order,
+*!          abbreviations, units, refusals, the first-plot rule, any graph,
+*!          lenient literals, hostile tokens, minor ticks, x-option literals
+*!          and the unit noted at build (WP-30 P1.6).
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -4313,6 +4318,462 @@ else display as text "RM-05 PASS: plotregion(ifcolor() ilalign()) is rc 0 and na
 capture dash clear
 capture erase "`rmpg'"
 set linesize `rm_ls'
+
+// ----------------------------------------------------------------
+// TA: the t-options, read as twoway reads them (WP-30 P1.6)
+// ----------------------------------------------------------------
+// tlabel() ttick() tmlabel() tmtick() ttitle() tscale() tline() fold onto
+// x axis 1 after the x options, each date literal in the unit of the
+// axis's label format (test/fixtures/taxis_truth.json holds the same
+// probes; scripts/extract_taxis_truth.do).  Each case asks twoway (rc and
+// the first line of its log) and dash (rc, first line, the registered
+// spec of graph zta).  The data are the extractor's 60 months, put in
+// memory here and the script's own restored after the block.
+cert_truth_ctx "TA"
+local ta_ls = c(linesize)
+set linesize 255
+global zta_log "`c(tmpdir)'dash_zta.log"
+capture mata: mata drop _zta_line()
+capture mata: mata drop _zta_same()
+mata:
+// The first line of a probe's log that is no header, rule, note or
+// registration message: the error twoway or dash printed, or "".
+string scalar _zta_line(string scalar path)
+{
+    string colvector L
+    string scalar    s
+    real scalar      i
+
+    L = cat(path)
+    for (i = 1; i <= rows(L); i++) {
+        s = strtrim(subinstr(L[i], char(160), " "))
+        if (s == "" | substr(s, 1, 1) == "-" | substr(s, 1, 1) == "(") continue
+        if (substr(s, 1, 5) == "name:" | substr(s, 1, 4) == "log:" |
+            substr(s, 1, 9) == "log type:" | substr(s, 1, 10) == "opened on:" |
+            substr(s, 1, 10) == "closed on:" | substr(s, 1, 6) == "dash: ") continue
+        return(s)
+    }
+    return("")
+}
+real scalar _zta_same(string scalar a, string scalar b)
+{
+    return(st_local(a) == st_local(b))
+}
+end
+capture program drop _zta_data
+program define _zta_data
+    clear
+    quietly set obs 60
+    quietly generate t = tm(2000m1) + _n - 1
+    format t %tm
+    quietly tsset t
+    quietly generate y = 100 + _n
+    quietly generate y2 = y + 5
+    quietly generate n = _n
+    quietly generate d = dofm(t)
+    format d %td
+    quietly generate w = wofd(d)
+    format w %tw
+    quietly generate q = qofd(d)
+    format q %tq
+    quietly generate h = hofd(d)
+    format h %th
+    quietly generate yr = yofd(d) + _n
+    format yr %ty
+    quietly generate double tc = cofd(d)
+    format tc %tc
+    quietly generate tmon = t
+    format tmon %tmMon_CCYY
+    quietly generate t2 = t
+    format t2 %-tm
+end
+// _zta_cmp `"<twoway arguments, ending in options>"': twoway (with nodraw)
+// and dash (with name(zta)) on it.  Sets the caller's _zta_trc/_zta_drc
+// (rcs), _zta_tl/_zta_dl (first lines) and _zta_note (dash's ignoring
+// note present); the dash spec is $dash_json_zta.
+capture program drop _zta_cmp
+program define _zta_cmp
+    args a
+    _ztp_run `"twoway `a' nodraw"' "$zta_log"
+    local trc = r(rc)
+    mata: st_local("tl", _zta_line(st_global("zta_log")))
+    _ztp_run `"dash `a' name(zta)"' "$zta_log"
+    local drc = r(rc)
+    local note = r(note)
+    mata: st_local("dl", _zta_line(st_global("zta_log")))
+    c_local _zta_trc `trc'
+    c_local _zta_drc `drc'
+    c_local _zta_note `note'
+    c_local _zta_tl : copy local tl
+    c_local _zta_dl : copy local dl
+end
+// _zta_val `"<arguments>"' key `"<value>"': twoway and dash rc 0, and the
+// spec's key holds value (JSON-escaped); _zta_bad says what differed.
+capture program drop _zta_val
+program define _zta_val
+    args a key val
+    _zta_cmp `"`a'"'
+    local bad ""
+    if `_zta_trc' | `_zta_drc' local bad " [`a': rc `_zta_trc'/`_zta_drc' `_zta_dl']"
+    else {
+        mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("key"), st_local("val"))))
+        if !`ok' {
+            mata: st_local("js", st_global("dash_json_zta"))
+            local bad " [`a': `key' not `val' in `js']"
+        }
+    }
+    c_local _zta_bad : copy local bad
+    c_local _zta_trc `_zta_trc'
+    c_local _zta_drc `_zta_drc'
+end
+// _zta_err `"<arguments>"': dash's rc and first line are twoway's.
+capture program drop _zta_err
+program define _zta_err
+    args a
+    _zta_cmp `"`a'"'
+    local bad ""
+    mata: st_local("same", strofreal(_zta_same("_zta_tl", "_zta_dl")))
+    if `_zta_trc' != `_zta_drc' | !`same' {
+        local bad " [`a': twoway `_zta_trc' `_zta_tl' | dash `_zta_drc' `_zta_dl']"
+    }
+    c_local _zta_bad : copy local bad
+    c_local _zta_trc `_zta_trc'
+    c_local _zta_drc `_zta_drc'
+end
+preserve
+_zta_data
+
+// TA-01: the Overview's command folds every option onto its x key, with
+// the date literals as twoway reads them on a %tm axis, and no note
+// names them.
+local bad ""
+_zta_cmp `"tsline y, tlabel(2000m1(12)2004m1) ttitle("Month") tline(2002m1) tscale(range(1999m1 2006m1)) ttick(2000m7(12)2004m7)"'
+if `_zta_trc' | `_zta_drc' | `_zta_note' local bad " rc `_zta_trc'/`_zta_drc' note `_zta_note'"
+foreach kv in "xlabel|480 492 504 516 528" "xtick|486 498 510 522 534" "xline|504" "xscale|range(468 552)" {
+    gettoken k v : kv, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("k"), st_local("v"))))
+    if !`ok' local bad "`bad' `k'"
+}
+mata: st_local("ok", strofreal(_ztp_hasval("zta", "xtitle", char(92) + char(34) + "Month" + char(92) + char(34))))
+if !`ok' local bad "`bad' xtitle"
+mata: st_local("ok", strofreal(strpos(st_global("dash_json_zta"), char(34) + "t") > 0 & (strpos(st_global("dash_json_zta"), char(34) + "tlabel") | strpos(st_global("dash_json_zta"), char(34) + "tline")) > 0))
+if `ok' local bad "`bad' t-key"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-01"
+    mata: st_local("js", st_global("dash_json_zta"))
+    display as error `"TA-01 FAIL:`bad' (`js')"'
+}
+else display as text "TA-01 PASS: the five options fold onto xlabel xtick xtitle xline xscale in twoway's numbers"
+
+// TA-02: the T copy after every X copy, a later copy replacing or merging
+// as twoway's does, lines accumulating, in a plot group and after ||,
+// and tlabel(2001m1, add) stored as xlabel "492, add" (S52 draws it).
+local bad ""
+foreach c in ///
+    `"tsline y, xlabel(480(12)528) tlabel(2001m1 2003m1)!xlabel!492 516"' ///
+    `"tsline y, tlabel(2001m1 2003m1) xlabel(480(12)528)!xlabel!492 516"' ///
+    `"tsline y, tlabel(2001m1) tlabel(2003m1)!xlabel!516"' ///
+    `"tsline y, xtitle("X") ttitle("T")!xtitle!\"T\""' ///
+    `"tsline y, ttitle("T") xtitle("X")!xtitle!\"T\""' ///
+    `"tsline y, tline(2002m1) xline(490)!xline!490, 504"' ///
+    `"tsline y, tline(2002m1) tline(2003m1)!xline!504, 516"' ///
+    `"tsline y, tscale(range(1999m1)) tscale(range(2006m1))!xscale!range(468 552)"' ///
+    `"(tsline y, tlabel(2001m1 2003m1)) (line y2 t),!xlabel!492 516"' ///
+    `"tsline y || line y2 t, tlabel(2001m1 2003m1)!xlabel!492 516"' ///
+    `"tsline y, tlabel(2001m1, add)!xlabel!492, add"' {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-02"
+    display as error `"TA-02 FAIL:`bad'"'
+}
+else display as text "TA-02 PASS: T after X, the last copy or the union, lines added, in groups and after ||, and add kept"
+
+// TA-03: twoway's abbreviations (its minimums; the plurals are routed
+// with axis(), TA-11), t() still t1title(), tm() and ts() refused.
+local bad ""
+foreach c in "tl(2001m1 2003m1)|xlabel|492 516" "tlab(2001m1 2003m1)|xlabel|492 516" ///
+    "tt(M)|xtitle|M" "tti(M)|xtitle|M" "ttit(M)|xtitle|M" ///
+    "tli(2002m1)|xline|504" "tlin(2002m1)|xline|504" ///
+    "ttic(2001m1 2003m1)|xtick|492 516" "ttick(2001m1 2003m1)|xtick|492 516" ///
+    "tsc(range(1999m1))|xscale|range(468)" "tsca(range(1999m1))|xscale|range(468)" ///
+    "tml(2001m1)|xmlabel|492" "tmt(2001m1)|xmtick|492" {
+    gettoken a rest : c, parse("|")
+    gettoken k v : rest, parse("|")
+    gettoken k v : v, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"tsline y, `a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "tm(2001m1)" "ts(range(1999m1))" {
+    _zta_err `"tsline y, `a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if `_zta_drc' != 198 local bad `"`bad' [`a' rc `_zta_drc']"'
+}
+_zta_cmp `"tsline y, t("x")"'
+_ztp_logged "$zta_log" "t1title()"
+if `_zta_trc' | `_zta_drc' | !r(found) local bad `"`bad' [t(): rc `_zta_trc'/`_zta_drc' named `=r(found)']"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-03"
+    display as error `"TA-03 FAIL:`bad'"'
+}
+else display as text "TA-03 PASS: tl tlab tt tti ttit tli tlin ttic ttick tsc tsca tml tmt read as twoway's; t() is t1title(); tm() ts() r(198)"
+
+// TA-04: the unit is the axis's label format: d w m q h y; %tc, an
+// unformatted x and a numeric first plot take numbers only; %tmMon_CCYY
+// reads m(); an operated x keeps its variable's unit; tscale(log) on a
+// date axis gives xscale(log)'s note at build.
+local bad ""
+foreach c in ///
+    "line y d, tlabel(01jan2000 01apr2000 01jul2000)|xlabel|14610 14701 14792" ///
+    "line y w, tline(2000w20)|xline|2099" ///
+    "line y t, tline(2002m1)|xline|504" ///
+    "line y q, tline(2001q1)|xline|164" ///
+    "line y h, tline(2002h1)|xline|84" ///
+    "line y yr, tline(2020)|xline|2020" ///
+    "line y tc, tline(1300000000000)|xline|1300000000000" ///
+    "line y tmon, tlabel(2001m1 2003m1)|xlabel|492 516" ///
+    "line y L.t, tlabel(2001m1 2003m1)|xlabel|492 516" ///
+    "line y D.t, tlabel(2001m1)|xlabel|492" ///
+    "pcspike y t y2 d, tline(2002m1)|xline|504" {
+    gettoken a rest : c, parse("|")
+    gettoken k v : rest, parse("|")
+    gettoken k v : v, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "line y tc, tlabel(2000m1)" "line y n, tlabel(2000m1)" ///
+    "line y n, tline(2002m1)" "line y d, tline(2000m3)" ///
+    "(line y d) (line y t), tline(2002m1)" "pcspike y d y2 t, tline(2002m1)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+local tapg "`c(tmpdir)'dash_zta_page.html"
+foreach o in tscale xscale {
+    capture dash clear
+    quietly graph drop _all
+    capture log close _ztalog
+    quietly log using "$zta_log", name(_ztalog) text replace
+    capture noisily dash tsline y, `o'(log) name(zl)
+    capture noisily dash build, saving("`tapg'", replace)
+    local rc_`o' = _rc
+    quietly log close _ztalog
+    cert_log_has "$zta_log", needle("xscale(log) is meaningless for the date variable")
+    local n_`o' = r(found)
+}
+if `rc_tscale' | `rc_xscale' | !`n_tscale' | !`n_xscale' local bad `"`bad' [log: rc `rc_tscale'/`rc_xscale' note `n_tscale'/`n_xscale']"'
+capture erase "`tapg'"
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-04"
+    display as error `"TA-04 FAIL:`bad'"'
+}
+else display as text "TA-04 PASS: d w m q h y units, numbers on %tc and numeric axes, the first plot's unit, operators, and tscale(log)'s note"
+
+// TA-05: twoway's refusals of the t-options, rc and words.
+local bad ""
+foreach a in "tlabel(foo)" "tline(foo)" "tscale(range(foo))" "tlabel(2000m13)" ///
+    "tline(2000m13)" "tline(2002m1 foo)" `"tlabel(2000m1(12)2004m1 "x")"' ///
+    "tline(2000m6.5)" "tlabel(2000.5m1)" "tlabel(2000m1;2001m1)" ///
+    "tlabel(2000m1,2001m1)" "tline(2000m1(1)2400m1)" `"tlabel("a" 2000m1)"' {
+    _zta_err `"tsline y, `a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-05"
+    display as error `"TA-05 FAIL:`bad'"'
+}
+else display as text "TA-05 PASS: every t-option refusal is twoway's rc and words"
+
+// TA-06: the first plot decides: a date literal is refused after the
+// eleven numeric-x types and read after every other (40 types).
+local bad ""
+local m6 `"scatter "scatter y t" line "line y t" connected "connected y t" scatteri "scatteri 100 480" area "area y t" bar "bar y t" spike "spike y t" dropline "dropline y t" dot "dot y t" rarea "rarea y y2 t" rbar "rbar y y2 t" rspike "rspike y y2 t" rcap "rcap y y2 t" rcapsym "rcapsym y y2 t" rscatter "rscatter y y2 t" rline "rline y y2 t" rconnected "rconnected y y2 t" pcspike "pcspike y t y2 t" pccapsym "pccapsym y t y2 t" pcarrow "pcarrow y t y2 t" pcbarrow "pcbarrow y t y2 t" pcscatter "pcscatter y t y2 t" pci "pci 100 480 110 490" pcarrowi "pcarrowi 100 480 110 490" tsline "tsline y" tsrline "tsrline y y2" mband "mband y t" mspline "mspline y t" lowess "lowess y t" lfit "lfit y t" qfit "qfit y t" fpfit "fpfit y t" lfitci "lfitci y t" qfitci "qfitci y t" fpfitci "fpfitci y t" lpoly "lpoly y t" lpolyci "lpolyci y t" kdensity "kdensity y" histogram "histogram t" function "function y = x, range(480 539)""'
+local i 0
+foreach w of local m6 {
+    local ++i
+    if mod(`i', 2) continue
+    foreach o in "tline(2002m1)" "tlabel(2001m1 2003m1)" {
+        _zta_err `"(`w') (tsline y), `o'"'
+        local bad `"`bad'`_zta_bad'"'
+    }
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-06"
+    display as error `"TA-06 FAIL:`bad'"'
+}
+else display as text "TA-06 PASS: over 40 first plots, tline() and tlabel() literals are refused or read as twoway's"
+
+// TA-07: on any twoway graph, not only tsline (sysuse auto).
+local bad ""
+_zta_val `"line y t, tlabel(2000m1(12)2004m1)"' xlabel "480 492 504 516 528"
+local bad `"`bad'`_zta_bad'"'
+quietly sysuse auto, clear
+foreach c in "tlabel(2000 3000 4000)|xlabel|2000 3000 4000" "tline(3000)|xline|3000" ///
+    "tscale(range(0 6000))|xscale|range(0 6000)" `"ttitle("W")|xtitle|\"W\""' {
+    gettoken a rest : c, parse("|")
+    gettoken k v : rest, parse("|")
+    gettoken k v : v, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"scatter mpg weight, `a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+_zta_err `"scatter mpg weight, tlabel(2000m1)"'
+local bad `"`bad'`_zta_bad'"'
+_zta_data
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-07"
+    display as error `"TA-07 FAIL:`bad'"'
+}
+else display as text "TA-07 PASS: line and scatter take the t-options as twoway does"
+
+// TA-08: twoway's lenient literals, its refused ones, and numbers first.
+local bad ""
+foreach c in m:2000x1 m:2000/1 m:2000-1 m:2000+1 m:2000*1 m:2000@1 m:2000=1 ///
+    m:2000M1 m:2000m13 m:2000m0 m:99m1 m:2000m1x m:-2000m1 m:10000m1 ///
+    m:2000.5m1 d:1+jan+2000 d:1january2000 d:01JAN2000 d:2000-01-01 ///
+    w:2000w20 w:2000w53 q:2001q1 q:2001q5 h:2002h1 h:2002h3 {
+    gettoken u tok : c, parse(":")
+    local tok = substr("`tok'", 2, .)
+    capture scalar zta_s = `u'(`tok')
+    local trc = _rc
+    local tv = cond(`trc', ., scalar(zta_s))
+    mata: zta_v = .
+    mata: st_local("dk", strofreal(_dash_tdate_value(st_local("tok"), st_local("u"), zta_v)))
+    mata: st_local("dv", strofreal(zta_v, "%21.0g"))
+    if (`trc' == 0 & (`dk' != 1 | `dv' != `tv')) | (`trc' != 0 & `dk' == 1) {
+        local bad "`bad' `u'(`tok'): twoway `trc' `tv', dash `dk' `dv'"
+    }
+}
+capture scalar drop zta_s
+_zta_val `"line y d, tlabel(15000 01012001)"' xlabel "15000 1012001"
+local bad `"`bad'`_zta_bad'"'
+_zta_val `"line y d, tline(01012001 01jul2001)"' xline "1012001 15157"
+local bad `"`bad'`_zta_bad'"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-08"
+    display as error `"TA-08 FAIL:`bad'"'
+}
+else display as text "TA-08 PASS: lenient and refused literals as twoway's pseudo-functions read them; numbers first"
+
+// TA-09: a date token is never run as Stata code: a backtick, $ and a
+// quote are refused as twoway's words say, the global is untouched and
+// nothing is registered; 10,000 positions convert in under 2 s.
+local bad ""
+global zta_g "keep"
+foreach a in "tlabel(2000m1 \`x')" "tline(\$zta_g)" "tlabel(2000m1 \$zta_g)" {
+    mata: st_local("cmd", st_local("a"))
+    capture dash clear
+    capture noisily dash tsline y, `macval(cmd)' name(zt9)
+    local rc = _rc
+    if !`rc' local bad "`bad' [rc 0]"
+    if `"$zta_g"' != "keep" local bad "`bad' [global changed]"
+    if `"$dash_json_zt9"' != "" local bad "`bad' [registered]"
+}
+mata: st_local("_td_in", invtokens(J(1, 10000, "2001m1")))
+timer clear 61
+timer on 61
+mata: _dash_tdate_ticks("tlabel", "m")
+timer off 61
+quietly timer list 61
+if r(t61) >= 2 | `_td_rc' local bad "`bad' [10,000 positions: `=r(t61)' s, rc `_td_rc']"
+mata: st_local("ok", strofreal(st_local("_td_out") == invtokens(J(1, 10000, "492"))))
+if !`ok' local bad "`bad' [10,000 positions converted wrong]"
+global zta_g
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-09"
+    display as error `"TA-09 FAIL:`bad'"'
+}
+else display as text "TA-09 PASS: hostile tokens refused without evaluation; 10,000 positions in under 2 s"
+
+// TA-10: tmlabel() and tmtick() are stored on xmlabel/xmtick and named
+// until minor ticks are drawn.
+local bad ""
+foreach c in "tmlabel|xmlabel" "tmtick|xmtick" {
+    gettoken o k : c, parse("|")
+    local k = substr("`k'", 2, .)
+    _zta_val `"tsline y, `o'(2000m7(12)2004m7)"' `k' "486 498 510 522 534"
+    local bad `"`bad'`_zta_bad'"'
+    _ztp_logged "$zta_log" "`o'()"
+    if !r(found) local bad `"`bad' [`o' not named]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-10"
+    display as error `"TA-10 FAIL:`bad'"'
+}
+else display as text "TA-10 PASS: tmlabel() and tmtick() stored on xmlabel/xmtick and named"
+
+// TA-15: a date literal in an x-option is refused as twoway refuses it,
+// on axis 1 and axis 2.
+local bad ""
+foreach a in "tsline y, xlabel(2000m1)" "tsline y, xtick(2000m1)" ///
+    "tsline y, xmlabel(2000m1)" "tsline y, xmtick(2000m1)" ///
+    "tsline y, xline(2002m1)" "tsline y, xscale(range(1999m1 2006m1))" ///
+    "tsline y, xlabel(2000m1(12)2004m1)" ///
+    "(tsline y) (line y2 t, xaxis(2)), xlabel(2000m1, axis(2))" ///
+    "(tsline y) (line y2 t, xaxis(2)), xtick(2000m1, axis(2))" ///
+    "(tsline y) (line y2 t, xaxis(2)), xline(2002m1, axis(2))" ///
+    "(tsline y) (line y2 t, xaxis(2)), xscale(range(1999m1) axis(2))" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-15"
+    display as error `"TA-15 FAIL:`bad'"'
+}
+else display as text "TA-15 PASS: date literals in the x-options are refused in twoway's rc and words"
+
+// TA-16: the unit is read at registration; a later format change of the
+// axis variable is noted once at build, and the registered value drawn.
+local bad ""
+capture dash clear
+quietly graph drop _all
+capture log close _ztalog
+quietly log using "$zta_log", name(_ztalog) text replace
+capture noisily dash tsline y, tline(2002m1) name(zt16)
+local rc1 = _rc
+format t %td
+capture noisily dash build, saving("`tapg'", replace)
+local rc2 = _rc
+quietly log close _ztalog
+format t %tm
+cert_log_has "$zta_log", needle("the t-options' dates were read as m() dates when it was registered")
+if `rc1' | `rc2' | r(count) != 1 local bad " rc `rc1'/`rc2', note `=r(count)'"
+mata: st_local("ok", strofreal(_ztp_hasval("zt16", "xline", "504")))
+if !`ok' local bad "`bad' xline"
+capture erase "`tapg'"
+capture dash clear
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-16"
+    display as error "TA-16 FAIL:`bad'"
+}
+else display as text "TA-16 PASS: a format change after registration is noted once, and the line stays at 504"
+
+restore
+capture erase "$zta_log"
+global zta_log
+set linesize `ta_ls'
 
 // ----------------------------------------------------------------
 // Summary

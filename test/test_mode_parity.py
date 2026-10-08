@@ -2237,6 +2237,13 @@ CORPUS = [
     # WP-30 P1.21b: xline/yline extent.
     _case("xline/yline noextend and style() (WP-30 P1.21b)", [_sc()], None,
           {"xline": "3000, noextend", "yline": "20, style(unextended)"}),
+    # WP-30 P1.6: tlabel() ttitle() tline() as dash folds them on a %td x
+    # (tlabel(01jan2002 04jan2002 07jan2002) ttitle("Day") tline(05jan2002)).
+    _case("tsline time-axis options folded (WP-30 P1.6)",
+          [plot_for("line", yvar="mpg", xvar="when")],
+          {"formats": {"when": "%td"}},
+          {"xlabel": "15341 15344 15347", "xtitle": '"Day"',
+           "xline": "15345"}),
 ]
 
 
@@ -2901,6 +2908,11 @@ _OWN_QUALIFIER_MOVES = [
 
 
 MOVE_CORPUS = [
+    # WP-30 P1.6: the folded time-axis keys after a range move.
+    _move_case("tsline time-axis options folded, range (WP-30 P1.6)",
+               _MOVES[1], [plot_for("line", yvar="mpg", xvar="when")],
+               {"xlabel": "15341 15344 15347", "xline": "15345"},
+               bo={"formats": {"when": "%td"}}),
     # Flipped (WP-29 P0.11): a literal layer reads no row, so its filter
     # reaches none unless a card it recomputes does; an unqualified
     # filter-mode card keeps the widget's reach every row.

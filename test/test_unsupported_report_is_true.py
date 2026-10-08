@@ -153,6 +153,9 @@ PLOT_VALUES = {
     "width": ("2", "4", "histogram"),
     "xmlabel": ("5(5)40", "10(10)40", "scatter"),
     "xmtick": ("5(1)40", "10(2)40", "scatter"),
+    # WP-30 P1.6: stored on xmlabel/xmtick at registration and named.
+    "tmlabel": ("5(5)40", "10(10)40", "scatter"),
+    "tmtick": ("5(1)40", "10(2)40", "scatter"),
     "xoverhangs": ("xoverhangs", "", "scatter"),
     "xsize": ("3", "9", "scatter"),
     "xtick": ("5(5)40", "10(10)40", "scatter"),
@@ -254,8 +257,10 @@ class TestTheListIsCoveredAndHonest:
         # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
         # 45 -> 44: P1.8b recast() honoured
         # 44 -> 42: P1.9a horizontal drawn, vertical silent
-        assert len(_plot_pending()) == 42, sorted(_plot_pending())
-        assert len(_graph_pending()) == 23, sorted(_graph_pending())
+        # 42 -> 44 and 23 -> 25: P1.6 tmlabel() and tmtick() declared and
+        # named until minor ticks are drawn
+        assert len(_plot_pending()) == 44, sorted(_plot_pending())
+        assert len(_graph_pending()) == 25, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -404,7 +409,10 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            # recastas() and type() are twoway's other spellings of
            # recast(), resolved into it before the spec is written (WP-30
            # P1.8b; test_twoway_option_parity.cscript RC-05).
-           "recastas", "type"}
+           "recastas", "type",
+           # The time-axis options, folded at registration onto their x
+           # twins (WP-30 P1.6; test_twoway_option_parity.cscript TA-01).
+           "tlabel", "ttick", "tscale", "ttitle", "tline"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -688,8 +696,10 @@ class TestEveryDeclaredOptionIsClassified:
         # 177 -> 180: P1.14b dstyle dlstyle bmlinestyle declared and named
         # 180 -> 181: P1.8a cmissings() declared
         # 181 -> 183: P1.8b recastas() and type() declared
-        assert len(_declared_plot()) == 183, len(_declared_plot())
-        assert len(_declared_graph()) == 72, len(_declared_graph())
+        # 183 -> 190 and 72 -> 79: P1.6 the seven time-axis options
+        # declared in both blocks
+        assert len(_declared_plot()) == 190, len(_declared_plot())
+        assert len(_declared_graph()) == 79, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

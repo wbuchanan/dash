@@ -422,6 +422,33 @@
 *!   _dash_axreq_accept_line(row)
 *!       Marks row's line positions as read by numlist (WP-30 P1.21a).
 *!
+*!   _dash_taxis_unit(fmt, family)
+*!       The date unit ("d" "w" "m" "q" "h" "y", "" or "c") twoway reads a
+*!       t-option's literal in on an axis of label format fmt: family 1
+*!       for labels and ticks, 2 for lines and scale ranges (WP-30 P1.6).
+*!
+*!   _dash_tdate_ticks(opt, unit)
+*!       A tlabel(), ttick(), tmlabel() or tmtick() value (the caller's
+*!       _td_in) with its date literals written as numbers, in _td_out;
+*!       _td_rc and twoway's words in _td_msg (WP-30 P1.6).  Its helpers
+*!       are _dash_tdate_tok(tok, unit, out, bad, single), one position,
+*!       (position) or A(d)B rule, and _dash_tdate_value(tok, unit, val):
+*!       1 a number or a date of unit (val set), 2 a date of another unit,
+*!       3 neither -- the number first, then a whitelist, then Mata's
+*!       string date functions, never Stata code.
+*!
+*!   _dash_tdate_lines(unit)
+*!       A tline() value the same way, cut into _td_n pieces _td_s<i>
+*!       (_td_k<i> 1 for a copy's positions, 0 for its sub-options).
+*!
+*!   _dash_tdate_range(unit)
+*!       A tscale() value with its range() words made one range() of
+*!       numbers; r(121) in _td_rc for a position the unit cannot read.
+*!
+*!   _dash_xdate_find(v, family)
+*!       1 when an x label/tick (1), line (2) or scale (3) value holds a
+*!       date literal, which twoway refuses there; _xd_tok names it.
+*!
 *!   _dash_subreq_check(kind)
 *!       Refuses, r(198) with twoway's words, the first legend(), zlabel(),
 *!       title or region sub-option twoway refuses (kind legend, zlabel,
@@ -4882,7 +4909,7 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     real scalar      i, j
 
     fld = _dash_kpi_fields()
-    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm,
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tunit_" + nm,
            "dash_kpi_" + nm)
     for (j = 1; j <= length(fld); j++) {
         own = own, "dash_kpi_" + nm + "__" + fld[j]
@@ -6029,7 +6056,9 @@ string scalar _dash_rep_bare(string scalar key)
 // sub-options), "X" xline()/yline() (each copy a line of its own), "A"
 // text() (each copy added), "F" p() (the first copy: twoway draws
 // mcolor(red) p(p3) p(bogus) in p3, WP-30 P1.14a), "R" everything else
-// (the last copy).
+// (the last copy).  The t-options take their x twins' categories (WP-30
+// P1.6): tlabel() ttick() tmlabel() tmtick() "L", ttitle() "T", tscale()
+// "S", tline() "X".
 string scalar _dash_rep_cat(string scalar key)
 {
     string scalar k
@@ -6038,14 +6067,14 @@ string scalar _dash_rep_cat(string scalar key)
     if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
                "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
                "b2title", "l1title", "l2title", "r1title", "r2title",
-               "title2", "subtitle2", "ztitle"), k)) return("T")
+               "title2", "subtitle2", "ztitle", "ttitle"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
                "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
-               "zlabel"), k)) return("L")
+               "zlabel", "tlabel", "ttick", "tmlabel", "tmtick"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
-    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale"), k)) return("S")
+    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale", "tscale"), k)) return("S")
     if (k == "by") return("B")
-    if (anyof(("xline", "yline", "xline2", "yline2"), k)) return("X")
+    if (anyof(("xline", "yline", "xline2", "yline2", "tline"), k)) return("X")
     if (k == "text") return("A")
     if (k == "p") return("F")
     return("R")
@@ -7104,6 +7133,399 @@ void _dash_axreq_accept_line(real scalar row)
     }
 }
 
+// ==== The t-options' date literals (WP-30 P1.6) ==========================
+// twoway folds tlabel(), ttick(), tmlabel(), tmtick(), ttitle(), tscale()
+// and tline() onto the x axis after the x options (graph_g.class "time
+// axis options, override the -x- axis options"), reading each date
+// literal through _date2elapsed.ado in the unit of the axis's label
+// format: 2002m1 is 504 on a %tm axis (test/fixtures/taxis_truth.json,
+// StataNow 19.5).  dash.ado's _dash_taxis_fold folds them at registration
+// with these functions.  A token is read with Mata's string date
+// functions, as data, behind a whitelist, and never put to _stata(),
+// stata() or a command line (critic C3); a number is a number first, so
+// 01012001 stays 1012001 (critic C2).  No regular expression; each value
+// is read once, linear in its length.
+
+// _dash_taxis_unit(fmt, family) -- the date unit twoway reads a literal in
+// on an axis whose label format is fmt: "d" (%td, %d), "w", "m", "q", "h",
+// "y", or "" (numbers only: %tc, %tC, %tb and every numeric format).
+// family 1 is a label or tick list (_date2elapsed's map, which reads %-tm
+// as %tm); family 2 a line or a scale range (axis.class get_time_format,
+// which tests only the prefixes %t and %d, so %-tm has no unit there, and
+// a %tc, %tC or %tb axis gives "c": a time format with no literal form,
+// whose lines fail as numlist fails, "invalid line argument, ...").
+string scalar _dash_taxis_unit(string scalar fmt, real scalar family)
+{
+    string scalar f, c
+
+    f = strtrim(fmt)
+    if (family == 2 & substr(f, 1, 2) != "%t" & substr(f, 1, 2) != "%d") {
+        return("")
+    }
+    if (substr(f, 1, 1) == "%") f = substr(f, 2, .)
+    if (substr(f, 1, 1) == "-") f = substr(f, 2, .)
+    if (substr(f, 1, 1) == "d") return("d")
+    if (substr(f, 1, 1) != "t") return("")
+    c = substr(f, 2, 1)
+    if (anyof(("d", "w", "m", "q", "h", "y"), c)) return(c)
+    return(family == 2 ? "c" : "")
+}
+
+// _dash_tdate_value(tok, unit, val) -- 1 when tok is a number, a missing
+// value or a date literal of unit (val set to its value); 2 when it is a
+// date literal of some other unit, or unit has none (unit "", "c", "y");
+// 3 when it is neither.  The number first (strtoreal); then the whitelist
+// gate -- 1 to 40 bytes of 0-9, A-Z, a-z and . + - * / @ = _, as twoway's
+// pseudo-functions read separators freely (2000x1, 2000/1, 2000@1 are all
+// 480; scalar s = m(2000x1), measured) -- and only then Mata's date(),
+// weekly(), monthly(), quarterly() and halfyearly() over the token as a
+// string; an integer answer is a date.  A token the gate refuses is never
+// evaluated.  S56's ttext() reads its position with it too.
+real scalar _dash_tdate_value(string scalar tok, string scalar unit,
+                              real scalar val)
+{
+    string scalar  t, ok
+    real scalar    v, i
+    real rowvector w
+
+    t = strtrim(tok)
+    v = strtoreal(t)
+    if (v < .) {
+        val = v
+        return(1)
+    }
+    if (t == "." | (strlen(t) == 2 & substr(t, 1, 1) == "." &
+        strpos("abcdefghijklmnopqrstuvwxyz", substr(t, 2, 1)))) {
+        val = v
+        return(1)
+    }
+    if (strlen(t) < 1 | strlen(t) > 40) return(3)
+    ok = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.+-*/@=_"
+    for (i = 1; i <= strlen(t); i++) {
+        if (!strpos(ok, substr(t, i, 1))) return(3)
+    }
+    w = (date(t, "DMY"), weekly(t, "YW"), monthly(t, "YM"),
+         quarterly(t, "YQ"), halfyearly(t, "YH"))
+    // (A chain of ?: reads unit == "d" ? .. : unit == .. wrongly in
+    // Mata, so the unit is looked up.)
+    i = strpos("dwmqh", unit)
+    v = ((unit != "" & strlen(unit) == 1 & i > 0) ? w[i] : .)
+    if (v < . & v == floor(v)) {
+        val = v
+        return(1)
+    }
+    for (i = 1; i <= 5; i++) if (w[i] < . & w[i] == floor(w[i])) return(2)
+    return(3)
+}
+
+// _dash_tdate_tok(tok, unit, out, bad, single) -- one position slot of a
+// tick, label or line list: a position, a position in parentheses, an
+// A(d)B rule ((A)(d)(B) too, c55) or a numeric A/B range.  Returns
+// _dash_tdate_value's rating (a rule takes its worst end; its step must
+// be a number, else 3), sets out to the slot with each position written
+// as the number twoway reads (%21.0g), bad to the token at fault, and
+// single to 1 for a lone position (a label may follow it).
+real scalar _dash_tdate_tok(string scalar tok, string scalar unit,
+                            string scalar out, string scalar bad,
+                            real scalar single)
+{
+    string scalar a, d, b, rest
+    real scalar   p, q, k, ka, kb, va, vb, v
+
+    single = 0
+    out    = tok
+    bad    = tok
+    p      = strpos(tok, "/")
+    if (p & !strpos(tok, "(")) {
+        if (strtoreal(substr(tok, 1, p - 1)) < . &
+            strtoreal(substr(tok, p + 1, .)) < .) return(1)
+    }
+    if (!strpos(tok, "(")) {
+        k = _dash_tdate_value(tok, unit, v)
+        if (k == 1) {
+            out    = strtrim(strofreal(v, "%21.0g"))
+            single = 1
+        }
+        return(k)
+    }
+    if (substr(tok, 1, 1) == "(") {
+        q = strpos(tok, ")")
+        if (!q) return(3)
+        a    = substr(tok, 2, q - 2)
+        rest = substr(tok, q + 1, .)
+        if (rest == "") {
+            k = _dash_tdate_value(a, unit, v)
+            if (k == 1) {
+                out    = strtrim(strofreal(v, "%21.0g"))
+                single = 1
+            }
+            else bad = a
+            return(k)
+        }
+    }
+    else {
+        p    = strpos(tok, "(")
+        a    = substr(tok, 1, p - 1)
+        rest = substr(tok, p, .)
+    }
+    if (substr(rest, 1, 1) != "(") return(3)
+    q = strpos(rest, ")")
+    if (!q) return(3)
+    d = substr(rest, 2, q - 2)
+    b = substr(rest, q + 1, .)
+    if (substr(b, 1, 1) == "(" & substr(b, strlen(b), 1) == ")") {
+        b = substr(b, 2, strlen(b) - 2)
+    }
+    if (a == "" | b == "" | strtoreal(d) >= .) return(3)
+    ka = _dash_tdate_value(a, unit, va)
+    kb = _dash_tdate_value(b, unit, vb)
+    if (ka == 3 | kb == 3) return(3)
+    if (ka == 2 | kb == 2) {
+        bad = (ka == 2 ? a : b)
+        return(2)
+    }
+    out = strtrim(strofreal(va, "%21.0g")) + "(" + strtrim(d) + ")" +
+          strtrim(strofreal(vb, "%21.0g"))
+    return(1)
+}
+
+// _dash_tdate_ticks(opt, unit) -- the caller's local _td_in, the value of
+// tlabel(), ttick(), tmlabel() or tmtick(), with every position converted
+// (twoway's tickset: rules, then a list of positions each optionally
+// followed by its label), into _td_out; _td_rc 0 or 198 and _td_msg
+// twoway's first error line (e01/e04/e10/e19/e27: "invalid label
+// specifier, :  <tok>:"; a date of another unit, "invalid ticklist
+// "<tok>" must be a number or valid argument for <u>() function", or
+// "... must be number" on a numeric axis).  #N, ##N, minmax, none and an
+// empty list are copied; the sub-options after the first comma are copied
+// as typed.  opt names the option for nothing but the caller's notes.
+void _dash_tdate_ticks(string scalar opt, string scalar unit)
+{
+    string scalar    v, body, sub, out, o, bad, tok, msg, sm
+    string rowvector t, w, sn
+    real scalar      comma, i, k, single, prev, rc, sat
+
+    v     = st_local("_td_in")
+    comma = _dash_rep_split(v, body, sub)
+    t     = _dash_rep_toks(body, 0)
+    out   = ""
+    rc    = 0
+    msg   = ""
+    prev  = 0
+    if (cols(t) == 1) {
+        if (substr(t[1], 1, 1) == "#" | anyof(("minmax", "none", "."),
+            strlower(t[1]))) t = J(1, 0, "")
+    }
+    if (cols(t) == 0) out = body
+    for (i = 1; i <= cols(t); i++) {
+        tok = t[i]
+        if (substr(tok, 1, 1) == char(34) | substr(tok, 1, 2) == char(96) + char(34)) {
+            if (!prev) {
+                rc  = 198
+                msg = "invalid label specifier, :  " + invtokens(t[|i \ cols(t)|]) + ":"
+                break
+            }
+            out  = out + " " + tok
+            prev = 0
+            continue
+        }
+        k = _dash_tdate_tok(tok, unit, o, bad, single)
+        if (k == 3) {
+            rc  = 198
+            msg = "invalid label specifier, :  " + invtokens(t[|i \ cols(t)|]) + ":"
+            break
+        }
+        if (k == 2) {
+            rc  = 198
+            msg = "invalid ticklist " + char(34) + bad + char(34) + " must be " +
+                  ((unit == "" | unit == "c" | unit == "y") ? "number" :
+                   "a number or valid argument for " + unit + "() function")
+            break
+        }
+        out  = out + (out == "" ? "" : " ") + o
+        prev = single
+    }
+    // The sub-options, as twoway's tickset reads them (e28:
+    // tlabel(2000m1,2001m1) is "option 2001m1 not allowed").
+    if (!rc & comma) {
+        w = _dash_rep_toks(sub, 0)
+        if (cols(w)) {
+            if (_dash_so_resolve(w, J(1, cols(w), 1), "axlabel", sn, sm,
+                                 sat) != 0) {
+                rc  = 198
+                msg = sm
+            }
+        }
+    }
+    st_local("_td_out", strtrim(out) + (comma ? "," + sub : ""))
+    st_local("_td_rc", strofreal(rc))
+    st_local("_td_msg", msg)
+}
+
+// _dash_tdate_lines(unit) -- the caller's local _td_in, a tline() value
+// (its copies joined ", " by _dash_rep_merge), cut at its top-level
+// commas into _td_n pieces _td_s<i>, each a copy's positions converted
+// (_td_k<i> 1) or a sub-option piece copied (_td_k<i> 0; a copy's
+// positions are its first piece and any later piece that starts with a
+// digit, a sign, a dot or a parenthesis, as _dash_line_expand reads
+// them).  dash.ado expands each positions piece with numlist.  _td_rc 0
+// or 198, _td_msg twoway's words (e02/e08/e18: "invalid line argument,
+// <the positions>"; e05/c25d: "invalid argument "<tok>" must be a number
+// or valid argument for <u>() function"; f01/g02, a numeric or %-t axis:
+// "invalid number, (<tok>)"; a %tc axis: "invalid line argument, ...").
+void _dash_tdate_lines(string scalar unit)
+{
+    string scalar    v, seg, rest, out, o, bad, msg
+    string rowvector t
+    real scalar      p, n, i, k, single, rc, first
+
+    v     = st_local("_td_in")
+    rest  = v
+    n     = 0
+    rc    = 0
+    msg   = ""
+    first = 1
+    while (rest != "" | first) {
+        p = _first_comma_pos(rest)
+        if (p) {
+            seg  = strtrim(substr(rest, 1, p - 1))
+            rest = substr(rest, p + 1, .)
+        }
+        else {
+            seg  = strtrim(rest)
+            rest = ""
+        }
+        n++
+        if (!first & !(seg != "" & strpos("0123456789+-.(", substr(seg, 1, 1)))) {
+            st_local("_td_s" + strofreal(n), seg)
+            st_local("_td_k" + strofreal(n), "0")
+            continue
+        }
+        first = 0
+        t   = tokens(seg)
+        out = ""
+        for (i = 1; i <= cols(t) & !rc; i++) {
+            k = _dash_tdate_tok(t[i], unit, o, bad, single)
+            if (k == 1) out = out + (out == "" ? "" : " ") + o
+            else if (k == 2 & unit != "" & unit != "c") {
+                rc  = 198
+                msg = "invalid argument " + char(34) + bad + char(34) +
+                      " must be a number or valid argument for " + unit +
+                      "() function"
+            }
+            else if (k == 2 & unit == "") {
+                rc  = 198
+                msg = "invalid number, (" + bad + ")"
+            }
+            else {
+                rc  = 198
+                msg = "invalid line argument, " + seg
+            }
+        }
+        if (rc) break
+        st_local("_td_s" + strofreal(n), out)
+        st_local("_td_k" + strofreal(n), "1")
+    }
+    st_local("_td_n", strofreal(n))
+    st_local("_td_rc", strofreal(rc))
+    st_local("_td_msg", msg)
+}
+
+// _dash_tdate_range(unit) -- the caller's local _td_in, a tscale() value,
+// into _td_out: every range() word's positions converted (unit as
+// _dash_taxis_unit(fmt, 2) gives it) and the words made one range(), the
+// union of their positions as twoway draws repeated ranges (c48: range(lo
+// hi), or range(v) for one position), at the first one's place; every
+// other word copied.  A position that is no number of the axis's unit is
+// _td_rc 121, "range() invalid -- invalid numlist" (e03, c13, g03).
+void _dash_tdate_range(string scalar unit)
+{
+    string rowvector w, t
+    string scalar    out, nm
+    real scalar      i, j, p, lo, hi, n, at, v, rc
+
+    w   = _dash_rep_toks(st_local("_td_in"), 0)
+    out = ""
+    lo  = .
+    hi  = .
+    n   = 0
+    at  = 0
+    rc  = 0
+    for (i = 1; i <= cols(w); i++) {
+        p  = strpos(w[i], "(")
+        nm = (p ? strlower(substr(w[i], 1, p - 1)) : "")
+        if (!p | _dash_so_canon(nm, "axscale") != "range") continue
+        if (!at) at = i
+        t = tokens(_dash_rep_value(w[i]))
+        for (j = 1; j <= cols(t); j++) {
+            if (_dash_tdate_value(t[j], unit, v) != 1 | v >= .) {
+                rc = 121
+                break
+            }
+            n++
+            lo = (lo >= . ? v : min((lo, v)))
+            hi = (hi >= . ? v : max((hi, v)))
+        }
+        if (rc) break
+    }
+    for (i = 1; i <= cols(w) & !rc; i++) {
+        p  = strpos(w[i], "(")
+        nm = (p ? strlower(substr(w[i], 1, p - 1)) : "")
+        if (p & _dash_so_canon(nm, "axscale") == "range") {
+            if (i != at | !n) continue
+            out = out + (out == "" ? "" : " ") + "range(" +
+                  strtrim(strofreal(lo, "%21.0g")) +
+                  (n > 1 ? " " + strtrim(strofreal(hi, "%21.0g")) : "") + ")"
+            continue
+        }
+        out = out + (out == "" ? "" : " ") + w[i]
+    }
+    st_local("_td_out", out)
+    st_local("_td_rc", strofreal(rc))
+    st_local("_td_msg", rc ? "range() invalid -- invalid numlist" : "")
+}
+
+// _dash_xdate_find(v, family) -- 1 when the value v of an x label or tick
+// option (family 1), line option (2) or scale (3) holds a date literal in
+// a position slot (_dash_tdate_tok rates it 2 with no unit), which twoway
+// refuses there: the X options read no dates (c11-c13: "invalid label
+// specifier, :  <tok>:", "invalid line argument, <tok>", r(198); "range()
+// invalid -- invalid numlist", r(121)).  Sets the caller's local _xd_tok
+// to the token (a whole A(d)B rule, as c11 names it).
+real scalar _dash_xdate_find(string scalar v, real scalar family)
+{
+    string rowvector t, tt
+    string scalar    body, sub, o, bad, nm
+    real scalar      i, j, single, p, x
+
+    if (family == 3) {
+        t = _dash_rep_toks(v, 0)
+        for (i = 1; i <= cols(t); i++) {
+            p  = strpos(t[i], "(")
+            nm = (p ? strlower(substr(t[i], 1, p - 1)) : "")
+            if (!p | _dash_so_canon(nm, "axscale") != "range") continue
+            tt = tokens(_dash_rep_value(t[i]))
+            for (j = 1; j <= cols(tt); j++) {
+                if (_dash_tdate_value(tt[j], "", x) == 2) {
+                    st_local("_xd_tok", tt[j])
+                    return(1)
+                }
+            }
+        }
+        return(0)
+    }
+    (void) _dash_rep_split(v, body, sub)
+    t = (family == 2 ? tokens(body) : _dash_rep_toks(body, 0))
+    for (i = 1; i <= cols(t); i++) {
+        if (substr(t[i], 1, 1) == char(34) | substr(t[i], 1, 1) == char(96)) continue
+        if (_dash_tdate_tok(t[i], "", o, bad, single) == 2) {
+            st_local("_xd_tok", t[i])
+            return(1)
+        }
+    }
+    return(0)
+}
+
 // ==== twoway's sub-option tables and resolver (WP-30 P1.19) ==============
 // The Mata twins of dash_render.py's _DASH_*_SUBOPT_TABLE, _dash_subopt_canon
 // and _dash_subopt_resolve.  A row is (full, minimum, stage, kind, star,
@@ -8048,7 +8470,8 @@ string scalar _dash_rep_subkey(string scalar tok, string scalar cat,
 // listed in drop (suffix, prefix, add: merging instructions, spent here).
 // On an axis scale ("S") every range() is one range(), the union of the
 // ranges written, as twoway draws xscale(range(0 8000)) xscale(range(1000
-// 6000)) over 0 to 8000.
+// 6000)) over 0 to 8000; when one is not numbers (a tscale() date), their
+// values joined in one range() (WP-30 P1.6).
 //
 // For legend(), the axis labels and ticks, the scales and the titles
 // (_dash_so_family(key); WP-30 P1.19) each side is first read as twoway
@@ -8065,7 +8488,7 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
                              | string scalar key)
 {
     string rowvector w, keys, full, rw1, rw2, rn1, rn2
-    string scalar    out, k, fam, msg, nm
+    string scalar    out, k, fam, msg, nm, rv
     real scalar      i, j, keep, lo, hi, v, nr, rng, ok, n1, at, p, hasrows
     real rowvector   nums, cid, alive
 
@@ -8151,6 +8574,19 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
             out = out + (out == "" ? "" : " ") + "range(" +
                   strtrim(strofreal(lo, "%21.0g")) + " " +
                   strtrim(strofreal(hi, "%21.0g")) + ")"
+            continue
+        }
+        // A range() that is no number -- tscale(range(1999m1))
+        // tscale(range(2006m1)), dates read later by _dash_taxis_fold --
+        // keeps every copy's values, in order, in the one range() kept,
+        // so their union is taken once they are numbers (WP-30 P1.6).
+        if (cat == "S" & i == rng & nr > 1 & !ok) {
+            rv = ""
+            for (j = 1; j <= cols(w); j++) {
+                if (keys[j] != "range" | !strpos(w[j], "(")) continue
+                rv = rv + (rv == "" ? "" : " ") + strtrim(_dash_rep_value(w[j]))
+            }
+            out = out + (out == "" ? "" : " ") + "range(" + rv + ")"
             continue
         }
         out = out + (out == "" ? "" : " ") + w[i]

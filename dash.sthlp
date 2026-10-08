@@ -3764,6 +3764,56 @@ one x axis is drawn at the bottom, styled the same way by the x forms.
     abbreviation.{p_end}
 {synoptline}
 
+{marker taxis}{...}
+{pstd}
+{it:Time-axis options.}  {opt tlabel()} ({cmd:tl}), {opt ttick()}
+({cmd:ttic}), {opt tmlabel()} ({cmd:tml}), {opt tmtick()} ({cmd:tmt}),
+{opt ttitle()} ({cmd:tt}), {opt tscale()} ({cmd:tsc}) and {opt tline()}
+({cmd:tli}) are {cmd:twoway}'s time-axis spellings of {cmd:xlabel()},
+{cmd:xtick()}, {cmd:xmlabel()}, {cmd:xmtick()}, {cmd:xtitle()},
+{cmd:xscale()} and {cmd:xline()}.  As in {cmd:twoway}, they act on the
+first x axis of any twoway graph, not only {cmd:tsline}, and are read
+after the x options whatever the order they are typed in: a later copy
+replaces or joins the x one as a second x copy would, and lines add up.
+A date literal is read in the unit of the x axis's label format, the
+format of the first plot's x variable ({cmd:2002m1} is 504 on a
+{cmd:%tm} axis, {cmd:15feb2000} 14655 on a {cmd:%td} one), as
+{cmd:twoway}'s {cmd:d()}, {cmd:w()}, {cmd:m()}, {cmd:q()} and {cmd:h()}
+read it; a number is a number first ({cmd:01012001} is 1012001).  The
+axis takes numbers only when its format is {cmd:%tc}, {cmd:%tC},
+{cmd:%tb} or numeric, or when the first plot is {cmd:lfit}, {cmd:qfit},
+{cmd:lfitci}, {cmd:qfitci}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:kdensity},
+{cmd:function}, {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi}; the
+paired-coordinate types read their first x variable, and an operated x
+({cmd:L.t}) its variable.  {opt tmlabel()} and {opt tmtick()} are stored
+on {cmd:xmlabel()} and {cmd:xmtick()} and named in a warning until minor
+ticks are drawn; {cmd:tscale(log)} on a date axis is noted as
+{cmd:xscale(log)} is.  What {cmd:twoway} refuses is refused in its words:
+a date literal in {cmd:xlabel()}, {cmd:xtick()}, {cmd:xmlabel()},
+{cmd:xmtick()} or {cmd:xline()} (r(198)) or in {cmd:xscale(range())}
+(r(121)); a literal on an axis that takes numbers only, or one no
+date function reads ({cmd:tline(2000m13)}); more than 2,500 lines in a
+copy (r(123)); and {cmd:tm()} and {cmd:ts()}, which are no option of
+{cmd:twoway}'s (r(198)).  The dates are read when the graph is
+registered; if the axis variable's date format changes before
+{cmd:dash build}, a note says so and the registered values are drawn.
+
+{synoptset 38}{...}
+{synopt:{cmdab:tl:abel(}{it:rule_or_values}{cmd:)}}{cmd:xlabel()} with date
+    literals{p_end}
+{synopt:{cmdab:ttic:k(}{it:rule_or_values}{cmd:)}}{cmd:xtick()} with date
+    literals{p_end}
+{synopt:{cmdab:tml:abel(}{it:rule_or_values}{cmd:)}}{cmd:xmlabel()}; stored,
+    not drawn{p_end}
+{synopt:{cmdab:tmt:ick(}{it:rule_or_values}{cmd:)}}{cmd:xmtick()}; stored,
+    not drawn{p_end}
+{synopt:{cmdab:tt:itle(}{it:tinfo}{cmd:)}}{cmd:xtitle()}{p_end}
+{synopt:{cmdab:tsc:ale(}{it:axis_suboptions}{cmd:)}}{cmd:xscale()}, its
+    {cmd:range()} read as dates{p_end}
+{synopt:{cmdab:tli:ne(}{it:linearg}{cmd:)}}{cmd:xline()} with date
+    literals{p_end}
+{synoptline}
+
 {pstd}
 {it:Reference lines.}  {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
 {cmd:yline2()} take a {it:linearg}, {it:numlist} [{cmd:,} {it:suboptions}],
@@ -4787,7 +4837,8 @@ disagree in either direction.
 
 {phang2}{ul:Minor ticks and minor labels.}
     {opt xmtick(numlist)}, {opt ymtick(numlist)}, {opt xmlabel(numlist)},
-    {opt ymlabel(numlist)} -- {cmd:dash} does not draw them.  {cmd:xtick()}
+    {opt ymlabel(numlist)}, and {opt tmlabel()} and {opt tmtick()}, their
+    time-axis spellings -- {cmd:dash} does not draw them.  {cmd:xtick()}
     and {cmd:ytick()} are honoured: each adds tick marks without labels
     beside the labels of {cmd:xlabel()} or {cmd:ylabel()}, or the default
     ones, as {cmd:twoway} draws them, and a mark outside the data's range

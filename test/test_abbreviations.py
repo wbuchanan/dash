@@ -502,7 +502,9 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # test/fixtures/named_style_truth.json).
     # 68 -> 69: WP-30 P1.24 documented mlabv:position(), twoway's minimum.
     # 69 -> 70: and mlabt:extstyle() (part 2).
-    assert len(seen) == 70, (
+    # 70 -> 77: WP-30 P1.6 documented the seven time-axis minimums, tl,
+    # ttic, tml, tmt, tt, tsc and tli (twoway's, taxis_truth.json ab_*).
+    assert len(seen) == 77, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -646,8 +648,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # cmissing and connect pending lines (three).
     # 130 -> 132: P1.8b's note on recast(), recastas() and type() in the
     # sreturn block (two).
-    assert comments == {"_dash_parse_plot_opts": 132,
-                        "_dash_parse_graph_opts": 71}, comments
+    # 132 -> 134 and 71 -> 73: P1.6's note on the tmlabel and tmtick
+    # pending lines (two, in each parser).
+    assert comments == {"_dash_parse_plot_opts": 134,
+                        "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below

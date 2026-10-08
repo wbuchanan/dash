@@ -471,6 +471,8 @@ program define _dash_require_mata
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
         _dash_axreq_accept_line _dash_reflines_positions ///
         _dash_axbound_list ///
+        _dash_taxis_unit _dash_tdate_ticks _dash_tdate_lines ///
+        _dash_tdate_range _dash_xdate_find ///
         _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
         _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
         _dash_abs_path _dash_graph_names
@@ -954,6 +956,9 @@ program define _dash_parse_graph_opts, sclass
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
+        TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
+        TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
+        TLIne(string asis) ///
         * ///
     ]
 
@@ -1024,6 +1029,10 @@ program define _dash_parse_graph_opts, sclass
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
+    // WP-30 P1.6: tmlabel() and tmtick() are stored on xmlabel/xmtick by
+    // _dash_taxis_fold and drawn when minor ticks are (P2.2).
+    if `: length local tmlabel' local _dash_pending `"`_dash_pending' tmlabel"'
+    if `: length local tmtick' local _dash_pending `"`_dash_pending' tmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
     if `: length local ymlabel' local _dash_pending `"`_dash_pending' ymlabel"'
@@ -1079,6 +1088,13 @@ program define _dash_parse_graph_opts, sclass
     sreturn local ymtick       : copy local ymtick
     sreturn local xmlabel      : copy local xmlabel
     sreturn local ymlabel      : copy local ymlabel
+    sreturn local tlabel       : copy local tlabel
+    sreturn local ttick        : copy local ttick
+    sreturn local tmlabel      : copy local tmlabel
+    sreturn local tmtick       : copy local tmtick
+    sreturn local tscale       : copy local tscale
+    sreturn local ttitle       : copy local ttitle
+    sreturn local tline        : copy local tline
     sreturn local t1title      : copy local t1title
     sreturn local t2title      : copy local t2title
     sreturn local b1title      : copy local b1title
@@ -1206,6 +1222,9 @@ program define _dash_parse_plot_opts, sclass
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
+        TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
+        TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
+        TLIne(string asis) ///
         * ///
     ]
     // The style options of _dash_stylelist_keys() are string asis so a
@@ -1347,6 +1366,10 @@ program define _dash_parse_plot_opts, sclass
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
+    // WP-30 P1.6: tmlabel() and tmtick() are stored on xmlabel/xmtick by
+    // _dash_taxis_fold and drawn when minor ticks are (P2.2).
+    if `: length local tmlabel' local _dash_pending `"`_dash_pending' tmlabel"'
+    if `: length local tmtick' local _dash_pending `"`_dash_pending' tmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
     // region so an end tick label does not run off the edge.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
@@ -1544,6 +1567,13 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_ymtick       : copy local ymtick
     sreturn local g_xmlabel      : copy local xmlabel
     sreturn local g_ymlabel      : copy local ymlabel
+    sreturn local g_tlabel       : copy local tlabel
+    sreturn local g_ttick        : copy local ttick
+    sreturn local g_tmlabel      : copy local tmlabel
+    sreturn local g_tmtick       : copy local tmtick
+    sreturn local g_tscale       : copy local tscale
+    sreturn local g_ttitle       : copy local ttitle
+    sreturn local g_tline        : copy local tline
     sreturn local g_t1title      : copy local t1title
     sreturn local g_t2title      : copy local t2title
     sreturn local g_b1title      : copy local b1title
@@ -5685,6 +5715,20 @@ program define _dash_process_segment, rclass
     local _seg_xa = cond(real("`_seg_xa'") < ., real("`_seg_xa'"), 1)
     c_local _seg_yaxis_out `_seg_ya'
     c_local _seg_xaxis_out `_seg_xa'
+    // The variable this segment's x axis takes its label format from, for
+    // the t-options' date literals (WP-30 P1.6, _dash_taxis_fold): the x of
+    // the yx and range types (tsline and tsrline: the tsset variable), the
+    // variable of histogram and kdensity, x1 of the pc types; none for
+    // function, scatteri, pci and pcarrowi.  An operated x (L.t) keeps its
+    // variable's format, as twoway reads it: the name after the last dot.
+    if `: list ptype in _pt_univar' local _seg_xv `"`yvar'"'
+    else if `: list ptype in _pt_pc' local _seg_xv `"`x1var'"'
+    else if `: list ptype in _pt_literal' local _seg_xv ""
+    else local _seg_xv `"`xvar'"'
+    if strrpos(`"`_seg_xv'"', ".") local _seg_xv = substr(`"`_seg_xv'"', strrpos(`"`_seg_xv'"', ".") + 1, .)
+    capture confirm variable `_seg_xv', exact
+    if _rc local _seg_xv ""
+    c_local _seg_xvar_out `_seg_xv'
 
     // Hand the graph-level options found in this segment to _dash_plot as
     // _sg_* locals (they live in its frame, not here -- c_local propagates
@@ -5697,7 +5741,7 @@ program define _dash_process_segment, rclass
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 zlabel ztitle zscale nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
@@ -6561,6 +6605,8 @@ program define _dash_plot
     // WP-30 P1.28a: a path left by a command interrupted between its write
     // and its result must never reach a later command's r().
     capture macro drop dash__rfile
+    // WP-30 P1.6: no earlier command's t-option units reach this graph.
+    capture macro drop dash__tunit
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -6622,6 +6668,7 @@ program define _dash_plot
     mata: _dash_axreq_clear()
     local _g_ys ""
     local _g_xs ""
+    local _tx_list ""
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -6629,7 +6676,7 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
         local g_`gk' ""
@@ -6663,7 +6710,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
@@ -6758,12 +6805,13 @@ program define _dash_plot
         local _seg_axreq_raw   ""
         local _seg_yaxis_out   1
         local _seg_xaxis_out   1
+        local _seg_xvar_out    ""
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
@@ -6776,6 +6824,9 @@ program define _dash_plot
         local _g_ys : list uniq _g_ys
         local _g_xs `_g_xs' `_seg_xaxis_out'
         local _g_xs : list uniq _g_xs
+        // Each segment's type, x variable and x axis, for the t-options'
+        // units (WP-30 P1.6): "type:variable:axis", "." for no variable.
+        local _tx_list `"`_tx_list' `_pt_k':`=cond("`_seg_xvar_out'" == "", ".", "`_seg_xvar_out'")':`_seg_xaxis_out'"'
         // Kept for the by() answer below, by value.
         local _byq_pt_`k' `_pt_k'
         local _byq_if_`k' : copy local _seg_if_out
@@ -6835,7 +6886,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             if !`: length local _sg_`gk'' continue
@@ -6867,7 +6918,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
         if `: length local _gafter_`gk'' {
@@ -6899,6 +6950,29 @@ program define _dash_plot
     }
     _dash_subopt_check zlabel
     _dash_subopt_check title
+
+    // ---- The t-options onto the x axis (WP-30 P1.6) ----
+    // twoway reads tlabel() .. tline() after every x option, each date
+    // literal in the unit of the x axis's label format, and refuses a date
+    // literal written in an x option (_dash_taxis_fold).  The values go
+    // over by value, in globals, and come back as the g_ locals; the spec
+    // never carries a t key.  tm() and ts() are no option of twoway's.
+    foreach _tk in name xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
+            xtick2 xline2 xscale2 tlabel ttick tmlabel tmtick tscale ttitle tline {
+        mata: st_global("dash__tf_`_tk'", st_local("g_`_tk'"))
+    }
+    mata: st_global("dash__tf_ign", st_local("_dash_ignored_acc"))
+    capture noisily _dash_taxis_fold `_tx_list'
+    local _tf_rc = _rc
+    if !`_tf_rc' {
+        foreach _tk in xlabel xtick xmlabel xmtick xline xscale xtitle tlabel ///
+                ttick tmlabel tmtick tscale ttitle tline {
+            mata: st_local("g_`_tk'", st_global("dash__tf_`_tk'"))
+        }
+        mata: st_local("_dash_ignored_acc", st_global("dash__tf_ign"))
+    }
+    capture macro drop dash__tf_*
+    if `_tf_rc' exit `_tf_rc'
 
     // ---- Validate the graph-level values (WP-15) ----
     // After the restore above, so the value checked is the one that will
@@ -7224,7 +7298,7 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
         local gv : copy local g_`gk'
@@ -7300,6 +7374,154 @@ program define _dash_plot
     }
     else {
         _dash_render_immediate `"`graph_json'"' `_fp_sc'
+    }
+end
+
+// ================================================================
+// _dash_taxis_fold <type:variable:axis> ...  -- tlabel(), ttick(),
+// tmlabel(), tmtick(), ttitle(), tscale() and tline() onto x axis 1, as
+// twoway reads them (WP-30 P1.6)
+//
+// Called by _dash_plot after the axis check, with each plot segment's
+// type, the variable its x axis takes its format from ("." for none) and
+// its x axis; the graph's x and t values come in the globals
+// dash__tf_<key> (and its name and ignored options in dash__tf_name and
+// dash__tf_ign) and go back the same way, so no value is ever put on a
+// command line.  Measured on StataNow 19.5 (test/fixtures/
+// taxis_truth.json, scripts/extract_taxis_truth.do):
+//   * tm() and ts() are no option of twoway's: "option tm() not allowed",
+//     r(198) (ab_tm, ab_ts);
+//   * an x option reads no date literal: xlabel(2000m1) is "invalid label
+//     specifier, :  2000m1:", r(198), xscale(range(1999m1)) r(121) (c11,
+//     c13, xl1-xsc2; xline() is refused by _dash_line_check already, c12);
+//   * the unit is the first plot's x variable's label format, and none
+//     (numbers only) after lfit, qfit, lfitci, qfitci, lpoly, lpolyci,
+//     kdensity, function, scatteri, pci or pcarrowi (m6_*), x1's for the pc
+//     types (pc1, pc2), an operated x's variable's (op1-op3);
+//   * each t-option is read after every x option, scale, label, mlabel,
+//     tick, mtick, title, line, and merges into its x twin as a second copy
+//     of it would (c14, c15, c34-c36, c46, c48);
+//   * a tline() list goes through numlist, whose cap gives twoway's r(123)
+//     "invalid numlist has too many elements" (m8).
+// The converter is Mata's (_dash_taxis_unit, _dash_tdate_ticks,
+// _dash_tdate_lines, _dash_tdate_range, _dash_xdate_find): a date token is
+// read by Mata's string date functions only, and the one command line
+// built here is numlist over the numbers it wrote (_tf_nl).  A value with
+// an axis() word is left unfolded and named in the note until axis 2 is
+// routed.  The unit read is kept in dash__tunit for _dash_register_graph,
+// and dash build notes a later change of the variable's date format.
+// ================================================================
+program define _dash_taxis_fold
+    version 19
+    local _tf_segs `0'
+
+    // tm() and ts(), before anything is read.
+    mata: st_local("_tf_ign", st_global("dash__tf_ign"))
+    if `: length local _tf_ign' {
+        mata: _dash_option_names("_tf_ign", "_tf_names")
+        foreach tok of local _tf_names {
+            mata: st_local("tok", strtrim(st_local("tok")))
+            mata: st_local("tok", strtrim(substr(st_local("tok"), 1, ///
+                (strpos(st_local("tok"), "(") ? strpos(st_local("tok"), "(") - 1 : .))))
+            mata: st_local("_tf_x", strofreal(anyof(("tm", "ts"), st_local("tok"))))
+            if `_tf_x' {
+                display as error "option `tok'() not allowed"
+                exit 198
+            }
+        }
+    }
+
+    // A date literal in an x option.
+    foreach c in xlabel:1 xtick:1 xmlabel:1 xmtick:1 xlabel2:1 xtick2:1 xscale:3 xscale2:3 {
+        gettoken k f : c, parse(":")
+        local f = substr("`f'", 2, .)
+        mata: st_local("_tf_hit", strofreal(_dash_xdate_find(st_global("dash__tf_`k'"), `f')))
+        if `_tf_hit' {
+            if `f' == 3 {
+                display as error "range() invalid -- invalid numlist"
+                exit 121
+            }
+            mata: _dash_say("err", "invalid label specifier, :  ", st_local("_xd_tok"), ":")
+            exit 198
+        }
+    }
+
+    // The base format of x axis 1: its first plot's.
+    local _tf_fmt ""
+    local _tf_var ""
+    local _tf_seen 0
+    local _tf_num "lfit qfit lfitci qfitci lpoly lpolyci kdensity function scatteri pci pcarrowi"
+    foreach s of local _tf_segs {
+        tokenize "`s'", parse(":")
+        if "`5'" != "1" | `_tf_seen' continue
+        local _tf_seen 1
+        if `: list 1 in _tf_num' | "`3'" == "." continue
+        capture confirm variable `3', exact
+        if _rc continue
+        local _tf_fmt : format `3'
+        local _tf_var `3'
+    }
+    mata: st_local("_tf_u1", _dash_taxis_unit(st_local("_tf_fmt"), 1))
+    mata: st_local("_tf_u2", _dash_taxis_unit(st_local("_tf_fmt"), 2))
+
+    // Each family in twoway's order, after the x copies.
+    local _tf_used 0
+    foreach fam in scale label mlabel tick mtick title line {
+        mata: st_local("_td_in", st_global("dash__tf_t`fam'"))
+        if !`: length local _td_in' continue
+        // An axis() word: not routed yet, so named, not folded.
+        mata: st_local("_tf_ax", strofreal(max(strpos(" " + subinstr(subinstr(st_local("_td_in"), ",", " "), char(9), " "), (" ax(", " axi(", " axis("))) > 0))
+        if `_tf_ax' {
+            mata: st_global("dash__tf_ign", st_global("dash__tf_ign") + " t`fam'")
+            global dash__tf_t`fam' ""
+            continue
+        }
+        local _td_rc 0
+        if "`fam'" == "title" local _td_out : copy local _td_in
+        else if "`fam'" == "scale" {
+            mata: _dash_tdate_range(st_local("_tf_u2"))
+            local _tf_used 1
+        }
+        else if "`fam'" == "line" {
+            mata: _dash_tdate_lines(st_local("_tf_u2"))
+            if !`_td_rc' {
+                local _td_out ""
+                local _tf_sep ""
+                forvalues i = 1/`_td_n' {
+                    if "`_td_k`i''" == "1" {
+                        local _tf_nl : copy local _td_s`i'
+                        if `: length local _tf_nl' {
+                            capture noisily numlist "`_tf_nl'", max(2500)
+                            if _rc exit _rc
+                            local _tf_out `r(numlist)'
+                            local _tf_out : list uniq _tf_out
+                        }
+                        else local _tf_out ""
+                        local _td_out `"`macval(_td_out)'`_tf_sep'`_tf_out'"'
+                    }
+                    else local _td_out `"`macval(_td_out)'`_tf_sep'`macval(_td_s`i')'"'
+                    local _tf_sep ", "
+                }
+            }
+            local _tf_used 1
+        }
+        else {
+            mata: _dash_tdate_ticks("t`fam'", st_local("_tf_u1"))
+            local _tf_used 1
+        }
+        if `_td_rc' {
+            mata: _dash_say("err", "", st_local("_td_msg"), "")
+            exit `_td_rc'
+        }
+        mata: st_local("_tf_x", st_global("dash__tf_x`fam'"))
+        mata: _dash_rep_merge_locals("x`fam'", "_tf_x", "_td_out", "_tf_x")
+        mata: st_global("dash__tf_x`fam'", st_local("_tf_x"))
+        global dash__tf_t`fam' ""
+    }
+
+    // The unit the dates were read in, for the registry.
+    if `_tf_used' & "`_tf_u1'`_tf_u2'" != "" & "`_tf_var'" != "" {
+        global dash__tunit "1:`_tf_var':`_tf_u1'"
     }
 end
 
@@ -8243,6 +8465,14 @@ program define _dash_register_graph
     else {
         capture macro drop dash_fpts_`name'
     }
+    // The unit the t-options' dates were read in (WP-30 P1.6,
+    // _dash_taxis_fold), for dash build's note when it has changed.
+    mata: st_local("_tu_reg", st_global("dash__tunit"))
+    if `: length local _tu_reg' {
+        mata: st_global("dash_tunit_" + st_local("name"), st_global("dash__tunit"))
+    }
+    else capture macro drop dash_tunit_`name'
+    capture macro drop dash__tunit
 
     // Update registry
     if `already' == 0 {
@@ -8752,6 +8982,7 @@ program define _dash_clear
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
     capture macro drop dash_fpts_*
+    capture macro drop dash_tunit_*
 
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
@@ -9509,6 +9740,24 @@ program define _dash_prepare_spec, rclass
             _dash_reflines_of `"`macval(_rl_json)'"'
             local _rl_sum = `_rl_sum' + r(n)
             local _rl_json ""
+            // The t-options' unit (WP-30 P1.6): read at registration; a
+            // date format of the axis variable changed since is noted
+            // once, and the registered values are drawn.
+            mata: st_local("_tu", st_global("dash_tunit_" + st_local("gname")))
+            if `: length local _tu' {
+                tokenize "`_tu'", parse(":")
+                local _tu_v `3'
+                local _tu_u `5'
+                local _tu_now "?"
+                capture confirm variable `_tu_v', exact
+                if !_rc {
+                    local _tu_f : format `_tu_v'
+                    mata: st_local("_tu_now", _dash_taxis_unit(st_local("_tu_f"), 1))
+                }
+                if "`_tu_now'" != "`_tu_u'" {
+                    mata: _dash_note("dash: graph " + st_local("gname") + ": the t-options' dates were read as " + st_local("_tu_u") + "() dates when it was registered; " + st_local("_tu_v"), " now has another date format, and they are drawn at the registered values", "")
+                }
+            }
 
             local gvars ""
             mata: _dash_extract_vars(st_local("_qg_`k'"), "gvars")
