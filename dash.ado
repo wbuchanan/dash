@@ -457,6 +457,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
+        _dash_by_scan ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
@@ -3380,6 +3381,13 @@ program define _dash_validate_value, rclass
             mata: _dash_say("err", "`prefix': `opt'() must name one variable (got: ", st_local("value"), ")")
             exit 198
         }
+        // by()'s sub-options, refused in twoway's stages, codes and words
+        // (WP-30 P1.15b); the tail is read by value from a string scalar.
+        if `hastail' {
+            tempname B
+            mata: st_strscalar(st_local("B"), st_local("tail"))
+            _dash_by_check `B'
+        }
         local norm `"`vv'"'
         // A block, not a one-line if, whose command Stata expands again,
         // macval() or not: by(foreign, title("b\$G \`=exp'")) was stored
@@ -4452,6 +4460,77 @@ program define _dash_by_parts
     c_local _by_vars `_bv'
     c_local _by_miss `_bm'
     c_local _by_total `_btot'
+end
+
+// ================================================================
+// _dash_by_check <string scalar>
+//
+// by()'s sub-options refused as twoway refuses them (WP-30 P1.15b).  The
+// tail after the by-variables is read from the string scalar by Mata's
+// _dash_by_scan, never expanded.  bygraph_g.class reads by() in three
+// stages (measured, test/fixtures/by_grid_truth.json): -syntax- takes the
+// first copy of each declared option and checks rows() then cols()
+// (r(121), r(123), r(125), r(126)); "may not specify both rows() and
+// cols()" (r(198)); holes() (parse_settings); every leftover -- a second
+// copy of a word read once, a capitalised or unknown word -- is refused in
+// typed order, "option NAME[()] not allowed" (r(198)); iscale() outside
+// [0, 10000] fails at draw, "gm_linewidth must be between 0.000 and
+// 1.0e+04" (r(198)).  The numbers go to -syntax- with twoway's own
+// declarations, and only when they hold numlist characters alone, so the
+// words are twoway's and no user text reaches a command line.  A text
+// iscale() or imargin() twoway cannot read gets its first note, once.
+// ================================================================
+program define _dash_by_check
+    version 19
+    args V
+    mata: _dash_by_scan(st_local("V"))
+    foreach o in rows cols {
+        if `"`_byg_`o''"' != "" {
+            if !`_byg_`o'_ok' {
+                mata: _dash_say("err", "", "`o'() invalid -- invalid number", "")
+                exit 121
+            }
+            local 0 `", `o'(`_byg_`o'')"'
+            capture noisily syntax [, Rows(numlist integer >0 min=0 max=1) Cols(numlist integer >0 min=0 max=1)]
+            if _rc {
+                exit _rc
+            }
+        }
+    }
+    if `"`_byg_rows'"' != "" & `"`_byg_cols'"' != "" {
+        mata: _dash_say("err", "", "may not specify both rows() and cols()", "")
+        exit 198
+    }
+    if `"`_byg_holes'"' != "" {
+        if !`_byg_holes_ok' {
+            mata: _dash_say("err", "", "holes() invalid -- invalid numlist", "")
+            exit 121
+        }
+        local 0 `", holes(`_byg_holes')"'
+        capture noisily syntax [, HOLes(numlist integer >0 max=300)]
+        if _rc {
+            exit _rc
+        }
+    }
+    if `"`_byg_left'"' != "" {
+        mata: _dash_say("err", "", st_local("_byg_left"), "")
+        exit 198
+    }
+    if inlist("`_byg_iscale_kind'", "num", "star") {
+        if `_byg_iscale_val' < 0 | `_byg_iscale_val' > 10000 {
+            mata: _dash_say("err", "", "gm_linewidth must be between 0.000 and  1.0e+04", "")
+            exit 198
+        }
+    }
+    if "`_byg_iscale_kind'" == "bad" {
+        mata: _dash_note("named style ", st_local("_byg_iscale"), " not found in class numstyle, default attributes used")
+    }
+    if `_byg_imargin_bad' {
+        mata: _dash_note("named style ", st_local("_byg_imargin"), " not found in class margin, default attributes used")
+    }
+    if `_byg_imargin_neg' {
+        mata: _dash_note("", "by(, imargin()) below 0 is drawn as 0", "")
+    }
 end
 
 // ================================================================

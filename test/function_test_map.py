@@ -384,7 +384,6 @@ FUNCTIONS = {
  '_dash_event_throttle.<locals>._refill': 'test/test_help_claims_2.py::TestTheServedDownloadRate::test_the_bucket_with_a_clock',
  '_dash_event_throttle.<locals>._trailing': 'test/test_served_throttle.py::TestAnExceptionInTheCallback::test_one_in_the_trailing_call_leaves_the_throttle_usable',
  '_dash_excluded': 'test/test_keyword_names.py::TestExcludeAByGraph::test_one_rule_matches_it',
- '_dash_facet_cols': 'test/test_resource_limits.py::TestByColsCannotOutgrowThePanels::test_the_columns_are_at_most_the_panels',
  '_dash_facet_label': 'test/test_help_claims_5.py::TestTheFacetLabelHelper::test_one_unlabelled_variable',
  '_dash_figure_aspect': 'test/test_graph_options.py::TestAspectRatio::test_aspectratio_is_inverted_for_bokeh',
  '_dash_figure_title': 'test/test_axis_options.py::TestTitleTextFidelity::test_title_size_and_colour_are_applied',
@@ -1074,6 +1073,15 @@ FUNCTIONS = {
  '_dash_margin_pair': 'test/test_region_margins.py::TestTheHelpers::test_bounds',
  '_dash_margin_sides': 'test/test_region_margins.py::TestTheMarginGrammar::test_form',
  # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
+ 'SchemeParser.by_indiv_margin': 'test/test_by_grid.py::TestTheIndivTable::test_every_shipped_scheme',
+ '_dash_by_grid_options': 'test/test_by_grid.py::TestPositions::test_every_probe',
+ '_dash_by_positions': 'test/test_by_grid.py::TestPositions::test_every_probe',
+ '_dash_by_scale_panel': 'test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled',
+ '_dash_by_scale_panel.<locals>.scale': 'test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled',
+ '_dash_by_scale_value': 'test/test_by_grid.py::TestTheSizes::test_every_numeric_size_is_scaled',
+ '_dash_by_size_mult': 'test/test_by_grid.py::TestTheSizes::test_multiplier',
+ '_dash_by_spacing': 'test/test_by_grid.py::TestSpacing::test_every_probe',
+ '_dash_by_word': 'test/test_by_grid.py::TestTheGrammar::test_every_spelling_is_twoways',
  # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
  # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
  # WP-30 S51 (P1.6): tsline time-axis options (P1.6)

@@ -140,6 +140,12 @@
 *!       bare "}" when there are none; points that are not dash's are
 *!       skipped with a note.
 *!
+*!   _dash_by_scan(scname)
+*!       twoway's three by() parse stages over the tail in the string
+*!       scalar scname (WP-30 P1.15b): the first copies of rows(), cols(),
+*!       holes(), iscale() and imargin(), whether each may go to -syntax-,
+*!       and the first leftover word in typed order, into _byg_* locals.
+*!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
 *!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
@@ -5721,6 +5727,160 @@ string scalar _dash_rep_value(string scalar tok)
     p = strpos(tok, "(")
     if (!p) return("")
     return(substr(tok, p + 1, strlen(tok) - p - 1))
+}
+
+// ============================================================
+// by()'s grid sub-options refused as twoway refuses them (WP-30 P1.15b)
+//
+// bygraph_g.class reads by()'s options in three stages (E6, measured on
+// StataNow 19.5, test/fixtures/by_grid_truth.json): parse_make's -syntax-
+// (:74-81) takes the FIRST copy of each declared option and checks the
+// numbers of rows() then cols(); "may not specify both rows() and cols()"
+// follows; parse_settings (:266-285) checks holes(); the region, title,
+// spacer and bgcolor readers (:224-229) take theirs; and every word left
+// over -- a second copy of a word read once, a capitalised spelling, an
+// unknown word -- is refused in typed order by -syntax [,
+// FAKE_OPT_FOR_BETTER_MSG]- (:232-233), "option NAME[()] not allowed".
+// iscale()'s bound is a draw-time error after all of these.
+// ============================================================
+
+// _dash_by_grammar() -- twoway's by() grammar, one row per option in
+// declaration order: name, minimum, takes an argument, stage, may repeat.
+// dash_render.py's _DASH_BY_GRAMMAR is its twin (test_by_grid.py).
+string matrix _dash_by_grammar()
+{
+    string scalar s
+
+    s = ""
+    s = s + "total tot 0 1 0 missing miss 0 1 0 rows r 1 1 0 "
+    s = s + "colfirst colf 0 1 0 cols c 1 1 0 scale scale 1 1 0 "
+    s = s + "iscale iscale 1 1 0 legend leg 1 1 0 legloc legloc 1 1 0 "
+    s = s + "plegend pleg 1 1 0 plegloc plegloc 1 1 0 clegend cleg 1 1 0 "
+    s = s + "clegloc clegloc 1 1 0 compact com 0 2 0 style style 1 2 0 "
+    s = s + "norescale nor 0 2 0 rescale r 0 2 0 noxrescale noxr 0 2 0 "
+    s = s + "noyrescale noyr 0 2 0 xrescale xr 0 2 0 yrescale yr 0 2 0 "
+    s = s + "holes hol 1 2 0 noedgelabel noedge 0 2 0 edgelabel edge 0 2 0 "
+    s = s + "noixaxes noix 0 2 0 noiyaxes noiy 0 2 0 ixaxes ix 0 2 0 "
+    s = s + "iyaxes iy 0 2 0 noxtitles noxt 0 2 0 xtitles xt 0 2 0 "
+    s = s + "noytitles noyt 0 2 0 ytitles yt 0 2 0 noixlabels noixl 0 2 0 "
+    s = s + "noiylabels noiyl 0 2 0 ixlabels ixl 0 2 0 iylabels iyl 0 2 0 "
+    s = s + "noixticks noixt 0 2 0 noiyticks noiyt 0 2 0 ixticks ixt 0 2 0 "
+    s = s + "iyticks iyt 0 2 0 noixtitles noixt 0 2 0 noiytitles noiyt 0 2 0 "
+    s = s + "ixtitles ixt 0 2 0 iytitles iyt 0 2 0 noindividual noind 0 2 0 "
+    s = s + "individual ind 0 2 0 ilegends ileg 0 2 0 imargin im 1 2 0 "
+    s = s + "noshrink noshr 0 2 0 noishrink noishr 0 2 0 nooverallshrink nooverallshr 0 2 0 "
+    s = s + "shrink shr 0 2 0 ishrink ishr 0 2 0 overallshrink overallshr 0 2 0 "
+    s = s + "subtitleformat subtitleformat 1 2 0 graphregion graphr 1 3 1 plotregion plotr 1 3 1 "
+    s = s + "r1title r1 1 3 1 r2title r2 1 3 1 l1title l1 1 3 1 "
+    s = s + "l2title l2 1 3 1 t1title t1 1 3 1 t2title t2 1 3 1 "
+    s = s + "b1title b1 1 3 1 b2title b2 1 3 1 note note 1 3 1 "
+    s = s + "caption cap 1 3 1 subtitle sub 1 3 1 title t 1 3 1 "
+    s = s + "spacers space 1 3 0 bgcolor bgc 1 3 1 "
+    return(colshape(tokens(s), 5))
+}
+
+// _dash_by_scan(scname) -- read the by() tail in the string scalar scname
+// as twoway's three stages do, and set the caller's locals: _byg_rows,
+// _byg_cols, _byg_holes, _byg_iscale, _byg_imargin (the first copy's
+// argument as typed, "" when absent or empty); _byg_rows_ok, _byg_cols_ok,
+// _byg_holes_ok (1 when the argument holds only numlist characters, so
+// it may be put to -syntax-); _byg_left (the first leftover in typed
+// order, as twoway's message); _byg_iscale_kind (num, star, empty, bad)
+// and _byg_iscale_val; _byg_imargin_bad (no marginstyle twoway reads)
+// and _byg_imargin_neg (a number below 0).  Words are matched
+// case-sensitively; the text is read, never executed, in one pass.
+void _dash_by_scan(string scalar scname)
+{
+    string matrix    g
+    string rowvector toks
+    string scalar    tok, typed, arg, row, lead, a, w
+    real rowvector   seen
+    real scalar      j, k, p, paren, n, v
+    string rowvector ms, ws
+
+    g = _dash_by_grammar()
+    seen = J(1, rows(g), 0)
+    toks = _dash_rep_toks(st_strscalar(scname), 0)
+    st_local("_byg_left", "")
+    for (k = 1; k <= 5; k++) {
+        st_local("_byg_" + ("rows", "cols", "holes", "iscale", "imargin")[k], "")
+    }
+    for (j = 1; j <= cols(toks); j++) {
+        tok = toks[j]
+        p = strpos(tok, "(")
+        paren = (p > 0)
+        typed = (paren ? substr(tok, 1, p - 1) : tok)
+        arg = (paren ? _dash_rep_value(tok) : "")
+        if (paren & substr(tok, strlen(tok), 1) != ")") arg = substr(tok, p + 1, .)
+        row = ""
+        for (k = 1; k <= rows(g); k++) {
+            if (strtoreal(g[k, 3]) != paren) continue
+            if (strlen(typed) < strlen(g[k, 2])) continue
+            if (substr(typed, 1, strlen(g[k, 2])) != g[k, 2]) continue
+            if (substr(g[k, 1], 1, strlen(typed)) != typed) continue
+            row = g[k, 1]
+            break
+        }
+        if (row != "") {
+            if (seen[k] & g[k, 5] == "0") row = ""
+        }
+        if (row == "") {
+            if (st_local("_byg_left") == "") {
+                st_local("_byg_left", "option " + typed + (paren ? "()" : "") + " not allowed")
+            }
+            continue
+        }
+        if (seen[k]) continue
+        seen[k] = 1
+        if (anyof(("rows", "cols", "holes", "iscale", "imargin"), row)) {
+            st_local("_byg_" + row, strtrim(arg))
+        }
+    }
+    for (k = 1; k <= 3; k++) {
+        a = st_local("_byg_" + ("rows", "cols", "holes")[k])
+        st_local("_byg_" + ("rows", "cols", "holes")[k] + "_ok",
+                 strofreal(ustrregexm(a, "^[0-9 .eE+/(),:\[\]to-]*$")))
+    }
+    // iscale(): a number, * and a number, empty, or a text twoway notes
+    a = st_local("_byg_iscale")
+    lead = ""
+    if (substr(a, 1, 1) == "*") {
+        lead = "*"
+        a = strtrim(substr(a, 2, .))
+    }
+    v = strtoreal(a)
+    if (st_local("_byg_iscale") == "") st_local("_byg_iscale_kind", "empty")
+    else if (v < . & ustrregexm(a, "^[-+]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][-+]?[0-9]+)?$")) {
+        st_local("_byg_iscale_kind", (lead == "*" ? "star" : "num"))
+    }
+    else st_local("_byg_iscale_kind", "bad")
+    st_local("_byg_iscale_val", strofreal(v, "%21.0g"))
+    // imargin(): a marginstyle name (dash_render.py SchemeParser._MARGINSTYLES),
+    // one to four numbers, or {l|r|b|t}{+|-|=}# terms
+    a = st_local("_byg_imargin")
+    ms = tokens("10-pt 2-pt 3-pt 4-pt allsides-ms bargraph bottom ebargraph esubhead horiz_bargraph")
+    ms = ms, tokens("large left medium medlarge medsmall right side-2-pt side-3-pt side-4-pt sides")
+    ms = ms, tokens("small tiny top top_bottom vlarge vside-2-pt vsmall zero")
+    st_local("_byg_imargin_bad", "0")
+    st_local("_byg_imargin_neg", "0")
+    if (a != "" & !anyof(ms, a)) {
+        if (ustrregexm(a, "^(\s*[lrbt]\s*[-+=]\s*([0-9]*[.]?[0-9]+)([eE][-+]?[0-9]+)?)+\s*$")) {
+        }
+        else {
+            ws = tokens(a)
+            n = cols(ws)
+            if (n < 1 | n > 4) st_local("_byg_imargin_bad", "1")
+            for (k = 1; k <= n; k++) {
+                w = ws[k]
+                v = strtoreal(w)
+                if (v >= . | !ustrregexm(w, "^[-+]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][-+]?[0-9]+)?$")) {
+                    st_local("_byg_imargin_bad", "1")
+                }
+                else if (v < 0) st_local("_byg_imargin_neg", "1")
+            }
+            if (st_local("_byg_imargin_bad") == "1") st_local("_byg_imargin_neg", "0")
+        }
+    }
 }
 
 // _dash_rep_scan(opts, unk, cap) -- whether the list may give an option

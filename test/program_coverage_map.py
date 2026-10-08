@@ -379,6 +379,7 @@ COVERAGE = {
         # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
         # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
+        "_dash_by_check": ("test_by_suboptions.cscript:BYG-01", "test_by_suboptions.cscript:BYG-17"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
         # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
@@ -807,6 +808,8 @@ COVERAGE = {
         # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
         # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
+        "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),
+        "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
         # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)

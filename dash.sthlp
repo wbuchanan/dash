@@ -2505,6 +2505,18 @@ included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
 {synopt:{opt by(varlist)}}facet graph by the values of {it:varlist}{p_end}
 {synopt:{opt by(varlist, cols(#))}}arrange facet panels in {it:#}
     columns{p_end}
+{synopt:{opt by(varlist, rows(#))}}arrange facet panels in {it:#}
+    rows; abbreviation {cmd:r()}{p_end}
+{synopt:{opt by(varlist, holes(numlist))}}leave the cells numbered in
+    {it:numlist} empty; abbreviation {cmd:hol()}{p_end}
+{synopt:{opt by(varlist, colfirst)}}fill the cells down the columns;
+    abbreviation {cmd:colf}{p_end}
+{synopt:{opt by(varlist, compact)}}no space between the panels;
+    {cmd:style(compact)} too{p_end}
+{synopt:{opt by(varlist, iscale([*]#))}}size the panels' text, markers and
+    lines; {cmd:*}{it:#} multiplies the default{p_end}
+{synopt:{opt by(varlist, imargin(marginstyle))}}the space around each
+    panel; abbreviation {cmd:im()}{p_end}
 {synopt:{opt by(varlist, total)}}add a "Total" panel of every group's
     observations{p_end}
 {synopt:{opt by(varlist, missing)}}include a panel, titled "(missing)", of
@@ -2544,10 +2556,22 @@ The missing panel is titled "(missing)", as in {cmd:twoway}.
 {pstd}
 The panels are arranged the same way wherever the graph is drawn -- in the
 dashboard's grid, in a tab, or in a {cmd:layout(bs)} cell -- and in both
-{cmd:dash build} and {cmd:dash serve}: in {it:#} columns with
-{cmd:cols(}{it:#}{cmd:)}, and otherwise in as many columns as the square
-root of the number of panels, rounded up.  A {cmd:cols()} of more columns
-than there are panels puts them all in one row.
+{cmd:dash build} and {cmd:dash serve}: in the cells {cmd:twoway} places
+them in, with {cmd:cols(}{it:#}{cmd:)} or {cmd:rows(}{it:#}{cmd:)}, and
+otherwise in as many columns as the square root of the panels and
+{cmd:holes()} rounded up, filled along the rows ({cmd:colfirst}: down the
+columns), a hole's cell skipped.  As in {cmd:twoway}, a row or column that
+holds no panel is not drawn, so {cmd:cols()} of more columns than there
+are panels puts them all in one row.  Panel text, markers and lines are
+drawn at {cmd:twoway}'s {cmd:by()} size -- 0.85 of the plain graph's for
+2 to 4 panels, 0.6 for 10 to 16 -- or at {cmd:iscale()}; the overall
+title, subtitle, note and caption are not scaled.  The space between the
+panels is the scheme's {cmd:by()} margin, none with {cmd:compact}, or
+{cmd:imargin()}.  {cmd:by()} arguments {cmd:twoway} refuses are refused
+in its words and order: {cmd:rows()} with {cmd:cols()}, a {cmd:rows()},
+{cmd:cols()} or {cmd:holes()} that is not positive integers, a repeated
+or capitalised sub-option, an unknown one, and {cmd:iscale()} below 0 or
+above 10,000.
 
 {pstd}
 A panel is labelled with its value's label, when the value has one, and
@@ -2571,11 +2595,13 @@ One graph draws at most 100 groups by default, a panel each, and its Total
 panel one more: over that, the first 100 groups in sort order are drawn and
 a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
-{cmd:cols()}, {cmd:total}, {cmd:missing}, the rescale forms above and
-{cmd:title()}, {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are the
-{cmd:by()} sub-options {cmd:dash} implements.  Any other sub-option of
-Stata's {cmd:by()} -- for example {cmd:rows()}, {cmd:holes()} or
-{cmd:compact} -- is accepted, named in a warning, and ignored.
+{cmd:cols()}, {cmd:rows()}, {cmd:holes()}, {cmd:colfirst},
+{cmd:compact}, {cmd:style(compact)}, {cmd:iscale()}, {cmd:imargin()},
+{cmd:total}, {cmd:missing}, the rescale forms above and {cmd:title()},
+{cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are the {cmd:by()}
+sub-options {cmd:dash} implements.  Any other sub-option of Stata's
+{cmd:by()} -- for example {cmd:subtitleformat()} or {cmd:shrink} -- is
+accepted, named in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
 box-select in any panel highlights the matching observations in every other
@@ -4035,6 +4061,11 @@ The precedence, highest first:
 {phang2}3. The active scheme's {cmd:graphsize x} and {cmd:graphsize y}, so a
     {cmd:dash} dashboard has the proportions of your other graphs without
     your asking.{p_end}
+
+{pstd}
+Under {cmd:by()}, as in {helpb twoway}, {cmd:xsize()} and {cmd:ysize()}
+size the whole array of panels, not each panel; {cmd:layout(bs)} places a
+faceted graph by that ratio.
 
 {pstd}
 The ratio is honoured within a height band.  Outside it the ratio yields, so

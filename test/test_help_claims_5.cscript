@@ -438,38 +438,46 @@ display "HC5-07 PASS: twoway titles Domestic, 3 / Three / 4 (not 4.00) / 14610; 
 // ================================================================
 // HC5-08 -- the by() sub-options dash does not implement are named
 // ================================================================
-capture erase "`page'"
-_hc5_run `"dash scatter mpg weight, by(foreign, rows(2) holes(1) compact cols(2) total) saving("`page'")"' "`logfile'"
-assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
-assert r(found) == 1
-cert_log_has "`logfile'", needle("ignored: rows(2) holes(1) compact cols")
-assert r(found) == 0
-// ... and nothing after compact.  The note joins what it drops with one
-// blank, in the order written, so any fourth name -- total as much as
-// cols() -- follows "compact " (24sep2026: total was never checked, and a
-// note ending "compact total" passed both needles above).
-local hc5by "by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact "
-cert_log_has "`logfile'", needle("`hc5by'")
-assert r(found) == 0
-// The control for that needle: a fourth name dash does not implement is
-// named after compact, from the same warning, so the needle can be found.
+// Flipped (WP-30 P1.15b): rows(), holes() and compact were the examples;
+// they are drawn now, as twoway draws them (by_grid_truth.json), and are
+// named by no note; subtitleformat() and the shrink words still are.
 capture erase "`page'"
 _hc5_run `"dash scatter mpg weight, by(foreign, rows(2) holes(1) compact colfirst) saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("`hc5by'colfirst")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented")
+assert r(found) == 0
+capture erase "`page'"
+_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) shrink ishrink cols(2) total) saving("`page'")"' "`logfile'"
+assert r(rc) == 0
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: subtitleformat(%9s) shrink ishrink")
+assert r(found) == 1
+cert_log_has "`logfile'", needle("ignored: subtitleformat(%9s) shrink ishrink cols")
+assert r(found) == 0
+// ... and nothing after ishrink.  The note joins what it drops with one
+// blank, in the order written, so any fourth name -- total as much as
+// cols() -- follows "ishrink " (24sep2026: total was never checked, and a
+// note ending "ishrink total" passed both needles above).
+local hc5by "by() sub-option(s) not implemented and ignored: subtitleformat(%9s) shrink ishrink "
+cert_log_has "`logfile'", needle("`hc5by'")
+assert r(found) == 0
+// The control for that needle: a fourth name dash does not implement is
+// named after ishrink, from the same warning, so the needle can be found.
+capture erase "`page'"
+_hc5_run `"dash scatter mpg weight, by(foreign, subtitleformat(%9s) shrink ishrink noishrink) saving("`page'")"' "`logfile'"
+assert r(rc) == 0
+cert_log_has "`logfile'", needle("`hc5by'noishrink")
 assert r(count) == 1
 capture dash clear
-dash scatter mpg weight, by(foreign, rows(2) holes(1) compact) name(hc8)
+dash scatter mpg weight, by(foreign, subtitleformat(%9s) shrink ishrink) name(hc8)
 local app "`c(tmpdir)'dash_hc5_app.py"
 capture erase "`app'"
 _hc5_run `"dash build, saving("`app'") replace server"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: rows(2) holes(1) compact")
+cert_log_has "`logfile'", needle("by() sub-option(s) not implemented and ignored: subtitleformat(%9s) shrink ishrink")
 assert r(found) == 1
 capture erase "`app'"
 capture dash clear
-display "HC5-08 PASS: rows(), holes() and compact are named in the Stata log on a saved and a served build; cols() and total are not"
+display "HC5-08 PASS: subtitleformat() and the shrink words are named in the Stata log on a saved and a served build; rows(), holes(), compact, colfirst, cols() and total are not"
 
 // ================================================================
 // HC5-09 -- headlabel

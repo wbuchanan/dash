@@ -677,9 +677,11 @@ class TestTheParsersFoundSomething:
         # its example's lines.
         # 372 -> 373: P1.8b's {ul:Recast.} entry; 373 -> 375: P1.31a's
         # maxsessions() and idletimeout() rows; 375 -> 377: P1.20b's
-        # plotregion(margin()) and ifcolor() rows.
-        assert len(defs) == 377, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 377 "
+        # plotregion(margin()) and ifcolor() rows; 377 -> 383: P1.15b's
+        # six by() rows (rows(), holes(), colfirst, compact, iscale(),
+        # imargin()).
+        assert len(defs) == 383, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 383 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

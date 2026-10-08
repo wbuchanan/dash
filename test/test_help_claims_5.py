@@ -725,15 +725,31 @@ class TestThePanelArrangement:
 
     @staticmethod
     def _spy(namespace):
-        rows = []
+        """``(rows, spy)``: *rows* fills, as each grid is laid out, with the
+        panels per row of every grid gridplot() made.  Flipped (WP-30
+        P1.15b): the by() grid is made from one row and its children then
+        placed in twoway's cells (_dash_by_positions), so the rows are read
+        from the grid's children, not from gridplot()'s argument."""
+        grids = []
         real = namespace.gridplot if not isinstance(namespace, dict) \
             else namespace["gridplot"]
 
+        class _Rows(list):
+            def __contains__(self, want):
+                for g in grids:
+                    per = {}
+                    for c in g.children:
+                        if type(c[0]).__name__ == "figure":
+                            per[int(c[1])] = per.get(int(c[1]), 0) + 1
+                    if [per[r] for r in sorted(per)] == want:
+                        return True
+                return False
+
         def spy(children, *a, **k):
-            rows.append([sum(1 for c in row if c is not None)
-                         for row in children if isinstance(row, list)])
-            return real(children, *a, **k)
-        return rows, spy
+            g = real(children, *a, **k)
+            grids.append(g)
+            return g
+        return _Rows(), spy
 
     @pytest.mark.parametrize("build", [
         {"layout": "auto"}, {"layout": "auto", "tabs": "A: g1"},
@@ -817,14 +833,16 @@ class TestTheOneLineFormHonoursCols:
 
 
 class TestTheSubOptionsDashDoesNotImplement:
-    """rows(), holes() and compact are accepted, named in one note -- the
-    ones dash implements never -- and ignored, in both modes."""
+    """subtitleformat() and the shrink words are accepted, named in one
+    note -- the ones dash implements never -- and ignored, in both modes.
+    Flipped (WP-30 P1.15b): rows(), holes() and compact were the examples;
+    they are drawn now, as twoway draws them (by_grid_truth.json)."""
 
     def test_named_and_ignored(self):
-        r, doc, saved, served = _by("foreign, rows(2) holes(1) compact "
+        r, doc, saved, served = _by("foreign, subtitleformat(%9s) shrink "
                                     "cols(2) total missing")
         want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "rows(2) holes(1) compact"]
+                "subtitleformat(%9s) shrink"]
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -839,7 +857,7 @@ class TestTheSubOptionsDashDoesNotImplement:
         never the Stata log.  HC5-08 measured it missing from the log; the
         build names them now, once, and a session does not again."""
         spec = _spec([("g1", [_scatter()],
-                       {"by": "foreign, rows(2) holes(1) compact"})])
+                       {"by": "foreign, subtitleformat(%9s) shrink"})])
         tag, sp, dp = _write(spec, _payload(_auto()))
         ap = os.path.join(_TMP, f"app_sub_{tag}.py")
         with warnings.catch_warnings(record=True) as built:
@@ -852,7 +870,7 @@ class TestTheSubOptionsDashDoesNotImplement:
             warnings.simplefilter("always")
             ns["make_document"](Document())
         want = ("dash: by() sub-option(s) not implemented and ignored: "
-                "rows(2) holes(1) compact")
+                "subtitleformat(%9s) shrink")
         assert [str(w.message) for w in built].count(want) == 1, \
             [str(w.message) for w in built]
         assert want not in [str(w.message) for w in session]

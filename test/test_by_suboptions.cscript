@@ -11,7 +11,8 @@
 *! the log; this script captures the log and reads it back, the way
 *! test_render_log_clean.cscript and test_conformance.cscript do.
 *!
-*! Tests: BYS-01 through BYS-06; BSC-08 through BSC-10 (WP-29 P0.2)
+*! Tests: BYS-01 through BYS-06; BSC-08 through BSC-10 (WP-29 P0.2);
+*! BYG-01 through BYG-18 (WP-30 P1.15b)
 *!
 *! Usage:  do test/test_by_suboptions.cscript
 *! Version: 1.0  22sep2026
@@ -131,30 +132,33 @@ display "BYS-01 PASS: by(foreign, cols(1) total) is not warned about"
 // graph's by() once to group the frame and again for the layout, until
 // _dash_parse_by grew warn=False for the second parse (dash_render.py).
 // Measured 24sep2026: each render below writes the warning exactly once.
-_bys_render "foreign, rows(2)"
+// Flipped (WP-30 P1.15b): rows(), compact and holes() were the examples;
+// they are drawn now (by_grid_truth.json grid and sizes), so the still
+// unimplemented subtitleformat() and shrink are.
+_bys_render "foreign, subtitleformat(%9s)"
 _bys_take
 display `"  read: `macval(_bys_line)'"'
 assert `_bys_n' == 1
-assert strpos(`"`macval(_bys_line)'"', "rows(2)") > 0
-display "BYS-02 PASS: by(foreign, rows(2)) names rows(2)"
+assert strpos(`"`macval(_bys_line)'"', "subtitleformat(%9s)") > 0
+display "BYS-02 PASS: by(foreign, subtitleformat(%9s)) names it"
 
-_bys_render "foreign, rows(2) compact"
+_bys_render "foreign, subtitleformat(%9s) shrink"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "rows(2)") > 0
-assert strpos(`"`_bys_line'"', "compact") > 0
+assert strpos(`"`_bys_line'"', "subtitleformat(%9s)") > 0
+assert strpos(`"`_bys_line'"', "shrink") > 0
 display "BYS-03 PASS: two unimplemented sub-options are named in one line"
 
 
 // ================================================================
 // BYS-04 — the supported ones beside them are not named
 // ================================================================
-_bys_render "foreign, cols(2) holes(1)"
+_bys_render "foreign, cols(2) shrink"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "holes(1)") > 0
+assert strpos(`"`_bys_line'"', "shrink") > 0
 assert strpos(`"`_bys_line'"', "cols") == 0
-display "BYS-04 PASS: cols(2) is not reported alongside holes(1)"
+display "BYS-04 PASS: cols(2) is not reported alongside shrink"
 
 
 // ================================================================
@@ -163,7 +167,7 @@ display "BYS-04 PASS: cols(2) is not reported alongside holes(1)"
 // A warning, not an error: the user asked for facets and gets them.
 tempfile out5
 dash clear
-dash scatter mpg weight, by(foreign, rows(2)) saving("`out5'.html") replace
+dash scatter mpg weight, by(foreign, shrink) saving("`out5'.html") replace
 confirm file "`out5'.html"
 display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 
@@ -179,10 +183,10 @@ display "BYS-05 PASS: the faceted dashboard is written despite the warning"
 // warning it was written to read.
 qui do "../dash_setup.ado"
 capture noisily _dash_setup_check_files
-_bys_render "foreign, rows(2)"
+_bys_render "foreign, subtitleformat(%9s)"
 _bys_take
 assert `_bys_n' == 1
-assert strpos(`"`_bys_line'"', "rows(2)") > 0
+assert strpos(`"`_bys_line'"', "subtitleformat(%9s)") > 0
 display "BYS-06 PASS: the report is still printed after dash_setup's probe"
 
 // ================================================================
@@ -236,7 +240,13 @@ program define _bsc_logrun, rclass
 end
 
 // BSC-08: no rescale spelling is named; style(rescale) has its own note.
-_bys_render "foreign, yrescale xrescale rescale r norescale noyrescale"
+// Flipped (WP-30 P1.15b): r is a spelling of rescale, and twoway refuses
+// a second copy ("option r not allowed", by_grid_truth.json refusals
+// "yrescale yrescale"), so r is drawn on its own.
+_bys_render "foreign, yrescale xrescale rescale norescale noyrescale"
+_bys_take
+assert `_bys_n' == 0
+_bys_render "foreign, r"
 _bys_take
 assert `_bys_n' == 0
 _bys_render "foreign, style(rescale)"
@@ -263,6 +273,185 @@ capture erase "`out10'.py"
 
 capture program drop _bys_render
 dash clear
+
+// ================================================================
+// BYG: by() arguments refused as twoway refuses them (WP-30 P1.15b)
+//
+// Each case runs the by() sub-options through live twoway (drawn, then
+// exported, so a draw-time refusal counts) and through dash (registered
+// by name(), where dash.ado validates by()), and compares the return code
+// and, when it is not 0, the error line; a case with twoway's note also
+// finds that note in dash's log.  A mismatch prints "BYG-nn FAIL" and is
+// counted; the run fails at its end.  Truth: by_grid_truth.json.
+// ================================================================
+mata:
+// The last line of a captured log that is not blank, a note, a command
+// echo or an r() line (the error line), and the first note line.
+void _byg_read(string scalar fn)
+{
+    real scalar   fh
+    string scalar line, last, note, t
+    fh = fopen(fn, "r")
+    last = ""
+    note = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        t = strtrim(line)
+        if (t == "" | substr(t, 1, 2) == ". " | regexm(t, "^r\([0-9]+\);$")) continue
+        if (substr(t, 1, 6) == "(note:") {
+            if (note == "") note = t
+            continue
+        }
+        if (substr(t, 1, 4) == "log:" | substr(t, 1, 5) == "name:" | substr(t, 1, 9) == "log type:" | substr(t, 1, 10) == "opened on:" | substr(t, 1, 10) == "closed on:") continue
+        last = t
+    }
+    fclose(fh)
+    st_local("_byg_line", last)
+    st_local("_byg_note", note)
+}
+end
+
+capture program drop _byg_run
+program define _byg_run, rclass
+    version 19
+    args which a
+    local logfile "`c(tmpdir)'dash_byg_`which'.log"
+    capture log close _byglog
+    quietly log using "`logfile'", name(_byglog) text replace
+    if "`which'" == "tw" {
+        capture noisily twoway scatter mpg weight, by(foreign, `a') name(_byg, replace)
+        local rc = _rc
+        if !`rc' {
+            capture noisily graph export "`c(tmpdir)'dash_byg.svg", name(_byg) replace
+            local rc = _rc
+        }
+    }
+    else {
+        capture noisily dash scatter mpg weight, by(foreign, `a') name(byg)
+        local rc = _rc
+    }
+    quietly log close _byglog
+    capture graph drop _all
+    capture dash clear
+    mata: _byg_read(st_local("logfile"))
+    capture erase "`logfile'"
+    return scalar rc = `rc'
+    return local line `"`macval(_byg_line)'"'
+    return local note `"`macval(_byg_note)'"'
+end
+
+// _byg_cmp id "args": twoway's and dash's rc, error line and first note.
+capture program drop _byg_cmp
+program define _byg_cmp
+    version 19
+    args id a
+    _byg_run tw `"`a'"'
+    local trc = r(rc)
+    local tline `"`r(line)'"'
+    local tnote `"`r(note)'"'
+    _byg_run dash `"`a'"'
+    local drc = r(rc)
+    local dline `"`r(line)'"'
+    local dnote `"`r(note)'"'
+    local ok = (`trc' == `drc')
+    if `ok' & `trc' != 0 {
+        local ok = (`"`macval(tline)'"' == `"`macval(dline)'"')
+    }
+    if `ok' & `"`macval(tnote)'"' != "" {
+        local ok = (`"`macval(tnote)'"' == `"`macval(dnote)'"')
+    }
+    if !`ok' {
+        scalar _byg_nfail = _byg_nfail + 1
+        display as error `"`id' FAIL: by(foreign, `macval(a)'): twoway rc `trc' "`macval(tline)'" `macval(tnote)'; dash rc `drc' "`macval(dline)'" `macval(dnote)'"'
+    }
+    scalar _byg_case = _byg_case + `ok'
+end
+
+capture program drop _byg_group
+program define _byg_group
+    version 19
+    gettoken id 0 : 0
+    gettoken what 0 : 0
+    scalar _byg_case = 0
+    local before = _byg_nfail
+    local n 0
+    foreach a of local 0 {
+        _byg_cmp `id' `"`a'"'
+        local ++n
+    }
+    if _byg_nfail == `before' display "`id' PASS: `what' (`n' probes)"
+    else display as error "`id' FAIL: `what'"
+end
+
+scalar _byg_nfail = 0
+qui sysuse auto, clear
+_byg_group BYG-01 "rows() and cols() numbers, rows first" ///
+    "rows(0) cols(0)" "cols(0) rows(2)" "cols(0) rows(0)"
+_byg_group BYG-02 "a rows() that is not one positive integer" ///
+    "rows(1.5)" "rows(2 3)" "rows(abc)"
+_byg_group BYG-03 "rows() with cols(), before any leftover" ///
+    "rows(2) cols(2) YRESCALE" "rows(1) cols(1) holes(0)"
+_byg_group BYG-04 "holes() numbers, after the leftovers' stage is reached" ///
+    "YRESCALE holes(0)" "holes(1.5)" "holes(abc)" "holes(1/301)"
+_byg_group BYG-05 "a repeated rows() or cols(): the first copy is checked" ///
+    "rows(2) rows(3)" "rows(0) rows(2)" "cols(2) cols(0)"
+_byg_group BYG-06 "a number error before a repeat or a capital" ///
+    "colfirst colfirst rows(0)" "TOTAL rows(0)"
+_byg_group BYG-07 "the first leftover in typed order" ///
+    "holes(1) holes(2) style(compact) style(default)" ///
+    "style(compact) style(default) YRESCALE"
+_byg_group BYG-08 "a capitalised sub-option" "COMPACT" "Rows(2)" "total TOTAL"
+_byg_group BYG-09 "a word twoway reads once, given twice" ///
+    "compact compact" "iscale(.5) iscale(2)" "imargin(small) imargin(large)" ///
+    "yrescale yrescale" "missing missing" "total total"
+_byg_group BYG-10 "iscale() below 0 or above 10,000" ///
+    "iscale(-1)" "iscale(*-1)" "iscale(1e5)"
+_byg_group BYG-11 "iscale()'s bound after the parse stages" ///
+    "iscale(-1) rows(0)" "iscale(-1) YRESCALE"
+_byg_group BYG-12 "iscale() inside its bounds" "iscale(1e4)" "iscale(0)" "iscale(100)"
+_byg_group BYG-13 "unreadable iscale() and imargin() text: twoway's note" ///
+    "iscale(abc)" "iscale(.)" "iscale(1 2)" "imargin(bogus)"
+_byg_group BYG-14 "empty and valid grid arguments are accepted" ///
+    "rows()" "holes()" "iscale()" "holes(301)" "r(2)" "c(1) colf" "hol(2 2 9)" ///
+    "imargin(-1)" "imargin(1 2 3 4)" "imargin(l=5)" "rows(2) cols()"
+_byg_group BYG-15 "repeats twoway refuses and repeats its loops read" ///
+    "legend(off) legend(on)" "clegend(on) clegend(off)" `"title("a") title("b")"' ///
+    "graphregion(color(white)) graphregion(color(red))" "t1title(a) t1title(b)" ///
+    "spacers(ring(1)) spacers(ring(2))" "bgcolor(white) bgcolor(red)" "ixt"
+_byg_group BYG-16 "cols() beyond the panels draws as twoway does, silently" "cols(500)"
+_byg_group BYG-17 "an unknown word, in typed order" ///
+    "bogus" `"bogus TITLE("x")"' `"TITLE("x") bogus"' "bogus rows(0)" "nolegend"
+_byg_group BYG-18 "every by() word's minimum is accepted; one letter less is not" ///
+        `"total"' `"tot"' `"to"' `"missing"' `"miss"' `"mis"' ///
+        `"rows(2)"' `"r(2)"' `"colfirst"' `"colf"' `"col"' `"cols(2)"' ///
+        `"c(2)"' `"scale(1)"' `"scal(1)"' `"iscale(.5)"' `"iscal(.5)"' `"legend(off)"' ///
+        `"leg(off)"' `"le(off)"' `"legloc(6)"' `"leglo(6)"' `"plegend(off)"' `"pleg(off)"' ///
+        `"ple(off)"' `"plegloc(6)"' `"pleglo(6)"' `"clegend(on)"' `"cleg(on)"' `"cle(on)"' ///
+        `"clegloc(3)"' `"cleglo(3)"' `"compact"' `"com"' `"co"' `"style(compact)"' ///
+        `"styl(compact)"' `"norescale"' `"nor"' `"no"' `"rescale"' `"r"' ///
+        `"noxrescale"' `"noxr"' `"noyrescale"' `"noyr"' `"xrescale"' `"xr"' ///
+        `"x"' `"yrescale"' `"yr"' `"y"' `"holes(3)"' `"hol(3)"' ///
+        `"ho(3)"' `"noedgelabel"' `"noedge"' `"noed"' `"edgelabel"' `"edge"' ///
+        `"edg"' `"noixaxes"' `"noix"' `"noiyaxes"' `"noiy"' `"ixaxes"' ///
+        `"ix"' `"iyaxes"' `"iy"' `"i"' `"noxtitles"' `"noxt"' ///
+        `"xtitles"' `"xt"' `"noytitles"' `"noyt"' `"ytitles"' `"yt"' ///
+        `"noixlabels"' `"noixl"' `"noiylabels"' `"noiyl"' `"ixlabels"' `"ixl"' ///
+        `"iylabels"' `"iyl"' `"noixticks"' `"noixt"' `"noiyticks"' `"noiyt"' ///
+        `"ixticks"' `"ixt"' `"iyticks"' `"iyt"' `"noixtitles"' `"noixti"' ///
+        `"noiytitles"' `"noiyti"' `"ixtitles"' `"ixti"' `"iytitles"' `"iyti"' ///
+        `"noindividual"' `"noind"' `"noin"' `"individual"' `"ind"' `"in"' ///
+        `"ilegends"' `"ileg"' `"ile"' `"imargin(small)"' `"im(small)"' `"noshrink"' ///
+        `"noshr"' `"noishrink"' `"noishr"' `"nooverallshrink"' `"nooverallshr"' `"shrink"' ///
+        `"shr"' `"sh"' `"ishrink"' `"ishr"' `"ish"' `"overallshrink"' ///
+        `"overallshr"' `"subtitleformat(%9s)"' `"subtitleforma(%9s)"' `"graphregion(color(white))"' `"graphr(color(white))"' `"graph(color(white))"' ///
+        `"plotregion(margin(zero))"' `"plotr(margin(zero))"' `"plot(margin(zero))"' `"r1title("a")"' `"r1("a")"' `"r2("a")"' ///
+        `"l1("a")"' `"l2("a")"' `"t1("a")"' `"t2("a")"' `"b1("a")"' `"b2("a")"' ///
+        `"note("a")"' `"not("a")"' `"caption("a")"' `"cap("a")"' `"ca("a")"' `"subtitle("a")"' ///
+        `"sub("a")"' `"su("a")"' `"title("a")"' `"t("a")"' `"spacers(ring(1))"' `"space(ring(1))"' ///
+        `"spac(ring(1))"' `"bgcolor(white)"' `"bgc(white)"' `"bg(white)"'
+display "BYG summary: " _byg_nfail " failing group probe(s)"
+assert _byg_nfail == 0
+scalar drop _byg_nfail _byg_case
+capture program drop _byg_run _byg_cmp _byg_group
 
 display ""
 display "All by() sub-option tests PASSED."

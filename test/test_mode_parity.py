@@ -1719,8 +1719,9 @@ CORPUS = [
           {"by": "foreign"}),
     _case("by(, total cols(1))", [_sc()], None, {"by": "foreign, total cols(1)"}),
     _case("by() on two variables", [_sc()], None, {"by": "foreign rep"}),
+    # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
     _case("by() with an unimplemented sub-option", [_sc()], None,
-          {"by": "foreign, rows(2) compact"}),
+          {"by": "foreign, subtitleformat(%9s) shrink"}),
     _case("by() with a graph-level if", [_sc()], None, {"by": "foreign"},
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
@@ -2216,6 +2217,9 @@ CORPUS = [
     # WP-30 P1.20b: plot-region margin and inner box
     _case("Plot-region margin and inner box (WP-30 P1.20b)", [_sc()], None,
           {"plotregion": "margin(l+10) mar(t-1) ifcolor(red%50) ilc(blue)"}),
+    # WP-30 S48 (P1.15b): by() grid and size.
+    _case("by() grid and size (WP-30 P1.15b)", [_sc()], None,
+          {"by": "rep, rows(2) holes(1) colfirst iscale(.7) imargin(small)"}),
 ]
 
 
@@ -2348,7 +2352,7 @@ _MUST_WARN = {
         "labgap(2)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
-        "rows(2) compact",
+        "subtitleformat(%9s) shrink",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":

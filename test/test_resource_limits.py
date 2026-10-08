@@ -1070,7 +1070,15 @@ class TestByColsCannotOutgrowThePanels:
         ({"by": "g"}, 1, 1),
     ])
     def test_the_columns_are_at_most_the_panels(self, gopts, n, want):
-        assert dr._dash_facet_cols(gopts, n) == want
+        # Flipped (WP-30 P1.15b): _dash_facet_cols clamped cols(#) to the
+        # panels; the grid is now twoway's (_dash_by_positions), which
+        # draws no empty column (by_grid_truth.json "foreign, cols(5)"),
+        # so the columns drawn are still at most the panels, and cols()
+        # is bounded at the by_groups ceiling before any arithmetic.
+        opts = dr._dash_by_grid_options(gopts.get("by"))
+        if not opts["cols"]:
+            opts["cols"] = max(0, int(gopts.get("by_cols", "0")))
+        assert dr._dash_by_positions(n, opts)[3]["drawn"][2] == want
 
     @pytest.mark.parametrize("build", [
         {"layout": "auto"}, {"layout": "bs"}, {"layout": "bs: g1=12"},

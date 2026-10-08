@@ -526,18 +526,22 @@ class TestAnUnimplementedBySuboptionIsNamed:
             dr._dash_parse_by(by_raw)
         return [str(w.message) for w in caught if "by()" in str(w.message)]
 
+    # Flipped (WP-30 P1.15b): rows(), compact, holes(), iscale() and
+    # colfirst were the examples; they are drawn now (by_grid_truth.json),
+    # so the still unimplemented subtitleformat() and shrink words are.
     @pytest.mark.parametrize("by_raw,names", [
-        ("foreign, rows(2)", ["rows(2)"]),
-        ("foreign, compact", ["compact"]),
-        ("foreign, rows(2) compact", ["rows(2)", "compact"]),
-        ("foreign, holes(1 3) iscale(*.8)", ["holes(1 3)", "iscale(*.8)"]),
+        ("foreign, subtitleformat(%9s)", ["subtitleformat(%9s)"]),
+        ("foreign, shrink", ["shrink"]),
+        ("foreign, subtitleformat(%9s) shrink",
+         ["subtitleformat(%9s)", "shrink"]),
+        ("foreign, ishrink noishrink", ["ishrink", "noishrink"]),
         # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
         # draws it; shrink (twoway's SHRink) is still named.
         ("foreign, title(\"By origin\") shrink", ["shrink"]),
         # Flipped (WP-29 P0.2): norescale is twoway's default and is
         # honoured, so only noixlabel is named.
         ("foreign, norescale noixlabel", ["noixlabel"]),
-        ("foreign, cols(2) total colfirst", ["colfirst"]),
+        ("foreign, cols(2) total shrink", ["shrink"]),
     ])
     def test_each_unimplemented_sub_option_is_named(self, by_raw, names):
         got = self._warnings_for(by_raw)
@@ -553,8 +557,9 @@ class TestAnUnimplementedBySuboptionIsNamed:
         assert self._warnings_for(by_raw) == []
 
     def test_the_warning_does_not_name_the_supported_ones_beside_them(self):
-        got = self._warnings_for("foreign, cols(2) rows(3)")
-        assert len(got) == 1 and "rows(3)" in got[0] and "cols" not in got[0]
+        # Flipped (WP-30 P1.15b): rows(3) is drawn now; shrink is not.
+        got = self._warnings_for("foreign, cols(2) shrink")
+        assert len(got) == 1 and "shrink" in got[0] and "cols" not in got[0]
 
     def test_the_parsed_values_are_unchanged(self):
         assert dr._dash_parse_by("foreign, cols(2) rows(3) total")[:4] \
@@ -565,17 +570,18 @@ class TestAnUnimplementedBySuboptionIsNamed:
         in the Stata log, and not again when a session opens (WP-23: the
         note came only from a session, whose output the Stata user never
         sees -- test_help_claims_5.cscript HC5-08)."""
-        spec = by_spec("scatter", by="foreign, rows(2) compact")
+        # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
+        spec = by_spec("scatter", by="foreign, subtitleformat(%9s) shrink")
         tag, sp, dp = _write(tmp_path, spec, _DF)
         with warnings.catch_warnings(record=True) as built:
             warnings.simplefilter("always")
             dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
         hits = [str(w.message) for w in built if "by()" in str(w.message)
-                and "rows(2)" in str(w.message)
-                and "compact" in str(w.message)]
+                and "subtitleformat(%9s)" in str(w.message)
+                and "shrink" in str(w.message)]
         assert len(hits) == 1, [str(w.message) for w in built]
         _, _, warns = served(tmp_path, spec)
-        assert not [w for w in warns if "by()" in w and "rows(2)" in w], warns
+        assert not [w for w in warns if "by()" in w and "shrink" in w], warns
 
     def test_an_unsafe_by_string_still_facets_nothing(self, tmp_path):
         spec = by_spec("scatter", by='__import__("os")')

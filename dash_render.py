@@ -11279,6 +11279,25 @@ class SchemeParser:
             out["line_dash"] = list(out["line_dash"] or [])
         return out
 
+    def by_indiv_margin(self) -> tuple:
+        """The scheme's by() panel margin ``(left, right, bottom, top)`` in
+        Stata units (WP-30 P1.15b, D-48e): ``margin by_indiv`` from the
+        scheme's own keys, else ``_DASH_BY_INDIV_MARGIN`` by the scheme's
+        name, else ``small``; resolved through ``margin_sides`` (a
+        ``#-pt`` side in points over the 2.88 pt unit).  Never raises."""
+        props = getattr(self, "_props", None) or {}
+        name = str(props.get("margin by_indiv", "") or "").strip().lower()
+        if not name:
+            name = _DASH_BY_INDIV_MARGIN.get(
+                str(getattr(self, "name", "") or ""), "small")
+        sides = self.margin_sides(name) or self.margin_sides("small")
+        out = []
+        for v in sides:
+            if isinstance(v, tuple):
+                v = float(v[1]) / OptionTranslator.PT_PER_RS
+            out.append(float(v))
+        return tuple(out)
+
     def apply_to_figure(self, fig: Any) -> None:
         """Apply scheme defaults to *fig*.
 
@@ -11290,6 +11309,9 @@ class SchemeParser:
         # (HasProps.__setattr__ short-circuits _private names), so it is
         # Python-only and never reaches the page.
         fig._dash_size_ref_in = getattr(self, "size_ref_in", 4.0)
+        # The scheme's by() panel margin, read by _dash_by_spacing when the
+        # figure is a by() panel (WP-30 P1.15b).  Python-only.
+        fig._dash_by_indiv = self.by_indiv_margin()
         # The scheme's colour context, for the axis look's labcolor() and
         # lcolor() (WP-30 P1.18a; S30's one context, P1.13.5).  Python-only.
         fig._dash_scheme_colours = OptionTranslator.scheme_colour_context(
@@ -25840,6 +25862,87 @@ _DASH_BY_SUPPORTED = {
 _DASH_BY_RESCALE_KEYS = ("rescale", "norescale", "xrescale", "yrescale",
                          "noxrescale", "noyrescale")
 
+#: twoway's whole by() grammar (WP-30 P1.15b, D-48g): name -> (minimum,
+#: takes_args, stage, repeat_ok), in declaration order, transcribed from
+#: bygraph_g.class parse_make :74-81 (stage 1), parse_settings :266-285
+#: (stage 2) and the readers parse_make calls after them, :224-229
+#: (stage 3: _fr_area_parse_and_log for graphregion() and plotregion(),
+#: graph_g.class parse_and_log_titles :282-301, parse_and_log_spacers
+#: :340-345 and bgcolor()).  A word is a spelling of a row when it is,
+#: case-sensitively, at least the minimum and a prefix of the name, and
+#: takes parentheses exactly when the row does; where two rows share a
+#: spelling (``ixt``: IXTicks, IXTitles) the first declared wins, as
+#: ``syntax`` does.  ``repeat_ok`` is 1 for the rows whose reader loops,
+#: measured (by_grid_truth.json ``refusals``: title(), t1title(),
+#: graphregion() and bgcolor() given twice are drawn; legend(),
+#: clegend(), spacers() and every stage 1 and 2 word are refused).
+#: dash_parse.mata's ``_dash_by_grammar()`` is its twin
+#: (test_by_grid.py::TestTheGrammar::test_python_equals_mata).
+_DASH_BY_GRAMMAR = {
+    "total": ("tot", 0, 1, 0), "missing": ("miss", 0, 1, 0),
+    "rows": ("r", 1, 1, 0), "colfirst": ("colf", 0, 1, 0),
+    "cols": ("c", 1, 1, 0), "scale": ("scale", 1, 1, 0),
+    "iscale": ("iscale", 1, 1, 0), "legend": ("leg", 1, 1, 0),
+    "legloc": ("legloc", 1, 1, 0), "plegend": ("pleg", 1, 1, 0),
+    "plegloc": ("plegloc", 1, 1, 0), "clegend": ("cleg", 1, 1, 0),
+    "clegloc": ("clegloc", 1, 1, 0),
+    "compact": ("com", 0, 2, 0), "style": ("style", 1, 2, 0),
+    "norescale": ("nor", 0, 2, 0), "rescale": ("r", 0, 2, 0),
+    "noxrescale": ("noxr", 0, 2, 0), "noyrescale": ("noyr", 0, 2, 0),
+    "xrescale": ("xr", 0, 2, 0), "yrescale": ("yr", 0, 2, 0),
+    "holes": ("hol", 1, 2, 0),
+    "noedgelabel": ("noedge", 0, 2, 0), "edgelabel": ("edge", 0, 2, 0),
+    "noixaxes": ("noix", 0, 2, 0), "noiyaxes": ("noiy", 0, 2, 0),
+    "ixaxes": ("ix", 0, 2, 0), "iyaxes": ("iy", 0, 2, 0),
+    "noxtitles": ("noxt", 0, 2, 0), "xtitles": ("xt", 0, 2, 0),
+    "noytitles": ("noyt", 0, 2, 0), "ytitles": ("yt", 0, 2, 0),
+    "noixlabels": ("noixl", 0, 2, 0), "noiylabels": ("noiyl", 0, 2, 0),
+    "ixlabels": ("ixl", 0, 2, 0), "iylabels": ("iyl", 0, 2, 0),
+    "noixticks": ("noixt", 0, 2, 0), "noiyticks": ("noiyt", 0, 2, 0),
+    "ixticks": ("ixt", 0, 2, 0), "iyticks": ("iyt", 0, 2, 0),
+    "noixtitles": ("noixt", 0, 2, 0), "noiytitles": ("noiyt", 0, 2, 0),
+    "ixtitles": ("ixt", 0, 2, 0), "iytitles": ("iyt", 0, 2, 0),
+    "noindividual": ("noind", 0, 2, 0), "individual": ("ind", 0, 2, 0),
+    "ilegends": ("ileg", 0, 2, 0), "imargin": ("im", 1, 2, 0),
+    "noshrink": ("noshr", 0, 2, 0), "noishrink": ("noishr", 0, 2, 0),
+    "nooverallshrink": ("nooverallshr", 0, 2, 0),
+    "shrink": ("shr", 0, 2, 0), "ishrink": ("ishr", 0, 2, 0),
+    "overallshrink": ("overallshr", 0, 2, 0),
+    "subtitleformat": ("subtitleformat", 1, 2, 0),
+    "graphregion": ("graphr", 1, 3, 1), "plotregion": ("plotr", 1, 3, 1),
+    "r1title": ("r1", 1, 3, 1), "r2title": ("r2", 1, 3, 1),
+    "l1title": ("l1", 1, 3, 1), "l2title": ("l2", 1, 3, 1),
+    "t1title": ("t1", 1, 3, 1), "t2title": ("t2", 1, 3, 1),
+    "b1title": ("b1", 1, 3, 1), "b2title": ("b2", 1, 3, 1),
+    "note": ("note", 1, 3, 1), "caption": ("cap", 1, 3, 1),
+    "subtitle": ("sub", 1, 3, 1), "title": ("t", 1, 3, 1),
+    "spacers": ("space", 1, 3, 0), "bgcolor": ("bgc", 1, 3, 1),
+}
+
+
+def _dash_by_word(tok):
+    """``(row name or None, name as typed, has parentheses, argument)`` of
+    one by() sub-option token under ``_DASH_BY_GRAMMAR`` (WP-30 P1.15b):
+    case-sensitive, the first declared row of which the word is a
+    spelling.  Never raises; linear in the token."""
+    tok = str(tok)
+    paren = "(" in tok
+    typed = tok.split("(", 1)[0].strip()
+    arg = ""
+    if paren:
+        arg = tok[tok.index("(") + 1:]
+        arg = arg[:-1] if arg.endswith(")") else arg
+    table = getattr(_dash_by_word, "_table", None)
+    if table is None:
+        # {(spelling, takes parentheses): row}, the first declared row
+        # of each spelling kept; built once.
+        table = {}
+        for row, (mn, takes, _stage, _rep) in _DASH_BY_GRAMMAR.items():
+            for k in range(len(mn), len(row) + 1):
+                table.setdefault((row[:k], bool(takes)), row)
+        _dash_by_word._table = table
+    return table.get((typed, paren)), typed, paren, arg
+
 #: by()'s text sub-options and every spelling twoway takes (WP-30 P1.15a),
 #: matched case-sensitively: probes a06 (ti, sub, cap), a14 (``t("X")`` is
 #: accepted by twoway and draws nothing, so it is not a spelling here), a15
@@ -25927,9 +26030,11 @@ def _dash_parse_by(by_raw, warn=True):
     did with their own copies of the check.
 
     Stata's by() takes some thirty sub-options; dash implements cols(),
-    total, missing, the rescale words and, drawn by ``_dash_by_chrome``
-    (WP-30 P1.15a), title(), subtitle(), note() and caption() in twoway's
-    lower-case spellings (``_DASH_BY_TEXT_SPELLINGS``).  The
+    total, missing, the rescale words, rows(), holes(), colfirst,
+    compact, style(compact), iscale() and imargin() (laid out by
+    ``_dash_layout_cell``, WP-30 P1.15b) and, drawn by ``_dash_by_chrome``
+    (WP-30 P1.15a), title(), subtitle(), note() and caption(), each in
+    twoway's lower-case spellings (``_DASH_BY_GRAMMAR``).  The
     rest used to be matched by nothing and discarded by everything --
     ``by(foreign, rows(2) compact)`` faceted as though the user had typed
     ``by(foreign)``, and nothing said so.  They are named here, once, in
@@ -25968,9 +26073,17 @@ def _dash_parse_by(by_raw, warn=True):
     by_cols, by_total, by_missing = 0, False, False
     unsupported = []
     for tok in _dash_by_tokens(subopts.strip()):
-        name = tok.split("(", 1)[0].strip().lower()
+        # Case-sensitive (WP-30 P1.15b): twoway refuses YRESCALE and
+        # TOTAL, so a capitalised word is no spelling and is named.
+        name = tok.split("(", 1)[0].strip()
         arg = tok[len(name) + 1:-1] if "(" in tok and tok.endswith(")") else ""
-        if name in _DASH_BY_SUPPORTED["cols"] and "(" in tok:
+        _row = _dash_by_word(tok)[0]
+        if _row in ("rows", "colfirst", "holes", "compact", "iscale",
+                    "imargin") or (_row == "style" and arg.strip() in
+                                   ("compact", "default")):
+            # laid out by `_dash_layout_cell` (WP-30 P1.15b).
+            pass
+        elif name in _DASH_BY_SUPPORTED["cols"] and "(" in tok:
             try:
                 by_cols = int(arg.strip())
             except ValueError:
@@ -26055,6 +26168,305 @@ def _dash_by_rescale(by_raw):
     return frozenset(d for d in ("x", "y")
                      if d in yes or (d not in no and base))
 
+
+def _dash_by_grid_options(by_raw):
+    """The grid sub-options of a by() string (WP-30 P1.15b, TR-48.7):
+    ``{"rows", "cols", "holes", "colfirst", "compact", "style", "iscale",
+    "imargin"}``, each the FIRST copy as twoway's ``syntax`` reads it,
+    case-sensitive through ``_DASH_BY_GRAMMAR``.  ``rows``/``cols`` are a
+    positive integer or 0, ``holes`` a tuple of distinct positive
+    integers (``_dash_expand_numlist``, at most 300); anything else is
+    dropped silently -- dash.ado refused it in twoway's words.  Never
+    raises; linear in the text."""
+    out = {"rows": 0, "cols": 0, "holes": (), "colfirst": False,
+           "compact": False, "style": "", "iscale": "", "imargin": ""}
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001 -- any object at all
+        return out
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return out
+    seen = set()
+    for tok in _dash_by_tokens(subs.strip()):
+        row, _typed, _paren, arg = _dash_by_word(tok)
+        if row is None or row in seen:
+            continue
+        seen.add(row)
+        if row in ("rows", "cols"):
+            a = arg.strip()
+            out[row] = (min(int(a), 10 ** 9)
+                        if re.fullmatch(r"[0-9]{1,40}", a) else 0)
+        elif row == "holes":
+            vals, too_many, bad = _dash_expand_numlist(arg.split(),
+                                                       limit=300)
+            if not too_many and not bad:
+                keep = []
+                for v in vals:
+                    if math.isfinite(v) and v >= 1 and v == int(v) \
+                            and int(v) not in keep:
+                        keep.append(int(v))
+                out["holes"] = tuple(keep)
+        elif row in ("colfirst", "compact"):
+            out[row] = True
+        elif row in ("style", "iscale", "imargin"):
+            out[row] = arg.strip()
+    return out
+
+
+def _dash_by_positions(n_panels, opts, legend_at=0, clegend_at=0,
+                       limit=None):
+    """twoway's by() placement (WP-30 P1.15b, TR-48.8): a port of
+    bygraph_g.class ``full_n``, ``set_rows_cols`` and ``set_placement``
+    (:794-908).  ``full_n`` is the panels plus the distinct holes plus
+    the legend holes; ``cols(#)`` sets the rows to 1 + int((full_n-1)/#),
+    ``rows(#)`` the reverse, else cols = int(sqrt(full_n)) + (frac > .01);
+    cells are filled from the top left, along the rows (``colfirst``:
+    down the columns), a hole's index skipped.
+
+    Returns ``(cells, rows, cols, extra)``: ``cells[i]`` is panel i's
+    ``(row_from_top, col)``, 0-based, in twoway's logical grid;
+    ``extra["full_n"]`` is full_n, ``extra["legend"]``/``["clegend"]``
+    their cells (for S53) and ``extra["drawn"]`` ``(cells, rows, cols)``
+    with the rows and columns that hold nothing removed -- twoway draws
+    no empty row or column (by_grid_truth.json: ``holes(1 2 3)`` draws
+    as ``by(rep78)``, ``cols(5)`` of two panels as ``by(foreign)``).
+    ``rows``/``cols`` are bounded at *limit* (the by_groups ceiling).
+    Pure; linear in full_n."""
+    if limit is None:
+        limit = _DASH_LIMITS["by_groups"][1]
+    n_p = max(0, int(n_panels or 0))
+    opts = opts or {}
+    holes = set(int(h) for h in (opts.get("holes") or ()))
+    n = n_p + len(holes) + (legend_at > 0) + (clegend_at > 0)
+    n = max(1, n)
+    set_cols = min(max(0, int(opts.get("cols") or 0)), int(limit))
+    set_rows = min(max(0, int(opts.get("rows") or 0)), int(limit))
+    if set_cols:
+        cols = set_cols
+        rows = 1 + (n - 1) // cols
+    elif set_rows:
+        rows = set_rows
+        cols = 1 + (n - 1) // rows
+    else:
+        r = math.sqrt(n)
+        cols = int(r) + ((r - int(r)) > .01)
+        rows = 1 + (n - 1) // cols
+    colfirst = bool(opts.get("colfirst"))
+    cells, extra = [], {"full_n": n}
+    r, c, j = rows, 1, 0
+    for i in range(1, n + 1):
+        if i not in holes:
+            if i == legend_at:
+                extra["legend"] = (rows - r, c - 1)
+            elif i == clegend_at:
+                extra["clegend"] = (rows - r, c - 1)
+            else:
+                j += 1
+                if j <= n_p:
+                    cells.append((rows - r, c - 1))
+        if not colfirst:
+            c += 1
+            if c > cols:
+                c, r = 1, r - 1
+        else:
+            r -= 1
+            if r == 0:
+                r, c = rows, c + 1
+    used = list(cells) + [extra[k] for k in ("legend", "clegend")
+                          if k in extra]
+    rmap = {v: k for k, v in enumerate(sorted({p[0] for p in used}))}
+    cmap = {v: k for k, v in enumerate(sorted({p[1] for p in used}))}
+    extra["drawn"] = ([(rmap[a], cmap[b]) for a, b in cells],
+                      max(1, len(rmap)), max(1, len(cmap)))
+    return cells, rows, cols, extra
+
+
+#: Each shipped scheme's ``margin by_indiv`` (WP-30 P1.15b, D-48e), read
+#: through its #include chain by scripts/extract_by_grid_truth.do
+#: (by_grid_truth.json ``by_indiv``).  No dash scheme file carries the
+#: key yet (S53 adds it), so ``SchemeParser.by_indiv_margin`` reads the
+#: scheme's own key first and this table only when it is missing.
+_DASH_BY_INDIV_MARGIN = {
+    "economist": "medium", "meta": "small", "s1color": "small",
+    "s1manual": "small", "s1mono": "small", "s1rcolor": "small",
+    "s2color": "small", "s2color8": "small", "s2gcolor": "small",
+    "s2gmanual": "small", "s2manual": "small", "s2mono": "small", "sj":
+    "small", "stcolor": "allsides-ms", "stcolor_alt": "allsides-ms",
+    "stcolor_meta": "allsides-ms", "stcolor_mv": "allsides-ms",
+    "stcoloralias": "allsides-ms", "stgcolor": "allsides-ms",
+    "stgcolor_alt": "allsides-ms", "stgcolor_meta": "allsides-ms",
+    "stgcolor_mv": "allsides-ms", "stmono1": "allsides-ms", "stmono2":
+    "allsides-ms", "stsj": "small", "sttrans": "small"
+}
+
+
+def _dash_by_size_mult(by_raw, full_n):
+    """The multiplier twoway draws a by() panel's text, markers and lines
+    at (WP-30 P1.15b, TR-48.9): f(k), k = ceil(sqrt(full_n)), section
+    21's gmetric curve (``_DASH_BY_GMETRIC``: 1, .85, .8, .6, .48, .4,
+    2.4/k; by_grid_truth.json ``sizes``: two panels .85, ten .60);
+    ``iscale(#)`` is #, ``iscale(*#)`` f times #, unreadable text f (dash
+    noted it).  Bounded to [0, 10000]; silent; never raises."""
+    try:
+        k = max(1, math.ceil(math.sqrt(max(1, int(full_n)))))
+    except (TypeError, ValueError, OverflowError):
+        k = 1
+    k1, b1, b2 = _DASH_BY_GMETRIC
+    f = 1.0 - (k - 1.0) / k * b1
+    if k > k1:
+        f -= (b2 - b1) * (k - k1) / k
+    f = max(0.0, f)
+    raw = _dash_by_grid_options(by_raw)["iscale"]
+    num = r"[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]{1,4})?"
+    m = re.fullmatch(r"\s*(\*)?\s*(" + num + r")\s*", raw or "")
+    if m:
+        try:
+            v = float(m.group(2))
+        except (ValueError, OverflowError):
+            v = None
+        if v is not None and math.isfinite(v):
+            f = f * v if m.group(1) else v
+    return max(0.0, min(10000.0, f))
+
+
+def _dash_by_spacing(fig0, opts):
+    """``(row_px, col_px)`` between by() panels (WP-30 P1.15b, TR-48.11):
+    each panel's adjacent margins in Stata units (1% of min(W, H)), as
+    bygraph_g.class places every view inside ``indiv_margin`` -- the
+    scheme's ``margin by_indiv`` (``fig._dash_by_indiv``, stamped by
+    ``SchemeParser.apply_to_figure``), zero under ``compact`` or
+    ``style(compact)``, ``imargin()`` applied over it through section
+    47's ``_dash_margin_sides`` (a text twoway cannot read is zero, as it
+    draws it; a side below 0 is 0).  Not scaled by ``iscale()``
+    (by_grid_truth.json).  Integers out; never raises."""
+    opts = opts or {}
+    start = getattr(fig0, "_dash_by_indiv", None) or (1.2, 1.2, 1.2, 1.2)
+    try:
+        sides = [float(v) for v in start]
+    except (TypeError, ValueError):
+        sides = [1.2] * 4
+    if opts.get("compact") or str(opts.get("style") or "") == "compact":
+        sides = [0.0] * 4
+    if opts.get("imargin"):
+        sides, _noted = _dash_margin_sides(opts["imargin"], sides)
+    unit = OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT
+    out = []
+    for a, b in ((sides[2], sides[3]), (sides[0], sides[1])):
+        vals = []
+        for v in (a, b):
+            if isinstance(v, tuple):     # ("pt", n)
+                v = float(v[1]) / OptionTranslator.PT_PER_RS
+            v = float(v)
+            vals.append(v if math.isfinite(v) and v > 0 else 0.0)
+        out.append(int(round(min(1e4, vals[0] + vals[1]) * unit)))
+    return tuple(out)
+
+
+#: The size properties ``_dash_by_scale_panel`` multiplies (WP-30 P1.15b,
+#: TR-48.12, D-48f), by model kind.
+_DASH_BY_SCALED_PROPS = {
+    "glyph": ("size", "line_width", "text_font_size", "border_line_width"),
+    "text": ("text_font_size", "x_offset", "y_offset", "border_line_width"),
+    "line": ("line_width",),
+    "head": ("size", "line_width"),
+    "axis": ("major_label_text_font_size", "axis_label_text_font_size",
+             "axis_line_width", "major_tick_line_width",
+             "minor_tick_line_width", "major_tick_in", "major_tick_out",
+             "minor_tick_in", "minor_tick_out", "major_label_standoff",
+             "axis_label_standoff"),
+    "grid": ("grid_line_width",),
+}
+
+
+def _dash_by_scale_value(v, m):
+    """*v* times *m* when it is a finite number, a ``{"value": n}`` spec or
+    an ``"<n>px"``/``"<n>pt"`` string; else *v* unchanged (a field)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        x = float(v) * m
+        return x if math.isfinite(x) else v
+    if isinstance(v, str):
+        mm = re.fullmatch(r"\s*([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]{1,3})?)"
+                          r"\s*(px|pt)\s*", v)
+        if mm:
+            x = float(mm.group(1)) * m
+            if math.isfinite(x):
+                return "%g%s" % (x, mm.group(2))
+        return v
+    if isinstance(v, dict) and "value" in v and len(v) == 1:
+        return {"value": _dash_by_scale_value(v["value"], m)}
+    return v
+
+
+def _dash_by_scale_panel(fig, m):
+    """Multiply every numeric size a by() panel draws by *m*, once (WP-30
+    P1.15b, TR-48.12, D-48f): its glyphs' marker sizes, line widths and
+    text, its labels, titles (the panel label too), spans, arrows and
+    their heads, axes and grids (``_DASH_BY_SCALED_PROPS``).  A field
+    spec (a per-row size or offset), the legend and a colour bar are
+    left alone (residual: per-row label offsets are not scaled).  Stamps
+    ``fig._dash_by_scaled``, so a panel laid out twice is scaled once.
+    Returns *fig*."""
+    if fig is None or getattr(fig, "_dash_by_scaled", None) is not None:
+        return fig
+    try:
+        m = float(m)
+    except (TypeError, ValueError):
+        return fig
+    if not math.isfinite(m) or m == 1.0:
+        fig._dash_by_scaled = 1.0 if math.isfinite(m) else None
+        return fig
+    done = set()
+
+    def scale(model, kind):
+        if model is None or id(model) in done:
+            return
+        done.add(id(model))
+        for prop in _DASH_BY_SCALED_PROPS[kind]:
+            if prop not in model.properties():
+                continue
+            old = getattr(model, prop)
+            new = _dash_by_scale_value(old, m)
+            if new is old:
+                continue
+            try:
+                setattr(model, prop, new)
+            except (ValueError, TypeError):
+                try:
+                    setattr(model, prop, int(round(new)))
+                except (ValueError, TypeError, OverflowError):
+                    pass
+
+    for r in list(getattr(fig, "renderers", []) or []):
+        for slot in ("glyph", "selection_glyph", "nonselection_glyph",
+                     "hover_glyph", "muted_glyph"):
+            g = getattr(r, slot, None)
+            if g is not None and not isinstance(g, str):
+                scale(g, "glyph")
+    models = []
+    for place in ("center", "above", "below", "left", "right"):
+        models += list(getattr(fig, place, []) or [])
+    if getattr(fig, "title", None) is not None:
+        models.append(fig.title)
+    for a in models:
+        kind = type(a).__name__
+        if kind in ("LabelSet", "Label", "Title"):
+            scale(a, "text")
+        elif kind in ("Span",):
+            scale(a, "line")
+        elif kind == "Arrow":
+            scale(a, "line")
+            for end in ("start", "end"):
+                scale(getattr(a, end, None), "head")
+    for ax in list(fig.xaxis) + list(fig.yaxis) + \
+            [a for a in models if type(a).__name__.endswith("Axis")]:
+        scale(ax, "axis")
+    for gr in list(fig.xgrid) + list(fig.ygrid):
+        scale(gr, "grid")
+    fig._dash_by_scaled = m
+    return fig
 
 def _dash_by_text_key(tok):
     """The by() text sub-option (``"title"``, ``"subtitle"``, ``"note"``,
@@ -34772,27 +35184,6 @@ def _dash_keep_jitter(new_data, snapshot):
     return new_data
 
 
-def _dash_facet_cols(gopts, n_panels):
-    """cols(#) from by() first, then the by_cols key, then ceil(sqrt(n)) --
-    and never more columns than there are panels.
-
-    Nothing upstream bounds #, and a column past the last panel draws
-    nothing: gridplot() skips the None the last row is padded with.  The
-    padding was built all the same -- cols(30000000) of four panels took
-    1.8 s and 237 MB, cols(1000000000) about a minute and 8 GB, for one
-    render and again for every served session.
-    """
-    n_by = _dash_parse_by((gopts.get("by") or ""), warn=False)[1]
-    try:
-        n_key = int(gopts.get("by_cols", "0") or 0)
-    except (ValueError, TypeError):
-        n_key = 0
-    n = n_by or n_key
-    if n <= 0:
-        n = min(n_panels, max(1, math.ceil(math.sqrt(n_panels))))
-    return max(1, min(n, n_panels))
-
-
 def _dash_graph_options_of(graphs, name):
     """The graph_options of the graph the layout places under *name*.
 
@@ -34829,14 +35220,36 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         figs = [figures[fk] for fk, _ in facet_map[name] if fk in figures]
         if not figs:
             return None
-        cn = _dash_facet_cols(gopts_of(name) or {}, len(figs))
-        rows = [figs[i:i + cn] for i in range(0, len(figs), cn)]
-        while len(rows[-1]) < cn:
-            rows[-1].append(None)
-        grid = gridplot(rows, sizing_mode="stretch_width")
+        # twoway's cells, size and spacing (WP-30 P1.15b): the panels sit
+        # where bygraph_g.class places them (_dash_by_positions, empty
+        # rows and columns not drawn, as twoway draws none), each drawn at
+        # twoway's by() size or iscale() (_dash_by_scale_panel, once per
+        # panel), spaced by the scheme's margin by_indiv, compact or
+        # imargin(), and -- without aspectratio() -- proportioned so the
+        # whole array has the graph's xsize()/ysize() ratio.
+        go = gopts_of(name) or {}
+        opts = _dash_by_grid_options(go.get("by"))
+        if not opts["cols"] and not opts["rows"]:
+            try:
+                opts["cols"] = max(0, int(go.get("by_cols", "0") or 0))
+            except (ValueError, TypeError):
+                opts["cols"] = 0
+        _cells, _r, _c, extra = _dash_by_positions(len(figs), opts)
+        cells, nr, nc = extra["drawn"]
+        m = _dash_by_size_mult(go.get("by"), extra["full_n"])
+        own_ar = str(go.get("aspectratio", "") or "").strip()
+        for f in figs:
+            if getattr(f, "_dash_array_ar", None) is None:
+                f._dash_array_ar = getattr(f, "aspect_ratio", None) or 0.0
+            _dash_by_scale_panel(f, m)
+            if not own_ar and f._dash_array_ar:
+                f.aspect_ratio = float(f._dash_array_ar) * nr / nc
+        grid = gridplot([figs], sizing_mode="stretch_width")
+        grid.children = [(f, r, c) for f, (r, c) in zip(figs, cells)]
+        grid.spacing = _dash_by_spacing(figs[0], opts)
         # by()'s overall text above and below the panels (WP-30 P1.15a).
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
-                            cn)
+                            nc)
         return _dash_name_save(_dash_reflow(grid))
     if name in figures:
         return figures[name]
@@ -34982,6 +35395,17 @@ def _dash_auto_bs_layout(all_names, kpi_names, figures=None):
         # pushing every other graph onto a row of its own.
         def _ar_of(nm):
             _f = (figures or {}).get(nm)
+            if _f is None:
+                # A by() graph's panels are keyed <name>__by__<k>; the
+                # graph's ratio is its array's (WP-30 P1.15b, REM-10-03).
+                _pre = f"{nm}__by__"
+                _ks = sorted(int(k[len(_pre):]) for k in (figures or {})
+                             if k.startswith(_pre) and k[len(_pre):].isdigit())
+                if _ks:
+                    _f = figures[f"{_pre}{_ks[0]}"]
+                    _a = getattr(_f, "_dash_array_ar", None)
+                    if _a:
+                        return float(_a)
             _a = getattr(_f, "aspect_ratio", None) if _f else None
             return float(_a) if _a else 0.0
 
@@ -44661,6 +45085,11 @@ class ServerAppBuilder:
                          # by(): one parser, one panel-label rule.
                          "_dash_by_tokens", "_dash_parse_by",
                          "_dash_by_rescale",
+                         # by() grid and size (WP-30 P1.15b).
+                         "_dash_by_word", "_dash_by_grid_options",
+                         "_dash_by_positions", "_dash_by_size_mult",
+                         "_dash_by_spacing", "_dash_by_scale_value",
+                         "_dash_by_scale_panel",
                          "_dash_facet_label", "_dash_stata_date_text",
                          # by() panel labels and overall text (WP-30 P1.15a).
                          "_dash_by_value_missing", "_dash_by_nonmissing",
@@ -44831,7 +45260,7 @@ class ServerAppBuilder:
                          # The document: order, cells, tabs, header.
                          "_dash_layout_order", "_dash_auto_grid_cols",
                          "_dash_kpi_keys",
-                         "_dash_facet_cols", "_dash_layout_cell",
+                         "_dash_layout_cell",
                          "_dash_graph_options_of",
                          # link() and exclude(), read by the saved
                          # renderer's rules.

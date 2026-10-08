@@ -283,8 +283,10 @@ class TestTheRescaleSubOptions:
     @pytest.mark.parametrize("by_raw,named", [
         ("foreign, yrescale", []), ("foreign, xr", []), ("foreign, r", []),
         ("foreign, norescale", []), ("foreign, noyrescale", []),
-        ("foreign, rows(2) yrescale", ["rows(2)"]),
-        ("foreign, r(1)", ["r(1)"]), ("foreign, rescale(1)", ["rescale(1)"])])
+        # Flipped (WP-30 P1.15b): rows(2) and r(1) were named; they are
+        # laid out now, as twoway draws them (by_grid_truth.json grid).
+        ("foreign, rows(2) yrescale", []),
+        ("foreign, r(1)", []), ("foreign, rescale(1)", ["rescale(1)"])])
     def test_rescale_tokens_are_not_named(self, by_raw, named):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -306,8 +308,10 @@ class TestTheRescaleSubOptions:
         assert [str(w.message) for w in caught] == [
             "dash: by() sub-option style(rescale): only its separate scales "
             "are drawn; the rest of the style is not implemented."]
+        # Flipped (WP-30 P1.15b): style(compact) was named; its spacing is
+        # drawn now (by_grid_truth.json sizes "style(compact)": 0 units).
         assert dr._dash_parse_by("foreign, style(compact)",
-                                 warn=False)[4] == ["style(compact)"]
+                                 warn=False)[4] == []
 
     def test_hostile_by_text_never_raises(self):
         big = "foreign, " + " ".join(["yrescale"] * 100000)

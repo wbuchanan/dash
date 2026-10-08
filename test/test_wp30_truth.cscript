@@ -114,7 +114,8 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
+    S48 11
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -10663,10 +10664,166 @@ if inlist("`only'", "", "S47") & `: list posof "S47" in w30_run' {
 }
 * ==== end S47 ====
 
+// _s48_check kind svg html [svg0 html0] -- a by() grid drawn by dash
+// against twoway's in the same run (WP-30 P1.15b).  kind "cells": each
+// panel's (row, col), counted over the rows and columns that hold a panel,
+// from twoway's SVG label texts and from the page's panel grid; kind
+// "size": the panel's marker-label font over the plain graph's (svg0,
+// html0), within 1% of twoway's.  Globals S48_OK (1/0) and S48_MSG.
+capture program drop _s48_check
+program define _s48_check
+    version 19
+    args kind svg html svg0 html0
+    global S48_ARGS `"`kind'|`svg'|`html'|`svg0'|`html0'"'
+    python: __import__("sys").modules["_dash_s48"].check()
+end
+python:
+def _s48_check():
+    import json, html as _h, os, re, sys, warnings
+    from sfi import Macro
+    kind, svg, page, svg0, page0 = Macro.getGlobal("S48_ARGS").split("|")
+    sys.path.insert(0, os.path.join(Macro.getGlobal("S48_REPO"), "scripts"))
+    import svg_truth
+
+    def doc_of(path):
+        from bokeh.document import Document
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for blob in re.findall('<script type="application/json"[^>]*>(.*?)</script>', text, re.S):
+            try:
+                d = json.loads(_h.unescape(blob))
+            except ValueError:
+                continue
+            if isinstance(d, dict) and d:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    return Document.from_json(list(d.values())[0])
+        return None
+
+    def label_of(fig):
+        for m in list(fig.above) + list(fig.below):
+            if type(m).__name__ == "Title" and m.name == "dash_by_label":
+                return str(m.text)
+        return None
+
+    def dash_panels(path):
+        from bokeh.models import GridPlot
+        doc = doc_of(path)
+        out = []
+        for root in doc.roots:
+            for g in root.references():
+                if isinstance(g, GridPlot):
+                    for ch in g.children:
+                        lab = label_of(ch[0]) if type(ch[0]).__name__ == "figure" else None
+                        if lab is not None:
+                            out.append((lab, int(ch[1]), int(ch[2]), ch[0]))
+        return out
+
+    def rebased(cells):
+        r0 = min(c[1] for c in cells)
+        c0 = min(c[2] for c in cells)
+        return sorted((c[0], c[1] - r0, c[2] - c0) for c in cells)
+
+    bad = []
+    if kind == "cells":
+        panels = dash_panels(page)
+        labels = [p[0] for p in panels]
+        d = svg_truth.svg_document(svg)
+        found = {}
+        for lab in labels:
+            hits = [t for t in d["texts"] if t["text"] == lab]
+            if hits:
+                h = max(hits, key=lambda t: (t["size"] or 0, -t["y"]))
+                found[lab] = (h["x"], h["y"])
+
+        def pitch(vals):
+            vals = sorted(set(round(v, 1) for v in vals))
+            diffs = [b - a for a, b in zip(vals, vals[1:])]
+            return min(diffs) if diffs else 1e9
+        px = pitch([v[0] for v in found.values()])
+        py = pitch([v[1] for v in found.values()])
+        tw = [(lab, int(round(y, 1) // py), int(round(x, 1) // px))
+              for lab, (x, y) in found.items()]
+        dc = rebased([(p[0], p[1], p[2]) for p in panels])
+        if len(found) != len(labels) or not tw or rebased(tw) != dc:
+            bad.append("twoway %s, dash %s" % (rebased(tw) if tw else [], dc))
+    else:
+        def mlab(path):
+            from bokeh.models import LabelSet
+            doc = doc_of(path)
+            for root in doc.roots:
+                for m in root.references():
+                    if isinstance(m, LabelSet):
+                        v = m.text_font_size
+                        v = v.get("value") if isinstance(v, dict) else v
+                        v = getattr(v, "value", v)
+                        hit = re.search(r"[0-9]*\.?[0-9]+", str(v))
+                        return float(hit.group(0)) if hit else None
+            return None
+
+        def tmin(path):
+            d = svg_truth.svg_document(path)
+            return min(t["size"] for t in d["texts"] if t["text"]
+                       and re.match(r"^[0-9.,]+$", t["text"]) and t["size"])
+        tw = tmin(svg) / tmin(svg0)
+        a, b = mlab(page), mlab(page0)
+        dr = (a / b) if a and b else None
+        if dr is None or abs(dr - tw) > 0.01 * tw:
+            bad.append("twoway %.4f, dash %s" % (tw, dr))
+    Macro.setGlobal("S48_OK", "0" if bad else "1")
+    Macro.setGlobal("S48_MSG", "; ".join(bad)[:400] or "ok")
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s48_sys
+_s48_sys.modules["_dash_s48"] = type(_s48_sys)("_dash_s48")
+_s48_sys.modules["_dash_s48"].check = _s48_check
+end
+
 * ==== S48 P1.15b: by() grid and size ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S48") & `: list posof "S48" in w30_run' {
     display as text "S48 start " c(current_date) " " c(current_time)
+    global S48_REPO "`c(pwd)'/.."
+    local s48log "`w30_work'/s48.log"
+    local s48pg "`w30_work'/zbyg.html"
+    local s48svg "`w30_work'/zbyg.svg"
+    quietly sysuse auto, clear
+    // BYG-20..BYG-25: the panels sit in twoway's cells.
+    foreach row in ///
+        "BYG-20|rep78, holes(3) total" "BYG-21|rep78, colfirst total" ///
+        "BYG-22|rep78, rows(2) colfirst holes(1)" "BYG-23|foreign, cols(5)" ///
+        "BYG-24|rep78, hol(2 2 9)" "BYG-25|rep78, rows(1)" {
+        gettoken id by : row, parse("|")
+        local by = substr(`"`by'"', 2, .)
+        _s36_run `"twoway scatter mpg weight, by(`by') scheme(s2color) name(_s48, replace)"' "`s48log'"
+        quietly graph export "`s48svg'", name(_s48) replace
+        _s36_run `"dash scatter mpg weight, by(`by') scheme(s2color) saving("`s48pg'", replace)"' "`s48log'"
+        local drc = r(rc)
+        capture _s48_check cells "`s48svg'" "`s48pg'"
+        local prc = _rc
+        _w30_expect `id' "(`drc' == 0 & `prc' == 0 & ${S48_OK} == 1)" "by(`by'): rc `drc'/`prc', ${S48_MSG}"
+        _w30_done `id' "by(`by'): every panel in twoway's cell"
+    }
+    // BYG-26: iscale(.5) draws a panel's marker labels at half the plain size.
+    local s48svg0 "`w30_work'/zbyg0.svg"
+    local s48pg0 "`w30_work'/zbyg0.html"
+    _s36_run `"twoway scatter mpg weight, mlabel(rep78) scheme(s2color) name(_s48, replace)"' "`s48log'"
+    quietly graph export "`s48svg0'", name(_s48) replace
+    _s36_run `"twoway scatter mpg weight, mlabel(rep78) by(foreign, iscale(.5)) scheme(s2color) name(_s48, replace)"' "`s48log'"
+    quietly graph export "`s48svg'", name(_s48) replace
+    _s36_run `"dash scatter mpg weight, mlabel(rep78) scheme(s2color) saving("`s48pg0'", replace)"' "`s48log'"
+    local drc0 = r(rc)
+    _s36_run `"dash scatter mpg weight, mlabel(rep78) by(foreign, iscale(.5)) scheme(s2color) saving("`s48pg'", replace)"' "`s48log'"
+    local drc = r(rc)
+    capture _s48_check size "`s48svg'" "`s48pg'" "`s48svg0'" "`s48pg0'"
+    local prc = _rc
+    _w30_expect BYG-26 "(`drc0' == 0 & `drc' == 0 & `prc' == 0 & ${S48_OK} == 1)" "rc `drc0'/`drc'/`prc', ${S48_MSG}"
+    _w30_done BYG-26 "by(foreign, iscale(.5)) marker labels at twoway's size"
+    capture graph drop _all
+    capture dash clear
+    foreach f in s48log s48pg s48svg s48svg0 s48pg0 {
+        capture erase "``f''"
+    }
+    macro drop S48_*
     display as text "S48 end " c(current_date) " " c(current_time)
 }
 * ==== end S48 ====

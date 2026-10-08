@@ -373,7 +373,7 @@ and now matches Stata.
 
 - dash scatter mpg weight, title("T") by(foreign rep78, missing) now labels each panel on its own row under T -- Domestic, 1 ... Foreign, (missing) -- where it titled them T — Domestic / 1 ... T — Foreign / Missing; subtitle() replaces, leads or follows the label as in twoway; by(, title() subtitle() note() caption()) are drawn once over the panels, where they were named and ignored, with twoway's note Graphs by Car origin and Repair record 1978 under them unless by(, note("")); and a string by() variable's "" values are left out of the panels and the Total panel unless missing is given, where they drew an untitled panel and were counted in Total (WP-30, P1.15a)
 
-<!-- WP-30 P1.15b -->
+- by() graphs are laid out and sized as twoway does: `rows()`, `holes()`, `colfirst`, `compact`, `style(compact)` and `imargin()` place and space the panels (they were named and ignored); panel text, markers and lines are drawn at twoway's by() size, 0.85 of the plain graph's for 2 to 4 panels and 0.6 for 10 to 16 (they were full size), or at `iscale()`; `xsize()` and `ysize()` size the whole array (two panels of `xsize(12) ysize(3)` were 4:1 each and are now 2:1), and `layout(bs)` gives a wide faceted graph its own row. (WP-30, P1.15b)
 
 <!-- WP-30 P1.15c -->
 
@@ -757,7 +757,7 @@ and now matches Stata.
 
 - A colour written with commas in a plot colour option is refused, as twoway refuses it: dash scatter mpg weight, mcolor(255,0,0) drew red, now stops with invalid '0', r(198). Write the triplet with blanks, mcolor("255 0 0"). (WP-30, P1.13a)
 
-<!-- WP-30 P1.15b -->
+- by() arguments twoway refuses are refused in its words (each was accepted, most with a note): `rows()` with `cols()` (`may not specify both rows() and cols()`, r(198)); a `rows()` or `cols()` that is not one positive integer and a `holes()` that is not a list of up to 300 positive integers (`rows() invalid -- invalid number, outside of allowed range`, r(125), and twoway's r(121), r(123), r(126) forms); a repeated `rows()`, `cols()`, `holes()`, `style()`, `compact`, `iscale()`, `imargin()`, `colfirst`, `total`, `missing` or rescale word, or a capitalised sub-option such as `YRESCALE` or `TITLE()` (`option YRESCALE not allowed`, r(198)); an unknown by() sub-option such as `bogus` (`option bogus not allowed`, r(198)); `iscale()` below 0 or above 10,000 (`gm_linewidth must be between 0.000 and  1.0e+04`, r(198)). (WP-30, P1.15b)
 
 - barwidth() on rcap and rcapsym is refused, r(198), with twoway's message option barwidth() not allowed, naming the spelling given (barw() to barwidth()); dash accepted it and drew nothing different. (WP-30, P1.17a)
 
