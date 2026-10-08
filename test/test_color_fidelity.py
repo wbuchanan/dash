@@ -42,6 +42,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture(scope="module")
 def truth():
     with open(_FIXTURE) as fh:
@@ -167,7 +170,7 @@ class TestColourNone:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)

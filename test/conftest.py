@@ -465,6 +465,26 @@ def exec_app(source, filename, namespace):
     return namespace
 
 
+
+def _no_page(*_a, **_k):
+    """``file_html``'s stand-in where the page is not kept: a page with no
+    script, so the renderer's seal and head splice still run on it."""
+    return "<!DOCTYPE html>\n<html><head></head><body></body></html>"
+
+
+def render_models(renderer):
+    """``renderer.render()`` for its models alone: every model is built and
+    finished as for the page, but Bokeh's serialisation of the page
+    (``file_html``, about two fifths of a render) is skipped.  A test that
+    reads the page, or a model's ``document``, calls ``render()``.
+    Returns *renderer*."""
+    from unittest import mock
+    mod = sys.modules[type(renderer).__module__]
+    with mock.patch.object(mod, "file_html", _no_page):
+        renderer.render()
+    return renderer
+
+
 def load_app(path, name):
     """Import the generated app at *path* as module *name*, as
     ``spec.loader.exec_module`` would -- the same module attributes and the
@@ -858,7 +878,7 @@ def make_dr(
             json.dump(data, f)
         dr = DashRenderer(sp, dp, op)
         if render:
-            dr.render()
+            render_models(dr)
     finally:
         for p in (sp, dp, op):
             try:

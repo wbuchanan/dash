@@ -31,6 +31,9 @@ from test_adversarial_matrix import _load_app  # noqa: E402
 from test_help_claims_3 import _card_value  # noqa: E402
 
 
+from conftest import render_models  # noqa: E402
+
+
 def frame_from_stata(varnames):
     """The current Stata dataset's *varnames* as a DataFrame and the set of
     string variables among them."""
@@ -88,7 +91,7 @@ def saved(df, strings, spec, moves):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     s = js_runner.JsSession(r.filter_callbacks)
     for fi, value in moves:
         w, cb = r.filter_widgets[fi], r.filter_callbacks[fi]
@@ -198,7 +201,7 @@ def layer_rows(spec_path, data_path, moves):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(spec_path, data_path)
-        r.render()
+        render_models(r)
     s = js_runner.JsSession(r.filter_callbacks)
     for fi, value in moves:
         w, cb = r.filter_widgets[fi], r.filter_callbacks[fi]
@@ -266,7 +269,7 @@ def colour_keys(spec_path, data_path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(spec_path, data_path)
-        r.render()
+        render_models(r)
     saved_keys = _keys_of(r._last_layout_root)
     tmp = tempfile.mkdtemp(prefix="ft_colour_keys_")
     app = os.path.join(tmp, "app.py")

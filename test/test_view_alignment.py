@@ -110,6 +110,9 @@ _ALIGNED_ALREADY = [
 ]
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _source(frame):
     """A ColumnDataSource carrying the row-identity column the views use."""
     data = {c: list(frame[c]) for c in frame.columns}
@@ -222,8 +225,7 @@ class TestTheReproductionFromTheReport:
         renderer = dr.DashRenderer(str(spec_path), str(data_path))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            renderer.render()
-
+            render_models(renderer)
         seen = []
         for fig in renderer.figures.values():
             for rend in fig.renderers:

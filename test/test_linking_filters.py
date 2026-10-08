@@ -54,6 +54,9 @@ _NODE = shutil.which("node")
 # Fixtures
 # ======================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _frame(n=40):
     """A frame where every row is identifiable from its own values.
 
@@ -89,7 +92,7 @@ def _build(graphs, *, link="", filters=None, registry=None, df=None):
     with open(dp, "w") as f:
         json.dump(make_data_json(df), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)

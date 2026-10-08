@@ -37,6 +37,9 @@ import test_lpoly_rot as tl  # noqa: E402
 _FIX = os.path.join(_HERE, "fixtures", "lpolyci_truth.json")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _load():
     if not os.path.exists(_FIX):
         pytest.fail("test/fixtures/lpolyci_truth.json is missing: run "
@@ -491,7 +494,7 @@ class TestSources:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                render_models(r)
             return list(r.figures.values())
         doc, _w, _ap = tl._served_doc(tmp_path, spec, _df("auto"))
         return [p for p in doc.select({"type": Plot}) if p.renderers]
@@ -587,7 +590,7 @@ class TestLegendKey:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                render_models(r)
             figs = list(r.figures.values())
             srcs = tl._sources_saved(tmp_path, spec, _df("auto"))[0]
         else:

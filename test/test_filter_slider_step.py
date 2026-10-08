@@ -40,6 +40,9 @@ from conftest import make_spec, make_data_json
 _MS_DAY = 86_400_000.0
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(values, fmt, ftype="range"):
     """Render one date filter.
 
@@ -68,7 +71,7 @@ def _render(values, fmt, ftype="range"):
     dr = DashRenderer(sp, dp, op)
     with warnings.catch_warnings():
         warnings.simplefilter("error", UserWarning)
-        dr.render()
+        render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)
@@ -250,7 +253,7 @@ class TestTheNumericPathIsUnchanged:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         w = dr.filter_widgets[0]
         for p in (sp, dp, op):
             try:

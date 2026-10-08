@@ -54,6 +54,9 @@ _TMP = tempfile.mkdtemp(prefix="dash_by_text_")
 _TRUTH = None
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     global _TRUTH
     if _TRUTH is None:
@@ -112,7 +115,7 @@ def _draw(mode, spec):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         roots, notes = [r._last_layout_root], [str(w.message) for w in caught]
         extra = r
     else:

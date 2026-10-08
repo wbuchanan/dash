@@ -48,6 +48,9 @@ from conftest import make_data_json, make_spec
 # Helpers
 # ============================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(plots, df, *, graph_if="", graph_in=""):
     """Render *plots* against *df* and return the DashRenderer.
 
@@ -66,7 +69,7 @@ def _render(plots, df, *, graph_if="", graph_in=""):
         with open(data_path, "w") as fh:
             json.dump(data, fh)
         dr = DashRenderer(spec_path, data_path, out_path)
-        dr.render()
+        render_models(dr)
     finally:
         for p in paths:
             try:

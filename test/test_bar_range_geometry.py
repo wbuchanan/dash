@@ -67,6 +67,9 @@ _HI = [4.0, 5, 3, 6, 2]
 # Helpers
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _spec(plots, formats=None, bo=None):
     b = {"formats": dict(formats or {})}
     b.update(bo or {})
@@ -103,7 +106,7 @@ def _figs(mode, tmp_path, spec, df):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             r = dr.DashRenderer(sp, dp, os.path.join(str(tmp_path), "o.html"))
-            r.render()
+            render_models(r)
         return list(r.figures.values()), [str(w.message) for w in caught]
     _N[0] += 1
     ap = os.path.join(str(tmp_path), "app_%d.py" % _N[0])
@@ -796,7 +799,7 @@ class TestTheBaseAfterAMove:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     r = dr.DashRenderer(sp, dp)
-                    r.render()
+                    render_models(r)
                 for v in ((1.0, 3.0), (1.0, 5.0)):
                     [f] = tda._move_saved(r, "RangeSlider", v)
                     got.append(_db_base(_db_based(f)[0]))

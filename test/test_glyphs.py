@@ -27,6 +27,9 @@ from bokeh.models import ColumnDataSource, GlyphRenderer, HoverTool
 # Fixtures
 # ================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture
 def auto_df():
     """Small synthetic dataset that mimics Stata's auto.dta."""
@@ -2976,7 +2979,7 @@ def _make_dr_for_hover(plots, hover="", link="g1"):
         for p in (sp, dp, op):
             try: os.unlink(p)
             except OSError: pass
-    dr.render()
+    render_models(dr)
     return dr
 
 

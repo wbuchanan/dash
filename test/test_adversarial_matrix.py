@@ -947,6 +947,9 @@ _PYTEST_ID = re.compile(r"^test/test_\w+\.py::(?:\w+::)?test_\w+$")
 _CSCRIPT_ID = re.compile(r"^(test_\w+\.cscript):([A-Za-z0-9]+-[A-Za-z0-9]+)$")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _entries():
     for surface, cats in SURFACES.items():
         for cat, ids in cats.items():
@@ -2057,7 +2060,7 @@ class TestALayoutThatCannotBeReadIsReported:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             saved = dr.DashRenderer(sp, dp)
-            saved.render()
+            render_models(saved)
             src = _app_source(tmp_path, spec)
         rows, cols = saved._compute_grid(
             ["g1", "g2"], saved.master_spec["build_options"]["layout"])

@@ -29,6 +29,9 @@ from test_help_claims_3 import (TestAnExclusionHoldsAgainstEveryMove as  # noqa:
                                 _Seq, _card_value, _kpi_card)
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _two_filter_spec(graphs, kpis=(), price_excl=(), link=""):
     names = [g["graph_options"]["name"] for g in graphs] + [
         k["name"] for k in kpis]
@@ -47,7 +50,7 @@ def _render(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

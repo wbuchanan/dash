@@ -109,6 +109,9 @@ _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_marker_label_parity_")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _write(spec, df, value_labels, label_names):
     tag = next(_SEQ)
     sp = os.path.join(_TMP, f"spec_{tag}.json")
@@ -146,7 +149,7 @@ def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     std_w = sorted(str(w.message) for w in caught)
     if not served:
         return list(r.figures.values())[0], None, std_w, None

@@ -151,6 +151,9 @@ ALLOWED = {
 }
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _allowed(key):
     """The reason for a tolerated difference, looked up where it is
     tolerated -- so the allowance list and the code that honours it cannot
@@ -230,9 +233,17 @@ def _standalone_page(spec):
 
 
 def _standalone(spec):
-    """(renderer, warnings) from the saved-dashboard renderer."""
-    r, caught, _page = _standalone_page(spec)
-    return r, caught
+    """(renderer, warnings) from the saved-dashboard renderer.
+
+    The page is dropped, so Bokeh's serialisation of it -- about two
+    fifths of a render -- is skipped (``file_html``, after every model is
+    built and finished: conftest.render_models); a test that reads
+    the page calls ``_standalone_page``."""
+    _, sp, dp = _write(spec)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        r = render_models(dr.DashRenderer(sp, dp))
+    return r, sorted(str(w.message) for w in caught)
 
 
 def _served(spec):

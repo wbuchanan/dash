@@ -51,6 +51,9 @@ _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_hover_export_")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _read(name):
     with open(os.path.join(_ROOT, name), encoding="utf-8") as fh:
         return fh.read()
@@ -89,7 +92,7 @@ def _saved(spec, data):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

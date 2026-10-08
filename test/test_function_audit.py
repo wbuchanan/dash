@@ -46,6 +46,9 @@ _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 # Both modes from one spec
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _spec(plots, kpis=None, build_options=None, graph_options=None,
           if_expr=""):
     go = {"name": "g1"}
@@ -89,7 +92,7 @@ def _saved(tmp_path, spec, df, strings=()):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r, [str(w.message) for w in caught]
 
 

@@ -47,6 +47,9 @@ _DF = pd.DataFrame({
 })
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _spec(filter_raw):
     return {"graphs": [{"name": "g1", "graph_options": {"name": "g1"},
                         "options": {},
@@ -71,7 +74,7 @@ def _widgets(tmp_path, filter_raw, server):
         warnings.simplefilter("ignore")
         if not server:
             r = dr.DashRenderer(str(sp), str(dp))
-            r.render()
+            render_models(r)
             found, seen = [], set()
 
             def walk(m):

@@ -45,6 +45,9 @@ _SEQ = itertools.count()
 _FIXTURE = os.path.join(_HERE, "fixtures", "text_truth.json")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     if not os.path.exists(_FIXTURE):
         pytest.fail("test/fixtures/text_truth.json is missing: run "
@@ -96,7 +99,7 @@ def _document(mode, tmp_path, spec, data=None):
         warnings.simplefilter("always")
         if mode == "saved":
             obj = dr.DashRenderer(sp, dp)
-            obj.render()
+            render_models(obj)
         else:
             dr.ServerAppBuilder(sp, dp).build(ap)
             mod = load_app(ap, f"_tnt_app_{next(_SEQ)}")

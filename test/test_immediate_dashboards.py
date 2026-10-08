@@ -89,6 +89,9 @@ _SEQ = itertools.count()
 # Harness: a spec in dash.ado's shape, drawn saved and served
 # ===========================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, plots, **graph_options):
     """One graph as dash.ado registers it; *name* "" is the one-line form's
     graph, which has none."""
@@ -126,7 +129,7 @@ def _saved(tmp_path, spec, data):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return list(r.figures.values()), [str(w.message) for w in caught]
 
 

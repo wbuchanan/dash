@@ -45,6 +45,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture(scope="module")
 def truth():
     with open(_FIXTURE) as fh:
@@ -522,7 +525,7 @@ class TestKpiValuesFormatAsDates:
         spec["kpis"] = [{"name": "k1", "stat": stat, "var": var,
                          "title": "t", "fmt": fmt}]
         dr = _renderer(spec, _dated_payload(), tmp_path)
-        dr.render()
+        render_models(dr)
         divs = getattr(dr, "kpi_divs", {})
         assert divs, "no KPI was rendered"
         return "".join(getattr(v, "text", "") for v in divs.values())
@@ -562,7 +565,7 @@ class TestDateFilterWidgets:
         spec["build_options"]["filters"] = [
             {"varname": "date", "type": ftype, "exclude": [], "label": ""}]
         dr = _renderer(spec, _dated_payload(), tmp_path)
-        dr.render()
+        render_models(dr)
         return list(getattr(dr, "filter_widgets", []))
 
     def test_a_date_range_filter_produces_a_widget(self, tmp_path):
@@ -610,7 +613,7 @@ class TestDateFilterWidgets:
         spec["build_options"]["filters"] = [
             {"varname": "close", "type": "range", "exclude": [], "label": ""}]
         dr = _renderer(spec, _dated_payload(), tmp_path)
-        dr.render()
+        render_models(dr)
         assert any(isinstance(x, RangeSlider)
                    for x in dr.filter_widgets)
 
@@ -674,7 +677,7 @@ class TestDateFilterActuallyFilters:
         spec["kpis"] = [{"name": "k1", "stat": "max", "var": "date",
                          "title": "Last", "fmt": ""}]
         dr = _renderer(spec, _dated_payload(), tmp_path)
-        dr.render()
+        render_models(dr)
         return dr
 
     def test_the_snapshot_and_the_live_column_use_the_same_representation(
@@ -853,7 +856,7 @@ class TestAMissingDateDoesNotBreakAFilteredPage:
         dr = _renderer(spec, self._data(), tmp_path)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            dr.render()
+            render_models(dr)
         col = list(dr.sources["g1"].data["date"])
         assert pd.isna(col[3])
         assert not pd.isna(col[2]) and not pd.isna(col[4])

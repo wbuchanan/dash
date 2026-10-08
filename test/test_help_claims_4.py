@@ -61,6 +61,9 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json")
 _SEQ = count()
 
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture(scope="module")
 def truth():
     with open(_FIXTURE, encoding="utf-8") as fh:
@@ -214,7 +217,7 @@ def _saved(tmp_path, spec, df):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 
@@ -1111,7 +1114,7 @@ class TestAStringVariablesCountAndDistinctCount:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         self._check(_cards(d.text for d in r.kpi_divs.values()), want,
                     "all", "saved, as it opens")
         self._check(_saved_filter_move(r, 0, "1"), want, "f1",

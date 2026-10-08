@@ -84,6 +84,9 @@ _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
 # The page's own callback, run under node (test/js_runner.py, WP-28 S03)
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _run(code, args, cb_obj=None):
     """Run *code* under node with *args*; write what it left in every
     ColumnDataSource, BooleanFilter and Div back into the Python models."""
@@ -106,7 +109,7 @@ def _render(spec, df=_DF):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

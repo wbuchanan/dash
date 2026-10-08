@@ -29,6 +29,9 @@ from dash_render import _dash_range_reversed
 # Helpers
 # ================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _make_graph_spec(name: str, ptype: str = "scatter",
                      yvar: str = "mpg", xvar: str = "weight",
                      graph_options: dict | None = None) -> dict:
@@ -1126,7 +1129,7 @@ class TestPerFacetKpis:
             "value": "", "subtitle": "", "color": "", "bgcolor": "",
         }
         r = self._build_renderer_with_kpi(kpi)
-        r.render()
+        render_models(r)
         assert list(r.kpi_divs) == ["k1"]
 
     def test_facet_kpi_titles_include_label(self):
@@ -1139,7 +1142,7 @@ class TestPerFacetKpis:
             "value": "", "subtitle": "", "color": "", "bgcolor": "",
         }
         r = self._build_renderer_with_kpi(kpi)
-        r.render()
+        render_models(r)
         text = r.kpi_divs["k1"].text
         assert "Avg MPG" in text and "Avg MPG (" not in text
         assert ">14.5<" in text   # the mean of mpg 10, 11, ..., 19
@@ -1152,7 +1155,7 @@ class TestPerFacetKpis:
             "subtitle": "", "color": "", "bgcolor": "",
         }
         r = self._build_renderer_with_kpi(kpi)
-        r.render()
+        render_models(r)
         # No stat/var → falls back to single div
         assert "k1" in r.kpi_divs
 

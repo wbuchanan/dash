@@ -59,6 +59,9 @@ import dash_render as _dr_mod  # noqa: E402  (WP-30 P1.3a)
 from by_panel_probe import is_chrome, panel_label  # noqa: E402  (WP-30 P1.15a)
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _panel_name(fig):
     """A by() panel's label row, else the figure's title.  Flipped (WP-30
     P1.15a): these keyed panels on the title, which held the label;
@@ -4960,7 +4963,7 @@ def _assert_served_layer_refits(dr_module, df, ptype):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr_module.DashRenderer(spec_path, data_path)
-            r.render()
+            render_models(r)
             want = _derived(r.figures.values())
     finally:
         for _p in (spec_path, data_path):
@@ -5036,7 +5039,7 @@ def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
                 _visit(_root)
             served_rows = _rows(_figs)
             r = dr_module.DashRenderer(spec_path, data_path)
-            r.render()
+            render_models(r)
             saved_rows = _rows(r.figures.values())
     finally:
         for _p in (spec_path, data_path, out_f.name):
@@ -5611,7 +5614,7 @@ def _ql_saved(dr, tmp_path, spec, df=None):
     with _w.catch_warnings(record=True) as caught:
         _w.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r, [str(x.message) for x in caught]
 
 
@@ -6051,7 +6054,7 @@ class TestDualLogScale:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             fig = list(renderer.figures.values())[0]
             assert isinstance(fig.x_scale, LogScale), \
                 "x-axis must be LogScale when xscale(log) and yscale(log) are both set"
@@ -6607,7 +6610,7 @@ class TestFilterCallbackExcludeAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # After render(), filter_widgets and filter_callbacks must have same length
             assert len(renderer.filter_widgets) == len(renderer.filter_callbacks), \
                 "filter_widgets and filter_callbacks must always have equal length"
@@ -6625,7 +6628,7 @@ class TestFilterCallbackExcludeAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # There should be exactly 1 widget (for 'foreign')
             assert len(renderer.filter_widgets) == 1, \
                 "foreign filter widget must be built even though missing_var was skipped"
@@ -6688,7 +6691,7 @@ class TestKpiFilterCallbackXssHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 cb_args = renderer.filter_callbacks[0].args
                 kpi_cfg_json = cb_args.get("kpi_config_json", "")
@@ -6711,7 +6714,7 @@ class TestKpiFilterCallbackXssHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 kpi_cfg_json = renderer.filter_callbacks[0].args.get("kpi_config_json", "")
                 assert "&amp;" in kpi_cfg_json, \
@@ -6729,7 +6732,7 @@ class TestKpiFilterCallbackXssHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 kpi_cfg_json = renderer.filter_callbacks[0].args.get("kpi_config_json", "")
                 assert "Mean MPG" in kpi_cfg_json, \
@@ -6815,7 +6818,7 @@ class TestLogScalePreservesStyle:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Verify figures were built (not empty)
             assert renderer.figures, "figures must be built"
             fig = list(renderer.figures.values())[0]
@@ -6870,7 +6873,7 @@ class TestFilterUpdatesAllSources:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             assert "all_graph_sources" in cb_args, \
@@ -6917,7 +6920,7 @@ class TestFilterUpdatesAllSources:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 cb_args = renderer.filter_callbacks[0].args
                 # g2 source is excluded — only g1 source should be in all_graph_sources
@@ -6991,7 +6994,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             assert "all_graph_sources_orig" in cb_args, (
@@ -7010,7 +7013,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
@@ -7033,7 +7036,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
@@ -7064,7 +7067,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Each of these used to `return' green.  Each holds (measured
             # 24sep2026); one that did not would be the defect itself.
             assert renderer.filter_callbacks, "no filter callback was built"
@@ -8146,7 +8149,7 @@ class TestLinkedGraphQualifierView:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             g2_fig = renderer.figures.get("g2")
             assert g2_fig is not None, "g2 figure must be built"
             # g2 has no qualifier so must not have a boolean-filter view
@@ -8190,7 +8193,7 @@ class TestLinkedGraphQualifierView:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # g1 and g2 share one source
             g1_src = renderer.sources.get("g1")
             g2_src = renderer.sources.get("g2")
@@ -8255,7 +8258,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # This SKIPPED when no callback was built, so a regression that
             # stopped building it reported a skip, not a failure.  The valid
             # filter (foreign) builds one (measured 24sep2026, WP-24).
@@ -8282,7 +8285,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Was a skip when no callback was built (WP-24); foreign builds one.
             assert renderer.filter_callbacks, (
                 "no filter callback was built for the valid filter (foreign)")
@@ -8335,7 +8338,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Was a skip when no callback was built (WP-24); foreign builds one.
             assert renderer.filter_callbacks, (
                 "no filter callback was built for the valid filter (foreign)")
@@ -8415,7 +8418,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Was a skip when no callback was built (WP-24); foreign builds one.
             assert renderer.filter_callbacks, (
                 "no filter callback was built for the valid filter (foreign)")
@@ -9009,7 +9012,7 @@ class TestKpiColorCssInjectionHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Both of these were skips, so a regression that stopped building
             # the filter callback, or stopped handing it the KPI's config,
             # reported a skip rather than a failure.  The foreign dropdown
@@ -9218,7 +9221,7 @@ class TestDropdownSentinelCollision:
         spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_widgets, "Expected at least one filter widget"
             w = renderer.filter_widgets[0]
             sentinel = getattr(w, "_dash_sentinel", "__all__")
@@ -9257,7 +9260,7 @@ class TestDropdownSentinelCollision:
         spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_widgets
             w = renderer.filter_widgets[0]
             option_values = [v for v, _ in w.options]
@@ -9293,7 +9296,7 @@ class TestDropdownSentinelCollision:
         spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "Need at least one callback"
             cb_args = renderer.filter_callbacks[0].args
             fspecs = json.loads(cb_args["filter_specs_json"])
@@ -10079,7 +10082,7 @@ class TestByFallbackOnAllMissingFacets:
         spec_path, data_path = _write_temp_files(df_na, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             # The single source for 'g1' should have zero rows
             src = dr.sources.get("g1")
             assert src is not None, "Source 'g1' not found"
@@ -10277,7 +10280,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             # Must not raise; warning should be present
             warning_texts = [str(w.message) for w in caught]
             assert any("slider" in t.lower() or "numeric" in t.lower()
@@ -10308,7 +10311,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             warning_texts = [str(w.message) for w in caught]
             assert any("range" in t.lower() or "numeric" in t.lower()
                        for t in warning_texts), (
@@ -10334,7 +10337,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             # No slider/numeric warning expected for numeric column
             warning_texts = [str(w.message) for w in caught]
             slider_warns = [t for t in warning_texts
@@ -10363,7 +10366,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             warning_texts = [str(w.message) for w in caught]
             range_warns = [t for t in warning_texts
                            if "range" in t.lower() and "numeric" in t.lower()]
@@ -10396,7 +10399,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             warning_texts = [str(w.message) for w in caught]
             assert any("myvar" in t for t in warning_texts), (
                 f"Warning should mention variable 'myvar', got: {warning_texts}"
@@ -10463,7 +10466,7 @@ class TestSemicolonFilterSerialization:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             assert len(dr.filter_widgets) == 2, (
                 f"Expected 2 filter widgets (one per semicolon-separated spec), "
                 f"got {len(dr.filter_widgets)}"
@@ -10496,7 +10499,7 @@ class TestSemicolonFilterSerialization:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             assert len(dr.filter_widgets) == 2, (
                 f"Expected 2 filter widgets from '||' spec, got {len(dr.filter_widgets)}"
             )
@@ -10528,7 +10531,7 @@ class TestSemicolonFilterSerialization:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             assert len(dr.filter_widgets) == 1, (
                 f"Expected 1 filter widget, got {len(dr.filter_widgets)}"
             )

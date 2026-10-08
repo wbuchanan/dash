@@ -72,6 +72,9 @@ _MOVES = {
 _WIDGET = {"dropdown": Select, "range": RangeSlider, "slider": Slider}
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _rows_of(mask):
     return frozenset(int(i) for i in _DF.index[mask])
 
@@ -296,7 +299,7 @@ def _saved(tmp_path, spec, moves):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     order = [fc["varname"] for fc in spec["build_options"]["filters"]]
     state = {}
     for var, value in moves:

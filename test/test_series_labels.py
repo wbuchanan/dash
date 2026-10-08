@@ -65,6 +65,9 @@ _SIDES = (("left", "y1"), ("right", "y2"), ("below", "x1"), ("above", "x2"))
 # dashboards (a dashboard holds at most 100 graphs), each graph tagged by a
 # note() holding its id so its figures are found in either mode.
 # ---------------------------------------------------------------------------
+from conftest import render_models  # noqa: E402
+
+
 def _served_doc(tmp, spec, dp, tag):
     sp = str(tmp / f"spec_{tag}.json")
     with open(sp, "w", encoding="utf-8") as fh:
@@ -90,7 +93,7 @@ def _saved_figs(tmp, spec, dp, tag):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return list(r.figures.values())
 
 

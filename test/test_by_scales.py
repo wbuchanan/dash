@@ -48,6 +48,9 @@ _LABELS = {"mpg": "Mileage (mpg)", "weight": "Weight (lbs.)",
            "y": "y", "t": "t", "g": "g"}
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     if not os.path.exists(_FIXTURE):
         pytest.fail("test/fixtures/by_scales_truth.json is missing: run "
@@ -573,7 +576,7 @@ class TestAfterAFilterMove:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         for cb in r.filter_callbacks:
             for k, v in (cb.args or {}).items():
                 vs = v if isinstance(v, (list, tuple)) else [v]

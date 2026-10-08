@@ -51,6 +51,9 @@ from test_mode_parity import _DF  # noqa: E402
 # Helpers
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _page(tmp_path, spec, df=None):
     """Render *spec* (and *df*, else ``tfe._DF``) to a ``DashRenderer``."""
     sp, dp = (tfe._write_inputs(tmp_path, spec, df) if df is not None
@@ -58,7 +61,7 @@ def _page(tmp_path, spec, df=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

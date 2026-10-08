@@ -62,6 +62,9 @@ _REJECTED_FN_NOTE = (
     "abs(), floor() and ceil(), and __import__() is not one of them.")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render_full(plots, graph_options=None, graph_keys=None):
     """Render; return the renderer and the warnings' messages.
 
@@ -86,7 +89,7 @@ def _render_full(plots, graph_options=None, graph_keys=None):
     renderer = dr.DashRenderer(sp, dp)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        renderer.render()
+        render_models(renderer)
     return renderer, [str(w.message) for w in caught]
 
 

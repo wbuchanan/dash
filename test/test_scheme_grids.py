@@ -98,6 +98,9 @@ _GRID_TRUTH = {
 _FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
 
 
+from conftest import render_models  # noqa: E402
+
+
 class TestTheTruthTableIsTheFixture:
     """The table above is hand-written; the fixture is extracted from Stata's
     files.  They must agree, and the table must cover every shipped scheme,
@@ -138,7 +141,7 @@ def _render(scheme):
     with open(dp, "w") as f:
         json.dump(make_data_json(df), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)
@@ -241,7 +244,7 @@ class TestExplicitOptionsStillWin:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         fig = list(dr.figures.values())[0]
         for p in (sp, dp, op):
             try:
@@ -265,7 +268,7 @@ class TestExplicitOptionsStillWin:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         fig = list(dr.figures.values())[0]
         for p in (sp, dp, op):
             try:

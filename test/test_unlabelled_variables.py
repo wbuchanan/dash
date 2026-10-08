@@ -61,6 +61,9 @@ _COLUMNS = {
 _FIXTURE = os.path.join(_HERE, "fixtures", "unlabelled_truth.json")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     if not os.path.exists(_FIXTURE):
         pytest.fail("test/fixtures/unlabelled_truth.json is missing: run "
@@ -136,7 +139,7 @@ def _saved(tmp_path, spec, dp):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

@@ -52,6 +52,9 @@ _VLN = {"rep78": "repair"}
 _CATEGORIES = ["Poor", "Fair", "Avg", "Good", "Exc"]
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _df(n=20):
     return pd.DataFrame({
         "mpg": np.linspace(12.0, 41.0, n),
@@ -77,7 +80,7 @@ def _render(plots, *, scheme="", gopts=None):
         json.dump(make_data_json(_df(), value_labels=_VL,
                                  value_label_names=_VLN), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)

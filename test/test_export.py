@@ -30,6 +30,9 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _node():
     node = shutil.which("node")
     if node is None:
@@ -322,7 +325,7 @@ def _saved(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

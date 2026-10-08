@@ -162,7 +162,7 @@ def _render(mode, spec, raw=None, spy=None):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                r.render()      # the page: a test serialises its document
         finally:
             if undo:
                 undo()

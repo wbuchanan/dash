@@ -58,6 +58,9 @@ from conftest import make_data_json, make_spec, exec_app
 _DF = pd.DataFrame({"y": [1.0, 2.0, 3.0, 4.0], "x": [1.0, 2.0, 3.0, 4.0]})
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(tmp_path, graph_options):
     """Render one scatter with the given graph_options; return the renderer."""
     data_path = tmp_path / "data.json"
@@ -74,7 +77,7 @@ def _render(tmp_path, graph_options):
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(json.dumps(spec), encoding="utf-8")
     renderer = dr.DashRenderer(str(spec_path), str(data_path))
-    renderer.render()
+    render_models(renderer)
     return renderer
 
 

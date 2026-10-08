@@ -70,6 +70,9 @@ _DF["mpg2"] = _DF["mpg"] + 5.0
 _DF["weight2"] = _DF["weight"] + 300.0
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _spec(plots, scheme, go=None, bo=None):
     g = {"name": "g1", "title": '"t"'}
     g.update(go or {})
@@ -717,7 +720,7 @@ class TestBothModesAfterAMove:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [saved] = list(r.figures.values())
         assert _sizes(saved) == before
         # twoway's values: msize(large) 2.4306 units, the second layer's

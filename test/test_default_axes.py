@@ -43,6 +43,9 @@ _MODES = ("saved", "served")
 P = tb._plot
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     with open(_FIXTURE, encoding="utf-8") as fh:
         return json.load(fh)
@@ -90,7 +93,7 @@ def _saved(spec, which="auto"):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

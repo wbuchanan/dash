@@ -79,6 +79,9 @@ _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 # Inputs as dash.ado writes them, rendered both ways
 # ===========================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _auto():
     """Twelve cars: auto's first rows, with rep78 missing twice."""
     return pd.DataFrame({
@@ -175,7 +178,7 @@ def _both(spec, payload):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     saved = sorted({str(w.message) for w in caught})
     tag, sp, dp = _write(spec, payload)
     ap = os.path.join(_TMP, f"app_{tag}.py")
@@ -795,7 +798,7 @@ class TestTheOneLineFormHonoursCols:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         assert [(row, col) for row, col, _ in _saved_panels(r)] == want
 
     def test_the_options_are_found_by_the_layout_key(self):

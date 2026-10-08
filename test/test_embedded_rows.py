@@ -67,6 +67,9 @@ Q3 = {3, 4, 5}
 _NODE_RUNS = []
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     """Stata's answers; the fixture must exist (never skip)."""
     assert os.path.isfile(_FIXTURE), (
@@ -1453,7 +1456,7 @@ def _sel_saved(spec, indices):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     src = r._dash_linked_source
     models = {}
     payload = {"models": models, "brush": {}, "indices": list(indices),

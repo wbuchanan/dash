@@ -28,6 +28,9 @@ from dash_render import (_dash_auto_bs_layout, _dash_is_bs_layout,
 # Helpers
 # ================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _make_graph_spec(name: str, ptype: str = "scatter",
                      yvar: str = "mpg", xvar: str = "weight") -> dict:
     return {
@@ -210,7 +213,7 @@ class TestEmptyCells:
     @pytest.mark.parametrize("n_graphs", [1, 2, 3, 4])
     def test_a_two_by_two_grid_holds_exactly_the_graphs_given(self, n_graphs):
         r = _make_renderer(n_graphs, layout="2 2")
-        r.render()
+        render_models(r)
         assert self._occupied(r) == n_graphs, (
             f"{n_graphs} graph(s) in a 2x2 layout should occupy {n_graphs} "
             f"cells; the rest of the grid is empty"
@@ -219,7 +222,7 @@ class TestEmptyCells:
     def test_no_graph_is_dropped_when_the_grid_is_too_small(self):
         """The guard S12 added: a graph must never vanish."""
         r = _make_renderer(5, layout="2 2")
-        r.render()
+        render_models(r)
         assert self._occupied(r) == 5, (
             "a 2x2 layout given five graphs dropped one instead of growing"
         )
@@ -338,7 +341,7 @@ class TestLayoutOverflow:
     def test_kpi_divs_all_created(self):
         """Verify all 4 KPI divs are created before checking HTML output."""
         r = self._build_full_dashboard_renderer()
-        r.render()
+        render_models(r)
         for kname in ("k1", "k2", "k3", "k4"):
             assert kname in r.kpi_divs, f"KPI div '{kname}' not created"
 

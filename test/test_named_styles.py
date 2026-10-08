@@ -53,6 +53,9 @@ W03 = T.translate_lwidth(".3")
 VSHORT = list(T.translate_lpattern("vshortdash"))
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _hex(c):
     return c.lower() if isinstance(c, str) else c
 
@@ -325,7 +328,8 @@ class TestAfterAFilterMove:
                          r"marker|size)\s*=[^=]")
         texts = [v for k, v in vars(dr).items()
                  if k.endswith("_JS") and isinstance(v, str)]
-        r, _ = tp._standalone(tp._spec(
+        # The page is built: its document holds the page's scripts.
+        r, _, _page = tp._standalone_page(tp._spec(
             [plot_for("scatter", {"pstyle": "p3"})], {"scheme": "stcolor"},
             {}))
         for f in r.figures.values():
@@ -355,7 +359,7 @@ class TestLegendAndStale:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [line] = [rr for f in r.figures.values() for rr in f.renderers
                   if isinstance(rr, GlyphRenderer)
                   and type(rr.glyph).__name__ == "Line"]

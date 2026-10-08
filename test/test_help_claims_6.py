@@ -85,6 +85,9 @@ _AUTO = pd.DataFrame({
 # Both render modes
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _renderers(root):
     """Every GlyphRenderer under a saved page's root or a served Document
     (both answer ``select``)."""
@@ -105,7 +108,7 @@ def _both(tmp_path, plots, tag, df=_AUTO, graph_options=None):
     with warnings.catch_warnings(record=True) as w1:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     saved = _renderers(r._last_layout_root)
     ns = _load_app(_app_source(tmp_path, spec, df), tag)
     with warnings.catch_warnings(record=True) as w2:
@@ -843,7 +846,7 @@ class TestTheSessionLevel:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     r = dr.DashRenderer(sp, dp)
-                    r.render()
+                    render_models(r)
                 return _one(_renderers(r._last_layout_root), *keys)
             ns = _load_app(_app_source(tmp_path, spec, _AUTO), tag)
             doc = Document()

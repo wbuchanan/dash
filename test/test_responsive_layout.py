@@ -79,6 +79,9 @@ _VLN = {"foreign": "origin"}
 # Specs: one per layout family
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _sc(y, x):
     return {"type": "scatter", "yvar": y, "xvar": x, "options": {}}
 
@@ -539,7 +542,7 @@ class TestReflowAdversarial:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         for s in _all_models(r._last_layout_root, InlineStyleSheet):
             if "container-type" in s.css:
                 assert "display:none" not in s.css
@@ -554,7 +557,7 @@ class TestEveryGridIsReflowed:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         return r._last_layout_root
 
     @pytest.mark.parametrize("name", ["grid_3x2_filters", "tabs_facet",
@@ -630,7 +633,7 @@ class TestTheSidebarPassesBokehValidation:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                render_models(r)
             return [r._last_layout_root]
         return list(_served_doc(FAMILIES[name]).roots)
 

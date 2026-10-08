@@ -45,6 +45,9 @@ from conftest import make_spec, make_data_json, exec_app
 from test_scheme_resolution import each  # noqa: E402
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _df(n=30):
     return pd.DataFrame({
         "mpg": np.linspace(12.0, 41.0, n),
@@ -386,7 +389,7 @@ class TestSchemeSelection:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -459,7 +462,7 @@ class TestSchemeSelection:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -481,7 +484,7 @@ class TestSchemeSelection:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -570,7 +573,7 @@ class TestNoParsedKeyIsDiscarded:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr = DashRenderer(sp, dp)
-            dr.render()
+            render_models(dr)
             dash_render.ServerAppBuilder(sp, dp).build(ap)
         with open(ap, encoding="utf-8") as fh:
             src = fh.read()
@@ -717,7 +720,7 @@ def _both_modes(tmp_path, plots, scheme, gopts=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr = DashRenderer(sp, dp)
-        dr.render()
+        render_models(dr)
         dash_render.ServerAppBuilder(sp, dp).build(ap)
     with open(ap, encoding="utf-8") as fh:
         src = fh.read()
@@ -1171,7 +1174,7 @@ class TestDirectivesOnlyAUserSchemeCarries:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr = DashRenderer(sp, dp)
-            dr.render()
+            render_models(dr)
         # A scheme that failed to resolve falls back to s2color, which is
         # what several of the expected values are.
         if dr.scheme.name != scheme or dr.scheme.is_fallback:

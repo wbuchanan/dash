@@ -41,6 +41,9 @@ _VL = {"repair": {"1": "Poor", "2": "Fair", "3": "Avg", "4": "Good",
 _VLN = {"rep78": "repair"}
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _df(n=20):
     return pd.DataFrame({
         "mpg": np.linspace(12.0, 41.0, n),
@@ -767,7 +770,7 @@ class TestTheDomainIsReset:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 with pytest.raises(RuntimeError):
-                    r.render()
+                    render_models(r)
             assert r.mapper.colorvar_domain is None
         else:
             ns = _served_ns(spec)

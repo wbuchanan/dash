@@ -86,6 +86,9 @@ _VLN = {"foreign": "origin"}
 Built = namedtuple("Built", "mode models warnings obj")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, plots, **go):
     opts = {"name": name}
     opts.update(go)
@@ -128,7 +131,7 @@ def build(mode, spec, df=None, storage=None):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         root = getattr(r, "_last_layout_root", None)
         models = [] if root is None else list(root.references())
         return Built(mode, models, [str(w.message) for w in caught], r)

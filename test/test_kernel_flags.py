@@ -49,6 +49,9 @@ KERNELS = ("epanechnikov", "epan2", "biweight", "cosine", "gaussian",
 
 # Stata's kernels, written out from the kdensity manual on their own, so a
 # renderer that read the wrong kernel -- or none -- cannot agree with them.
+from conftest import render_models  # noqa: E402
+
+
 def _stata_kernel(name, z):
     a = np.abs(z)
     if name == "epanechnikov":
@@ -110,7 +113,7 @@ def _standalone(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     out = []
     for fig in r.figures.values():
         for ren in fig.renderers:

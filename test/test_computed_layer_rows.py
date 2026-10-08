@@ -89,6 +89,9 @@ _LAYERS = [
     ("histogram", "dist"), ("kdensity", "dist"),
 ]
 
+from conftest import render_models  # noqa: E402
+
+
 def _source(frame):
     """A ColumnDataSource carrying the row-identity column the views use."""
     data = {c: list(frame[c]) for c in frame.columns}
@@ -283,7 +286,7 @@ def _render_by_panels(tmp_path, linked):
     renderer = dr.DashRenderer(str(spec_path), str(data_path))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        renderer.render()
+        render_models(renderer)
     panels = []
     for fig in renderer.figures.values():
         for rend in fig.renderers:
@@ -353,7 +356,7 @@ def _rendered(tmp_path, plots, frame, mode, tag, link="", graph_options=None):
         if mode == "saved":
             sp, dp = _write_inputs(where, spec, frame)
             renderer = dr.DashRenderer(sp, dp)
-            renderer.render()
+            render_models(renderer)
             rends = list(renderer._last_layout_root.select(
                 {"type": GlyphRenderer}))
         else:

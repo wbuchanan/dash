@@ -46,6 +46,9 @@ _M = 40.0 - 0.0055 * _W + _RNG.normal(0.0, 1.8, _N)
 _DF = pd.DataFrame({"mpg": _M, "weight": _W})
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _spec(ptype, options=None):
     return {"graphs": [{"name": "g1", "graph_options": {"name": "g1"},
                         "options": {},
@@ -85,7 +88,7 @@ def _standalone_sources(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     out = []
     for fig in r.figures.values():
         for ren in fig.renderers:

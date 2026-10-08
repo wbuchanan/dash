@@ -57,6 +57,9 @@ _D = round(1.52778 * 2.88 * (4 / 3) / 2 + 2 * (4 / 3), 4)   # 5.6 px
 _SEQ = itertools.count()
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _labelsets(fig):
     return [r for r in fig.center if isinstance(r, LabelSet)]
 
@@ -362,7 +365,7 @@ def _standalone(tmp_path, spec):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return list(r.figures.values()), [str(w.message) for w in caught]
 
 

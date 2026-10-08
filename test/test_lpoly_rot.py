@@ -61,6 +61,9 @@ _EVIDENCE_C = {
 }
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _truth():
     if not os.path.exists(_FIX):
         pytest.fail("test/fixtures/lpoly_rot_truth.json is missing: run "
@@ -171,7 +174,7 @@ def _sources_saved(tmp_path, spec, df):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     out = []
     for fig in r.figures.values():
         for ren in fig.renderers:

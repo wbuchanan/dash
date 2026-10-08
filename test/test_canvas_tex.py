@@ -63,6 +63,9 @@ _DELIM = re.compile(r"\$\$|\\[()\[\]]")
 _RAW = "\\(x\\)"
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _live(s):
     return bool(_DELIM.search(s)) or contains_tex_string(s)
 
@@ -439,7 +442,7 @@ class TestBothModes:
             warnings.simplefilter("ignore")
             if mode == "standalone":
                 r = dr.DashRenderer(str(sp), str(dp))
-                r.render()
+                render_models(r)
                 models = _refs([r._last_layout_root])
             else:
                 ap = tmp_path / "app.py"

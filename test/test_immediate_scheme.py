@@ -25,6 +25,9 @@ import dash_render as dr
 from conftest import make_data_json
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(tmp_path, build_options, graph_options, key="graph_options"):
     """Render one graph.
 
@@ -180,7 +183,7 @@ class TestAnIncludeNoteIsPrintedOncePerBuild:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             r = dr.DashRenderer(spec, data)
-            r.render()
+            render_models(r)
         return r, [str(w.message) for w in caught]
 
     def _count(self, said):

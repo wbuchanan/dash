@@ -33,6 +33,9 @@ _SCATTER = {"type": "scatter", "yvar": "y", "xvar": "x", "options": {}}
 _BIG = "9" * 401
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _data_text(literals):
     """A data file whose ``y`` holds each of *literals* verbatim (x = 1..n),
     written as text so a literal Python's writer would not emit survives."""
@@ -65,7 +68,7 @@ def _saved_y(tmp_path, literals):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return np.asarray(r.df["y"], dtype=float), r
 
 

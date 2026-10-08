@@ -66,6 +66,9 @@ _VALUE_LABELS = {"origin": {"0": "Domestic", "1": "Foreign"}}
 _LABEL_NAMES = {"foreign": "origin"}
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _write(tmp_path, spec, df=_DF):
     tag = next(_SEQ)
     sp = tmp_path / f"fspec_{tag}.json"
@@ -85,7 +88,7 @@ def standalone(tmp_path, spec, df=_DF, dataset=None):
         r = dr.DashRenderer(sp, dp)
         if dataset is not None:
             r.mapper.dataset = dataset
-        r.render()
+        render_models(r)
     return dict(r.figures), [str(w.message) for w in caught]
 
 

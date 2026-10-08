@@ -28,6 +28,9 @@ from bokeh.plotting import figure
 # Helpers
 # ================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _make_data_json(columns: dict) -> dict:
     """Build a jsonio-format data JSON dict from a column dict.
 
@@ -599,7 +602,7 @@ class TestCollectGraphVarsConsistency:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data, f)
             dr = DashRenderer(sp, dp, op)
-            dr.render()
+            render_models(dr)
         finally:
             for p in (sp, dp, op):
                 try: os.unlink(p)
@@ -673,7 +676,7 @@ class TestEdgeCaseData:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data, f)
             dr = DashRenderer(sp, dp, op)
-            dr.render()
+            render_models(dr)
         finally:
             for p in (sp, dp, op):
                 try: os.unlink(p)

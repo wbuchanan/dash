@@ -118,6 +118,9 @@ _DM_LAST_MS = 999129600000.0
 # Specs, inputs, and the widgets each mode builds
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, if_expr="", **go):
     opts = {"name": name, "title": name}
     opts.update(go)
@@ -177,7 +180,7 @@ def _saved(tmp_path, spec):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return [_describe(w) for w in r.filter_widgets], _refusals(caught), r
 
 

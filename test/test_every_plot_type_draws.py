@@ -67,6 +67,9 @@ _DATA = {
 }
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _ado_families():
     """``{family: frozenset(types)}`` from dash.ado's _dash_plottype_families.
 
@@ -219,7 +222,7 @@ def _render(plot):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r.figures["g1"]
 
 

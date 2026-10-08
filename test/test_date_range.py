@@ -75,6 +75,9 @@ _MS = [978393600000.0, 978480000000.0, 978566400000.0, 978652800000.0,
 _PAST = 2936550.0
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _iso(ts):
     return None if pd.isna(ts) else pd.Timestamp(ts).strftime("%Y-%m-%d")
 
@@ -154,7 +157,7 @@ def _saved(tmp_path, spec, data):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp, os.path.join(str(tmp_path), "o.html"))
-        r.render()
+        render_models(r)
     return r, [str(w.message) for w in caught]
 
 

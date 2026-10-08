@@ -108,6 +108,9 @@ _TOKEN = re.compile(
     r"((?:,[^\s\"'`@]*)?)((?:@[a-z0-9|]+)?)(?![\w])")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _ado():
     with open(_ADO, encoding="utf-8") as fh:
         return fh.read()
@@ -573,7 +576,7 @@ def _both(plots, go=None, kpis=None):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     std_w = sorted(str(w.message) for w in caught)
 
     tag, sp, dp = _write(spec)

@@ -71,6 +71,9 @@ _ALL = len(_DF)
 # Specs
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, if_expr="", **go):
     opts = {"name": name, "title": name}
     opts.update(go)
@@ -201,7 +204,7 @@ def _saved(tmp_path, spec, value):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     [w] = r.filter_widgets
     [cb] = r.filter_callbacks
     assert cb.code == dr._FILTER_JS
@@ -397,7 +400,7 @@ class TestTheCallbackKnowsWhatItProtects:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [cb] = r.filter_callbacks
         filtered = {s.id for s in cb.args["all_graph_sources"]}
         protected = {s.id for s in cb.args["excluded_sources"]}

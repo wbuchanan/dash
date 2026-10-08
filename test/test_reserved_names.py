@@ -58,6 +58,9 @@ _SEQ = itertools.count()
 # Specs, the saved page and the served session
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, **go):
     """A scatter titled with its own name unless *go* says otherwise."""
     opts = {"name": name, "title": name}
@@ -521,7 +524,7 @@ class TestTheDashPrefix:
         spec = _spec([graph])
         sp, dp = _write_inputs(tmp_path, spec, df=df)
         r = DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
         [fig] = list(r.figures.values())
         [sc] = [x for x in fig.renderers
                if type(x.glyph).__name__ == "Scatter"]
@@ -559,7 +562,7 @@ class TestTheDashPrefix:
         sp, dp = _write_inputs(tmp_path, spec, df=df)
 
         r = DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
         [fig] = list(r.figures.values())
         [renderer] = [x for x in fig.renderers
                       if type(x.glyph).__name__ == "Scatter"]
