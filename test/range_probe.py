@@ -44,8 +44,13 @@ _RANGES_JS = r"""
   const out = [];
   for (const d of (window.Bokeh ? Bokeh.documents : [])) {
     for (const m of d.all_models) {
+      // A by() grid's chrome cells (WP-30 P1.15a) are bare Plots whose
+      // fixed 0-1 ranges are not a panel's: counting them gave
+      // "assert 101 == 100" and kept the move's "every y range agrees"
+      // from ever resolving.
       if (m && m.x_range !== undefined && m.y_range !== undefined
-          && m.renderers !== undefined && m.toolbar !== undefined) {
+          && m.renderers !== undefined && m.toolbar !== undefined
+          && m.name !== "dash_by_head" && m.name !== "dash_by_foot") {
         const t = m.title && m.title.text !== undefined ? m.title.text : "";
         out.push([String(t), m.y_range.start, m.y_range.end,
                   m.x_range.start, m.x_range.end,
@@ -84,7 +89,8 @@ _MOVE_TIMED_JS = r"""
     for (const m of d.all_models) {
       if (m && m.constructor && m.constructor.__name__ === "RangeSlider") sliders.push(m);
       if (m && m.x_range !== undefined && m.y_range !== undefined
-          && m.renderers !== undefined && m.toolbar !== undefined) plots.push(m);
+          && m.renderers !== undefined && m.toolbar !== undefined
+          && m.name !== "dash_by_head" && m.name !== "dash_by_foot") plots.push(m);
     }
   }
   const key = () => plots.map(p => p.y_range.start + "," + p.y_range.end);

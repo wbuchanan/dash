@@ -1,0 +1,4549 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "e728a1fabbdcc83ccfb56e8e9788f160faada901",
+  "extracted": " 8 Oct 2026 01:32:50",
+  "method": ".Graph members per probe; panel observations from the sersets; texts from the SVG through scripts/svg_truth.py",
+  "probes": 39,
+  "scheme": "stcolor",
+  "script": "scripts/extract_by_text_truth.do",
+  "stata_version": "19.5"
+ },
+ "data": {
+  "firstRecordId": 1,
+  "lastRecordId": 74,
+  "numberOfRecords": 74,
+  "numberOfVariables": 9,
+  "storageTypes": {
+   "e": "str1",
+   "fb": "double",
+   "foreign": "byte",
+   "headroom": "float",
+   "mpg": "int",
+   "rep78": "int",
+   "s": "str4",
+   "u": "double",
+   "weight": "int"
+  },
+  "valueLabelNames": {
+   "fb": "origin",
+   "foreign": "origin"
+  },
+  "valueLabels": {
+   "fb": {
+    "0": "Domestic",
+    "1": "Foreign"
+   },
+   "foreign": {
+    "0": "Domestic",
+    "1": "Foreign"
+   }
+  },
+  "values": [
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.5,
+    "mpg": 22.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2930.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 17.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3350.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 22.0,
+    "rep78": "null",
+    "s": "D",
+    "u": 0.0,
+    "weight": 2640.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.5,
+    "mpg": 20.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3250.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 15.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4080.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 18.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3670.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 26.0,
+    "rep78": "null",
+    "s": "D",
+    "u": 0.0,
+    "weight": 2230.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 20.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3280.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 16.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3880.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3400.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 14.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4330.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 14.0,
+    "rep78": 2.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3900.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 21.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4290.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.5,
+    "mpg": 29.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2110.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 16.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3690.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 22.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3180.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 22.0,
+    "rep78": 2.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3220.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 24.0,
+    "rep78": 2.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2750.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3430.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 30.0,
+    "rep78": 5.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2120.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 18.0,
+    "rep78": 2.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3600.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 16.0,
+    "rep78": 2.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3600.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.5,
+    "mpg": 17.0,
+    "rep78": 2.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3740.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 1.5,
+    "mpg": 28.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 1800.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 21.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2650.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 12.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4840.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.5,
+    "mpg": 12.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4720.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 14.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3830.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 22.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2580.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 14.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4060.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 15.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3720.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 18.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3370.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.0,
+    "mpg": 14.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4130.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 20.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2830.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 21.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 4060.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3310.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.5,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3300.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 18.0,
+    "rep78": 4.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3690.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.5,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 3370.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 24.0,
+    "rep78": 1.0,
+    "s": "D",
+    "u": 0.0,
+    "weight": 2730.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 16.0,
+    "rep78": 3.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 4030.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 28.0,
+    "rep78": 3.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 3260.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.5,
+    "mpg": 34.0,
+    "rep78": 5.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 1800.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 25.0,
+    "rep78": 3.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 2200.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 1.5,
+    "mpg": 26.0,
+    "rep78": "null",
+    "s": "",
+    "u": 0.0,
+    "weight": 2520.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 5.0,
+    "mpg": 18.0,
+    "rep78": 2.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 3330.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 4.0,
+    "mpg": 18.0,
+    "rep78": 4.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 3700.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 1.5,
+    "mpg": 18.0,
+    "rep78": 1.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 3470.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 3210.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 19.0,
+    "rep78": 3.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 3200.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 3.5,
+    "mpg": 19.0,
+    "rep78": "null",
+    "s": "",
+    "u": 0.0,
+    "weight": 3420.0
+   },
+   {
+    "e": "",
+    "fb": 0.0,
+    "foreign": 0.0,
+    "headroom": 2.0,
+    "mpg": 24.0,
+    "rep78": 2.0,
+    "s": "",
+    "u": 0.0,
+    "weight": 2690.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.0,
+    "mpg": 17.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2830.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 23.0,
+    "rep78": 3.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2070.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 25.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2650.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 1.5,
+    "mpg": 23.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2370.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.0,
+    "mpg": 35.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2020.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 24.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2280.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 21.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2750.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 21.0,
+    "rep78": 3.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2130.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.0,
+    "mpg": 25.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2240.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 28.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 1760.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.5,
+    "mpg": 30.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 1980.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.5,
+    "mpg": 14.0,
+    "rep78": "null",
+    "s": "F",
+    "u": 1.0,
+    "weight": 3420.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.0,
+    "mpg": 26.0,
+    "rep78": 3.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 1830.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 35.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2050.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 18.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2410.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.0,
+    "mpg": 31.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2200.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.0,
+    "mpg": 18.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2670.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 23.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2160.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.0,
+    "mpg": 41.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 2040.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 3.0,
+    "mpg": 25.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 1930.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.0,
+    "mpg": 25.0,
+    "rep78": 4.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 1990.0
+   },
+   {
+    "e": "",
+    "fb": 1.0,
+    "foreign": 1.0,
+    "headroom": 2.5,
+    "mpg": 17.0,
+    "rep78": 5.0,
+    "s": "F",
+    "u": 1.0,
+    "weight": 3170.0
+   }
+  ],
+  "variableIndices": [
+   1,
+   4,
+   5,
+   2,
+   3,
+   6,
+   7,
+   8,
+   9
+  ],
+  "variableIsString": {
+   "e": true,
+   "fb": false,
+   "foreign": false,
+   "headroom": false,
+   "mpg": false,
+   "rep78": false,
+   "s": true,
+   "u": false,
+   "weight": false
+  },
+  "variableLabels": {
+   "e": "",
+   "fb": "   ",
+   "foreign": "Car origin",
+   "headroom": "Headroom (in.)",
+   "mpg": "Mileage (mpg)",
+   "rep78": "Repair record 1978",
+   "s": "",
+   "u": "",
+   "weight": "Weight (lbs.)"
+  },
+  "variableNames": [
+   "mpg",
+   "weight",
+   "foreign",
+   "rep78",
+   "headroom",
+   "s",
+   "e",
+   "u",
+   "fb"
+  ]
+ },
+ "probes": {
+  "bp01": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp02": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "title(\"T\") by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": "T"
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": "T"
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 425.13
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 425.13
+    },
+    {
+     "anchor": "middle",
+     "size": 133.82,
+     "text": "T",
+     "x": 1651.56,
+     "y": 262.51
+    },
+    {
+     "anchor": "middle",
+     "size": 133.82,
+     "text": "T",
+     "x": 4074.98,
+     "y": 262.51
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp03": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "subtitle(\"S\") by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "S"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "S"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "S",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "S",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp04": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "subtitle(\"S\", prefix) by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "S",
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "S",
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "S",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 363.37
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "S",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 363.37
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp05": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "subtitle(\"Extra\", suffix) by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic",
+      "Extra"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign",
+      "Extra"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Extra",
+     "x": 1651.56,
+     "y": 363.37
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Extra",
+     "x": 4074.98,
+     "y": 363.37
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp06": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "subtitle(\"\") by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp07": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "subtitle(, ring(0) pos(1) nobexpand) by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "end",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 2733.41,
+     "y": 258.24
+    },
+    {
+     "anchor": "end",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 5156.66,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp08": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 8,
+   "options": "by(foreign rep78)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin and Repair record 1978"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Domestic, 1"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 8,
+     "note": "",
+     "sub": [
+      "Domestic, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 27,
+     "note": "",
+     "sub": [
+      "Domestic, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 9,
+     "note": "",
+     "sub": [
+      "Domestic, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Domestic, 5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Foreign, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 9,
+     "note": "",
+     "sub": [
+      "Foreign, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 9,
+     "note": "",
+     "sub": [
+      "Foreign, 5"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Domestic, 1",
+     "x": 1237.28,
+     "y": 252.06
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Domestic, 2",
+     "x": 2856.94,
+     "y": 252.06
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Domestic, 3",
+     "x": 4476.77,
+     "y": 252.06
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Domestic, 4",
+     "x": 1237.28,
+     "y": 1067.97
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Domestic, 5",
+     "x": 2856.94,
+     "y": 1067.97
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Foreign, 3",
+     "x": 4476.77,
+     "y": 1067.97
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Foreign, 4",
+     "x": 1237.28,
+     "y": 2045.87
+    },
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "Foreign, 5",
+     "x": 2856.94,
+     "y": 2045.87
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin and Repair record 1978",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp09": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 6,
+   "options": "by(rep78, missing)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Repair record 1978"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "1"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 8,
+     "note": "",
+     "sub": [
+      "2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 30,
+     "note": "",
+     "sub": [
+      "3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 18,
+     "note": "",
+     "sub": [
+      "4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 11,
+     "note": "",
+     "sub": [
+      "5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 5,
+     "note": "",
+     "sub": [
+      "(missing)"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 99.06,
+     "text": "(missing)",
+     "x": 4476.77,
+     "y": 1557.01
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Repair record 1978",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp10": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 29,
+   "options": "by(foreign rep78 headroom)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by foreign, Repair record 1978, and Headroom (in.)"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 1, 1.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 1, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Domestic, 2, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 2, 3.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Domestic, 2, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 2, 4.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 2, 5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 5,
+     "note": "",
+     "sub": [
+      "Domestic, 3, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Domestic, 3, 2.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Domestic, 3, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 10,
+     "note": "",
+     "sub": [
+      "Domestic, 3, 3.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Domestic, 3, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Domestic, 3, 4.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 4, 1.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Domestic, 4, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 4, 3.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 5,
+     "note": "",
+     "sub": [
+      "Domestic, 4, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 5, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Domestic, 5, 2.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Foreign, 3, 2.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Foreign, 3, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Foreign, 4, 1.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Foreign, 4, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 5,
+     "note": "",
+     "sub": [
+      "Foreign, 4, 2.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Foreign, 4, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Foreign, 4, 3.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Foreign, 5, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Foreign, 5, 2.5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 4,
+     "note": "",
+     "sub": [
+      "Foreign, 5, 3"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 1, 1.5",
+     "x": 739.97,
+     "y": 202.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 1, 2",
+     "x": 1566.68,
+     "y": 202.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 2, 2",
+     "x": 2393.21,
+     "y": 202.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 2, 3.5",
+     "x": 3219.92,
+     "y": 202.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 2, 4",
+     "x": 4046.63,
+     "y": 202.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 2, 4.5",
+     "x": 4873.33,
+     "y": 202.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 2, 5",
+     "x": 739.97,
+     "y": 724.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 3, 2",
+     "x": 1566.68,
+     "y": 724.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 3, 2.5",
+     "x": 2393.21,
+     "y": 724.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 3, 3",
+     "x": 3219.92,
+     "y": 724.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 3, 3.5",
+     "x": 4046.63,
+     "y": 724.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 3, 4",
+     "x": 4873.33,
+     "y": 724.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 3, 4.5",
+     "x": 739.97,
+     "y": 1246.02
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 4, 1.5",
+     "x": 1566.68,
+     "y": 1246.02
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 4, 3",
+     "x": 2393.21,
+     "y": 1246.02
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 4, 3.5",
+     "x": 3219.92,
+     "y": 1246.02
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 4, 4",
+     "x": 4046.63,
+     "y": 1246.02
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 5, 2",
+     "x": 4873.33,
+     "y": 1246.02
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Domestic, 5, 2.5",
+     "x": 739.97,
+     "y": 1768.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 3, 2.5",
+     "x": 1566.68,
+     "y": 1768.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 3, 3",
+     "x": 2393.21,
+     "y": 1768.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 4, 1.5",
+     "x": 3219.92,
+     "y": 1768.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 4, 2",
+     "x": 4046.63,
+     "y": 1768.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 4, 2.5",
+     "x": 4873.33,
+     "y": 1768.13
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 4, 3",
+     "x": 739.97,
+     "y": 2371.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 4, 3.5",
+     "x": 1566.68,
+     "y": 2371.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 5, 2",
+     "x": 2393.21,
+     "y": 2371.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 5, 2.5",
+     "x": 3219.92,
+     "y": 2371.07
+    },
+    {
+     "anchor": "middle",
+     "size": 49.44,
+     "text": "Foreign, 5, 3",
+     "x": 4046.63,
+     "y": 2371.07
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by foreign, Repair record 1978, and Headroom (in.)",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp11": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, title(\"X\") subtitle(\"S\") note(\"N\") caption(\"C\"))",
+   "overall": {
+    "caption": "C",
+    "note": [
+     "N"
+    ],
+    "note_size": 2.777,
+    "subtitle": "S",
+    "title": "X"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 617.17
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 617.17
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1603.13
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2812.46
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "N",
+     "x": 245.36,
+     "y": 2928.76
+    },
+    {
+     "anchor": null,
+     "size": 112.56,
+     "text": "C",
+     "x": 245.36,
+     "y": 3073.34
+    },
+    {
+     "anchor": "middle",
+     "size": 123.69,
+     "text": "S",
+     "x": 2756.19,
+     "y": 434.5
+    },
+    {
+     "anchor": "middle",
+     "size": 157.44,
+     "text": "X",
+     "x": 2756.19,
+     "y": 243.1
+    }
+   ]
+  },
+  "bp12": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(\"\"))",
+   "overall": {
+    "caption": "",
+    "note": [],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1563.81
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 3092.75
+    }
+   ]
+  },
+  "bp13": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(\"My\", suffix))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin",
+     "My"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1454.29
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2873.88
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 2990.18
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "My",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp14": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(\"My\", prefix))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "My",
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1454.29
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2873.88
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "My",
+     "x": 245.36,
+     "y": 2990.18
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp15": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(, size(large)))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 4.8611,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1465.59
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2896.32
+    },
+    {
+     "anchor": null,
+     "size": 157.44,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3059.88
+    }
+   ]
+  },
+  "bp16": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(\"\", suffix))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp17": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, ti(\"X\") sub(\"S\") cap(\"C\"))",
+   "overall": {
+    "caption": "C",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "S",
+    "title": "X"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 617.17
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 617.17
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1603.13
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2812.46
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 2928.76
+    },
+    {
+     "anchor": null,
+     "size": 112.56,
+     "text": "C",
+     "x": 245.36,
+     "y": 3073.34
+    },
+    {
+     "anchor": "middle",
+     "size": 123.69,
+     "text": "S",
+     "x": 2756.19,
+     "y": 434.5
+    },
+    {
+     "anchor": "middle",
+     "size": 157.44,
+     "text": "X",
+     "x": 2756.19,
+     "y": 243.1
+    }
+   ]
+  },
+  "bp18": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(\"A\") note(\"B\"))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "B"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "B",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp19": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, note(\"A\") note(, size(large)))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "A"
+    ],
+    "note_size": 4.8611,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1465.59
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2896.32
+    },
+    {
+     "anchor": null,
+     "size": 157.44,
+     "text": "A",
+     "x": 245.36,
+     "y": 3059.88
+    }
+   ]
+  },
+  "bp20": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, title(\"X\") title(\"Y\"))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": "Y"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 454.66
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 454.66
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1597.56
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    },
+    {
+     "anchor": "middle",
+     "size": 157.44,
+     "text": "Y",
+     "x": 2756.19,
+     "y": 243.1
+    }
+   ]
+  },
+  "bp21": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "note(\"N\") caption(\"C\") by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "C",
+     "n": 52,
+     "note": "N",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "C",
+     "n": 22,
+     "note": "N",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": null,
+     "size": 76.44,
+     "text": "N",
+     "x": 569.87,
+     "y": 2678.16
+    },
+    {
+     "anchor": null,
+     "size": 76.44,
+     "text": "N",
+     "x": 2993.12,
+     "y": 2678.16
+    },
+    {
+     "anchor": null,
+     "size": 95.68,
+     "text": "C",
+     "x": 569.87,
+     "y": 2800.98
+    },
+    {
+     "anchor": null,
+     "size": 95.68,
+     "text": "C",
+     "x": 2993.12,
+     "y": 2800.98
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp22": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "subtitle(\"S\") by(foreign, subtitle(\"O\"))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "O",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "S"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "S"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "S",
+     "x": 1651.56,
+     "y": 420.91
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "S",
+     "x": 4074.98,
+     "y": 420.91
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1580.68
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    },
+    {
+     "anchor": "middle",
+     "size": 123.69,
+     "text": "O",
+     "x": 2756.19,
+     "y": 238.07
+    }
+   ]
+  },
+  "bp23": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "title(\"T\") by(foreign, title(\"X\"))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": "X"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": "T"
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": "T"
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 621.56
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 621.56
+    },
+    {
+     "anchor": "middle",
+     "size": 133.82,
+     "text": "T",
+     "x": 1651.56,
+     "y": 458.76
+    },
+    {
+     "anchor": "middle",
+     "size": 133.82,
+     "text": "T",
+     "x": 4074.98,
+     "y": 458.76
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1597.56
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    },
+    {
+     "anchor": "middle",
+     "size": 157.44,
+     "text": "X",
+     "x": 2756.19,
+     "y": 243.1
+    }
+   ]
+  },
+  "bp24": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 3,
+   "options": "by(foreign, total)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 74,
+     "note": "",
+     "sub": [
+      "Total"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Total",
+     "x": 1651.56,
+     "y": 1644.18
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp25": {
+   "canvas": null,
+   "if": "if foreign == 1",
+   "message": "",
+   "n": 1,
+   "options": "by(foreign)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 123.69,
+     "text": "Foreign",
+     "x": 2882.08,
+     "y": 276.89
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp26": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 10,
+   "options": "by(foreign rep78, missing)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin and Repair record 1978"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Domestic, 1"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 8,
+     "note": "",
+     "sub": [
+      "Domestic, 2"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 27,
+     "note": "",
+     "sub": [
+      "Domestic, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 9,
+     "note": "",
+     "sub": [
+      "Domestic, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 2,
+     "note": "",
+     "sub": [
+      "Domestic, 5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 4,
+     "note": "",
+     "sub": [
+      "Domestic, (missing)"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 3,
+     "note": "",
+     "sub": [
+      "Foreign, 3"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 9,
+     "note": "",
+     "sub": [
+      "Foreign, 4"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 9,
+     "note": "",
+     "sub": [
+      "Foreign, 5"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 1,
+     "note": "",
+     "sub": [
+      "Foreign, (missing)"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Domestic, 1",
+     "x": 990.73,
+     "y": 227.18
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Domestic, 2",
+     "x": 2218.05,
+     "y": 227.18
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Domestic, 3",
+     "x": 3445.54,
+     "y": 227.18
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Domestic, 4",
+     "x": 4672.86,
+     "y": 227.18
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Domestic, 5",
+     "x": 990.73,
+     "y": 1070.09
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Domestic, (missing)",
+     "x": 2218.05,
+     "y": 1070.09
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Foreign, 3",
+     "x": 3445.54,
+     "y": 1070.09
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Foreign, 4",
+     "x": 4672.86,
+     "y": 1070.09
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Foreign, 5",
+     "x": 990.73,
+     "y": 2034.49
+    },
+    {
+     "anchor": "middle",
+     "size": 74.25,
+     "text": "Foreign, (missing)",
+     "x": 2218.05,
+     "y": 2034.49
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin and Repair record 1978",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp27": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(s)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by s"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 40,
+     "note": "",
+     "sub": [
+      "D"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "F"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "D",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "F",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by s",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp28": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 3,
+   "options": "by(s, total)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by s"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 40,
+     "note": "",
+     "sub": [
+      "D"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "F"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 62,
+     "note": "",
+     "sub": [
+      "Total"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "D",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "F",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Total",
+     "x": 1651.56,
+     "y": 1644.18
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by s",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp29": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 3,
+   "options": "by(s, missing)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by s"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 12,
+     "note": "",
+     "sub": [
+      "(missing)"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 40,
+     "note": "",
+     "sub": [
+      "D"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "F"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "(missing)",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "D",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "F",
+     "x": 1651.56,
+     "y": 1644.18
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by s",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp30": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 4,
+   "options": "by(s, missing total)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by s"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 12,
+     "note": "",
+     "sub": [
+      "(missing)"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 40,
+     "note": "",
+     "sub": [
+      "D"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "F"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 74,
+     "note": "",
+     "sub": [
+      "Total"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "(missing)",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "D",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "F",
+     "x": 1651.56,
+     "y": 1558.12
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Total",
+     "x": 4074.98,
+     "y": 1558.12
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by s",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp31": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 1,
+   "options": "by(e, missing)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by e"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 74,
+     "note": "",
+     "sub": [
+      "(missing)"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 123.69,
+     "text": "(missing)",
+     "x": 2882.08,
+     "y": 276.89
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by e",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp32": {
+   "if": "",
+   "message": "nothing to graph",
+   "options": "by(e)",
+   "rc": 198
+  },
+  "bp33": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(u)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by u"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "0"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "1"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by u",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp34": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(fb)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by    "
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by    ",
+     "x": 245.36,
+     "y": 3080.13
+    }
+   ]
+  },
+  "bp35": {
+   "if": "",
+   "message": "option TITLE() not allowed",
+   "options": "by(foreign, TITLE(\"X\"))",
+   "rc": 198
+  },
+  "bp36": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, title(\"X\", ring(0)))",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 2.777,
+    "subtitle": "",
+    "title": "X"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Domestic",
+     "x": 1651.56,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 105.13,
+     "text": "Foreign",
+     "x": 4074.98,
+     "y": 258.24
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Mileage (mpg)",
+     "x": 192.11,
+     "y": 1499.34
+    },
+    {
+     "anchor": "middle",
+     "size": 112.56,
+     "text": "Weight (lbs.)",
+     "x": 2756.19,
+     "y": 2963.82
+    },
+    {
+     "anchor": null,
+     "size": 89.94,
+     "text": "Graphs by Car origin",
+     "x": 245.36,
+     "y": 3080.13
+    },
+    {
+     "anchor": "middle",
+     "size": 157.44,
+     "text": "X",
+     "x": 2756.19,
+     "y": 243.1
+    }
+   ]
+  },
+  "bp37": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign) scheme(economist)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "Graphs by Car origin"
+    ],
+    "note_size": 4.1667,
+    "subtitle": "",
+    "title": ""
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": null,
+     "size": 51.43,
+     "text": "Domestic",
+     "x": 200.98,
+     "y": 231.9
+    },
+    {
+     "anchor": null,
+     "size": 51.43,
+     "text": "Foreign",
+     "x": 856.28,
+     "y": 231.9
+    },
+    {
+     "anchor": "middle",
+     "size": 60.49,
+     "text": "Mileage (mpg)",
+     "x": 97.76,
+     "y": 804.28
+    },
+    {
+     "anchor": "middle",
+     "size": 60.49,
+     "text": "Weight (lbs.)",
+     "x": 822.27,
+     "y": 1510.39
+    },
+    {
+     "anchor": "end",
+     "size": 65.99,
+     "text": "Graphs by Car origin",
+     "x": 1519.05,
+     "y": 121.12
+    }
+   ]
+  },
+  "bp38": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, title(\"X\") note(\"N\")) scheme(economist)",
+   "overall": {
+    "caption": "",
+    "note": [
+     "N"
+    ],
+    "note_size": 4.1667,
+    "subtitle": "",
+    "title": "X"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": null,
+     "size": 51.43,
+     "text": "Domestic",
+     "x": 200.98,
+     "y": 311.64
+    },
+    {
+     "anchor": null,
+     "size": 51.43,
+     "text": "Foreign",
+     "x": 856.28,
+     "y": 311.64
+    },
+    {
+     "anchor": "middle",
+     "size": 60.49,
+     "text": "Mileage (mpg)",
+     "x": 97.76,
+     "y": 844.12
+    },
+    {
+     "anchor": "middle",
+     "size": 60.49,
+     "text": "Weight (lbs.)",
+     "x": 822.27,
+     "y": 1510.39
+    },
+    {
+     "anchor": "end",
+     "size": 65.99,
+     "text": "N",
+     "x": 1519.05,
+     "y": 121.12
+    },
+    {
+     "anchor": null,
+     "size": 95.04,
+     "text": "X",
+     "x": 90.29,
+     "y": 156.84
+    }
+   ]
+  },
+  "bp39": {
+   "canvas": null,
+   "if": "",
+   "message": "",
+   "n": 2,
+   "options": "by(foreign, title(\"X\") subtitle(\"S\") note(\"N\") caption(\"C\")) scheme(s2color)",
+   "overall": {
+    "caption": "C",
+    "note": [
+     "N"
+    ],
+    "note_size": 2.777,
+    "subtitle": "S",
+    "title": "X"
+   },
+   "panels": [
+    {
+     "caption": "",
+     "n": 52,
+     "note": "",
+     "sub": [
+      "Domestic"
+     ],
+     "title": ""
+    },
+    {
+     "caption": "",
+     "n": 22,
+     "note": "",
+     "sub": [
+      "Foreign"
+     ],
+     "title": ""
+    }
+   ],
+   "rc": 0,
+   "svg": [
+    {
+     "anchor": "middle",
+     "size": 93.56,
+     "text": "Domestic",
+     "x": 1230.08,
+     "y": 534.58
+    },
+    {
+     "anchor": "middle",
+     "size": 93.56,
+     "text": "Foreign",
+     "x": 2982.75,
+     "y": 534.58
+    },
+    {
+     "anchor": "middle",
+     "size": 99.99,
+     "text": "Mileage (mpg)",
+     "x": 170.79,
+     "y": 1425.03
+    },
+    {
+     "anchor": "middle",
+     "size": 99.99,
+     "text": "Weight (lbs.)",
+     "x": 2030.0,
+     "y": 2500.09
+    },
+    {
+     "anchor": null,
+     "size": 79.94,
+     "text": "N",
+     "x": 218.05,
+     "y": 2603.37
+    },
+    {
+     "anchor": null,
+     "size": 99.99,
+     "text": "C",
+     "x": 218.05,
+     "y": 2731.88
+    },
+    {
+     "anchor": "middle",
+     "size": 110.01,
+     "text": "S",
+     "x": 2030.0,
+     "y": 369.63
+    },
+    {
+     "anchor": "middle",
+     "size": 139.96,
+     "text": "X",
+     "x": 2030.0,
+     "y": 215.98
+    }
+   ]
+  }
+ }
+}

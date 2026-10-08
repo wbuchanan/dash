@@ -132,12 +132,15 @@ class TestTheTitleIsTheHeadingBox:
 
     def test_a_by_panel_title_is_not_bold_and_centred(self, mode):
         figs = _figs(mode, _spec("s2color", {"by": "foreign"}))
-        titled = [f for f in figs if f.title is not None
-                  and str(f.title.text or "").strip()]
+        # Flipped (WP-30 P1.15a): the panel's label is its own row (the
+        # Title named dash_by_label), as twoway draws it, not its title.
+        from by_panel_probe import panel_label_title
+        titled = [panel_label_title(f) for f in figs
+                  if panel_label_title(f) is not None]
         assert titled
-        for f in titled:
-            assert f.title.text_font_style == "normal", f.title.text
-            assert f.title.align == "center", f.title.text
+        for t in titled:
+            assert t.text_font_style == "normal", t.text
+            assert t.align == "center", t.text
 
     def test_an_explicit_size_and_colour_still_win(self, mode):
         f = _fig(mode, _spec("s2color",

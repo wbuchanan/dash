@@ -46,6 +46,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from conftest import make_data_json, load_app
+from by_panel_probe import by_grid, chrome_texts, panel_label
 from test_server_layer_defects import ALL_TYPES, plot_for, make_spec, _walk
 
 _SEQ = itertools.count()
@@ -148,7 +149,9 @@ def panel_profile(fig):
         rows.append(len(idx) if idx is not None else n)
     f = fig
     return {
-        "title": f.title.text if f.title else "",
+        # Flipped (WP-30 P1.15a): the panel's title held its label; twoway
+        # draws the label as a row of its own (by_panel_probe).
+        "title": panel_label(f),
         "glyphs": [type(r.glyph).__name__ for r in f.renderers
                    if getattr(r, "glyph", None) is not None],
         "rows": rows,
@@ -262,7 +265,10 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
         std = profiles_std(tmp_path, spec, df)
         srv = profiles_srv(tmp_path, spec, df)
         assert std == srv
-        assert [p["title"] for p in srv] == ["Domestic", "Foreign", "Missing"]
+        # Flipped (WP-30 P1.15a): "Missing" was wrong; twoway writes
+        # "(missing)".
+        assert [p["title"] for p in srv] == ["Domestic", "Foreign",
+                                             "(missing)"]
 
     def test_a_layered_graph_agrees(self, tmp_path):
         spec = make_spec([plot_for("scatter"), plot_for("lfit")], None,
@@ -522,7 +528,9 @@ class TestAnUnimplementedBySuboptionIsNamed:
         ("foreign, compact", ["compact"]),
         ("foreign, rows(2) compact", ["rows(2)", "compact"]),
         ("foreign, holes(1 3) iscale(*.8)", ["holes(1 3)", "iscale(*.8)"]),
-        ("foreign, title(\"By origin\")", ["title(\"By origin\")"]),
+        # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
+        # draws it; shrink (twoway's SHRink) is still named.
+        ("foreign, title(\"By origin\") shrink", ["shrink"]),
         # Flipped (WP-29 P0.2): norescale is twoway's default and is
         # honoured, so only noixlabel is named.
         ("foreign, norescale noixlabel", ["noixlabel"]),
@@ -597,8 +605,9 @@ class TestAByTextHoldingMacroCharactersFacets:
     twoway scatter mpg weight, by(foreign, title(`"'90s bc"')), and the
     same with title("Cost in \\$US") and title("a\\b c"), each draw the two
     panels Domestic and Foreign.  Only the variable list is held to the
-    pattern now; the sub-options are text, and a by() title is named as not
-    implemented, as typed."""
+    pattern now; the sub-options are text.  Flipped (WP-30 P1.15a): the
+    by() title was named as not implemented; twoway draws by()'s text once
+    over the panels, so it is drawn, as typed, and not named."""
 
     _BT, _AP = "`", "'"
 
@@ -617,13 +626,17 @@ class TestAByTextHoldingMacroCharactersFacets:
         srv = profiles_srv(tmp_path, spec)
         assert len(figs) == len(srv) == 2, (len(figs), len(srv))
         assert sorted(p["title"] for p in srv) == \
-               sorted(f.title.text for f in figs.values()) == \
+               sorted(panel_label(f) for f in figs.values()) == \
                ["Domestic", "Foreign"]
         assert not _by_note(msgs), msgs
-        # The sub-option dash does not draw is named, as the user typed it.
-        sub = by_raw.split(",", 1)[1].strip()
-        named = [m for m in msgs if "by() sub-option" in m]
-        assert len(named) == 1 and sub in named[0], msgs
+        assert not [m for m in msgs if "by() sub-option" in m], msgs
+        # The text is drawn in the chrome cells, as the user typed it.
+        want = sorted(dr._dash_textbox(v, k)[0] for k, v in
+                      dr._dash_by_text_options(by_raw).items() if v)
+        cells = next(f for f in figs.values()
+                     if getattr(f, "_dash_by_chrome", None))._dash_by_chrome
+        got = sum((chrome_texts(c) for c in cells.values() if c), [])
+        assert all(w in got for w in want), (want, got)
 
     def test_the_parse_keeps_the_implemented_sub_options(self):
         got = dr._dash_parse_by(
@@ -736,9 +749,12 @@ class TestTheGeneratedAppHasOneDispatch:
         from bokeh.models import GridPlot
         spec = by_spec("scatter", by="foreign, cols(1)")
         _, doc, _ = served(tmp_path, spec)
-        grids = [m for m in _walk(doc) if isinstance(m, GridPlot)]
-        inner = [g for g in grids
-                 if all(type(c[0]).__name__ == "figure" for c in g.children)]
-        assert inner, "no facet sub-grid found"
-        cols = max(c[2] for c in inner[0].children) + 1
+        # Flipped (WP-30 P1.15a): the sub-grid holds the overall text's
+        # chrome cells beside its panels; the panels are read through
+        # by_panel_probe.by_grid.
+        (root,) = [x for x in doc.roots
+                   if any(isinstance(m, GridPlot) for m in x.references())]
+        panels = by_grid(root)[0]
+        assert panels, "no facet sub-grid found"
+        cols = max(c for _, c, _ in panels) + 1
         assert cols == 1, "cols(1) gave a %d-column facet grid" % cols

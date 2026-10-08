@@ -621,8 +621,10 @@ class TestFacetTitles:
             _graph("g2", [_scatter("mpg", "price")], by="whenm"),
             _graph("g3", [_scatter("mpg", "price")], by="when2"),
         ], formats=fm), df=df)
-        titles = {f.title.text for f in b.models
-                  if type(f).__name__ == "figure" and f.title is not None}
+        # Flipped (WP-30 P1.15a): the date is the panel's label row.
+        from by_panel_probe import panel_label
+        titles = {panel_label(f) for f in b.models
+                  if type(f).__name__ == "figure"}
         for t in ("02jan2000", "2000m1", "2000-01-02"):
             assert t in titles, titles
         assert dr._dash_stata_date_text(14610.0, "%td") == "01jan2000"

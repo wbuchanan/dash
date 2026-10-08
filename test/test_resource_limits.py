@@ -37,6 +37,7 @@ from bokeh.plotting import figure
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # by_panel_probe (WP-30 P1.15a)
 
 import dash_render as dr
 
@@ -1113,9 +1114,13 @@ class TestByColsCannotOutgrowThePanels:
         want = [(0, 0), (0, 1), (0, 2), (0, 3)]
 
         def panels(grids):
+            # Flipped (WP-30 P1.15a): the grid holds the overall text's
+            # chrome cells too; the panel rows are read without them.
+            from by_panel_probe import is_chrome
             [g] = [g for g in grids
-                   if all(type(c[0]).__name__ == "figure" for c in g.children)]
-            return [(row, col) for _, row, col in g.children]
+                   if any(type(c[0]).__name__ == "figure"
+                          for c in g.children)]
+            return [(c[1], c[2]) for c in g.children if not is_chrome(c[0])]
 
         r, _, _ = _standalone(tmp_path, spec, _frame(12, groups=4))
         assert panels(r._last_layout_root.select({"type": GridPlot})) == want

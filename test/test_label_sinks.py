@@ -302,7 +302,12 @@ def hostile_inputs(payload):
         graph("g2", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {}},
-        ], by="foreign", xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
+        ],
+            # WP-30 P1.15a: by()'s own text, drawn once over the panels.
+            by='foreign, title("%s") subtitle("%s") note("%s") caption("%s")'
+            % (quoted("btitle"), quoted("bsub"), quoted("bnote"),
+               quoted("bcap")),
+            xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
         graph("g3", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "rep", "colordiscrete": "yes"}},
@@ -335,6 +340,11 @@ def hostile_inputs(payload):
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "rep", "colordiscrete": "yes"}},
         ], ztitle=textbox("zt")),
+        # WP-30 P1.15a: twoway's default note, "Graphs by <rep's label>".
+        graph("g9", [
+            {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+             "options": {}},
+        ], by="rep"),
     ]
     kpis = [
         {"name": "k1", "stat": "mean", "var": "mpg", "fmt": "%9.1f",
@@ -354,7 +364,7 @@ def hostile_inputs(payload):
             "layout": "auto", "link": "", "theme": "", "scheme": "",
             "session_scheme": "",
             "title": free("dtitle"), "subtitle": free("dsub"),
-            "registry": "g1 g2 g3 g4 g5 g6 g7 g8 k1 k2 k3",
+            "registry": "g1 g2 g3 g4 g5 g6 g7 g8 g9 k1 k2 k3",
             "tabs": "%s: g1 g2 g3 k1 / %s: g4 g5 g6 g7 g8 k2 k3"
                     % (tab("tab1"), tab("tab2")),
             "filter": filters,
@@ -601,6 +611,13 @@ SINKS = (
     Sink("ylabel2_tick_formatter_map", "tick2", ("CustomJSTickFormatter",),
          "args", "json-text"),
     Sink("facet_title_from_value_label", "vlo0", ("Title",), "text", "text"),
+    # WP-30 P1.15a: by()'s overall text and its default note, canvas Titles
+    # of the panel grid's chrome cells.
+    Sink("by_title", "btitle", ("Title",), "text", "text"),
+    Sink("by_subtitle", "bsub", ("Title",), "text", "text"),
+    Sink("by_note", "bnote", ("Title",), "text", "text"),
+    Sink("by_caption", "bcap", ("Title",), "text", "text"),
+    Sink("by_note_from_variable_label", "vlrep", ("Title",), "text", "text"),
     Sink("colorbar_title_from_variable_label", "vlprice", ("ColorBar",),
          "title", "text"),
     # WP-28 X2: ztitle() is a second source for the same (model, property)

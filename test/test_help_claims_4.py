@@ -1184,14 +1184,17 @@ def _agg_rows(df, case, title):
 
 
 def _agg_renderers(figures):
-    """``[(figure title, renderer)]`` for every aggregate layer."""
+    """``[(panel label, renderer)]`` for every aggregate layer.  Flipped
+    (WP-30 P1.15a): keyed on the figure's title, which held the by()
+    panel's label; the label is its own row now (by_panel_probe)."""
+    from by_panel_probe import panel_label
     out = []
     for fig in figures:
         for rr in fig.renderers:
             data = rr.data_source.data
             if "top" in data or ("x" in data and "y" in data
                                  and _ROW_ID_NOT_IN(data)):
-                out.append((fig.title.text, rr))
+                out.append((panel_label(fig), rr))
     return out
 
 

@@ -567,8 +567,12 @@ class TestLabelsUsedAutomatically:
     def test_by_panels_are_titled_by_the_value_labels(self, tmp_path):
         spec = _spec([plot_for("scatter")], {"by": "foreign"})
         r, _, _, doc, _, _ = _both(tmp_path, spec)
-        saved = sorted(f.title.text for f in r.figures.values())
-        served = sorted(f.title.text for f in _figure_models(doc))
+        # Flipped (WP-30 P1.15a): the value labels title each panel as a
+        # row of its own, as twoway draws them, not as the figure's title.
+        from by_panel_probe import panel_label
+        saved = sorted(panel_label(f) for f in r.figures.values())
+        served = sorted(panel_label(f) for f in _figure_models(doc)
+                        if panel_label(f))
         assert saved == served == ["Domestic", "Foreign"], (saved, served)
 
     def test_marker_labels_of_a_labelled_variable_are_its_labels(self,

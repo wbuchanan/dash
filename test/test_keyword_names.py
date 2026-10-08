@@ -332,7 +332,11 @@ def _rows(doc):
                     except (TypeError, ValueError):
                         pass
             seen.append((len(next(iter(ds.data.values()))), round(total, 6)))
-        out[f.title.text] = sorted(seen)
+        # Flipped (WP-30 P1.15a): a by() panel is keyed by its title and
+        # label row; the title alone no longer tells panels apart.
+        from by_panel_probe import panel_label
+        key = " ".join(t for t in (f.title.text, panel_label(f)) if t)
+        out[key] = sorted(seen)
     return dict(sorted(out.items()))
 
 

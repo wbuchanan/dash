@@ -2373,8 +2373,8 @@ counts every observation.
 {cmd:dash} supports Stata's {opt by(varlist)} option for faceted graphs.
 Each value of {it:varlist} -- each combination of values, with several
 variables -- produces a separate panel of the observations in that group.
-Observations with a missing {cmd:by()} value are left out unless
-{cmd:missing} is given.
+Observations with a missing {cmd:by()} value -- a string variable's {cmd:""}
+included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
 
 {synoptset 30}{...}
 {synopt:{opt by(varlist)}}facet graph by the values of {it:varlist}{p_end}
@@ -2382,8 +2382,13 @@ Observations with a missing {cmd:by()} value are left out unless
     columns{p_end}
 {synopt:{opt by(varlist, total)}}add a "Total" panel of every group's
     observations{p_end}
-{synopt:{opt by(varlist, missing)}}include a panel, titled "Missing", of
-    the observations with a missing value{p_end}
+{synopt:{opt by(varlist, missing)}}include a panel, titled "(missing)", of
+    the observations with a missing value (a string variable's ""
+    included){p_end}
+{synopt:{opt by(varlist, title() subtitle() note() caption())}}drawn once
+    over the panels; abbreviations {cmd:ti}, {cmd:sub}, {cmd:note},
+    {cmd:cap}{p_end}
+{synopt:{opt by(varlist, note(""))}}remove the "Graphs by" note{p_end}
 {synopt:{opt by(varlist, yrescale|xrescale|rescale)}}draw each panel on its
     own y scale, x scale or both; abbreviations {cmd:yr}, {cmd:xr} and
     {cmd:r}, and {cmd:noyrescale}, {cmd:noxrescale} and {cmd:norescale}
@@ -2407,8 +2412,9 @@ where {cmd:dash} draws every panel's.
 
 {pstd}
 The Total panel draws the observations of every group, as {cmd:twoway}'s
-does: those with a missing {cmd:by()} value only with {cmd:missing}.
-{cmd:twoway} titles the missing panel "(missing)".
+does: those with a missing {cmd:by()} value only with {cmd:missing}, a
+string variable's {cmd:""} counted as missing in the groups and in Total.
+The missing panel is titled "(missing)", as in {cmd:twoway}.
 
 {pstd}
 The panels are arranged the same way wherever the graph is drawn -- in the
@@ -2419,22 +2425,32 @@ root of the number of panels, rounded up.  A {cmd:cols()} of more columns
 than there are panels puts them all in one row.
 
 {pstd}
-A panel is titled with its value's label, when the value has one, and
+A panel is labelled with its value's label, when the value has one, and
 otherwise with the value as {cmd:twoway} writes it -- {cmd:3}, {cmd:.25} --
-whatever its display format; a string variable's panels are titled with
+whatever its display format; a string variable's panels are labelled with
 their text, and a date variable's with their dates in its display format
 ({cmd:01jan2000}, {cmd:2000m1}), where {cmd:twoway} writes the number
-({cmd:14610}).  Several {cmd:by()} variables produce
-composite titles, "Domestic / 3", which {cmd:twoway} writes "Domestic, 3".
-A graph's own {cmd:title()} leads each of its panels' titles.
+({cmd:14610}).  Several {cmd:by()} variables produce composite labels,
+"Domestic, 3", as in {cmd:twoway}.  The label is drawn as its own centred
+row under the graph's {cmd:title()}, which every panel keeps.  A graph's
+{cmd:subtitle()} replaces the label, leads it with {cmd:prefix}, follows
+it with {cmd:suffix}, and {cmd:subtitle("")} removes it.  A value label
+holding double quotes stays one line, where {cmd:twoway} splits it.
+{cmd:twoway} draws the label in a filled box; {cmd:dash} does not yet.
+{cmd:by()}'s own {cmd:title()}, {cmd:subtitle()}, {cmd:note()} and
+{cmd:caption()} are drawn once over the panels, and under them the note
+"Graphs by" names the variables as {cmd:twoway} does: their labels,
+"A and B" for two, and for three or more the first by its name
+("Graphs by foreign, Repair record 1978, and Headroom (in.)").
 One graph draws at most 100 groups by default, a panel each, and its Total
 panel one more: over that, the first 100 groups in sort order are drawn and
 a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
-{cmd:cols()}, {cmd:total}, {cmd:missing} and the rescale forms above are
-the {cmd:by()} sub-options {cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
-example {cmd:rows()}, {cmd:holes()} or {cmd:compact} -- is accepted, named
-in a warning, and ignored.
+{cmd:cols()}, {cmd:total}, {cmd:missing}, the rescale forms above and
+{cmd:title()}, {cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are the
+{cmd:by()} sub-options {cmd:dash} implements.  Any other sub-option of
+Stata's {cmd:by()} -- for example {cmd:rows()}, {cmd:holes()} or
+{cmd:compact} -- is accepted, named in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
 box-select in any panel highlights the matching observations in every other

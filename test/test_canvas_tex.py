@@ -501,7 +501,9 @@ class TestTheServedApp:
         call = src.find("\n    _dash_finish_graph_text(figures)\n")
         assert call > 0
         assert src.rfind("_dash_share_by_scales([figures[_f]") < call
-        assert 0 < src.find("fig.title.text = (f'{_own}") < call
+        # Flipped (WP-30 P1.15a): the anchor was the panel-title join,
+        # which is gone; the label row is drawn by _dash_by_panel_label.
+        assert 0 < src.find("_dash_by_panel_label(fig, _fac_label") < call
         assert call < src.find(
             "# ---- Persist per-graph qualifier metadata")
         assert call < src.find("# ---- Filter widgets + Python callbacks ----")

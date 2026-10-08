@@ -373,7 +373,10 @@ class TestATotalPanelReadsItsOwnColumn:
     def _by_label(figs):
         out = {}
         for f in figs:
-            label = (f.title.text or "").split("—")[-1].strip()
+            # Flipped (WP-30 P1.15a): split the label off "title — label";
+            # twoway draws it as a row of its own (by_panel_probe).
+            from by_panel_probe import panel_label
+            label = panel_label(f)
             out[label] = _rows_drawn(f, tp._DF)
         return out
 

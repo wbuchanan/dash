@@ -203,9 +203,12 @@ class TestTrailingComma:
     def test_facet_title_keeps_its_panel(self, mode, tmp_path):
         obj, _ = _document(mode, tmp_path,
                            _spec(_ONE, {"by": "g", "title": "A,"}))
-        titles = [f.title.text for f in _figs(mode, obj)
-                  if f.title is not None and f.title.text]
-        assert titles and all(t.startswith("A — ") for t in titles), titles
+        # Flipped (WP-30 P1.15a): "A — <label>" was wrong because twoway
+        # keeps the title on each panel and draws the label as its own row.
+        from by_panel_probe import panel_label
+        figs = [f for f in _figs(mode, obj) if panel_label(f)]
+        assert figs and all(f.title.text == "A" for f in figs), \
+            [(f.title.text, panel_label(f)) for f in figs]
 
     def test_a_routed_double_comma_is_silent(self):
         spec = {"graphs": [{"graph_options": {"ytitle": "A,, axis(2)"}}]}

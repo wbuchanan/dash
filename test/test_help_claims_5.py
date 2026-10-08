@@ -67,6 +67,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from by_panel_probe import by_grid, chrome_texts, panel_label  # noqa: E402
 from conftest import load_app  # noqa: E402
 
 _SEQ = itertools.count()
@@ -264,23 +265,24 @@ def _pair_figures(r, doc):
     return saved[0], served[0]
 
 
-def _grid_panels(grids):
-    """The panels of the one grid made only of figures, as
-    ``[(row, col, title)]`` sorted by place."""
-    panel_grids = [g for g in grids
-                   if g.children and all(type(c[0]).__name__ == "figure"
-                                         for c in g.children)]
-    assert len(panel_grids) == 1, panel_grids
-    return sorted((row, col, fig.title.text if fig.title is not None else "")
-                  for fig, row, col in panel_grids[0].children)
+def _grid_panels(root):
+    """The panels of the one by() grid under *root*, as ``[(row, col,
+    label)]`` sorted by place.  Flipped (WP-30 P1.15a): read the title,
+    which held the label, and took every grid child for a panel; twoway
+    keeps the graph's title on every panel and draws the label as a row
+    of its own, and the grid now holds the overall text's chrome cells."""
+    panels, _head, _foot = by_grid(root)
+    return [(row, col, panel_label(fig)) for row, col, fig in panels]
 
 
 def _saved_panels(r):
-    return _grid_panels(r._last_layout_root.select({"type": GridPlot}))
+    return _grid_panels(r._last_layout_root)
 
 
 def _served_panels(doc):
-    return _grid_panels(list(doc.select({"type": GridPlot})))
+    (root,) = [x for x in doc.roots
+               if any(isinstance(m, GridPlot) for m in x.references())]
+    return _grid_panels(root)
 
 
 def _help_section(start_marker, end_marker):
@@ -498,7 +500,8 @@ def _by(by, df=None, value_labels=None, label_names=None, formats=None,
 
 class TestThePanelTitles:
     """HC5-07 measured twoway's titles; the help promises value labels and
-    composite titles such as "Domestic / 3"."""
+    composite titles such as "Domestic, 3".  Flipped (WP-30 P1.15a):
+    "Domestic / 3" was wrong because twoway joins labels ", "."""
 
     def test_an_unlabelled_value_is_written_as_stata_writes_it(self):
         r, doc, _, _ = _by("rep78")
@@ -509,8 +512,8 @@ class TestThePanelTitles:
         r, doc, _, _ = _by("foreign rep78",
                            value_labels={"foreign": dict(_ORIGIN)},
                            label_names={"foreign": "origin"})
-        want = ["Domestic / 3", "Domestic / 4", "Foreign / 3",
-                "Foreign / 4", "Foreign / 5"]
+        want = ["Domestic, 3", "Domestic, 4", "Foreign, 3",
+                "Foreign, 4", "Foreign, 5"]
         for panels in (_saved_panels(r), _served_panels(doc)):
             assert [t for _, _, t in panels] == want, panels
 
@@ -558,13 +561,18 @@ class TestThePanelTitles:
                                            "03jan2000"], (saved, served)
 
     def test_the_graphs_title_leads_each_panels(self):
+        """Flipped (WP-30 P1.15a): "Cars — Domestic" was wrong because
+        twoway keeps title() on every panel and draws the label as a row
+        under it (probe p14)."""
         r, doc, _, _ = _by("foreign",
                            value_labels={"foreign": dict(_ORIGIN)},
                            label_names={"foreign": "origin"},
                            graph_opts={"title": "Cars"})
-        for panels in (_saved_panels(r), _served_panels(doc)):
-            assert [t for _, _, t in panels] == [
-                "Cars \u2014 Domestic", "Cars \u2014 Foreign"], panels
+        saved = [f for _, _, f in by_grid(r._last_layout_root)[0]]
+        served = _served_figures(doc)
+        for figs in (saved, served):
+            assert [f.title.text for f in figs] == ["Cars", "Cars"]
+            assert [panel_label(f) for f in figs] == ["Domestic", "Foreign"]
 
 
 class TestTheFacetLabelHelper:
@@ -576,7 +584,9 @@ class TestTheFacetLabelHelper:
     @pytest.mark.parametrize("key,want", [
         (3.0, "3"), (0.25, ".25"), (-0.25, "-.25"), (1234567.0, "1234567"),
         (2.5e-12, "2.50000000000e-12"), (np.float64(4.0), "4"),
-        (float("nan"), "Missing"),
+        # Flipped (WP-30 P1.15a): "Missing" was wrong because twoway
+        # writes "(missing)".
+        (float("nan"), "(missing)"),
     ])
     def test_one_unlabelled_variable(self, key, want):
         assert dr._dash_facet_label(["rep78"], key) == want
@@ -588,8 +598,9 @@ class TestTheFacetLabelHelper:
             == "2"
 
     def test_two_variables_are_joined(self):
+        # Flipped (WP-30 P1.15a): " / " was wrong because twoway joins ", ".
         assert dr._dash_facet_label(["foreign", "rep78"], (0.0, 3.0),
-                                    self._N, self._L) == "Domestic / 3"
+                                    self._N, self._L) == "Domestic, 3"
 
     def test_the_label_wins_over_a_display_format(self):
         assert dr._dash_facet_label(
@@ -670,8 +681,10 @@ class TestTheTotalAndMissingPanels:
         return n
 
     def _counts(self, r, doc):
-        saved = {f.title.text: self._points(f) for f in r.figures.values()}
-        served = {f.title.text: self._points(f)
+        # Flipped (WP-30 P1.15a): keyed on the title, which held the label;
+        # the label is its own row now.
+        saved = {panel_label(f): self._points(f) for f in r.figures.values()}
+        served = {panel_label(f): self._points(f)
                   for f in _served_figures(doc)}
         return saved, served
 
@@ -683,7 +696,8 @@ class TestTheTotalAndMissingPanels:
     def test_total_with_missing_is_every_observation(self):
         r, doc, _, _ = _by("rep78, missing total")
         for got in self._counts(r, doc):
-            assert got == {"3": 7, "4": 2, "5": 1, "Missing": 2,
+            # Flipped (WP-30 P1.15a): twoway writes "(missing)".
+            assert got == {"3": 7, "4": 2, "5": 1, "(missing)": 2,
                            "Total": 12}, got
 
     def test_the_total_panel_is_one_more_than_the_group_limit(self):
@@ -692,8 +706,9 @@ class TestTheTotalAndMissingPanels:
         df["g"] = [float(i) for i in range(len(df))]
         r, doc, saved, served = _by("g, total", df=df,
                                     build={"limits": {"by_groups": 4}})
-        for titles in ([f.title.text for f in r.figures.values()],
-                       [f.title.text for f in _served_figures(doc)]):
+        # Flipped (WP-30 P1.15a): the panels are named by their label row.
+        for titles in ([panel_label(f) for f in r.figures.values()],
+                       [panel_label(f) for f in _served_figures(doc)]):
             assert sorted(titles) == sorted(["0", "1", "2", "3", "Total"])
         for notes in (saved, served):
             assert [m for m in notes if "has 12 groups, more than the 4"
@@ -864,19 +879,26 @@ class TestTheSubOptionSplitterReadsStataQuotes:
         assert dr._dash_by_tokens(raw) == want
 
     def test_by_keeps_its_cols_after_an_apostrophe(self):
+        # Flipped (WP-30 P1.15a): title() was named as unsupported; by()'s
+        # title() is drawn now, as twoway draws it.
         assert dr._dash_parse_by("foreign, title(Bob's cars) cols(2)",
                                  warn=False) == (
-            "foreign", 2, False, False, ["title(Bob's cars)"])
+            "foreign", 2, False, False, [])
 
     def test_legend_names_what_follows_an_apostrophe(self):
         assert dr._dash_legend_unsupported("label(1 Bob's) span") == ["span"]
 
     def test_in_both_modes(self):
+        """Flipped (WP-30 P1.15a): title(Bob's cars) was named as not
+        implemented; twoway draws by()'s title once over the panels."""
         r, doc, saved, served = _by("foreign, title(Bob's cars) cols(1)")
-        want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "title(Bob's cars)"]
-        assert [m for m in saved if "sub-option" in m] == want, saved
-        assert [m for m in served if "sub-option" in m] == want, served
+        assert [m for m in saved if "sub-option" in m] == [], saved
+        assert [m for m in served if "sub-option" in m] == [], served
+        (served_root,) = [x for x in doc.roots
+                          if any(isinstance(m, GridPlot)
+                                 for m in x.references())]
+        for root in (r._last_layout_root, served_root):
+            assert chrome_texts(by_grid(root)[1]) == ["Bob's cars"]
         for panels in (_saved_panels(r), _served_panels(doc)):
             assert [(row, col) for row, col, _ in panels] == [(0, 0),
                                                               (1, 0)]
@@ -1364,7 +1386,9 @@ class TestTheHelpSaysSo:
     def test_the_panel_title_rule_is_stated(self):
         sec = self._facets()
         assert "whatever its display format" in sec
-        assert '"Domestic / 3"' in sec
+        # Flipped (WP-30 P1.15a): "Domestic / 3" was wrong because twoway
+        # joins the labels of several by() variables ", ".
+        assert '"Domestic, 3"' in sec
 
     def test_the_by_group_limit_counts_groups(self):
         for sec in (self._facets(), self._limits()):

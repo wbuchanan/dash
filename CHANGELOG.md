@@ -368,7 +368,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.14b -->
 
-<!-- WP-30 P1.15a -->
+- dash scatter mpg weight, title("T") by(foreign rep78, missing) now labels each panel on its own row under T -- Domestic, 1 ... Foreign, (missing) -- where it titled them T — Domestic / 1 ... T — Foreign / Missing; subtitle() replaces, leads or follows the label as in twoway; by(, title() subtitle() note() caption()) are drawn once over the panels, where they were named and ignored, with twoway's note Graphs by Car origin and Repair record 1978 under them unless by(, note("")); and a string by() variable's "" values are left out of the panels and the Total panel unless missing is given, where they drew an untitled panel and were counted in Total (WP-30, P1.15a)
 
 <!-- WP-30 P1.15b -->
 

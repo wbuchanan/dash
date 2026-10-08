@@ -3733,6 +3733,46 @@ def _dash_filter_truncation_note(varname, n, limit):
             f"{_dash_limit_hint('filter_options', 'list more')}.")
 
 
+def _dash_by_value_missing(val) -> bool:
+    """Whether one by() value is missing, as twoway decides it (WP-30
+    P1.15a).
+
+    bygraph_g.class:103-106 marks out the by() variables with ``markout
+    ..., strok`` unless ``missing`` is given, so a string value ``""`` is
+    missing as a numeric ``.`` is (probes a17-a20: ``by(s)`` draws no panel
+    for ``s == ""``, ``by(e, missing)`` with every ``e`` empty draws one
+    panel titled ``(missing)``, and ``by(e)`` is ``nothing to graph``).  A
+    string of blanks is not missing, as Stata's ``missing()`` says.  Never
+    raises: a value that is not a scalar is not missing.
+    """
+    if isinstance(val, str):
+        return val == ""
+    try:
+        return bool(pd.isna(val))
+    except (TypeError, ValueError):
+        return False
+
+
+def _dash_by_nonmissing(df, by_vars):
+    """The rows of *df* in which no variable of *by_vars* is missing in
+    :func:`_dash_by_value_missing`'s sense -- the rows ``markout ...,
+    strok`` keeps (bygraph_g.class:103-106; probes a17-a20).
+
+    ``dropna`` kept a string ``""``, so dash drew it as an untitled panel
+    and counted it in the Total panel.  Vectorised: linear in rows times
+    variables.  A variable not in *df* is skipped.
+    """
+    keep = pd.Series(True, index=df.index)
+    for v in by_vars:
+        if v not in df.columns:
+            continue
+        col = df[v]
+        keep &= col.notna()
+        if not pd.api.types.is_numeric_dtype(col):
+            keep &= ~col.astype(object).eq("")
+    return df[keep]
+
+
 def _dash_by_groups(work_df, by_vars, by_missing, limit, where=""):
     """``[(key, frame)]`` for the by() groups of *work_df*, at most *limit*.
 
@@ -3756,7 +3796,7 @@ def _dash_by_groups(work_df, by_vars, by_missing, limit, where=""):
     out = []
     for gkey, gdf in gb:
         vals = (gkey,) if len(by_vars) == 1 else gkey
-        if not by_missing and any(pd.isna(v) for v in vals):
+        if not by_missing and any(_dash_by_value_missing(v) for v in vals):
             continue
         out.append((gkey, gdf))
         if len(out) >= limit:
@@ -21885,6 +21925,18 @@ _DASH_BY_SUPPORTED = {
 _DASH_BY_RESCALE_KEYS = ("rescale", "norescale", "xrescale", "yrescale",
                          "noxrescale", "noyrescale")
 
+#: by()'s text sub-options and every spelling twoway takes (WP-30 P1.15a),
+#: matched case-sensitively: probes a06 (ti, sub, cap), a14 (``t("X")`` is
+#: accepted by twoway and draws nothing, so it is not a spelling here), a15
+#: (``no("X")`` is refused: note has no shorter form) and a12 (``TITLE()``
+#: is refused, r(198), and stays named until by()'s refusals land).
+_DASH_BY_TEXT_SPELLINGS = {
+    "title": ("ti", "tit", "titl", "title"),
+    "subtitle": ("sub", "subt", "subti", "subtit", "subtitl", "subtitle"),
+    "note": ("note",),
+    "caption": ("cap", "capt", "capti", "captio", "caption"),
+}
+
 
 def _dash_by_tokens(subopts):
     """Split a by() sub-option string into its options.
@@ -21959,7 +22011,10 @@ def _dash_parse_by(by_raw, warn=True):
     treat an empty varlist as "no faceting", which is what both renderers
     did with their own copies of the check.
 
-    Stata's by() takes some thirty sub-options; dash implements three.  The
+    Stata's by() takes some thirty sub-options; dash implements cols(),
+    total, missing, the rescale words and, drawn by ``_dash_by_chrome``
+    (WP-30 P1.15a), title(), subtitle(), note() and caption() in twoway's
+    lower-case spellings (``_DASH_BY_TEXT_SPELLINGS``).  The
     rest used to be matched by nothing and discarded by everything --
     ``by(foreign, rows(2) compact)`` faceted as though the user had typed
     ``by(foreign)``, and nothing said so.  They are named here, once, in
@@ -22013,6 +22068,10 @@ def _dash_parse_by(by_raw, warn=True):
                                     for k in _DASH_BY_RESCALE_KEYS):
             # yrescale, xrescale, rescale and their no forms: honoured by
             # _dash_by_rescale (WP-29 P0.2), never named.
+            pass
+        elif _dash_by_text_key(tok) is not None:
+            # title(), subtitle(), note(), caption(): drawn by
+            # _dash_by_chrome (WP-30 P1.15a).
             pass
         elif name == "style" and arg.strip() in ("rescale", "combine"):
             # style(rescale|combine): its separate scales are drawn
@@ -22082,6 +22141,89 @@ def _dash_by_rescale(by_raw):
                      if d in yes or (d not in no and base))
 
 
+def _dash_by_text_key(tok):
+    """The by() text sub-option (``"title"``, ``"subtitle"``, ``"note"``,
+    ``"caption"``) one token of :func:`_dash_by_tokens` is, or None.
+
+    Only a token with an argument -- ``ti("X")``, ``note(, size(large))``
+    -- counts, and its name is compared case-sensitively with
+    ``_DASH_BY_TEXT_SPELLINGS`` (WP-30 P1.15a): twoway refuses
+    ``TITLE("X")`` (probe a12) and ``no("X")`` (a15).
+    """
+    tok = str(tok)
+    if "(" not in tok or not tok.endswith(")"):
+        return None
+    name = tok.split("(", 1)[0].strip()
+    for key, spellings in _DASH_BY_TEXT_SPELLINGS.items():
+        if name in spellings:
+            return key
+    return None
+
+
+def _dash_by_text_options(by_raw):
+    """``{"title", "subtitle", "note", "caption"}``: each by() text
+    sub-option's merged raw value, ``""`` when it is not given (WP-30
+    P1.15a).
+
+    Repeated forms merge as twoway's text boxes do (probes a07, a08, a13):
+    the text is the last occurrence's whose text part is given -- a typed
+    ``""`` counts -- and every occurrence's sub-options apply, in order.
+    ``by(foreign, note("A") note(, size(large)))`` is ``'"A", size(large)'``.
+    Only the text after the first comma of *by_raw* is read, through the
+    quote-aware :func:`_dash_by_tokens`.  One pass; never raises.
+    """
+    out = {k: "" for k in _DASH_BY_TEXT_SPELLINGS}
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001 -- any object at all
+        return out
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return out
+    texts = {k: None for k in out}
+    opts = {k: [] for k in out}
+    for tok in _dash_by_tokens(subs.strip()):
+        key = _dash_by_text_key(tok)
+        if key is None:
+            continue
+        arg = tok[tok.index("(") + 1:-1]
+        cut = _textbox_split_point(arg)
+        part = arg if cut < 0 else arg[:cut]
+        sub = "" if cut < 0 else arg[cut + 1:].strip()
+        if _textbox_has_text(part):
+            texts[key] = part.strip()
+        if sub:
+            opts[key].append(sub)
+    for k in out:
+        t = texts[k] or ""
+        o = " ".join(opts[k])
+        out[k] = t + (", " + o if o else "")
+    return out
+
+
+def _dash_by_note_list(by_vars, var_labels):
+    """The list twoway's default by() note names, ``Graphs by <list>``
+    (bygraph_g.class SetByList :1421-1456; WP-30 P1.15a).
+
+    One variable is its label, else its name (``_dash_var_label``); two
+    are ``"A and B"``; three or more start with the first variable's NAME
+    -- a quirk of SetByList, measured (probe p20: ``Graphs by foreign,
+    Repair record 1978, and Headroom (in.)``) -- then ``", B"`` for each
+    middle one and ``", and C"`` for the last.  Labels are used as given
+    (a label of blanks is kept, probe NB).
+    """
+    vs = list(by_vars or [])
+    if not vs:
+        return ""
+    lab = [_dash_var_label(var_labels, v) for v in vs]
+    if len(vs) == 1:
+        return lab[0]
+    if len(vs) == 2:
+        return "%s and %s" % (lab[0], lab[1])
+    return (str(vs[0]) + "".join(", " + t for t in lab[1:-1])
+            + ", and " + lab[-1])
+
+
 def _dash_by_range_notes(graph):
     """``[(key, text)]``: one note per rescaled axis of a by() graph whose
     range() is not applied (WP-29 P0.2, SD-8).
@@ -22125,11 +22267,12 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
     twoway's rule, measured 23sep2026 from its SVG export: the value's label
     when it has one, else the value as Stata writes a number into a macro
     -- 3, .25, 1234567 -- whatever the variable's display format (%9.2f and
-    %12.0fc change nothing), and a string as it is.  The titles of two by()
-    variables are joined " / " (twoway writes "Domestic, 3").  A date
-    variable's panel is titled with its date, through *date_formatter*
-    (twoway writes the number, 14610), and a missing value's "Missing"
-    (twoway, "(missing)").
+    %12.0fc change nothing), and a string as it is.  The labels of several
+    by() variables are joined ", " (``local sep ", "``) and a missing value
+    -- a numeric missing or a string ``""`` -- reads "(missing)"
+    (bygraph_g.class RunGraph :427-497; WP-30 P1.15a: dash joined " / " and
+    wrote "Missing").  A date variable's panel is titled with its date,
+    through *date_formatter* (twoway writes the number, 14610; A53).
 
     This wrote an unlabelled value as Python writes a float -- "3.0", and
     "Domestic / 3.0" where dash.sthlp's example says "Domestic / 3" -- in
@@ -22155,7 +22298,7 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
                             picture (``2000m1``, ``02jan2000``).
 
     Returns:
-        A display string like ``"Domestic"`` or ``"Domestic / 3"``.
+        A display string like ``"Domestic"`` or ``"Domestic, 3"``.
     """
     value_label_names = value_label_names or {}
     value_labels = value_labels or {}
@@ -22163,11 +22306,12 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
     keys = [key] if len(by_vars) == 1 else list(key)
     parts = []
     for var, val in zip(by_vars, keys):
+        if _dash_by_value_missing(val) or (
+                not isinstance(val, str) and GlyphMapper._mlabel_missing(val)):
+            parts.append("(missing)")
+            continue
         if isinstance(val, str):
             parts.append(val)
-            continue
-        if GlyphMapper._mlabel_missing(val):
-            parts.append("Missing")
             continue
         _kind = date_vars.get(var)
         if _kind and date_formatter is not None:
@@ -22180,7 +22324,7 @@ def _dash_facet_label(by_vars, key, value_label_names=None, value_labels=None,
         # html-escapes it again -- so escaping here showed the entities on
         # the panel and double-escaped the card.
         parts.append(GlyphMapper._mlabel_value_text(val, vlabels))
-    return " / ".join(parts)
+    return ", ".join(parts)
 
 
 def _dash_stata_date_text(value, fmt):
@@ -28667,7 +28811,11 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         rows = [figs[i:i + cn] for i in range(0, len(figs), cn)]
         while len(rows[-1]) < cn:
             rows[-1].append(None)
-        return _dash_name_save(_dash_reflow(gridplot(rows, sizing_mode="stretch_width")))
+        grid = gridplot(rows, sizing_mode="stretch_width")
+        # by()'s overall text above and below the panels (WP-30 P1.15a).
+        _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
+                            cn)
+        return _dash_name_save(_dash_reflow(grid))
     if name in figures:
         return figures[name]
     return kpi_divs.get(name)
@@ -29951,7 +30099,8 @@ _DASH_TEXTBOX_DEFAULTS = {
 }
 
 
-def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
+def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
+                           *, defaults=None, sides=None):
     """note(), caption() and subtitle() as side-panel Titles, in both modes.
 
     The generated app carried its own copy of this loop, with its own
@@ -29979,14 +30128,26 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
     Node coordinates to the title's top corner.  That Label goes to
     ``fig.center[0]``, because the reference lines' Spans are added before
     the text boxes when saved and after them when served.
+
+    by() (WP-30 P1.15a): on a by() graph's panels the graph's subtitle()
+    is not drawn as a row of its own: twoway gives each panel its label as
+    the panel's subtitle(), so subtitle() replaces, leads or follows the
+    label (probe r01; :func:`_dash_by_panel_label`), while note() and
+    caption() stay on every panel (probe a01).  *sides* (a tuple of
+    ``"above"``/``"below"``) draws only the boxes placed on those sides;
+    *defaults* (``{box: text}``) gives a box a default text, kept when the
+    option gives none (``_dash_textbox_or_default``) -- the chrome cells'
+    ``Graphs by`` note (:func:`_dash_by_chrome`).
     """
     from bokeh.models import Label, Node, Title
+    _by = str((graph_opts or {}).get("by") or "").strip()
+    _by_panels = bool(_by) and bool(_dash_parse_by(_by, warn=False)[0])
     for ann_key in ("note", "caption", "subtitle"):
-        raw = (graph_opts or {}).get(ann_key, "")
-        if not raw:
+        if ann_key == "subtitle" and _by_panels:
             continue
-        text, opts = _dash_textbox(raw, ann_key, seen, key)
-        if not text:
+        raw = (graph_opts or {}).get(ann_key, "")
+        has_default = bool(defaults) and ann_key in defaults
+        if not raw and not has_default:
             continue
         d = _DASH_TEXTBOX_DEFAULTS[ann_key]
         if scheme is not None:
@@ -30004,6 +30165,15 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
             size_default, color_default = f"{d['size']:g}px", d["color"]
             clock, just = d["clock"], d["just"]
         side, align = _dash_textbox_place(clock, just)
+        if sides is not None and side not in sides:
+            continue
+        if has_default:
+            text, opts = _dash_textbox_or_default(raw, ann_key,
+                                                  defaults[ann_key], seen, key)
+        else:
+            text, opts = _dash_textbox(raw, ann_key, seen, key)
+        if not text:
+            continue
         # note()'s box is filled where the scheme's `textboxstyle note'
         # draws one (economist's reverse_big: emidblue).
         fill = (scheme.note_box_fill_color
@@ -30037,6 +30207,170 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None):
                 text_font_size=size, text_color=color,
                 background_fill_color=fill,
             ), side)
+
+
+def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
+                         key=""):
+    """Draw one by() panel's label as a row of its own (WP-30 P1.15a);
+    returns the ``Title`` named ``dash_by_label``, or None.
+
+    twoway gives each panel its label as the panel's subtitle(), BEFORE the
+    user's options (bygraph_g.class:497), so the graph's own subtitle()
+    merges with it: its text replaces the label (probe r01), ``prefix``
+    leads it (r02), ``suffix`` follows it (p16), ``subtitle("")`` removes
+    it (p15) and sub-options alone keep it (p17), the ones dash cannot
+    draw named once per graph (*seen*, *key*).  The graph's title() stays
+    on every panel, drawn outside this row (p14).  dash appended the label
+    to the title, ``T — Domestic``, in both modes.
+
+    The row is the scheme's subtitle box: placed by ``clockdir
+    subtitle_position`` and ``horizontal subheading``, unbolded, in the
+    subheading size and colour unless size()/color() say otherwise.
+    twoway's filled box behind it is not drawn here (D-28e).  Added after
+    the panel is complete, so it is the outermost row of ``fig.above``
+    and BokehJS draws ``fig.title`` outside it, in both modes.
+    """
+    from bokeh.models import Title
+    text, opts = _dash_textbox_or_default(
+        (graph_opts or {}).get("subtitle", ""), "subtitle", label, seen, key)
+    if not text:
+        return None
+    if scheme is not None:
+        side, align = _dash_textbox_place(scheme.text_clock["subtitle"],
+                                          scheme.text_just["subheading"])
+        size_default = scheme.subheading_font_size
+        color_default = scheme.subheading_color
+    else:
+        side, align = "above", "center"
+        size_default, color_default = "13px", "#444444"
+    px = _textbox_size(opts, size_default, OptionTranslator.size_ref_of(fig),
+                       "subtitle(size)")
+    colour = _textbox_color(opts, None)
+    title = Title(name="dash_by_label", text=text, align=align,
+                  text_font_style="normal",
+                  text_font_size=px if px is not None else size_default,
+                  text_color=colour if colour is not None else color_default)
+    fig.add_layout(title, side)
+    return title
+
+
+def _dash_by_text_cell(scheme, name):
+    """One empty chrome cell of a by() grid (WP-30 P1.15a, D-28a).
+
+    A bare ``bokeh.models.Plot`` -- never a ``figure``, so every helper
+    that collects figures still sees panels only -- one pixel of frame,
+    as tall as its text rows and as wide as the grid, with no axis, grid,
+    tool or toolbar, styled by the scheme's graph region.  It carries one
+    invisible ``Span`` (``dash_by_anchor``): measured on bokeh 3.9.0, a
+    Plot with no renderer logs W-1000 (MISSING_RENDERERS) once per cell.
+    """
+    from bokeh.models import Plot, Range1d, Span
+    cell = Plot(name=name, frame_height=1, height_policy="fit",
+                width_policy="max", toolbar_location=None,
+                outline_line_color=None, min_border=0,
+                x_range=Range1d(0, 1), y_range=Range1d(0, 1))
+    if scheme is not None:
+        scheme.apply_to_figure(cell)
+    cell.outline_line_color = None
+    cell.background_fill_color = cell.border_fill_color
+    cell.add_layout(Span(location=0, dimension="width", visible=False,
+                         name="dash_by_anchor"))
+    return cell
+
+
+def _dash_by_chrome(graph_opts, by_vars, var_labels, scheme=None, seen=None,
+                    key=""):
+    """``{"head": cell or None, "foot": cell or None}``: a by() graph's
+    overall text, drawn once over its panels (WP-30 P1.15a, D-28a).
+
+    by()'s own title(), subtitle(), note() and caption()
+    (:func:`_dash_by_text_options`) in the scheme's title, subtitle, note
+    and caption boxes, and twoway's default note ``Graphs by <list>``
+    (:func:`_dash_by_note_list`), which a typed note() replaces, leads or
+    follows and ``note("")`` removes (bygraph_g.class:204-205; probes p11,
+    p12, p13, a04, a05, a07, a08).  A box goes to the head cell (above the
+    panels) or the foot cell (below) by its scheme position, so
+    economist's note sits in the head, as its title's band.  A cell that
+    holds no text is None.  The texts are raw: S09's canvas-text pass
+    (``_dash_by_chrome_figures``) finishes them.
+    """
+    go = graph_opts or {}
+    o = _dash_by_text_options(go.get("by"))
+    boxes = {"subtitle": o["subtitle"], "note": o["note"],
+             "caption": o["caption"]}
+    defaults = {"note": "Graphs by " + _dash_by_note_list(by_vars, var_labels)}
+    head = _dash_by_text_cell(scheme, "dash_by_head")
+    if o["title"]:
+        head.title.text = _dash_textbox(o["title"], "title", seen, key)[0]
+        _dash_figure_title(head, {"title": o["title"]}, seen, key)
+    _dash_text_annotations(head, boxes, seen, key, scheme, defaults=defaults,
+                           sides=("above",))
+    foot = _dash_by_text_cell(scheme, "dash_by_foot")
+    _dash_text_annotations(foot, boxes, seen, key, scheme, defaults=defaults,
+                           sides=("below",))
+    out = {}
+    for part, cell in (("head", head), ("foot", foot)):
+        # A cell that holds no text is None.
+        texts = bool(str(getattr(cell.title, "text", "") or "")) or any(
+            type(m).__name__ in ("Title", "Label")
+            for m in list(cell.above) + list(cell.below) + list(cell.center))
+        out[part] = cell if texts else None
+    return out
+
+
+def _dash_by_frame_grid(grid, chrome, ncols):
+    """Frame a by() graph's panel grid with its chrome cells (WP-30
+    P1.15a, D-28a): the head cell spans every column above the panels,
+    the foot cell below them; returns *grid*.
+
+    The grid is still made by ``gridplot()``, so its one merged toolbar and
+    its SaveTool (``_dash_name_save``) save the panels with their overall
+    text.  Measured in headless Chrome (bokeh 3.9.0): at 900 px the head,
+    panels and foot are drawn top to bottom over the grid's width, and
+    below the stacking width ``_dash_reflow`` stacks them in that order with
+    no sideways scroll.  Children of 3 or 5 places are kept.  S48 calls
+    this after placing the panels.
+    """
+    if not chrome or not (chrome.get("head") or chrome.get("foot")):
+        return grid
+    head, foot = chrome.get("head"), chrome.get("foot")
+    ncols = max(1, int(ncols or 1))
+    off = 1 if head is not None else 0
+    kids, last = [], -1
+    for child in list(grid.children or []):
+        child = tuple(child)
+        row = int(child[1])
+        span = int(child[3]) if len(child) >= 5 else 1
+        last = max(last, row + span - 1)
+        kids.append((child[0], row + off) + child[2:])
+    out = []
+    if head is not None:
+        out.append((head, 0, 0, 1, ncols))
+    out.extend(kids)
+    if foot is not None:
+        out.append((foot, last + 1 + off, 0, 1, ncols))
+    grid.children = out
+    return grid
+
+
+def _dash_by_chrome_figures(figures, facet_map):
+    """``{"<name>__by__head": cell, "<name>__by__foot": cell}`` for every
+    by() graph of *facet_map* whose first panel in *figures* carries
+    chrome cells (``fig._dash_by_chrome``; WP-30 P1.15a, D-28b), so the
+    canvas-text pass reaches them; ``key.split("__by__")[0]`` is the graph.
+    """
+    out = {}
+    for name, entries in (facet_map or {}).items():
+        first = next((figures[fk] for fk, _ in entries if fk in figures),
+                     None)
+        chrome = getattr(first, "_dash_by_chrome", None) if first is not None \
+            else None
+        if not chrome:
+            continue
+        for part in ("head", "foot"):
+            if chrome.get(part) is not None:
+                out[f"{name}__by__{part}"] = chrome[part]
+    return out
 
 
 #: xscale()/yscale() sub-options dash honours.
@@ -34313,7 +34647,7 @@ class DashRenderer:
 
         work_df = df.copy()
         if not by_missing:
-            work_df = work_df.dropna(subset=valid_vars)
+            work_df = _dash_by_nonmissing(work_df, valid_vars)
 
         _gname = (graph_opts.get("name") or graph_spec.get("name") or "")
         # A Total panel whose qualifiers are its own (_dash_total_spec) can
@@ -34356,7 +34690,7 @@ class DashRenderer:
             if t_spec is not graph_spec:
                 t_df = self._apply_graph_filter(t_spec)
                 if not by_missing:
-                    t_df = t_df.dropna(subset=valid_vars)
+                    t_df = _dash_by_nonmissing(t_df, valid_vars)
             if not t_df.empty and not _dash_by_panel_dropped(
                     t_df, self.df, t_spec.get("plots", []),
                     getattr(self, "qual_masks", None), _gname):
@@ -34386,7 +34720,7 @@ class DashRenderer:
             key:     Group key — scalar for single var, tuple for multiple.
 
         Returns:
-            A display string like ``"Domestic"`` or ``"Domestic / 3"``.
+            A display string like ``"Domestic"`` or ``"Domestic, 3"``.
         """
         return _dash_facet_label(
             by_vars, key, self.value_label_names, self.value_labels,
@@ -36006,8 +36340,12 @@ class DashRenderer:
                         fig = self._make_figure(g_panel, src,
                                                 facet_view=panel_view_r,
                                                 rescale=_brs)
-                        orig_title = fig.title.text if fig.title else ""
-                        fig.title.text = f"{orig_title} — {label}" if orig_title else label
+                        # The label is a row of its own under the graph's
+                        # title(), merged with subtitle() (WP-30 P1.15a).
+                        _dash_by_panel_label(
+                            fig, label, g.get("graph_options", {}),
+                            self.scheme,
+                            getattr(self, "_reported_subopts", None), name)
                         if name in link_names:
                             _dash_dim_nonselection(fig)
                         self.figures[fkey] = fig
@@ -36023,6 +36361,19 @@ class DashRenderer:
                 _dash_share_by_scales(
                     [self.figures[fk] for fk, _ in self._facet_map[name]
                      if fk in self.figures], _brs)
+                # by()'s overall text, once over the panels (WP-30
+                # P1.15a): carried by the first panel to _dash_layout_cell.
+                _first = next((self.figures[fk] for fk, _ in
+                               self._facet_map[name] if fk in self.figures),
+                              None)
+                if _first is not None:
+                    _go = g.get("graph_options", {})
+                    _bv = [v for v in _dash_parse_by(
+                        str(_go.get("by", "") or ""), warn=False)[0].split()
+                        if v in self.df.columns]
+                    _first._dash_by_chrome = _dash_by_chrome(
+                        _go, _bv, self.variable_labels, self.scheme,
+                        getattr(self, "_reported_subopts", None), name)
             else:
                 src = self.sources.get(name)
                 if src is None:
@@ -36047,6 +36398,8 @@ class DashRenderer:
         # built, and _build_filter_widgets (_stale_cue_args) has not yet
         # copied the legend text the saved filter script writes back.
         _dash_finish_graph_text(self.figures)
+        _dash_finish_graph_text(
+            _dash_by_chrome_figures(self.figures, self._facet_map))
 
 
 
@@ -37685,6 +38038,13 @@ class ServerAppBuilder:
                          "_dash_by_tokens", "_dash_parse_by",
                          "_dash_by_rescale",
                          "_dash_facet_label", "_dash_stata_date_text",
+                         # by() panel labels and overall text (WP-30 P1.15a).
+                         "_dash_by_value_missing", "_dash_by_nonmissing",
+                         "_dash_by_text_key", "_dash_by_text_options",
+                         "_dash_by_note_list",
+                         "_dash_by_panel_label", "_dash_by_text_cell",
+                         "_dash_by_chrome",
+                         "_dash_by_frame_grid", "_dash_by_chrome_figures",
                          # The Stata display-format writer (WP-28 S04).
                          "_dash_fmt_parse", "_dash_fmt_kind",
                          "_dash_fmt_refusal", "_dash_stata_round",
@@ -38428,7 +38788,7 @@ class ServerAppBuilder:
                     "graph %r" % gname, copy=False,
                     qual=_dash_qual_mask(
                         g, getattr(self, "_qual_masks_cache", None)))
-            work = g_df if bmissing else g_df.dropna(subset=by_vars)
+            work = g_df if bmissing else _dash_by_nonmissing(g_df, by_vars)
             if not work.empty:
                 _dash_by_groups(work, by_vars, bmissing,
                                 self.limits["by_groups"], gname)
@@ -40089,13 +40449,11 @@ class ServerAppBuilder:
             "            _hv.split() if _hv else [], list(df.columns))",
             '',
             "        if _fac_label is not None:",
-            "            # The panel title is the figure's OWN title text -- the",
-            "            # parsed title() the saved renderer joins with the label --",
-            "            # not html.escape(go['title']): a Title is drawn on the",
-            "            # canvas, and title(\"By\") was served as &quot;By&quot;.",
-            "            _own = fig.title.text if fig.title is not None else ''",
-            "            fig.title.text = (f'{_own} \u2014 {_fac_label}' if _own",
-            "                              else _fac_label)",
+            "            # The panel label: a row of its own under the graph's",
+            "            # title(), merged with subtitle() (WP-30 P1.15a).",
+            "            _dash_by_panel_label(fig, _fac_label, go, _DASH_SCHEME,",
+            "                                 _reported_subopts,",
+            "                                 go.get('name', '') or gname)",
             "        # gname is the panel's own key for a by() panel (below,",
             "        # linked_names gains that key when the graph is linked), so",
             "        # this gate covers a plain linked graph and every panel of a",
@@ -40144,7 +40502,7 @@ class ServerAppBuilder:
             "        # The QUALIFIED frame is what is grouped -- the saved",
             "        # renderer grouped the whole dataset until WP-11, and",
             "        # `if price > 4500, by(foreign)' faceted every row.",
-            "        work_df = g_df if _bmissing else g_df.dropna(subset=by_vars)",
+            "        work_df = g_df if _bmissing else _dash_by_nonmissing(g_df, by_vars)",
             "        # by(, total)'s Total panel evaluates its qualifiers in the",
             "        # data's order, the groups sorted on the by() variables, as",
             "        # twoway does and as saved (_dash_total_spec; QS-16..).",
@@ -40155,7 +40513,7 @@ class ServerAppBuilder:
             "                df, _g_if, _g_in, 'graph %r' % gname,",
             "                qual=_dash_qual_mask(_g_tot, _qual_masks))",
             "            if not _bmissing:",
-            "                _t_df = _t_df.dropna(subset=by_vars)",
+            "                _t_df = _dash_by_nonmissing(_t_df, by_vars)",
             "        if work_df.empty and (_g_tot is g or _t_df.empty):",
             "            # Every by() value is missing: one empty panel, as saved.",
             "            _owner_rows[gname] = work_df.index",
@@ -40230,11 +40588,18 @@ class ServerAppBuilder:
             "        # axis unless rescaled, as the saved figure's are.",
             "        _dash_share_by_scales([figures[_f] for _f, _ in _entries",
             "                               if _f in figures], _brs)",
+            "        # by()'s overall text, once over the panels (P1.15a).",
+            "        _f0 = next((_f for _f, _ in _entries if _f in figures), None)",
+            "        if _f0 is not None:",
+            "            figures[_f0]._dash_by_chrome = _dash_by_chrome(",
+            "                go, by_vars, var_labels, _DASH_SCHEME,",
+            "                _reported_subopts, gname)",
             "",
             "    # Every canvas text drawn as typed (WP-30 P1.11a): last, once",
             "    # every figure, by() panel title and shared scale is built,",
             "    # as the saved renderer's _build_sources_and_figures ends.",
             "    _dash_finish_graph_text(figures)",
+            "    _dash_finish_graph_text(_dash_by_chrome_figures(figures, _facet_map))",
             "    # WP-30 P1.3a: a zoom or pan re-ticks a counted axis by natscale",
             "    # (one CustomJS for the document); a move re-finishes in Python.",
             "    _dash_axis_plan(figures, _facet_map, zoom=True)",

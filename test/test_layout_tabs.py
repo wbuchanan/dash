@@ -516,7 +516,11 @@ class TestTabsHoldFacetedGraphs:
         # ...and that one place is the tab.
         tabs = [t for d in _page_docs(out) for t in d.select({"type": Tabs})]
         assert len(tabs) == 1
-        in_tabs = {m.id for m in tabs[0].select({"type": Plot})}
+        # Flipped (WP-30 P1.15a): the by() grid's chrome cells (Plots that
+        # hold its overall text) are in the tab too and are not figures.
+        from by_panel_probe import is_chrome
+        in_tabs = {m.id for m in tabs[0].select({"type": Plot})
+                   if not is_chrome(m)}
         assert in_tabs == {f.id for f in dr.figures.values()}, in_tabs
 
 

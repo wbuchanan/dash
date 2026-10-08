@@ -591,7 +591,9 @@ class TestTheSavedPageHoldsThePlaceholder:
         spec = _spec([{"type": "scatter", "yvar": "close", "xvar": "x",
                        "options": {}}], graph_options={"by": "date"})
         r, _w = _saved(tmp_path, spec, df)
-        assert [r.figures[k].title.text for k in ("g1__by__0", "g1__by__1")
+        # Flipped (WP-30 P1.15a): the date is the panel's label row.
+        from by_panel_probe import panel_label
+        assert [panel_label(r.figures[k]) for k in ("g1__by__0", "g1__by__1")
                 ] == [_td(14977.0), _td(2936549.0)]  # # GAPS2 E3/G6, WP-28 S12: Stata text
 
     def test_the_download_writes_the_placeholder(self, tmp_path):
@@ -663,8 +665,10 @@ class TestTheServedAppWritesThePlaceholder:
         spec = _spec([{"type": "scatter", "yvar": "close", "xvar": "x",
                        "options": {}}], graph_options={"by": "date"})
         doc, _w = _served(tmp_path, spec, df)
-        titles = sorted(p.title.text for p in doc.select({"type": Plot})
-                        if p.title is not None and p.title.text)
+        # Flipped (WP-30 P1.15a): the date is the panel's label row.
+        from by_panel_probe import panel_label
+        titles = sorted(panel_label(p) for p in doc.select({"type": Plot})
+                        if panel_label(p))
         # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
         assert titles == [_td(14977.0), _td(2936549.0)]
 

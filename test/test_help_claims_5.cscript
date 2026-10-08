@@ -27,7 +27,7 @@
 *!   HC5-07  by() panel titles: twoway writes a value label, else the number
 *!           whatever its display format (Domestic, 3; Three; 4, not 4.00;
 *!           14610 for a %td date); dash's saved page titles them
-*!           Domestic / 3, Three, 4 and a date.
+*!           Domestic, 3, Three, 4 and a date.
 *!   HC5-08  the by() sub-options dash does not implement are named in the
 *!           Stata log, on a saved and on a served build.
 *!   HC5-09  headlabel: twoway moves the labels to the arrow's head; dash
@@ -418,7 +418,8 @@ assert r(n) == 1
 capture dash clear
 local q = char(34)
 // GAPS2 E3/G6: a %td panel title is Stata's display %td text, 01jan2000
-foreach sc in "foreign rep78|Domestic / 3|Domestic / 3.0" "r2|Three|3.00" "r2|4|4.00" "d|01jan2000|14610.0" {
+// Flipped (WP-30 P1.15a): dash wrote Domestic / 3; twoway writes Domestic, 3
+foreach sc in "foreign rep78|Domestic, 3|Domestic / 3" "r2|Three|3.00" "r2|4|4.00" "d|01jan2000|14610.0" {
     gettoken byv rest : sc, parse("|")
     gettoken bar rest : rest, parse("|")
     gettoken want rest : rest, parse("|")
@@ -432,7 +433,7 @@ foreach sc in "foreign rep78|Domestic / 3|Domestic / 3.0" "r2|Three|3.00" "r2|4|
     cert_file_has "`page'", needle(`"`q'text`q':`q'`nowant'`q'"')
     assert r(found) == 0
 }
-display "HC5-07 PASS: twoway titles Domestic, 3 / Three / 4 (not 4.00) / 14610; the saved page titles Domestic / 3, Three, 4 and 01 Jan 2000"
+display "HC5-07 PASS: twoway titles Domestic, 3 / Three / 4 (not 4.00) / 14610; the saved page titles Domestic, 3, Three, 4 and 01jan2000"
 
 // ================================================================
 // HC5-08 -- the by() sub-options dash does not implement are named

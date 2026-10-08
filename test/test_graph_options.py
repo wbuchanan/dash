@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # by_panel_probe (WP-30 P1.15a)
 from dash_render import DashRenderer
 # The parsers both render modes call: DashRenderer's _parse_axis_label_opt
 # and _parse_by_raw only delegated to them (the latter dropping the list
@@ -754,7 +755,10 @@ class TestByFaceting:
         """Facet figure titles include the group value label."""
         r = _make_by_renderer("foreign")
         figs = r._build_figures()
-        titles = [figs[k].title.text for k in sorted(figs) if "__by__" in k]
+        # Flipped (WP-30 P1.15a): the group label is each panel's label
+        # row, as twoway draws it, not part of its title.
+        from by_panel_probe import panel_label
+        titles = [panel_label(figs[k]) for k in sorted(figs) if "__by__" in k]
         # foreign has value labels: 0→Domestic, 1→Foreign
         assert any("Domestic" in t for t in titles), f"No 'Domestic' in titles: {titles}"
         assert any("Foreign" in t for t in titles), f"No 'Foreign' in titles: {titles}"
@@ -1666,14 +1670,16 @@ class TestByLinkIntegration:
         facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
         for fkey in facet_keys:
             fig = figs[fkey]
-            title = fig.title.text if fig.title else ""
-            assert len(title) > 0, f"{fkey}: facet figure must have a non-empty title"
+            # Flipped (WP-30 P1.15a): the group is the panel's label row.
+            from by_panel_probe import panel_label
+            title = panel_label(fig)
+            assert len(title) > 0, f"{fkey}: facet figure must have a non-empty label"
         # Non-empty is not the group value, and no facet at all checked
         # nothing.  Measured 24sep2026: two panels titled by foreign's
         # values, "0" and "1" (the data has no value labels).
         assert facet_keys == ["g1__by__0", "g1__by__1"], facet_keys
-        assert [figs[k].title.text for k in facet_keys] == ["0", "1"], (
-            [figs[k].title.text for k in facet_keys])
+        assert [panel_label(figs[k]) for k in facet_keys] == ["0", "1"], (
+            [panel_label(figs[k]) for k in facet_keys])
 
     def test_bl_10_render_produces_valid_html(self):
         """BL-10: render() with by()+link() must produce valid non-trivial HTML."""

@@ -35,6 +35,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import make_data_json, load_app  # noqa: E402
+from by_panel_probe import panel_label  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "by_scales_truth.json")
 _NATSCALE = os.path.join(_HERE, "fixtures", "natscale_axes_truth.json")
@@ -147,7 +148,11 @@ def _figs_of(models):
 
 
 def _title(f):
-    return str(getattr(f.title, "text", "") or "")
+    """A panel's label row, else the figure's title.  Flipped (WP-30
+    P1.15a): this read the title, which held the panel label; twoway
+    keeps title() on every panel and draws the label as a row of its
+    own (by_panel_probe.panel_label)."""
+    return panel_label(f) or str(getattr(f.title, "text", "") or "")
 
 
 def _draw(mode, spec, which="auto"):

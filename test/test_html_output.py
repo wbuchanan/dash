@@ -323,19 +323,38 @@ def _figure_titles(html: str) -> list:
             in _figure_models(html, "title")]
 
 
-def _grid_cells(html: str) -> list:
-    """``(title, row, column)`` of each figure a GridPlot in the page's
-    document places, in order: where each panel is drawn."""
+def _panel_labels(html: str) -> list:
+    """Each figure's by() panel label (its Title named dash_by_label), in
+    order; None where it has none (WP-30 P1.15a: the label is a row of its
+    own, no longer the title)."""
     byid = _doc_models(html)
+    out = []
+    for fig in [m for m in byid.values() if m["name"] == "Figure"]:
+        found = None
+        for ref in fig.get("attributes", {}).get("above", []) or []:
+            mod = byid.get(ref.get("id"), {}) if isinstance(ref, dict) else {}
+            at = mod.get("attributes", {})
+            if mod.get("name") == "Title" and at.get("name") == "dash_by_label":
+                found = at.get("text")
+        out.append(found)
+    return out
+
+
+def _panel_cells(html: str) -> list:
+    """``(label, row, column)`` of each by() panel the page's GridPlot
+    places, rows counted from the first panel row: the grid's chrome
+    cells (bare Plots holding the overall text) are not panels."""
+    byid = _doc_models(html)
+    labels = dict(zip([i for i, m in byid.items() if m["name"] == "Figure"],
+                      _panel_labels(html)))
     out = []
     for grid in [m for m in byid.values() if m["name"] == "GridPlot"]:
         for child in grid.get("attributes", {}).get("children", []):
-            fig = byid.get(child[0].get("id"), {})
-            if fig.get("name") == "Figure":
-                title = byid.get(fig.get("attributes", {}).get(
-                    "title", {}).get("id"), {}).get("attributes", {})
-                out.append((title.get("text"), child[1], child[2]))
-    return out
+            fid = child[0].get("id")
+            if byid.get(fid, {}).get("name") == "Figure":
+                out.append((labels.get(fid), child[1], child[2]))
+    base = min((r for _, r, _ in out), default=0)
+    return [(t, r - base, c) for t, r, c in out]
 
 
 def _text_homes(html: str, needle: str) -> list:
@@ -2340,7 +2359,9 @@ class TestByFacetingHtmlOutput:
         # group's ten -- read from the document.  "Total" in the page text
         # found the title alone (the one copy on the page, measured
         # 24sep2026), so a Total panel drawing one group's rows passed.
-        assert _figure_titles(html) == ["Group A", "Group B", "Total"], \
+        # Flipped (WP-30 P1.15a): read the titles, which held the label;
+        # the label is a row of its own, as twoway draws it.
+        assert _panel_labels(html) == ["Group A", "Group B", "Total"], \
             "Total facet label not found in HTML"
         layers = _figure_layers(html)
         assert [[(layer["glyph"], layer["rows"]) for layer in fig]
@@ -2389,8 +2410,9 @@ class TestByFacetingHtmlOutput:
         spec, data = _by_facet_spec("grp")
         spec["build_options"]["link"] = "fig1"  # match the graph name
         html = _render_to_html(spec, data)
-        # Both panels, each drawing its group.
-        assert _figure_titles(html) == ["Group A", "Group B"]
+        # Both panels, each drawing its group.  Flipped (WP-30 P1.15a):
+        # the group is the panel's label row, no longer its title.
+        assert _panel_labels(html) == ["Group A", "Group B"]
         assert [[(layer["glyph"], layer["rows"]) for layer in fig]
                 for fig in _figure_layers(html)] \
             == [[("Scatter", 10)], [("Scatter", 10)]], \
@@ -2402,12 +2424,13 @@ class TestByFacetingHtmlOutput:
         # Set by with cols suboption in the raw string
         spec["graphs"][0]["graph_options"]["by"] = "grp, cols(1)"
         html = _render_to_html(spec, data)
-        # cols(1) stacks the two panels in one column...
-        assert _grid_cells(html) == [("Group A", 0, 0), ("Group B", 1, 0)]
+        # cols(1) stacks the two panels in one column...  Flipped (WP-30
+        # P1.15a): panels by their label row, chrome cells left out.
+        assert _panel_cells(html) == [("Group A", 0, 0), ("Group B", 1, 0)]
         assert _figure_glyphs(html) == [["Scatter"], ["Scatter"]]
         # ...where by(grp) alone sets them side by side.
         spec["graphs"][0]["graph_options"]["by"] = "grp"
-        assert _grid_cells(_render_to_html(spec, data)) \
+        assert _panel_cells(_render_to_html(spec, data)) \
             == [("Group A", 0, 0), ("Group B", 0, 1)]
 
 

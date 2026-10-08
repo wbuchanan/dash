@@ -727,16 +727,19 @@ def test_the_carried_name_is_escaped():
     ("T", "T"),
 ])
 def test_both_modes_title_a_by_panel_the_same(title, want):
-    """The saved renderer joins the figure's own title text (what
-    ``_dash_figure_title`` puts on ``fig.title.text``) with the panel's
-    label; the served app html-escaped the RAW option, so ``title("By")``
-    was served as ``&quot;By&quot; -- Domestic``.  Bokeh draws a Title on
-    the canvas: there is nothing to escape."""
+    """The served app html-escaped the RAW option, so ``title("By")`` was
+    served as ``&quot;By&quot; -- Domestic``.  Bokeh draws a Title on
+    the canvas: there is nothing to escape.  Flipped (WP-30 P1.15a):
+    "<title> — Domestic" was wrong because twoway keeps the parsed title
+    on every panel and draws the label as a row of its own."""
+    from by_panel_probe import is_chrome, panel_label
     spec = tp._spec([plot_for("scatter")], {"scheme": "s2color"},
                     {"title": title, "by": "foreign"})
     titles = {}
     for mode in MODES:
-        titles[mode] = sorted(f.title.text for f in _figures(spec, mode))
-    assert titles["standalone"] == [f"{want} — Domestic",
-                                    f"{want} — Foreign"], titles
+        titles[mode] = sorted((f.title.text, panel_label(f))
+                              for f in _figures(spec, mode)
+                              if not is_chrome(f))
+    assert titles["standalone"] == [(want, "Domestic"),
+                                    (want, "Foreign")], titles
     assert titles["served"] == titles["standalone"], titles

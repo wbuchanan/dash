@@ -6634,10 +6634,136 @@ if inlist("`only'", "", "S27") {
 }
 * ==== end S27 ====
 
+* _s28_count using <file>, needle(<text>): how many times the text occurs
+* in the file, in r(n); -1 when it cannot be read.  The needle reaches
+* Mata through st_local, never expanded inside Mata source.
+capture program drop _s28_count
+program define _s28_count, rclass
+    version 19
+    syntax using/, needle(string)
+    local _s28f `"`using'"'
+    local _s28n `"`needle'"'
+    mata: st_local("_s28c", strofreal(_s28_count_of(st_local("_s28f"), st_local("_s28n"))))
+    return scalar n = `_s28c'
+end
+capture mata: mata drop _s28_count_of()
+mata:
+real scalar _s28_count_of(string scalar path, string scalar n)
+{
+    real scalar   fh, len
+    string scalar s
+    fh = _fopen(path, "r")
+    if (fh < 0) return(-1)
+    fseek(fh, 0, 1)
+    len = ftell(fh)
+    fseek(fh, 0, -1)
+    s = (len > 0 ? fread(fh, len) : "")
+    fclose(fh)
+    return((strlen(s) - strlen(subinstr(s, n, "", .))) / strlen(n))
+}
+end
+
 * ==== S28 P1.15a: by() panel labels and overall text ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S28") {
     display as text "S28 start " c(current_date) " " c(current_time)
+    local q = char(34)
+
+    // BP-01 (guard, the truth): twoway's labels, repeated title and note.
+    sysuse auto, clear
+    quietly twoway scatter mpg weight, title("T") by(foreign rep78, missing) name(Graph, replace)
+    local s28l1 `"`.Graph.graphs[1].subtitle.text[1]'"'
+    local s28l6 `"`.Graph.graphs[6].subtitle.text[1]'"'
+    local s28t1 `"`.Graph.graphs[1].title.text[1]'"'
+    local s28nt `"`.Graph.note.text[1]'"'
+    _w30_expect BP-01 `"(`"`s28l1'"' == "Domestic, 1")"' `"panel 1 label `s28l1'"'
+    _w30_expect BP-01 `"(`"`s28l6'"' == "Domestic, (missing)")"' `"panel 6 label `s28l6'"'
+    _w30_expect BP-01 `"(`"`s28t1'"' == "T")"' `"panel title `s28t1'"'
+    _w30_expect BP-01 `"(`"`s28nt'"' == "Graphs by Car origin and Repair record 1978")"' `"note `s28nt'"'
+    _w30_done BP-01 "twoway labels Domestic, 1 under T and notes Graphs by"
+    quietly graph drop _all
+
+    // BP-02: dash draws the same texts; no em-dash join, no slash join.
+    quietly dash scatter mpg weight, title("T") by(foreign rep78, missing) saving("`w30_work'/s28a.html", replace)
+    foreach t in "Domestic, 1" "Domestic, (missing)" "Foreign, (missing)" "Graphs by Car origin and Repair record 1978" {
+        cert_file_has "`w30_work'/s28a.html", needle(`"`q'text`q':`q'`t'`q'"')
+        _w30_expect BP-02 "(r(found) == 1)" `"the page lacks `t'"'
+    }
+    foreach t in "Domestic / 1" "/ Missing" {
+        cert_file_has "`w30_work'/s28a.html", needle(`"`t'"')
+        _w30_expect BP-02 "(r(found) == 0)" `"the page still holds `t'"'
+    }
+    _s28_count using "`w30_work'/s28a.html", needle("dash_by_label")
+    _w30_expect BP-02 "(r(n) == 10)" "panel labels: `r(n)'"
+    _w30_done BP-02 "dash labels every panel and draws the note as twoway does"
+
+    // BP-03: a string "" is missing in the panels and in Total.
+    sysuse auto, clear
+    generate str4 s = cond(foreign, "F", "")
+    replace s = "D" in 1/40
+    quietly dash scatter mpg weight, by(s, total) saving("`w30_work'/s28b.html", replace)
+    _s28_count using "`w30_work'/s28b.html", needle("dash_by_label")
+    _w30_expect BP-03 "(r(n) == 3)" "panels: `r(n)' (twoway: D, F, Total)"
+    cert_file_has "`w30_work'/s28b.html", needle(`"`q'text`q':`q'Graphs by s`q'"')
+    _w30_expect BP-03 "(r(found) == 1)" "no Graphs by s note"
+    _w30_done BP-03 "by(s, total) draws D, F and Total, as twoway does"
+
+    // BP-04: every value "" and missing: one (missing) panel.
+    generate str1 e = ""
+    quietly dash scatter mpg weight, by(e, missing) saving("`w30_work'/s28c.html", replace)
+    cert_file_has "`w30_work'/s28c.html", needle(`"`q'text`q':`q'(missing)`q'"')
+    _w30_expect BP-04 "(r(found) == 1)" "no (missing) panel"
+    capture dash scatter mpg weight, by(e) saving("`w30_work'/s28d.html", replace)
+    _w30_expect BP-04 "(_rc == 198)" "by(e) rc `_rc' (twoway: nothing to graph, 198)"
+    _w30_done BP-04 "a string by() variable of empty values is one (missing) panel, or nothing to graph"
+
+    // BP-05: by(, title subtitle note caption) once, and not named.
+    sysuse auto, clear
+    quietly graph drop _all
+    local s28log "`w30_work'/s28e.log"
+    quietly log using "`s28log'", text replace name(s28e)
+    dash scatter mpg weight, by(foreign, title("X") subtitle("S") note("N") caption("C")) saving("`w30_work'/s28e.html", replace)
+    quietly log close s28e
+    foreach t in X S N C {
+        _s28_count using "`w30_work'/s28e.html", needle(`"`q'text`q':`q'`t'`q'"')
+        _w30_expect BP-05 "(r(n) == 1)" `"`t' drawn `r(n)' times"'
+    }
+    cert_log_has "`s28log'", needle("by() sub-option")
+    _w30_expect BP-05 "(r(count) == 0)" "a by() text sub-option was named"
+    _w30_done BP-05 "by()'s title, subtitle, note and caption are drawn once"
+
+    // BP-06: note("") removes the note; subtitle("S", prefix) merges.
+    quietly dash scatter mpg weight, subtitle("S", prefix) by(foreign, note("")) saving("`w30_work'/s28f.html", replace)
+    cert_file_has "`w30_work'/s28f.html", needle("Graphs by")
+    _w30_expect BP-06 "(r(found) == 0)" "note() did not remove the note"
+    cert_file_has "`w30_work'/s28f.html", needle(`"`q'text`q':`q'S\nDomestic`q'"')
+    _w30_expect BP-06 "(r(found) == 1)" "subtitle(S, prefix) did not lead the label"
+    _w30_done BP-06 "note() removes the note and subtitle() merges with the label"
+
+    // BP-07: three variables: twoway's note names the first by its name.
+    quietly twoway scatter mpg weight, by(foreign rep78 headroom) name(Graph, replace)
+    local s28n `"`.Graph.note.text[1]'"'
+    quietly graph drop _all
+    quietly dash scatter mpg weight, by(foreign rep78 headroom) saving("`w30_work'/s28g.html", replace)
+    cert_file_has "`w30_work'/s28g.html", needle(`"`q'text`q':`q'`s28n'`q'"')
+    _w30_expect BP-07 "(r(found) == 1)" `"dash's note is not twoway's `s28n'"'
+    _w30_done BP-07 "the three-variable note is twoway's text"
+
+    // BP-08 (guard, until S48): TITLE() is refused by twoway and never drawn.
+    capture twoway scatter mpg weight, by(foreign, TITLE("Xq"))
+    _w30_expect BP-08 "(_rc == 198)" "twoway rc `_rc'"
+    capture dash scatter mpg weight, by(foreign, TITLE("Xq")) saving("`w30_work'/s28h.html", replace)
+    if _rc == 0 {
+        cert_file_has "`w30_work'/s28h.html", needle(`"`q'text`q':`q'Xq`q'"')
+        _w30_expect BP-08 "(r(found) == 0)" "TITLE() was drawn"
+    }
+    _w30_done BP-08 "a capitalised by() title is never drawn"
+
+    capture graph drop _all
+    foreach f in s28a s28b s28c s28d s28e s28f s28g s28h {
+        capture erase "`w30_work'/`f'.html"
+    }
+    capture erase "`s28log'"
     display as text "S28 end " c(current_date) " " c(current_time)
 }
 * ==== end S28 ====

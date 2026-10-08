@@ -1562,7 +1562,6 @@ WP30_OPEN = {
     "P1.13b": "A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default",
     "P1.14a": "pstyle() works only on the four CI fits, and lstyle, mstyle, mlstyle, astyle, alstyle, bstyle and their siblings are not read",
     "P1.14b": "Style names other than p1-p15, such as ci, histogram, refline and p1bar, are not read by pstyle() and the other style options",
-    "P1.15a": "by() panel labels are appended to the graph title, there is no Graphs by note, composite and missing panels are titled differently, and by(, title()) is ignored",
     "P1.15b": "by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout",
     "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",
     "P1.18a": "The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently",

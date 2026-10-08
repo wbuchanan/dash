@@ -549,8 +549,15 @@ def _annotations(fig):
                         "align": r.align, "font_style": r.text_font_style,
                         "side": panel.get(id(r)),
                         "background": r.background_fill_color,
+                        # Ranked among the Titles compared here: the saved
+                        # page's stale cue (put first in fig.above, never
+                        # compared) shifted every above row by one, which
+                        # showed once a by() panel label sat there (WP-30
+                        # P1.15a).
                         "rank": [x for x in getattr(fig, panel.get(id(r)))
-                                 if isinstance(x, Title)].index(r)})
+                                 if isinstance(x, Title) and
+                                 "dash_stale_cue" not in (x.tags or [])
+                                 ].index(r)})
         elif isinstance(r, Span):
             out.append({"kind": "Span", "dimension": r.dimension,
                         "location": _num(r.location), "color": r.line_color,
@@ -943,6 +950,15 @@ def _layout_tree(m, figures):
         # With its own toolbar: a grid whose save button wrote a different
         # file in one mode compared equal while only its children were read.
         return (tn, _grid_toolbar(m), _layout_tree(m.children, figures))
+    if tn == "Plot" and getattr(m, "name", None) in ("dash_by_head",
+                                                     "dash_by_foot"):
+        # A by() grid's chrome cell (WP-30 P1.15a): its texts, sizes,
+        # colours and alignment, compared in both modes, never skipped.
+        rows = [m.title] + list(m.above) + list(m.below) + list(m.center)
+        return ("chrome", m.name, [
+            (type(x).__name__, x.text, x.text_font_size, x.text_color,
+             getattr(x, "align", None)) for x in rows
+            if type(x).__name__ in ("Title", "Label")])
     kids = getattr(m, "children", None)
     return (tn, _layout_tree(kids, figures) if kids is not None else [])
 
@@ -1995,6 +2011,14 @@ CORPUS = [
     _case("area on a log y", [plot_for("area")], None, {"yscale": "log"}),
     _case("dropline on yaxis(2)",
           [_sc(), plot_for("dropline", {"yaxis": "2"}, yvar="price")]),
+    # WP-30 P1.15a: by() panel labels and overall text
+    _case("by() labels under a title and a prefixed subtitle (WP-30 P1.15a)",
+          [_sc()], None, {"by": "foreign rep", "title": '"T"',
+                          "subtitle": '"S", prefix'}),
+    _case("by() overall title, subtitle, note and caption (WP-30 P1.15a)",
+          [_sc()], None,
+          {"by": 'foreign, total title("X") subtitle("S") note("N", suffix) '
+                 'caption("C")'}),
 ]
 
 

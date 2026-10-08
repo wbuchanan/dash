@@ -914,6 +914,16 @@ FUNCTIONS = {
  '_dash_base_spec': 'test/test_bar_range_geometry.py::TestTheBaseSpec::test_reads_only_well_formed_tags',
  '_dash_finish_auto_bases': 'test/test_bar_range_geometry.py::TestTheFill::test_clamps_zero_into_the_scale',
  # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
+ '_dash_by_chrome': 'test/test_by_text.py::TestTheChromeCells::test_head_and_foot',
+ '_dash_by_chrome_figures': 'test/test_by_text.py::TestTheChromeCells::test_the_pass_sees_the_cells',
+ '_dash_by_frame_grid': 'test/test_by_text.py::TestTheChromeCells::test_frame_grid_positions',
+ '_dash_by_nonmissing': 'test/test_by_text.py::TestTheMissingRule::test_frames',
+ '_dash_by_note_list': 'test/test_by_text.py::TestTheNoteList::test_lists',
+ '_dash_by_panel_label': 'test/test_by_text.py::TestThePanelLabel::test_unit',
+ '_dash_by_text_cell': 'test/test_by_text.py::TestTheChromeCells::test_a_cell_draws_no_frame_and_no_warning',
+ '_dash_by_text_key': 'test/test_by_text.py::TestTheTextOptions::test_keys',
+ '_dash_by_text_options': 'test/test_by_text.py::TestTheTextOptions::test_merge',
+ '_dash_by_value_missing': 'test/test_by_text.py::TestTheMissingRule::test_values',
  # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)
  # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
  # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)

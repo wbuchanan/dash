@@ -634,10 +634,11 @@ class TestTheParsersFoundSomething:
         # Dependencies paragraph (the Stata 19 floor); 346 with WP-30
         # P1.25a's six scheme rows (meta ... stgcolor_mv); 347 with WP-30
         # P1.27's {ul:Batch and set graphics off.} paragraph; 348 with WP-30
-        # P1.5's xvarformat()/yvarformat() entry.
-        assert len(defs) == 348, (  # 347 -> 348: P1.5 the varformat entry
-            f"{len(defs)} definition entries cut out of dash.sthlp, 348 "
-            f"measured 07oct2026")
+        # P1.5's xvarformat()/yvarformat() entry; 350 with WP-30 P1.15a's
+        # two by() text rows (title() subtitle() note() caption(), note("")).
+        assert len(defs) == 350, (  # 348 -> 350: P1.15a's by() text rows
+            f"{len(defs)} definition entries cut out of dash.sthlp, 350 "
+            f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (

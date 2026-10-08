@@ -158,7 +158,11 @@ def _served_models(doc):
 
 
 def _figures(models):
-    return [m for m in models if isinstance(m, Plot)]
+    # Flipped (WP-30 P1.15a): a by() grid's chrome cells are bare Plots
+    # that hold its overall text and carry no tools by design; they are
+    # not figures (by_panel_probe.is_chrome).
+    from by_panel_probe import is_chrome
+    return [m for m in models if isinstance(m, Plot) and not is_chrome(m)]
 
 
 def _grids(models):
@@ -673,7 +677,10 @@ class TestWhatIsActiveWhenThePageOpens:
             models = _saved_models(_saved(tmp_path, spec)[0])
         else:
             models = _served_models(_served(tmp_path, spec)[0])
-        bars = [m for m in models if isinstance(m, (Plot, GridPlot))]
+        # Flipped (WP-30 P1.15a): the toolless chrome cells left out.
+        from by_panel_probe import is_chrome
+        bars = [m for m in models if isinstance(m, (Plot, GridPlot))
+                and not is_chrome(m)]
         # The "by() graph in a tab" corpus draws exactly six toolbar-bearing
         # models in each mode -- three GridPlots and three figures (measured
         # 24sep2026) -- and the two modes must match.  `>= 5' passed if a

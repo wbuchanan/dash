@@ -56,6 +56,18 @@ sys.path.insert(0, os.path.abspath(_HERE))
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402  (P0.12a)
 from conftest import load_app  # noqa: E402  (WP-30 A3)
 import dash_render as _dr_mod  # noqa: E402  (WP-30 P1.3a)
+from by_panel_probe import is_chrome, panel_label  # noqa: E402  (WP-30 P1.15a)
+
+
+def _panel_name(fig):
+    """A by() panel's label row, else the figure's title.  Flipped (WP-30
+    P1.15a): these keyed panels on the title, which held the label;
+    twoway keeps title() on each panel and draws the label as its own
+    row."""
+    if fig is None:
+        return ""
+    return panel_label(fig) or (fig.title.text if fig.title is not None
+                                else "")
 
 
 def _load_dash_render():
@@ -226,7 +238,7 @@ def _panel_curves(roots, xcol, ycol):
     out = {}
     for fig, r in _glyph_layers(roots):
         if xcol in r.data_source.data:
-            title = fig.title.text if fig.title is not None else ""
+            title = _panel_name(fig)
             assert title not in out, f"two {xcol} layers in panel {title!r}"
             out[title] = list(zip(_drawn_values(r, xcol),
                                   _drawn_values(r, ycol)))
@@ -3221,11 +3233,12 @@ class TestServerByFaceting:
             app_mod = load_app(out_f.name, tag)
             doc = Document()
             app_mod.make_document(doc)
-            return {p.title.text: [max((len(v) for v in r.data_source.data.values()),
+            return {_panel_name(p): [max((len(v) for v in r.data_source.data.values()),
                                        default=0)
                                    for r in p.renderers
                                    if isinstance(r, GlyphRenderer)]
-                    for p in doc.models if isinstance(p, Plot)}
+                    for p in doc.models if isinstance(p, Plot)
+                    and not is_chrome(p)}
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
@@ -3277,7 +3290,7 @@ class TestServerByFaceting:
             assert len(doc.roots) == 1, doc.roots
             panels = {}
             for fig, r in _glyph_layers(doc.roots[:1]):
-                panels.setdefault(fig.title.text, []).append(sorted(zip(
+                panels.setdefault(_panel_name(fig), []).append(sorted(zip(
                     _drawn_values(r, "weight"), _drawn_values(r, "mpg"))))
             want = {"%d" % g: [sorted(zip(sub["weight"], sub["mpg"]))]
                     for g, sub in auto_df.groupby("foreign")}
@@ -3349,7 +3362,7 @@ class TestServerByFaceting:
                             if isinstance(r, GlyphRenderer)
                             and type(r.glyph).__name__ == "Scatter"]
                     if rows:
-                        out[fig.title.text if fig.title else ""] = rows
+                        out[_panel_name(fig)] = rows
             return out
 
         r, _ = _ql_saved(dr_module, tmp_path, spec, auto_df)
@@ -9530,7 +9543,7 @@ class TestServerByTotalFullDispatch:
                     for r in f.renderers:
                         d = getattr(getattr(r, "data_source", None), "data", {})
                         if "y" in d and len(d["y"]):
-                            out.append((f.title.text, [round(float(v), 6) for v in d["y"]]))
+                            out.append((_panel_name(f), [round(float(v), 6) for v in d["y"]]))
                 return out
             finally:
                 for _p in (spec_path, data_path, out_f.name):
