@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-08T18:52:39Z",
+    "generated_utc": "2026-10-08T20:16:54Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11036,6 +11036,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -12143,6 +12145,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -14021,6 +14025,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -16755,6 +16773,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -17862,6 +17882,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -19740,6 +19762,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -22474,6 +22510,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -23581,6 +23619,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -25459,6 +25499,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -28271,6 +28325,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -29392,6 +29448,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -31254,6 +31312,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -34166,6 +34238,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -35303,6 +35377,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -37181,6 +37257,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -40202,6 +40292,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -41336,6 +41428,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -43214,6 +43308,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -46156,6 +46264,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -47260,6 +47370,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -49138,6 +49250,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -51948,6 +52074,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -53082,6 +53210,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -54960,6 +55090,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -57903,6 +58047,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -59007,6 +59153,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -60885,6 +61033,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -63618,6 +63780,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -64722,6 +64886,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -66600,6 +66766,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -69414,6 +69594,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -70532,6 +70714,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -72394,6 +72578,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -75229,6 +75427,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -76333,6 +76533,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -78211,6 +78413,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -80947,6 +81163,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -82072,6 +82290,8 @@
       "draw_minor_vgrid": "yesno draw_minor_nlt_vgrid (via axisstyle vertical_default = vertical_nolinetick, style/axisstyle-vertical_nolinetick.style)",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -83969,6 +84189,20 @@
         "value": "no",
         "file": "scheme-economist.scheme",
         "line": 339
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-economist.scheme",
+        "line": 383
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-economist.scheme",
+        "line": 384
       },
       "title_color": {
         "kind": "transcribed",
@@ -86920,6 +87154,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -88054,6 +88290,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -89932,6 +90170,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -92953,6 +93205,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -94087,6 +94341,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -95965,6 +96221,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -98987,6 +99257,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -100114,6 +100386,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -101976,6 +102250,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -104874,6 +105162,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -106022,6 +106312,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -107884,6 +108176,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -110925,6 +111231,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -112029,6 +112337,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -113907,6 +114217,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -116640,6 +116964,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -117747,6 +118073,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -119625,6 +119953,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -122360,6 +122702,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -123467,6 +123811,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -125345,6 +125691,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -128078,6 +128438,8 @@
     "draw_minor_vgrid": "yes",
     "draw_major_grid": "yes",
     "draw_minor_grid": "yes",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -129182,6 +129544,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -131060,6 +131424,20 @@
         "value": "yes",
         "file": "scheme-meta.scheme",
         "line": 58
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -133794,6 +134172,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -134901,6 +135281,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -136779,6 +137161,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -139514,6 +139910,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -140621,6 +141019,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -142499,6 +142899,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -145233,6 +145647,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -146340,6 +146756,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -148218,6 +148636,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -150953,6 +151385,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -152060,6 +152494,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -153938,6 +154374,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",
@@ -156674,6 +157124,8 @@
     "draw_minor_vgrid": "no",
     "draw_major_grid": "no",
     "draw_minor_grid": "no",
+    "xyline_extend_low": "yes",
+    "xyline_extend_high": "yes",
     "grid_axes": {
       "x": {
         "role": "horizontal_default",
@@ -157781,6 +158233,8 @@
       "draw_minor_vgrid": "yesno draw_minor_vgrid",
       "draw_major_grid": "yesno draw_major_grid",
       "draw_minor_grid": "yesno draw_minor_grid",
+      "xyline_extend_low": "yesno xyline_extend_low",
+      "xyline_extend_high": "yesno xyline_extend_high",
       "title_color": "color heading",
       "axis_line_color": "color axisline",
       "subheading_color": "color subheading",
@@ -159659,6 +160113,20 @@
         "value": "no",
         "file": "scheme-s2color.scheme",
         "line": 2114
+      },
+      "xyline_extend_low": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_low",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2164
+      },
+      "xyline_extend_high": {
+        "kind": "transcribed",
+        "directive": "yesno xyline_extend_high",
+        "value": "yes",
+        "file": "scheme-s2color.scheme",
+        "line": 2165
       },
       "title_color": {
         "kind": "transcribed",

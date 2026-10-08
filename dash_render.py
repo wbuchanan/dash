@@ -7887,6 +7887,9 @@ class SchemeParser:
         "color xyline":           "cranberry",
         "linepattern xyline":     "solid",
         "linewidth xyline":       "medium",
+        # gridlinestyle default's ends (WP-30 P1.21b): s2color :2164-2165.
+        "yesno xyline_extend_low":  "yes",
+        "yesno xyline_extend_high": "yes",
         "color plotregion_line":  "white",
         "linewidth plotregion":   "thin",
         "linepattern plotregion": "solid",
@@ -10348,6 +10351,14 @@ class SchemeParser:
         self.xyline_dash: list = self._lpattern("linepattern xyline")
         self.xyline_width: float = self._bounded_lwidth(
             "linewidth xyline", OptionTranslator.translate_lwidth("medium"))
+        # Whether the default reference line reaches the frame at its low
+        # (bottom/left) and high end (WP-30 P1.21b): gridlinestyle-default
+        # reads `yesno xyline_extend_low/high', yes under every shipped
+        # scheme.
+        self.xyline_extend_low: bool = self._yesno(
+            "yesno xyline_extend_low", True)
+        self.xyline_extend_high: bool = self._yesno(
+            "yesno xyline_extend_high", True)
 
         # The plot region's border, EFFECTIVE (plotregionstyle twoway ->
         # areastyle twoway_plotregion -> its linestyle), as the shipped
@@ -31029,6 +31040,40 @@ function dash_axis_finish(plan, models) {
         if (typeof box.setv === "function") box.setv(at);
         else for (const k of Object.keys(at)) box[k] = at[k];
     }
+    // WP-30 P1.21b: the unextended reference lines follow the new ranges.
+    for (const g of plan) for (const p of g.panels) dash_refline_extent(p, models);
+}
+// WP-30 P1.21b (TR-50.6): an unextended reference line's ends, inset from
+// its range's ends by the plot-region margin; the twin of
+// _dash_refline_extents.  Property names are fixed here, never read from
+// the plan.
+function dash_refline_extent(panel, models) {
+    const own = Object.prototype.hasOwnProperty;
+    if (!panel || !own.call(panel, "lines")) return;
+    for (const ln of panel.lines) {
+        const a = models[ln.arrow], r = models[ln.range];
+        if (!a || !r || (ln.letter !== "x" && ln.letter !== "y")) continue;
+        let s = r.start, e = r.end;
+        const lg = ln.kind === "log";
+        if (lg) { s = Math.log10(s); e = Math.log10(e); }
+        let lo = ln.low ? s : s + ln.margin[0] * (e - s);
+        let hi = ln.high ? e : e - ln.margin[1] * (e - s);
+        if (lg) { lo = Math.pow(10, lo); hi = Math.pow(10, hi); }
+        if (!isFinite(lo) || !isFinite(hi)) continue;
+        const at = {};
+        // A spec property may read back as {value: v}.
+        const v = (q) => (q !== null && typeof q === "object" ? q.value : q);
+        if (ln.letter === "y") {
+            if (v(a.y_start) !== lo) at.y_start = lo;
+            if (v(a.y_end) !== hi) at.y_end = hi;
+        } else {
+            if (v(a.x_start) !== lo) at.x_start = lo;
+            if (v(a.x_end) !== hi) at.x_end = hi;
+        }
+        if (!Object.keys(at).length) continue;
+        if (typeof a.setv === "function") a.setv(at);
+        else for (const k of Object.keys(at)) a[k] = at[k];
+    }
 }
 """
 #: WP-30 P1.3a (D-21d): the zoom code, after _DASH_AXIS_FINISH_JS in ONE
@@ -31924,6 +31969,10 @@ def _dash_refinish_axes(figures, facet_map):
     for f in figs.values():
         if id(f) not in grouped and hasattr(f, "_dash_hull_axes"):
             _dash_finish_count_ticks(f, refinish=True)
+    # Every range is final: the unextended reference lines follow them
+    # (WP-30 P1.21b).
+    for f in figs.values():
+        _dash_refline_extents(f)
 
 
 def _dash_axis_plan(figures, facet_map, zoom=True):
@@ -31971,6 +32020,31 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
     for share, panels in groups:
         pg = {"share": share, "panels": []}
         for f in panels:
+            # Every range is final here, in both modes (WP-30 P1.21b,
+            # D-50d): the unextended reference lines' ends are written.
+            _dash_refline_extents(f)
+            lines = []
+            for arrow, letter, low, high in getattr(
+                    f, "_dash_refline_arrows", ()):
+                rng = f.y_range if letter == "y" else f.x_range
+                fm = _dash_refline_margin(rng)
+                if fm is None or not isinstance(rng, Range1d):
+                    continue
+                ai = index.get(id(arrow))
+                if ai is None:
+                    ai = index[id(arrow)] = len(models)
+                    models.append(arrow)
+                ri = index.get(id(rng))
+                if ri is None:
+                    ri = index[id(rng)] = len(models)
+                    models.append(rng)
+                lines.append({
+                    "arrow": ai, "range": ri, "letter": letter,
+                    "kind": ("log" if type(getattr(
+                        f, letter + "_scale", None)).__name__
+                        == "LogScale" else None),
+                    "margin": [float(fm[0]), float(fm[1])],
+                    "low": int(bool(low)), "high": int(bool(high))})
             margins = getattr(f, "_dash_margin", None) or {}
             scale_vals = getattr(f, "_dash_scale_values", None) or {}
             scale_vals2 = getattr(f, "_dash_scale_values2", None) or {}
@@ -32148,7 +32222,10 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                 if bi is None:
                     bi = index[id(box)] = len(models)
                     models.append(box)
-            pg["panels"].append({"axes": axes, "box": bi})
+            panel = {"axes": axes, "box": bi}
+            if lines:
+                panel["lines"] = lines
+            pg["panels"].append(panel)
         plan.append(pg)
     plan_json = json.dumps(plan, allow_nan=False, separators=(",", ":"))
     if zoom and zoom_ranges:
@@ -37335,9 +37412,9 @@ def _dash_apply_z_options(fig, key_obj, mapper_obj, zopts, seen, key,
 
 
 #: xline()/yline() sub-options dash honours (lstyle() and lalign(): WP-30
-#: P1.21a).
+#: P1.21a; style(), noextend and extend: WP-30 P1.21b).
 _DASH_REFLINE_SUBOPTS = frozenset({"lcolor", "lpattern", "lwidth", "lstyle",
-                                   "lalign"})
+                                   "lalign", "style"})
 
 
 def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
@@ -37490,6 +37567,13 @@ def _dash_refline_instances(raw, bad):
             typed = tok.split("(", 1)[0].strip()
             name = (_dash_subopt_canon(typed, _DASH_REFLINE_SUBOPT_TABLE)
                     if "(" in tok else None)
+            if "(" not in tok and _dash_subopt_canon(
+                    typed, _DASH_REFLINE_SUBOPT_TABLE) in ("noextend",
+                                                           "extend"):
+                # The extent words (WP-30 P1.21b): drawn, never named.
+                style[_dash_subopt_canon(
+                    typed, _DASH_REFLINE_SUBOPT_TABLE)] = True
+                continue
             if name in _DASH_REFLINE_SUBOPTS:
                 style[name] = _dash_subopt_arg(tok)
                 if typed != name:
@@ -37611,9 +37695,104 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
         return
     # Above the grid, below the glyphs, as twoway draws added lines; one
     # assignment for the copy (WP-30 P1.21a).
-    spans = [Span(location=v, dimension=dim, level="underlay", **kw)
-             for v in values]
-    fig.center = [*fig.center, *spans]
+    low, high = _dash_refline_extent_flags(style, scheme)
+    if low and high:
+        spans = [Span(location=v, dimension=dim, level="underlay", **kw)
+                 for v in values]
+        fig.center = [*fig.center, *spans]
+        return
+    # An unextended end (WP-30 P1.21b, D-50a): a headless Arrow in data
+    # units, its ends on the spanned axis written once every range is
+    # final (_dash_refline_extents); the location is a finite placeholder.
+    from bokeh.models import Arrow
+    letter = "y" if dim == "height" else "x"
+    arrows = []
+    for v in values:
+        ends = ({"x_start": v, "x_end": v, "y_start": v, "y_end": v})
+        a = Arrow(start=None, end=None, level="underlay", **ends, **kw)
+        arrows.append(a)
+    if not hasattr(fig, "_dash_refline_arrows"):
+        fig._dash_refline_arrows = []
+    fig._dash_refline_arrows.extend((a, letter, low, high) for a in arrows)
+    fig.center = [*fig.center, *arrows]
+
+
+def _dash_refline_extent_flags(style, scheme):
+    """``(low, high)``: whether one xline()/yline() copy reaches the frame
+    at its low end (the bottom of an xline, the left of a yline, whatever
+    the axis direction) and its high end (WP-30 P1.21b).
+
+    twoway's edit order (_gs_parse_and_log_lines.ado 1.1.6): the scheme's
+    ``yesno xyline_extend_low/high`` (gridlinestyle-default; yes when no
+    scheme is given), then ``style()`` -- ``default`` or empty the scheme,
+    ``extended`` both yes, ``unextended`` both no, any other name (case as
+    typed) the default with twoway's note -- then ``noextend`` both no,
+    then ``extend`` both yes, whatever order they were typed in."""
+    low = bool(getattr(scheme, "xyline_extend_low", True))
+    high = bool(getattr(scheme, "xyline_extend_high", True))
+    if "style" in style:
+        name = str(style.get("style") or "").strip()
+        if name == "extended":
+            low = high = True
+        elif name == "unextended":
+            low = high = False
+        elif name not in ("", "default"):
+            _dash_warn_once(
+                ("refline-style", _dash_display(name)),
+                f"dash: named style {_dash_display(name)} not found in "
+                "class gridlinestyle, default attributes used")
+    if style.get("noextend"):
+        low = high = False
+    if style.get("extend"):
+        low = high = True
+    return low, high
+
+
+def _dash_refline_margin(rng):
+    """The (start, end) frame fractions *rng*'s ends lie beyond its hull,
+    or None for a range no finisher padded (WP-30 P1.21b): S47's per-side
+    pair, S21's single f, or the legacy 5% of the hull (0.05/1.1 of the
+    range)."""
+    if not hasattr(rng, "_dash_margin_f"):
+        return None
+    f = _dash_margin_pair(rng._dash_margin_f)
+    return f if f is not None else (0.05 / 1.1, 0.05 / 1.1)
+
+
+def _dash_refline_extents(fig):
+    """Write each unextended reference line's ends on the axis it spans
+    (WP-30 P1.21b, D-50b): an extended end at the range's end, an
+    unextended one inset by that side's plot-region margin, so it sits at
+    the axis's scale as twoway draws it (in log10 space on a log axis).
+    The start end is the low one: Bokeh draws ``start`` at the bottom or
+    left.  A range no finisher padded is left as it is.  Idempotent; reads
+    no data.  Called where every range is final: ``_dash_axis_plan``
+    (both modes, at build) and ``_dash_refinish_axes`` (served moves); the
+    saved page's twin is ``dash_refline_extent``."""
+    for arrow, letter, low, high in getattr(fig, "_dash_refline_arrows",
+                                            ()):
+        rng = fig.y_range if letter == "y" else fig.x_range
+        f = _dash_refline_margin(rng)
+        if f is None:
+            continue
+        log = type(getattr(fig, letter + "_scale", None)).__name__ \
+            == "LogScale"
+        try:
+            s, e = float(rng.start), float(rng.end)
+            if log:
+                s, e = math.log10(s), math.log10(e)
+        except (TypeError, ValueError):
+            continue
+        lo = s if low else s + f[0] * (e - s)
+        hi = e if high else e - f[1] * (e - s)
+        if log:
+            lo, hi = 10 ** lo, 10 ** hi
+        if not (math.isfinite(lo) and math.isfinite(hi)):
+            continue
+        if letter == "y":
+            arrow.y_start, arrow.y_end = lo, hi
+        else:
+            arrow.x_start, arrow.x_end = lo, hi
 
 
 #: filter() widget types dash builds.
@@ -45512,6 +45691,9 @@ class ServerAppBuilder:
                          "_dash_reference_lines",
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
+                         # xline/yline extent (WP-30 P1.21b).
+                         "_dash_refline_extent_flags",
+                         "_dash_refline_extents", "_dash_refline_margin",
                          "_dash_refline_copies", "_dash_refline_positions",
                          "_dash_refline_tally", "DashLimitError",
                          "_dash_display",

@@ -1650,6 +1650,16 @@ def extract(stata_base: str, scheme: str) -> dict:
         "draw_minor_grid": scalar("draw_minor_grid", "yesno",
                                   ["draw_minor_grid"], lambda t: t.strip(),
                                   class_default=False),
+        # WP-30 P1.21b: gridlinestyle-default's `set extend_low scheme
+        # xyline_extend_low' (and _high): whether a reference line reaches
+        # the frame at its low and high end.
+        "xyline_extend_low": scalar("xyline_extend_low", "yesno",
+                                    ["xyline_extend_low"],
+                                    lambda t: t.strip(), class_default=False),
+        "xyline_extend_high": scalar("xyline_extend_high", "yesno",
+                                     ["xyline_extend_high"],
+                                     lambda t: t.strip(),
+                                     class_default=False),
         "grid_axes": grid_axes,
 
         "title_color": color_of("title_color", ["heading"]),
@@ -2206,6 +2216,9 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("color", "xyline", "xyline_color", value=drawn_color("xyline")),
         scalar("linepattern", "xyline", "xyline_pattern"),
         scalar("linewidth", "xyline", "xyline_line_width", use_name=True),
+        # WP-30 P1.21b: gridlinestyle-default's two ends.
+        scalar("yesno", "xyline_extend_low", "xyline_extend_low"),
+        scalar("yesno", "xyline_extend_high", "xyline_extend_high"),
     ])
     group([
         "The plot region's border, EFFECTIVE: plotregionstyle twoway ->",

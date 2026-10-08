@@ -604,6 +604,21 @@ gsize emargin       relative1p5
 gsize esubmargin    relative4
 
 * ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Reference lines, xline() and yline(): twoway draws them in the
+* `gridlinestyle' class default, whose style file reads `linestyle
+* xyline'; that linestyle reads these three keys.
+yesno xyline_extend_low   yes
+yesno xyline_extend_high  yes
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -710,6 +725,8 @@ gsize esubmargin    relative4
 * provenance: color xyline -- transcribed from scheme-stcolor.scheme:77 `color xyline black'
 * provenance: linepattern xyline -- transcribed from scheme-stcolor.scheme:76 `linepattern xyline dash'
 * provenance: linewidth xyline -- transcribed from scheme-s2color.scheme:1214 `linewidth xyline medium'
+* provenance: yesno xyline_extend_low -- transcribed from scheme-s2color.scheme:2164 `yesno xyline_extend_low yes'
+* provenance: yesno xyline_extend_high -- transcribed from scheme-s2color.scheme:2165 `yesno xyline_extend_high yes'
 * provenance: color plotregion_line -- transcribed from scheme-s2color.scheme:409 `color plotregion_line white'
 * provenance: linewidth plotregion -- transcribed from scheme-s2color.scheme:1225 `linewidth plotregion thin'
 * provenance: linepattern plotregion -- transcribed from scheme-s2color.scheme:584 `linepattern plotregion solid'

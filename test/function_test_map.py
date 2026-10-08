@@ -1087,6 +1087,9 @@ FUNCTIONS = {
  '_dash_role_letter': 'test/test_horizontal.py::TestTheRoleRule::test_is_horizontal_and_role_letter',
  '_dash_transpose_layer': 'test/test_horizontal.py::TestHorizontalIsTheTranspose::test_type',
  # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
+ '_dash_refline_extent_flags': 'test/test_refline_extent.py::TestTheFlags::test_rule',
+ '_dash_refline_extents': 'test/test_refline_extent.py::TestTheEnds::test_low_is_physical_and_log_is_log',
+ '_dash_refline_margin': 'test/test_refline_extent.py::TestTheExtent::test_probe',
  # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
  # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
  # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)

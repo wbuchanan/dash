@@ -3776,8 +3776,7 @@ sub-options are {cmd:lcolor()} ({cmd:lc()}), {cmd:lwidth()} ({cmd:lw()}),
 any line style name ({cmd:p1}, {cmd:refline}, {cmd:foreground},
 {cmd:grid}, {cmd:none}, ...) with {cmd:lcolor()}, {cmd:lwidth()} and
 {cmd:lpattern()} drawn over it, and {cmd:lalign()} ({cmd:la()}), accepted
-as {cmd:twoway} accepts it, with no visible change.  {cmd:extend},
-{cmd:noextend} and {cmd:style()} are read and named as not drawn.  What
+as {cmd:twoway} accepts it, with no visible change.  What
 {cmd:twoway} refuses is refused in its words and order:
 {cmd:something required}, {cmd:r(100)}, for an empty list with a comma;
 {cmd:option }{it:name}{cmd: not allowed}, {cmd:r(198)}, for an unknown,
@@ -3786,6 +3785,18 @@ short, capitalised or repeated sub-option; and
 refuses.  The lines are drawn above the grid and below the data, and
 never widen an axis.  See {cmd:$dash_max_reflines} under
 {it:Resource limits}.
+
+{pstd}
+{cmd:noextend} ({cmd:noex}), {cmd:extend} ({cmd:ex}) and
+{cmd:style(default}|{cmd:extended}|{cmd:unextended)} ({cmd:st()}) are
+drawn as {cmd:twoway} reads them: the scheme's
+{cmd:yesno xyline_extend_low} and {cmd:yesno xyline_extend_high} (yes in
+every shipped scheme) set where a line ends, then {cmd:style()}, then
+{cmd:noextend}, then {cmd:extend}, whatever order they are typed in.  An
+end that is not extended stops at the axis's scale, inset from the frame
+by the plot-region margin (none under {cmd:plotregion(margin(zero))}),
+and follows the axis after every filter move; another {cmd:style()} name
+is drawn as the default with {cmd:twoway}'s note.
 
 {pstd}
 {cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other

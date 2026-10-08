@@ -66,7 +66,8 @@ import pandas as pd
 import pytest
 from bokeh.model import Model
 from bokeh.core.properties import value as _bk_value
-from bokeh.models import (BooleanFilter, BoxAnnotation, ColumnDataSource,
+from bokeh.models import (Arrow, BooleanFilter, BoxAnnotation,
+                          ColumnDataSource,
                           Div, FixedTicker, GlyphRenderer, LegendItem,
                           Range1d, RangeSlider, Select, Slider, Title)
 
@@ -186,6 +187,12 @@ def stand_in(m, models, objs):
         return {"__type__": "BoxAnnotation",
                 **{p: plain(getattr(m, p))
                    for p in ("left", "right", "bottom", "top")}}
+    # WP-30 P1.21b: an unextended reference line's ends, which the
+    # re-finish writes.
+    if isinstance(m, Arrow):
+        return {"__type__": "Arrow",
+                **{p: plain(getattr(m, p))
+                   for p in ("x_start", "x_end", "y_start", "y_end")}}
     if isinstance(m, FixedTicker):
         return {"__type__": "FixedTicker",
                 "ticks": [plain(v) for v in (m.ticks or [])]}
@@ -235,7 +242,7 @@ for (const o of Object.values(REG)) {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   } else if (o.__type__ === "FixedTicker") {
     o.change = {emit() {}};
-  } else if (o.__type__ === "BoxAnnotation") {
+  } else if (o.__type__ === "BoxAnnotation" || o.__type__ === "Arrow") {
     o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   }
 }
@@ -254,6 +261,9 @@ for (const [id, o] of Object.entries(REG)) {
   else if (o.__type__ === "FixedTicker") out[id] = {ticks: Array.from(o.ticks)};
   else if (o.__type__ === "BoxAnnotation")
     out[id] = {box: {left: o.left, right: o.right, bottom: o.bottom, top: o.top}};
+  else if (o.__type__ === "Arrow")
+    out[id] = {arrow: {x_start: o.x_start, x_end: o.x_end, y_start: o.y_start,
+                       y_end: o.y_end}};
   else {
     const e = {};
     for (const k of ["text", "width", "visible", "muted", "label"])
@@ -360,9 +370,9 @@ class JsSession:
                               for c, col in state["data"].items()}
                 elif "booleans" in state:
                     m.booleans = list(state["booleans"])
-                elif "range" in state or "box" in state:
-                    for k, v in (state.get("range")
-                                 or state.get("box")).items():
+                elif "range" in state or "box" in state or "arrow" in state:
+                    for k, v in (state.get("range") or state.get("box")
+                                 or state.get("arrow")).items():
                         if isinstance(v, (int, float)) \
                                 and not isinstance(v, bool):
                             setattr(m, k, float(v))

@@ -585,15 +585,17 @@ def _digest(model):
 # again for its default-date-axis range() rule (the batch-15 gate).
 # Re-derived for WP-30 P1.20b: the axis plan's margin is a per-side pair
 # and each panel names its inner box; the finish code pads per side.
+# Re-derived for WP-30 P1.21b: the finish code carries dash_refline_extent
+# (the filter callback's text only; a plain figure draws no Arrow).
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "b1f1f1ca2ceaff41b2817959b43818188ec7c7d7e6c26ada3849f181c1dbccf4",
+        "a2150c7d60f43522adf5954c4aa071243e1bee48d46c5bffa1f098fcd0b4a6ee",
     ("saved", "yaxis2"):
-        "b1f1f1ca2ceaff41b2817959b43818188ec7c7d7e6c26ada3849f181c1dbccf4",
+        "a2150c7d60f43522adf5954c4aa071243e1bee48d46c5bffa1f098fcd0b4a6ee",
     ("served", "plain"):
-        "18ec3d9d000839fed4879fab7fbd860ed657986489519aee514562b19d5fedf4",
+        "d4c37df060748a86bb78f4e234bf2829657677840f5783819938b06f1088b53b",
     ("served", "yaxis2"):
-        "18ec3d9d000839fed4879fab7fbd860ed657986489519aee514562b19d5fedf4",
+        "d4c37df060748a86bb78f4e234bf2829657677840f5783819938b06f1088b53b",
 }
 
 

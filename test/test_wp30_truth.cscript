@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4
+    S48 11 S49 4 S50 5
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11015,10 +11015,166 @@ if inlist("`only'", "", "S49") & `: list posof "S49" in w30_run' {
 }
 * ==== end S49 ====
 
+// _s50_check probe html -- the saved page's reference lines against
+// twoway's (WP-30 P1.21b): per line of test/fixtures/refline_extent_truth
+// .json's probe, a Span where twoway reaches the frame at both ends, else
+// an Arrow whose unextended ends sit at twoway's scale (curmin/curmax of
+// the same command, run in this block; within 0.2% of the range, in log10
+// units on a log axis) and whose extended ends sit at the range's ends.
+// Under by() (no scale), each panel's Arrow lies inside its range.
+// Globals S50_OK (1/0) and S50_MSG; S50_X and S50_Y hold "curmin curmax".
+capture program drop _s50_check
+program define _s50_check
+    version 19
+    args probe html
+    global S50_PROBE `"`probe'"'
+    global S50_HTML `"`html'"'
+    python: __import__("sys").modules["_dash_s50"].check()
+end
+python:
+def _s50_check():
+    import json, math, os, re
+    from sfi import Macro
+    probe, html = Macro.getGlobal("S50_PROBE"), Macro.getGlobal("S50_HTML")
+    fx = os.path.join(Macro.getGlobal("S50_REPO"), "test", "fixtures",
+                      "refline_extent_truth.json")
+    with open(fx, encoding="utf-8") as fh:
+        row = json.load(fh)["probes"][probe]
+    with open(html, encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, figs = {}, []
+    def walk(o):
+        if isinstance(o, dict):
+            if "id" in o and "attributes" in o:
+                objs[o["id"]] = o
+                if o.get("name") == "Figure":
+                    figs.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        walk(json.loads(m.group(1)))
+    def ref(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    def num(v):
+        if isinstance(v, dict):
+            v = v.get("value")
+        return float(v)
+    scale = {}
+    for a in ("X", "Y"):
+        t = Macro.getGlobal("S50_" + a).split()
+        if len(t) == 2:
+            scale[a.lower()] = (float(t[0]), float(t[1]))
+    log = "yscale(log)" in row["opt"]
+    bad, seen, kinds = [], {"x": [], "y": []}, {"x": [], "y": []}
+    for f in figs:
+        at = f["attributes"]
+        if at.get("name") in ("dash_by_head", "dash_by_foot"):
+            continue
+        for c in at.get("center") or []:
+            c = ref(c)
+            nm, ca = c.get("name"), c.get("attributes", {})
+            if nm == "Span":
+                seen["x" if ca.get("dimension") == "height" else "y"].append((True, True))
+                kinds["x" if ca.get("dimension") == "height" else "y"].append("S")
+            elif nm == "Arrow" and ca.get("end", "x") is None:
+                vert = num(ca["x_start"]) == num(ca["x_end"])
+                letter = "y" if vert else "x"
+                rng = ref(at.get(letter + "_range")).get("attributes", {})
+                s, e = float(rng["start"]), float(rng["end"])
+                lo, hi = (num(ca[letter + "_start"]), num(ca[letter + "_end"]))
+                tr = math.log10 if (log and letter == "y") else float
+                s, e, lo, hi = tr(s), tr(e), tr(lo), tr(hi)
+                tol = 0.002 * abs(e - s)
+                ext = (abs(lo - s) <= 1e-9 * max(1, abs(s)), abs(hi - e) <= 1e-9 * max(1, abs(e)))
+                seen["x" if vert else "y"].append(ext)
+                kinds["x" if vert else "y"].append("A")
+                cur = scale.get(letter)
+                if cur is not None:
+                    c0, c1 = tr(cur[0]), tr(cur[1])
+                    if (not ext[0] and abs(lo - c0) > tol) or (not ext[1] and abs(hi - c1) > tol):
+                        bad.append("%s %s ends %.4g..%.4g twoway scale %.4g..%.4g" % (probe, letter, lo, hi, c0, c1))
+                elif not (s < lo < hi < e):
+                    bad.append("%s %s ends %.4g..%.4g outside %.4g..%.4g" % (probe, letter, lo, hi, s, e))
+    for axis, k in (("xline", "x"), ("yline", "y")):
+        want = sorted((l["low_inset"] < 1e-3, l["high_inset"] < 1e-3) for l in row.get(axis, []))
+        got = sorted(seen[k])
+        # A margin moves where an unextended end lies (the ends above),
+        # so twoway's insets cannot tell an end at the frame from one
+        # under a zero margin: there every noextend copy is an Arrow.
+        if "plotregion(" in row["opt"]:
+            got = sorted(kinds[k])
+            want = ["A" if "noextend" in row["opt"] else "S"] * len(want)
+        if got != want:
+            bad.append("%s %s dash %s twoway %s" % (probe, axis, got, want))
+    Macro.setGlobal("S50_OK", "0" if bad else "1")
+    Macro.setGlobal("S50_MSG", "; ".join(bad)[:400] or "ok")
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s50_sys
+_s50_sys.modules["_dash_s50"] = type(_s50_sys)("_dash_s50")
+_s50_sys.modules["_dash_s50"].check = _s50_check
+end
+
 * ==== S50 P1.21b: xline/yline extend, noextend and style() ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S50") & `: list posof "S50" in w30_run' {
     display as text "S50 start " c(current_date) " " c(current_time)
+    global S50_REPO "`c(pwd)'/.."
+    local s50log "`w30_work'/s50.log"
+    local s50pg "`w30_work'/zxe.html"
+    local s50ls = c(linesize)
+    set linesize 255
+    quietly sysuse auto, clear
+    // XE-01..XE-10: each probe drawn by twoway (its scale) and by dash.
+    foreach row in ///
+        `"XE-01|E02|xline(3000, noextend) yline(25, noextend)"' ///
+        `"XE-02|E04|xline(3000, style(unextended)) yline(25, style(unextended))"' ///
+        `"XE-03|E10|xline(3000, noextend extend) yline(25, noextend extend)"' ///
+        `"XE-04|E11|xline(3000, style(unextended) extend) yline(25, style(unextended) extend)"' ///
+        `"XE-05|E15|xline(3000, noextend) yline(25, noextend) yscale(log)"' ///
+        `"XE-06|E16|xline(3000, noextend) yline(25, noextend) plotregion(margin(zero))"' ///
+        `"XE-07|E17|xline(3000, noextend) yline(25, noextend) plotregion(margin(large))"' ///
+        `"XE-08|E18|xline(3000, noextend) yline(25, noextend) plotregion(margin(l=10 b=0))"' ///
+        `"XE-09|E24|xline(3000, noextend) yline(25, noextend) xscale(range(1000 6000))"' ///
+        `"XE-10|E21|xline(3000, noextend) yline(25, noextend) by(foreign)"' {
+        gettoken id rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken pid rest : rest, parse("|")
+        gettoken bar opts : rest, parse("|")
+        global S50_X ""
+        global S50_Y ""
+        if strpos(`"`opts'"', "by(") == 0 {
+            quietly graph drop _all
+            capture twoway scatter mpg weight, `opts' scheme(s2color) nodraw name(xe, replace)
+            if !_rc {
+                global S50_X "`.xe.plotregion1.xscale.curmin' `.xe.plotregion1.xscale.curmax'"
+                global S50_Y "`.xe.plotregion1.yscale.curmin' `.xe.plotregion1.yscale.curmax'"
+            }
+            quietly graph drop _all
+        }
+        _s36_run `"dash scatter mpg weight, `opts' scheme(s2color) saving("`s50pg'", replace)"' "`s50log'"
+        local drc = r(rc)
+        capture _s50_check "`pid'" "`s50pg'"
+        local prc = _rc
+        _w30_expect `id' "(`drc' == 0 & `prc' == 0 & ${S50_OK} == 1)" "`pid': rc `drc'/`prc', ${S50_MSG}"
+        _w30_done `id' "`pid': each line's ends as twoway draws them"
+    }
+    // XE-11: style(nosuch) prints twoway's note once and is drawn extended.
+    _s36_run `"dash scatter mpg weight, xline(3000, style(nosuch)) scheme(s2color) saving("`s50pg'", replace)"' "`s50log'"
+    local drc = r(rc)
+    _s36_count "`s50log'" "named style nosuch not found in class gridlinestyle, default attributes used"
+    local nn = r(n)
+    _s36_count "`s50log'" "not implemented and ignored"
+    local ni = r(n)
+    _w30_expect XE-11 "(`drc' == 0 & `nn' == 1 & `ni' == 0)" "rc `drc', notes `nn', named `ni'"
+    _w30_done XE-11 "style(nosuch) prints twoway's note once; no extent sub-option is named"
+    capture dash clear
+    capture erase "`s50log'"
+    capture erase "`s50pg'"
+    macro drop S50_*
+    set linesize `s50ls'
     display as text "S50 end " c(current_date) " " c(current_time)
 }
 * ==== end S50 ====

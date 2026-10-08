@@ -1620,8 +1620,10 @@ CORPUS = [
                           "yscale": "reverse outergap(1)"}),
     # Flipped (WP-30 P1.21a): lstyle(foreground) was the unimplemented
     # sub-option; that was wrong because twoway draws lstyle()
-    # (refline_truth.json S probes).  noextend is still S50's.
-    _case("xline with an unimplemented sub-option", [_sc()], None,
+    # (refline_truth.json S probes).  Flipped (WP-30 P1.21b): noextend was
+    # named; that was wrong because twoway draws it
+    # (refline_extent_truth.json E02).
+    _case("xline with lcolor and noextend", [_sc()], None,
           {"xline": "3000, lcolor(red) noextend"}),
     _case("xlabel with an unimplemented sub-option", [_sc()], None,
           {"xlabel": "#5, labgap(2)", "ytitle": "Miles, orientation(vertical)"}),
@@ -2232,6 +2234,9 @@ CORPUS = [
     _case("horizontal area on a second y axis (WP-30 P1.9a)",
           [_sc(), plot_for("area", {"horizontal": "horizontal",
                                     "yaxis": "2"})]),
+    # WP-30 P1.21b: xline/yline extent.
+    _case("xline/yline noextend and style() (WP-30 P1.21b)", [_sc()], None,
+          {"xline": "3000, noextend", "yline": "20, style(unextended)"}),
 ]
 
 
@@ -2356,9 +2361,6 @@ _MUST_WARN = {
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "outergap(1)",
-    "xline with an unimplemented sub-option":
-        "dash: xline() sub-option(s) not implemented and ignored: "
-        "noextend",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
         "labgap(2)",
@@ -3093,6 +3095,9 @@ MOVE_CORPUS = [
     _move_case("margin and box after a range move (WP-30 P1.20b)", _MOVES[1],
                [_sc()], {"plotregion": "margin(l+10) ifcolor(red)",
                          "by": "foreign"}),
+    # WP-30 P1.21b: an unextended line follows the axis.
+    _move_case("noextend after a dropdown move (WP-30 P1.21b)", _MOVES[0],
+               [_sc()], {"xline": "3000, noextend"}),
 ]
 
 
@@ -3196,8 +3201,10 @@ class TestAFilterMoveAgrees:
 def _assert_heads_on_shafts(name, fig):
     """Every arrow a figure's Arrow annotations draw heads a Segment it
     draws, and every Segment of a pcarrow/pcbarrow layer has its head."""
+    # A headless Arrow is an unextended reference line (WP-30 P1.21b),
+    # no head.
     heads = sorted(a for x in fig["annotations"] if x["kind"] == "Arrow"
-                   for a in x["arrows"])
+                   and (x["start"] or x["end"]) for a in x["arrows"])
     if not heads:
         return
     shafts = []

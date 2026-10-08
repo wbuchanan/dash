@@ -196,13 +196,12 @@ class TestLalign:
 class TestStillNamed:
     @pytest.mark.parametrize("mode", MODES)
     def test_extent_is_s50s(self, mode):
-        _, w = _draw({"xline": "3000, noextend extend style(unextended) "
+        # Flipped (WP-30 P1.21b): noextend, extend and style(unextended)
+        # were named; that was wrong because twoway draws them
+        # (refline_extent_truth.json E02, E03, E04), abbreviated or not.
+        _, w = _draw({"xline": "3000, noex ex st(unextended) "
                                "lstyle(p1) lalign(inside)"}, mode)
-        note = [m for m in w if m.startswith("dash: xline() sub-option")]
-        assert len(note) == 1, w
-        for t in ("noextend", "extend", "style(unextended)"):
-            assert t in note[0]
-        assert "lstyle" not in note[0] and "lalign" not in note[0]
+        assert not [m for m in w if "sub-option" in m], w
 
 
 class TestDrawing:
@@ -255,6 +254,8 @@ class TestDrawing:
                  if getattr(p, "x_range", None) is not None]
             return [(p.x_range.start, p.x_range.end) for p in f]
         assert x_range({"xline": "100000"}) == x_range({})
+        # An unextended line neither (WP-30 P1.21b).
+        assert x_range({"xline": "100000, noextend"}) == x_range({})
 
 
 class TestAfterAFilterMove:

@@ -26,7 +26,8 @@
 *!   SR-05  xtitle("Weight", orientation(vertical)) names orientation() and
 *!          titles the axis "Weight" -- not "Weight, orientation(vertical)".
 *!   SR-06  xline(3000, lcolor(red) lstyle(foreground) noextend) names
-*!          noextend only (flipped, WP-30 P1.21a: lstyle() is drawn).
+*!          nothing (flipped, WP-30 P1.21a: lstyle() is drawn; WP-30
+*!          P1.21b: noextend is drawn).
 *!   SR-07  filter(price, type(range) label("R&D __ spend")) produces the
 *!          widget: the label used to trip the injection filter and the whole
 *!          group vanished with rc 0.
@@ -276,16 +277,18 @@ if `bad' {
 else display as text "SR-05 PASS: xtitle() names orientation() and titles the axis Weight"
 
 // Flipped (WP-30 P1.21a): lstyle(foreground) was named; twoway draws it
-// (refline_truth.json S probes), so only the extent, S50's, is named.
+// (refline_truth.json S probes).  Flipped (WP-30 P1.21b): noextend was
+// named; that was wrong because twoway draws it (refline_extent_truth.json
+// E02), so nothing is named.
 _sr_render `"dash scatter mpg weight, xline(3000, lcolor(red) lstyle(foreground) noextend)"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-06 "`lg'" xline "noextend" "lcolor lstyle"
+_sr_check SR-06 "`lg'" xline "" "lcolor lstyle noextend"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-06"
 }
-else display as text "SR-06 PASS: xline(noextend) is named, lcolor() and lstyle() are not"
+else display as text "SR-06 PASS: xline() names none of lcolor(), lstyle() and noextend"
 
 // ----------------------------------------------------------------
 // SR-07 / SR-08: filter(), through dash build
