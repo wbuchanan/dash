@@ -62,6 +62,9 @@ _ALLOWED_INLINE_PY_MACROS = {
         "_py_render": "escaped by _dash_json_str before interpolation",
         "port_int": "validated ^[0-9]+$ and range 1024-65535 in _dash_serve_spec",
         "timeout": "validated ^[0-9]+$ in _dash_serve_spec",
+        # WP-30 P1.31a: r(maxsessions) and r(idletimeout), digits only.
+        "_srv_maxs": "digits only, 1-1,000,000, checked byte by byte (_dash_is_digits) in _dash_serve_spec",
+        "_srv_idle": "digits only, 0-525600, checked byte by byte (_dash_is_digits) in _dash_serve_spec",
     },
     # dash_setup.ado has no entry: its last in-string macro, `_spec' in the
     # inline pip call, went with that call (WP-29 P0.19) -- the spec now

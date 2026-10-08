@@ -1062,8 +1062,9 @@ class TestTheGeneratedAppBindsLoopbackAtRuntime:
         for address in (None, "", "0.0.0.0"):
             mod._DASH_SERVE_TOKEN = None
             mod._dash_server_app(address=address)
+            # WP-30 P1.31a: the key's provider inside the session cap's.
             assert seen[-1]["auth_provider"].__class__.__name__ == \
-                "_DashTokenAuth", address
+                "_DashCapAuth", address
 
 
 # ---------------------------------------------------------------------------

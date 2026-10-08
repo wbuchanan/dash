@@ -10511,6 +10511,7 @@ if inlist("`only'", "", "S45") & `: list posof "S45" in w30_run' {
 local only : env WP30_ONLY
 if inlist("`only'", "", "S46") & `: list posof "S46" in w30_run' {
     display as text "S46 start " c(current_date) " " c(current_time)
+    * S46: no twoway counterpart (research p1-31 section 3); tested by test_served_resources.py and test_serve_options.cscript MS-01..MS-08.
     display as text "S46 end " c(current_date) " " c(current_time)
 }
 * ==== end S46 ====

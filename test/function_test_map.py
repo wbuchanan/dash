@@ -1046,6 +1046,28 @@ FUNCTIONS = {
  # WP-30 S45 (P1.8b): recast() (P1.8 part b)
  'GlyphMapper._dash_draw_xy_as': 'test/test_recast.py::TestTheDrawAsHelper::test_each_target',
  # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
+ 'app:make_document.<locals>._dash_idle_check': 'test/test_served_resources.py::TestIdleSessionsAreClosed::test_closed_after_the_lifetime',
+ 'app:make_document.<locals>._dash_touch': 'test/test_served_resources.py::TestIdleSessionsAreClosed::test_activity_resets_the_clock',
+ 'app:make_document.<locals>._dash_touch.<locals>._touched': 'test/test_served_resources.py::TestIdleSessionsAreClosed::test_activity_resets_the_clock',
+ '_dash_cap_auth': 'test/test_served_resources.py::TestSessionsAreCapped::test_a_keyless_client_gets_403_not_503',
+ '_dash_cap_auth.<locals>._DashCapAuth.get_login_url': 'test/test_served_resources.py::TestSessionsAreCapped::test_a_keyless_client_gets_403_not_503',
+ '_dash_cap_auth.<locals>._DashCapAuth.get_user_async': 'test/test_served_resources.py::TestSessionsAreCapped::test_a_keyless_client_gets_403_not_503',
+ '_dash_cap_auth.<locals>._admit': 'test/test_served_resources.py::TestSessionsAreCapped::test_the_fourth_page_is_busy',
+ '_dash_memo_key.<locals>._feed': 'test/test_served_resources.py::TestEstimatorMemo::test_hits_misses_and_bit_equal_results',
+ '_dash_memo_wrap.<locals>._frozen': 'test/test_served_resources.py::TestEstimatorMemo::test_hits_misses_and_bit_equal_results',
+ '_dash_memo_wrap.<locals>._memo': 'test/test_served_resources.py::TestEstimatorMemo::test_the_lock_guards_get_and_put',
+ '_dash_memo_wrap.<locals>._nbytes': 'test/test_served_resources.py::TestEstimatorMemo::test_budget_evicts_lru',
+ '_dash_memo_wrap.<locals>._thawed': 'test/test_served_resources.py::TestEstimatorMemo::test_hits_misses_and_bit_equal_results',
+ '_dash_idle_due': 'test/test_served_resources.py::TestTheHelpers::test_idle_due',
+ '_dash_memo_key': 'test/test_served_resources.py::TestEstimatorMemo::test_hits_misses_and_bit_equal_results',
+ '_dash_memo_wrap': 'test/test_served_resources.py::TestEstimatorMemo::test_the_lock_guards_get_and_put',
+ '_dash_minutes_value': 'test/test_served_resources.py::TestTheHelpers::test_minutes_value',
+ '_dash_served_state': 'test/test_served_resources.py::TestTheHelpers::test_the_holder_is_one_per_process',
+ '_dash_session_cap_value': 'test/test_served_resources.py::TestTheHelpers::test_cap_value',
+ '_dash_session_defaults': 'test/test_served_resources.py::TestTheHelpers::test_defaults_from_the_environment',
+ '_dash_session_open': 'test/test_served_resources.py::TestSessionsAreCapped::test_bokeh_serve_path_shows_the_busy_text',
+ '_dash_session_release': 'test/test_served_resources.py::TestSessionsAreCapped::test_a_closed_session_frees_its_place',
+ '_dash_shared_payload': 'test/test_served_resources.py::TestTheDataIsDecodedOncePerProcess::test_five_documents_decode_once',
  # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
  # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
  # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)

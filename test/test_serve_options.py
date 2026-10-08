@@ -190,15 +190,16 @@ class TestServeDoesNotEnumerateTheBuildSurface:
         rule above: a build option declared here again would be a second
         list to drift.
 
-        Exactly its own five, not a subset of them: a subset held for a
+        Exactly its own seven (maxsessions and idletimeout since WP-30
+        P1.31a), not a subset of them: a subset held for a
         list the reader had read none of (see _syntax_options for the
         option it did not see)."""
         body = _program_body(_read_ado(), "_dash_serve_spec")
         declared = _syntax_options(body)
         assert declared == {"specpath", "datapath", "port", "nobrowser",
-                            "timeout"}, (
+                            "timeout", "maxsessions", "idletimeout"}, (
             f"_dash_serve_spec declares {sorted(declared)}; it should declare "
-            f"its own five and forward every build option untouched"
+            f"its own seven and forward every build option untouched"
         )
 
     def test_serve_spec_asks_prepare_spec_to_inherit(self):

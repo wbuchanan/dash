@@ -1010,7 +1010,8 @@ class TestTheGeneratedAppIsGated:
         capsys.readouterr()
         ns["_dash_server_app"](token=T)
         prov = _RecServer.made[-1].kw["auth_provider"]
-        assert type(prov).__name__ == "_DashTokenAuth"
+        # WP-30 P1.31a: Gate A inside the open-session cap's provider.
+        assert type(prov).__name__ == "_DashCapAuth"
         assert ns["_DASH_SERVE_TOKEN"] == T
         assert _lines(capsys.readouterr().out) == []
         assert ns["_DASH_LINK_DIR"] is None
@@ -1019,7 +1020,8 @@ class TestTheGeneratedAppIsGated:
         key = ns["_DASH_SERVE_TOKEN"]
         assert dr._dash_token_valid(key) and len(key) == 43 and key != T
         prov = _RecServer.made[-1].kw["auth_provider"]
-        assert type(prov).__name__ == "_DashTokenAuth"
+        # WP-30 P1.31a: Gate A inside the open-session cap's provider.
+        assert type(prov).__name__ == "_DashCapAuth"
         assert _admits(prov, key) and not _admits(prov, T)
         d = ns["_DASH_LINK_DIR"]
         p = os.path.join(d, "link.html")
@@ -1132,7 +1134,7 @@ class TestTheGeneratedAppIsGated:
             seen.get("later", [])
         assert not os.path.exists(d)
         assert "show" not in seen
-        assert type(seen["kw"]["auth_provider"]).__name__ == "_DashTokenAuth"
+        assert type(seen["kw"]["auth_provider"]).__name__ == "_DashCapAuth"
 
     def test_the_app_prints_its_link_files_path_never_the_key(
             self, app_src, _isolated, monkeypatch, capsys):

@@ -212,5 +212,80 @@ capture erase "`h7'.html"
 
 display as result "  [7/7] dash serve and dash build take every build option: PASS"
 
+// MS: maxsessions() and idletimeout() (WP-30 P1.31a)
+// ---------------------------------------------------------------
+// dash serve's open-session cap and idle close: digits only, bounded,
+// refused r(198) in the words of TR-46.14 and echoed as typed; the
+// returns are plain integers, empty when not given.
+// ---------------------------------------------------------------
+sysuse auto, clear
+dash clear
+dash scatter mpg weight, name(s1)
+tempfile mjm djm
+local _msfail 0
+// MS-01
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") maxsessions(3) idletimeout(5)
+local _ok = _rc == 0
+if `_ok' local _ok = "`r(maxsessions)'" == "3" & "`r(idletimeout)'" == "5"
+display as result "MS-01 " cond(`_ok', "PASS", "FAIL") ": maxsessions(3) idletimeout(5) return 3 and 5"
+if !`_ok' local ++_msfail
+// MS-02
+local _ok 1
+foreach v in 0 -1 1e3 3.5 1000001 12345678901 {
+    capture noisily _dash_serve_spec, specpath("`mjm'") datapath("`djm'") maxsessions(`v')
+    if _rc != 198 local _ok 0
+}
+display as result "MS-02 " cond(`_ok', "PASS", "FAIL") ": a cap out of 1..1,000,000 or not digits is r(198)"
+if !`_ok' local ++_msfail
+// MS-03
+local _ok 1
+local _nl = "3" + char(10)
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") maxsessions(`_nl')
+if _rc != 198 local _ok 0
+local _long = "9" * 400
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") maxsessions(`_long')
+if _rc != 198 local _ok 0
+display as result "MS-03 " cond(`_ok', "PASS", "FAIL") ": a newline or 400 digits is r(198)"
+if !`_ok' local ++_msfail
+// MS-04
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") idletimeout(0)
+local _ok = _rc == 0
+if `_ok' local _ok = "`r(idletimeout)'" == "0"
+foreach v in 525601 -1 5m {
+    capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") idletimeout(`v')
+    if _rc != 198 local _ok 0
+}
+display as result "MS-04 " cond(`_ok', "PASS", "FAIL") ": idletimeout(0) is never; 525601, -1 and 5m are r(198)"
+if !`_ok' local ++_msfail
+// MS-05
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") maxsessions(007)
+local _ok = _rc == 0
+if `_ok' local _ok = "`r(maxsessions)'" == "7"
+display as result "MS-05 " cond(`_ok', "PASS", "FAIL") ": maxsessions(007) returns 7"
+if !`_ok' local ++_msfail
+// MS-06
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") port(5006)
+local _ok = _rc == 0 & "`r(maxsessions)'" == "" & "`r(idletimeout)'" == ""
+display as result "MS-06 " cond(`_ok', "PASS", "FAIL") ": neither given, both returns are empty"
+if !`_ok' local ++_msfail
+// MS-07 (guard): not an abbreviation dash serve owns
+capture _dash_serve_spec, specpath("`mjm'") datapath("`djm'") maxs(3)
+local _ok = _rc == 198
+display as result "MS-07 " cond(`_ok', "PASS", "FAIL") ": maxs(3) is refused as an unknown option"
+if !`_ok' local ++_msfail
+// MS-08
+tempfile msapp mslog
+quietly graph drop _all
+log using "`mslog'.log", text replace name(_ms08)
+capture noisily dash build, server saving("`msapp'.py") replace
+log close _ms08
+cert_file_has "`mslog'.log", needle("--max-sessions N  --idle-timeout MINUTES")
+local _ok = r(found) == 1
+display as result "MS-08 " cond(`_ok', "PASS", "FAIL") ": dash build, server lists --max-sessions and --idle-timeout"
+if !`_ok' local ++_msfail
+capture erase "`msapp'.py"
+capture erase "`mslog'.log"
+assert `_msfail' == 0
+
 dash clear
 display as result "test_serve_options.cscript: ALL PASS"

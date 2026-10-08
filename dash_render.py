@@ -268,6 +268,16 @@ _DASH_BOKEH_INTERNALS = (
      "reason)",
      "_dash_dep_fail",
      "test/test_dependency_guards.py"),
+    # WP-30 P1.31a: the open-session cap's page gate.
+    ("bokeh.server.views.doc_handler.DocHandler",
+     "_dash_cap_auth (refuses to build without it)",
+     "test/test_served_resources.py::TestSessionsAreCapped"
+     "::test_the_fourth_page_is_busy"),
+    ("AuthProvider.get_user_async awaited in prepare; tornado.web.Finish "
+     "ends the request",
+     "_dash_cap_auth (checks the hook at build)",
+     "test/test_served_resources.py::TestSessionsAreCapped"
+     "::test_a_keyless_client_gets_403_not_503"),
 )
 
 
@@ -33497,6 +33507,396 @@ def _dash_event_throttle(doc, fn, rate=None, burst=None, clock=None):
     return _on_change
 
 
+# ---- Served session capacity and memory (WP-30 P1.31a) ----------------------
+# Threat (rule 1, G9): memory exhaustion of a served app by open sessions.
+# Measured at c96facd: 25 held sessions of a 200k-row app took 2 GB, every
+# session decoded the whole dataset again, and a connected tab was never
+# discarded.
+
+#: Sessions one app process holds open at once; beyond it a page request
+#: gets a static 503.  --max-sessions, dash serve maxsessions(),
+#: DASH_MAX_SESSIONS.  Threat: one reader opening tabs until memory runs out.
+_DASH_MAX_SESSIONS = 20
+#: Minutes without a filter, brush or CSV event before a session is closed
+#: (0 = never; at most a year).  Threat: forgotten tabs holding memory.
+_DASH_IDLE_MINUTES = 60
+_DASH_IDLE_MINUTES_MAX = 525600
+#: How often a session checks its own idle time, in milliseconds.
+_DASH_IDLE_CHECK_MS = 60000
+#: Bokeh's unused-session lifetime and its check, set explicitly so a
+#: closed tab frees its place within about 20 s on every Bokeh release.
+_DASH_UNUSED_SESSION_MS = 15000
+_DASH_CHECK_UNUSED_MS = 5000
+#: The busy page's Retry-After, in seconds.
+_DASH_BUSY_RETRY_S = 30
+#: The estimator memo's bound per process (lowess, fpfit, lpoly); least
+#: recently used results go first.  Threat: the memo itself filling memory.
+_DASH_MEMO_BYTES = 64 * 1024 * 1024
+#: The environment variables that set the cap and the idle time where no
+#: command line reaches the app (bokeh serve).  Digits only; anything else
+#: stops the app (fail closed).
+_DASH_SESSION_ENV = ("DASH_MAX_SESSIONS", "DASH_IDLE_TIMEOUT")
+#: The name of the generated app's trial flag (WP-30 P1.26b), read with
+#: globals().get: a copied helper that named the flag itself would have the
+#: app's constant scanner define it a second time, as None.
+_DASH_TRIAL_FLAG = "_DASH_" + "TRIAL"
+#: The busy page: a constant, with no request data, no script and no
+#: refresh.  Threat: a refusal that echoes or runs anything.
+_DASH_BUSY_HTML = (
+    "503 Server busy: this dashboard already has the most sessions open "
+    "that it allows (dash serve maxsessions(), --max-sessions). Close "
+    "another tab of it, or wait half a minute and reload.")
+#: What a session closed for idleness shows.  The one %d is filled only
+#: with the validated whole number of minutes; no other % is in the text.
+_DASH_IDLE_HTML = (
+    "This session was closed after %d minutes without a filter, brush or "
+    "download; reload the page to open a new one.")
+
+
+def _dash_session_cap_value(text):
+    """The open-session cap from *text*: ASCII digits only, 1 to
+    1,000,000, else ``argparse.ArgumentTypeError`` quoting at most 40
+    characters (WP-30 P1.31a).  An int is read as its digits.  Threat: a
+    cap the operator did not mean (a sign, a space, a non-ASCII digit)."""
+    import argparse
+    if isinstance(text, int) and not isinstance(text, bool):
+        text = str(text)
+    s = text if isinstance(text, str) else ""
+    n = None
+    if 0 < len(s) <= 12 and all(c in "0123456789" for c in s):
+        n = int(s)
+    if n is None or not 1 <= n <= 1000000:
+        raise argparse.ArgumentTypeError(
+            "%r is not an integer from 1 to 1,000,000" % (str(text)[:40],))
+    return n
+
+
+def _dash_minutes_value(text):
+    """The idle time in minutes from *text*: ASCII digits only, 0 (never)
+    to ``_DASH_IDLE_MINUTES_MAX``, else ``argparse.ArgumentTypeError``
+    quoting at most 40 characters (WP-30 P1.31a)."""
+    import argparse
+    if isinstance(text, int) and not isinstance(text, bool):
+        text = str(text)
+    s = text if isinstance(text, str) else ""
+    n = None
+    if 0 < len(s) <= 12 and all(c in "0123456789" for c in s):
+        n = int(s)
+    if n is None or not 0 <= n <= _DASH_IDLE_MINUTES_MAX:
+        raise argparse.ArgumentTypeError(
+            "%r is not a whole number of minutes from 0 to %d"
+            % (str(text)[:40], _DASH_IDLE_MINUTES_MAX))
+    return n
+
+
+def _dash_session_defaults(environ):
+    """``(cap, idle)`` from ``_DASH_SESSION_ENV`` in *environ*, else the
+    constants (WP-30 P1.31a).  A value that is set but invalid raises
+    ValueError naming the variable, never its value: the app does not
+    start with a cap it was not meant to have (fail closed)."""
+    import argparse
+    out = []
+    for name, check, default in (
+            (_DASH_SESSION_ENV[0], _dash_session_cap_value, _DASH_MAX_SESSIONS),
+            (_DASH_SESSION_ENV[1], _dash_minutes_value, _DASH_IDLE_MINUTES)):
+        raw = environ.get(name)
+        if raw is None:
+            out.append(default)
+            continue
+        try:
+            out.append(check(raw))
+        except argparse.ArgumentTypeError:
+            raise ValueError(
+                "dash: %s is set but is not %s; the app was not started"
+                % (name, "an integer from 1 to 1,000,000" if check is
+                   _dash_session_cap_value else
+                   "a whole number of minutes from 0 to %d"
+                   % _DASH_IDLE_MINUTES_MAX)) from None
+    return tuple(out)
+
+
+def _dash_served_state():
+    """The one per-process holder of the served app's shared state (WP-30
+    P1.31a), kept as ``sys.modules["_dash_served_state"]`` so ``bokeh
+    serve``, which runs the app module afresh per session, shares it:
+    ``payload_key``/``payload`` (the one decoded dataset), ``open`` (session
+    id -> True), ``cap``, ``idle``, ``memo`` (an OrderedDict),
+    ``memo_bytes`` and ``memo_lock`` (a ``threading.Lock`` every memo get
+    and put holds; section 57's worker relies on it).  Threat: per-session
+    state that grows with the sessions."""
+    import collections
+    import sys
+    import threading
+    import types
+    st = sys.modules.get("_dash_served_state")
+    if st is None or not hasattr(st, "memo_lock"):
+        st = types.ModuleType("_dash_served_state")
+        st.payload_key = None
+        st.payload = None
+        st.open = {}
+        st.cap = _DASH_MAX_SESSIONS
+        st.idle = _DASH_IDLE_MINUTES
+        st.memo = collections.OrderedDict()
+        st.memo_bytes = 0
+        st.memo_lock = threading.Lock()
+        st.refused_said = 0.0
+        sys.modules["_dash_served_state"] = st
+    return st
+
+
+def _dash_session_open(state, doc):
+    """Take a slot for *doc*'s session; False when the slots are full
+    (WP-30 P1.31a).  Only a document served to a session (one whose
+    session context carries Bokeh's session id) takes a slot, and it is
+    released once when Bokeh destroys the session; an in-process document
+    (the warm-up, a build's trial, a test) has no session to destroy and
+    takes none.  Threat: sessions beyond the cap exhausting memory."""
+    ctx = getattr(doc, "session_context", None)
+    key = getattr(ctx, "id", None) if ctx is not None else None
+    if not isinstance(key, str) or not key:
+        return True
+    if key in state.open:
+        return True
+    if len(state.open) >= state.cap:
+        return False
+    state.open[key] = True
+    doc.on_session_destroyed(
+        lambda session_context, _k=key: _dash_session_release(state, _k))
+    return True
+
+
+def _dash_session_release(state, key):
+    """Free *key*'s slot; idempotent (WP-30 P1.31a)."""
+    state.open.pop(key, None)
+
+
+def _dash_idle_due(last_active, now, minutes):
+    """Whether a session last active at *last_active* is idle at *now*
+    (monotonic seconds) under an idle time of *minutes* (0 = never)."""
+    return minutes > 0 and now - last_active >= minutes * 60
+
+
+def _dash_cap_auth(inner, state):
+    """Gate A with the session cap (WP-30 P1.31a): a Bokeh
+    ``AuthProvider`` that first awaits *inner*'s ``get_user_async`` (the
+    key check, which refuses with 403), and only then, for Bokeh's document
+    page when every slot of *state* is taken, answers 503 itself: status,
+    ``Retry-After``, dash's security headers, the constant
+    ``_DASH_BUSY_HTML`` and ``tornado.web.Finish``.  A keyless client
+    therefore learns nothing of the session count.  One refusal line a
+    minute is logged, with no request data.  Any other path to a session
+    meets make_document's own check.  Threat: memory exhaustion by open
+    sessions.  Fails closed (RuntimeError) when this Bokeh lacks the
+    document handler or the hook (A109)."""
+    import logging
+    import time
+    from bokeh.server.auth_provider import AuthProvider
+    from tornado.web import Finish
+    try:
+        from bokeh.server.views.doc_handler import DocHandler
+    except ImportError:
+        DocHandler = None
+    inner_admit = getattr(inner, "get_user_async", None)
+    inner_login = getattr(inner, "get_login_url", None)
+    if DocHandler is None or not callable(inner_admit) or not callable(
+            inner_login):
+        raise RuntimeError(
+            "dash: this Bokeh (bokeh %s) does not have the document handler "
+            "or the AuthProvider hook dash's session cap uses; the server "
+            "was not started. Run dash_setup for a verified bokeh."
+            % (_dash_bokeh_shown(),))
+
+    async def _admit(handler):
+        user = await inner_admit(handler)
+        if isinstance(handler, DocHandler) and len(state.open) >= state.cap:
+            now = time.monotonic()
+            if now - state.refused_said >= 60.0:
+                state.refused_said = now
+                logging.getLogger("dash.serve").warning(
+                    "dash refused a page: %d sessions are open, the most "
+                    "this app allows (--max-sessions).", state.cap)
+            handler.clear()
+            handler.set_status(503)
+            handler.set_header("Retry-After", str(_DASH_BUSY_RETRY_S))
+            for name, value in _DASH_SECURITY_HEADERS:
+                handler.set_header(name, value)
+            handler.set_header("Content-Type", "text/html; charset=utf-8")
+            raise Finish(_DASH_BUSY_HTML)
+        return user
+
+    class _DashCapAuth(AuthProvider):
+        @property
+        def get_user_async(self):
+            return _admit
+
+        @property
+        def get_login_url(self):
+            return inner_login
+
+    prov = _DashCapAuth()
+    if prov.get_user_async is not _admit:
+        raise RuntimeError(
+            "dash: this Bokeh (bokeh %s) does not use the AuthProvider hook "
+            "dash's session cap overrides; the server was not started. Run "
+            "dash_setup for a verified bokeh." % (_dash_bokeh_shown(),))
+    return prov
+
+
+def _dash_shared_payload(state, spec_b64, data_b64, loader):
+    """``(spec, df, meta)`` for one session, decoded once per process
+    (WP-30 P1.31a).  The key is the sha256 of the two embedded literals;
+    one entry is kept, replaced by a new key.  The shared frame's arrays
+    and the qualifier masks are made read-only, and each session gets a
+    deep copy of the spec, a shallow copy of the frame and copies of the
+    meta's dicts.  In a build's trial (the app's trial flag) and inside Stata
+    (``sfi`` imported) nothing is kept.  Threats: a session changing what
+    another draws through shared state; a cache that grows."""
+    import copy
+    import hashlib
+    import sys
+    if globals().get(_DASH_TRIAL_FLAG, False) or "sfi" in sys.modules:
+        return loader()
+    h = hashlib.sha256()
+    h.update(str(spec_b64).encode("utf-8"))
+    h.update(b"\0")
+    h.update(str(data_b64).encode("utf-8"))
+    key = h.hexdigest()
+    if state.payload_key != key or state.payload is None:
+        state.payload_key, state.payload = None, None
+        spec, df, meta = loader()
+        try:
+            arrays = [b.values for b in df._mgr.blocks]
+        except AttributeError:
+            arrays = []
+        masks = meta.get("qual_masks") if isinstance(meta, dict) else None
+        if isinstance(masks, dict):
+            arrays += list(masks.values())
+        for arr in arrays:
+            flags = getattr(arr, "flags", None)
+            if flags is not None and hasattr(flags, "writeable"):
+                flags.writeable = False
+        state.payload_key, state.payload = key, (spec, df, meta)
+    spec, df, meta = state.payload
+    return (copy.deepcopy(spec), df.copy(deep=False),
+            {k: (dict(v) if isinstance(v, dict) else v)
+             for k, v in meta.items()})
+
+
+def _dash_memo_key(name, args, kwargs):
+    """The estimator memo's key for ``name(*args, **kwargs)``: a blake2b
+    over each numpy argument's dtype, shape and bytes and the ``repr`` of
+    every scalar or None (WP-30 P1.31a).  None when an argument is of any
+    other kind -- a frame or a list whose repr could be cut short -- and
+    the call is then not memoised.  Threat: two inputs sharing a key."""
+    import hashlib
+    import numpy as _np
+    h = hashlib.blake2b(digest_size=32)
+    h.update(repr(name).encode("utf-8"))
+
+    def _feed(v):
+        if isinstance(v, _np.ndarray):
+            if v.dtype.hasobject:
+                return False
+            a = _np.ascontiguousarray(v)
+            h.update(b"\1A" + str(a.dtype).encode("ascii")
+                     + repr(a.shape).encode("ascii"))
+            h.update(a.tobytes())
+            return True
+        if v is None or isinstance(v, (bool, int, float, str, _np.generic)):
+            h.update(b"\1S" + type(v).__name__.encode("ascii")
+                     + repr(v).encode("utf-8"))
+            return True
+        if isinstance(v, tuple):
+            h.update(b"\1T%d" % len(v))
+            return all(_feed(x) for x in v)
+        return False
+
+    for v in args:
+        if not _feed(v):
+            return None
+    for k in sorted(kwargs):
+        h.update(b"\1K" + k.encode("utf-8"))
+        if not _feed(kwargs[k]):
+            return None
+    return h.hexdigest()
+
+
+def _dash_memo_wrap(fn, name, state, method=False):
+    """*fn* memoised in ``state.memo`` (WP-30 P1.31a): results whose arrays
+    total at most ``_DASH_MEMO_BYTES`` are kept, least recently used first
+    out, stored read-only and handed out as copies, so NaN bit patterns are
+    kept and no caller reaches the stored arrays.  Every get and put holds
+    ``state.memo_lock``; *fn* runs outside it.  With *method* the first
+    argument (the class) is left out of the key.  Inert in a build's trial
+    and inside Stata (``sfi`` imported).  Threat: a memo that grows."""
+    import copy
+    import functools
+    import sys
+    import numpy as _np
+
+    def _nbytes(v):
+        if isinstance(v, _np.ndarray):
+            return int(v.nbytes)
+        if isinstance(v, dict):
+            return 64 + sum(_nbytes(x) for x in v.values())
+        if isinstance(v, (tuple, list)):
+            return 64 + sum(_nbytes(x) for x in v)
+        return 64
+
+    def _frozen(v):
+        if isinstance(v, _np.ndarray):
+            v.flags.writeable = False
+        elif isinstance(v, dict):
+            for x in v.values():
+                _frozen(x)
+        elif isinstance(v, (tuple, list)):
+            for x in v:
+                _frozen(x)
+        return v
+
+    def _thawed(v):
+        if isinstance(v, _np.ndarray):
+            return v.copy()
+        if isinstance(v, dict):
+            return {k: _thawed(x) for k, x in v.items()}
+        if isinstance(v, tuple):
+            return tuple(_thawed(x) for x in v)
+        if isinstance(v, list):
+            return [_thawed(x) for x in v]
+        return copy.deepcopy(v)
+
+    @functools.wraps(fn)
+    def _memo(*args, **kwargs):
+        if globals().get(_DASH_TRIAL_FLAG, False) or "sfi" in sys.modules:
+            return fn(*args, **kwargs)
+        key = _dash_memo_key(name, args[1:] if method else args, kwargs)
+        if key is None:
+            return fn(*args, **kwargs)
+        with state.memo_lock:
+            hit = state.memo.get(key)
+            if hit is not None:
+                state.memo.move_to_end(key)
+        if hit is not None:
+            return _thawed(hit[0])
+        result = fn(*args, **kwargs)
+        size = _nbytes(result)
+        if size <= _DASH_MEMO_BYTES:
+            stored = _frozen(_thawed(result))
+            with state.memo_lock:
+                old = state.memo.pop(key, None)
+                if old is not None:
+                    state.memo_bytes -= old[1]
+                state.memo[key] = (stored, size)
+                state.memo_bytes += size
+                while state.memo_bytes > _DASH_MEMO_BYTES and state.memo:
+                    _k, (_v, _s) = state.memo.popitem(last=False)
+                    state.memo_bytes -= _s
+        return result
+
+    _memo._dash_memo_of = fn
+    return _memo
+
+
 # ---- The toolbar ---------------------------------------------------------------
 
 #: Every figure's tools, in this order, in both render modes (WP-21).  A
@@ -43629,6 +44029,15 @@ class ServerAppBuilder:
                       "_DASH_LIMITS",
                       # The recompute's pace, _dash_event_throttle's defaults.
                       "_DASH_EVENT_RATE", "_DASH_EVENT_BURST",
+                      # WP-30 P1.31a: the session cap, the idle close,
+                      # Bokeh's lifetimes, the busy and idle pages and the
+                      # estimator memo's bound.
+                      "_DASH_MAX_SESSIONS", "_DASH_IDLE_MINUTES",
+                      "_DASH_IDLE_MINUTES_MAX", "_DASH_IDLE_CHECK_MS",
+                      "_DASH_UNUSED_SESSION_MS", "_DASH_CHECK_UNUSED_MS",
+                      "_DASH_BUSY_RETRY_S", "_DASH_MEMO_BYTES",
+                      "_DASH_SESSION_ENV", "_DASH_BUSY_HTML",
+                      "_DASH_IDLE_HTML", "_DASH_TRIAL_FLAG",
                       # The served page's policy and the launcher's headers
                       # (WP-20), read by _dash_served_template and
                       # _dash_server_transforms; the viewport tag both pages
@@ -44058,6 +44467,14 @@ class ServerAppBuilder:
                          # The resource limits, read from the spec and
                          # applied where the app groups and lists (WP-19).
                          "_dash_limits", "_dash_limit_hint",
+                         # WP-30 P1.31a: the session cap and idle time,
+                         # the process holder, the slots, the 503 gate and
+                         # the data decoded once per process.
+                         "_dash_session_cap_value", "_dash_minutes_value",
+                         "_dash_session_defaults", "_dash_served_state",
+                         "_dash_session_open", "_dash_session_release",
+                         "_dash_idle_due", "_dash_cap_auth",
+                         "_dash_shared_payload",
                          "_dash_dropdown_values",
                          # GAPS2 X1: the one test of "numeric column" a
                          # dropdown's value and mask share.
@@ -44407,7 +44824,10 @@ class ServerAppBuilder:
                     # Stata's logical operators (24sep2026).
                     _mask_string_literals, _unmask_string_literals,
                     _stata_logic_to_pandas,
-                    _stata_if_to_pandas):
+                    _stata_if_to_pandas,
+                    # WP-30 P1.31a: the estimator memo the app wraps
+                    # lowess, fpfit and lpoly in.
+                    _dash_memo_key, _dash_memo_wrap):
             out += _textwrap.dedent(
                 _dash_source_of(_fn)).rstrip("\n").split("\n")
             out += ["", ""]
@@ -45373,6 +45793,18 @@ class ServerAppBuilder:
             "                   help='Dashboard sessions per minute across all '",
             "                        'clients (default %(default)s; 1 to '",
             "                        '1,000,000).')",
+            "    # WP-30 P1.31a: the open-session cap and the idle close.",
+            "    p.add_argument('--max-sessions', type=_dash_session_cap_value,",
+            "                   default=_DASH_STATE.cap, metavar='N',",
+            "                   help='Dashboard sessions open at once; a page '",
+            "                        'past it gets HTTP 503 (default %(default)s; '",
+            "                        '1 to 1,000,000).')",
+            "    p.add_argument('--idle-timeout', type=_dash_minutes_value,",
+            "                   default=_DASH_STATE.idle, metavar='MINUTES',",
+            "                   dest='idle_timeout',",
+            "                   help='Close a session after this many minutes '",
+            "                        'with no filter, brush or download (default '",
+            "                        '%(default)s; 0 = never).')",
             "    return p",
             "",
             "",
@@ -45586,6 +46018,27 @@ class ServerAppBuilder:
         # 4. make_document(doc)
         # ----------------------------------------------------------------
         lines += [
+            "# ---- Served session capacity and memory (WP-30 P1.31a) ----",
+            "# One holder per process (bokeh serve runs this module per",
+            "# session and shares it): the decoded data, the open sessions'",
+            "# slots, the cap and idle time (DASH_MAX_SESSIONS and",
+            "# DASH_IDLE_TIMEOUT, else 20 and 60; an invalid value stops the",
+            "# app), and the estimator memo.",
+            "_DASH_STATE = _dash_served_state()",
+            "_DASH_STATE.cap, _DASH_STATE.idle = _dash_session_defaults(os.environ)",
+            "# lowess, fpfit and lpoly memoised per process within",
+            "# _DASH_MEMO_BYTES; the saved renderer's own are never touched.",
+            "if not getattr(GlyphMapper._stata_lowess, '_dash_memo_of', None):",
+            "    GlyphMapper._stata_lowess = staticmethod(_dash_memo_wrap(",
+            "        GlyphMapper.__dict__['_stata_lowess'].__func__, '_stata_lowess', _DASH_STATE))",
+            "    GlyphMapper._compute_lpoly_fit = staticmethod(_dash_memo_wrap(",
+            "        GlyphMapper.__dict__['_compute_lpoly_fit'].__func__, '_compute_lpoly_fit', _DASH_STATE))",
+            "    GlyphMapper._fp_fit = classmethod(_dash_memo_wrap(",
+            "        GlyphMapper.__dict__['_fp_fit'].__func__, '_fp_fit', _DASH_STATE, method=True))",
+            "    _compute_lpoly_fit = _dash_memo_wrap(_compute_lpoly_fit, '_compute_lpoly_fit', _DASH_STATE)",
+            "    _lpoly_se = _dash_memo_wrap(_lpoly_se, '_lpoly_se', _DASH_STATE)",
+            "",
+            "",
             "def make_document(doc):",
             '    """Bokeh Server document factory — called once per browser connection.',
             "",
@@ -45628,8 +46081,24 @@ class ServerAppBuilder:
             "            'Please wait a moment before reconnecting.</p>'",
             "        )))",
             "        return",
+            "    # ---- The open-session cap (WP-30 P1.31a) ----",
+            "    # python app.py answers a page past the cap with a 503 before",
+            "    # any session; bokeh serve has no such hook, and a session can",
+            "    # race past it, so the cap holds here too: the busy text alone.",
+            "    if not _dash_session_open(_DASH_STATE, doc):",
+            "        doc.add_root(Div(text=_DASH_BUSY_HTML))",
+            "        return",
             "",
-            "    spec, df, meta = _load_spec_and_data()",
+            "    # Decoded once per process and shared read-only (WP-30 P1.31a).",
+            "    spec, df, meta = _dash_shared_payload(_DASH_STATE, _SPEC_B64, _DATA_B64, _load_spec_and_data)",
+            "    # A session's last filter, brush or CSV event: the idle clock.",
+            "    _dash_last = [_time.monotonic()]",
+            "",
+            "    def _dash_touch(fn):",
+            "        def _touched(*a, **k):",
+            "            _dash_last[0] = _time.monotonic()",
+            "            return fn(*a, **k)",
+            "        return _touched",
             "    # The masks of the qualifier columns dash.ado exported: every",
             "    # qualifier of a spec it wrote selects its rows with one, and",
             "    # none is translated (_dash_qualified_frame's qual).",
@@ -46989,7 +47458,7 @@ class ServerAppBuilder:
             "                     if 'value_throttled' in w.properties() else 'value')",
             "            # And a token bucket per callback per session, for changes",
             "            # sent faster than any hand moves a widget.",
-            "            w.on_change(_attr, _dash_event_throttle(doc, _cb_for_w))",
+            "            w.on_change(_attr, _dash_event_throttle(doc, _dash_touch(_cb_for_w)))",
             "",
             "    # ---- Wire brush selection callbacks ----",
             "    def _make_brush_cb(_kpi_divs, _kpi_defs, _df_ref, _src):",
@@ -47078,7 +47547,7 @@ class ServerAppBuilder:
             "                # A token bucket of its own, as each filter has: a client",
             "                # can send selections as fast as it can send values.",
             "                _bsrc.selected.on_change('indices', _dash_event_throttle(",
-            "                    doc, _make_brush_cb(kpi_divs, kpi_defs, df, _bsrc)))",
+            "                    doc, _dash_touch(_make_brush_cb(kpi_divs, kpi_defs, df, _bsrc))))",
             "",
             "    # ---- CSV download (WP-21) ----",
             "    # Opt-in (dash build, csv).  The server masks its frame with",
@@ -47111,7 +47580,7 @@ class ServerAppBuilder:
             "            _csv_seq[0] += 1",
             "            _csv_src.data = _dash_csv_payload(_csv_rows, _csv_meta)",
             "            _csv_btn.tags = [_csv_seq[0]]",
-            "        _csv_send = _dash_event_throttle(doc, _send_csv,",
+            "        _csv_send = _dash_event_throttle(doc, _dash_touch(_send_csv),",
             "                                         rate=_DASH_CSV_RATE,",
             "                                         burst=_DASH_CSV_BURST)",
             "        _csv_btn.on_click(lambda event: _csv_send('clicks', None, None))",
@@ -47274,6 +47743,22 @@ class ServerAppBuilder:
             '',
             '    doc.add_root(layout)',
             "    doc.title = title_text or 'dash'",
+            "    # ---- The idle close (WP-30 P1.31a) ----",
+            "    # Only a served session: its document is cleared, says why,",
+            "    # and frees its slot.",
+            "    if getattr(doc, 'session_context', None) is not None and _DASH_STATE.idle > 0:",
+            "        def _dash_idle_check():",
+            "            if not _dash_idle_due(_dash_last[0], _time.monotonic(), _DASH_STATE.idle):",
+            "                return",
+            "            for _dcb in list(doc.session_callbacks):",
+            "                try:",
+            "                    doc.callbacks.remove_session_callback(_dcb)",
+            "                except (KeyError, ValueError):",
+            "                    pass",
+            "            doc.clear()",
+            "            doc.add_root(Div(text=_DASH_IDLE_HTML % int(_DASH_STATE.idle)))",
+            "            _dash_session_release(_DASH_STATE, getattr(doc.session_context, 'id', None))",
+            "        doc.add_periodic_callback(_dash_idle_check, _DASH_IDLE_CHECK_MS)",
             "",
             "",
         ]
@@ -47401,7 +47886,11 @@ class ServerAppBuilder:
             "        allow_websocket_origin=_origins,",
             "        num_procs=1,",
             "        extra_patterns=[('/health', _HealthHandler)],",
-            "        auth_provider=_dash_token_auth(_DASH_SERVE_TOKEN),",
+            "        # WP-30 P1.31a: the key first, then the open-session cap;",
+            "        # and Bokeh's unused-session lifetimes, set explicitly.",
+            "        auth_provider=_dash_cap_auth(_dash_token_auth(_DASH_SERVE_TOKEN), _DASH_STATE),",
+            "        unused_session_lifetime_milliseconds=_DASH_UNUSED_SESSION_MS,",
+            "        check_unused_sessions_milliseconds=_DASH_CHECK_UNUSED_MS,",
             "        **_kw",
             "    )",
             "    if _dash_made:",
@@ -47425,9 +47914,33 @@ class ServerAppBuilder:
             "    _a = _p.parse_args()",
             "    if _a.trust_xff:",
             "        _TRUST_FORWARDED_FOR = True",
+            "    # WP-30 P1.31a: warm up before the server exists -- the data",
+            "    # decoded and the slow fits memoised -- saying so first, so a",
+            "    # long start is not read as a failure.  Its notes reach the",
+            "    # note hook as a first session's would (IR-10).  Before the",
+            "    # limits are applied, so it spends no session's budget.",
+            "    _dash_w_spec, _dash_w_df, _ = _dash_shared_payload(",
+            "        _DASH_STATE, _SPEC_B64, _DATA_B64, _load_spec_and_data)",
+            "    _dash_w_est = sorted({str(_l.get('type')) for _g in (_dash_w_spec.get('graphs') or [])",
+            "                          if isinstance(_g, dict) for _l in (_g.get('plots') or [])",
+            "                          if isinstance(_l, dict) and _l.get('type') in",
+            "                          ('lowess', 'lpoly', 'lpolyci', 'fpfit', 'fpfitci', 'kdensity')})",
+            "    print('preparing the dashboard (%d rows, %s)' % (len(_dash_w_df),",
+            "          ', '.join(_dash_w_est) or 'no estimators'), flush=True)",
+            "    del _dash_w_spec, _dash_w_df",
+            "    try:",
+            "        from bokeh.document import Document as _DashDocument",
+            "        make_document(_DashDocument())",
+            "    except Exception as _e:",
+            "        print('dash: the warm-up could not draw this dashboard (%s); '",
+            "              'sessions may fail the same way.' % type(_e).__name__,",
+            "              flush=True)",
             "    # Before the server starts, so no session is ever admitted",
             "    # under limits other than the ones asked for.",
             "    _dash_apply_limits(_a)",
+            "    # WP-30 P1.31a: checked again, as the limits are.",
+            "    _DASH_STATE.cap = _dash_session_cap_value(_a.max_sessions)",
+            "    _DASH_STATE.idle = _dash_minutes_value(_a.idle_timeout)",
             "    # argparse applies type= to a value given on the command",
             "    # line, never to a non-string default -- so an embedded",
             "    # build_options['port'] out of range (read with int() alone",
@@ -47507,6 +48020,8 @@ class ServerAppBuilder:
             "    print(f'Session limits per minute: {_a.sessions_per_client} per '",
             "          f'client, {_a.new_clients_per_minute} new clients, '",
             "          f'{_a.sessions_per_minute} in all.', flush=True)",
+            "    print(f'Sessions open at once: {_DASH_STATE.cap}; idle sessions '",
+            "          f'close after {_DASH_STATE.idle} minutes (0 = never).', flush=True)",
             "    print('Stops when the program that started it ends.'",
             "          if _a.parent_watch else 'Press Ctrl+C to stop.',",
             "          flush=True)",
@@ -48179,7 +48694,8 @@ def _dash_relay_kind(line, in_traceback=False):
 
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
                       ready_seconds=30.0, prebind=True, expect=None,
-                      erase_app_when_ready=False, link_dir=None, said=()):
+                      erase_app_when_ready=False, link_dir=None, said=(),
+                      max_sessions=None, idle_timeout=None):
     """Run the generated Bokeh Server app as a subprocess and block until
     it answers ``/health`` or fails, forwarding its own output as it runs.
 
@@ -48306,6 +48822,11 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
         _cmd.append("--show")
     if timeout > 0:
         _cmd += ["--timeout", str(timeout)]
+    # WP-30 P1.31a: the open-session cap and the idle time, as ints.
+    if max_sessions is not None:
+        _cmd += ["--max-sessions", str(_dash_session_cap_value(max_sessions))]
+    if idle_timeout is not None:
+        _cmd += ["--idle-timeout", str(_dash_minutes_value(idle_timeout))]
     _cmd.append("--parent-watch")
     # WP-29 P0.12a: the key follows the app text on stdin (L-4).
     _cmd.append("--token-stdin")
@@ -48604,6 +49125,19 @@ if __name__ == "__main__":
             "Only used with --mode server."
         ),
     )
+    # WP-30 P1.31a: passed to the app (dash serve maxsessions() and
+    # idletimeout()); the app's defaults (20, 60) when not given.
+    parser.add_argument(
+        "--max-sessions", dest="max_sessions", default=None,
+        type=_dash_session_cap_value, metavar="N",
+        help="Sessions the app holds open at once (1 to 1,000,000). "
+             "Only used with --mode server --launch.")
+    parser.add_argument(
+        "--idle-timeout", dest="idle_timeout", default=None,
+        type=_dash_minutes_value, metavar="MINUTES",
+        help="Minutes without a filter, brush or download before a "
+             "session is closed (0 = never).  Only used with --mode server "
+             "--launch.")
     parser.add_argument(
         "--no-browser",
         dest="no_browser",
@@ -48706,6 +49240,8 @@ if __name__ == "__main__":
                              args.no_browser, expect=_written,
                              link_dir=_dash_private_run_of(args.output),
                              said=_dash_said,
+                             max_sessions=args.max_sessions,
+                             idle_timeout=args.idle_timeout,
                              erase_app_when_ready=_erase)
         except _DashServeInterrupted:
             # Before RuntimeError: an interruption is r(1), not the r(198)

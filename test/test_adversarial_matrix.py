@@ -2359,6 +2359,10 @@ class _LiveApp:
         # WP-29 P0.12a: the app runs with the shared test key unless *env*
         # maps DASH_SERVE_TOKEN to None, which removes it.
         env["DASH_SERVE_TOKEN"] = TEST_TOKEN
+        # WP-30 P1.31a: one shared live app serves a whole class's page
+        # requests, more than the default 20 within Bokeh's 15 s unused
+        # lifetime; the cap itself is test_served_resources.py's.
+        env["DASH_MAX_SESSIONS"] = "1000000"
         for k, v in self.env.items():
             if v is None:
                 env.pop(k, None)

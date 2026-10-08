@@ -10035,7 +10035,7 @@ program define _dash_build
         // WP-29 P0.12a: the served dashboard opens only through its key.
         display as text `"  Access:    the app makes a new key for each launch unless DASH_SERVE_TOKEN gives one, writes the link that holds it to a file only you can read, and prints that file's path; only that link opens the dashboard"'
         display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'
-        display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N"'
+        display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N  --max-sessions N  --idle-timeout MINUTES"'
     }
     else {
         mata: _dash_say("txt", "dash: dashboard saved to ", st_local("saving"), "")
@@ -10098,6 +10098,8 @@ program define _dash_serve_spec, rclass
         PORT(string)        ///
         NOBRowser           ///
         TIMEOUT(string)     ///
+        MAXSESSIONS(string) ///
+        IDLETIMEOUT(string) ///
         *                   ///
     ]
 
@@ -10137,6 +10139,32 @@ program define _dash_serve_spec, rclass
     // Written as a plain integer: 007 goes to the launcher as 7.
     local timeout = strofreal(real("`timeout'"), "%12.0f")
 
+    // WP-30 P1.31a: the open-session cap and the idle close, by the same
+    // byte-level rules as port() and timeout(): digits only, bounded
+    // length, never a regular expression or an expression; empty when
+    // not given, so the app keeps its own defaults (20 and 60).
+    // Threat: memory exhaustion of the served app by open sessions.
+    if `: length local maxsessions' {
+        mata: st_local("_mdig", strofreal(_dash_is_digits(st_local("maxsessions"), 7)))
+        local _mval = .
+        if `_mdig' local _mval = real("`maxsessions'")
+        if !`_mdig' | `_mval' < 1 | `_mval' > 1000000 {
+            mata: _dash_say("err", "dash serve: maxsessions() must be an integer from 1 to 1,000,000 (got: ", st_local("maxsessions"), ")")
+            exit(198)
+        }
+        local maxsessions = strofreal(`_mval', "%12.0f")
+    }
+    if `: length local idletimeout' {
+        mata: st_local("_idig", strofreal(_dash_is_digits(st_local("idletimeout"), 6)))
+        local _ival = .
+        if `_idig' local _ival = real("`idletimeout'")
+        if !`_idig' | `_ival' > 525600 {
+            mata: _dash_say("err", "dash serve: idletimeout() must be a whole number of minutes from 0 to 525600 (got: ", st_local("idletimeout"), ")")
+            exit(198)
+        }
+        local idletimeout = strofreal(`_ival', "%12.0f")
+    }
+
     if `"`specpath'"' == "" | `"`datapath'"' == "" {
         display as error "dash serve: internal error — specpath() and datapath() are required."
         exit(198)
@@ -10159,6 +10187,8 @@ program define _dash_serve_spec, rclass
     return local port             "`port_int'"
     return local timeout          "`timeout'"
     return local nobrowser        "`nobrowser'"
+    return local maxsessions      "`maxsessions'"
+    return local idletimeout      "`idletimeout'"
     return local layout           `"`r(layout)'"'
     return local filterposition   `"`r(filterposition)'"'
 end
@@ -10211,6 +10241,8 @@ program define _dash_serve
 
     local port_int   "`r(port)'"
     local timeout    "`r(timeout)'"
+    local _srv_maxs  "`r(maxsessions)'"
+    local _srv_idle  "`r(idletimeout)'"
     // The browser, by the rule `dash build' uses: its nobrowser option,
     // the session's $dash_nobrowser, or a registered graph's nodraw keeps
     // it shut.  This read the option alone (test_serve_browser.cscript).
@@ -10258,6 +10290,13 @@ program define _dash_serve
     python: sys.argv = ["dash_render.py", "--spec", "`_py_master'", "--data", "`_py_data'", "--output", "`_py_serve'", "--mode", "server", "--launch", "--port", "`port_int'", "--timeout", "`timeout'"]
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
+    }
+    // WP-30 P1.31a: digits only, checked by _dash_serve_spec.
+    if "`_srv_maxs'" != "" {
+        python: sys.argv += ["--max-sessions", "`_srv_maxs'"]
+    }
+    if "`_srv_idle'" != "" {
+        python: sys.argv += ["--idle-timeout", "`_srv_idle'"]
     }
     // GAPS2 F1: dash serve used to report success (rc 0) whatever the
     // launched app actually did -- a port already held by another program

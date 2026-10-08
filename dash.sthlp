@@ -105,6 +105,8 @@
 {cmd:port(}{it:#}{cmd:)}
 {cmd:nobrowser}
 {cmd:timeout(}{it:#}{cmd:)}
+{cmd:maxsessions(}{it:#}{cmd:)}
+{cmd:idletimeout(}{it:#}{cmd:)}
 [{it:other_build_options}]]
 
 {pstd}{ul:Clear registry}{p_end}
@@ -1124,6 +1126,13 @@ link holding a key made for each launch; see
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes,
     at most nine digits; 0 means run until Break (default){p_end}
+{synopt:{cmd:maxsessions(}{it:#}{cmd:)}}sessions open at once, an integer
+    from 1 to 1,000,000 in digits only (default 20); a page asked for
+    beyond it gets HTTP 503; see
+    {help dash##limits:Resource limits}{p_end}
+{synopt:{cmd:idletimeout(}{it:#}{cmd:)}}close a session after {it:#}
+    minutes with no filter, brush or download, 0 to 525600 in digits only;
+    0 means never (default 60){p_end}
 {synoptline}
 
 {pstd}
@@ -1977,8 +1986,10 @@ It accepts {cmd:--port} {it:N}, {cmd:--address} {it:iface},
 {cmd:--timeout} {it:minutes}, {cmd:--show}, {cmd:--trust-forwarded-for}, and
 the rate limits {cmd:--sessions-per-client} {it:N},
 {cmd:--new-clients-per-minute} {it:N} and {cmd:--sessions-per-minute}
-{it:N} described below.  No browser window opens unless {cmd:--show} is
-given, so the app is usable from a script or a batch job.
+{it:N} described below, and {cmd:--max-sessions} {it:N} and
+{cmd:--idle-timeout} {it:minutes} (see
+{help dash##limits:Resource limits}).  No browser window opens unless
+{cmd:--show} is given, so the app is usable from a script or a batch job.
 
 {pstd}
 The app never runs without a key, and only a link holding it opens the
@@ -2009,6 +2020,11 @@ own application, and so without what the app's own server adds: there is no
 {cmd:/health}, none of the headers below is sent, the session limits below
 do not apply ({cmd:bokeh serve} runs the script afresh for each session, so
 every session starts a new count), and the app's flags above are not read.
+The session cap, the idle close, the data decoded once and the memo of the
+slow fits do apply there, per process under {cmd:--num-procs}, set by the
+environment variables {cmd:DASH_MAX_SESSIONS} and {cmd:DASH_IDLE_TIMEOUT}
+(digits only; any other value stops the app); a session past the cap shows
+the busy text as its page, sent with status 200.
 {cmd:bokeh serve} takes its own {cmd:--port}, {cmd:--address} and
 {cmd:--allow-websocket-origin}, and listens on every interface unless it is
 given {cmd:--address}.
@@ -2399,6 +2415,28 @@ counts every observation.
 {pstd}
 {ul:A served dashboard} has rate limits of its own; see
 {help dash##server_mode:Server Mode}.
+
+{pstd}
+{ul:Sessions open at once.}  A served app holds at most
+{cmd:maxsessions()} sessions open at once ({cmd:--max-sessions},
+{cmd:DASH_MAX_SESSIONS}; default 20).  A page asked for beyond it, by a
+client that holds the key, gets HTTP 503 with {cmd:Retry-After: 30} and a
+fixed text that names the setting, with no script and no refresh; a client
+without the key still gets 403.  A closed tab frees its place within about
+20 seconds.  A session with no filter move, brush or CSV download for
+{cmd:idletimeout()} minutes ({cmd:--idle-timeout}, {cmd:DASH_IDLE_TIMEOUT};
+default 60, 0 never) is closed: its page says so and frees its place, so a
+tab that was only being looked at can need a reload.  The data is decoded
+once per app process and shared, read-only, by every session, and the
+lowess, fpfit and lpoly fits are kept for reuse within 64 MB per process.
+Each session adds at most about 80 MB at 200,000 rows by 3 layers (measured
+by the test suite, not checked at run time); at the default cap of 20 that
+is up to about 1.9 GB with the server's own 221 MB and the 64 MB of fits, so
+set {cmd:maxsessions()} to fit the machine.  Before it listens the app
+prints {cmd:preparing the dashboard (}{it:N} {cmd:rows, }...{cmd:)} and
+draws the dashboard once, so a long start is not a failure and no reader
+pays for the first drawing.  Opening a session still runs on the server's
+one event loop.
 
 
 {marker examples}

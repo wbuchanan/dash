@@ -522,7 +522,7 @@ and now matches Stata.
 
 - The served app refuses to start, and a saved page is not written, when a bokeh release changes what dash's protections rely on: the page template's blocks that carry the Content-Security-Policy and script nonce (a template without them served a page with no policy), the saved page's head, the websocket origin matcher (a handler that stopped using it re-admitted look-alike origins; `bokeh serve app.py` now makes Bokeh's origin check exact as `python app.py` does, where under bokeh 3.8 it admitted any origin that began with an allowed host), and the key check's AuthProvider hook and token layout (a renamed hook let every request in). Each stops with one message naming the internal and `dash_setup`. The label, legend and tooltip injection checks run in a browser for every bokeh version in the window. (WP-30, P1.30)
 
-<!-- WP-30 P1.31a -->
+- A served dashboard can no longer be exhausted by open sessions: it served every session (25 held sessions took 2 GB at 200k rows), and now admits at most `maxsessions()` at once, answering others with a static HTTP 503 after the key check, closes idle sessions, and decodes its data once and shares it read-only. (WP-30, P1.31a)
 
 ### New
 
@@ -583,7 +583,7 @@ and now matches Stata.
 
 <!-- WP-30 P1.28b -->
 
-<!-- WP-30 P1.31a -->
+- `dash serve` takes `maxsessions(#)` (default 20) and `idletimeout(#)` minutes (default 60, 0 = never), and a served app takes `--max-sessions` and `--idle-timeout` (or `DASH_MAX_SESSIONS` and `DASH_IDLE_TIMEOUT` under `bokeh serve`); the app prints "preparing the dashboard (N rows, ...)" and builds once before it listens, so no reader pays the first build. (WP-30, P1.31a)
 
 ### Fixed
 

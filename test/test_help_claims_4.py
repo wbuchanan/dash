@@ -1715,8 +1715,9 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
         assert len(asked["opened"]) == 1 and \
             asked["opened"][0].startswith("file://")
         assert (60, "stop") in asked["later"]
+        # WP-30 P1.31a: the key's provider inside the open-session cap's.
         assert type(asked["kw"]["auth_provider"]).__name__ == \
-            "_DashTokenAuth"
+            "_DashCapAuth"
 
 
 @pytest.mark.serve

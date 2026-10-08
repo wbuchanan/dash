@@ -530,9 +530,10 @@ class TestTheParsersFoundSomething:
         # dlstyle() and bmlinestyle().
         # 161 -> 162: P1.8a's cmissings() entry.
         # 162 -> 163: P1.8b's Recast entry adds recastas() and type() and
-        # the Unsupported entry's recast() leaves.
-        assert len(found) == 163, (
-            f"{len(found)} options parsed out of dash.sthlp, 163 measured "
+        # the Unsupported entry's recast() leaves; 163 -> 165: P1.31a's
+        # dash serve maxsessions() and idletimeout().
+        assert len(found) == 165, (
+            f"{len(found)} options parsed out of dash.sthlp, 165 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -600,8 +601,9 @@ class TestTheParsersFoundSomething:
         # declared astyle, alstyle, bstyle, blstyle, clstyle and p.
         # 188 -> 191: P1.14b declared dstyle, dlstyle and bmlinestyle.
         # 191 -> 192: P1.8a declared cmissings(), twoway's spelling.
-        # 192 -> 194: P1.8b declared recastas() and type().
-        assert len(_ado_declarations()) == 194
+        # 192 -> 194: P1.8b declared recastas() and type(); 194 -> 196:
+        # P1.31a declared maxsessions() and idletimeout().
+        assert len(_ado_declarations()) == 196
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -673,9 +675,10 @@ class TestTheParsersFoundSomething:
         # 368 -> 369: P1.8a's cmissings() entry.
         # 369 -> 372: P1.7's {ul:Time-series operators.} paragraph and
         # its example's lines.
-        # 372 -> 373: P1.8b's {ul:Recast.} entry.
-        assert len(defs) == 373, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 373 "
+        # 372 -> 373: P1.8b's {ul:Recast.} entry; 373 -> 375: P1.31a's
+        # maxsessions() and idletimeout() rows.
+        assert len(defs) == 375, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 375 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1027,4 +1030,6 @@ class TestInternalLinksResolve:
         # 91 -> 92 links: P1.14b's named-styles paragraph links the
         # scheme section.
         # 92 -> 93 links: P1.24's mlabt:extstyle() row links Style lists.
-        assert len(refs) == 93 and len(set(refs)) == 34
+        # 93 -> 95 links: P1.31a's maxsessions() row and Server Mode's
+        # flag list link Resource limits.
+        assert len(refs) == 95 and len(set(refs)) == 34
