@@ -887,6 +887,11 @@ FUNCTIONS = {
  '_dash_tag_hull_roles': 'test/test_default_axes.py::TestTheHelpers::test_hull_roles',
  # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
  # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
+ '_dash_app_note_hook': 'test/test_served_notes.py::TestTheAppNoteHook::test_each_note_prints_once_per_process',
+ '_dash_app_note_hook.<locals>._show': 'test/test_served_notes.py::TestTheAppNoteHook::test_other_warnings_go_to_the_previous_hook',
+ '_dash_launch_app.<locals>._drain_stderr': 'test/test_serve_launcher.py::TestTheLauncherRelaysNotesAndStderr::test_a_note_is_relayed_once_through_the_emitter',
+ '_dash_relay_kind': 'test/test_serve_launcher.py::TestTheRelayKind::test_each_kind_of_line',
+ '_dash_trial_render': 'test/test_served_notes.py::TestTheServerBuildNamesTheSavedNotes::test_main_names_what_the_saved_build_names',
  # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
  # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
  # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)

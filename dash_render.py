@@ -4810,15 +4810,15 @@ def _dash_private_page(text, prefix, name, out=None):
     regular file of this account.  Privacy (K-8, answer 2): a disk that
     will not keep 0600 even after ``fchmod`` is noted on one line naming
     the file, never refused.  Any failure removes the folder and raises.
-    Threat: the key at rest readable by another account."""
+    Threat: the key at rest readable by another account.
+    That note is a note (WP-30 P1.26b): it goes through
+    :func:`_dash_emit_note`, so *out* is no longer written to and is kept
+    only for its callers."""
     import errno
     import os
     import shutil
     import stat
-    import sys
     import tempfile
-    if out is None:
-        out = sys.stdout
     d = tempfile.mkdtemp(prefix=prefix)
     p = os.path.join(d, name)
     try:
@@ -4846,10 +4846,11 @@ def _dash_private_page(text, prefix, name, out=None):
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(text)
         if loose:
-            print("dash: note: " + p + " holds the dashboard's link, but "
-                  "its disk keeps no file permissions, so other accounts of "
-                  "this machine may read it; set TMPDIR to a folder on a "
-                  "disk that keeps them.", file=out, flush=True)
+            _dash_emit_note(
+                "dash: note: " + p + " holds the dashboard's link, but "
+                "its disk keeps no file permissions, so other accounts of "
+                "this machine may read it; set TMPDIR to a folder on a "
+                "disk that keeps them.")
     except BaseException:
         shutil.rmtree(d, True)
         raise
@@ -32004,7 +32005,8 @@ def _dash_report_empty_layer(gname, index, ptype, rows=None):
     )
 
 
-def _dash_note_empty_layer(gname, index, ptype, rows, renderers):
+def _dash_note_empty_layer(gname, index, ptype, rows, renderers,
+                           layer_rows=None):
     """Report layer *index* if it drew nothing -- the one rule both modes
     apply, after each layer is drawn.
 
@@ -32027,6 +32029,9 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers):
         ptype:     The layer's plot type.
         rows:      The rows the graph's data has.
         renderers: The renderers the layer added.
+        layer_rows: The rows of the figure the layer's own ``if``/``in``
+                   keeps, or None when it has none; 0 is drawn in silence,
+                   as twoway draws it (M6, WP-30 P1.26b).
     """
     pt = str(ptype or "").lower()
     if pt in _DASH_LITERAL_TYPES and pt != "function":
@@ -32062,8 +32067,62 @@ def _dash_note_empty_layer(gname, index, ptype, rows, renderers):
         return
     if pt == "function":
         _dash_report_empty_layer(gname, index, ptype)
-    elif rows:
+    elif rows and layer_rows != 0:
         _dash_report_empty_layer(gname, index, ptype, rows)
+
+
+def _dash_app_note_hook():
+    """Print this process's dash notes once each, as twoway prints notes.
+
+    Installed by the served app only when it owns its process -- run as
+    ``python app.py``, as ``dash serve``'s child, or under ``bokeh serve``
+    -- and never under a build's trial or in a process that imports the
+    app (WP-30 P1.26b).  A ``UserWarning`` whose text starts ``dash: ``
+    (or ``dash_render``, ``dash scheme``, ``dash kpi``, ``dash build``,
+    ``dash serve``) goes through :func:`_dash_emit_note` -- one
+    ``(note:  dash: ...)`` line on stderr, braces kept and controls
+    replaced -- once per process, at most 1,000 texts; any other warning
+    goes to the previous ``warnings.showwarning`` unchanged.  An
+    ``"always"`` filter for those texts goes first, so ``PYTHONWARNINGS=
+    error`` cannot make a note fail a session and the registry cannot hide
+    a repeat raised from another module.
+
+    The texts said live in ``sys.modules["_dash_app_notes"]``, because
+    ``bokeh serve`` runs the app in a fresh module per session.  Calling it
+    again is a no-op while the hook is in place, and re-installs it with
+    the same texts after a ``catch_warnings`` block restored the previous
+    one.  Returns that holder.
+    """
+    import re
+    import sys
+    import types
+    import warnings
+    pat = r"dash(?:_render| scheme| kpi| build| serve)?: "
+    holder = sys.modules.get("_dash_app_notes")
+    if not (isinstance(holder, types.ModuleType)
+            and isinstance(getattr(holder, "said", None), set)):
+        holder = types.ModuleType("_dash_app_notes")
+        holder.said = set()
+        sys.modules["_dash_app_notes"] = holder
+    if getattr(warnings.showwarning, "_dash_app_note_hook", False) is True:
+        return holder
+    said = holder.said
+    orig = warnings.showwarning
+
+    def _show(message, category, filename, lineno, file=None, line=None):
+        text = str(message)
+        if (isinstance(category, type) and issubclass(category, UserWarning)
+                and re.match(pat, text)):
+            if text not in said and len(said) < 1000:
+                said.add(text)
+                _dash_emit_note(text)
+            return
+        orig(message, category, filename, lineno, file, line)
+
+    _show._dash_app_note_hook = True
+    warnings.showwarning = _show
+    warnings.filterwarnings("always", message=pat, category=UserWarning)
+    return holder
 
 
 def _dash_note_hover_unreached(gname, plots, hover_extra):
@@ -34148,6 +34207,7 @@ class DashRenderer:
             _g_qc = str(graph_spec.get("qual_col") or "")
             source_for_plot = source
             _plot_view = facet_view
+            _layer_rows = None
             # twoway draws every point of `scatteri 1 2 3 4 if foreign == 2'
             # and every point of a function whatever its if or in (measured
             # 24sep2026 from the serset each draws): the literal family
@@ -34189,6 +34249,7 @@ class DashRenderer:
                     if _prev_bools is not None and len(_prev_bools) == len(_mask):
                         _mask = [bool(a and b)
                                  for a, b in zip(_prev_bools, _mask)]
+                    _layer_rows = int(sum(_mask))
                     _pf = BooleanFilter(booleans=_mask)
                     _plot_view = CDSView(filter=_pf)
                     # WP-29 P0.15: register the source's row ids the mask
@@ -34337,7 +34398,8 @@ class DashRenderer:
                 _rows_here = 0
             _dash_note_empty_layer(
                 graph_opts.get("name", "") or graph_spec.get("name", ""),
-                pi + 1, ptype, _rows_here, _layer_renderers)
+                pi + 1, ptype, _rows_here, _layer_renderers,
+                layer_rows=_layer_rows)
 
             # A yaxis(2)/xaxis(2) layer draws on the secondary range, its
             # marker labels and arrowheads with it.
@@ -36518,6 +36580,66 @@ def _dash_source_of(obj) -> str:
     return text
 
 
+def _dash_trial_render(source):
+    """Draw the generated app once in this process; raise its notes.
+
+    ``dash build, server`` printed none of the notes ``dash build`` prints
+    for the same graphs, because the served app decides them when a
+    session draws, in a process whose output never reached Stata (WP-30
+    P1.26b, A83).  This runs *source* -- the text ``build`` generated and
+    wrote, never user text; user values travel inside it as base64 data --
+    under ``_DASH_TRIAL`` in a ``_dash_trial_app`` namespace, so the
+    module's own ``make_document(curdoc())`` is the one drawing, into a
+    throwaway document Bokeh's ``patch_curdoc`` supplies.  Its dash notes
+    are re-raised here, in order, so the caller's scope prints them.  A
+    trial that fails is one note, and the app stays written (A85).
+
+    Threats (rule 1): no server starts (the module is never ``__main__``);
+    no hook, logger filter or root is left in the building process
+    (``_DASH_TRIAL``, ``catch_warnings``, the patched document); every
+    exception is caught inside the ``patch_curdoc`` block, which has no
+    ``try``/``finally`` of its own, or every later ``curdoc()`` of the
+    session would raise; the failure text is cut to 300 characters.
+    Returns the notes raised, the failure note last.
+    """
+    import re
+    import warnings
+    from bokeh.document import Document
+    from bokeh.io.doc import patch_curdoc
+    pat = re.compile(r"dash(?:_render| scheme| kpi| build| serve)?: ")
+    ns = {"__name__": "_dash_trial_app", "_DASH_TRIAL": True}
+    rec = []
+    failure = stop = None
+    doc = Document()
+    with patch_curdoc(doc):
+        try:
+            code = compile(source, "<dash served app>", "exec")
+            with warnings.catch_warnings(record=True) as rec:
+                warnings.simplefilter("always")
+                exec(code, ns)
+        except Exception as exc:
+            failure = (
+                "dash: the served app could not draw this dashboard when "
+                "dash build tried it (%s: %s); the app was written, and its "
+                "sessions may fail the same way."
+                % (type(exc).__name__, " ".join(str(exc).split())[:300]))
+        except BaseException as exc:
+            stop = exc
+        finally:
+            ns.clear()
+    del doc
+    if stop is not None:
+        raise stop
+    notes = [str(w.message) for w in (rec or ())
+             if issubclass(w.category, UserWarning)
+             and pat.match(str(w.message))]
+    if failure is not None:
+        notes.append(failure)
+    for n in notes:
+        warnings.warn(n, UserWarning, stacklevel=2)
+    return notes
+
+
 class ServerAppBuilder:
     """Generates a self-contained Bokeh Server application Python source file.
 
@@ -36909,6 +37031,10 @@ class ServerAppBuilder:
                          "_dash_layer_drew_anything",
                          "_dash_report_empty_layer",
                          "_dash_note_empty_layer",
+                         # WP-30 P1.26b: the note channel and the hook that
+                         # sends this process's notes through it.
+                         "_dash_smcl_escape", "_dash_emit_note",
+                         "_dash_app_note_hook",
                          # One qualifier reader and ONE whitelist.  The
                          # generated app used to carry its own `_safe_g',
                          # written out as string literals, and applied it at
@@ -37263,7 +37389,16 @@ class ServerAppBuilder:
             "# could be read was indistinguishable from a healthy one --\n"
             "# and the resolution warning is emitted in the BUILDER's\n"
             "# process, so whoever later runs the app was told nothing.",
-            "if _DASH_SCHEME_IS_FALLBACK:",
+            "# WP-30 P1.26b: a process this app owns -- python app.py, dash",
+            "# serve's child, bokeh serve -- prints each of its dash notes once",
+            "# as a (note:  dash: ...) line on stderr, whatever its warnings",
+            "# filters say; a process that imports the app, and a build's trial,",
+            "# keep their own warnings.",
+            "if not _DASH_TRIAL and (__name__ == '__main__'",
+            "                        or __name__.startswith('bokeh_app_')):",
+            "    _dash_app_note_hook()",
+            "",
+            "if _DASH_SCHEME_IS_FALLBACK and not _DASH_TRIAL:",
             "    warnings.warn(",
             "        \"dash: this app was built where no .scheme file \"",
             "        \"could be read. You asked for %s; it is drawing \"",
@@ -37494,7 +37629,8 @@ class ServerAppBuilder:
         ]
 
     def build(self, output_path: str, port: int = 5006,
-              private: bool = False) -> "_DashWrittenApp | None":
+              private: bool = False,
+              trial: bool = False) -> "_DashWrittenApp | None":
         """Generate the Bokeh Server app file and write it to *output_path*.
 
         Args:
@@ -37511,6 +37647,10 @@ class ServerAppBuilder:
                          app created with ``O_EXCL`` (``_dash_private_write``).
                          Off by default for the tests that call ``build``
                          directly.
+            trial:       After the app is written, draw it once in this
+                         process (``_dash_trial_render``) and raise the notes
+                         a session would raise (WP-30 P1.26b, A83).  Off by
+                         default for the tests that call ``build`` directly.
 
         Returns:
             With *private*, the ``_DashWrittenApp`` (the file's
@@ -37605,14 +37745,21 @@ class ServerAppBuilder:
             # being written needs none of it.
             self._data_cache = None
             self._frame_cache = None
+        written = None
         if private:
             _dash_private_clear_name(output_path)
             st = _dash_private_write(output_path, source, exclusive=True)
-            return _DashWrittenApp(
+            written = _DashWrittenApp(
                 st, hashlib.sha256(source.encode("utf-8")).hexdigest())
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(source)
-        return None
+        else:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(source)
+        # After the write and after the caches are freed: the app is on
+        # disk whatever the trial finds (A85), and the trial's peak is one
+        # session's frame and document, not two datasets.
+        if trial:
+            _dash_trial_render(source)
+        return written
 
     def _frame(self) -> "pd.DataFrame":
         """The dataset as the saved renderer loads it, for build-time plans.
@@ -37904,6 +38051,12 @@ class ServerAppBuilder:
             "from tornado.web import RequestHandler as _RequestHandler",
             "# The CSV download's button and its page-side writer (WP-21).",
             "from bokeh.models import Button as _DashButton, CustomJS as _DashCustomJS",
+            "",
+            "# True only when ServerAppBuilder.build(trial=True) runs this module in",
+            "# the building process to hear its notes (WP-30 P1.26b); the app then",
+            "# touches no logger, raises no fallback note and installs no note hook,",
+            "# and its one drawing goes to the document the trial patched in.",
+            "_DASH_TRIAL = bool(globals().get('_DASH_TRIAL', False))",
             "",
             "# ---- Rate limiter configuration ----",
             "# Width of the filterposition(left) sidebar, shared with the",
@@ -39208,8 +39361,13 @@ class ServerAppBuilder:
             # helper, so the two modes decide and word it identically.
             "            # Each layer's role in the axis hull (WP-30 P1.3a).",
             "            _dash_tag_hull_roles(list(fig.renderers[_r_before:]), ptype, opts)",
-            "            _dash_note_empty_layer(gname, pi + 1, ptype, len(g_df),",
-            "                                   list(fig.renderers[_r_before:]))",
+            "            # M6 (WP-30 P1.26b): the figure's rows, and the rows the",
+            "            # layer's own if/in keeps of them; none kept is silent.",
+            "            # A by() panel's note names the graph, as the saved one.",
+            "            _dash_note_empty_layer(gname.split('__by__')[0], pi + 1,",
+            "                                   ptype, len(_g_df_graph),",
+            "                                   list(fig.renderers[_r_before:]),",
+            "                                   layer_rows=len(g_df))",
             "",
             "        # z options apply to this graph's colour key only",
             "        # (GAPS2 X2); reset before the next figure builds.",
@@ -40223,7 +40381,8 @@ class ServerAppBuilder:
             "# WP-29 P0.12a: Tornado's logs never carry a query string (the",
             "# key travels in ?token=).  Idempotent; under bokeh serve, which",
             "# runs this module afresh per session, the only hook there is.",
-            "_dash_install_access_log_redaction()",
+            "if not _DASH_TRIAL:",
+            "    _dash_install_access_log_redaction()",
             "",
             "if __name__ != '__main__':",
             "    make_document(curdoc())",
@@ -40665,7 +40824,11 @@ def main(
                           for standalone.  ``build_options["port"]`` still
                           wins, because that is what dash.ado writes.
         launch:           The ``--launch`` route (``dash serve``); see
-                          :func:`_validate_output_path`.
+                          :func:`_validate_output_path`.  Every other server
+                          route draws the app once after writing it and
+                          raises its notes (``build(trial=True)``, WP-30
+                          P1.26b, A83); ``dash serve`` never does, its
+                          child's own first drawing being that trial (IR-10).
         private_output:   Write the standalone page readable by this
                           account only (0600), as a new file, never through
                           a link: the one-line form's preview (WP-29 P0.14).
@@ -40711,7 +40874,7 @@ def main(
         # route -- served on 5006 regardless.
         builder = ServerAppBuilder(master_spec_path, data_json_path)
         written = builder.build(output_path, port=_dash_port_value(port),
-                                private=True)
+                                private=True, trial=not launch)
         # The app embeds the spec and data (_SPEC_B64, _DATA_B64), so dash
         # serve's copies of them go now -- only inside dash's own run
         # folder (R-1).
@@ -41031,9 +41194,42 @@ def _dash_write_link(link_dir, url):
     return p, d
 
 
+def _dash_relay_kind(line, in_traceback=False):
+    """How the launcher treats one line of the served child's stderr.
+
+    Returns ``(kind, text, in_traceback)`` (WP-30 P1.26b): ``"note"`` with
+    the note's text for a ``(note:  dash: ...)`` line or one of twoway's
+    two text-class notes; ``"show"`` for a traceback (its header, indented
+    lines and closing exception line), an ``ERROR:``/``CRITICAL:`` line of
+    bokeh's handler and Tornado's ``Uncaught exception`` line; ``"keep"``
+    for anything else, the access log included.  The launcher only.
+    """
+    import re
+    s = str(line).rstrip("\r\n")
+    m = re.match(r"\(note:  (dash(?:_render| scheme| kpi| build| serve)?: .*)\)$",
+                 s)
+    if m:
+        return "note", m.group(1), False
+    if re.match(r"dash: .*: \(note:  (?:regress|fracpoly) could not fit "
+                r"model\)$|dash scheme: \(note: scheme \S+ not found, "
+                r"using s2color\)", s):
+        return "note", s, False
+    if s.startswith("Traceback (most recent call last):"):
+        return "show", s, True
+    if in_traceback:
+        if s[:1] in (" ", "\t"):
+            return "show", s, True
+        if s:
+            return "show", s, False
+        return "keep", s, False
+    if re.match(r"(?:ERROR|CRITICAL):|Uncaught exception ", s):
+        return "show", s, False
+    return "keep", s, False
+
+
 def _dash_launch_app(app_path, port, timeout, no_browser, *,
                       ready_seconds=30.0, prebind=True, expect=None,
-                      erase_app_when_ready=False, link_dir=None):
+                      erase_app_when_ready=False, link_dir=None, said=()):
     """Run the generated Bokeh Server app as a subprocess and block until
     it answers ``/health`` or fails, forwarding its own output as it runs.
 
@@ -41088,9 +41284,20 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     keeps serving (round 2, K-9).  Every forwarded line and the stderr tail
     are redacted (``_dash_redact_query``), and the link file is removed at
     stop.  A 429 from ``/health`` counts as answering.
+
+    WP-30 P1.26b: the child's stderr is relayed as it serves
+    (``_dash_relay_kind``).  Each dash note goes through
+    ``_dash_emit_note`` once, never one in *said* (the notes the command's
+    build already printed), at most 100; ERROR lines, uncaught-request
+    lines and tracebacks are printed once ``/health`` has answered, within
+    the 200-line budget stdout shares; every other line (the access log
+    among them) is only kept.  Every line is cleaned and redacted first.
+    A line relayed is never quoted again: a failed launch quotes only the
+    last 20 lines that were not.
     """
     import collections
     import queue
+    import re
     import signal
     import socket
     import subprocess
@@ -41163,11 +41370,12 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
             "no server started on port %d: could not launch the dashboard "
             "app (is Python available on this PATH?)" % port)
 
-    # One structure per pipe: stdout lines go to the queue the main thread
-    # prints from (under the bound below); stderr lines go to the deque
-    # the failure message quotes (its last 20 lines).  Nothing is tagged
-    # into the other's structure.
+    # One queue per pipe, both drained by the main thread only: stdout is
+    # printed (under the bound below); stderr is relayed (_drain_stderr,
+    # WP-30 P1.26b), and only the lines it does not relay go to the deque
+    # the failure message quotes (its last 20), so no line is shown twice.
     _out_q = queue.Queue()
+    _err_q = queue.Queue()
     _err_dq = collections.deque(maxlen=20)
 
     def _pump(stream, push):
@@ -41180,7 +41388,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
     _t_out = threading.Thread(target=_pump, args=(proc.stdout, _out_q.put),
                               daemon=True)
     _t_err = threading.Thread(target=_pump,
-                              args=(proc.stderr, _err_dq.append),
+                              args=(proc.stderr, _err_q.put),
                               daemon=True)
     def _clean(text):
         return "".join(c for c in text if c.isprintable() or c == "\n")
@@ -41206,6 +41414,42 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
             _forwarded += 1
             if _forwarded == 200:
                 print("dash: (further app output not shown)", flush=True)
+
+    _said_notes = {re.sub(r"^dash: note: ", "dash: ", str(t))
+                   for t in (said or ())}
+    _noted = set()
+    _in_tb = False
+    _notes_cut = False
+
+    def _drain_stderr():
+        nonlocal _forwarded, _in_tb, _notes_cut
+        while True:
+            try:
+                line = _err_q.get_nowait()
+            except queue.Empty:
+                break
+            text = _dash_redact_query(_clean(line), token).rstrip("\n")
+            kind, body, _in_tb = _dash_relay_kind(text, _in_tb)
+            if kind == "note":
+                if body in _said_notes or body in _noted:
+                    continue
+                if len(_noted) >= 100:
+                    if not _notes_cut:
+                        _notes_cut = True
+                        print("dash: (further app notes not shown)",
+                              flush=True)
+                    continue
+                _noted.add(body)
+                _dash_emit_note(body)
+            elif kind == "show" and _ready:
+                if _forwarded >= 200:
+                    continue
+                print(body[:500], flush=True)
+                _forwarded += 1
+                if _forwarded == 200:
+                    print("dash: (further app output not shown)", flush=True)
+            else:
+                _err_dq.append(line)
 
     # Inside Stata the messages name Break, Ctrl+C being only console
     # Stata's Break key (F9c); outside it they keep Ctrl+C.
@@ -41259,6 +41503,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
             if poll is not None:
                 poll()
             _drain_stdout()
+            _drain_stderr()
             _now = time.monotonic()
             if not _ready and _now >= _next_health:
                 _next_health = _now + 0.25
@@ -41336,6 +41581,7 @@ def _dash_launch_app(app_path, port, timeout, no_browser, *,
         pass
     _t_out.join(1)
     _t_err.join(1)
+    _drain_stderr()
     _drain_stdout()
 
     if _handover_exc is not None:
@@ -41509,6 +41755,7 @@ if __name__ == "__main__":
             _dash_launch_app(args.output, args.port, args.timeout,
                              args.no_browser, expect=_written,
                              link_dir=_dash_private_run_of(args.output),
+                             said=_dash_said,
                              erase_app_when_ready=_erase)
         except _DashServeInterrupted:
             # Before RuntimeError: an interruption is r(1), not the r(198)

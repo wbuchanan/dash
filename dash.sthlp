@@ -1811,7 +1811,8 @@ selection brushed on a graph it redraws, and a card that follows the brush
 ({cmd:update(brush)} or {cmd:update(both)}) then counts the rows that graph
 shows.  In both, a layer that a filter, a {cmd:by()} panel or its own
 {cmd:if} or {cmd:in} leaves with no observations keeps its colour, width and
-legend key, as twoway draws it.
+legend key, as twoway draws it, and in silence: neither mode prints a note
+for it, as {cmd:twoway} prints none.
 
 {pstd}
 {ul:What "reflow" means.}  A {cmd:layout(bs)} grid rearranges itself as the
@@ -1846,12 +1847,29 @@ once, and keeps serving.  The key is then in Results and in any log you have
 open, so treat that log like the link.  Open the file, or copy the link from
 it, to reach the dashboard again while the server runs; it is removed when
 the server stops.  On a disk that keeps no file permissions the file is
-written anyway, and a line beginning {cmd:dash: note:} names it.
+written anyway, and a note, {cmd:(note: dash:} ...{cmd:)}, names it.
 
 {pstd}
 If no server starts -- the port is in use, or the app
 stops before it answers -- {cmd:dash serve} says why and returns r(198)
 instead of blocking.
+
+{pstd}
+{ul:Notes.}  {cmd:dash build, server} prints the notes {cmd:dash build}
+prints for a saved page -- an option it draws differently, a fit
+{cmd:twoway} could not fit, a {cmd:by()} sub-option it ignores -- in the
+same {cmd:(note: dash:} ...{cmd:)} form, once each: after writing the app it
+draws the dashboard once, as a session of the app would, and names what
+that drawing noted.  This costs one more drawing of the dashboard.  If that
+drawing fails, a note says so, and the app is still written.
+{cmd:dash serve} prints its build's notes at once and, while it serves,
+the app's own notes, error lines and Python tracebacks: each note once,
+never one its build already printed, at most 100 notes and 200 other lines,
+with the link's key and every query string removed.  The app's notes
+appear when the first session draws the dashboard.  Run as
+{cmd:python app.py} or under {cmd:bokeh serve}, the app prints each note
+once per process on its standard error, as {cmd:(note: dash:} ...{cmd:)},
+whatever Python's warnings filters or {cmd:PYTHONWARNINGS} say.
 
 {pstd}
 {ul:Running the generated .py file independently.}
@@ -1883,8 +1901,8 @@ choose the key, each start makes a new one, writes that link to a file named
 and prints the file's path on a line of its own before the server starts;
 the key itself is never printed.  Open the file, or copy the link from it;
 the folder is removed when the app stops.  On a disk that keeps no file
-permissions the file is written anyway, and a line beginning
-{cmd:dash: note:} names it; set {cmd:TMPDIR} to a folder on a disk that
+permissions the file is written anyway, and a note,
+{cmd:(note: dash:} ...{cmd:)}, names it; set {cmd:TMPDIR} to a folder on a disk that
 keeps them.  If no such file can be written at all, the app
 prints a warning line and then the link itself, once, and keeps serving; the
 key is then in that output and in any log of it.  To choose the key, set the

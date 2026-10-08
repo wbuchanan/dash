@@ -421,11 +421,21 @@ class TestTheReportHelpers:
     """``_dash_note_empty_layer`` decides, ``_dash_report_empty_layer``
     words it; both modes call the first."""
 
-    def _notes(self, *args):
+    def _notes(self, *args, **kw):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            dr._dash_note_empty_layer(*args)
+            dr._dash_note_empty_layer(*args, **kw)
         return [str(w.message) for w in caught]
+
+    def test_a_layer_whose_own_qualifier_keeps_no_row_is_silent(self):
+        """M6 (WP-30 P1.26b): twoway draws it in silence; a layer with no
+        own qualifier that keeps rows is still named, and a function's note
+        does not read the count."""
+        assert self._notes("g1", 2, "bar", 74, [], layer_rows=0) == []
+        assert self._notes("g1", 2, "bar", 74, [], layer_rows=5) == [
+            "dash: graph 'g1' plot 2 (bar) drew nothing from 74 "
+            "observations."]
+        assert self._notes("g1", 2, "function", 74, [], layer_rows=0)
 
     def test_a_layer_that_drew_is_not_reported(self):
         src = dr.ColumnDataSource({"x": [1.0]})

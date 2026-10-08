@@ -5777,10 +5777,93 @@ if inlist("`only'", "", "S22") {
 }
 * ==== end S22 ====
 
+// S23: the lines of text log `1' holding `2', in r(n).
+capture program drop _s23_count
+program define _s23_count, rclass
+    version 19
+    args log needle
+    tempname fh
+    local n 0
+    file open `fh' using `"`log'"', read text
+    file read `fh' line
+    while r(eof) == 0 {
+        if strpos(`"`macval(line)'"', `"`needle'"') local ++n
+        file read `fh' line
+    }
+    file close `fh'
+    return scalar n = `n'
+end
+
 * ==== S23 P1.26b: Served notes reach Stata ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S23") {
     display as text "S23 start " c(current_date) " " c(current_time)
+    local s23ls = c(linesize)
+    set linesize 255
+    local s23log "`w30_work'/s23.log"
+    sysuse auto, clear
+    // NC-09: a layer whose own if keeps no row is drawn in silence, as
+    // twoway draws it, in the saved build and the server build.  graph
+    // drop _all before dash: a nodraw graph is in memory, and S22 notes
+    // graph export on every file-writing dash command while one is.
+    foreach t in line connected area spike dropline bar scatter lowess rbar rarea rcap rline rscatter rconnected rspike pcspike histogram kdensity {
+        local v "mpg weight"
+        if inlist("`t'", "rbar", "rarea", "rcap", "rline", "rscatter", "rconnected", "rspike") local v "mpg price weight"
+        if "`t'" == "pcspike" local v "mpg weight price length"
+        if inlist("`t'", "histogram", "kdensity") local v "mpg"
+        quietly log using "`s23log'", replace text name(_s23)
+        capture noisily twoway (scatter mpg weight) (`t' `v' if price > 20000), nodraw
+        local rc = _rc
+        quietly log close _s23
+        _s23_count "`s23log'" "(note:"
+        _w30_expect NC-09 "(`rc' == 0 & r(n) == 0)" "twoway `t': rc `rc', `=r(n)' note line(s)"
+        quietly graph drop _all
+        quietly log using "`s23log'", replace text name(_s23)
+        capture noisily dash (scatter mpg weight) (`t' `v' if price > 20000), saving("`w30_work'/s23_`t'.html", replace)
+        local rc = _rc
+        quietly log close _s23
+        _s23_count "`s23log'" "(note:"
+        local n1 = r(n)
+        _s23_count "`s23log'" "drew nothing"
+        _w30_expect NC-09 "(`rc' == 0 & `n1' == 0 & r(n) == 0)" "dash saved `t': rc `rc', `n1' note line(s), `=r(n)' drew nothing"
+        dash clear
+        quietly dash (scatter mpg weight) (`t' `v' if price > 20000), name(nc09)
+        quietly log using "`s23log'", replace text name(_s23)
+        capture noisily dash build, saving("`w30_work'/s23_`t'.py") replace server
+        local rc = _rc
+        quietly log close _s23
+        _s23_count "`s23log'" "(note:"
+        local n1 = r(n)
+        _s23_count "`s23log'" "drew nothing"
+        _w30_expect NC-09 "(`rc' == 0 & `n1' == 0 & r(n) == 0)" "dash server `t': rc `rc', `n1' note line(s), `=r(n)' drew nothing"
+        dash clear
+        capture erase "`w30_work'/s23_`t'.html"
+        capture erase "`w30_work'/s23_`t'.py"
+    }
+    _w30_done NC-09 "a layer whose own if keeps no row is silent in twoway, the saved build and the server build, for 18 types"
+    // NC-10: twoway's estimator note stays, once, in both builds.
+    quietly log using "`s23log'", replace text name(_s23)
+    capture noisily twoway (scatter mpg weight) (lfit mpg weight if price > 20000), nodraw
+    quietly log close _s23
+    _s23_count "`s23log'" "could not fit model"
+    _w30_expect NC-10 "(r(n) == 1)" "twoway lfit: `=r(n)' estimator note(s)"
+    quietly graph drop _all
+    dash clear
+    quietly dash (scatter mpg weight) (lfit mpg weight if price > 20000), name(nc10)
+    foreach m in html py {
+        local opt = cond("`m'" == "py", "server", "")
+        quietly log using "`s23log'", replace text name(_s23)
+        capture noisily dash build, saving("`w30_work'/s23_nc10.`m'") replace `opt'
+        local rc = _rc
+        quietly log close _s23
+        _s23_count "`s23log'" "could not fit model"
+        _w30_expect NC-10 "(`rc' == 0 & r(n) == 1)" "dash build `opt' (`m'): rc `rc', `=r(n)' estimator note(s)"
+        capture erase "`w30_work'/s23_nc10.`m'"
+    }
+    dash clear
+    _w30_done NC-10 "twoway's estimator note for an own-if lfit is printed once by twoway, the saved build and the server build"
+    capture erase "`s23log'"
+    set linesize `s23ls'
     display as text "S23 end " c(current_date) " " c(current_time)
 }
 * ==== end S23 ====

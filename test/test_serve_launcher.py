@@ -411,3 +411,164 @@ class TestPortRefusals:
                     "5_006", "", "5006x"):
             with pytest.raises(argparse.ArgumentTypeError):
                 dr._dash_port_value(bad)
+
+
+class TestTheRelayKind:
+    def test_each_kind_of_line(self):
+        """WP-30 P1.26b: how the launcher treats each line of the child's
+        stderr; a traceback's state is carried and cleared."""
+        k = dr._dash_relay_kind
+        reg = ("dash: graph 'g' plot 2 (lfit): "
+               "(note:  regress could not fit model)")
+        assert k("(note:  dash: a {b})\n") == ("note", "dash: a {b}", False)
+        assert k("(note:  dash kpi: k.)") == ("note", "dash kpi: k.", False)
+        assert k(reg) == ("note", reg, False)
+        for s in ("ERROR:bokeh.server.views.ws:x",
+                  "Uncaught exception GET /?<query redacted> (127.0.0.1)"):
+            assert k(s) == ("show", s, False)
+        state = False
+        got = []
+        for s in ("Traceback (most recent call last):", "  File \"a.py\"",
+                  "    x()", "UserWarning: dash: x", ""):
+            kind, _, state = k(s, state)
+            got.append((kind, state))
+        assert got == [("show", True), ("show", True), ("show", True),
+                       ("show", False), ("keep", False)]
+        assert k("", True) == ("keep", "", False)
+        for s in ("403 GET /?<query redacted> (127.0.0.1) 0.5ms",
+                  "HTTPServerRequest(protocol='http')"):
+            assert k(s) == ("keep", s, False)
+
+
+def _launch_serving(monkeypatch, late_stderr, link_dir=None, said=()):
+    """Run the launcher against a /health server and a child whose stderr
+    yields *late_stderr* only once /health was hit (after ready)."""
+    port = _free_port()
+    hit = threading.Event()
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            hit.set()
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        def log_message(self, *a):
+            pass
+
+    httpd = http.server.HTTPServer(("127.0.0.1", port), _Handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    class _Late:
+        def __init__(self):
+            self._lines = list(late_stderr)
+
+        def readline(self):
+            hit.wait(10)
+            return self._lines.pop(0) if self._lines else ""
+
+    class _FakeProc:
+        def __init__(self, cmd, **kw):
+            self.stdin = FakeStdin()
+            self.stdout = io.StringIO("")
+            self.stderr = _Late()
+            self.returncode = None
+            self._deadline = None
+
+        def poll(self):
+            if self.returncode is None and hit.is_set():
+                if self._deadline is None:
+                    self._deadline = time.monotonic() + 0.6
+                elif time.monotonic() >= self._deadline:
+                    self.returncode = 0
+            return self.returncode
+
+        def wait(self, timeout=None):
+            while self.returncode is None:
+                self.poll()
+                time.sleep(0.05)
+            return self.returncode
+
+        def terminate(self):
+            self.returncode = 0
+
+        def kill(self):
+            self.returncode = -9
+
+    try:
+        monkeypatch.setattr(subprocess, "Popen", _FakeProc)
+        dr._dash_launch_app("app.py", port, 0, True, prebind=False,
+                            ready_seconds=10, link_dir=link_dir, said=said)
+    finally:
+        httpd.shutdown()
+
+
+class TestTheLauncherRelaysNotesAndStderr:
+    """WP-30 P1.26b: ``dash serve`` relays the child's notes and errors."""
+
+    @pytest.fixture
+    def rec(self, monkeypatch):
+        got = []
+        monkeypatch.setattr(dr, "_dash_emit_note", got.append)
+        return got
+
+    def test_a_note_is_relayed_once_through_the_emitter(self, monkeypatch,
+                                                        rec):
+        monkeypatch.setattr(subprocess, "Popen", _fake_popen_class(
+            stderr="(note:  dash: a.)\n(note:  dash: a.)\n"))
+        dr._dash_launch_app("app.py", _free_port(), 0, True, prebind=False)
+        assert rec == ["dash: a."]
+
+    def test_a_note_the_build_printed_is_not_repeated(self, monkeypatch,
+                                                      rec):
+        monkeypatch.setattr(subprocess, "Popen", _fake_popen_class(
+            stderr="(note:  dash: a.)\n"))
+        dr._dash_launch_app("app.py", _free_port(), 0, True, prebind=False,
+                            said={"dash: note: a."})
+        assert rec == []
+
+    def test_notes_have_their_own_budget(self, monkeypatch, capsys, rec):
+        err = "".join("(note:  dash: n%d.)\n" % i for i in range(150))
+        err += "".join("403 GET /x%d\n" % i for i in range(300))
+        monkeypatch.setattr(subprocess, "Popen", _fake_popen_class(
+            stderr=err))
+        dr._dash_launch_app("app.py", _free_port(), 0, True, prebind=False)
+        assert len(rec) == 100
+        assert capsys.readouterr().out.splitlines().count(
+            "dash: (further app notes not shown)") == 1
+
+    def test_error_lines_and_tracebacks_show_once_the_server_answers(
+            self, monkeypatch, capsys, rec):
+        tb = ["Traceback (most recent call last):\n", "  File \"a.py\"\n",
+              "OSError: late\n"]
+        _launch_serving(monkeypatch, ["ERROR:bokeh.x:y\n"] + tb
+                        + ["403 GET /?<query redacted> (127.0.0.1)\n"])
+        lines = capsys.readouterr().out.splitlines()
+        for s in ["ERROR:bokeh.x:y"] + [t.rstrip("\n") for t in tb]:
+            assert lines.count(s) == 1, lines
+        assert not [ln for ln in lines if "403 GET" in ln], lines
+
+    def test_a_failed_launch_keeps_its_tail(self, monkeypatch, rec):
+        monkeypatch.setattr(subprocess, "Popen", _fake_popen_class(
+            returncode=3,
+            stderr="Traceback (most recent call last):\n  File \"a.py\"\n"
+                   "OSError: boom\n(note:  dash: n.)\n"))
+        with pytest.raises(RuntimeError) as ei:
+            dr._dash_launch_app("app.py", _free_port(), 0, True,
+                                prebind=False)
+        msg = str(ei.value)
+        assert "Traceback" in msg and "boom" in msg, msg
+        assert "(note:" not in msg, msg
+        assert rec == ["dash: n."]
+
+    def test_a_relayed_line_never_holds_the_key(self, monkeypatch, capsys,
+                                                rec, tmp_path):
+        key = "k" * 43
+        monkeypatch.setattr(dr, "_dash_new_token", lambda: key)
+        _launch_serving(monkeypatch, ["(note:  dash: x %s)\n" % key,
+                                      "ERROR:bokeh.x: GET /?token=%s&y=1\n"
+                                      % key], link_dir=str(tmp_path))
+        out = capsys.readouterr().out
+        assert key not in out and not [r for r in rec if key in r], (out, rec)
+        assert "<query redacted>" in out, out
+        assert rec == ["dash: x <key>"]

@@ -701,7 +701,7 @@ class TestTheTokenHelpers:
         assert _link_dirs(_isolated) == []
 
     def test_a_page_the_disk_will_not_keep_private_is_written_with_a_note(
-            self, _isolated, monkeypatch):
+            self, _isolated, monkeypatch, capsys):
         seen = []
         real_fstat = os.fstat
         monkeypatch.setattr(os, "fchmod",
@@ -717,8 +717,11 @@ class TestTheTokenHelpers:
         with open(p, encoding="utf-8") as fh:
             assert fh.read() == text
         assert seen == [0o600]
-        lines = out.getvalue().splitlines()
-        assert len(lines) == 1 and lines[0].startswith("dash: note: ")
+        # Flipped (WP-30 P1.26b): the note is a note, printed through
+        # _dash_emit_note in twoway's form, never on *out*.
+        assert out.getvalue() == ""
+        lines = capsys.readouterr().err.splitlines()
+        assert len(lines) == 1 and lines[0].startswith("(note:  dash: ")
         assert p in lines[0] and "TMPDIR" in lines[0] and T not in lines[0]
         shutil.rmtree(d, True)
 
@@ -1610,7 +1613,8 @@ class TestTheLauncherPassesTheToken:
         assert p == os.path.join(d, "link.html")
         assert _mode(p) == "600" and _mode(d) == "700"
         assert not os.path.exists(target)
-        assert "dash: note:" not in capsys.readouterr().out
+        got = capsys.readouterr()
+        assert "note:" not in got.out + got.err
 
     def test_a_link_no_folder_can_keep_private_is_written_with_a_note(
             self, tmp_path, monkeypatch, capsys):
@@ -1642,8 +1646,10 @@ class TestTheLauncherPassesTheToken:
         with open(p, encoding="utf-8") as fh:
             assert fh.read() == dr._dash_redirect_page(url)
         assert not os.path.exists(target)
-        lines = capsys.readouterr().out.splitlines()
-        assert len(lines) == 1 and lines[0].startswith("dash: note: ")
+        # Flipped (WP-30 P1.26b): one note in twoway's form on stderr
+        # (_dash_emit_note), where it was a "dash: note: " stdout line.
+        lines = capsys.readouterr().err.splitlines()
+        assert len(lines) == 1 and lines[0].startswith("(note:  dash: ")
         assert p in lines[0] and T not in lines[0] and \
             "?token=" not in lines[0]
 

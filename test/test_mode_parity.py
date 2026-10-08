@@ -1815,13 +1815,16 @@ CORPUS = [
           [plot_for("lpolyci", {"kernel": "gaussian", "degree": "3",
                                 "weight": "aweight", "wexp": "price"})]),
     # WP-29 P0.18: a layer whose own if keeps no row keeps its style in
-    # both modes (twoway keys it in its p# style).  bar, rbar and rarea
-    # are left out: after the fix they differ only in a warning (the saved
-    # page notes "drew nothing", the served app does not), which this
-    # section does not change; their served style is pinned by
-    # test_emptied_layer_style.py::TestAnEmptiedLayerKeepsItsStyle.
+    # both modes (twoway keys it in its p# style).  Under M6 (WP-30
+    # P1.26b) both modes draw it in silence, so the entries the saved
+    # page's "drew nothing" note kept out are restored: one per layer
+    # family (bar, xy line, range, pc), and scatter, which draws through
+    # its view.
     _case("rspike with its own if that keeps no row",
           [_sc(), plot_for("rspike", if_expr="price > 20000")]),
+    *[_case(f"{t} with its own if that keeps no row",
+            [_sc(), plot_for(t, if_expr="price > 20000")])
+      for t in ("bar", "line", "rarea", "pcspike", "scatter")],
     # WP-29 P0.11: the page holds only the rows a consumer reads.
     _case("two layers with their own qualifiers, range filter (embed rows)",
           [plot_for("scatter", if_expr="price > 4500"),
@@ -2236,6 +2239,25 @@ class _Agree:
 @pytest.mark.parametrize("name,spec", CORPUS)
 class TestTheTwoModesAgree(_Agree):
     pass
+
+
+@pytest.mark.parametrize("name,spec", CORPUS)
+class TestTheServedBuildNamesTheSavedNotes:
+    """WP-30 P1.26b (A83): ``dash build, server`` raises the notes the
+    saved build raises -- the planners' at build, then those of one trial
+    drawing of the app it wrote -- for every entry."""
+
+    def test_the_trial_names_what_the_saved_build_names(self, name, spec):
+        saved = _render_pair(name, spec)["std"]["warnings"]
+        _, sp, dp = _write(spec)
+        ap = os.path.join(_TMP, f"trial_{next(_SEQ)}.py")
+        with warnings.catch_warnings(record=True) as got:
+            warnings.simplefilter("always")
+            dr.ServerAppBuilder(sp, dp).build(ap, trial=True)
+        got = sorted(str(w.message) for w in got)
+        assert got == saved, (
+            f"{name}: the server build's notes differ\n  saved  {saved}"
+            f"\n  server {got}")
 
 
 @pytest.mark.parametrize("name", ["scatter"])
