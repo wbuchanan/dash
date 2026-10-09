@@ -146,6 +146,11 @@
 *!       holes(), iscale() and imargin(), whether each may go to -syntax-,
 *!       and the first leftover word in typed order, into _byg_* locals.
 *!
+*!   _dash_by_clamp(scname, limit)
+*!       Rewrites, in the tail held by the string scalar scname, the first
+*!       copy of rows() or cols() above limit to limit (the by_groups
+*!       limit), and names the options changed in the local _byg_clamped.
+*!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
 *!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
@@ -5948,6 +5953,71 @@ void _dash_by_scan(string scalar scname)
             if (st_local("_byg_imargin_bad") == "1") st_local("_byg_imargin_neg", "0")
         }
     }
+}
+
+// _dash_by_clamp(scname, limit) -- bound by()'s rows() and cols() at the
+// by_groups limit (WP-30 P1.15b, TR-48.3, BR-48.7).  In the tail held by
+// the string scalar scname, the first copy of rows() and of cols() -- the
+// copies twoway reads, matched by _dash_by_grammar() as _dash_by_scan
+// matches them -- whose number is above limit is rewritten as the typed
+// name and (limit); the rest of the tail is kept byte for byte.  Sets the
+// caller's local _byg_clamped to the names changed (rows, cols), "" when
+// none.  The text is read and rewritten, never executed, in one pass.
+void _dash_by_clamp(string scalar scname, real scalar limit)
+{
+    string matrix    g
+    string rowvector toks
+    string scalar    s, tok, typed, row, ch, put, done
+    real scalar      j, k, p, cur, start, v, seen_r, seen_c
+
+    g = _dash_by_grammar()
+    s = st_strscalar(scname)
+    toks = _dash_rep_toks(s, 0)
+    done = ""
+    seen_r = 0
+    seen_c = 0
+    cur = 1
+    for (j = 1; j <= cols(toks); j++) {
+        tok = toks[j]
+        // The word's place: _dash_rep_toks cuts each word where the blanks
+        // and tabs before it end.
+        while (cur <= strlen(s)) {
+            ch = substr(s, cur, 1)
+            if (ch != " " & ch != char(9)) break
+            cur++
+        }
+        start = cur
+        cur = start + strlen(tok)
+        p = strpos(tok, "(")
+        if (!p) continue
+        typed = substr(tok, 1, p - 1)
+        row = ""
+        for (k = 1; k <= rows(g); k++) {
+            if (g[k, 3] != "1") continue
+            if (strlen(typed) < strlen(g[k, 2])) continue
+            if (substr(typed, 1, strlen(g[k, 2])) != g[k, 2]) continue
+            if (substr(g[k, 1], 1, strlen(typed)) != typed) continue
+            row = g[k, 1]
+            break
+        }
+        if (row == "rows") {
+            seen_r = seen_r + 1
+            if (seen_r > 1) continue
+        }
+        else if (row == "cols") {
+            seen_c = seen_c + 1
+            if (seen_c > 1) continue
+        }
+        else continue
+        v = strtoreal(strtrim(_dash_rep_value(tok)))
+        if (v >= . | v <= limit) continue
+        put = typed + "(" + strofreal(limit, "%21.0g") + ")"
+        s = substr(s, 1, start - 1) + put + substr(s, cur, .)
+        cur = start + strlen(put)
+        done = done + (done == "" ? "" : " ") + row
+    }
+    st_strscalar(scname, s)
+    st_local("_byg_clamped", done)
 }
 
 // _dash_rep_scan(opts, unk, cap) -- whether the list may give an option

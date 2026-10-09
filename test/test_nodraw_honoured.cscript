@@ -157,6 +157,17 @@ _dash_registry_nodraw
 assert r(nodraw) == 0
 display as text "ND-05 PASS: dash build sees a registered graph's nodraw"
 
+// ----------------------------------------------------------------
+// ND-06 -- WP-30 P1.27: saving(f, asis) with nodraw writes the page, a
+// documented difference (twoway gives r(601) "no current graph").
+// ----------------------------------------------------------------
+dash clear
+capture erase "`out1'"
+capture noisily dash scatter mpg weight, saving("`out1'", asis) nodraw
+assert _rc == 0
+confirm file "`out1'"
+display as text "ND-06 PASS: saving(, asis) with nodraw writes the page"
+
 capture dash clear
 capture erase "`out1'"
 capture erase "`logfile'"

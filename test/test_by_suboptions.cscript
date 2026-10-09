@@ -417,7 +417,7 @@ _byg_group BYG-15 "repeats twoway refuses and repeats its loops read" ///
     "legend(off) legend(on)" "clegend(on) clegend(off)" `"title("a") title("b")"' ///
     "graphregion(color(white)) graphregion(color(red))" "t1title(a) t1title(b)" ///
     "spacers(ring(1)) spacers(ring(2))" "bgcolor(white) bgcolor(red)" "ixt"
-_byg_group BYG-16 "cols() beyond the panels draws as twoway does, silently" "cols(500)"
+_byg_group BYG-16 "cols() beyond the panels draws as twoway does (its limit note: BYG-19)" "cols(500)"
 _byg_group BYG-17 "an unknown word, in typed order" ///
     "bogus" `"bogus TITLE("x")"' `"TITLE("x") bogus"' "bogus rows(0)" "nolegend"
 _byg_group BYG-18 "every by() word's minimum is accepted; one letter less is not" ///
@@ -448,6 +448,43 @@ _byg_group BYG-18 "every by() word's minimum is accepted; one letter less is not
         `"note("a")"' `"not("a")"' `"caption("a")"' `"cap("a")"' `"ca("a")"' `"subtitle("a")"' ///
         `"sub("a")"' `"su("a")"' `"title("a")"' `"t("a")"' `"spacers(ring(1))"' `"space(ring(1))"' ///
         `"spac(ring(1))"' `"bgcolor(white)"' `"bgc(white)"' `"bg(white)"'
+// BYG-19: cols() or rows() above the by_groups limit is drawn at the limit
+// with one note naming the global (BR-48.7, TR-48.3).  _dash_by_clamp was
+// never built, so cols(500) passed unchanged and silently (WP-30 P1.15a
+// follow-up).  At or under the limit, or with the limit raised:
+// the tail is kept and nothing is noted.  Compared in Mata, by value.
+capture program drop _byg_lim
+program define _byg_lim
+    version 19
+    args a want note
+    // The note is read as one log line, so the log is not wrapped.
+    local ls = c(linesize)
+    set linesize 255
+    _byg_run dash `"`a'"'
+    local rc = r(rc)
+    set linesize `ls'
+    mata: st_local("_gn", st_global("r(note)"))
+    capture dash clear
+    quietly dash scatter mpg weight, by(foreign, `a') name(byg)
+    mata: st_local("ok", strofreal(`rc' == 0 & st_local("_gn") == st_local("note") & strpos(st_global("dash_json_byg"), st_local("want")) > 0))
+    capture dash clear
+    if !`ok' {
+        scalar _byg_nfail = _byg_nfail + 1
+        display as error `"BYG-19 FAIL: by(foreign, `a'): rc `rc', note "`macval(_gn)'"; want "`macval(note)'" and `want' in the spec"'
+    }
+end
+local _gmax `"$dash_max_by_groups"'
+global dash_max_by_groups
+local before = _byg_nfail
+_byg_lim "cols(500)" "cols(100)" "(note:  by(, cols(#)) is above the by_groups limit of 100; drawn with 100 columns; \$dash_max_by_groups raises it)"
+_byg_lim "r(500) colf" "r(100) colf" "(note:  by(, rows(#)) is above the by_groups limit of 100; drawn with 100 rows; \$dash_max_by_groups raises it)"
+_byg_lim "cols(100)" "cols(100)" ""
+global dash_max_by_groups 600
+_byg_lim "cols(500)" "cols(500)" ""
+global dash_max_by_groups `_gmax'
+if _byg_nfail == `before' display "BYG-19 PASS: cols() and rows() above the by_groups limit are drawn at it, with one note"
+capture program drop _byg_lim
+
 display "BYG summary: " _byg_nfail " failing group probe(s)"
 assert _byg_nfail == 0
 scalar drop _byg_nfail _byg_case

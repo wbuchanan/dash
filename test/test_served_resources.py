@@ -423,6 +423,60 @@ class TestTheLauncherFlags:
         assert cmd[i + 1] == "7"
         assert cmd[cmd.index("--idle-timeout") + 1] == "0"
 
+    def test_renderer_main_accepts_them(self, tmp_path, monkeypatch):
+        """dash_render.py's own command line parses both flags and hands
+        them to the launcher as ints (TR-46.13); 0 sessions is refused."""
+        with open(dr.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+        block = src[src.index('if __name__ == "__main__":'):]
+        rec = {}
+
+        def _launch(*a, **kw):
+            rec.update(kw)
+
+        def run(*flags):
+            ns = dict(vars(dr), __name__="__main__", main=lambda *a, **k: {},
+                      _dash_launch_app=_launch)
+            monkeypatch.setattr(sys, "argv", [
+                "dash_render.py", "--spec", "s.json", "--data", "d.json",
+                "--output", str(tmp_path / "app.py"), "--mode", "server",
+                "--launch", "--no-browser"] + list(flags))
+            exec(compile(block, dr.__file__, "exec"), ns)
+        run("--max-sessions", "7", "--idle-timeout", "0")
+        assert (rec["max_sessions"], rec["idle_timeout"]) == (7, 0)
+        run()
+        assert (rec["max_sessions"], rec["idle_timeout"]) == (None, None)
+        with pytest.raises(SystemExit):
+            run("--max-sessions", "0")
+
+
+# ===========================================================================
+class TestTheSavedPageIsUnchanged:
+
+    def test_digest(self, tmp_path):
+        """AC-46.7: the served-limit work (cap, idle close, shared payload,
+        estimator memo) lives in the generated app only; a saved page with a
+        lowess layer, a filter and a KPI is the same page as at af9676f."""
+        from conftest import render_models
+        from test_adversarial_matrix import _write_inputs
+        from test_date_axis_residuals import _digest
+        sp, dp = _write_inputs(tmp_path, make_spec(
+            [dict(_SCATTER), dict(_LOWESS)],
+            filters=[{"varname": "foreign", "type": "dropdown"}],
+            kpis=[_kpi("both")]))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp, str(tmp_path / "o.html"))
+            render_models(r)
+        # Taken at af9676f (ids stripped, gzipped buffers decompressed);
+        # re-derived at 3d28881, whose %tw week-start tick port changes only
+        # the page's two date-tick CustomJS code strings.
+        assert _digest(r._last_layout_root) == _SAVED_DIGEST
+
+
+_SAVED_DIGEST = (
+    "7e7425124a2a782ca8ff4bdd9084db1dd1305c34ee5da360b0bc9a2ce27a81c5")
+
 
 # ===========================================================================
 class TestEstimatorMemo:

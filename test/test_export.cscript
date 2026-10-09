@@ -23,7 +23,7 @@
 *!
 *! It also certifies what dash returns -- r(filename), the absolute path of
 *! the file a command wrote, and nothing else -- and the note that graph
-*! export writes Stata's graph, not the dashboard (GE-01..GE-14, WP-30
+*! export writes Stata's graph, not the dashboard (GE-01..GE-15, WP-30
 *! P1.28a).
 
 cscript "dash export: the csv option" adodir ".."
@@ -142,7 +142,7 @@ assert _rc != 0
 display "EXP-06 PASS: csv(1) is refused"
 
 // ===============================================================
-// GE-01..GE-14 (WP-30 P1.28a) -- what dash leaves in r(), and the note
+// GE-01..GE-15 (WP-30 P1.28a) -- what dash leaves in r(), and the note
 // about graph export.  Every case writes in its own folder under
 // c(tmpdir); r() is read by _ge_r straight after the dash call, because
 // cert_log_has, cd and graph dir replace it.  Graphs are drawn here, after
@@ -370,6 +370,26 @@ mata: st_local("ge14", _dash_graph_names("", 5))
 assert "`ge14'" == ""
 dash clear
 display "GE-14 PASS: the note lists up to five graphs in memory, then how many more"
+
+// GE-15 -- one note per command: a dash build of a tabs() dashboard with
+// three graphs and a KPI, with a graph in memory, prints one note, not one
+// per element.  (A quietly command still notes: GE-12.)
+quietly twoway scatter price weight
+dash scatter mpg weight, name(ge15a)
+dash scatter price weight, name(ge15b)
+dash scatter mpg price, name(ge15c)
+dash kpi mean(mpg), name(ge15k) title("Mean mpg")
+capture log close ge
+quietly log using "`ge_here'/ge15.log", text replace name(ge)
+dash build, saving("`ge_here'/ge15.html") replace tabs(One: ge15a ge15b / Two: ge15c ge15k)
+quietly log close ge
+graph drop _all
+_ge_notes "`ge_here'/ge15.log" "`ge_needle'"
+assert `ge_n' == 1
+_ge_notes "`ge_here'/ge15.log" "(note:  dash: `ge_needle'Graph)"
+assert `ge_n' == 1
+dash clear
+display "GE-15 PASS: a tabs() build of three graphs and a KPI notes the graph in memory once"
 
 local fl : dir "`ge_here'/sub" files "*"
 foreach f of local fl {

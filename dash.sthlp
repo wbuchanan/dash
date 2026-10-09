@@ -664,6 +664,18 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:saving("my file.html")}.  A comma inside the quotes belongs to the
     name, and {cmd:saving(, replace)} writes {cmd:Graph.html}.
 
+{phang2}    {ul:nodraw still writes the page.}  A graph with {cmd:nodraw} and
+    {cmd:saving(}{it:filepath}{cmd:, asis)} writes the page to
+    {it:filepath} and opens no browser window; {cmd:twoway} refuses the
+    same options, "no current graph", {cmd:r(601)}, since {cmd:asis} saves
+    a drawn graph and {cmd:nodraw} draws none.
+
+{phang2}    {ul:graph is read only before twoway.}  After {cmd:dash},
+    {cmd:graph} is a prefix only when {cmd:twoway} follows it; before any
+    other word it is read as a plot type and refused, "unrecognised plot
+    type 'graph'", {cmd:r(198)}, where {cmd:graph} followed by a word that
+    is not one of its subcommands gives {cmd:r(4023)}.
+
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
     a graph already holds and a graph cannot take a KPI's.  Either is
@@ -2511,10 +2523,9 @@ default 60, 0 never) is closed: its page says so and frees its place, so a
 tab that was only being looked at can need a reload.  The data is decoded
 once per app process and shared, read-only, by every session, and the
 lowess, fpfit and lpoly fits are kept for reuse within 64 MB per process.
-Each session adds at most about 80 MB at 200,000 rows by 3 layers (measured
-by the test suite, not checked at run time); at the default cap of 20 that
-is up to about 1.9 GB with the server's own 221 MB and the 64 MB of fits, so
-set {cmd:maxsessions()} to fit the machine.  Before it listens the app
+Each session's memory grows with the rows and layers it draws, and dash sets
+no bound on it (about 70 MB at 200,000 rows and one scatter, about 150 MB
+with three), so set {cmd:maxsessions()} to fit the machine and the data.  Before it listens the app
 prints {cmd:preparing the dashboard (}{it:N} {cmd:rows, }...{cmd:)} and
 draws the dashboard once, so a long start is not a failure and no reader
 pays for the first drawing.  Opening a session still runs on the server's
@@ -2685,7 +2696,9 @@ otherwise in as many columns as the square root of the panels and
 {cmd:holes()} rounded up, filled along the rows ({cmd:colfirst}: down the
 columns), a hole's cell skipped.  As in {cmd:twoway}, a row or column that
 holds no panel is not drawn, so {cmd:cols()} of more columns than there
-are panels puts them all in one row.  Panel text, markers and lines are
+are panels puts them all in one row; a {cmd:cols()} or {cmd:rows()} above
+the {cmd:$dash_max_by_groups} limit is drawn at the limit, with a note.
+Panel text, markers and lines are
 drawn at {cmd:twoway}'s {cmd:by()} size -- 0.85 of the plain graph's for
 2 to 4 panels, 0.6 for 10 to 16 -- or at {cmd:iscale()}; the overall
 title, subtitle, note and caption are not scaled.  The space between the
@@ -3692,7 +3705,7 @@ rule over Stata's milliseconds.  A {cmd:%td}, {cmd:%tw}, {cmd:%tm},
 (days, weeks, the first days of months, quarters and years) by
 {cmd:twoway}'s time-series rule, also compiled; {cmd:dash} follows a model
 of it fitted to 12,000 of Stata's answers, which agrees exactly with 98% of
-{cmd:%ty} ranges and with 52% to 66% of the others, and where it differs
+{cmd:%ty} ranges and with 58% to 66% of the others, and where it differs
 it picks another calendar step or end tick.  A {cmd:by()} graph's panels
 are ticked on one scale, over all the panels' data and every layer, fits
 included, as {cmd:twoway} ticks them; with {cmd:by(, yrescale)} each panel is
@@ -3713,7 +3726,7 @@ with no rule, and a second date axis with none, is ticked as {cmd:#5} (the
 scheme's tick count) by {cmd:twoway}'s calendar rule as {cmd:dash} models
 it, with no minor ticks: {cmd:line close date} on {cmd:sp500} labels
 01jan2001 01apr2001 01jul2001 01oct2001 01jan2002, as {cmd:twoway} does.
-The model agrees with Stata on about 52-66% of daily to half-yearly ranges
+The model agrees with Stata on about 58-66% of daily to half-yearly ranges
 and 98% of yearly ones; otherwise it chooses another calendar step or end
 tick.  A date that shares an axis with a plain number is ticked on the
 date's calendar in its Stata values, by default and under {cmd:#}{it:N}

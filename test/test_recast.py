@@ -262,6 +262,17 @@ class TestTheFixture:
         assert p["FB-line"]["equal_to"] == "B-scatter"
         assert p["D-lfit-scatter"]["counts"]["circle"] == 6
 
+    def test_the_option_surface_record_holds_the_written_spec(self):
+        """WP-30 P1.8b: rejected_options.json's recast probe records the
+        spec dash.ado writes, the drawn type with ``recast_from``, not the
+        pre-WP-30 scatter carrying ``options.recast``."""
+        with open(os.path.join(_HERE, "fixtures", "rejected_options.json"),
+                  encoding="utf-8") as fh:
+            probes = {p["id"]: p for p in json.load(fh)["probes"]}
+        plot = json.loads(probes["recast"]["spec_json"])["plots"][0]
+        assert (plot["type"], plot.get("recast_from")) == ("line", "scatter")
+        assert "recast" not in plot["options"]
+
 
 class TestTheHelp:
 
