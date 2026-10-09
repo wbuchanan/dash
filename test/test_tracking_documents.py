@@ -497,6 +497,37 @@ class TestEveryOpenEntrySaysWhyItIsOpen:
             "and why:\n" + "\n".join(bad))
 
 
+class TestNoResidualNamesAClosedRow:
+    """A Resolution that hands a residual on as "(P2.<n>)" names a DROPIN
+    P2 row that is still open; a row written closed is not cited as open
+    work (WP-30 follow-up: P1.10's residual named P2.46 after 4fda248
+    closed it)."""
+
+    _ROW = re.compile(r"^(\d+)\. (.*)$")
+    _CITED = re.compile(r"\(P2\.(\d+)\)")
+
+    def test_every_cited_row_is_open(self, bugs):
+        rows, section = {}, None
+        for line in _read(".ultraplan/handoff/DROPIN-REMAINING.md"
+                          ).splitlines():
+            if line.startswith("### "):
+                section = line[4:7]
+            m = self._ROW.match(line)
+            if m and section == "P2:":
+                rows[int(m.group(1))] = m.group(2)
+        entries, _p = bugs
+        bad = []
+        for e in entries:
+            for n in self._CITED.findall(e["fields"].get("Resolution", "")):
+                row = rows.get(int(n), "")
+                if "Written closed" in row or "[Closed in" in row:
+                    bad.append("line %d: P2.%s in %s" % (
+                        e["line"], n, e["title"][:70]))
+        assert rows, "DROPIN-REMAINING.md's P2 list was not found"
+        assert not bad, ("residuals that name a closed DROPIN row:\n"
+                         + "\n".join(bad))
+
+
 class TestNoOpenEntryBlocksARelease:
     """WP-27's BR-27.2: no S1 or S2 defect is open at release.
 
