@@ -7,6 +7,9 @@ Done:
 - Section 58 (closeout) written 06oct2026 (21 tasks); checked by its writer only (consolidated review budget), not by a separate reviewer.
 - **Ratified 06oct2026.** The maintainer answered all 44 rows of index.md "Decisions for maintainer ratification": 35 as recommended; rows 4, 8, 12, 22, 25, 27, 32 and 36 CHANGED; row 29 answered otherwise than recommended. The answers are applied to the section files (each records them under "(ratification 06oct2026)" in its Review amendments), decision-register.md, manifest.json, PLAN.md, index.md and open-questions.md (every question resolved). No row is pending or struck.
 
-Remaining:
-1. Row 29: the one-line `test/test_packaging.py::_ROOT_ALSO` change (naming `PhilSchummSuggestion.md`) is in the working tree, uncommitted. Run the full suite once (`python3 -m pytest test/ -q`), then commit that change on `wp30-p1` in a commit of its own, before step 0a (index step 0a.4).
-2. Commit `.ultraplan/wp30/` on `wp30-p1` (index step 0a: `git add -f` for manifest.json; G0 green), after step 0g writes the queue script.
+Executed (09oct2026):
+- Row 29's `_ROOT_ALSO` change committed as 2da4783 (WP-30 P-1); the plan committed as bd05776 (WP-30 S00).
+- Batches 0-21 landed on `wp30-p1` (S01-S58), merged into main at af9676f. The closeout's record is ROADMAP.md's WP-30 entry (DONE, "Done, measured (09oct2026)").
+- Follow-up branch `wp30-followup` closes the gaps a post-merge audit found (S12, S22, S27/S44, S46, S47, S48 and four stale records).
+
+Remaining: none in this plan. Deferred work is filed as DROPIN-REMAINING.md P2.42-P2.92 and the platform package in ROADMAP.md.
