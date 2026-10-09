@@ -531,6 +531,9 @@ COVERAGE = {
                             "test_tokenizer.cscript:P1A-28"),
         "_dash_split_segs": ("test_tokenizer.cscript:P1A-21",
                              "test_parser_integrity.cscript:P1B-06"),
+        "_dash_piece_is_bare": ("test_parser.cscript:P1A-85",),
+        "_dash_split_groups": ("test_parser.cscript:P1A-85",
+                               "test_tokenizer.cscript:P1A-24"),
         "_dash_extract_vars": ("test_parser.cscript:P1A-48",
                                "test_help_claims_6.cscript:HC6-48"),
         # e2e: the names _dash_extract_qual_vars returns past escapes.

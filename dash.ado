@@ -1844,8 +1844,8 @@ end
 //         range, without their keywords, or "".
 //
 // The text is every qualifier piece _dash_split_segs found at the top
-// level of a parenthesised command -- after the last group, or before a
-// `||' -- joined with blanks.  -syntax- reads it as twoway reads it: one
+// level -- after a run of plot groups, or in a `||' piece with no plot,
+// `a || b || if foreign==1' -- joined with blanks.  -syntax- reads it as twoway reads it: one
 // `if' and one `in', in either order, and nothing else.  Measured against
 // twoway, 23sep2026: a second `if' is r(198) there ("multiple global if's
 // not allowed") and "invalid syntax" here; a plot group after the
@@ -6665,8 +6665,9 @@ program define _dash_plot
     // walk past it and drop it, so the graph drew every observation with
     // rc 0.  It is the graph's own qualifier now, read here with -syntax-,
     // which refuses what twoway refuses -- two ifs, a word or a plot group
-    // after it -- before anything is parsed or reported.  Paren mode only:
-    // in the || form a qualifier is the plot's own, as in twoway.
+    // after it -- before anything is parsed or reported.  A qualifier in a
+    // bare plot of the || form is that plot's own, as in twoway; one in a
+    // || piece with no plot, `a || b || if foreign==1', is the graph's.
     local _gq_if ""
     local _gq_in ""
     if `: length local _graph_qual_raw' {

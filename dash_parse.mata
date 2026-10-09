@@ -2538,36 +2538,40 @@ void _dash_comma_pos(string scalar input, string scalar out_macro) {
 // 5. PLOT-SEGMENT SPLITTER   (_dash_split_segs)
 // ============================================================
 //
-// Detect whether the input uses:
-//   (a) PAREN syntax — first non-whitespace token is "("
-//   (b) FLAT  syntax — plot types separated by "||"
+// The command is read as twoway reads it: split at every "||" outside
+// quotes and parentheses into pieces, and each piece is one of
+//   (a) a run of parenthesised plots, `(plot) (plot)', with the graph's
+//       own [if] [in] [, options] after it;
+//   (b) a piece with no plot -- nothing but [if] [in] [, options], or
+//       nothing at all -- whose qualifier and options are the graph's;
+//   (c) a bare plot, `type args [if] [in] [, options]', one segment, whose
+//       options may hold graph-level options too (both are parsed together
+//       by the Stata syntax program -- no need to pre-separate them here).
+// Measured against twoway 09oct2026 (test_parser.cscript P1A-85): `a || b
+// || , title("T")', `(a) || b || , title("T")', `a || , title("T") || b',
+// `(a) (b), title("T") || c', `a || b ||', `a || || b' and `a || b || if
+// foreign==1' are all rc 0, the qualifier drawing both plots over the 22
+// foreign cars.  This splitter used to choose ONE form for the whole
+// command from its first character, so a piece with no plot was read as
+// a plot -- "unrecognised plot type ','" -- and a bare plot after a
+// parenthesised one as stray text; the trailing `|| , opts' form was
+// refused for every option.
 //
-// PAREN MODE:
-//   Collect each top-level parenthesised group as a segment.
-//   After all groups, a top-level comma introduces graph-level options.
-//   Sets: _n_segs, _seg_1..N, _graph_opts_raw
-//
-// FLAT MODE:
-//   Split the input on "||" tokens at depth 0.
-//   The last segment may contain BOTH plot options and graph-level options
-//   (both will be parsed together by the Stata syntax program — no need to
-//   pre-separate them here).
-//   Sets: _n_segs, _seg_1..N, _graph_opts_raw = ""
-//
-// In both modes each _seg_K includes the plot-type name as its first word.
+// Sets: _n_segs, _seg_1..N (each with its plot type as its first word),
+//       _graph_opts_raw (the options of (a) and (b), joined in order) and
+//       _graph_qual_raw (their qualifiers, joined).
 //
 void _dash_split_segs(string scalar input) {
-    real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt
+    real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt, p
     real   scalar  seg_start, n_segs
-    string scalar  seg_text, trimmed, stray, qword
-    real   scalar  qual_seen, qnext, qual_start, qdepth
-    string vector  segs
+    string scalar  piece
+    string vector  pieces, segs
     string scalar  graph_opts_raw, graph_qual
 
-    trimmed        = strtrim(input)
-    len            = strlen(trimmed)
-    n_segs         = 0
-    segs           = J(1, 0, "")
+    input  = strtrim(input)
+    len    = strlen(input)
+    pieces = J(1, 0, "")
+    segs   = J(1, 0, "")
     graph_opts_raw = ""
     graph_qual     = ""
 
@@ -2576,294 +2580,79 @@ void _dash_split_segs(string scalar input) {
         exit(198)
     }
 
-    // ---- detect syntax mode ----
-    // Skip leading whitespace and check first non-white character.
-    real scalar first_non_white
-    first_non_white = 0
-    for (i = 1; i <= len; i++) {
-        c_code = ascii(substr(trimmed, i, 1))
-        if (c_code != 32 & c_code != 9) {
-            first_non_white = c_code
-            break
+    // ---- split at "||" outside quotes and parentheses ----
+    depth     = 0
+    in_dq     = 0
+    in_cq     = 0
+    seg_start = 1
+    i         = 1
+    while (i <= len) {
+        // Quoted text is opaque at ANY depth.  The flat-mode scan once
+        // entered a quote only at depth 0, so a '(' inside a quoted option
+        // value was counted as a real parenthesis, `depth' never returned
+        // to 0, and every later "||" stopped separating.
+        nxt = _dash_quote_step(input, len, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
         }
-    }
 
-    // ================================================================
-    // PAREN MODE  (first real char is "(")
-    // ================================================================
-    if (first_non_white == 40) {
-        depth    = 0
-        in_dq    = 0
-        in_cq    = 0
-        seg_start = 0
-        qual_seen = 0
-        qual_start = 0
-        qdepth    = 0
-        i         = 1
+        c_code = ascii(substr(input, i, 1))
 
-        while (i <= len) {
-            // Quoted text is opaque at any depth.
-            nxt = _dash_quote_step(trimmed, len, i, in_dq, in_cq)
-            if (nxt) {
-                i = nxt
-                continue
-            }
-
-            c_code = ascii(substr(trimmed, i, 1))
-
-            // ---- inside an if/in qualifier written between or after the
-            // plot groups ----
-            // twoway applies such a qualifier to every plot (measured:
-            // `(scatter y x) (line y x) if foreign==1' draws the 22 foreign
-            // cars in both), wherever it stands at the top level -- after
-            // the last group, or before a `||' -- and allows one `if' and
-            // one `in' in all ("multiple global if's not allowed").  It is
-            // collected here, whole, into graph_qual, and _dash_plot reads
-            // it with -syntax- as the graph's own qualifier.  This scanner
-            // used to walk past it and throw it away, so every observation
-            // was drawn, in silence -- and a parenthesis in it,
-            // `if inlist(rep78,3,4)', opened a plot group.  Inside the
-            // qualifier a parenthesis is the expression's; it ends at a
-            // comma or a `||' outside its parentheses (and outside quotes,
-            // which the step above skips), or at the end.  A plot group
-            // written after it without `||' stays part of its text, where
-            // -syntax- refuses it with twoway's own "invalid '('".
-            if (qual_seen) {
-                if (c_code == 40) {
-                    qdepth++
-                }
-                else if (c_code == 41) {
-                    if (qdepth == 0) {
-                        errprintf("dash: unmatched ')' in the plot specification.\n")
-                        exit(198)
-                    }
-                    qdepth--
-                }
-                else if (qdepth == 0 & c_code == 124 & i + 1 <= len &
-                         ascii(substr(trimmed, i + 1, 1)) == 124) {
-                    graph_qual = graph_qual + " " +
-                                 strtrim(substr(trimmed, qual_start, i - qual_start))
-                    qual_seen = 0
-                    i = i + 2
-                    continue
-                }
-                else if (qdepth == 0 & c_code == 44) {
-                    graph_qual = graph_qual + " " +
-                                 strtrim(substr(trimmed, qual_start, i - qual_start))
-                    qual_seen = 0
-                    graph_opts_raw = strtrim(substr(trimmed, i + 1, .))
-                    if (graph_opts_raw != "" &
-                        ascii(substr(graph_opts_raw, 1, 1)) == 40) {
-                        errprintf(
-                          "dash: a plot group may not follow the graph-option comma.\n")
-                        errprintf(
-                          "      Write every plot before the comma: (plot1) (plot2), <options>\n")
-                        exit(198)
-                    }
-                    break
-                }
-                i++
-                continue
-            }
-
-            if (c_code == 40 & depth == 0) {
-                seg_start = i + 1
-                depth     = 1
-            }
-            else if (c_code == 40) depth++
-            else if (c_code == 41 & depth > 0) {
-                depth--
-                if (depth == 0 & seg_start > 0) {
-                    seg_text = strtrim(substr(trimmed, seg_start, i - seg_start))
-                    if (seg_text != "") {
-                        n_segs = n_segs + 1
-                        segs   = segs, seg_text
-                    }
-                    seg_start = 0
-                }
-            }
-            else if (c_code == 41) {
-                // A ')' with nothing open.  This used to fall through to
-                // i++ and be ignored, so `(a)) (b)' drew both plots where
-                // twoway returns r(198).
+        if (c_code == 40) {
+            depth++
+        }
+        else if (c_code == 41) {
+            // A ')' with nothing open: `scatter y x, title("ok"))' and
+            // `(a)) (b)' are r(198) in twoway -- measured.  It never leaves
+            // `depth' non-zero, so the end-of-scan check cannot catch it.
+            if (depth == 0) {
                 errprintf("dash: unmatched ')' in the plot specification.\n")
                 exit(198)
             }
-            else if (c_code == 44 & depth == 0) {
-                // top-level comma after all () groups → graph opts
-                graph_opts_raw = strtrim(substr(trimmed, i + 1, .))
-                // A graph option always begins with its own name, so a '('
-                // opening this text is a plot group written after the
-                // comma.  twoway returns r(198) for `(a), (b)'; dash used
-                // to swallow the second group into the option string.
-                if (graph_opts_raw != "" &
-                    ascii(substr(graph_opts_raw, 1, 1)) == 40) {
-                    errprintf(
-                      "dash: a plot group may not follow the graph-option comma.\n")
-                    errprintf(
-                      "      Write every plot before the comma: (plot1) (plot2), <options>\n")
-                    exit(198)
-                }
-                break
-            }
-            else if (depth == 0 & c_code != 32 & c_code != 9) {
-                // "||" is a legal separator BETWEEN parenthesised groups:
-                // twoway accepts `(scatter y x) || (line y x)', measured
-                // rc 0.  Treating it as stray text rejected a form dash
-                // claims drop-in parity for.
-                if (c_code == 124) {
-                    i++
-                    continue
-                }
-
-                // A top-level if/in qualifier may follow a plot group:
-                //     (scatter y x) if foreign==1, title("T")
-                // twoway accepts it after the last group and before a
-                // `||', with a blank or, for `if', a parenthesis after the
-                // word (measured rc 0: `(scatter mpg weight) if(foreign==1)'
-                // draws the 22 foreign cars); the word is lower case, as
-                // Stata's own -syntax- reads it (`IF foreign==1' is
-                // r(198) in twoway).  It is read by the branch above, from
-                // the word on.
-                qword = substr(trimmed, i, 2)
-                qnext = (i + 2 <= len ? ascii(substr(trimmed, i+2, 1)) : 32)
-                if ((qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) |
-                    (qword == "in" & (qnext == 32 | qnext == 9))) {
-                    qual_seen  = 1
-                    qual_start = i
-                    qdepth     = 0
-                    i = i + 2
-                    continue
-                }
-
-                // Text between top-level groups, which twoway rejects --
-                // `(a) junk (b)' is r(198) there and used to be rc 0 here
-                // with `junk' silently discarded.  Report the whole word,
-                // not the one character the scan happened to stop on.
-                stray = substr(trimmed, i, .)
-                if (strpos(stray, " ") > 0) {
-                    stray = substr(stray, 1, strpos(stray, " ") - 1)
-                }
-                errprintf("dash: unexpected text between plot groups: '%s'\n",
-                          stray)
-                errprintf(
-                  "      Each plot must be its own parenthesised group.\n")
-                exit(198)
-            }
-            i++
+            depth--
         }
-
-        // Reaching the end mid-construct means the specification is
-        // malformed.  Both conditions used to yield one silent segment.
-        // (A `break' at the top-level comma leaves the graph options
-        // unscanned by design -- Stata's -syntax- validates those.)
-        //
-        // The quote is tested FIRST because an unterminated quote also
-        // leaves `depth' stuck: `title("oops || line y x' is a missing '"',
-        // and reporting it as a paren problem sends the user hunting for
-        // the wrong character.
-        if (in_dq | in_cq) {
-            errprintf("dash: unterminated quotation in the plot specification.\n")
-            exit(198)
+        else if (c_code == 124 & depth == 0 &
+                 i + 1 <= len & ascii(substr(input, i+1, 1)) == 124) {
+            pieces    = pieces, substr(input, seg_start, i - seg_start)
+            seg_start = i + 2
+            i         = i + 2
+            continue
         }
-        if (depth != 0 | (qual_seen & qdepth != 0)) {
-            errprintf("dash: unbalanced parentheses in the plot specification.\n")
-            exit(198)
-        }
-        // A qualifier that runs to the end of the command.
-        if (qual_seen) {
-            graph_qual = graph_qual + " " + strtrim(substr(trimmed, qual_start, .))
-        }
-    }
-    // ================================================================
-    // FLAT MODE (|| separators)
-    // ================================================================
-    else {
-        depth     = 0
-        in_dq     = 0
-        in_cq     = 0
-        seg_start = 1
-        i         = 1
-
-        while (i <= len) {
-            // Quoted text is opaque at ANY depth.  These two branches used
-            // to carry `& depth == 0', so a '(' inside a quoted option
-            // value was counted as a real parenthesis, `depth' never
-            // returned to 0, and every later "||" stopped separating --
-            // the whole of the remaining command was folded into segment 1
-            // and reported as unknown options.  Paren mode never had the
-            // gate and has always been the correct reference.
-            nxt = _dash_quote_step(trimmed, len, i, in_dq, in_cq)
-            if (nxt) {
-                i = nxt
-                continue
-            }
-
-            c_code = ascii(substr(trimmed, i, 1))
-
-            if (c_code == 40) {
-                depth++
-                i++
-                continue
-            }
-            if (c_code == 41 & depth > 0) {
-                depth--
-                i++
-                continue
-            }
-            if (c_code == 41) {
-                // A ')' with nothing open.  Flat mode used to fall through
-                // to i++ and ignore it, so `scatter y x, title("ok"))' was
-                // rc 0 here and r(198) in twoway -- measured.  An
-                // unbalanced ')' never leaves `depth' non-zero, so the
-                // end-of-scan check below cannot catch this one.
-                errprintf("dash: unmatched ')' in the plot specification.\n")
-                exit(198)
-            }
-
-            // Check for "||" at depth 0
-            if (c_code == 124 & depth == 0 &
-                i + 1 <= len & ascii(substr(trimmed, i+1, 1)) == 124) {
-                seg_text = strtrim(substr(trimmed, seg_start, i - seg_start))
-                if (seg_text != "") {
-                    n_segs = n_segs + 1
-                    segs   = segs, seg_text
-                }
-                seg_start = i + 2
-                i         = i + 2
-                continue
-            }
-            i++
-        }
-
-        // Reaching the end mid-construct means the specification is
-        // malformed.  Both conditions used to yield one silent segment:
-        //     scatter y x, legend(off || line y2 x      -- unclosed '('
-        //     scatter y x, title("oops || line y2 x     -- unterminated '"'
-        //
-        // Quote first: an unterminated quote also leaves `depth' stuck, and
-        // naming the parenthesis sends the user after the wrong character.
-        if (in_dq | in_cq) {
-            errprintf("dash: unterminated quotation in the plot specification.\n")
-            exit(198)
-        }
-        if (depth != 0) {
-            errprintf("dash: unbalanced parentheses in the plot specification.\n")
-            exit(198)
-        }
-
-        // final (or only) segment
-        seg_text = strtrim(substr(trimmed, seg_start, .))
-        if (seg_text != "") {
-            n_segs = n_segs + 1
-            segs   = segs, seg_text
-        }
-
-        // In flat mode graph-level options are embedded in the last segment
-        // (handled by the Stata syntax call); no separate graph_opts_raw.
-        graph_opts_raw = ""
+        i++
     }
 
+    // Reaching the end mid-construct means the specification is
+    // malformed:
+    //     scatter y x, legend(off || line y2 x      -- unclosed '('
+    //     scatter y x, title("oops || line y2 x     -- unterminated '"'
+    // Quote first: an unterminated quote also leaves `depth' stuck, and
+    // naming the parenthesis sends the user after the wrong character.
+    if (in_dq | in_cq) {
+        errprintf("dash: unterminated quotation in the plot specification.\n")
+        exit(198)
+    }
+    if (depth != 0) {
+        errprintf("dash: unbalanced parentheses in the plot specification.\n")
+        exit(198)
+    }
+    pieces = pieces, substr(input, seg_start, .)
+
+    // ---- read each piece ----
+    // An empty piece -- `a || || b', a leading or a trailing `||' -- adds
+    // nothing, as in twoway.
+    for (p = 1; p <= cols(pieces); p++) {
+        piece = strtrim(pieces[p])
+        if (piece == "") continue
+        if (_dash_piece_is_bare(piece)) {
+            segs = segs, piece
+        }
+        else {
+            _dash_split_groups(piece, segs, graph_opts_raw, graph_qual)
+        }
+    }
+
+    n_segs = cols(segs)
     if (n_segs == 0) {
         errprintf("dash: no plot specifications found.\n")
         exit(198)
@@ -2874,12 +2663,167 @@ void _dash_split_segs(string scalar input) {
     for (i = 1; i <= n_segs; i++) {
         st_local("_seg_" + strofreal(i), segs[i])
     }
-    st_local("_graph_opts_raw", graph_opts_raw)
-    // The qualifier written between or after the parenthesised groups,
-    // every piece of it, "" in flat mode, where a qualifier belongs to the
-    // plot it is written in (twoway draws `scatter y x || line y x if
-    // foreign==1' as 74 points and a line through 22).
+    st_local("_graph_opts_raw", strtrim(graph_opts_raw))
+    // The qualifier written after the parenthesised groups or in a piece
+    // with no plot, every piece of it.  A qualifier in a bare plot is that
+    // plot's own (twoway draws `scatter y x || line y x if foreign==1' as
+    // 74 points and a line through 22), and stays in its segment.
     st_local("_graph_qual_raw", strtrim(graph_qual))
+}
+
+// 1 when a trimmed, non-empty piece of the command is a bare plot -- it
+// begins with neither '(', nor ',', nor an if/in qualifier -- and 0 when
+// it is a run of plot groups or a piece with no plot.  The qualifier word
+// is lower case, as -syntax- reads it, with a blank after it or, for `if',
+// a parenthesis: twoway takes `if(foreign==1)'.  No plot type is named if
+// or in, and `ifx' is a word.
+real scalar _dash_piece_is_bare(string scalar piece) {
+    real scalar   c1, qnext
+    string scalar qword
+
+    c1 = ascii(substr(piece, 1, 1))
+    if (c1 == 40 | c1 == 44) return(0)
+    qword = substr(piece, 1, 2)
+    qnext = (strlen(piece) >= 3 ? ascii(substr(piece, 3, 1)) : 32)
+    if (qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) return(0)
+    if (qword == "in" & (qnext == 32 | qnext == 9)) return(0)
+    return(1)
+}
+
+// One piece of the command that is not a bare plot (_dash_piece_is_bare):
+// its parenthesised plots are appended to segs, its qualifier to qual and
+// the text after its top-level comma to gopts, each joined with a blank.
+// The piece holds no top-level "||" and its quotes and parentheses are
+// balanced -- _dash_split_segs has checked both -- so nothing is left open
+// at its end.
+void _dash_split_groups(string scalar s,
+                        string vector segs,
+                        string scalar gopts,
+                        string scalar qual)
+{
+    real   scalar i, len, depth, in_dq, in_cq, c_code, nxt
+    real   scalar seg_start, qual_seen, qual_start, qnext
+    string scalar seg_text, stray, qword, go
+
+    len        = strlen(s)
+    depth      = 0
+    in_dq      = 0
+    in_cq      = 0
+    seg_start  = 0
+    qual_seen  = 0
+    qual_start = 0
+    i          = 1
+
+    while (i <= len) {
+        // Quoted text is opaque at any depth.
+        nxt = _dash_quote_step(s, len, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+
+        c_code = ascii(substr(s, i, 1))
+
+        // ---- inside an if/in qualifier written after the plot groups or
+        // in a piece with no plot ----
+        // twoway applies such a qualifier to every plot (measured:
+        // `(scatter y x) (line y x) if foreign==1' draws the 22 foreign
+        // cars in both, and so does `scatter y x || line y x || if
+        // foreign==1'), and allows one `if' and one `in' in all ("multiple
+        // global if's not allowed").  It is collected here, whole, into
+        // qual, and _dash_plot reads it with -syntax- as the graph's own
+        // qualifier.  Inside the qualifier a parenthesis is the
+        // expression's -- `if inlist(rep78,3,4)' opens no plot group; it
+        // ends at a comma outside its parentheses, or at the end.  A plot
+        // group written after it stays part of its text, where -syntax-
+        // refuses it with twoway's own "invalid '('".
+        if (qual_seen) {
+            if (c_code == 40) depth++
+            else if (c_code == 41) depth--
+            else if (depth == 0 & c_code == 44) {
+                qual      = qual + " " + strtrim(substr(s, qual_start, i - qual_start))
+                qual_seen = 0
+                // Back to the comma: the branch below reads the options.
+                continue
+            }
+            i++
+            continue
+        }
+
+        if (c_code == 40 & depth == 0) {
+            seg_start = i + 1
+            depth     = 1
+        }
+        else if (c_code == 40) depth++
+        else if (c_code == 41) {
+            depth--
+            if (depth == 0 & seg_start > 0) {
+                seg_text = strtrim(substr(s, seg_start, i - seg_start))
+                if (seg_text != "") segs = segs, seg_text
+                seg_start = 0
+            }
+        }
+        else if (c_code == 44 & depth == 0) {
+            // top-level comma after the () groups -> graph opts
+            go = strtrim(substr(s, i + 1, .))
+            // A graph option always begins with its own name, so a '('
+            // opening this text is a plot group written after the
+            // comma.  twoway returns r(198) for `(a), (b)' and for `a ||
+            // , (b)'; dash used to swallow the group into the option
+            // string.
+            if (go != "" & ascii(substr(go, 1, 1)) == 40) {
+                errprintf(
+                  "dash: a plot group may not follow the graph-option comma.\n")
+                errprintf(
+                  "      Write every plot before the comma: (plot1) (plot2), <options>\n")
+                exit(198)
+            }
+            gopts = gopts + " " + go
+            return
+        }
+        else if (depth == 0 & c_code != 32 & c_code != 9) {
+            // A top-level if/in qualifier may follow the plot groups or
+            // open a piece with no plot:
+            //     (scatter y x) if foreign==1, title("T")
+            //     scatter y x || line y x || if foreign==1, title("T")
+            // the word in lower case, as Stata's own -syntax- reads it
+            // (`IF foreign==1' is r(198) in twoway), with a blank or, for
+            // `if', a parenthesis after it (measured rc 0: `(scatter mpg
+            // weight) if(foreign==1)' draws the 22 foreign cars).  It is
+            // read by the branch above, from the word on.
+            qword = substr(s, i, 2)
+            qnext = (i + 2 <= len ? ascii(substr(s, i+2, 1)) : 32)
+            if ((qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) |
+                (qword == "in" & (qnext == 32 | qnext == 9))) {
+                qual_seen  = 1
+                qual_start = i
+                i = i + 2
+                continue
+            }
+
+            // Text between top-level groups, which twoway rejects --
+            // `(a) junk (b)' and `(a) | (b)' are r(198) there; dash
+            // discarded `junk' and skipped a single `|', rc 0.  Report the
+            // whole word, not the one character the scan happened to stop
+            // on.  A bare plot after a group needs `||' before it, as in
+            // twoway: `(a) || line y x'.
+            stray = substr(s, i, .)
+            if (strpos(stray, " ") > 0) {
+                stray = substr(stray, 1, strpos(stray, " ") - 1)
+            }
+            errprintf("dash: unexpected text between plot groups: '%s'\n",
+                      stray)
+            errprintf(
+              "      Each plot must be its own parenthesised group.\n")
+            exit(198)
+        }
+        i++
+    }
+
+    // A qualifier that runs to the end of the piece.
+    if (qual_seen) {
+        qual = qual + " " + strtrim(substr(s, qual_start, .))
+    }
 }
 
 

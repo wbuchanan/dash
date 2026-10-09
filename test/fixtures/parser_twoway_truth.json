@@ -1,9 +1,9 @@
 {
  "_meta": {
-  "answers": 755,
+  "answers": 786,
   "born_date": "12 Aug 2026",
-  "dash_commit": "77d24f86e20c6ef41b599531ba26d73b54dadb1e",
-  "extracted": " 7 Oct 2026",
+  "dash_commit": "641e585779f4543f05e847cce040df985323deac",
+  "extracted": " 9 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_parser.cscript",
   "stata_version": "19.5"
@@ -2560,6 +2560,130 @@
   "log|P1A-84 no observations|twoway histogram mpg || scatter mpg foreign, by(foreign) nodraw": {
    "log": "nothing to graph\n{p_end}\n",
    "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway ((scatter mpg weight) (line price weight)), title(\"T\") nodraw": {
+   "log": "scatter         ( is not a twoway plot type\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway (scatter mpg weight (line price weight)), nodraw": {
+   "log": "variable line not found\n{p_end}\n",
+   "rc": 111
+  },
+  "log|P1A-85 auto refused|twoway (scatter mpg weight || line price weight) || , title(\"T\") nodraw": {
+   "log": "| invalid name\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway (scatter mpg weight || line price weight), title(\"T\") nodraw": {
+   "log": "| invalid name\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway (scatter mpg weight) ((line price weight)), nodraw": {
+   "log": "line        ( is not a twoway plot type\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway (scatter mpg weight) if foreign==1 || line price weight || if rep78>3, nodraw": {
+   "log": "multiple global if's not allowed\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway (scatter mpg weight) | (line price weight), nodraw": {
+   "log": "| is not a twoway plot type\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway scatter mpg weight || line price weight || , (scatter price weight) nodraw": {
+   "log": "option ( not allowed\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway scatter mpg weight || line price weight || , scheme(s1mono) || , scheme(s2color) nodraw": {
+   "log": "option scheme() not allowed\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway scatter mpg weight || line price weight || , title(\"T\") msymbol(Oh) nodraw": {
+   "log": "option msymbol() not allowed\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway scatter mpg weight || line price weight || [fw=rep78], nodraw": {
+   "log": "[ is not a twoway plot type\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway scatter mpg weight || line price weight || foo, nodraw": {
+   "log": "foo is not a twoway plot type\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto refused|twoway scatter mpg weight || line price weight || if foreign==1 || if rep78>3, nodraw": {
+   "log": "multiple global if's not allowed\n{p_end}\n",
+   "rc": 198
+  },
+  "log|P1A-85 auto|twoway (scatter mpg weight) (line price weight) || , title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway (scatter mpg weight) (line price weight), title(\"T\") || scatter price weight, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway (scatter mpg weight) || (line price weight) || , title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway (scatter mpg weight) || line price weight || , title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || (line price weight) (scatter price weight), title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || (line price weight), nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || , title(\"T\") || line price weight, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || if foreign==1 || line price weight, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight || , legend(off) xlabel(2000 4000) ytitle(\"Y\") note(\"n\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight || , title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight || , title(\"T\") || , title(\"U\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight || if foreign==1 || in 1/40, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight || if foreign==1, title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight || in 1/10, title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || line price weight, title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight || || line price weight, nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 auto|twoway scatter mpg weight, title(\"A\") || line price weight || , title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
+  },
+  "log|P1A-85 tsset t85|twoway tsline mpg || line price t85 || , tlabel(10 20) title(\"T\") nodraw": {
+   "log": "{p_end}\n",
+   "rc": 0
   },
   "rc|FX-01|twoway (function y = x**2) (scatter mpg weight), nodraw": 198,
   "rc|FX-01|twoway function y = (+x), range(0 2) nodraw": 198,
