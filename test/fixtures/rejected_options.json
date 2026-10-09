@@ -3984,7 +3984,7 @@
       "plotspec": "scatter mpg weight",
       "options": "recast(line)",
       "twoway_only_extra": "",
-      "spec_json": "{\"plots\":[{\"type\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{\"recast\":\"line\"},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
+      "spec_json": "{\"plots\":[{\"type\":\"line\",\"recast_from\":\"scatter\",\"yvar\":\"mpg\",\"xvar\":\"weight\",\"options\":{},\"if_expr\":\"\",\"in_expr\":\"\"}],\"graph_options\":{\"name\":\"g1\"},\"if_expr\":\"\",\"in_expr\":\"\"}",
       "dash_message": "dash: graph 'g1' registered."
     },
     {
