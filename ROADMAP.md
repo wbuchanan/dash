@@ -4976,6 +4976,15 @@ The technical requirements of each entry are its section's TR-NN.k in .ultraplan
 - **AC-30.7** Look: each shipped scheme's look truth passes (BR-30.2, BR-30.4); the size defaults are pinned (markers 5.87 px, lines 1.15 px); the tsnatscale floors and the 12,000-answer parity hold; the timed budgets of pass.
 - **AC-30.8** Security (G9): green, each named in its commit body:
   - the browser test of both modes (an injected inline script or handler is blocked; the page renders, filters, exports and saves as SVG); an unhashed inline script fails the build; `default-src 'none'` on the empty and redirect pages;
+  - the Windows opener runs nothing for a path with a cmd metacharacter;
+  - notes SMCL-escaped with no internal paths; relayed child output redacted and bounded;
+  - TeX never interpreted; hostile SMCL handled in under one second; control codes kept as twoway keeps them and escaped at every HTML/JS sink;
+  - the scheme lookup's name, containment, regular-file and size guards, with symlink, oversized, traversal and hostile-directive tests; scheme files never run;
+  - region styling writes only computed numbers and sanitised colours;
+  - the `reflines` and `added_text` limits refuse r(134);
+  - date tokens never run as Stata code (no `_stata()` call takes user text);
+  - Bokeh internals fail closed; below bokeh 3.8 refused at app start;
+  - the session cap, idle close and busy page; the turned-bar redraw never reads a property name from page data; the worker's thread safety.
 - **AC-30.9** Floors: `grep -c 'version 16.0' dash.ado dash_setup.ado` prints 0 and 0; the Stata guard's refusal and the guard order are pinned; the declared Python floor equals the matrix's lowest pass; the bokeh window is declared once and checked at run time; the dependency guards are green; the runner path guard is green with no exemption list.
 - **AC-30.10** CHANGELOG.md holds no `<!-- WP-30` marker; every WP-30 line ends `(WP-30, P1.<n>[abc])`; each Results line names the command, the old value and the new.
 - **AC-30.11** Tracking documents: ROADMAP's WP-30 is headed DONE with §6's requirements and these criteria; every id in its `**GAPS2 closed:**` has a `Closed in WP-30` Tracked line with a commit that exists; partly closed ids say what is open; the 22 residuals (as amended) and P2.42-P2.57 are filed; DROPIN-REMAINING.md's P1 rows carry their commits; `test_tracking_documents.py` is green.
@@ -5066,7 +5075,7 @@ The technical requirements of each entry are its section's TR-NN.k in .ultraplan
 - P2.14: gains `fintensity(1e400)` (S16), `[aw=L.x]` reusing `_dash_tsop_gen` (S42), and S20's value-list bounds.
 - P3.2 loses `xvarformat()`/`yvarformat()` (P1.5). P3.7 loses its extractor-path part (IR-8, P1.34). P3.9 gains the two requirements files and the bokeh window comment (P1.33, P1.30). P3.11 gains the beforeprint layout and the SVG's omissions (P1.28).
 
-### Done, measured (<to be dated in 58-21>)
+### Done, measured (09oct2026)
 
 - **Entries.** 56 P1 entries closed test first (S1 9, S2 38, S3 9), with P1.5.7 and P1.25.6 closed in their sections' commits; P2.49 not filed (S08 fixed it under P1.12a, ratification row 27). BUGS.md holds 3 open entries (none S1 or S2). `WP30_OPEN = {}` behind `TestWp30Tracking::test_no_wp30_entry_remains_open` (S58.1).
 - **Per entry.** One clause each from the traceability table.
@@ -5076,10 +5085,10 @@ The technical requirements of each entry are its section's TR-NN.k in .ultraplan
 - **Python floor (K15) and bokeh window.** Python 3.11 (measured by the floor matrix, S05; no gate leg, ratification row 25); bokeh 3.8 to <3.10, verified on 3.8 and 3.9 (3.10 not verified, S41).
 - **Fixtures.** 49 files changed, 699,687 insertions, 21,859 deletions under test/fixtures (c96facd..HEAD).
 - **Tests flipped.** 565 `Flipped:` lines; every node, or its renamed successor, collects.
-- **Security.** <G9 tests by name, from AC-30.8>.
-- **Runs.** make test <to be measured in 58-21>; make test-dev <to be measured in 58-21>; make cert 68 of 68, <wall time> against baseline not measured and WP-29's 907 s (67 scripts); slowest blocks <to be measured in 58-21>; make gate <to be measured in 58-21>.
-- **Measurements.** <58-19 table: to be measured in 58-21>.
-- **Compare against main.** <58-20: to be measured in 58-21>.
+- **Security.** G9 is held by `test/test_csp_browser.py` and `test/test_csp.py` (both modes block an injected inline script; hashes and nonce), the Windows opener cases SB-21..SB-30 of `test/test_serve_browser.cscript`, `test/test_note_channel.py` and `test/test_served_notes.py` (escaped notes, no internal paths, bounded relay), `test/test_label_sinks.py` and `test/test_graph_text.py` (TeX inert, hostile SMCL bounded, control codes escaped), `test/test_scheme_lookup.py` (name, containment, regular-file and size guards), `test/test_region_truth.py`, `test/test_ts_operators.py` (no user text reaches `_stata()`), `test/test_bokeh_internals.py` (internals fail closed), `test/test_served_resources.py` (session cap, idle close, busy page) and `test/test_served_worker.py` (the worker's thread safety).
+- **Runs.** make test under Stata's Python (/opt/anaconda3/bin/python3): 21,120 passed, 5 xfailed, 0 failed, 459 s, after ab21a4d fixed the test side for pytest 8.4 and bokeh 3.8 (the first run: 3 failed, 113 errors, all test-side); make test-dev: 21,120 passed, 5 xfailed, 423 s; the release tier: 207 passed. make cert: 68 of 68 registered scripts passed on three sessions, no SKIP and no FAIL, verdict PASS, 410 s wall (WP-29: 907 s for 67 scripts on one session; the WP-30 baseline was not measured). The 57 WP-30 truth blocks, sharded across the sessions, all closed and passed: 399 s summed; slowest S21 53 s, S11 28 s, S19 25 s, S30 21 s, S07 20 s. No raw `dash_render.py:<n>: UserWarning` line in the certification logs (X4-d; 87 in WP-29's). make gate: 12 of 12 examples and 26 of 26 scheme pages clean, verdict PASS. Logs: .ultraplan/handoff/wp30-*.log.
+- **Measurements** (StataNow 19.5, auto.dta; c96facd → HEAD): a saved page with `$$x^2$$` in its title 3,087,235 → 1,437,796 bytes, no longer shipping bokeh-mathjax (2 → 0 references; 10 bytes over its plain-word page, 1,437,786); the plain-word page 1,301,201 → 1,437,786; by(rep78) 1,331,043 → 1,485,775; 100,000 rows of scatter plus lowess 7,215,975 → 7,307,470. Render times: TeX title 1.73 → 2.11 s (each run's first build, so it carries Python's start), plain 0.24 → 0.08 s, by(rep78) 0.38 → 0.25 s, 100k scatter plus lowess 27.4 → 27.0 s. Served: `/health` answers within 1.0 s during a 100k-row recompute (test_served_worker.py::TestTheLoopAnswersDuringARecompute, passed; the value is asserted, not printed). Per-session RSS growth has no live test (S46's residual, P2.57 note), so the 80 MB bound is not measured here.
+- **Compare against main.** main..wp30-p1 changes 605 files, 2,346 symbols and 505 processes (risk critical, as a whole package is); the path guard, the version pin (`version 16.0` 0 and 0), the floors and the tracking readers pass; the inventory prints 56 of 56, 2 extra closed, 3 open, 0 problems; the message check prints 0 apart from 8a874b1, and 0 on the added lines of BUGS.md, CHANGELOG.md and both help files.
 - **Not measured.** Linux, Windows, Intel Mac and GUI Stata (M4); Stata below 19 (M2).
 - **AGENTS.md.** 38 invariants under "Invariants introduced by WP-30".
 - **Excluded from the message check.** Commit 8a874b1 ("Updated CLAUDE.md to try to deal with the test suite issues.") is the maintainer's own commit on wp30-p1; it stages CLAUDE.md and names it, and the maintainer accepted it, so the E13 check excludes it. History is not rewritten.
