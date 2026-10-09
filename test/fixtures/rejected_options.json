@@ -18,19 +18,20 @@
   "summary": {
     "commands_probed": 299,
     "bad_probes_twoway_rejected": 0,
-    "dash_failures": 136,
+    "dash_failures": 0,
     "distinct_rejected_option_keys": 115,
     "rejected_syntax_constructs": 3,
     "accepted_but_discarded": 9,
     "by_disposition": {
       "accept-and-report": 3,
+      "honoured-WP-30-P1.10": 2,
+      "honoured-WP-30-P1.14a": 5,
+      "honoured-WP-30-P1.24": 2,
+      "honoured-WP-30-P1.5": 2,
+      "honoured-WP-30-P1.9a": 2,
       "honoured-nobrowser": 1,
-      "implement-S06": 3,
-      "implement-S07": 25,
-      "implement-S09-axes-text": 21,
-      "implement-S09-style": 50,
-      "implement-S10": 5,
       "implemented-WP-30-P1.6": 5,
+      "rc0-at-c96facd": 91,
       "stored-and-named-WP-30-P1.6": 2
     }
   },
@@ -198,9 +199,9 @@
       "option": "acolor",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option acolor() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "CI/fit area look (fitarea_options).",
       "probes": [
         {
@@ -208,7 +209,7 @@
           "command": "twoway lfitci mpg weight, acolor(gs10) nodraw",
           "dash_command": "dash lfitci mpg weight, acolor(gs10) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -216,9 +217,9 @@
       "option": "adjust",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option adjust not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "lowess estimation control.",
       "probes": [
         {
@@ -226,7 +227,7 @@
           "command": "twoway lowess mpg weight, adjust nodraw",
           "dash_command": "dash lowess mpg weight, adjust name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -234,9 +235,9 @@
       "option": "alalign",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option alalign() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "line alignment for a filled outline.",
       "probes": [
         {
@@ -244,7 +245,7 @@
           "command": "twoway lfitci mpg weight, alalign(inside) nodraw",
           "dash_command": "dash lfitci mpg weight, alalign(inside) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -252,9 +253,9 @@
       "option": "alpattern",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option alpattern() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "CI/fit area look (fitarea_options).",
       "probes": [
         {
@@ -262,7 +263,7 @@
           "command": "twoway lfitci mpg weight, alpattern(dash) nodraw",
           "dash_command": "dash lfitci mpg weight, alpattern(dash) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -270,9 +271,9 @@
       "option": "alstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option alstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "overall style shorthand (mstyle/lstyle/astyle/bstyle/dstyle/alstyle). dash has pstyle() only.",
       "probes": [
         {
@@ -280,7 +281,7 @@
           "command": "twoway lfitci mpg weight, alstyle(p1) nodraw",
           "dash_command": "dash lfitci mpg weight, alstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -288,9 +289,9 @@
       "option": "alwidth",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option alwidth() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "CI/fit area look (fitarea_options).",
       "probes": [
         {
@@ -298,7 +299,7 @@
           "command": "twoway lfitci mpg weight, alwidth(thin) nodraw",
           "dash_command": "dash lfitci mpg weight, alwidth(thin) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -306,9 +307,9 @@
       "option": "area",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option area() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "kernel-density / local-polynomial estimation parameter. dash recomputes the smooth in JS; these are the knobs that decide what is computed.",
       "probes": [
         {
@@ -316,7 +317,7 @@
           "command": "twoway kdensity mpg, area(1) nodraw",
           "dash_command": "dash kdensity mpg, area(1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -324,9 +325,9 @@
       "option": "astyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option astyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.14a",
       "reason": "overall style shorthand (mstyle/lstyle/astyle/bstyle/dstyle/alstyle). dash has pstyle() only.",
       "probes": [
         {
@@ -334,14 +335,14 @@
           "command": "twoway area mpg weight, astyle(p1) nodraw",
           "dash_command": "dash area mpg weight, astyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "lfitci_astyle",
           "command": "twoway lfitci mpg weight, astyle(p1) nodraw",
           "dash_command": "dash lfitci mpg weight, astyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -349,9 +350,9 @@
       "option": "atobs",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option atobs not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -359,7 +360,7 @@
           "command": "twoway lfit mpg weight, atobs nodraw",
           "dash_command": "dash lfit mpg weight, atobs name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -367,9 +368,9 @@
       "option": "b1title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option b1title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -377,7 +378,7 @@
           "command": "twoway scatter mpg weight, b1title(\"bottom 1\") nodraw",
           "dash_command": "dash scatter mpg weight, b1title(\"bottom 1\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -385,9 +386,9 @@
       "option": "b2title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option b2title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -395,7 +396,7 @@
           "command": "twoway scatter mpg weight, b2title(\"bottom 2\") nodraw",
           "dash_command": "dash scatter mpg weight, b2title(\"bottom 2\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -403,9 +404,9 @@
       "option": "bands",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option bands() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "kernel-density / local-polynomial estimation parameter. dash recomputes the smooth in JS; these are the knobs that decide what is computed.",
       "probes": [
         {
@@ -413,14 +414,14 @@
           "command": "twoway mband mpg weight, bands(10) nodraw",
           "dash_command": "dash mband mpg weight, bands(10) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "mspline_bands",
           "command": "twoway mspline mpg weight, bands(10) nodraw",
           "dash_command": "dash mspline mpg weight, bands(10) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -428,9 +429,9 @@
       "option": "barbsize",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option barbsize() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "paired-coordinate arrow look (twoway pcarrow).",
       "probes": [
         {
@@ -438,7 +439,7 @@
           "command": "twoway pcarrow y1 x1 y2 x2, barbsize(3) nodraw",
           "dash_command": "dash pcarrow y1 x1 y2 x2, barbsize(3) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -446,9 +447,9 @@
       "option": "baroffset",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option baroffset() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "bar geometry beyond barwidth().",
       "probes": [
         {
@@ -456,14 +457,14 @@
           "command": "twoway rbar lo hi weight, baroffset(0.2) nodraw",
           "dash_command": "dash rbar lo hi weight, baroffset(0.2) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "bar_baroffset",
           "command": "twoway bar mpg weight, baroffset(0.2) nodraw",
           "dash_command": "dash bar mpg weight, baroffset(0.2) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -471,9 +472,9 @@
       "option": "bin",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option bin() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram binning control; dash hard-codes its own binning in dash_render.py and cannot honour the user request.",
       "probes": [
         {
@@ -481,7 +482,7 @@
           "command": "twoway histogram mpg, bin(20) nodraw",
           "dash_command": "dash histogram mpg, bin(20) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -489,9 +490,9 @@
       "option": "bstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option bstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.14a",
       "reason": "overall style shorthand (mstyle/lstyle/astyle/bstyle/dstyle/alstyle). dash has pstyle() only.",
       "probes": [
         {
@@ -499,7 +500,7 @@
           "command": "twoway bar mpg weight, bstyle(p1) nodraw",
           "dash_command": "dash bar mpg weight, bstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -507,9 +508,9 @@
       "option": "ciplot",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ciplot() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -517,7 +518,7 @@
           "command": "twoway lfitci mpg weight, ciplot(rline) nodraw",
           "dash_command": "dash lfitci mpg weight, ciplot(rline) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -525,9 +526,9 @@
       "option": "clegend",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option clegend() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colour legend for a colorvar plot.",
       "probes": [
         {
@@ -535,7 +536,7 @@
           "command": "twoway scatter mpg weight, clegend(off) colorvar(price) nodraw",
           "dash_command": "dash scatter mpg weight, clegend(off) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -543,9 +544,9 @@
       "option": "color",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option color() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "area/bar single-colour shorthand. Stata users reach for color() far more often than fcolor()+lcolor(), and it aborts.",
       "probes": [
         {
@@ -553,7 +554,7 @@
           "command": "twoway area mpg weight, color(red) nodraw",
           "dash_command": "dash area mpg weight, color(red) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -561,9 +562,9 @@
       "option": "colorend",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorend() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -571,7 +572,7 @@
           "command": "twoway scatter mpg weight, colorend(red) colorvar(price) colorstart(yellow) nodraw",
           "dash_command": "dash scatter mpg weight, colorend(red) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -579,9 +580,9 @@
       "option": "colorfillonly",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorfillonly not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -589,7 +590,7 @@
           "command": "twoway scatter mpg weight, colorfillonly colorvar(price) nodraw",
           "dash_command": "dash scatter mpg weight, colorfillonly name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -597,9 +598,9 @@
       "option": "colorformissing",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorformissing() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -607,7 +608,7 @@
           "command": "twoway scatter rep78 weight, colorformissing(gs8) colorvar(rep78) nodraw",
           "dash_command": "dash scatter rep78 weight, colorformissing(gs8) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -615,9 +616,9 @@
       "option": "colorkeysrange",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorkeysrange not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -625,7 +626,7 @@
           "command": "twoway scatter mpg weight, colorkeysrange colorvar(price) nodraw",
           "dash_command": "dash scatter mpg weight, colorkeysrange name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -633,9 +634,9 @@
       "option": "colorlevels",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorlevels() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -643,7 +644,7 @@
           "command": "twoway scatter mpg weight, colorlevels(4) colorvar(price) nodraw",
           "dash_command": "dash scatter mpg weight, colorlevels(4) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -651,9 +652,9 @@
       "option": "colorlist",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorlist() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -661,7 +662,7 @@
           "command": "twoway scatter mpg weight, colorlist(red blue green orange) colorvar(price) colordiscrete nodraw",
           "dash_command": "dash scatter mpg weight, colorlist(red blue green orange) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -669,9 +670,9 @@
       "option": "colorrule",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorrule() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -679,7 +680,7 @@
           "command": "twoway scatter mpg weight, colorrule(linear) colorvar(price) nodraw",
           "dash_command": "dash scatter mpg weight, colorrule(linear) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -687,9 +688,9 @@
       "option": "colorstart",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorstart() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -697,7 +698,7 @@
           "command": "twoway scatter mpg weight, colorstart(yellow) colorvar(price) colorend(red) nodraw",
           "dash_command": "dash scatter mpg weight, colorstart(yellow) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -705,9 +706,9 @@
       "option": "colorvarminmax",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option colorvarminmax not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colorvar colour-mapping control. dash implements a colorvar family under partly non-Stata spellings (colpalette/colornlevels/colormissing); every real Stata spelling here aborts.",
       "probes": [
         {
@@ -715,7 +716,7 @@
           "command": "twoway scatter mpg weight, colorvarminmax colorvar(price) nodraw",
           "dash_command": "dash scatter mpg weight, colorvarminmax name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -723,9 +724,9 @@
       "option": "dcolor",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dcolor() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -733,7 +734,7 @@
           "command": "twoway dot mpg weight, dcolor(red) nodraw",
           "dash_command": "dash dot mpg weight, dcolor(red) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -741,9 +742,9 @@
       "option": "density",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option density not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram y-axis scaling family (density/fraction/frequency/percent). dash always renders raw counts, so the y axis silently means something other than what the user asked for.",
       "probes": [
         {
@@ -751,7 +752,7 @@
           "command": "twoway histogram mpg, density nodraw",
           "dash_command": "dash histogram mpg, density name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -759,9 +760,9 @@
       "option": "dfcolor",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dfcolor() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -769,7 +770,7 @@
           "command": "twoway dot mpg weight, dfcolor(red) nodraw",
           "dash_command": "dash dot mpg weight, dfcolor(red) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -777,9 +778,9 @@
       "option": "discrete",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option discrete not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram binning control; dash hard-codes its own binning in dash_render.py and cannot honour the user request.",
       "probes": [
         {
@@ -787,7 +788,7 @@
           "command": "twoway histogram rep78, discrete nodraw",
           "dash_command": "dash histogram rep78, discrete name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -795,9 +796,9 @@
       "option": "dlalign",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dlalign() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "line alignment for a filled outline.",
       "probes": [
         {
@@ -805,7 +806,7 @@
           "command": "twoway dot mpg weight, dlalign(inside) nodraw",
           "dash_command": "dash dot mpg weight, dlalign(inside) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -813,9 +814,9 @@
       "option": "dlcolor",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dlcolor() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -823,7 +824,7 @@
           "command": "twoway dot mpg weight, dlcolor(red) nodraw",
           "dash_command": "dash dot mpg weight, dlcolor(red) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -831,9 +832,9 @@
       "option": "dlstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dlstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -841,7 +842,7 @@
           "command": "twoway dot mpg weight, dlstyle(p1) nodraw",
           "dash_command": "dash dot mpg weight, dlstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -849,9 +850,9 @@
       "option": "dlwidth",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dlwidth() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -859,7 +860,7 @@
           "command": "twoway dot mpg weight, dlwidth(thick) nodraw",
           "dash_command": "dash dot mpg weight, dlwidth(thick) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -867,9 +868,9 @@
       "option": "dotextend",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dotextend() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -877,7 +878,7 @@
           "command": "twoway dot mpg weight, dotextend(no) nodraw",
           "dash_command": "dash dot mpg weight, dotextend(no) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -885,9 +886,9 @@
       "option": "droplines",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option droplines() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "vertical drop lines from the curve to the base, i.e. added-line geometry.",
       "probes": [
         {
@@ -895,7 +896,7 @@
           "command": "twoway function x, droplines(2 4 6) range(0 10) nodraw",
           "dash_command": "dash function x, droplines(2 4 6) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -903,9 +904,9 @@
       "option": "dsize",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dsize() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -913,7 +914,7 @@
           "command": "twoway dot mpg weight, dsize(large) nodraw",
           "dash_command": "dash dot mpg weight, dsize(large) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -921,9 +922,9 @@
       "option": "dstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "overall style shorthand (mstyle/lstyle/astyle/bstyle/dstyle/alstyle). dash has pstyle() only.",
       "probes": [
         {
@@ -931,7 +932,7 @@
           "command": "twoway dot mpg weight, dstyle(p1) nodraw",
           "dash_command": "dash dot mpg weight, dstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -939,9 +940,9 @@
       "option": "dsymbol",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option dsymbol() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -949,7 +950,7 @@
           "command": "twoway dot mpg weight, dsymbol(Oh) nodraw",
           "dash_command": "dash dot mpg weight, dsymbol(Oh) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -957,9 +958,9 @@
       "option": "estcmd",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option estcmd() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -967,7 +968,7 @@
           "command": "twoway fpfit mpg weight, estcmd(regress) nodraw",
           "dash_command": "dash fpfit mpg weight, estcmd(regress) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -975,9 +976,9 @@
       "option": "estopts",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option estopts() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -985,21 +986,21 @@
           "command": "twoway lfit mpg weight, estopts(nocons) nodraw",
           "dash_command": "dash lfit mpg weight, estopts(nocons) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "fpfit_estopts",
           "command": "twoway fpfit mpg weight, estopts(degree(2)) nodraw",
           "dash_command": "dash fpfit mpg weight, estopts(degree(2)) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "fpfit_powers",
           "command": "twoway fpfit mpg weight, estopts(powers(1 2)) nodraw",
           "dash_command": "dash fpfit mpg weight, estopts(powers(1 2)) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1007,9 +1008,9 @@
       "option": "fitplot",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option fitplot() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -1017,7 +1018,7 @@
           "command": "twoway lfitci mpg weight, fitplot(line) nodraw",
           "dash_command": "dash lfitci mpg weight, fitplot(line) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1025,9 +1026,9 @@
       "option": "fraction",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option fraction not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram y-axis scaling family (density/fraction/frequency/percent). dash always renders raw counts, so the y axis silently means something other than what the user asked for.",
       "probes": [
         {
@@ -1035,7 +1036,7 @@
           "command": "twoway histogram mpg, fraction nodraw",
           "dash_command": "dash histogram mpg, fraction name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1043,9 +1044,9 @@
       "option": "frequency",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option frequency not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram y-axis scaling family (density/fraction/frequency/percent). dash always renders raw counts, so the y axis silently means something other than what the user asked for.",
       "probes": [
         {
@@ -1053,7 +1054,7 @@
           "command": "twoway histogram mpg, frequency nodraw",
           "dash_command": "dash histogram mpg, frequency name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1061,9 +1062,9 @@
       "option": "fxsize",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option fxsize() not allowed",
-      "disposition": "implement-S10",
+      "disposition": "rc0-at-c96facd",
       "reason": "physical graph size / combine sizing / global text-and-marker scaling.",
       "probes": [
         {
@@ -1071,7 +1072,7 @@
           "command": "twoway scatter mpg weight, fxsize(50) nodraw",
           "dash_command": "dash scatter mpg weight, fxsize(50) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1079,9 +1080,9 @@
       "option": "fysize",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option fysize() not allowed",
-      "disposition": "implement-S10",
+      "disposition": "rc0-at-c96facd",
       "reason": "physical graph size / combine sizing / global text-and-marker scaling.",
       "probes": [
         {
@@ -1089,7 +1090,7 @@
           "command": "twoway scatter mpg weight, fysize(50) nodraw",
           "dash_command": "dash scatter mpg weight, fysize(50) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1097,9 +1098,9 @@
       "option": "gap",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option gap() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "bar geometry beyond barwidth().",
       "probes": [
         {
@@ -1107,7 +1108,7 @@
           "command": "twoway histogram mpg, gap(10) nodraw",
           "dash_command": "dash histogram mpg, gap(10) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1115,9 +1116,9 @@
       "option": "headlabel",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option headlabel not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "paired-coordinate arrow look (twoway pcarrow).",
       "probes": [
         {
@@ -1125,7 +1126,7 @@
           "command": "twoway pcarrow y1 x1 y2 x2, headlabel nodraw",
           "dash_command": "dash pcarrow y1 x1 y2 x2, headlabel name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1133,9 +1134,9 @@
       "option": "horizontal",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option horizontal not allowed",
-      "disposition": "implement-S06",
+      "disposition": "honoured-WP-30-P1.9a",
       "reason": "plot orientation. dash renders bar/spike/dropline/dot/rbar/rcap/histogram/kdensity but accepts neither orientation keyword.",
       "probes": [
         {
@@ -1143,63 +1144,63 @@
           "command": "twoway histogram mpg, horizontal nodraw",
           "dash_command": "dash histogram mpg, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "kd_horizontal",
           "command": "twoway kdensity mpg, horizontal nodraw",
           "dash_command": "dash kdensity mpg, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "fn_horizontal",
           "command": "twoway function x, horizontal nodraw",
           "dash_command": "dash function x, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "rbar_horizontal",
           "command": "twoway rbar lo hi weight, horizontal nodraw",
           "dash_command": "dash rbar lo hi weight, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "bar_horizontal",
           "command": "twoway bar mpg weight, horizontal nodraw",
           "dash_command": "dash bar mpg weight, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "dropline_horiz",
           "command": "twoway dropline mpg weight, horizontal nodraw",
           "dash_command": "dash dropline mpg weight, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "rcap_horizontal",
           "command": "twoway rcap lo hi weight, horizontal nodraw",
           "dash_command": "dash rcap lo hi weight, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "spike_horizontal",
           "command": "twoway spike mpg weight, horizontal nodraw",
           "dash_command": "dash spike mpg weight, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "dot_horizontal",
           "command": "twoway dot mpg weight, horizontal nodraw",
           "dash_command": "dash dot mpg weight, horizontal name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1207,9 +1208,9 @@
       "option": "jitterseed",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option jitterseed() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "reproducible jitter. dash implements jitter() and invented its own jseed() spelling; Stata spells it jitterseed(), so the Stata spelling aborts.",
       "probes": [
         {
@@ -1217,7 +1218,7 @@
           "command": "twoway scatter mpg weight, jitterseed(123) jitter(5) nodraw",
           "dash_command": "dash scatter mpg weight, jitterseed(123) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1225,9 +1226,9 @@
       "option": "kernel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option kernel() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "kernel-density / local-polynomial estimation parameter. dash recomputes the smooth in JS; these are the knobs that decide what is computed.",
       "probes": [
         {
@@ -1235,14 +1236,14 @@
           "command": "twoway lpoly mpg weight, kernel(epan2) nodraw",
           "dash_command": "dash lpoly mpg weight, kernel(epan2) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "kd_kernel",
           "command": "twoway kdensity mpg, kernel(epan2) nodraw",
           "dash_command": "dash kdensity mpg, kernel(epan2) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1250,9 +1251,9 @@
       "option": "l1title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option l1title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -1260,7 +1261,7 @@
           "command": "twoway scatter mpg weight, l1title(\"left 1\") nodraw",
           "dash_command": "dash scatter mpg weight, l1title(\"left 1\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1268,9 +1269,9 @@
       "option": "l2title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option l2title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -1278,7 +1279,7 @@
           "command": "twoway scatter mpg weight, l2title(\"left 2\") nodraw",
           "dash_command": "dash scatter mpg weight, l2title(\"left 2\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1286,9 +1287,9 @@
       "option": "lalign",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option lalign() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "line alignment for a filled outline.",
       "probes": [
         {
@@ -1296,7 +1297,7 @@
           "command": "twoway area mpg weight, lalign(inside) nodraw",
           "dash_command": "dash area mpg weight, lalign(inside) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1304,9 +1305,9 @@
       "option": "level",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option level() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -1314,7 +1315,7 @@
           "command": "twoway lfitci mpg weight, level(90) nodraw",
           "dash_command": "dash lfitci mpg weight, level(90) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1322,9 +1323,9 @@
       "option": "logit",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option logit not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "lowess estimation control.",
       "probes": [
         {
@@ -1332,7 +1333,7 @@
           "command": "twoway lowess mpg weight, logit nodraw",
           "dash_command": "dash lowess mpg weight, logit name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1340,9 +1341,9 @@
       "option": "lstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option lstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.14a",
       "reason": "overall style shorthand (mstyle/lstyle/astyle/bstyle/dstyle/alstyle). dash has pstyle() only.",
       "probes": [
         {
@@ -1350,7 +1351,7 @@
           "command": "twoway line mpg weight, lstyle(p1) nodraw",
           "dash_command": "dash line mpg weight, lstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1358,9 +1359,9 @@
       "option": "mangle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mangle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "paired-coordinate arrow look (twoway pcarrow).",
       "probes": [
         {
@@ -1368,7 +1369,7 @@
           "command": "twoway pcarrow y1 x1 y2 x2, mangle(30) nodraw",
           "dash_command": "dash pcarrow y1 x1 y2 x2, mangle(30) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1376,9 +1377,9 @@
       "option": "mean",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mean not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "lowess estimation control.",
       "probes": [
         {
@@ -1386,7 +1387,7 @@
           "command": "twoway lowess mpg weight, mean nodraw",
           "dash_command": "dash lowess mpg weight, mean name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1394,9 +1395,9 @@
       "option": "mlabangle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlabangle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "marker-label look beyond the five keys dash implements.",
       "probes": [
         {
@@ -1404,7 +1405,7 @@
           "command": "twoway scatter mpg weight, mlabangle(45) mlabel(make) nodraw",
           "dash_command": "dash scatter mpg weight, mlabangle(45) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1412,9 +1413,9 @@
       "option": "mlabformat",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlabformat() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "marker-label look beyond the five keys dash implements.",
       "probes": [
         {
@@ -1422,7 +1423,7 @@
           "command": "twoway scatter mpg weight, mlabformat(%9.0fc) mlabel(price) nodraw",
           "dash_command": "dash scatter mpg weight, mlabformat(%9.0fc) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1430,9 +1431,9 @@
       "option": "mlabstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlabstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "marker-label look beyond the five keys dash implements.",
       "probes": [
         {
@@ -1440,7 +1441,7 @@
           "command": "twoway scatter mpg weight, mlabstyle(p1) mlabel(make) nodraw",
           "dash_command": "dash scatter mpg weight, mlabstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1448,9 +1449,9 @@
       "option": "mlabtextstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlabtextstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.24",
       "reason": "marker-label look beyond the five keys dash implements.",
       "probes": [
         {
@@ -1458,7 +1459,7 @@
           "command": "twoway scatter mpg weight, mlabtextstyle(body) mlabel(make) nodraw",
           "dash_command": "dash scatter mpg weight, mlabtextstyle(body) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1466,9 +1467,9 @@
       "option": "mlabvposition",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlabvposition() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.24",
       "reason": "marker-label look beyond the five keys dash implements.",
       "probes": [
         {
@@ -1476,7 +1477,7 @@
           "command": "twoway scatter mpg weight, mlabvposition(vpos) mlabel(make) nodraw",
           "dash_command": "dash scatter mpg weight, mlabvposition(vpos) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1484,9 +1485,9 @@
       "option": "mlalign",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlalign() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "marker outline look. dash implements mcolor/mfcolor/mlcolor but not the outline width/alignment/style.",
       "probes": [
         {
@@ -1494,7 +1495,7 @@
           "command": "twoway scatter mpg weight, mlalign(inside) nodraw",
           "dash_command": "dash scatter mpg weight, mlalign(inside) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1502,9 +1503,9 @@
       "option": "mlstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.14a",
       "reason": "marker outline look. dash implements mcolor/mfcolor/mlcolor but not the outline width/alignment/style.",
       "probes": [
         {
@@ -1512,7 +1513,7 @@
           "command": "twoway scatter mpg weight, mlstyle(p1) nodraw",
           "dash_command": "dash scatter mpg weight, mlstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1520,9 +1521,9 @@
       "option": "mlwidth",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mlwidth() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "marker outline look. dash implements mcolor/mfcolor/mlcolor but not the outline width/alignment/style.",
       "probes": [
         {
@@ -1530,7 +1531,7 @@
           "command": "twoway scatter mpg weight, mlwidth(thick) nodraw",
           "dash_command": "dash scatter mpg weight, mlwidth(thick) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1538,9 +1539,9 @@
       "option": "mstyle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mstyle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "honoured-WP-30-P1.14a",
       "reason": "overall style shorthand (mstyle/lstyle/astyle/bstyle/dstyle/alstyle). dash has pstyle() only.",
       "probes": [
         {
@@ -1548,14 +1549,14 @@
           "command": "twoway scatter mpg weight, mstyle(p1) nodraw",
           "dash_command": "dash scatter mpg weight, mstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "pcarrow_mstyle",
           "command": "twoway pcarrow y1 x1 y2 x2, mstyle(p1) nodraw",
           "dash_command": "dash pcarrow y1 x1 y2 x2, mstyle(p1) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1563,9 +1564,9 @@
       "option": "mwidth",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option mwidth not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "bar geometry beyond barwidth().",
       "probes": [
         {
@@ -1573,7 +1574,7 @@
           "command": "twoway rbar lo hi weight, mwidth nodraw",
           "dash_command": "dash rbar lo hi weight, mwidth name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1581,9 +1582,9 @@
       "option": "n",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option n() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "kernel-density / local-polynomial estimation parameter. dash recomputes the smooth in JS; these are the knobs that decide what is computed.",
       "probes": [
         {
@@ -1591,35 +1592,35 @@
           "command": "twoway lfit mpg weight, n(50) nodraw",
           "dash_command": "dash lfit mpg weight, n(50) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "lpoly_n",
           "command": "twoway lpoly mpg weight, n(50) nodraw",
           "dash_command": "dash lpoly mpg weight, n(50) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "mspline_n",
           "command": "twoway mspline mpg weight, n(3) nodraw",
           "dash_command": "dash mspline mpg weight, n(3) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "kd_n",
           "command": "twoway kdensity mpg, n(100) nodraw",
           "dash_command": "dash kdensity mpg, n(100) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "fn_n",
           "command": "twoway function x, n(50) nodraw",
           "dash_command": "dash function x, n(50) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1627,9 +1628,9 @@
       "option": "ndots",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ndots() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "dot-plot look (twoway dot). dash renders dot plots but accepts none of the d* look options.",
       "probes": [
         {
@@ -1637,7 +1638,7 @@
           "command": "twoway dot mpg weight, ndots(50) nodraw",
           "dash_command": "dash dot mpg weight, ndots(50) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1645,7 +1646,7 @@
       "option": "nodraw",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option nodraw not allowed",
       "disposition": "honoured-nobrowser",
       "reason": "suppresses the Stata graph window. dash honours it by not opening the browser window, on an immediate render and on dash build (WP-13); it is not named in the note.",
@@ -1655,7 +1656,7 @@
           "command": "twoway scatter mpg weight, nodraw nodraw",
           "dash_command": "dash scatter mpg weight, nodraw name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1663,9 +1664,9 @@
       "option": "nodropbase",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option nodropbase not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "area baseline suppression.",
       "probes": [
         {
@@ -1673,7 +1674,7 @@
           "command": "twoway area mpg weight, nodropbase nodraw",
           "dash_command": "dash area mpg weight, nodropbase name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1681,9 +1682,9 @@
       "option": "nofit",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option nofit not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -1691,7 +1692,7 @@
           "command": "twoway lfitci mpg weight, nofit nodraw",
           "dash_command": "dash lfitci mpg weight, nofit name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1699,9 +1700,9 @@
       "option": "noweight",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option noweight not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "lowess estimation control.",
       "probes": [
         {
@@ -1709,7 +1710,7 @@
           "command": "twoway lowess mpg weight, noweight nodraw",
           "dash_command": "dash lowess mpg weight, noweight name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1717,9 +1718,9 @@
       "option": "pcycle",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option pcycle() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "plot-style cycling across layers.",
       "probes": [
         {
@@ -1727,7 +1728,7 @@
           "command": "twoway scatter mpg weight, pcycle(3) nodraw",
           "dash_command": "dash scatter mpg weight, pcycle(3) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1735,9 +1736,9 @@
       "option": "percent",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option percent not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram y-axis scaling family (density/fraction/frequency/percent). dash always renders raw counts, so the y axis silently means something other than what the user asked for.",
       "probes": [
         {
@@ -1745,7 +1746,7 @@
           "command": "twoway histogram mpg, percent nodraw",
           "dash_command": "dash histogram mpg, percent name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1753,7 +1754,7 @@
       "option": "play",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option play() not allowed",
       "disposition": "accept-and-report",
       "reason": "replays a Graph Editor recording against a .gph graph. No HTML equivalent.",
@@ -1763,7 +1764,7 @@
           "command": "twoway scatter mpg weight, play(dashprobe_rec) nodraw",
           "dash_command": "dash scatter mpg weight, play(dashprobe_rec) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1771,9 +1772,9 @@
       "option": "plegend",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option plegend() not allowed",
-      "disposition": "implement-S09-style",
+      "disposition": "rc0-at-c96facd",
       "reason": "colour legend for a colorvar plot.",
       "probes": [
         {
@@ -1781,7 +1782,7 @@
           "command": "twoway scatter mpg weight, plegend(off) colorvar(price) colordiscrete coloruseplegend nodraw",
           "dash_command": "dash scatter mpg weight, plegend(off) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1789,9 +1790,9 @@
       "option": "predopts",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option predopts() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "fit/CI estimation control (ciopts/fitopts family).",
       "probes": [
         {
@@ -1799,7 +1800,7 @@
           "command": "twoway lfit mpg weight, predopts(xb) nodraw",
           "dash_command": "dash lfit mpg weight, predopts(xb) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1807,9 +1808,9 @@
       "option": "r1title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option r1title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -1817,7 +1818,7 @@
           "command": "twoway scatter mpg weight, r1title(\"right 1\") nodraw",
           "dash_command": "dash scatter mpg weight, r1title(\"right 1\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1825,9 +1826,9 @@
       "option": "r2title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option r2title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -1835,7 +1836,7 @@
           "command": "twoway scatter mpg weight, r2title(\"right 2\") nodraw",
           "dash_command": "dash scatter mpg weight, r2title(\"right 2\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1843,9 +1844,9 @@
       "option": "range",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option range() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "estimation range for a fit/smoother plot.",
       "probes": [
         {
@@ -1853,21 +1854,21 @@
           "command": "twoway lfit mpg weight, range(2000 4000) nodraw",
           "dash_command": "dash lfit mpg weight, range(2000 4000) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "kd_range",
           "command": "twoway kdensity mpg, range(10 40) nodraw",
           "dash_command": "dash kdensity mpg, range(10 40) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "fn_range",
           "command": "twoway function x, range(0 10) nodraw",
           "dash_command": "dash function x, range(0 10) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1875,9 +1876,9 @@
       "option": "scale",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option scale() not allowed",
-      "disposition": "implement-S10",
+      "disposition": "rc0-at-c96facd",
       "reason": "physical graph size / combine sizing / global text-and-marker scaling.",
       "probes": [
         {
@@ -1885,7 +1886,7 @@
           "command": "twoway scatter mpg weight, scale(1.2) nodraw",
           "dash_command": "dash scatter mpg weight, scale(1.2) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1893,9 +1894,9 @@
       "option": "sort",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option sort not allowed",
-      "disposition": "implement-S06",
+      "disposition": "rc0-at-c96facd",
       "reason": "sort-before-connect for line/area/connected. Without it a dash line plot draws in dataset order; the option that fixes that aborts.",
       "probes": [
         {
@@ -1903,21 +1904,21 @@
           "command": "twoway line mpg weight, sort nodraw",
           "dash_command": "dash line mpg weight, sort name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "area_sort",
           "command": "twoway area mpg weight, sort nodraw",
           "dash_command": "dash area mpg weight, sort name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "connected_sort",
           "command": "twoway connected mpg weight, sort nodraw",
           "dash_command": "dash connected mpg weight, sort name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1925,9 +1926,9 @@
       "option": "start",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option start() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram binning control; dash hard-codes its own binning in dash_render.py and cannot honour the user request.",
       "probes": [
         {
@@ -1935,7 +1936,7 @@
           "command": "twoway histogram mpg, start(10) nodraw",
           "dash_command": "dash histogram mpg, start(10) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1943,9 +1944,9 @@
       "option": "t1title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option t1title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -1953,7 +1954,7 @@
           "command": "twoway scatter mpg weight, t1title(\"top 1\") nodraw",
           "dash_command": "dash scatter mpg weight, t1title(\"top 1\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1961,9 +1962,9 @@
       "option": "t2title",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option t2title() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "outer title band (t1/t2/b1/b2/l1/l2/r1/r2). dash implements only title/subtitle/note/caption.",
       "probes": [
         {
@@ -1971,7 +1972,7 @@
           "command": "twoway scatter mpg weight, t2title(\"top 2\") nodraw",
           "dash_command": "dash scatter mpg weight, t2title(\"top 2\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -1979,9 +1980,9 @@
       "option": "text",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option text() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "honoured-WP-30-P1.10",
       "reason": "in-plot text annotation at a (y,x) data coordinate.",
       "probes": [
         {
@@ -1989,14 +1990,14 @@
           "command": "twoway scatter mpg weight, text(20 3000 \"a note\") nodraw",
           "dash_command": "dash scatter mpg weight, text(20 3000 \"a note\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "text_suboptions",
           "command": "twoway scatter mpg weight, text(20 3000 \"a note\", placement(e) size(small)) nodraw",
           "dash_command": "dash scatter mpg weight, text(20 3000 \"a note\", placement(e) size(small)) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2094,9 +2095,9 @@
       "option": "ttext",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ttext() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "honoured-WP-30-P1.10",
       "reason": "time-axis spelling of an axis option dash already implements for x/y. A tsset dataset plus tsline is the single most likely copy-paste source for dash, and every t* option aborts.",
       "probes": [
         {
@@ -2104,7 +2105,7 @@
           "command": "twoway tsline y, ttext(120 2002m1 \"a note\") nodraw",
           "dash_command": "dash tsline y, ttext(120 2002m1 \"a note\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2148,9 +2149,9 @@
       "option": "vertical",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option vertical not allowed",
-      "disposition": "implement-S06",
+      "disposition": "honoured-WP-30-P1.9a",
       "reason": "plot orientation. dash renders bar/spike/dropline/dot/rbar/rcap/histogram/kdensity but accepts neither orientation keyword.",
       "probes": [
         {
@@ -2158,14 +2159,14 @@
           "command": "twoway rbar lo hi weight, vertical nodraw",
           "dash_command": "dash rbar lo hi weight, vertical name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         },
         {
           "id": "bar_vertical",
           "command": "twoway bar mpg weight, vertical nodraw",
           "dash_command": "dash bar mpg weight, vertical name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2173,9 +2174,9 @@
       "option": "width",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option width() not allowed",
-      "disposition": "implement-S07",
+      "disposition": "rc0-at-c96facd",
       "reason": "twoway histogram binning control; dash hard-codes its own binning in dash_render.py and cannot honour the user request.",
       "probes": [
         {
@@ -2183,7 +2184,7 @@
           "command": "twoway histogram mpg, width(5) nodraw",
           "dash_command": "dash histogram mpg, width(5) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2191,9 +2192,9 @@
       "option": "xmlabel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xmlabel() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis tick/minor-tick/minor-label placement. dash implements only xlabel()/ylabel() major ticks.",
       "probes": [
         {
@@ -2201,7 +2202,7 @@
           "command": "twoway scatter mpg weight, xmlabel(2000(250)5000) nodraw",
           "dash_command": "dash scatter mpg weight, xmlabel(2000(250)5000) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2209,9 +2210,9 @@
       "option": "xmtick",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xmtick() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis tick/minor-tick/minor-label placement. dash implements only xlabel()/ylabel() major ticks.",
       "probes": [
         {
@@ -2219,7 +2220,7 @@
           "command": "twoway scatter mpg weight, xmtick(2000(250)5000) nodraw",
           "dash_command": "dash scatter mpg weight, xmtick(2000(250)5000) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2227,7 +2228,7 @@
       "option": "xoverhangs",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xoverhangs not allowed",
       "disposition": "accept-and-report",
       "reason": "advanced label-overhang control in the graph region. No Bokeh equivalent.",
@@ -2237,7 +2238,7 @@
           "command": "twoway scatter mpg weight, xoverhangs nodraw",
           "dash_command": "dash scatter mpg weight, xoverhangs name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2245,9 +2246,9 @@
       "option": "xsize",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xsize() not allowed",
-      "disposition": "implement-S10",
+      "disposition": "rc0-at-c96facd",
       "reason": "physical graph size / combine sizing / global text-and-marker scaling.",
       "probes": [
         {
@@ -2255,7 +2256,7 @@
           "command": "twoway scatter mpg weight, xsize(8) nodraw",
           "dash_command": "dash scatter mpg weight, xsize(8) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2263,9 +2264,9 @@
       "option": "xtick",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xtick() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis tick/minor-tick/minor-label placement. dash implements only xlabel()/ylabel() major ticks.",
       "probes": [
         {
@@ -2273,7 +2274,7 @@
           "command": "twoway scatter mpg weight, xtick(2000(500)5000) nodraw",
           "dash_command": "dash scatter mpg weight, xtick(2000(500)5000) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2281,9 +2282,9 @@
       "option": "xvarformat",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xvarformat() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "honoured-WP-30-P1.5",
       "reason": "axis title / tick format taken from the plotted variable.",
       "probes": [
         {
@@ -2291,7 +2292,7 @@
           "command": "twoway scatter mpg weight, xvarformat(%9.2f) nodraw",
           "dash_command": "dash scatter mpg weight, xvarformat(%9.2f) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2299,9 +2300,9 @@
       "option": "xvarlabel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option xvarlabel() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis title / tick format taken from the plotted variable.",
       "probes": [
         {
@@ -2309,7 +2310,7 @@
           "command": "twoway scatter mpg weight, xvarlabel(\"Weight\") nodraw",
           "dash_command": "dash scatter mpg weight, xvarlabel(\"Weight\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2317,9 +2318,9 @@
       "option": "ymlabel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ymlabel() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis tick/minor-tick/minor-label placement. dash implements only xlabel()/ylabel() major ticks.",
       "probes": [
         {
@@ -2327,7 +2328,7 @@
           "command": "twoway scatter mpg weight, ymlabel(10(5)40) nodraw",
           "dash_command": "dash scatter mpg weight, ymlabel(10(5)40) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2335,9 +2336,9 @@
       "option": "ymtick",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ymtick() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis tick/minor-tick/minor-label placement. dash implements only xlabel()/ylabel() major ticks.",
       "probes": [
         {
@@ -2345,7 +2346,7 @@
           "command": "twoway scatter mpg weight, ymtick(10(5)40) nodraw",
           "dash_command": "dash scatter mpg weight, ymtick(10(5)40) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2353,7 +2354,7 @@
       "option": "yoverhangs",
       "takes_argument": false,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option yoverhangs not allowed",
       "disposition": "accept-and-report",
       "reason": "advanced label-overhang control in the graph region. No Bokeh equivalent.",
@@ -2363,7 +2364,7 @@
           "command": "twoway scatter mpg weight, yoverhangs nodraw",
           "dash_command": "dash scatter mpg weight, yoverhangs name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2371,9 +2372,9 @@
       "option": "ysize",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ysize() not allowed",
-      "disposition": "implement-S10",
+      "disposition": "rc0-at-c96facd",
       "reason": "physical graph size / combine sizing / global text-and-marker scaling.",
       "probes": [
         {
@@ -2381,7 +2382,7 @@
           "command": "twoway scatter mpg weight, ysize(5) nodraw",
           "dash_command": "dash scatter mpg weight, ysize(5) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2389,9 +2390,9 @@
       "option": "ytick",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option ytick() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis tick/minor-tick/minor-label placement. dash implements only xlabel()/ylabel() major ticks.",
       "probes": [
         {
@@ -2399,7 +2400,7 @@
           "command": "twoway scatter mpg weight, ytick(10 20 30 40) nodraw",
           "dash_command": "dash scatter mpg weight, ytick(10 20 30 40) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2407,9 +2408,9 @@
       "option": "yvarformat",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option yvarformat() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "honoured-WP-30-P1.5",
       "reason": "axis title / tick format taken from the plotted variable.",
       "probes": [
         {
@@ -2417,7 +2418,7 @@
           "command": "twoway scatter mpg weight, yvarformat(%9.2f) nodraw",
           "dash_command": "dash scatter mpg weight, yvarformat(%9.2f) name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     },
@@ -2425,9 +2426,9 @@
       "option": "yvarlabel",
       "takes_argument": true,
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "dash_message": "option yvarlabel() not allowed",
-      "disposition": "implement-S09-axes-text",
+      "disposition": "rc0-at-c96facd",
       "reason": "axis title / tick format taken from the plotted variable.",
       "probes": [
         {
@@ -2435,7 +2436,7 @@
           "command": "twoway scatter mpg weight, yvarlabel(\"Mileage\") nodraw",
           "dash_command": "dash scatter mpg weight, yvarlabel(\"Mileage\") name(g1)",
           "twoway_rc": 0,
-          "dash_rc": 198
+          "dash_rc": 0
         }
       ]
     }
@@ -2999,7 +3000,7 @@
     {
       "id": "ctl_function_yeq",
       "twoway_rc": 0,
-      "dash_rc": 101,
+      "dash_rc": 0,
       "plotspec": "function y=x",
       "options": "",
       "twoway_only_extra": "",
@@ -3179,7 +3180,7 @@
     {
       "id": "ctl_aweight",
       "twoway_rc": 0,
-      "dash_rc": 101,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight [aweight=price]",
       "options": "",
       "twoway_only_extra": "",
@@ -3219,7 +3220,7 @@
     {
       "id": "text",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "text(20 3000 \"a note\")",
       "twoway_only_extra": "",
@@ -3229,7 +3230,7 @@
     {
       "id": "text_suboptions",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "text(20 3000 \"a note\", placement(e) size(small))",
       "twoway_only_extra": "",
@@ -3339,7 +3340,7 @@
     {
       "id": "xtick",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xtick(2000(500)5000)",
       "twoway_only_extra": "",
@@ -3349,7 +3350,7 @@
     {
       "id": "ytick",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "ytick(10 20 30 40)",
       "twoway_only_extra": "",
@@ -3359,7 +3360,7 @@
     {
       "id": "xmtick",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xmtick(2000(250)5000)",
       "twoway_only_extra": "",
@@ -3369,7 +3370,7 @@
     {
       "id": "ymtick",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "ymtick(10(5)40)",
       "twoway_only_extra": "",
@@ -3379,7 +3380,7 @@
     {
       "id": "xmlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xmlabel(2000(250)5000)",
       "twoway_only_extra": "",
@@ -3389,7 +3390,7 @@
     {
       "id": "ymlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "ymlabel(10(5)40)",
       "twoway_only_extra": "",
@@ -3579,7 +3580,7 @@
     {
       "id": "t1title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "t1title(\"top 1\")",
       "twoway_only_extra": "",
@@ -3589,7 +3590,7 @@
     {
       "id": "t2title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "t2title(\"top 2\")",
       "twoway_only_extra": "",
@@ -3599,7 +3600,7 @@
     {
       "id": "b1title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "b1title(\"bottom 1\")",
       "twoway_only_extra": "",
@@ -3609,7 +3610,7 @@
     {
       "id": "b2title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "b2title(\"bottom 2\")",
       "twoway_only_extra": "",
@@ -3619,7 +3620,7 @@
     {
       "id": "l1title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "l1title(\"left 1\")",
       "twoway_only_extra": "",
@@ -3629,7 +3630,7 @@
     {
       "id": "l2title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "l2title(\"left 2\")",
       "twoway_only_extra": "",
@@ -3639,7 +3640,7 @@
     {
       "id": "r1title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "r1title(\"right 1\")",
       "twoway_only_extra": "",
@@ -3649,7 +3650,7 @@
     {
       "id": "r2title",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "r2title(\"right 2\")",
       "twoway_only_extra": "",
@@ -3719,7 +3720,7 @@
     {
       "id": "clegend",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "clegend(off)",
       "twoway_only_extra": "colorvar(price)",
@@ -3729,7 +3730,7 @@
     {
       "id": "plegend",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "plegend(off)",
       "twoway_only_extra": "colorvar(price) colordiscrete coloruseplegend",
@@ -3769,7 +3770,7 @@
     {
       "id": "xsize",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xsize(8)",
       "twoway_only_extra": "",
@@ -3779,7 +3780,7 @@
     {
       "id": "ysize",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "ysize(5)",
       "twoway_only_extra": "",
@@ -3789,7 +3790,7 @@
     {
       "id": "fxsize",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "fxsize(50)",
       "twoway_only_extra": "",
@@ -3799,7 +3800,7 @@
     {
       "id": "fysize",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "fysize(50)",
       "twoway_only_extra": "",
@@ -3809,7 +3810,7 @@
     {
       "id": "scale",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "scale(1.2)",
       "twoway_only_extra": "",
@@ -3859,7 +3860,7 @@
     {
       "id": "name_replace",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "name(g1, replace)",
       "twoway_only_extra": "",
@@ -3879,7 +3880,7 @@
     {
       "id": "nodraw",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "nodraw",
       "twoway_only_extra": "",
@@ -3889,7 +3890,7 @@
     {
       "id": "play",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "play(dashprobe_rec)",
       "twoway_only_extra": "",
@@ -3909,7 +3910,7 @@
     {
       "id": "yvarlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "yvarlabel(\"Mileage\")",
       "twoway_only_extra": "",
@@ -3919,7 +3920,7 @@
     {
       "id": "xvarlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xvarlabel(\"Weight\")",
       "twoway_only_extra": "",
@@ -3929,7 +3930,7 @@
     {
       "id": "yvarformat",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "yvarformat(%9.2f)",
       "twoway_only_extra": "",
@@ -3939,7 +3940,7 @@
     {
       "id": "xvarformat",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xvarformat(%9.2f)",
       "twoway_only_extra": "",
@@ -3949,7 +3950,7 @@
     {
       "id": "pcycle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "pcycle(3)",
       "twoway_only_extra": "",
@@ -3959,7 +3960,7 @@
     {
       "id": "xoverhangs",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "xoverhangs",
       "twoway_only_extra": "",
@@ -3969,7 +3970,7 @@
     {
       "id": "yoverhangs",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "yoverhangs",
       "twoway_only_extra": "",
@@ -4049,7 +4050,7 @@
     {
       "id": "mlwidth",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlwidth(thick)",
       "twoway_only_extra": "",
@@ -4059,7 +4060,7 @@
     {
       "id": "mlalign",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlalign(inside)",
       "twoway_only_extra": "",
@@ -4069,7 +4070,7 @@
     {
       "id": "mlstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlstyle(p1)",
       "twoway_only_extra": "",
@@ -4079,7 +4080,7 @@
     {
       "id": "mstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mstyle(p1)",
       "twoway_only_extra": "",
@@ -4109,7 +4110,7 @@
     {
       "id": "jitterseed",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "jitterseed(123)",
       "twoway_only_extra": "jitter(5)",
@@ -4169,7 +4170,7 @@
     {
       "id": "mlabangle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlabangle(45)",
       "twoway_only_extra": "mlabel(make)",
@@ -4179,7 +4180,7 @@
     {
       "id": "mlabformat",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlabformat(%9.0fc)",
       "twoway_only_extra": "mlabel(price)",
@@ -4189,7 +4190,7 @@
     {
       "id": "mlabstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlabstyle(p1)",
       "twoway_only_extra": "mlabel(make)",
@@ -4199,7 +4200,7 @@
     {
       "id": "mlabtextstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlabtextstyle(body)",
       "twoway_only_extra": "mlabel(make)",
@@ -4209,7 +4210,7 @@
     {
       "id": "mlabvposition",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "mlabvposition(vpos)",
       "twoway_only_extra": "mlabel(make)",
@@ -4249,7 +4250,7 @@
     {
       "id": "lstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "line mpg weight",
       "options": "lstyle(p1)",
       "twoway_only_extra": "",
@@ -4259,7 +4260,7 @@
     {
       "id": "lalign",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "area mpg weight",
       "options": "lalign(inside)",
       "twoway_only_extra": "",
@@ -4289,7 +4290,7 @@
     {
       "id": "color_area",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "area mpg weight",
       "options": "color(red)",
       "twoway_only_extra": "",
@@ -4319,7 +4320,7 @@
     {
       "id": "astyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "area mpg weight",
       "options": "astyle(p1)",
       "twoway_only_extra": "",
@@ -4329,7 +4330,7 @@
     {
       "id": "bstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "bar mpg weight",
       "options": "bstyle(p1)",
       "twoway_only_extra": "",
@@ -4369,7 +4370,7 @@
     {
       "id": "lfit_range",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfit mpg weight",
       "options": "range(2000 4000)",
       "twoway_only_extra": "",
@@ -4379,7 +4380,7 @@
     {
       "id": "lfit_n",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfit mpg weight",
       "options": "n(50)",
       "twoway_only_extra": "",
@@ -4389,7 +4390,7 @@
     {
       "id": "lfit_atobs",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfit mpg weight",
       "options": "atobs",
       "twoway_only_extra": "",
@@ -4399,7 +4400,7 @@
     {
       "id": "lfit_estopts",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfit mpg weight",
       "options": "estopts(nocons)",
       "twoway_only_extra": "",
@@ -4409,7 +4410,7 @@
     {
       "id": "lfit_predopts",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfit mpg weight",
       "options": "predopts(xb)",
       "twoway_only_extra": "",
@@ -4419,7 +4420,7 @@
     {
       "id": "lfitci_level",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "level(90)",
       "twoway_only_extra": "",
@@ -4429,7 +4430,7 @@
     {
       "id": "lfitci_ciplot",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "ciplot(rline)",
       "twoway_only_extra": "",
@@ -4439,7 +4440,7 @@
     {
       "id": "lfitci_nofit",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "nofit",
       "twoway_only_extra": "",
@@ -4459,7 +4460,7 @@
     {
       "id": "lfitci_alwidth",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "alwidth(thin)",
       "twoway_only_extra": "",
@@ -4469,7 +4470,7 @@
     {
       "id": "lfitci_acolor",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "acolor(gs10)",
       "twoway_only_extra": "",
@@ -4479,7 +4480,7 @@
     {
       "id": "fpfit_estcmd",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "fpfit mpg weight",
       "options": "estcmd(regress)",
       "twoway_only_extra": "",
@@ -4489,7 +4490,7 @@
     {
       "id": "fpfit_estopts",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "fpfit mpg weight",
       "options": "estopts(degree(2))",
       "twoway_only_extra": "",
@@ -4499,7 +4500,7 @@
     {
       "id": "fpfit_powers",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "fpfit mpg weight",
       "options": "estopts(powers(1 2))",
       "twoway_only_extra": "",
@@ -4509,7 +4510,7 @@
     {
       "id": "lfitci_fitplot",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "fitplot(line)",
       "twoway_only_extra": "",
@@ -4519,7 +4520,7 @@
     {
       "id": "lfitci_alpattern",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "alpattern(dash)",
       "twoway_only_extra": "",
@@ -4529,7 +4530,7 @@
     {
       "id": "lfitci_alalign",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "alalign(inside)",
       "twoway_only_extra": "",
@@ -4539,7 +4540,7 @@
     {
       "id": "lfitci_alstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "alstyle(p1)",
       "twoway_only_extra": "",
@@ -4549,7 +4550,7 @@
     {
       "id": "lfitci_astyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lfitci mpg weight",
       "options": "astyle(p1)",
       "twoway_only_extra": "",
@@ -4569,7 +4570,7 @@
     {
       "id": "lowess_mean",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lowess mpg weight",
       "options": "mean",
       "twoway_only_extra": "",
@@ -4579,7 +4580,7 @@
     {
       "id": "lowess_noweight",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lowess mpg weight",
       "options": "noweight",
       "twoway_only_extra": "",
@@ -4589,7 +4590,7 @@
     {
       "id": "lowess_logit",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lowess mpg weight",
       "options": "logit",
       "twoway_only_extra": "",
@@ -4599,7 +4600,7 @@
     {
       "id": "lowess_adjust",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lowess mpg weight",
       "options": "adjust",
       "twoway_only_extra": "",
@@ -4629,7 +4630,7 @@
     {
       "id": "lpoly_kernel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lpoly mpg weight",
       "options": "kernel(epan2)",
       "twoway_only_extra": "",
@@ -4639,7 +4640,7 @@
     {
       "id": "lpoly_n",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "lpoly mpg weight",
       "options": "n(50)",
       "twoway_only_extra": "",
@@ -4649,7 +4650,7 @@
     {
       "id": "mband_bands",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "mband mpg weight",
       "options": "bands(10)",
       "twoway_only_extra": "",
@@ -4659,7 +4660,7 @@
     {
       "id": "mspline_bands",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "mspline mpg weight",
       "options": "bands(10)",
       "twoway_only_extra": "",
@@ -4669,7 +4670,7 @@
     {
       "id": "mspline_n",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "mspline mpg weight",
       "options": "n(3)",
       "twoway_only_extra": "",
@@ -4679,7 +4680,7 @@
     {
       "id": "hist_bin",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "bin(20)",
       "twoway_only_extra": "",
@@ -4689,7 +4690,7 @@
     {
       "id": "hist_width",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "width(5)",
       "twoway_only_extra": "",
@@ -4699,7 +4700,7 @@
     {
       "id": "hist_start",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "start(10)",
       "twoway_only_extra": "",
@@ -4709,7 +4710,7 @@
     {
       "id": "hist_density",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "density",
       "twoway_only_extra": "",
@@ -4719,7 +4720,7 @@
     {
       "id": "hist_fraction",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "fraction",
       "twoway_only_extra": "",
@@ -4729,7 +4730,7 @@
     {
       "id": "hist_frequency",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "frequency",
       "twoway_only_extra": "",
@@ -4739,7 +4740,7 @@
     {
       "id": "hist_percent",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "percent",
       "twoway_only_extra": "",
@@ -4749,7 +4750,7 @@
     {
       "id": "hist_discrete",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram rep78",
       "options": "discrete",
       "twoway_only_extra": "",
@@ -4759,7 +4760,7 @@
     {
       "id": "hist_gap",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "gap(10)",
       "twoway_only_extra": "",
@@ -4769,7 +4770,7 @@
     {
       "id": "hist_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "histogram mpg",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -4799,7 +4800,7 @@
     {
       "id": "kd_kernel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "kdensity mpg",
       "options": "kernel(epan2)",
       "twoway_only_extra": "",
@@ -4809,7 +4810,7 @@
     {
       "id": "kd_n",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "kdensity mpg",
       "options": "n(100)",
       "twoway_only_extra": "",
@@ -4819,7 +4820,7 @@
     {
       "id": "kd_range",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "kdensity mpg",
       "options": "range(10 40)",
       "twoway_only_extra": "",
@@ -4829,7 +4830,7 @@
     {
       "id": "kd_area",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "kdensity mpg",
       "options": "area(1)",
       "twoway_only_extra": "",
@@ -4839,7 +4840,7 @@
     {
       "id": "kd_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "kdensity mpg",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -4849,7 +4850,7 @@
     {
       "id": "fn_range",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "function x",
       "options": "range(0 10)",
       "twoway_only_extra": "",
@@ -4859,7 +4860,7 @@
     {
       "id": "fn_n",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "function x",
       "options": "n(50)",
       "twoway_only_extra": "",
@@ -4869,7 +4870,7 @@
     {
       "id": "fn_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "function x",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -4879,7 +4880,7 @@
     {
       "id": "fn_droplines",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "function x",
       "options": "droplines(2 4 6)",
       "twoway_only_extra": "range(0 10)",
@@ -4909,7 +4910,7 @@
     {
       "id": "rbar_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "rbar lo hi weight",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -4929,7 +4930,7 @@
     {
       "id": "rbar_vertical",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "rbar lo hi weight",
       "options": "vertical",
       "twoway_only_extra": "",
@@ -4959,7 +4960,7 @@
     {
       "id": "bar_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "bar mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -4969,7 +4970,7 @@
     {
       "id": "bar_vertical",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "bar mpg weight",
       "options": "vertical",
       "twoway_only_extra": "",
@@ -4989,7 +4990,7 @@
     {
       "id": "dropline_horiz",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dropline mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -4999,7 +5000,7 @@
     {
       "id": "line_sort",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "line mpg weight",
       "options": "sort",
       "twoway_only_extra": "",
@@ -5009,7 +5010,7 @@
     {
       "id": "area_sort",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "area mpg weight",
       "options": "sort",
       "twoway_only_extra": "",
@@ -5019,7 +5020,7 @@
     {
       "id": "connected_sort",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "connected mpg weight",
       "options": "sort",
       "twoway_only_extra": "",
@@ -5029,7 +5030,7 @@
     {
       "id": "pcarrow_barbsize",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "barbsize(3)",
       "twoway_only_extra": "",
@@ -5039,7 +5040,7 @@
     {
       "id": "pcarrow_headlabel",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "headlabel",
       "twoway_only_extra": "",
@@ -5059,7 +5060,7 @@
     {
       "id": "pcarrow_mangle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "mangle(30)",
       "twoway_only_extra": "",
@@ -5069,7 +5070,7 @@
     {
       "id": "pcarrow_mstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "pcarrow y1 x1 y2 x2",
       "options": "mstyle(p1)",
       "twoway_only_extra": "",
@@ -5079,7 +5080,7 @@
     {
       "id": "rbar_mwidth",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "rbar lo hi weight",
       "options": "mwidth",
       "twoway_only_extra": "",
@@ -5089,7 +5090,7 @@
     {
       "id": "rbar_baroffset",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "rbar lo hi weight",
       "options": "baroffset(0.2)",
       "twoway_only_extra": "",
@@ -5099,7 +5100,7 @@
     {
       "id": "bar_baroffset",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "bar mpg weight",
       "options": "baroffset(0.2)",
       "twoway_only_extra": "",
@@ -5109,7 +5110,7 @@
     {
       "id": "rcap_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "rcap lo hi weight",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -5119,7 +5120,7 @@
     {
       "id": "area_nodropbase",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "area mpg weight",
       "options": "nodropbase",
       "twoway_only_extra": "",
@@ -5139,7 +5140,7 @@
     {
       "id": "spike_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "spike mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -5149,7 +5150,7 @@
     {
       "id": "dot_dcolor",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dcolor(red)",
       "twoway_only_extra": "",
@@ -5159,7 +5160,7 @@
     {
       "id": "dot_dfcolor",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dfcolor(red)",
       "twoway_only_extra": "",
@@ -5169,7 +5170,7 @@
     {
       "id": "dot_dlcolor",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dlcolor(red)",
       "twoway_only_extra": "",
@@ -5179,7 +5180,7 @@
     {
       "id": "dot_dlwidth",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dlwidth(thick)",
       "twoway_only_extra": "",
@@ -5189,7 +5190,7 @@
     {
       "id": "dot_dlstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dlstyle(p1)",
       "twoway_only_extra": "",
@@ -5199,7 +5200,7 @@
     {
       "id": "dot_dlalign",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dlalign(inside)",
       "twoway_only_extra": "",
@@ -5209,7 +5210,7 @@
     {
       "id": "dot_dsize",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dsize(large)",
       "twoway_only_extra": "",
@@ -5219,7 +5220,7 @@
     {
       "id": "dot_dstyle",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dstyle(p1)",
       "twoway_only_extra": "",
@@ -5229,7 +5230,7 @@
     {
       "id": "dot_dsymbol",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dsymbol(Oh)",
       "twoway_only_extra": "",
@@ -5239,7 +5240,7 @@
     {
       "id": "dot_dotextend",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "dotextend(no)",
       "twoway_only_extra": "",
@@ -5249,7 +5250,7 @@
     {
       "id": "dot_ndots",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "ndots(50)",
       "twoway_only_extra": "",
@@ -5259,7 +5260,7 @@
     {
       "id": "dot_horizontal",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "dot mpg weight",
       "options": "horizontal",
       "twoway_only_extra": "",
@@ -5309,7 +5310,7 @@
     {
       "id": "colorlevels",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorlevels(4)",
       "twoway_only_extra": "colorvar(price)",
@@ -5319,7 +5320,7 @@
     {
       "id": "colorlist",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorlist(red blue green orange)",
       "twoway_only_extra": "colorvar(price) colordiscrete",
@@ -5329,7 +5330,7 @@
     {
       "id": "colorrule",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorrule(linear)",
       "twoway_only_extra": "colorvar(price)",
@@ -5339,7 +5340,7 @@
     {
       "id": "colorstart",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorstart(yellow)",
       "twoway_only_extra": "colorvar(price) colorend(red)",
@@ -5349,7 +5350,7 @@
     {
       "id": "colorend",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorend(red)",
       "twoway_only_extra": "colorvar(price) colorstart(yellow)",
@@ -5359,7 +5360,7 @@
     {
       "id": "colorformissing",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter rep78 weight",
       "options": "colorformissing(gs8)",
       "twoway_only_extra": "colorvar(rep78)",
@@ -5369,7 +5370,7 @@
     {
       "id": "colorkeysrange",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorkeysrange",
       "twoway_only_extra": "colorvar(price)",
@@ -5379,7 +5380,7 @@
     {
       "id": "colorfillonly",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorfillonly",
       "twoway_only_extra": "colorvar(price)",
@@ -5389,7 +5390,7 @@
     {
       "id": "colorvarminmax",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "scatter mpg weight",
       "options": "colorvarminmax",
       "twoway_only_extra": "colorvar(price)",
@@ -5429,7 +5430,7 @@
     {
       "id": "ttext",
       "twoway_rc": 0,
-      "dash_rc": 198,
+      "dash_rc": 0,
       "plotspec": "tsline y",
       "options": "ttext(120 2002m1 \"a note\")",
       "twoway_only_extra": "",
