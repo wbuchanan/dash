@@ -23,8 +23,8 @@ d dependencies and installs the missing Python packages; where the
 d Python refuses pip installs (PEP 668), -dash_setup, venv(path)-
 d sets up a private environment instead.
 d
-d Version: 0.1.0  02oct2026
-d Distribution-Date: 20261002
+d Version: 0.1.0  09oct2026
+d Distribution-Date: 20261009
 d
 f dash.ado
 f dash.sthlp
