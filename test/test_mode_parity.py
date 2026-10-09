@@ -2298,6 +2298,16 @@ CORPUS = [
     _case("ylabel2(6000, add) on a second axis (WP-30 P1.18b)",
           [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
           {"ylabel2": "6000, add"}),
+    # WP-30 P1.9b: turned layers' tooltips and geometry in both modes.
+    _case("Turned layers (WP-30 P1.9b)",
+          [plot_for("histogram", {"horizontal": "horizontal"}),
+           plot_for("kdensity", {"horizontal": "horizontal"})]),
+    _case("Turned ranges and areas (WP-30 P1.9b)",
+          [plot_for("rcap", {"horizontal": "horizontal"}),
+           plot_for("area", {"horizontal": "horizontal"})]),
+    _case("Turned bar on axis 2 (WP-30 P1.9b)",
+          [_sc(), plot_for("bar", {"horizontal": "horizontal",
+                                   "yaxis": "2"})]),
 ]
 
 

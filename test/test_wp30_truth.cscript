@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3
+    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11770,10 +11770,131 @@ if inlist("`only'", "", "S54") & `: list posof "S54" in w30_run' {
 }
 * ==== end S54 ====
 
+// S55 (WP-30 P1.9b): a saved page read as data.  _hm_page(html) loads
+// its document JSON; _hm_hover(html, glyph) returns, through the local
+// hm_out, "mode|first field" of the HoverTool serving a renderer of that
+// glyph class; _hm_reach(html) returns, through hm_out, the number of
+// CustomJS args subtrees that reference an HBar or a GlyphRenderer
+// (inline or by id), and "-1" when the page holds no HBar.
+python:
+def _hm_page(html):
+    import json, re
+    with open(html, encoding="utf-8") as fh:
+        txt = fh.read()
+    objs = {}
+    docs = []
+    def walk(o):
+        if isinstance(o, dict):
+            if "id" in o and "name" in o:
+                objs[o["id"]] = o
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        d = json.loads(m.group(1))
+        docs.append(d)
+        walk(d)
+    return objs
+
+def _hm_hover(html, glyph):
+    from sfi import Macro
+    objs = _hm_page(html)
+    def ref(o):
+        return objs.get(o.get("id"), o) if isinstance(o, dict) else o
+    out = ""
+    for o in objs.values():
+        if o.get("name") != "HoverTool":
+            continue
+        a = o.get("attributes", {})
+        rs = a.get("renderers")
+        rs = rs if isinstance(rs, list) else []
+        names = {ref(ref(r).get("attributes", {}).get("glyph") or {}).get("name") for r in rs}
+        if glyph in names:
+            tt = a.get("tooltips") or []
+            first = tt[0][1] if tt and isinstance(tt[0], list) else ""
+            out = "%s|%s" % (a.get("mode", "mouse"), first)
+            break
+    Macro.setLocal("hm_out", out)
+
+def _hm_reach(html):
+    from sfi import Macro
+    objs = _hm_page(html)
+    bad = {i for i, o in objs.items() if o.get("name") in ("HBar", "GlyphRenderer")}
+    if not any(o.get("name") == "HBar" for o in objs.values()):
+        Macro.setLocal("hm_out", "-1")
+        return
+    def hits(o):
+        if isinstance(o, dict):
+            if o.get("id") in bad or o.get("name") in ("HBar", "GlyphRenderer"):
+                return True
+            return any(hits(v) for v in o.values())
+        if isinstance(o, list):
+            return any(hits(v) for v in o)
+        return False
+    n = sum(1 for o in objs.values() if o.get("name") == "CustomJS"
+            and hits(o.get("attributes", {}).get("args")))
+    Macro.setLocal("hm_out", str(n))
+end
+
 * ==== S55 P1.9b: horizontal after a filter move ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S55") & `: list posof "S55" in w30_run' {
     display as text "S55 start " c(current_date) " " c(current_time)
+    local hmlog "`w30_work'/hm.log"
+    local hmpg "`w30_work'/hm1.html"
+    sysuse auto, clear
+    // HM-01: a turned histogram's bins answer along y; upright along x.
+    _s36_run `"dash histogram mpg, horizontal saving("`hmpg'", replace)"' "`hmlog'"
+    local rc1 = r(rc)
+    local hm_out ""
+    if `rc1' == 0 {
+        python: _hm_hover(r"`hmpg'", "Quad")
+    }
+    local hz "`hm_out'"
+    _s36_run `"dash histogram mpg, saving("`hmpg'", replace)"' "`hmlog'"
+    local rc2 = r(rc)
+    local hm_out ""
+    if `rc2' == 0 {
+        python: _hm_hover(r"`hmpg'", "Quad")
+    }
+    local up "`hm_out'"
+    local ok = `rc1' == 0 & `rc2' == 0 & substr(`"`hz'"', 1, 6) == "hline|" & substr(`"`up'"', 1, 6) == "vline|"
+    _w30_expect HM-01 "`ok'" `"rc `rc1'/`rc2', turned `hz', upright `up'"'
+    _w30_done HM-01 "dash histogram mpg, horizontal: the tooltip answers along y (hline); upright along x (vline)"
+    // HM-02: a turned density's first tooltip row is its grid column.
+    _s36_run `"dash kdensity mpg, horizontal saving("`hmpg'", replace)"' "`hmlog'"
+    local rc1 = r(rc)
+    local hm_out ""
+    if `rc1' == 0 {
+        python: _hm_hover(r"`hmpg'", "Line")
+    }
+    local hz "`hm_out'"
+    _s36_run `"dash kdensity mpg, saving("`hmpg'", replace)"' "`hmlog'"
+    local rc2 = r(rc)
+    local hm_out ""
+    if `rc2' == 0 {
+        python: _hm_hover(r"`hmpg'", "Line")
+    }
+    local up "`hm_out'"
+    local ok = `rc1' == 0 & `rc2' == 0 & `"`hz'"' != "" & `"`hz'"' == `"`up'"'
+    _w30_expect HM-02 "`ok'" `"rc `rc1'/`rc2', turned `hz', upright `up'"'
+    _w30_done HM-02 "dash kdensity mpg, horizontal: the first tooltip row names the grid column, as upright"
+    // HM-03 (guard): no filter callback reaches the turned bar's glyph.
+    _s36_run `"dash bar mpg weight, horizontal filter(foreign) saving("`hmpg'", replace)"' "`hmlog'"
+    local rc1 = r(rc)
+    local hm_out ""
+    if `rc1' == 0 {
+        python: _hm_reach(r"`hmpg'")
+    }
+    local ok = `rc1' == 0 & "`hm_out'" == "0"
+    _w30_expect HM-03 "`ok'" "rc `rc1', CustomJS args reaching a glyph: `hm_out'"
+    _w30_done HM-03 "dash bar mpg weight, horizontal filter(foreign): an HBar no CustomJS args reach"
+    capture dash clear
+    capture graph drop _all
+    capture erase "`hmlog'"
+    capture erase "`hmpg'"
     display as text "S55 end " c(current_date) " " c(current_time)
 }
 * ==== end S55 ====

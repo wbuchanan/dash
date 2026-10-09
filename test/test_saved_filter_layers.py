@@ -239,6 +239,13 @@ _CORPUS = [
     _case("an ascending cmissing(n) connected (WP-30 P1.8a)", _MOVES[0],
           [plot_for("connected", {"connect": "ascending",
                                   "cmissing": "n"})]),
+    # WP-30 P1.9b: a turned layer after a saved move.
+    _case("a turned bar, dropdown", _MOVES[0],
+          [plot_for("bar", {"horizontal": "horizontal"})]),
+    # (A histogram's bins stay over every row on the saved page, upright
+    # or turned (WP-29 P0.17): test_horizontal_moves.py holds it.)
+    _case("a turned rcap, range slider", _MOVES[1],
+          [plot_for("rcap", {"horizontal": "horizontal"})]),
 ]
 
 

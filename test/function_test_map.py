@@ -1116,6 +1116,7 @@ FUNCTIONS = {
  '_dash_by_title_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_title_cell',
  # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
  # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
+ '_dash_build_hover.<locals>._role_prop': 'test/test_horizontal_moves.py::TestTheTooltipFollowsTheTurn::test_a_turned_density_names_its_rows_as_upright',
  # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
  # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
 }

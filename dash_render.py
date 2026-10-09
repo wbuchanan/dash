@@ -39974,6 +39974,28 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     # band drawn under it (test_help_claims_1.py).
     if not _full and _rest:
 
+        # WP-30 P1.9b: the renderers of the layers WP-30 P1.9a turned (a
+        # horizontal layer's glyph of a mapped class; an unmapped class is
+        # left upright there, and so here).  A renderer in no layer is
+        # upright.
+        from bokeh.models import GlyphRenderer as _GR
+        _turned = {id(r) for _lp, _lr in (layers or [])
+                   if _dash_is_horizontal(_lp) for r in (_lr or [])
+                   if isinstance(r, _GR)
+                   and type(r.glyph).__name__ in _DASH_TRANSPOSE}
+
+        def _role_prop(rd, prop):
+            """The property of *rd*'s glyph that draws the upright role
+            *prop*: the role itself, or its mirror when WP-30 P1.9a turned
+            the layer (a constant map; no name is read from data)."""
+            if id(rd) not in _turned:
+                return prop
+            return {"x": "y", "y": "x", "x0": "y0", "y0": "x0",
+                    "x1": "y1", "y1": "x1", "x2": "y2", "y2": "x2",
+                    "left": "bottom", "bottom": "left", "right": "top",
+                    "top": "right", "width": "height",
+                    "height": "width"}.get(prop, prop)
+
         def _drawn_field(glyph, prop, data):
             """The column *glyph* draws *prop* from, when it names one that
             the source carries and a tooltip field can hold safely."""
@@ -40040,13 +40062,16 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
             _lft = _cell(_bin_label, "left", data, _bin_var, "x")[1]
             _rgt = _cell(_bin_label, "right", data, _bin_var, "x")[1]
             # Quad hit-testing wants the cursor exactly on the bar; vline
-            # fires anywhere within the bin's x-range.
+            # fires anywhere within the bin's x-range.  A turned
+            # histogram's bins run along y; hline fires anywhere within a
+            # bin's y-range (WP-30 P1.9b).
             return ([(_bin_label, f"{_lft} to {_rgt}"),
-                     (_dash_hist_measure(rd), "@{top}")], "vline")
+                     (_dash_hist_measure(rd), "@{top}")],
+                    "hline" if id(rd) in _turned else "vline")
 
         def _point_or_line(rd, data):
-            fx = _drawn_field(rd.glyph, "x", data)
-            fy = _drawn_field(rd.glyph, "y", data)
+            fx = _drawn_field(rd.glyph, _role_prop(rd, "x"), data)
+            fy = _drawn_field(rd.glyph, _role_prop(rd, "y"), data)
             if not (fx and fy):
                 if "x" in data and "y" in data:
                     fx, fy = "x", "y"
@@ -40078,7 +40103,8 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                     "mouse")
 
         def _segment(rd, data):
-            ends = [(_drawn_field(rd.glyph, p, data), role) for p, role in
+            ends = [(_drawn_field(rd.glyph, _role_prop(rd, p), data), role)
+                    for p, role in
                     (("y0", "y1"), ("x0", "x1"), ("y1", "y2"), ("x1", "x2"))]
             if not all(col for col, _role in ends):
                 return None
@@ -40088,9 +40114,9 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
                     "mouse")
 
         def _band(rd, data):
-            fx = _drawn_field(rd.glyph, "x", data)
-            f1 = _drawn_field(rd.glyph, "y1", data)
-            f2 = _drawn_field(rd.glyph, "y2", data)
+            fx = _drawn_field(rd.glyph, _role_prop(rd, "x"), data)
+            f1 = _drawn_field(rd.glyph, _role_prop(rd, "y1"), data)
+            f2 = _drawn_field(rd.glyph, _role_prop(rd, "y2"), data)
             if not (fx and f1 and f2):
                 return None
             _ly = _layer_of(rd)
