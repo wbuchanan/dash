@@ -3774,9 +3774,10 @@ end
 // expansion -- 1(2)10 becomes 1 3 5 7 9, 10 20 to 40 becomes 10 20 30 40 --
 // while strings, sub-options and hostile runs (a backtick, $ or ') are kept
 // exactly as written (_dash_axis_pieces).  numlist is always given
-// max(2000), dash's own _MAX_AXIS_TICKS: measured 25sep2026, bare numlist
-// has NO element cap (numlist "1/1800" is rc 0) and would try to expand
-// 0(0.000001)1000000 whole, while max(2000) refuses it at once (r(123)).
+// max(2000), dash's own _MAX_AXIS_TICKS: a bare numlist is capped by Stata
+// (r(123) above its element limit on 19.5; numlist "1/1800" is rc 0), and
+// max(2000) holds it to dash's bound, refusing 0(0.000001)1000000 at once
+// (r(123)).
 // Never refuses: a run numlist cannot read -- a zero step, a bare word,
 // more than 2,000 values -- is left as written, because twoway does not
 // refuse those alike (xlabel(1(0)5) is rc 0, xlabel(2000 abc 4000) r(198))

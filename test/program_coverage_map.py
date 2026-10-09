@@ -296,7 +296,6 @@ COVERAGE = {
                         # e2e: TOK-02, a real dash serve refuses without its
                         # key and serves with it (WP-29 P0.12a).
                         "test_serve_launch.cscript:TOK-02"),
-        # WP-30 S02 (P1.34): Portable runners (P1.34 under M4)
         # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
         # ENV-25: below the floor (comparator stubbed) the refusal names the
         # floor and the running release, r(9) (direct); ENV-28: every dash
@@ -307,12 +306,6 @@ COVERAGE = {
         # guard passes silently through it at or above the floor (direct).
         "_dash_stata_ok": ("test_env_guards.cscript:ENV-24",
                            "test_env_guards.cscript:ENV-26"),
-        # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
-        # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
-        # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
-        # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)
-        # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
-        # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
         "_dash_subopt_check": ("test_suboption_reporting.cscript:SA-05",),
         # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
@@ -324,40 +317,19 @@ COVERAGE = {
         "_dash_stylelist_bind": ("test_adversarial.cscript:P20-18b",),
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         "_dash_display_on": ("test_serve_browser.cscript:SB-31", "test_serve_browser.cscript:SB-32"),
-        # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
-        # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
-        # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
-        # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
-        # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)
-        # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
-        # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
         "_dash_mlabel_list": ("test_varlist_expansion.cscript:PS-05", "test_varlist_expansion.cscript:PS-06"),
         "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
-        # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),
-        # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
-        # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
         "_dash_pyfloor": ("test_env_guards.cscript:ENV-33",),
         "_dash_require_deps": ("test_env_guards.cscript:ENV-31", "test_env_guards.cscript:ENV-34", "test_env_guards.cscript:ENV-35"),
-        # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
-        # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)
-        # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
-        # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)
-        # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
-        # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
-        # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
-        # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
         # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
         "_dash_scheme_dirs": ("test_custom_scheme.cscript:SP-04", "test_wp30_truth.cscript:SP-18"),
-        # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
-        # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
         # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
         "_dash_fold_mlabv": ("test_twoway_option_parity.cscript:MV-01", "test_twoway_option_parity.cscript:MV-02"),
         "_dash_mlabv_parse": ("test_twoway_option_parity.cscript:MV-06", "test_twoway_option_parity.cscript:MV-07"),
-        # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
         "_dash_line_check": ("test_suboption_reporting.cscript:XP-01",),
         "_dash_line_expand": ("test_suboption_reporting.cscript:XP-08", "test_suboption_reporting.cscript:XP-04"),
@@ -366,34 +338,23 @@ COVERAGE = {
         "_dash_reflines_of": ("test_suboption_reporting.cscript:XP-07",),
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
         "_dash_connect_opt": ("test_twoway_option_parity.cscript:CM-01", "test_twoway_option_parity.cscript:CM-12"),
-        # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
         "_dash_parse_varpart_ts": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-04"),
         "_dash_tsop_gen": ("test_parser.cscript:TSO-06", "test_parser.cscript:TSO-11"),
-        # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
-        # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)
         "_dash_recast_opt": ("test_twoway_option_parity.cscript:RC-01", "test_twoway_option_parity.cscript:RC-13"),
         "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),
         "_dash_recast_named": ("test_twoway_option_parity.cscript:RC-07",),
-        # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
-        # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
         "_dash_by_check": ("test_by_suboptions.cscript:BYG-01", "test_by_suboptions.cscript:BYG-17"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
         "_dash_hz_check": ("test_option_validation.cscript:HZ-03",),
-        # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
         "_dash_taxis_fold": ("test_twoway_option_parity.cscript:TA-01", "test_twoway_option_parity.cscript:TA-05"),
-        # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
-        # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
-        # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
-        # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
         # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
         "_dash_added_text": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-33"),
         "_dash_added_text_cap": ("test_resource_limits.cscript:AT-40", "test_resource_limits.cscript:AT-42"),
         "_dash_at_opts": ("test_twoway_option_parity.cscript:AT-05", "test_twoway_option_parity.cscript:AT-06"),
-        # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
     },
     "dash_setup.ado": {
         # e2e: every branch this machine can reach, installing nothing.
@@ -444,10 +405,8 @@ COVERAGE = {
         # passes the guard that reads it (e2e).
         "_dash_statamin": ("test_env_guards.cscript:ENV-29",
                            "test_program_coverage.cscript:PC-15"),
-        # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
         "_dash_setup_pystart": ("test_setup_honesty.cscript:HON-42", "test_setup_honesty.cscript:HON-40", "test_setup_honesty.cscript:HON-41"),
-        # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
     },
     "dash_parse.mata": {
         # e2e: through _dash_json_str_args; direct in PC-28.
@@ -722,16 +681,10 @@ COVERAGE = {
                                   "test_help_claims_3.cscript:HC3-20"),
         "_dash_graph_touched": ("test_adversarial.cscript:DL-03b",),
         "_dash_qual_cols_in": ("test_adversarial.cscript:DL-04",),
-        # WP-30 S02 (P1.34): Portable runners (P1.34 under M4)
-        # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
         # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
         "_dash_cmd_metachar": ("test_serve_browser.cscript:SB-21",),
-        # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
         # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
         "_dash_note": ("test_render_log_clean.cscript:NC-06", "test_render_log_clean.cscript:NC-05"),
-        # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)
-        # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
-        # WP-30 S09 (P1.11a): TeX delimiters inert on every canvas sink (P1.11 part a)
         # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
         "_dash_so_canon": ("test_suboption_reporting.cscript:SA-04",),
         "_dash_so_family": ("test_suboption_reporting.cscript:SA-04",),
@@ -762,39 +715,20 @@ COVERAGE = {
         "_dash_saving_split": ("test_path_validation.cscript:PV-35",),
         "_dash_seg_saving": ("test_path_validation.cscript:PV-37",),
         "_dash_strip_prefix": ("test_wp30_truth.cscript:CF-01", "test_wp30_truth.cscript:CF-03"),
-        # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
         "_dash_barwidth_typed": ("test_twoway_option_parity.cscript:BG-07",),
-        # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
-        # WP-30 S16 (P1.2b): Intensity as an opaque blend (P1.2 part b, M1)
-        # WP-30 S17 (P1.23b): Date and format text in keys and tooltips (P1.23 part b)
         # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
         "_dash_axis_fmts": ("test_option_validation.cscript:AF-01", "test_option_validation.cscript:AF-06"),
-        # WP-30 S19 (P1.16): Legend keys and default axis titles (P1.16)
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
         "_dash_stylelist_locals": ("test_varlist_expansion.cscript:PS-01",),
-        # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         "_dash_abs_path": ("test_export.cscript:GE-11",),
         "_dash_graph_names": ("test_export.cscript:GE-14",),
-        # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
-        # WP-30 S24 (P1.4a): Scheme opacity, histogram style and symbols reach every layer (P1.4 part a)
-        # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
-        # WP-30 S26 (P1.22): function: closed by disposition (P1.22 under M12)
-        # WP-30 S27 (P1.17b): twoway's default base and axis extent (P1.17 part b)
-        # WP-30 S28 (P1.15a): by() panel labels and overall text (P1.15 part a)
-        # WP-30 S29 (P1.11b): SMCL in graph text (P1.11 part b)
-        # WP-30 S30 (P1.13a): Stata colour grammar (P1.13 part a)
         # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
         "_dash_angle_out": ("test_suboption_reporting.cscript:AXL-01",),
         "_dash_axbound_list": ("test_suboption_reporting.cscript:AXL-05",),
-        # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
-        # WP-30 S33 (P1.4b): Marker-label and colour-key chrome; unread directives retained (P1.4 part b)
         # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
         "_dash_scheme_dirs_json": ("test_wp30_truth.cscript:SP-18", "test_custom_scheme.cscript:SP-04"),
-        # WP-30 S35 (P1.23a): Date positions on every axis (P1.23 part a)
-        # WP-30 S36 (P1.14b): Other style names (P1.14 part b)
-        # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
         # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
         "_dash_rep_region": ("test_twoway_option_parity.cscript:RS-12",),
         "_dash_rep_region_word": ("test_twoway_option_parity.cscript:RS-10",),
@@ -804,24 +738,17 @@ COVERAGE = {
         "_dash_reflines_positions": ("test_suboption_reporting.cscript:XP-07",),
         # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
         "_dash_connect_canon": ("test_twoway_option_parity.cscript:CM-08", "test_twoway_option_parity.cscript:CM-05"),
-        # WP-30 S41 (P1.30): Verified bokeh window; internals fail closed (P1.30, M9/M10)
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
         "_dash_tsop_canon": ("test_parser.cscript:TSO-11",),
         "_dash_tsop_export": ("test_parser.cscript:TSO-01",),
         "_dash_tsop_meta": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-09"),
         "_dash_tsop_reset": ("test_parser.cscript:TSO-01",),
         "_dash_tsop_rewrite": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-11"),
-        # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
-        # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
-        # WP-30 S45 (P1.8b): recast() (P1.8 part b)
-        # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
-        # WP-30 S47 (P1.20b): Plot-region margin and inner box (P1.20 part b)
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
         "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),
         "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
         "_dash_hz_order": ("test_option_validation.cscript:HZ-03",),
-        # WP-30 S50 (P1.21b): xline/yline extend, noextend and style() (P1.21 part b)
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
         "_dash_taxis_unit": ("test_twoway_option_parity.cscript:TA-04",),
         "_dash_tdate_value": ("test_twoway_option_parity.cscript:TA-08", "test_twoway_option_parity.cscript:TA-09"),
@@ -831,10 +758,6 @@ COVERAGE = {
         "_dash_tdate_range": ("test_twoway_option_parity.cscript:TA-02",),
         "_dash_xdate_find": ("test_twoway_option_parity.cscript:TA-15",),
         "_dash_taxis_fmt": ("test_twoway_option_parity.cscript:TA-12",),
-        # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
-        # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
-        # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
-        # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
         # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
         "_dash_at_lex": ("test_twoway_option_parity.cscript:AT-04b", "test_json_escaping.cscript:AT-16"),
         "_dash_at_unq": ("test_twoway_option_parity.cscript:AT-02", "test_twoway_option_parity.cscript:AT-04"),
@@ -847,7 +770,6 @@ COVERAGE = {
         "_dash_at_records": ("test_twoway_option_parity.cscript:AT-04",),
         "_dash_at_canon": ("test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-05"),
         "_dash_at_dates": ("test_twoway_option_parity.cscript:AT-30", "test_twoway_option_parity.cscript:AT-31"),
-        # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
     },
 }
 

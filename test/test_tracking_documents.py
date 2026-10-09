@@ -51,6 +51,8 @@ file holds, mechanically:
    list WP30_LISTS names, until their section lands; then the key is gone,
    no marker is left, each of those lists holds a line ending
    "(WP-30, <id>)", and a closed entry's Resolution holds "(WP-30, <id>)".
+   WP-30's closeout left WP30_OPEN empty; test_no_wp30_entry_remains_open
+   keeps every P1 entry closed with no marker left.
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -1540,15 +1542,11 @@ class TestWp29Tracking:
 # ===========================================================================
 
 #: WP-30 (.ultraplan/wp30/index.md, decision A144): the BUGS.md entries the
-#: tracking foundation (S01) opened, one per fix section (S02-S57), by id,
-#: with their exact titles, one key per line in entry order.  Each stays open
-#: until its section lands; that section's closing commit closes the entry in
-#: place and deletes its own key line here.  test_no_open_entry_is_s1_or_s2
-#: skips exactly these titles (and WP29_OPEN's), and TestWp30Tracking fails
-#: on a key whose entry is missing, closed or not in the WP-30 open form, so
-#: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
-WP30_OPEN = {
-}
+#: tracking foundation (S01) opened, one per P1 entry, while they were open.
+#: Each fix section closed its entry in place and deleted its key here; the
+#: closeout (S58.1) left the allowance empty, and
+#: TestWp30Tracking::test_no_wp30_entry_remains_open keeps it so.
+WP30_OPEN = {}
 
 #: Every WP-30 entry, permanently, and the CHANGELOG.md lists of the current
 #: release its line belongs in (index.md "P1 coverage").  S01 put one
@@ -1903,3 +1901,22 @@ class TestWp30Tracking:
             "P1.1a: a line ending (WP-30, P1.1a) sits under '### Security'"]
         assert _wp30_list_problems({"P1.19": ("Fixed in WP-30",)}, log) == [
             "CHANGELOG.md has no single '### Fixed in WP-30' list"]
+
+    def test_no_wp30_entry_remains_open(self, bugs):
+        # WP-30's closeout (S58.1): every P1 entry is closed, the allowance
+        # is empty and no marker is left, so the release guard exempts
+        # nothing and each id's (WP-30, <id>) sits in a closed entry.
+        # Reopening an entry, putting a key back or re-adding a marker
+        # fails here.
+        entries, _p = bugs
+        assert WP30_OPEN == {}, (
+            "WP30_OPEN is {} after WP-30's closeout; it holds %s"
+            % sorted(WP30_OPEN))
+        markers = _wp30_markers(_read("CHANGELOG.md"))
+        assert not markers, (
+            "markers left in CHANGELOG.md: %s" % markers)
+        bad = _wp30_closure_problems(set(), set(markers), entries)
+        bad += ["%r is open in the WP-30 form" % e["title"]
+                for e in entries if not e["closed"]
+                and _WP30_OPEN_FORM.match(e["fields"].get("Resolution", ""))]
+        assert not bad, "\n".join(bad)

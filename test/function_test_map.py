@@ -793,8 +793,6 @@ FUNCTIONS = {
  'app:make_document.<locals>._make_filter_cb.<locals>._on_filter_change': 'test/test_help_claims_4.py::TestEveryStatisticIsStatas::test_every_card',
  'app:make_document.<locals>._send_csv': 'test/test_function_audit.py::TestTheServedDownloadWritesCalendarDates::test_a_missing_or_absurd_date_is_empty_not_an_error',
  'main': 'test/test_server.py::TestCLIServeFlagsAccepted::test_main_raises_on_serve_mode',
- # WP-30 S02 (P1.34): Portable runners (P1.34 under M4)
- # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
  # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
  '_dash_csp_served': 'test/test_csp.py::TestTheNonce::test_the_served_policy_names_the_nonce_and_no_unsafe_inline',
  '_dash_csp_standalone': 'test/test_csp.py::TestTheStandalonePolicy::test_hashes_are_inserted_sorted_and_once',
@@ -803,13 +801,11 @@ FUNCTIONS = {
  '_dash_saved_head': 'test/test_csp.py::TestThePolicyConstants::test_the_standalone_meta_is_built_from_the_constant',
  '_dash_script_hashes': 'test/test_csp.py::TestTheScriptHashes::test_only_executable_inline_scripts_are_hashed',
  '_dash_seal_saved_page': 'test/test_csp.py::TestAHostileFragmentIsNotAdmitted::test_the_seal_refuses_an_unhashed_script',
- # WP-30 S05 (P1.33): Measured Python floor (P1.33, M3/M10)
  # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
  '_dash_emit_note': 'test/test_note_channel.py::TestTheNoteLine::test_a_note_is_one_errprintln_in_text_colour',
  '_dash_note_scope': 'test/test_note_channel.py::TestTheNoteScope::test_an_ignore_filter_hides_no_note',
  '_dash_note_scope.<locals>._show': 'test/test_note_channel.py::TestTheNoteScope::test_other_warnings_keep_the_sessions_filters',
  '_dash_smcl_escape': 'test/test_note_channel.py::TestTheSmclEscape::test_braces_become_smcl_codes',
- # WP-30 S07 (P1.25a): Ship the six StataCorp schemes (P1.25 part a)
  # WP-30 S08 (P1.12a): Stata size units for markers, text and gaps (P1.12 part a, M1)
  'GlyphMapper._mlabel_radius_px': 'test/test_size_units.py::TestMarkerLabelsFromTheMarkerEdge::test_the_radius_helper',
  'GlyphMapper._sync_brushed_copies': 'test/test_brushed_copies.py::TestBrushedCopiesFollowTheGlyph::test_the_sync_helper',
@@ -832,8 +828,6 @@ FUNCTIONS = {
  '_dash_subopt_resolve': 'test/test_subopt_abbrev.py::TestTheResolver::test_the_measured_refusals',
  '_dash_subopt_resolve.<locals>.shown': 'test/test_subopt_abbrev.py::TestTheResolver::test_the_measured_refusals',
  '_dash_so_stage': 'test/test_subopt_abbrev.py::TestTheTables::test_every_prefix_from_minimum_to_full',
- # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
- # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
  # WP-30 S13 (P1.12b): Stata line-width ladder (P1.12 part b, M1)
  'OptionTranslator.line_px': 'test/test_line_width_units.py::TestTheUnitFunctions::test_line_px_floors_and_converts',
  # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
@@ -871,7 +865,6 @@ FUNCTIONS = {
  '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
  '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',
  '_dash_axis_default_titles': 'test/test_series_labels.py::TestTheAxisTitleRule::test_first_equals_last',
- # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
  '_dash_axis_plan': 'test/test_default_axes.py::TestTheHelpers::test_axis_plan_shape',
  '_dash_by_numticks': 'test/test_default_axes.py::TestTheHelpers::test_the_by_tick_count',
@@ -880,7 +873,6 @@ FUNCTIONS = {
  '_dash_plot_margin': 'test/test_default_axes.py::TestTheHelpers::test_the_plot_margin',
  '_dash_refinish_axes': 'test/test_default_axes.py::TestTheHelpers::test_refinish_axes_is_idempotent',
  '_dash_tag_hull_roles': 'test/test_default_axes.py::TestTheHelpers::test_hull_roles',
- # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
  # WP-30 S23 (P1.26b): Served notes reach Stata (P1.26 part b, M6)
  '_dash_app_note_hook': 'test/test_served_notes.py::TestTheAppNoteHook::test_each_note_prints_once_per_process',
  '_dash_app_note_hook.<locals>._show': 'test/test_served_notes.py::TestTheAppNoteHook::test_other_warnings_go_to_the_previous_hook',
@@ -1038,7 +1030,6 @@ FUNCTIONS = {
  '_dash_take_tsop_columns': 'test/test_ts_operators.py::TestTakingTheColumnsIn::test_the_take_rule',
  '_dash_tsop_cols_named': 'test/test_ts_operators.py::TestTheColumnsAreNamedInTheSpec::test_the_map_rule',
  '_dash_tsop_labels': 'test/test_ts_operators.py::TestTheLabels::test_the_label_rule',
- # WP-30 S43 (P1.13b): Default colour and opacity at every colour site (P1.13 part b)
  # WP-30 S44 (P1.3b): tsnatscale on %td-%ty default axes (P1.3 part b, M1)
  '_dash_ts_pair': 'test/test_date_axis_ticks.py::TestTheModelIsUnchanged::test_the_pair_is_cpythons_order',
  '_dash_ts_kind': 'test/test_date_axis_ticks.py::TestTheRangeOption::test_the_kinds',
@@ -1090,7 +1081,6 @@ FUNCTIONS = {
  '_dash_refline_extent_flags': 'test/test_refline_extent.py::TestTheFlags::test_rule',
  '_dash_refline_extents': 'test/test_refline_extent.py::TestTheEnds::test_low_is_physical_and_log_is_log',
  '_dash_refline_margin': 'test/test_refline_extent.py::TestTheExtent::test_probe',
- # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
  # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
  '_dash_axis_add': 'test/test_axis_add.py::TestTheUnitFunctions::test_axis_add',
  # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
@@ -1114,7 +1104,6 @@ FUNCTIONS = {
  '_dash_by_stack_hook': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_stack_hook',
  '_dash_by_stack_hooks': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_stack_hooks',
  '_dash_by_title_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_title_cell',
- # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
  # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
  '_dash_build_hover.<locals>._role_prop': 'test/test_horizontal_moves.py::TestTheTooltipFollowsTheTurn::test_a_turned_density_names_its_rows_as_upright',
  # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
