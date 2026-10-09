@@ -127,7 +127,11 @@ listed in {help dash##plottypes:Plot types}.  An {it:if} or {it:in} written
 outside the parentheses of the {it:plot_specs} -- after them, or before a
 {cmd:||} -- applies to every plot, on top of a plot's own, as in
 {cmd:twoway}; in the {cmd:||} form without parentheses a qualifier belongs
-to the plot it is written in.  A {it:weight} belongs to a plot, too:
+to the plot it is written in.  A {cmd:||} piece that holds no plot --
+{cmd:|| , title("T")} at the end, or {cmd:|| if foreign==1} -- gives its
+{it:if}, {it:in} and options to the graph, as in {cmd:twoway}; its options
+are graph options only, and a plot option there is refused, r(198).  A
+{it:weight} belongs to a plot, too:
 {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=}{it:varname}{cmd:]} or
 {cmd:[pweight=}{it:varname}{cmd:]}, one variable rather than an expression
 on the layers that honour it; see {help dash##weights:Weights}.

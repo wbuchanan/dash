@@ -1,7 +1,7 @@
 *! test_parser.cscript  v2.0
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
-*! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing), and
+*! Tests: P1A-31 through P1A-85  (rewritten for syntax-based parsing), and
 *!        FX-01 through FX-11 (function evaluated by Stata, WP-29 P0.6)
 *!        FN-02 through FN-05 (a function layer without Stata's points, WP-30 P1.22)
 *!
@@ -2390,6 +2390,146 @@ restore
 dash clear
 assert "${dash_graph_registry}" == ""
 display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answered panel by panel as twoway answers them"
+
+// ================================================================
+// P1A-85 -- a || segment with no plot: `|| , opts' and `|| if exp'
+//           are the graph's, as twoway reads them
+// ================================================================
+// twoway splits the command at every top-level `||'; each piece is a
+// bare plot, a run of parenthesised plots, or a piece with no plot, which
+// holds only the graph's own [if] [in] [, options].  Measured 09oct2026
+// with the console binary on auto (and tsset _n for tsline), rc 0 unless
+// given:
+//     a || b || , title("T")             title T, 2 plots
+//     (a) || b || , title("T")           the same; (a) || (b) || , too
+//     a || b || ,      a || b ||         2 plots, no title
+//     a || , title("T") || b,            title T, 2 plots
+//     a || || b                          2 plots
+//     (a) (b), title("T") || c           title T, 3 plots
+//     a || (b)                           2 plots
+//     a || b || if foreign==1, title("T") both plots over the 22 foreign
+//     a || b || , title("T") || , title("U")    title U
+//     a, title("A") || b || , title("T")        title T
+//     || , msymbol(Oh)    r(198) "option msymbol() not allowed"
+//     || , (c)            r(198) "option ( not allowed"
+//     || [fw=rep78]       r(198) "[ is not a twoway plot type"
+//     || if a || if b     r(198) "multiple global if's not allowed"
+//     (a) | (b)           r(198) "| is not a twoway plot type"
+//     ((a) (b)), (a || b), (a) ((b)): r(198); (a (b)): r(111)
+// dash read a piece with no plot as a plot and refused it -- "unrecognised
+// plot type ','" -- for every option, and refused a bare plot after a
+// parenthesised one, `(a) || line b', as text between plot groups; WP-30
+// S51 wrote c45 as `tsline y || line y2 t, tlabel(...)' to get round it.
+// It accepted `(a) | (b)', which twoway refuses.
+dash clear
+cert_truth_ctx "P1A-85 auto"
+local _sm "scatter mpg weight"
+local _lp "line price weight"
+local _sp "scatter price weight"
+foreach f in `"`_sm' || `_lp' || , title("T")"' ///
+    `"(`_sm') || `_lp' || , title("T")"' ///
+    `"(`_sm') || (`_lp') || , title("T")"' ///
+    `"(`_sm') (`_lp') || , title("T")"' ///
+    `"`_sm' || `_lp', title("T")"' ///
+    `"`_sm' || , title("T") || `_lp',"' ///
+    `"`_sm' || || `_lp',"' ///
+    `"(`_sm') (`_lp'), title("T") || `_sp',"' ///
+    `"`_sm' || (`_lp'),"' ///
+    `"`_sm' || (`_lp') (`_sp'), title("T")"' ///
+    `"`_sm' || `_lp' || if foreign==1, title("T")"' ///
+    `"`_sm' || `_lp' || in 1/10, title("T")"' ///
+    `"`_sm' || if foreign==1 || `_lp',"' ///
+    `"`_sm' || `_lp' || if foreign==1 || in 1/40,"' ///
+    `"`_sm' || `_lp' || , title("T") || , title("U")"' ///
+    `"`_sm', title("A") || `_lp' || , title("T")"' ///
+    `"`_sm' || `_lp' || , legend(off) xlabel(2000 4000) ytitle("Y") note("n")"' {
+    _p1a_vs_tw `"P1A-85 `f'"' `"twoway `f'"' `"dash `f' name(p1a85)"'
+    dash clear
+}
+// The graph's options and qualifier land on the graph.
+_p1a_logrun `"dash `_sm' || `_lp' || , title("T") name(p1a85)"'
+assert r(rc) == 0
+mata: st_local("_j", st_global("dash_json_p1a85"))
+mata: assert(strpos(st_local("_j"), `""graph_options":{"title":"\"T\"""') > 0)
+mata: assert(strpos(st_local("_j"), `""type":"line","yvar":"price""') > 0)
+dash clear
+_p1a_logrun `"dash (`_sm') || `_lp' || if foreign==1, title("T") name(p1a85)"'
+assert r(rc) == 0
+mata: st_local("_j", st_global("dash_json_p1a85"))
+mata: assert(strpos(st_local("_j"), `""type":"scatter","yvar":"mpg""') > 0)
+mata: assert(strpos(st_local("_j"), `""type":"line","yvar":"price""') > 0)
+mata: assert(strpos(st_local("_j"), `"},"if_expr":"foreign==1""') > 0)
+dash clear
+_p1a_logrun `"dash `_sm', title("A") || `_lp' || , title("T") || , title("U") name(p1a85)"'
+assert r(rc) == 0
+mata: assert(strpos(st_global("dash_json_p1a85"), `""title":"\"U\"""') > 0)
+dash clear
+_p1a_logrun `"dash (`_sm') (`_lp'), title("T") || `_sp', name(p1a85)"'
+assert r(rc) == 0
+mata: assert(strpos(st_global("dash_json_p1a85"), `""type":"scatter","yvar":"price""') > 0)
+mata: assert(strpos(st_global("dash_json_p1a85"), `""title":"\"T\"""') > 0)
+dash clear
+// The two helpers, by name: which piece is a bare plot, and what a piece
+// that is not one gives the graph.
+mata: assert(_dash_piece_is_bare("scatter mpg weight") == 1)
+mata: assert(_dash_piece_is_bare("ifx mpg weight") == 1)
+mata: assert(_dash_piece_is_bare("IF foreign==1") == 1)
+mata: assert(_dash_piece_is_bare(", title(T)") == 0)
+mata: assert(_dash_piece_is_bare("(scatter mpg weight)") == 0)
+mata: assert(_dash_piece_is_bare("if foreign==1, title(T)") == 0)
+mata: assert(_dash_piece_is_bare("if(foreign==1)") == 0)
+mata: assert(_dash_piece_is_bare("in 1/10") == 0)
+mata: assert(_dash_piece_is_bare("if") == 0)
+mata:
+_p85s = J(1, 0, ""); _p85o = ""; _p85q = ""
+_dash_split_groups(`"(scatter mpg weight) (line price weight, title("a,b")) if inlist(rep78,3,4), title(T)"', _p85s, _p85o, _p85q)
+assert(_p85s == ("scatter mpg weight", `"line price weight, title("a,b")"'))
+assert(strtrim(_p85o) == "title(T)" & strtrim(_p85q) == "if inlist(rep78,3,4)")
+_dash_split_groups("in 1/10, note(n)", _p85s, _p85o, _p85q)
+assert(cols(_p85s) == 2 & strtrim(_p85o) == "title(T) note(n)")
+assert(strtrim(_p85q) == "if inlist(rep78,3,4) in 1/10")
+mata drop _p85s _p85o _p85q
+end
+// `|| ,' and `||' with nothing after them add nothing.
+foreach f in "`_sm' || `_lp' || ," "`_sm' || `_lp' ||" "|| `_sm' || `_lp'" {
+    mata: _dash_split_segs(st_local("f"))
+    assert `_n_segs' == 2
+    assert "`_seg_1'" == "`_sm'" & "`_seg_2'" == "`_lp'"
+    assert `"`_graph_opts_raw'"' == "" & `"`_graph_qual_raw'"' == ""
+}
+_p1a_logrun `"dash `_sm', name(p1a85) || `_lp' || ,"'
+assert r(rc) == 0
+dash clear
+_p1a_logrun `"dash `_sm', name(p1a85) || `_lp' ||"'
+assert r(rc) == 0
+dash clear
+// The t-options after `|| ,' (WP-30 S51, c45).
+preserve
+quietly generate t85 = _n
+quietly tsset t85
+cert_truth_ctx "P1A-85 tsset t85"
+_p1a_vs_tw "P1A-85 tlabel" `"twoway tsline mpg || line price t85 || , tlabel(10 20) title("T")"' `"dash tsline mpg || line price t85 || , tlabel(10 20) title("T") name(p1a85)"'
+dash clear
+restore
+cert_truth_ctx "P1A-85 auto refused"
+// What twoway refuses, with its rc: a plot option or a plot group after
+// `|| ,', a weight or a stray word in a piece with no plot, two
+// global ifs, a single `|', and a plot group nested in another.
+_p1a_vs_tw "P1A-85 plot option" `"twoway `_sm' || `_lp' || , title("T") msymbol(Oh)"' `"dash `_sm' || `_lp' || , title("T") msymbol(Oh) name(p1a85)"' "option msymbol() not allowed"
+_p1a_vs_tw "P1A-85 group after comma" `"twoway `_sm' || `_lp' || , (`_sp')"' `"dash `_sm' || `_lp' || , (`_sp') name(p1a85)"'
+_p1a_vs_tw "P1A-85 weight" `"twoway `_sm' || `_lp' || [fw=rep78],"' `"dash `_sm' || `_lp' || [fw=rep78], name(p1a85)"'
+_p1a_vs_tw "P1A-85 stray word" `"twoway `_sm' || `_lp' || foo,"' `"dash `_sm' || `_lp' || foo, name(p1a85)"'
+_p1a_vs_tw "P1A-85 two ifs" `"twoway `_sm' || `_lp' || if foreign==1 || if rep78>3,"' `"dash `_sm' || `_lp' || if foreign==1 || if rep78>3, name(p1a85)"'
+_p1a_vs_tw "P1A-85 two ifs group" `"twoway (`_sm') if foreign==1 || `_lp' || if rep78>3,"' `"dash (`_sm') if foreign==1 || `_lp' || if rep78>3, name(p1a85)"'
+_p1a_vs_tw "P1A-85 two schemes" `"twoway `_sm' || `_lp' || , scheme(s1mono) || , scheme(s2color)"' `"dash `_sm' || `_lp' || , scheme(s1mono) || , scheme(s2color) name(p1a85)"'
+_p1a_vs_tw "P1A-85 single bar" `"twoway (`_sm') | (`_lp'),"' `"dash (`_sm') | (`_lp'), name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested pair" `"twoway ((`_sm') (`_lp')), title("T")"' `"dash ((`_sm') (`_lp')), title("T") name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested ||" `"twoway (`_sm' || `_lp'), title("T")"' `"dash (`_sm' || `_lp'), title("T") name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested || trailing" `"twoway (`_sm' || `_lp') || , title("T")"' `"dash (`_sm' || `_lp') || , title("T") name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested double" `"twoway (`_sm') ((`_lp')),"' `"dash (`_sm') ((`_lp')), name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested inside" `"twoway (`_sm' (`_lp')),"' `"dash (`_sm' (`_lp')), name(p1a85)"'
+assert "${dash_graph_registry}" == ""
+display "P1A-85 PASS: a || piece with no plot gives the graph its options and qualifier, and is refused where twoway refuses it"
 
 // ================================================================
 // FX-01 .. FX-10 -- a function layer is evaluated by Stata's own
