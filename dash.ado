@@ -457,7 +457,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
-        _dash_by_scan ///
+        _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
@@ -3491,6 +3491,7 @@ program define _dash_validate_value, rclass
             tempname B
             mata: st_strscalar(st_local("B"), st_local("tail"))
             _dash_by_check `B'
+            mata: st_local("tail", st_strscalar(st_local("B")))
         }
         local norm `"`vv'"'
         // A block, not a one-line if, whose command Stata expands again,
@@ -4593,6 +4594,9 @@ end
 // declarations, and only when they hold numlist characters alone, so the
 // words are twoway's and no user text reaches a command line.  A text
 // iscale() or imargin() twoway cannot read gets its first note, once.
+// Last, rows() or cols() above the by_groups limit is rewritten in the
+// scalar to the limit by Mata's _dash_by_clamp, with one note; the caller
+// reads the tail back from the scalar.
 // ================================================================
 program define _dash_by_check
     version 19
@@ -4644,6 +4648,17 @@ program define _dash_by_check
     }
     if `_byg_imargin_neg' {
         mata: _dash_note("", "by(, imargin()) below 0 is drawn as 0", "")
+    }
+    // Last, since _dash_limit is rclass: rows() and cols() above the
+    // by_groups limit are drawn at it, with one note (TR-48.3, BR-48.7).
+    // The global's name is built with char(36), never typed here, where
+    // Stata would expand it.
+    _dash_limit, name(by_groups)
+    local _lim = r(value)
+    mata: _dash_by_clamp(st_local("V"), `_lim')
+    foreach o of local _byg_clamped {
+        local _unit = cond("`o'" == "cols", "columns", "rows")
+        mata: _dash_note("by(, `o'(#)) is above the by_groups limit of `_lim'; drawn with `_lim' `_unit'; " + char(36), "dash_max_by_groups raises it", "")
     }
 end
 

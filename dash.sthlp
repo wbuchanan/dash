@@ -664,6 +664,18 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:saving("my file.html")}.  A comma inside the quotes belongs to the
     name, and {cmd:saving(, replace)} writes {cmd:Graph.html}.
 
+{phang2}    {ul:nodraw still writes the page.}  A graph with {cmd:nodraw} and
+    {cmd:saving(}{it:filepath}{cmd:, asis)} writes the page to
+    {it:filepath} and opens no browser window; {cmd:twoway} refuses the
+    same options, "no current graph", {cmd:r(601)}, since {cmd:asis} saves
+    a drawn graph and {cmd:nodraw} draws none.
+
+{phang2}    {ul:graph is read only before twoway.}  After {cmd:dash},
+    {cmd:graph} is a prefix only when {cmd:twoway} follows it; before any
+    other word it is read as a plot type and refused, "unrecognised plot
+    type 'graph'", {cmd:r(198)}, where {cmd:graph} followed by a word that
+    is not one of its subcommands gives {cmd:r(4023)}.
+
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
     a graph already holds and a graph cannot take a KPI's.  Either is
@@ -2685,7 +2697,9 @@ otherwise in as many columns as the square root of the panels and
 {cmd:holes()} rounded up, filled along the rows ({cmd:colfirst}: down the
 columns), a hole's cell skipped.  As in {cmd:twoway}, a row or column that
 holds no panel is not drawn, so {cmd:cols()} of more columns than there
-are panels puts them all in one row.  Panel text, markers and lines are
+are panels puts them all in one row; a {cmd:cols()} or {cmd:rows()} above
+the {cmd:$dash_max_by_groups} limit is drawn at the limit, with a note.
+Panel text, markers and lines are
 drawn at {cmd:twoway}'s {cmd:by()} size -- 0.85 of the plain graph's for
 2 to 4 panels, 0.6 for 10 to 16 -- or at {cmd:iscale()}; the overall
 title, subtitle, note and caption are not scaled.  The space between the

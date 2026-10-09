@@ -423,6 +423,104 @@ class TestTheLauncherFlags:
         assert cmd[i + 1] == "7"
         assert cmd[cmd.index("--idle-timeout") + 1] == "0"
 
+    def test_renderer_main_accepts_them(self, tmp_path, monkeypatch):
+        """dash_render.py's own command line parses both flags and hands
+        them to the launcher as ints (TR-46.13); 0 sessions is refused."""
+        with open(dr.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+        block = src[src.index('if __name__ == "__main__":'):]
+        rec = {}
+
+        def _launch(*a, **kw):
+            rec.update(kw)
+
+        def run(*flags):
+            ns = dict(vars(dr), __name__="__main__", main=lambda *a, **k: {},
+                      _dash_launch_app=_launch)
+            monkeypatch.setattr(sys, "argv", [
+                "dash_render.py", "--spec", "s.json", "--data", "d.json",
+                "--output", str(tmp_path / "app.py"), "--mode", "server",
+                "--launch", "--no-browser"] + list(flags))
+            exec(compile(block, dr.__file__, "exec"), ns)
+        run("--max-sessions", "7", "--idle-timeout", "0")
+        assert (rec["max_sessions"], rec["idle_timeout"]) == (7, 0)
+        run()
+        assert (rec["max_sessions"], rec["idle_timeout"]) == (None, None)
+        with pytest.raises(SystemExit):
+            run("--max-sessions", "0")
+
+
+# ===========================================================================
+@pytest.mark.serve
+@pytest.mark.release
+class TestPerSessionMemory:
+
+    def test_growth_at_most_80_mb(self, tmp_path):
+        """BR-46.5: a live ``python app.py`` at 200k rows by 3 variables,
+        one scatter, six held sessions; the mean RSS growth of sessions 2-6
+        is at most 80 MB (a regression guard: about 72 MB at c96facd,
+        research m2, whose "200k rows x 3, one scatter" this repeats)."""
+        import contextlib
+        import subprocess
+        import pandas as pd
+        from bokeh.client import pull_session
+        rng = np.random.default_rng(46)
+        n = 200_000
+        df = pd.DataFrame({"mpg": rng.uniform(10, 40, n).round(1),
+                           "weight": rng.uniform(1500, 5000, n).round(0),
+                           "foreign": rng.integers(0, 2, n).astype(float)})
+        _app_source(tmp_path, make_spec(
+            [dict(_SCATTER)],
+            filters=[{"varname": "foreign", "type": "dropdown"}]), df)
+        port = _free_port()
+        url = "http://127.0.0.1:%d/" % port
+
+        def rss_mb(pid):
+            return int(subprocess.run(["ps", "-o", "rss=", "-p", str(pid)],
+                                      capture_output=True, text=True,
+                                      check=True).stdout) / 1024.0
+        rss = []
+        with _Proc(_app_cmd(str(tmp_path / "app.py"), port,
+                            "--max-sessions", "8"), port=port,
+                   env={"DASH_SERVE_TOKEN": TEST_TOKEN}) as p, \
+                contextlib.ExitStack() as held, warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for _ in range(6):
+                s = held.enter_context(pull_session(
+                    url=url, arguments={"token": TEST_TOKEN}))
+                assert s.document.roots, p.said()[-2000:]
+                rss.append(rss_mb(p.proc.pid))
+        growth = (rss[-1] - rss[0]) / 5.0
+        print("per-session RSS growth, sessions 2-6: mean %.1f MB "
+              "(rss %s MB)" % (growth, ", ".join("%.0f" % r for r in rss)))
+        assert growth <= 80.0, rss
+
+
+# ===========================================================================
+class TestTheSavedPageIsUnchanged:
+
+    def test_digest(self, tmp_path):
+        """AC-46.7: the served-limit work (cap, idle close, shared payload,
+        estimator memo) lives in the generated app only; a saved page with a
+        lowess layer, a filter and a KPI is the same page as at af9676f."""
+        from conftest import render_models
+        from test_adversarial_matrix import _write_inputs
+        from test_date_axis_residuals import _digest
+        sp, dp = _write_inputs(tmp_path, make_spec(
+            [dict(_SCATTER), dict(_LOWESS)],
+            filters=[{"varname": "foreign", "type": "dropdown"}],
+            kpis=[_kpi("both")]))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = dr.DashRenderer(sp, dp, str(tmp_path / "o.html"))
+            render_models(r)
+        # Taken at af9676f (ids stripped, gzipped buffers decompressed).
+        assert _digest(r._last_layout_root) == _SAVED_DIGEST
+
+
+_SAVED_DIGEST = (
+    "df15a153c0355225f2fcb7abeac49727d2f87e16dc160c51be723476837a65f6")
+
 
 # ===========================================================================
 class TestEstimatorMemo:
