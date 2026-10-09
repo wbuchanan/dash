@@ -708,8 +708,9 @@ class TestTheParsersFoundSomething:
         # WP-30 P1.28b: 402 -> 403, the toolbar's Save as SVG row.
         # 403 -> 404: P1.10's Added text paragraph under Plot types.
         # 404 -> 405: P1.10 part 2's ttext() entry.
-        assert len(defs) == 405, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 405 "
+        # WP-30 P1.27: 405 -> 407, the nodraw and graph-prefix differences.
+        assert len(defs) == 407, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 407 "
             f"measured 09oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

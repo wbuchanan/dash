@@ -664,6 +664,18 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:saving("my file.html")}.  A comma inside the quotes belongs to the
     name, and {cmd:saving(, replace)} writes {cmd:Graph.html}.
 
+{phang2}    {ul:nodraw still writes the page.}  A graph with {cmd:nodraw} and
+    {cmd:saving(}{it:filepath}{cmd:, asis)} writes the page to
+    {it:filepath} and opens no browser window; {cmd:twoway} refuses the
+    same options, "no current graph", {cmd:r(601)}, since {cmd:asis} saves
+    a drawn graph and {cmd:nodraw} draws none.
+
+{phang2}    {ul:graph is read only before twoway.}  After {cmd:dash},
+    {cmd:graph} is a prefix only when {cmd:twoway} follows it; before any
+    other word it is read as a plot type and refused, "unrecognised plot
+    type 'graph'", {cmd:r(198)}, where {cmd:graph} followed by a word that
+    is not one of its subcommands gives {cmd:r(4023)}.
+
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
     a graph already holds and a graph cannot take a KPI's.  Either is
