@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3
+    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3 S56 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11899,10 +11899,232 @@ if inlist("`only'", "", "S55") & `: list posof "S55" in w30_run' {
 }
 * ==== end S55 ====
 
+// WP-30 S56 (P1.10) helpers.  _s56_labels reads a saved page's added-text
+// Labels (tagged dash_added_text, both page encodings, as _s51_read reads
+// a page): per Label, in document order, its text, x, y, anchor, angle,
+// font size (pt), colour and y range name, as globals S56_N and
+// S56_<field><i>.  _s56_svg reads twoway's SVG export of a graph for the
+// texts its control (the same command without the option) does not draw:
+// per text, in order, its font size, fill and the compass direction of its
+// drawn centre from the data point (S56_PX, S56_PY), and the data position
+// of the first text's centre, as scripts/extract_added_text_truth.do
+// measures it (a line's centre lies 0.3504 of its size above its
+// baseline), into S56_TN, S56_TS<i>, S56_TF<i>, S56_TD<i>, S56_TX, S56_TY
+// and the x and y spans S56_SX, S56_SY.  A backtick here is spelled \x60.
+capture program drop _s56_labels
+program define _s56_labels
+    version 19
+    args html
+    global S56_HTML `"`html'"'
+    python: __import__("sys").modules["_dash_s56"].labels()
+end
+capture program drop _s56_svg
+program define _s56_svg
+    version 19
+    args svg control
+    global S56_SVG `"`svg'"'
+    global S56_CTL `"`control'"'
+    python: __import__("sys").modules["_dash_s56"].svg()
+end
+python:
+def _s56_labels():
+    import json, re
+    from sfi import Macro
+    with open(Macro.getGlobal("S56_HTML"), encoding="utf-8") as fh:
+        txt = fh.read()
+    objs, labs = {}, []
+    def walk(o):
+        if isinstance(o, dict):
+            if "id" in o and "attributes" in o:
+                objs[o["id"]] = o
+                if o.get("name") == "Label":
+                    labs.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for m in re.finditer(r'<script type="application/json"[^>]*>(.*?)</script>', txt, re.S):
+        walk(json.loads(m.group(1)))
+    def val(v):
+        return v.get("value") if isinstance(v, dict) and "value" in v else v
+    seen, out = set(), []
+    for o in labs:
+        a = o["attributes"]
+        if o["id"] in seen or "dash_added_text" not in (a.get("tags") or []):
+            continue
+        seen.add(o["id"])
+        out.append(a)
+    Macro.setGlobal("S56_N", str(len(out)))
+    for i, a in enumerate(out, 1):
+        size = str(val(a.get("text_font_size", "")))
+        m = re.fullmatch(r"([0-9.]+)(pt|px)", size)
+        pt = float(m.group(1)) * (0.75 if m.group(2) == "px" else 1) if m else 0
+        for k, v in (("T", val(a.get("text", ""))), ("X", val(a.get("x"))),
+                     ("Y", val(a.get("y"))), ("A", val(a.get("anchor", ""))),
+                     ("R", val(a.get("angle", 0)) or 0), ("S", pt),
+                     ("C", val(a.get("text_color", ""))),
+                     ("YR", a.get("y_range_name", "default"))):
+            Macro.setGlobal("S56_%s%d" % (k, i), str(v))
+def _s56_svg():
+    import collections, os, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.join(Macro.getGlobal("S56_REPO"), "scripts"))
+    import svg_truth
+    doc = svg_truth.svg_document(Macro.getGlobal("S56_SVG"))
+    ctl = collections.Counter(t["text"] for t in svg_truth.svg_texts(Macro.getGlobal("S56_CTL")))
+    added = []
+    for t in doc["texts"]:
+        if ctl[t["text"]] > 0:
+            ctl[t["text"]] -= 1
+        else:
+            added.append(t)
+    maps = []
+    for ax in ("x", "y"):
+        rd = svg_truth.svg_axis_reading(Macro.getGlobal("S56_SVG"), ax, doc=doc)
+        (p0, v0), (p1, v1) = rd["pairs"][0], rd["pairs"][-1]
+        maps.append((lambda px, p0=p0, v0=v0, p1=p1, v1=v1: v0 + (v1 - v0) * (px - p0) / (p1 - p0),
+                     lambda v, p0=p0, v0=v0, p1=p1, v1=v1: p0 + (v - v0) * (p1 - p0) / (v1 - v0),
+                     rd["fit"]["high"] - rd["fit"]["low"]))
+    px = maps[0][1](float(Macro.getGlobal("S56_PX")))
+    py = maps[1][1](float(Macro.getGlobal("S56_PY")))
+    Macro.setGlobal("S56_TN", str(len(added)))
+    for i, t in enumerate(added, 1):
+        sz = t["size"] or 0.0
+        cy = t["y"] - 0.3504 * sz
+        dx = 1 if t["anchor"] == "start" else (-1 if t["anchor"] == "end" else
+              (0 if abs(t["x"] - px) < 0.2 * sz else (1 if t["x"] > px else -1)))
+        dy = 0 if abs(cy - py) < 0.2 * sz else (1 if cy < py else -1)
+        d = {(0, 1): "n", (1, 1): "ne", (1, 0): "e", (1, -1): "se", (0, -1): "s",
+             (-1, -1): "sw", (-1, 0): "w", (-1, 1): "nw", (0, 0): "c"}[(dx, dy)]
+        Macro.setGlobal("S56_TS%d" % i, str(sz))
+        Macro.setGlobal("S56_TF%d" % i, str(t["fill"]))
+        Macro.setGlobal("S56_TD%d" % i, d)
+    if added:
+        t = added[0]
+        Macro.setGlobal("S56_TX", str(maps[0][0](t["x"])))
+        Macro.setGlobal("S56_TY", str(maps[1][0](t["y"] - 0.3504 * (t["size"] or 0.0))))
+    Macro.setGlobal("S56_SX", str(maps[0][2]))
+    Macro.setGlobal("S56_SY", str(maps[1][2]))
+import sys as _s56_sys
+_s56_sys.modules["_dash_s56"] = type(_s56_sys)("_dash_s56")
+_s56_sys.modules["_dash_s56"].labels = _s56_labels
+_s56_sys.modules["_dash_s56"].svg = _s56_svg
+end
+
 * ==== S56 P1.10: text() and ttext() annotations ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S56") & `: list posof "S56" in w30_run' {
     display as text "S56 start " c(current_date) " " c(current_time)
+    global S56_REPO "`c(pwd)'/.."
+    local s56log "`w30_work'/s56.log"
+    local s56pg "`w30_work'/s56.html"
+    local s56ctl "`w30_work'/s56_ctl.svg"
+    local s56tw "`w30_work'/s56_tw.svg"
+    sysuse auto, clear
+    quietly graph drop _all
+    twoway scatter mpg weight, name(s56c, replace)
+    quietly graph export "`s56ctl'", name(s56c) replace as(svg)
+    // AT-20: one text at (3000, 30): dash's Label there in data units;
+    // twoway's drawn centre at the same point within 0.5% of each span.
+    quietly graph drop _all
+    twoway scatter mpg weight, text(30 3000 "AAA") name(s56a, replace)
+    quietly graph export "`s56tw'", name(s56a) replace as(svg)
+    global S56_PX 3000
+    global S56_PY 30
+    capture _s56_svg "`s56tw'" "`s56ctl'"
+    local trc = _rc
+    local tw_size ${S56_TS1}
+    _s36_run `"dash scatter mpg weight, text(30 3000 "AAA") saving("`s56pg'", replace)"' "`s56log'"
+    local drc = r(rc)
+    capture _s56_labels "`s56pg'"
+    local prc = _rc
+    local ok = (`trc' == 0 & `drc' == 0 & `prc' == 0)
+    if `ok' local ok = (${S56_N} == 1)
+    if `ok' local ok = (${S56_X1} == 3000 & ${S56_Y1} == 30 & abs(${S56_TX} - 3000) <= .005 * ${S56_SX} & abs(${S56_TY} - 30) <= .005 * ${S56_SY})
+    local dash_size ${S56_S1}
+    _w30_expect AT-20 "`ok'" "rc `trc'/`drc'/`prc', dash ${S56_N} at (${S56_X1}, ${S56_Y1}), twoway at (${S56_TX}, ${S56_TY})"
+    _w30_done AT-20 "text(30 3000) drawn at the data point twoway draws it at"
+    // AT-21: every placement spelling, one text each at (3000, 30): dash's
+    // anchor puts the text on the side of the point twoway draws it on.
+    local pl "n north 12 t top 1 2 ne neast 3 e east r right 4 5 se seast 6 s south b bottom 7 8 sw swest 9 w west l left 10 11 nw nwest 0 c center"
+    local o ""
+    local i 0
+    foreach p of local pl {
+        local ++i
+        local o `"`o' text(30 3000 "P`i'", place(`p'))"'
+    }
+    quietly graph drop _all
+    twoway scatter mpg weight, `o' name(s56b, replace)
+    quietly graph export "`s56tw'", name(s56b) replace as(svg)
+    capture _s56_svg "`s56tw'" "`s56ctl'"
+    local trc = _rc
+    _s36_run `"dash scatter mpg weight, `o' saving("`s56pg'", replace)"' "`s56log'"
+    local drc = r(rc)
+    capture _s56_labels "`s56pg'"
+    local prc = _rc
+    local bad ""
+    if !`trc' & !`drc' & !`prc' {
+        forvalues j = 1/`i' {
+            local a "${S56_A`j'}"
+            local d = cond("`a'" == "bottom_center", "n", cond("`a'" == "bottom_left", "ne", cond("`a'" == "center_left", "e", cond("`a'" == "top_left", "se", cond("`a'" == "top_center", "s", cond("`a'" == "top_right", "sw", cond("`a'" == "center_right", "w", cond("`a'" == "bottom_right", "nw", cond("`a'" == "center", "c", "?")))))))))
+            if "`d'" != "${S56_TD`j'}" local bad "`bad' `: word `j' of `pl''(`d'/${S56_TD`j'})"
+        }
+    }
+    local ok = (`trc' == 0 & `drc' == 0 & `prc' == 0)
+    if `ok' local ok = (${S56_N} == `i' & ${S56_TN} == `i' & "`bad'" == "")
+    _w30_expect AT-21 "`ok'" "rc `trc'/`drc'/`prc', ${S56_N} Labels, ${S56_TN} texts, differ:`bad'"
+    _w30_done AT-21 "each of `i' placement spellings on twoway's side of the point"
+    // AT-22: two copies, each with its own options: AAA red and large,
+    // BBB black, their size ratio twoway's within 1%.
+    local o `"text(30 3000 "AAA", color(red) size(large)) text(20 4000 "BBB")"'
+    quietly graph drop _all
+    twoway scatter mpg weight, `o' name(s56d, replace)
+    quietly graph export "`s56tw'", name(s56d) replace as(svg)
+    capture _s56_svg "`s56tw'" "`s56ctl'"
+    local trc = _rc
+    _s36_run `"dash scatter mpg weight, `o' saving("`s56pg'", replace)"' "`s56log'"
+    local drc = r(rc)
+    capture _s56_labels "`s56pg'"
+    local prc = _rc
+    local ok = (`trc' == 0 & `drc' == 0 & `prc' == 0)
+    if `ok' local ok = (${S56_N} == 2)
+    if `ok' local ok = ("${S56_C1}" == "${S56_TF1}" & "${S56_C2}" == "${S56_TF2}" & abs((${S56_S1} / ${S56_S2}) / (${S56_TS1} / ${S56_TS2}) - 1) <= .01)
+    _w30_expect AT-22 "`ok'" "rc `trc'/`drc'/`prc', colours ${S56_C1} ${S56_C2} (twoway ${S56_TF1} ${S56_TF2}), sizes ${S56_S1} ${S56_S2} (twoway ${S56_TS1} ${S56_TS2})"
+    _w30_done AT-22 "repeated copies keep their own colour and size"
+    // AT-23: by(foreign): one Label per panel, at twoway's panel text size
+    // relative to the unpaneled one (AT-20's), within 1%.
+    quietly graph drop _all
+    twoway scatter mpg weight, by(foreign) text(30 3000 "BYT") name(s56e, replace)
+    quietly graph export "`s56tw'", name(s56e) replace as(svg)
+    // twoway's size of each panel's text.
+    python: import re as _r; from sfi import Macro as _M; _M.setLocal("tw_by", " ".join(_r.findall(r"font-size:([0-9.]+)px[^>]*>BYT<", open(_M.getLocal("s56tw"), encoding="utf-8").read())))
+    _s36_run `"dash scatter mpg weight, by(foreign) text(30 3000 "BYT") saving("`s56pg'", replace)"' "`s56log'"
+    local drc = r(rc)
+    capture _s56_labels "`s56pg'"
+    local prc = _rc
+    local ok = (`drc' == 0 & `prc' == 0 & `: word count `tw_by'' == 2)
+    if `ok' local ok = (${S56_N} == 2)
+    if `ok' local ok = (abs((${S56_S1} / `dash_size') / (`: word 1 of `tw_by'' / `tw_size') - 1) <= .01 & ${S56_S1} == ${S56_S2})
+    _w30_expect AT-23 "`ok'" "rc `drc'/`prc', `=${S56_N}' Labels at ${S56_S1} ${S56_S2} pt of `dash_size' (twoway `tw_by' px of `tw_size')"
+    _w30_done AT-23 "every by() panel draws the text at twoway's panel scale"
+    // AT-24: yaxis(2): on the second y range, at 10000.
+    _s36_run `"dash (scatter mpg weight) (scatter price weight, yaxis(2)), text(10000 3000 "Y2T", yaxis(2)) saving("`s56pg'", replace)"' "`s56log'"
+    local drc = r(rc)
+    capture _s56_labels "`s56pg'"
+    local prc = _rc
+    local ok = (`drc' == 0 & `prc' == 0)
+    if `ok' local ok = (${S56_N} == 1)
+    if `ok' local ok = ("${S56_YR1}" == "y2" & ${S56_Y1} == 10000)
+    _w30_expect AT-24 "`ok'" "rc `drc'/`prc', `=${S56_N}' Labels, range ${S56_YR1}, y ${S56_Y1}"
+    _w30_done AT-24 "yaxis(2) places the text on the second axis"
+    capture dash clear
+    quietly graph drop _all
+    capture erase "`s56log'"
+    capture erase "`s56pg'"
+    capture erase "`s56ctl'"
+    capture erase "`s56tw'"
+    macro drop S56_*
     display as text "S56 end " c(current_date) " " c(current_time)
 }
 * ==== end S56 ====

@@ -1552,6 +1552,38 @@ def extract(stata_base: str, scheme: str) -> dict:
                         f"scheme {ck}', then `{spelled('color', ck)}'"))
         return res
 
+    def text_option_truth():
+        """WP-30 P1.10: the keys `textboxstyle text_option' reads for
+        text() and ttext() that no other group resolves -- its box's fill,
+        the compass direction it is placed in from its point, whether it
+        is boxed, its margin, its justification and its vertical
+        alignment (scheme-s2color.scheme `color text_option_fill',
+        `compass2dir text_option', `yesno text_option', `margin
+        text_option', `horizontal text_option', `vertical_text
+        text_option').  A key the #include chain does not set is left
+        unset."""
+        tok_name = lambda t: t.strip().strip('"')
+        return {
+            "text_option_fill": color_of(
+                "text_option_fill", ["text_option_fill"], required=False),
+            "text_option_placement": scalar(
+                "text_option_placement", "compass2dir", ["text_option"],
+                tok_name, class_default=False, required=False),
+            "text_option_box": scalar(
+                "text_option_box", "yesno", ["text_option"],
+                lambda t: tok_name(t).lower() == "yes",
+                class_default=False, required=False),
+            "text_option_margin": scalar(
+                "text_option_margin", "margin", ["text_option"], tok_name,
+                class_default=False, required=False),
+            "text_option_justification": scalar(
+                "text_option_justification", "horizontal", ["text_option"],
+                tok_name, class_default=False, required=False),
+            "text_option_vertical": scalar(
+                "text_option_vertical", "vertical_text", ["text_option"],
+                tok_name, class_default=False, required=False),
+        }
+
     def chrome_truth():
         tok_name = lambda t: t.strip().strip('"')
         res = {
@@ -1896,6 +1928,7 @@ def extract(stata_base: str, scheme: str) -> dict:
     out.update(plotregion_line_truth())
     out.update(note_truth())
     out.update(chrome_truth())
+    out.update(text_option_truth())
     out.update(opacities)
     # WP-30 P1.14b: the keys the named styles read (scheme.class chain).
     _nsd, _hops, _bad = named_style_directives(r, provenance, sources)
@@ -2406,6 +2439,19 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("margin", "subheading", "margin_subheading"),
         scalar("color", "bylabel_outline", "bylabel_outline_color"),
         scalar("color", "by_label_fill", "by_label_fill"),
+    ])
+    # WP-30 P1.10: text() and ttext()'s text box (`textboxstyle
+    # text_option'); its size, colour, outline colour and line width are
+    # carried by the groups above.
+    group(["text() and ttext() (WP-30 P1.10): the text box's fill, its",
+           "compass direction from its point, whether it is boxed, its",
+           "margin, justification and vertical alignment."], [
+        scalar("color", "text_option_fill", "text_option_fill"),
+        scalar("compass2dir", "text_option", "text_option_placement"),
+        scalar("yesno", "text_option", "text_option_box"),
+        scalar("margin", "text_option", "text_option_margin"),
+        scalar("horizontal", "text_option", "text_option_justification"),
+        scalar("vertical_text", "text_option", "text_option_vertical"),
     ])
     # WP-30 P1.14b: the keys Stata's style files read for the named styles,
     # as the scheme declares them along scheme.class's chain; last, so a key

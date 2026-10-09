@@ -118,8 +118,10 @@ class TestTheShapeOfTheExamples:
     def test_which_commands_the_help_shows_output_for(self, groups):
         shown_out = {c.text: len(c.outputs) for c in _commands(groups)
                      if c.outputs}
+        # Flipped (WP-30 P1.10): text() is drawn, so the Differences
+        # example names play() alone; it was play(x) text(20 3000 "hi").
         assert shown_out == {
-            'dash scatter mpg weight, play(x) text(20 3000 "hi")': 1,
+            'dash scatter mpg weight, play(x)': 1,
             'dash (scatter mpg weight, yaxis(3))': 1,
             'dash (scatter mpg weight, discrete)': 1,
             'dash lfit mpg weight [aw=price+1]': 1,

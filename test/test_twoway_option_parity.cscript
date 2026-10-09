@@ -4870,9 +4870,264 @@ if `"`bad'"' != "" {
 else display as text "TA-13 PASS: %-tm reads dates in labels and ticks, numbers only in lines and ranges"
 
 restore
-capture erase "$zta_log"
-global zta_log
 set linesize `ta_ls'
+
+// ----------------------------------------------------------------
+// AT: text() read and refused as twoway reads and refuses it (WP-30
+// P1.10).  twoway's answer for each probe -- its rc, its last line and
+// its notes -- is test/fixtures/added_text_truth.json's
+// (scripts/extract_added_text_truth.do, StataNow 19.5); dash runs here on
+// the same command.  _zat_run <probe> sets _zat_trc/_zat_drc (rcs),
+// _zat_tl/_zat_dl (twoway's and dash's first error lines), _zat_tn
+// (twoway's first note) and _zat_named (dash's ignoring note present);
+// the spec is $dash_json_zat.
+// ----------------------------------------------------------------
+python:
+def _zat_get(pid):
+    import json
+    from sfi import Macro
+    with open("fixtures/added_text_truth.json", encoding="utf-8") as fh:
+        p = json.load(fh)["probes"][pid]
+    cmd = p["cmd"]
+    if cmd.startswith("twoway "):
+        cmd = cmd[len("twoway "):]
+    Macro.setLocal("zat_cmd", cmd)
+    Macro.setLocal("zat_ds", p["dataset"])
+    Macro.setLocal("zat_trc", str(p["rc"]))
+    Macro.setLocal("zat_tl", p["error"].strip())
+    Macro.setLocal("zat_tn", (p["notes"] or [""])[0])
+import sys as _zat_sys
+_zat_sys.modules["_dash_zat"] = type(_zat_sys)("_dash_zat")
+_zat_sys.modules["_dash_zat"].get = _zat_get
+end
+capture program drop _zat_run
+program define _zat_run
+    args pid
+    python: __import__("sys").modules["_dash_zat"].get("`pid'")
+    if "`zat_ds'" == "auto" {
+        sysuse auto, clear
+    }
+    else {
+        clear
+        quietly set obs 120
+        quietly generate t = tm(1995m1) + _n - 1
+        format t %tm
+        quietly generate tn = t
+        quietly generate double y = 10 + mod(_n, 7)
+        quietly tsset t
+    }
+    capture log close _zatlog
+    capture erase "$zta_log"
+    capture dash clear
+    quietly graph drop _all
+    log using "$zta_log", name(_zatlog) text replace
+    capture noisily dash `zat_cmd' name(zat)
+    local drc = _rc
+    log close _zatlog
+    mata: st_local("dl", _zta_line(st_global("zta_log")))
+    cert_log_has "$zta_log", needle("ignoring unsupported")
+    c_local _zat_named = r(found)
+    local noted 0
+    if `"`zat_tn'"' != "" {
+        cert_log_has "$zta_log", needle(`"`zat_tn'"')
+        local noted = r(found)
+    }
+    c_local _zat_noted `noted'
+    c_local _zat_trc `zat_trc'
+    c_local _zat_drc `drc'
+    c_local _zat_tl : copy local zat_tl
+    c_local _zat_dl : copy local dl
+    c_local _zat_tn : copy local zat_tn
+end
+// _zat_same <probe>...: each probe's rc and first line are twoway's, and
+// no ignoring note names text(); _zat_bad says what differed.
+capture program drop _zat_same
+program define _zat_same
+    local bad ""
+    foreach pid of local 0 {
+        _zat_run `pid'
+        mata: st_local("same", strofreal(st_local("_zat_tl") == st_local("_zat_dl")))
+        if `_zat_trc' != `_zat_drc' | (`_zat_trc' & !`same') | `_zat_named' {
+            local bad `"`bad' [`pid': twoway `_zat_trc' `_zat_tl' | dash `_zat_drc' `_zat_dl' named `_zat_named']"'
+        }
+    }
+    c_local _zat_bad : copy local bad
+end
+// _zat_records <graph>: the added_text records of $dash_json_<graph> as
+// "lines|opts" pairs, in order, into _zat_recs (and their count, _zat_nr).
+capture program drop _zat_records
+program define _zat_records
+    args g
+    mata: _zat_recs(st_global("dash_json_" + st_local("g")))
+    c_local _zat_recs : copy local _zat_recs
+    c_local _zat_nr `_zat_nr'
+end
+capture mata: mata drop _zat_recs()
+mata:
+void _zat_recs(string scalar js)
+{
+    string scalar out, q, rest, lines, opts
+    real scalar   n, p, e
+
+    q = char(34)
+    out = ""
+    n = 0
+    rest = js
+    while ((p = strpos(rest, q + "at_lines" + q + ":")) > 0) {
+        rest = substr(rest, p + 11, .)
+        e = strpos(rest, "]")
+        lines = substr(rest, 1, e)
+        p = strpos(rest, q + "at_opts" + q + ":" + q)
+        rest = substr(rest, p + 11, .)
+        e = strpos(rest, q + "}")
+        opts = substr(rest, 1, e - 1)
+        out = out + (n ? " ; " : "") + subinstr(lines, q, "~") + "|" + opts
+        n++
+    }
+    st_local("_zat_recs", out)
+    st_local("_zat_nr", strofreal(n))
+}
+end
+preserve
+local at_ls = c(linesize)
+set linesize 200
+
+// AT-01: a malformed point is refused in twoway's words, r(198), and one
+// bad copy refuses the graph; 3e3 is a number.
+_zat_same r_onept r_missy r_alpha r_expr r_big r_onebad r_e3
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-01"
+    display as error `"AT-01 FAIL:`_zat_bad'"'
+}
+else display as text "AT-01 PASS: invalid point, <x> <y>, as twoway refuses it"
+
+// AT-02: a bare word or a trailing y is the next point's, as twoway reads
+// it: invalid point with an empty x, the double space kept.
+_zat_same r_trail1 r_bare
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-02"
+    display as error `"AT-02 FAIL:`_zat_bad'"'
+}
+else display as text "AT-02 PASS: a bare word or a lone y is an invalid point"
+
+// AT-03: an axis pair the graph lacks is refused, even for a copy with no
+// point; the pair a second-axis layer draws is accepted.
+_zat_same r_y2 r_x2 r_nopt_y2 r_y2ok
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-03"
+    display as error `"AT-03 FAIL:`_zat_bad'"'
+}
+else display as text "AT-03 PASS: specified axis pair (Y X) not in graph, as twoway refuses it"
+
+// AT-04: repeated copies keep their own sub-options, in one option list,
+// in a plot group, in a || segment and after the comma; a line naming a
+// key is text, so the substring readers find dash's own count only.
+// _zat_records writes a record's lines with ~ for each double quote.
+local bad ""
+foreach c in "two![~AAA~]|size(large) color(red) ; [~BBB~]|" ///
+    "level_pg![~PG~]| ; [~GL~]|" "level_seg![~S1~]| ; [~S2~]|" {
+    gettoken pid want : c, parse("!")
+    local want = substr(`"`want'"', 2, .)
+    _zat_run `pid'
+    _zat_records zat
+    if `_zat_drc' | `"`_zat_recs'"' != `"`want'"' {
+        local bad `"`bad' [`pid': rc `_zat_drc' `_zat_recs']"'
+    }
+}
+sysuse auto, clear
+capture dash clear
+capture noisily dash scatter mpg weight, text(30 3000 `""width":"1" "added_text_n":"0""') text(20 4000 "B", width(5)) name(zat4)
+local drc = _rc
+mata: st_local("hw", strofreal(_dash_json_has_value(st_global("dash_json_zat4"), "width")))
+mata: st_local("fn", strofreal(_dash_json_first_num(st_global("dash_json_zat4"), "added_text_n")))
+if `drc' | `hw' | `fn' != 2 local bad `"`bad' [readers: rc `drc' width `hw' added_text_n `fn']"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-04"
+    display as error `"AT-04 FAIL:`bad'"'
+}
+else display as text "AT-04 PASS: each copy a record with its own sub-options; no key read from text"
+
+// AT-04b: 100,000 one-point copies, joined as _dash_rep_merge joins them,
+// are read in linear time: under one second.
+mata: _zat_big = ("1 1 " + char(34) + "a" + char(34) + char(30)) * 100000
+timer clear 56
+timer on 56
+local _at_n ""
+capture mata: st_local("_zat_rc", strofreal(_dash_at_parse(_zat_big, 0)))
+local prc = _rc
+timer off 56
+quietly timer list 56
+local secs = r(t56)
+mata: mata drop _zat_big
+if `prc' | "`_at_n'" != "100000" | `secs' >= 1 {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-04b"
+    display as error "AT-04b FAIL: `_at_n' records in `secs' s"
+}
+else display as text "AT-04b PASS: 100,000 copies read in `secs' s"
+
+// AT-05: a sub-option twoway does not take is refused in its words; its
+// abbreviations are accepted; an unknown placement() is noted as twoway
+// notes it.  (tex(), which twoway refuses as it refuses any option it
+// lacks, is named in dash's ignoring note as every unknown option is:
+// help dash##differences.)
+_zat_same r_nosuch r_ori abbr pl_40
+local bad `"`_zat_bad'"'
+_zat_run pl_40
+if !`_zat_noted' | `"`_zat_tn'"' == "" local bad `"`bad' [place(zz) note: `_zat_tn']"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-05"
+    display as error `"AT-05 FAIL:`bad'"'
+}
+else display as text "AT-05 PASS: option nosuch() not allowed; c() si() orient() read; place(zz) noted"
+
+// AT-06: sub-options twoway takes and dash does not draw are named once.
+_zat_same noted
+local bad `"`_zat_bad'"'
+cert_log_has "$zta_log", needle("text() draws no width() tstyle() linegap();")
+if !r(found) local bad `"`bad' [no note naming width() tstyle() linegap()]"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-06"
+    display as error `"AT-06 FAIL:`bad'"'
+}
+else display as text "AT-06 PASS: width() linegap() tstyle() named once"
+
+// AT-07: an empty string, no string or no point draws nothing, rc 0.
+_zat_same empty nostr none
+local bad `"`_zat_bad'"'
+foreach pid in empty nostr none {
+    _zat_run `pid'
+    _zat_records zat
+    if `_zat_nr' local bad `"`bad' [`pid': `_zat_nr' records]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-07"
+    display as error `"AT-07 FAIL:`bad'"'
+}
+else display as text `"AT-07 PASS: text(30 3000 ""), text(30 3000) and text() draw nothing"'
+
+// AT-08: text() is never named as unsupported (every _zat_same case above
+// checked the note; here the plain one).
+_zat_same aaa
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-08"
+    display as error `"AT-08 FAIL:`_zat_bad'"'
+}
+else display as text "AT-08 PASS: text() is not named in the ignoring note"
+
+restore
+capture erase "$zta_log"
+capture dash clear
+set linesize `at_ls'
+global zta_log
 
 // ----------------------------------------------------------------
 // Summary

@@ -148,7 +148,6 @@ PLOT_VALUES = {
     "subtitle2": ("S2", "SS", "scatter"),
     "t1title": ("t1", "tA", "scatter"),
     "t2title": ("t2", "tB", "scatter"),
-    "text": ('20 3000 "hi"', '25 2500 "yo"', "scatter"),
     "title2": ("T2", "TT", "scatter"),
     "width": ("2", "4", "histogram"),
     "xmlabel": ("5(5)40", "10(10)40", "scatter"),
@@ -259,8 +258,9 @@ class TestTheListIsCoveredAndHonest:
         # 44 -> 42: P1.9a horizontal drawn, vertical silent
         # 42 -> 44 and 23 -> 25: P1.6 tmlabel() and tmtick() declared and
         # named until minor ticks are drawn
-        assert len(_plot_pending()) == 44, sorted(_plot_pending())
-        assert len(_graph_pending()) == 25, sorted(_graph_pending())
+        # 44 -> 43 and 25 -> 24: P1.10 text() drawn
+        assert len(_plot_pending()) == 43, sorted(_plot_pending())
+        assert len(_graph_pending()) == 24, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -641,6 +641,15 @@ LIVE_VALUES = {
     "xline2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
                ("xline2", "3000", "3500")),
     "yline": ({}, {}, "scatter", ("yline", "20", "25")),
+    # Flipped (WP-30 P1.10): text() was named and inert (PLOT_VALUES),
+    # which was wrong because twoway draws it (added_text_truth.json); the
+    # renderer reads the records dash.ado writes for it.
+    "text": ({}, {}, "scatter", (
+        "added_text",
+        [{"at_kind": "text", "at_y": 20, "at_x": 3000, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["hi"], "at_opts": ""}],
+        [{"at_kind": "text", "at_y": 25, "at_x": 2500, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["yo"], "at_opts": ""}])),
     "yscale": ({}, {}, "scatter", ("yscale", "log", "reverse")),
     "yscale2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
                 ("yscale2", "log", "reverse")),

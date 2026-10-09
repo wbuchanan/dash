@@ -1084,9 +1084,11 @@ class TestTheShippedFiles:
         # 250..320 -> 260..330 (262 to 322, rounded outward to ten).
         # Flipped (WP-30 P1.15c): 260..330 -> 280..350: P1.15c by() keys
         # (286 to 346, rounded outward to ten).
-        assert 280 <= n <= 350, (name, n)
+        # Flipped (WP-30 P1.10): 280..350 -> 290..360: text()'s six
+        # text_option keys (292 to 352, rounded outward to ten).
+        assert 290 <= n <= 360, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"280\s+to\s+350\s+directives", help_text)
+        assert re.search(r"290\s+to\s+360\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1208,8 +1210,10 @@ class TestTheShippedFiles:
             # P1.15c): `margin by_indiv' (the space between by() panels)
             # and `margin subheading' (the panel label's box) are drawn
             # too, by the "by() axes and keys (WP-30 P1.15c)" group.
+            # Flipped (WP-30 P1.10): `margin text_option' (text()'s box)
+            # is drawn now.
             r"(?<!text)box|pie|\bdot|matrix|"
-            r"margin(?! twoway| by_indiv| subheading)|barlabel|"
+            r"margin(?! twoway| by_indiv| subheading| text_option)|barlabel|"
             r"barstyle|bar_",
             k))
         assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn

@@ -237,6 +237,35 @@
 *!       twoway's region parser applies them, every margin() kept (WP-30
 *!       P1.20a).
 *!
+*!   _dash_at_parse(raw, datesok)
+*!       Every text() or ttext() copy of raw (cut at char(30) outside
+*!       quotes and tokenised in one pass by _dash_at_lex) read as twoway
+*!       reads it: points through _dash_at_isnum, lines unquoted by
+*!       _dash_at_unq, into the caller's _at_* locals (WP-30 P1.10).
+*!
+*!   _dash_at_place(p)
+*!       twoway's compass direction for placement(p), "" for a name twoway
+*!       notes.
+*!
+*!   _dash_at_orient(o)
+*!       twoway's orientation for orientation(o), "" for a name it notes.
+*!
+*!   _dash_at_canon()
+*!       One copy's drawn sub-options from the caller's syntax locals, in
+*!       full names, JSON-escaped.
+*!
+*!   _dash_at_copy(k)
+*!       Copy k of the last parse into the caller's locals _at_o, _at_s
+*!       and _at_e.
+*!
+*!   _dash_at_records(kind)
+*!       The last parse's records as _dash_at_json() objects, comma-joined,
+*!       into the caller's local _at_json.
+*!
+*!   _dash_json_first_num(s, key)
+*!       The first "key":"<digits>" value in s, or missing: a graph's
+*!       added_text_n, summed over a dashboard (WP-30 P1.10).
+*!
 *!   _dash_immediate(vals, w)
 *!       Read the immediate values of scatteri (w = 2) or of pci and
 *!       pcarrowi (w = 4) as twoway reads them, into the caller's locals
@@ -8800,7 +8829,9 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     if (cat == "F") return(strtrim(v1) != "" ? v1 : v2)
     if (cat == "R" | strtrim(v1) == "") return(v2)
     if (strtrim(v2) == "") return(v1)
-    if (cat == "A") return(v1 + " " + v2)
+    // Each copy kept apart by a record separator; _dash_at_lex splits
+    // only outside quotes (WP-30 P1.10).
+    if (cat == "A") return(v1 + char(30) + v2)
     if (cat == "X") return(v1 + ", " + v2)
     if (cat == "I" | cat == "S") {
         return(_dash_rep_subs(v1, v2, cat, J(1, 0, ""), key))
@@ -8833,6 +8864,421 @@ void _dash_rep_merge_locals(string scalar key, string scalar m1,
                             string scalar m2, string scalar out)
 {
     st_local(out, _dash_rep_merge(key, st_local(m1), st_local(m2)))
+}
+
+// ==== text() and ttext() (WP-30 P1.10) ===================================
+// twoway draws each copy of text(y x "line" ... [, sub-options]) as text
+// boxes at data points (twowaygraph_g.class ParseAndLogText and
+// _parse_log_1textbox, StataNow 19.5; test/fixtures/added_text_truth.json).
+// _dash_rep_merge keeps repeated copies apart with char(30); these
+// functions split them, read each copy's points and lines by value, and
+// write the records dash.ado puts in the graph's options.  Nothing here
+// runs a copy's text: every token is read as data, numbers through a
+// strict literal, date literals (ttext()) only through
+// _dash_tdate_value's gate (WP-30 P1.6).  Each scan reads the bytes once,
+// so 100,000 copies parse in linear time.
+
+// _dash_at_lex(raw, st, ln, kd, cp, os, ol, nt) -- raw read once, byte by
+// byte, as gettoken reads a text() copy.  Copies end at char(30); in each,
+// the text before the first comma outside quotes and parentheses is
+// tokens -- blank-separated words, or one simple "..." or compound
+// string, quotes kept -- and the rest, to the copy's end, its sub-options.
+// Sets by reference: per token its start st, length ln, kind kd (1 a
+// word, 2 a quoted string) and copy cp; per copy the start os and length
+// ol of its sub-options (ol 0 when none).  Returns the number of copies.
+// A char(30) inside a quoted string is the string's own; one string
+// opened and never closed runs to the copy's end.  Linear in the bytes.
+real scalar _dash_at_lex(string scalar raw, real colvector st,
+                         real colvector ln, real colvector kd,
+                         real colvector cp, real colvector os,
+                         real colvector ol, real scalar nt)
+{
+    real rowvector b
+    real scalar    i, j, n, k, depth, par, inopt, open, q
+
+    b  = ascii(raw)
+    n  = cols(b)
+    st = J(n + 1, 1, 0)
+    ln = st
+    kd = st
+    cp = st
+    os = st
+    ol = st
+    nt = 0
+    k  = 1
+    inopt = 0
+    par   = 0
+    open  = 0
+    i     = 1
+    while (i <= n) {
+        q = 0
+        if (b[i] == 96 & i < n) q = (b[i + 1] == 34) * 2
+        else if (b[i] == 34) q = 1
+        if (q) {
+            // A quoted string: skip to its close, nested pairs counted.
+            j = i + q
+            if (q == 2) {
+                depth = 1
+                while (j <= n) {
+                    if (b[j] == 96 & j < n) {
+                        if (b[j + 1] == 34) {
+                            depth++
+                            j = j + 2
+                            continue
+                        }
+                    }
+                    if (b[j] == 34 & j < n) {
+                        if (b[j + 1] == 39) {
+                            depth--
+                            j = j + 2
+                            if (!depth) break
+                            continue
+                        }
+                    }
+                    j++
+                }
+            }
+            else {
+                while (j <= n) {
+                    if (b[j] == 34) break
+                    j++
+                }
+                j++
+            }
+            if (j > n + 1) j = n + 1
+            if (!inopt) {
+                open = 0
+                nt++
+                st[nt] = i
+                ln[nt] = j - i
+                kd[nt] = 2
+                cp[nt] = k
+            }
+            i = j
+            continue
+        }
+        if (b[i] == 30) {
+            if (inopt) ol[k] = i - os[k]
+            open  = 0
+            inopt = 0
+            par   = 0
+            k++
+        }
+        else if (inopt) {
+        }
+        else if (b[i] == 32 | b[i] == 9) open = 0
+        else if (b[i] == 44 & !par) {
+            open  = 0
+            inopt = 1
+            os[k] = i + 1
+        }
+        else {
+            if (b[i] == 40) par++
+            else if (b[i] == 41 & par) par--
+            if (open) ln[nt] = ln[nt] + 1
+            else {
+                open = 1
+                nt++
+                st[nt] = i
+                ln[nt] = 1
+                kd[nt] = 1
+                cp[nt] = k
+            }
+        }
+        i++
+    }
+    if (inopt) ol[k] = n + 1 - os[k]
+    return(k)
+}
+
+// _dash_at_unq(tok, q) -- tok less one pair of enclosing quotes, compound
+// or simple, as gettoken reads it; q set to 1 when it had them.
+string scalar _dash_at_unq(string scalar tok, real scalar q)
+{
+    real scalar n
+
+    n = strlen(tok)
+    q = 1
+    if (n >= 4 & substr(tok, 1, 2) == char(96) + char(34) &
+        substr(tok, n - 1, 2) == char(34) + char(39)) {
+        return(substr(tok, 3, n - 4))
+    }
+    if (n >= 2 & substr(tok, 1, 1) == char(34) & substr(tok, n, 1) == char(34)) {
+        return(substr(tok, 2, n - 2))
+    }
+    q = 0
+    return(tok)
+}
+
+// _dash_at_isnum(tok) -- 1 when tok is a number as twoway's numlist reads
+// a point: an optional sign, digits with at most one point, an optional
+// exponent, and a value Stata can hold (1e400 is not; 3e3 is); else 0.
+// ".", "1+1", "a" and an empty token are not.
+real scalar _dash_at_isnum(string scalar tok)
+{
+    real rowvector b
+
+    if (tok == "" | strpos(tok, char(10)) | strpos(tok, char(13))) return(0)
+    // Digits alone, the common case, without the regular expression.
+    b = ascii(tok)
+    if (cols(b) <= 15) {
+        if (all(b :>= 48 :& b :<= 57)) return(1)
+    }
+    if (!ustrregexm(tok, "^[+-]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][+-]?[0-9]+)?$")) return(0)
+    return(strtoreal(tok) < .)
+}
+
+// _dash_at_parse(raw, datesok) -- every copy of raw read as twoway reads
+// it (_dash_at_lex): y x, then its quoted lines, and the next bare token
+// is the next point's y.  A point is two numbers (_dash_at_isnum), or
+// with datesok (ttext()) a number y and an x holding no parenthesis,
+// converted later (_dash_at_dates).  Kept in two Mata externals, read by
+// _dash_at_copy and _dash_at_records: _dash_at_C, per copy its
+// sub-options, its state (0 no point, 1 every point valid, 2 its first
+// point invalid, 3 a later one) and twoway's words for an invalid point
+// ("invalid point, <x> <y>"); _dash_at_R, one row per point with a line
+// that is not empty: y, x, the lines (a JSON array of escaped strings),
+// its copy, and "1" when x is a date literal to convert.  Sets the
+// caller's locals _at_k (copies) and _at_n (records).  Returns 0.  Reads
+// and writes by value only; 100,000 one-point copies take well under a
+// second (AT-04b).
+real scalar _dash_at_parse(string scalar raw, real scalar datesok)
+{
+    external string matrix _dash_at_R, _dash_at_C
+    real colvector st, ln, kd, cp, os, ol
+    real rowvector bb
+    string scalar  y, x, line, js, bare, ks
+    real scalar    nk, k, j, nt, n, state, pts, any, isd, q
+
+    nk = _dash_at_lex(raw, st, ln, kd, cp, os, ol, nt)
+    _dash_at_C = J(nk, 3, "")
+    _dash_at_R = J(floor(nt / 3) + 1, 5, "")
+    n  = 0
+    j  = 1
+    for (k = 1; k <= nk; k++) {
+        ks = strofreal(k)
+        if (ol[k]) _dash_at_C[k, 1] = substr(raw, os[k], ol[k])
+        y = ""
+        x = ""
+        if (cp[j] == k) {
+            y = substr(raw, st[j], ln[j])
+            if (kd[j] == 2) y = _dash_at_unq(y, q)
+            j++
+        }
+        if (cp[j] == k) {
+            x = substr(raw, st[j], ln[j])
+            if (kd[j] == 2) x = _dash_at_unq(x, q)
+            j++
+        }
+        state = 0
+        pts   = 0
+        while (y != "") {
+            pts++
+            isd = 0
+            if (!(_dash_at_isnum(y) & _dash_at_isnum(x))) {
+                if (datesok & _dash_at_isnum(y) & x != "" &
+                    !strpos(x, "(") & !strpos(x, ")") & !strpos(x, " ")) {
+                    isd = 1
+                }
+                else {
+                    state = (pts == 1 ? 2 : 3)
+                    _dash_at_C[k, 3] = "invalid point, " + x + " " + y
+                    break
+                }
+            }
+            js   = ""
+            any  = 0
+            bare = ""
+            while (cp[j] == k) {
+                if (kd[j] != 2) {
+                    bare = substr(raw, st[j], ln[j])
+                    j++
+                    break
+                }
+                line = _dash_at_unq(substr(raw, st[j], ln[j]), q)
+                j++
+                // _json_escape() only where a byte needs it.
+                bb = ascii(line)
+                if (cols(bb)) {
+                    if (any(bb :< 32 :| bb :== 34 :| bb :== 36 :| bb :== 39 :|
+                            bb :== 92 :| bb :== 96)) line = _json_escape(line)
+                    any = 1
+                }
+                js = js + (js != "" ? "," : "") + char(34) + line + char(34)
+            }
+            if (any) {
+                n++
+                _dash_at_R[n, 1] = y
+                _dash_at_R[n, 2] = x
+                _dash_at_R[n, 3] = "[" + js + "]"
+                _dash_at_R[n, 4] = ks
+                if (isd) _dash_at_R[n, 5] = "1"
+            }
+            y = bare
+            x = ""
+            if (y != "" & cp[j] == k) {
+                x = substr(raw, st[j], ln[j])
+                if (kd[j] == 2) x = _dash_at_unq(x, q)
+                j++
+            }
+        }
+        // The copy's tokens left after an invalid point are skipped.
+        while (cp[j] == k) j++
+        if (state == 0 & pts) state = 1
+        _dash_at_C[k, 2] = strofreal(state)
+    }
+    _dash_at_R = (n ? _dash_at_R[1..n, .] : J(0, 5, ""))
+    st_local("_at_k", strofreal(nk))
+    st_local("_at_n", strofreal(n))
+    return(0)
+}
+
+// _dash_at_copy(k) -- copy k of the last _dash_at_parse into the caller's
+// locals _at_o (its sub-options), _at_s (its state) and _at_e (twoway's
+// words for its invalid point, or "").
+void _dash_at_copy(real scalar k)
+{
+    external string matrix _dash_at_C
+
+    st_local("_at_o", _dash_at_C[k, 1])
+    st_local("_at_s", _dash_at_C[k, 2])
+    st_local("_at_e", _dash_at_C[k, 3])
+}
+
+// _dash_at_place(p) -- the compass direction twoway draws placement(p) in
+// (style/compass2dir-*.style, measured: test/fixtures/
+// added_text_truth.json _meta.compass), "" for a name twoway notes and
+// draws east.  Lower case, as Stata's style names are.
+string scalar _dash_at_place(string scalar p)
+{
+    string matrix T
+    real scalar   i
+
+    T = ("n", "n" \ "north", "n" \ "12", "n" \ "t", "n" \ "top", "n" \
+         "1", "ne" \ "2", "ne" \ "ne", "ne" \ "neast", "ne" \
+         "3", "e" \ "e", "e" \ "east", "e" \ "r", "e" \ "right", "e" \
+         "4", "se" \ "5", "se" \ "se", "se" \ "seast", "se" \
+         "6", "s" \ "s", "s" \ "south", "s" \ "b", "s" \ "bottom", "s" \
+         "7", "sw" \ "8", "sw" \ "sw", "sw" \ "swest", "sw" \
+         "9", "w" \ "w", "w" \ "west", "w" \ "l", "w" \ "left", "w" \
+         "10", "nw" \ "11", "nw" \ "nw", "nw" \ "nwest", "nw" \
+         "0", "c" \ "c", "c" \ "center", "c")
+    for (i = 1; i <= rows(T); i++) {
+        if (T[i, 1] == p) return(T[i, 2])
+    }
+    return("")
+}
+
+// _dash_at_orient(o) -- the orientation twoway draws orientation(o) in
+// (style/tb_orientstyle-*.style, measured: _meta.orient): horizontal,
+// vertical, rvertical or rhorizontal, "" for a name twoway notes and
+// draws horizontally.
+string scalar _dash_at_orient(string scalar o)
+{
+    string matrix T
+    real scalar   i
+
+    T = ("horizontal", "horizontal" \ "horiz", "horizontal" \
+         "vertical", "vertical" \ "vert", "vertical" \
+         "rvertical", "rvertical" \ "rvert", "rvertical" \
+         "rhorizontal", "rhorizontal" \ "rhoriz", "rhorizontal")
+    for (i = 1; i <= rows(T); i++) {
+        if (T[i, 1] == o) return(T[i, 2])
+    }
+    return("")
+}
+
+// _dash_at_json(kind, y, x, ya, xa, lines, opts) -- one added_text record:
+// {"at_kind":..,"at_y":..,"at_x":..,"at_yaxis":..,"at_xaxis":..,
+// "at_lines":[..],"at_opts":".."}.  Numbers in %21.0g; lines already a
+// JSON array and opts already _json_escape()d (_dash_at_opts), written as
+// they come.  Every key starts at_, so no substring reader of the graph's
+// JSON (_dash_json_has_value, _dash_json_first_num) finds one.
+string scalar _dash_at_json(string scalar kind, real scalar y,
+                            real scalar x, real scalar ya, real scalar xa,
+                            string scalar lines, string scalar opts)
+{
+    string scalar q
+
+    q = char(34)
+    return("{" + q + "at_kind" + q + ":" + q + kind + q + "," +
+           q + "at_y" + q + ":" + strtrim(strofreal(y, "%21.0g")) + "," +
+           q + "at_x" + q + ":" + strtrim(strofreal(x, "%21.0g")) + "," +
+           q + "at_yaxis" + q + ":" + strofreal(ya) + "," +
+           q + "at_xaxis" + q + ":" + strofreal(xa) + "," +
+           q + "at_lines" + q + ":" + lines + "," +
+           q + "at_opts" + q + ":" + q + opts + q + "}")
+}
+
+// _dash_at_records(kind) -- the last _dash_at_parse's records as one
+// comma-joined list of _dash_at_json() objects, into the caller's local
+// _at_json; each copy's axes and drawn sub-options are the caller's
+// locals _at_ya<k>, _at_xa<k> and _at_cn<k> (_dash_at_opts), and a
+// converted date's value its _dash_at_R column 2.
+void _dash_at_records(string scalar kind)
+{
+    external string matrix _dash_at_R
+    string colvector r
+    string scalar    k
+    real scalar      i, n
+
+    n = rows(_dash_at_R)
+    r = J(n, 1, "")
+    for (i = 1; i <= n; i++) {
+        k = _dash_at_R[i, 4]
+        r[i] = _dash_at_json(kind, strtoreal(_dash_at_R[i, 1]),
+                             strtoreal(_dash_at_R[i, 2]),
+                             strtoreal(st_local("_at_ya" + k)),
+                             strtoreal(st_local("_at_xa" + k)),
+                             _dash_at_R[i, 3], st_local("_at_cn" + k))
+    }
+    st_local("_at_json", n ? invtokens(r', ",") : "")
+}
+
+// _dash_at_canon() -- the drawn sub-options of one copy, read from the
+// caller's (_dash_at_opts's) syntax locals by value, in full names:
+// size() color() justification() orientation() box or nobox fcolor()
+// lcolor() lwidth() margin() placement(), bfcolor() blcolor() blwidth()
+// standing in for the plain ones when those are absent and bcolor() for
+// both colours when neither is given; _json_escape()d.  orientation()
+// and placement() are dash.ado's canonical names (_dash_at_orient,
+// _dash_at_place); a name twoway notes is left out.
+string scalar _dash_at_canon()
+{
+    string scalar out, v, fc, lc, lw, o, p
+
+    out = ""
+    v = st_local("size")
+    if (v != "") out = out + " size(" + v + ")"
+    v = st_local("color")
+    if (v != "") out = out + " color(" + v + ")"
+    v = st_local("justification")
+    if (v != "") out = out + " justification(" + v + ")"
+    o = _dash_at_orient(st_local("orientation"))
+    if (o != "") out = out + " orientation(" + o + ")"
+    if (st_local("box") != "" & st_local("nobox") == "") out = out + " box"
+    else if (st_local("nobox") != "") out = out + " nobox"
+    fc = st_local("fcolor")
+    if (fc == "") fc = st_local("bfcolor")
+    lc = st_local("lcolor")
+    if (lc == "") lc = st_local("blcolor")
+    if (fc == "" & lc == "" & st_local("bcolor") != "") {
+        fc = st_local("bcolor")
+        lc = fc
+    }
+    if (fc != "") out = out + " fcolor(" + fc + ")"
+    if (lc != "") out = out + " lcolor(" + lc + ")"
+    lw = st_local("lwidth")
+    if (lw == "") lw = st_local("blwidth")
+    if (lw != "") out = out + " lwidth(" + lw + ")"
+    v = st_local("margin")
+    if (v != "") out = out + " margin(" + v + ")"
+    p = st_local("placement")
+    if (p != "") {
+        p = _dash_at_place(p)
+        out = out + " placement(" + (p != "" ? p : "e") + ")"
+    }
+    return(_json_escape(strtrim(out)))
 }
 
 // _dash_rep_reduce(opts, ptype) -- the option list with one copy of each

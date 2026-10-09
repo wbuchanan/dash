@@ -568,6 +568,15 @@ def _annotations(fig):
                         "x_units": r.x_units, "y_units": r.y_units,
                         "anchor": str(r.anchor),
                         "background": r.background_fill_color,
+                        # WP-30 P1.10: added text's angle, justification,
+                        # axis pair, box and tag.
+                        "angle": _num(float(r.angle)),
+                        "align": r.text_align,
+                        "range_names": (r.x_range_name, r.y_range_name),
+                        "border": (r.border_line_color,
+                                   _num(float(r.border_line_width))),
+                        "padding": str(r.padding),
+                        "tags": list(r.tags or []),
                         "index": (fig.center.index(r)
                                   if r in fig.center else None)})
         elif isinstance(r, Title) and r is not fig.title \
@@ -2308,6 +2317,19 @@ CORPUS = [
     _case("Turned bar on axis 2 (WP-30 P1.9b)",
           [_sc(), plot_for("bar", {"horizontal": "horizontal",
                                    "yaxis": "2"})]),
+    # WP-30 P1.10: text() records, plain, boxed to the north-east, and
+    # vertical on the second y axis.
+    _case("Added text (WP-30 P1.10)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
+          {"added_text_n": "3", "added_text": [
+              {"at_kind": "text", "at_y": 30, "at_x": 3000, "at_yaxis": 1,
+               "at_xaxis": 1, "at_lines": ["AAA"], "at_opts": ""},
+              {"at_kind": "text", "at_y": 20, "at_x": 2500, "at_yaxis": 1,
+               "at_xaxis": 1, "at_lines": ["B1", "B2"],
+               "at_opts": "placement(ne) box fcolor(yellow) margin(small)"},
+              {"at_kind": "text", "at_y": 8000, "at_x": 3500, "at_yaxis": 2,
+               "at_xaxis": 1, "at_lines": ["V"],
+               "at_opts": "orientation(vertical) color(red)"}]}),
 ]
 
 

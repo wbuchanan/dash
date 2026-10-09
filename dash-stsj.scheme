@@ -666,6 +666,25 @@ color bylabel_outline      #d0d0d0
 color by_label_fill        #d0d0d0
 
 * ---------------------------------------------------------------------------
+* Added 09oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s2mono -> stsj); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* text() and ttext() (WP-30 P1.10): the text box's fill, its
+* compass direction from its point, whether it is boxed, its
+* margin, justification and vertical alignment.
+color text_option_fill  #d9e6eb
+compass2dir text_option       center
+yesno text_option       no
+margin text_option       zero
+horizontal text_option       center
+vertical_text text_option       middle
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -888,6 +907,12 @@ color by_label_fill        #d0d0d0
 * provenance: margin subheading -- transcribed from scheme-s2color.scheme:737 `margin subheading vsmall'
 * provenance: color bylabel_outline -- transcribed from scheme-stsj.scheme:23 `color bylabel_outline gs13'
 * provenance: color by_label_fill -- inferred: dash's derived key: `textboxstyle subtitle subheading', style/textboxstyle-subheading.style `set fillcolor scheme textbox', then `color textbox gs13' (scheme-s2mono.scheme:33)
+* provenance: color text_option_fill -- transcribed from scheme-s2color.scheme:334 `color text_option_fill bluishgray'
+* provenance: compass2dir text_option -- transcribed from scheme-s2color.scheme:1901 `compass2dir text_option center'
+* provenance: yesno text_option -- transcribed from scheme-s2color.scheme:2099 `yesno text_option no'
+* provenance: margin text_option -- transcribed from scheme-s2color.scheme:741 `margin text_option zero'
+* provenance: horizontal text_option -- transcribed from scheme-s2color.scheme:1784 `horizontal text_option center'
+* provenance: vertical_text text_option -- transcribed from scheme-s2color.scheme:1809 `vertical_text text_option middle'
 * provenance: color ci2_symbol -- transcribed from scheme-s2mono.scheme:50 `color ci2_symbol gs6'
 * provenance: color ci_symbol -- transcribed from scheme-s2mono.scheme:46 `color ci_symbol gs9'
 * provenance: color clegend_line -- transcribed from scheme-s2mono.scheme:76 `color clegend_line black'

@@ -577,6 +577,39 @@ that is not a plot type is refused too, and the message lists the plot
 types above.  A plot type cannot be handled as an unknown option is --
 named in a note and drawn around -- because it is what would be drawn.
 
+{marker added_text}{...}
+{pstd}
+{ul:Added text.}  {opt text(# # "string" ...)} draws text at data
+points, as {cmd:twoway} draws it, in the saved page and the served app and
+after every filter move.  Each copy -- after the comma, in a plot group or
+in a {cmd:||} segment -- is drawn with its own sub-options, and each point
+{it:y x} with at least one line that is not empty is one text, its quoted
+strings stacked as lines.  The text is placed in the units of its axes:
+on a date axis a number is a date in the variable's units, {opt yaxis(2)},
+{opt xaxis(2)} or {opt axes(# #)} draw it on a second axis, and on a log
+or reversed axis it is at the transformed point.  A text never widens an
+axis, and one whose point is outside the plot region is still drawn.
+Under {cmd:by()} each text is drawn in every panel at the panel's text
+size.  Drawn: {opt placement()} (every compass name and clock position
+{cmd:twoway} takes; an unknown name is noted and drawn east, as
+{cmd:twoway} does), {opt justification()}, {opt orientation()}
+({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}),
+{opt size()}, {opt color()}, {opt box} and {opt nobox}, {opt fcolor()}
+and {opt bfcolor()}, {opt lcolor()} and {opt blcolor()}, {opt bcolor()},
+{opt lwidth()} and {opt blwidth()} and {opt margin()}; the scheme's
+{cmd:text_option} box otherwise.  Every other textbox sub-option
+{cmd:twoway} takes ({opt width()}, {opt height()}, {opt linegap()},
+{opt tstyle()}, {opt angle()}, {opt alignment()} ...) is named once in a
+note and not drawn.  Refused with {cmd:r(198)} in {cmd:twoway}'s words:
+a point that is not two numbers ({cmd:invalid point, BAD 30}), an axis
+pair no plot draws ({cmd:text() option invalid, specified axis pair (2 1)}
+{cmd:not in graph}) and a sub-option {cmd:twoway} does not take
+({cmd:option nosuch() not allowed}).  The number of texts times the
+{cmd:by()} panels is held to {cmd:$dash_max_added_text}
+(see {help dash##limits:Resource limits}).  A text is drawn as typed:
+its {help dash##graph_text:graph-text markup} is read, and nothing in it
+is run.
+
 
 {marker differences}
 {title:Differences from twoway}
@@ -747,8 +780,8 @@ named in a note and drawn around -- because it is what would be drawn.
     cannot honour is named once per command, in a single note:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, play(x) text(20 3000 "hi")}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): play() text())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, play(x)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): play())}{p_end}
 
 {phang2}
     {ul:How a note is printed.}  Every note {cmd:dash} prints -- this one,
@@ -2377,6 +2410,10 @@ that moves it for the rest of the session:
     positions of every {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
     {cmd:yline2()} times the graph's {cmd:by()} panels, counted over every
     observation; default 10,000, at most 100,000.  Refused with
+    {cmd:r(134)}.{p_end}
+{synopt:{cmd:$dash_max_added_text}}added texts: the points of every
+    {cmd:text()} times the graph's {cmd:by()} panels, in one graph and over
+    the dashboard; default 1,000, at most 100,000.  Refused with
     {cmd:r(134)}.{p_end}
 {synoptline}
 
@@ -4820,7 +4857,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 280 to 350 directives (more for the monochrome schemes, whose
+scheme: 290 to 360 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
@@ -5019,7 +5056,6 @@ disagree in either direction.
     an unknown name on {cmd:histogram} -- see {ul:Recast} under
     Statistical Layer Options.
     {opt play(recordingname)} -- there is no graph editor to replay.
-    {opt text(# # "string")} -- use {cmd:note()} or {cmd:caption()}.
 
 {pstd}
 Not in this list, because {cmd:dash} honours them: {cmd:twoway}'s

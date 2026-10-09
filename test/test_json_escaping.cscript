@@ -1884,9 +1884,12 @@ local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
 local jg_r8 = _rc
 _jg_log_off
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() text() foo() bar()")
+* Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
+* bar() and no note names text(); it was "at() text() foo() bar()" and
+* "text()" once each.
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() foo() bar()")
 local jg_m1 = r(count)
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): text()")
+cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
 capture erase "`jg_l46'"
 local jg_ok ""
@@ -1923,14 +1926,16 @@ local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "3000 " + _jg_pq(char(39) + "3k"))
 _jg_stored jg46f "graph_options xlabel2"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "30 3000 " + _jg_pq(char(39) + "90s tp"))
-_jg_stored jg46g "graph_options text"
+* Flipped (WP-30 P1.10): text() is stored as an added_text record whose
+* line is the text as typed; it was the option's raw value.
+mata: st_global("JG_WANT", char(39) + "90s tp")
+_jg_stored jg46g "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "1 " + _jg_pq(char(39) + "x"))
 _jg_stored jg46g "plots 0 options at"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "30 3000 " + _jg_pq(char(39) + "90s tq"))
-_jg_stored jg46h "graph_options text"
+mata: st_global("JG_WANT", char(39) + "90s tq")
+_jg_stored jg46h "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 tempfile jg_p46
 _jg_build "`jg_p46'.html"
@@ -1971,7 +1976,7 @@ assert `jg_rb' == 0 & `jg_rb2' == 0
 assert "`jg_dr'" == "111111111"
 assert "`jg_rows'" == "`jg_nf' `jg_nd' 74 74 74 74 74 74"
 assert "`jg_rows2'" == "`jg_nf' `jg_nf' `jg_nd' `jg_nd' 74 74 74 74 74 74"
-assert `jg_m1' == 1 & `jg_m2' == 1
+assert `jg_m1' == 1 & `jg_m2' == 0
 // The axis and side titles are declared as title() is, string asis, so the
 // quotes the user typed reach the spec.  Declared string, Stata stripped
 // them: ytitle("line 1" "line 2") was stored, and drawn, as one line, and
@@ -3882,8 +3887,10 @@ local jg_ok ""
 mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("b" + char(36) + "J6_G " + char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))" + char(39)) + ")")
 _jg_stored jg69a "graph_options by"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "30 3000 " + _jg_pq("t" + char(36) + "J6_G"))
-_jg_stored jg69b "graph_options text"
+* Flipped (WP-30 P1.10): text()'s line is stored as typed in its
+* added_text record; it was the option's raw value.
+mata: st_global("JG_WANT", "t" + char(36) + "J6_G")
+_jg_stored jg69b "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "label(1 " + char(36) + "J6_T)")
 _jg_stored jg69b "graph_options legend"
@@ -4101,6 +4108,84 @@ assert `j72_rb' == 0
 assert "`j72_dr'" == "111"
 display "JSE-72 PASS: a nested compound title and legend label are accepted and drawn as twoway draws them"
 capture dash clear
+
+// ----------------------------------------------------------------
+// AT-13, AT-14, AT-16 -- text() read by value (WP-30 P1.10)
+// ----------------------------------------------------------------
+// A copy's lines, point and sub-options are read by Mata as data
+// (_dash_at_parse, _dash_at_opts): a $global or an =exp in them is never
+// expanded or run, and a char(30) inside a quoted line is the line's own,
+// not the separator _dash_rep_merge puts between copies.
+global J6_G "Audi 5000"
+global J6_P "30"
+global J6_C "red"
+local at_sent "`c(tmpdir)'j13"
+capture erase "`at_sent'"
+capture dash clear
+// AT-13: the line as typed, a $global and an =exp in it.
+capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G" "\`=filewrite(c(tmpdir)+char(106)+char(49)+char(51),char(120))'") name(at13)
+local at_r13 = _rc
+mata: st_global("JG_WANT", "t" + char(36) + "J6_G")
+_jg_stored at13 "graph_options added_text 0 at_lines 0"
+local at_ok13 "`r(ok)'"
+mata: st_global("JG_WANT", char(96) + "=filewrite(c(tmpdir)+char(106)+char(49)+char(51),char(120))" + char(39))
+_jg_stored at13 "graph_options added_text 0 at_lines 1"
+local at_ok13 "`at_ok13'`r(ok)'"
+capture confirm file "`at_sent'"
+local at_ran = (_rc == 0)
+if `at_r13' | "`at_ok13'" != "11" | `at_ran' {
+    display as error "AT-13 FAIL: rc `at_r13', stored `at_ok13', filewrite ran `at_ran'"
+}
+else display "AT-13 PASS: a global and an =exp in a line are stored as typed and nothing runs"
+// AT-14: a $global as a point is no number (refused, shown as typed); in a
+// sub-option it is kept as typed.
+local at_l14 "`c(tmpdir)'dash_at14.log"
+_jg_log_on "`at_l14'"
+capture noisily dash scatter mpg weight, text(\$J6_P 3000 "x") name(at14a)
+local at_r14a = _rc
+capture noisily dash scatter mpg weight, text(30 3000 "x", color(\$J6_C)) name(at14b)
+local at_r14b = _rc
+_jg_log_off
+// Shown as typed: the line names the global, never its value 30.
+cert_log_has "`at_l14'", needle("invalid point, 3000 ")
+local at_w14 = r(count)
+cert_log_has "`at_l14'", needle("invalid point, 3000 30")
+local at_w14 = `at_w14' - r(count)
+capture erase "`at_l14'"
+mata: st_global("JG_WANT", "color(" + char(36) + "J6_C)")
+_jg_stored at14b "graph_options added_text 0 at_opts"
+local at_ok14 "`r(ok)'"
+if `at_r14a' != 198 | `at_w14' != 1 | `at_r14b' | "`at_ok14'" != "1" {
+    display as error "AT-14 FAIL: rc `at_r14a' `at_r14b', shown `at_w14', stored `at_ok14'"
+}
+else display "AT-14 PASS: a global as a point is refused as typed, a global colour kept as typed"
+// AT-16: a char(30) inside a quoted line: one record, the line its own,
+// and the control character not drawn.
+local at_rs = char(30)
+capture noisily dash scatter mpg weight, text(30 3000 "p`at_rs'q") name(at16)
+local at_r16 = _rc
+mata: st_global("JG_WANT", "p" + char(30) + "q")
+_jg_stored at16 "graph_options added_text 0 at_lines 0"
+local at_ok16 "`r(ok)'"
+mata: st_local("at_n16", strofreal(_dash_json_first_num(st_global("dash_json_at16"), "added_text_n")))
+capture dash clear
+capture noisily dash scatter mpg weight, text(30 3000 "p`at_rs'q") name(at16)
+tempfile at_p16
+_jg_build "`at_p16'.html"
+local at_rb16 = r(rc)
+mata: st_global("JG_WANT", "pq")
+_jg_drawn Label
+local at_dr16 "`r(n)'"
+capture erase "`at_p16'.html"
+if `at_r16' | "`at_ok16'" != "1" | `at_n16' != 1 | `at_rb16' | "`at_dr16'" != "1" {
+    display as error "AT-16 FAIL: rc `at_r16', stored `at_ok16', records `at_n16', build `at_rb16', drawn `at_dr16'"
+}
+else display "AT-16 PASS: a char(30) in a line is the line's own, one record, not drawn"
+assert `at_r13' == 0 & "`at_ok13'" == "11" & `at_ran' == 0
+assert `at_r14a' == 198 & `at_w14' == 1 & `at_r14b' == 0 & "`at_ok14'" == "1"
+assert `at_r16' == 0 & "`at_ok16'" == "1" & `at_n16' == 1 & `at_rb16' == 0 & "`at_dr16'" == "1"
+capture dash clear
+macro drop J6_*
 
 display ""
 display "All JSON escaping tests PASSED."

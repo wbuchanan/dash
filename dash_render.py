@@ -1870,6 +1870,8 @@ _DASH_LIMITS = {
     "filters":        (20, 200, "dash_max_filters"),
     # xline()/yline() positions times by() panels (WP-30 P1.21a, A68).
     "reflines":       (10_000, 100_000, "dash_max_reflines"),
+    # text() and ttext() points times by() panels (WP-30 P1.10, A28).
+    "added_text":     (1_000, 100_000, "dash_max_added_text"),
 }
 
 
@@ -7963,6 +7965,17 @@ class SchemeParser:
         "margin subheading": "vsmall",
         "color bylabel_outline": "#d9e6eb",
         "color by_label_fill": "#d9e6eb",
+        # text()'s text box (WP-30 P1.10; scheme-s2color.scheme).
+        "gsize text_option": "medsmall",
+        "color text_option": "#000000",
+        "color text_option_line": "#000000",
+        "color text_option_fill": "#d9e6eb",
+        "compass2dir text_option": "center",
+        "yesno text_option": "no",
+        "linewidth text_option": "thin",
+        "margin text_option": "zero",
+        "horizontal text_option": "center",
+        "vertical_text text_option": "middle",
         "horizontal heading": "center",
         "horizontal subheading": "center",
         "horizontal body": "center",
@@ -10409,6 +10422,43 @@ class SchemeParser:
         self.by_flags: dict = {
             k: self._yesno("yesno by_" + k, v)
             for k, v in _DASH_BY_FLAG_DEFAULTS.items()}
+        # text() and ttext()'s text box (WP-30 P1.10): `textboxstyle
+        # text_option' reads these keys (scheme-s2color.scheme:149-2099):
+        # its size and colour, its box's outline and fill, the compass
+        # direction it is placed in from its point, whether it is boxed,
+        # the outline's width, its margin, its justification and its
+        # vertical alignment.  Defaults are s2color's.
+        self.text_option_font_size: str = self._gsize(
+            "gsize text_option", "10pt")
+        self.text_option_color: str = self._color(
+            "color text_option", "#000000")
+        self.text_option_line_color: str = self._color(
+            "color text_option_line", "#000000")
+        self.text_option_fill_color: str = self._color(
+            "color text_option_fill", "#d9e6eb")
+        _tp = str(self._props.get("compass2dir text_option", "")
+                  or "center").strip().lower()
+        _tp = {"center": "c", "north": "n", "neast": "ne", "east": "e",
+               "seast": "se", "south": "s", "swest": "sw", "west": "w",
+               "nwest": "nw"}.get(_tp, _tp)
+        self.text_option_placement: str = (
+            _tp if _tp in _DASH_ADDED_TEXT_PLACE else "c")
+        self.text_option_box: bool = self._yesno("yesno text_option", False)
+        self.text_option_line_width: float = self._bounded_lwidth(
+            "linewidth text_option", OptionTranslator.translate_lwidth("thin"))
+        _tm = str(self._props.get("margin text_option", "")
+                  or "zero").strip()
+        self.text_option_margin: str = (
+            _tm if _tm in self._MARGINSTYLES else "zero")
+        _tj = str(self._props.get("horizontal text_option", "")
+                  or "center").strip()
+        self.text_option_justification: str = (
+            _tj if _tj in ("left", "center", "right") else "center")
+        _tv = str(self._props.get("vertical_text text_option", "")
+                  or "middle").strip()
+        self.text_option_vertical: str = (
+            _tv if _tv in ("top", "middle", "bottom", "baseline") else
+            "middle")
         self.by_label_fill: str = self._color("color by_label_fill",
                                               "#d9e6eb")
         self.by_label_outline: str = self._color("color bylabel_outline",
@@ -37190,6 +37240,36 @@ _DASH_TEXTBOX_DEFAULTS = {
                  "just": "center"},
 }
 
+#: text() and ttext() (WP-30 P1.10): twoway's compass direction -> the
+#: Label anchor that puts the text there from its point, the point being
+#: that corner or edge of the text (twoway's place(ne) puts the box's
+#: lower-left corner on the point; test/fixtures/added_text_truth.json).
+#: dash.ado writes the canonical name (_dash_at_place).
+_DASH_ADDED_TEXT_PLACE = {
+    "n": "bottom_center", "ne": "bottom_left", "e": "center_left",
+    "se": "top_left", "s": "top_center", "sw": "top_right",
+    "w": "center_right", "nw": "bottom_right", "c": "center",
+}
+
+#: orientation() as twoway draws it -> a Bokeh angle (radians,
+#: counter-clockwise): every spelling twoway took (_meta.orient; vertical
+#: is twoway's rotate(-90), rvertical rotate(-270), rhorizontal
+#: rotate(-180)).
+_DASH_ADDED_TEXT_ORIENT = {
+    "horizontal": 0.0, "horiz": 0.0,
+    "vertical": math.pi / 2, "vert": math.pi / 2,
+    "rvertical": -math.pi / 2, "rvert": -math.pi / 2,
+    "rhorizontal": math.pi, "rhoriz": math.pi,
+}
+
+#: The sub-options an added_text record's at_opts may hold: the ones dash
+#: draws (dash.ado's _dash_at_canon writes them in full).  Any other name
+#: (a hand-written spec) is named once and not drawn.
+_DASH_ADDED_TEXT_HONOURED = frozenset({
+    "size", "color", "justification", "orientation", "box", "nobox",
+    "fcolor", "lcolor", "lwidth", "margin", "placement",
+})
+
 
 def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
                            *, defaults=None, sides=None):
@@ -37304,6 +37384,191 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
                 background_fill_color=fill,
                 **({"text_alpha": alpha} if alpha is not None else {}),
             ), side)
+
+
+def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
+                          ref_in=4.0, base_pt=None, base_color=None):
+    """One added_text record's sub-options read for drawing (WP-30 P1.10).
+
+    *opts* is the record's ``at_opts`` (dash.ado's canonical names,
+    ``_dash_at_canon``).  Returns ``{"anchor", "angle", "align", "px",
+    "color", "box", "fill", "line", "lwidth", "padding"}``, None for a
+    sub-option not given: the anchor of placement()
+    (``_DASH_ADDED_TEXT_PLACE``; a name it lacks is east, as twoway draws
+    an unknown one), the angle of orientation(), justification()'s
+    alignment, size() as a CSS pt string (S08's units, ``*#`` of
+    *base_pt*), color(), fcolor() and lcolor() through the colour grammar
+    (S30, S43; a bare ``*#`` adjusts *base_color*), box (True) or nobox
+    (False), lwidth() in pixels and margin() as ``{"left", "right",
+    "top", "bottom"}`` pixels (the scheme's margin ladder).  A name outside
+    ``_DASH_ADDED_TEXT_HONOURED`` is named once (*seen*, *key*) and not
+    drawn.
+    """
+    T = OptionTranslator
+    _text, o = _parse_textbox_opt('"", ' + str(opts or ""))
+    out = dict.fromkeys(("anchor", "angle", "align", "px", "color", "box",
+                         "fill", "line", "lwidth", "padding"))
+    bad = [k if v == k else f"{k}({v})" for k, v in o.items()
+           if k not in _DASH_ADDED_TEXT_HONOURED]
+    _dash_report_suboptions("text", bad, seen, key)
+    if o.get("placement"):
+        out["anchor"] = _DASH_ADDED_TEXT_PLACE.get(
+            o["placement"], _DASH_ADDED_TEXT_PLACE["e"])
+    if o.get("orientation"):
+        out["angle"] = _DASH_ADDED_TEXT_ORIENT.get(o["orientation"])
+    if o.get("justification") in ("left", "center", "right"):
+        out["align"] = o["justification"]
+    out["px"] = _textbox_size(o, base_pt, ref_in, "text(size)")
+    out["color"] = _textbox_color(o, None, base=base_color)
+    if "box" in o:
+        out["box"] = True
+    elif "nobox" in o:
+        out["box"] = False
+    for name, slot in (("fcolor", "fill"), ("lcolor", "line")):
+        if o.get(name):
+            out[slot] = _textbox_color({"color": o[name]}, None)
+    if o.get("lwidth"):
+        try:
+            out["lwidth"] = T.translate_lwidth(o["lwidth"], None, ref_in)
+        except ValueError:
+            _dash_style_note("text(lwidth)", o["lwidth"], "line width")
+    if o.get("margin"):
+        sides = SchemeParser.margin_sides(scheme if scheme is not None
+                                          else SchemeParser, o["margin"])
+        if sides is None:
+            _dash_style_note("text(margin)", o["margin"], "margin")
+        else:
+            px = [float(v[1]) * T.PX_PER_PT if isinstance(v, tuple)
+                  else float(v) * T.PT_PER_RS * T.PX_PER_PT for v in sides]
+            out["padding"] = {"left": int(round(px[0])),
+                              "right": int(round(px[1])),
+                              "bottom": int(round(px[2])),
+                              "top": int(round(px[3]))}
+    return out
+
+
+def _dash_added_text(fig, graph_opts, scheme=None, seen=None, key="",
+                     budget=None, limits=None):
+    """text() and ttext(): each added_text record a data-unit Label (WP-30
+    P1.10), in both modes.
+
+    dash.ado writes one record per point (``_dash_added_text``):
+    ``at_y``/``at_x`` in Stata units of the axis pair ``at_yaxis``/
+    ``at_xaxis``, ``at_lines`` and ``at_opts``.  Each is drawn at its
+    point through S35's per-axis date kinds (``_dash_axis_positions``), on
+    the y2/x2 range when its axis is 2 (skipped, and named once, on a
+    figure without that range), with the scheme's ``text_option`` box
+    (size, colour, placement, justification, box, fill, outline, line
+    width, margin) where its sub-options say nothing
+    (:func:`_dash_added_text_opts`).  The Label goes to ``fig.center``,
+    never a renderer, so the axis hull never reads it and twoway's rule
+    holds: a text never widens an axis.  Its size is the unpaneled one;
+    a by() panel's multiplier is applied once, later, by
+    ``_dash_by_scale_panel``.  The text is raw: the canvas-text pass
+    (``_dash_finish_graph_text``) finishes it, in both modes.
+
+    A record that is not as dash.ado writes it -- non-finite numbers, an
+    axis outside 1-2, more than 64 lines or a line or at_opts over 4,096
+    characters -- is not drawn and named once.  *budget* (``{"n": ...}``,
+    one per render) counts the Labels over every figure; past the
+    ``added_text`` limit of *limits* a DashLimitError is raised, the
+    renderer's own bound for a spec dash.ado did not write.
+    """
+    from bokeh.models import Label
+    recs = (graph_opts or {}).get("added_text")
+    if not recs:
+        return
+    if scheme is None:
+        scheme = SchemeParser.resolve_or_fallback("s2color", "text()")
+    limit = (limits or {}).get("added_text") or _DASH_LIMITS["added_text"][0]
+    ref_in = OptionTranslator.size_ref_of(fig)
+    base_pt = scheme.text_option_font_size
+    base_color = scheme.text_option_color
+
+    bad = 0
+    for rec in (recs if isinstance(recs, list) else [None]):
+        lines = rec.get("at_lines") if isinstance(rec, dict) else None
+        ok = (isinstance(rec, dict)
+              and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                      and math.isfinite(float(v))
+                      for v in (rec.get("at_y"), rec.get("at_x")))
+              and rec.get("at_yaxis", 1) in (1, 2)
+              and rec.get("at_xaxis", 1) in (1, 2)
+              and not isinstance(rec.get("at_yaxis", 1), bool)
+              and not isinstance(rec.get("at_xaxis", 1), bool)
+              and isinstance(lines, list) and len(lines) <= 64
+              and all(isinstance(s, str) and len(s) <= 4096 for s in lines)
+              and isinstance(rec.get("at_opts", ""), str)
+              and len(rec.get("at_opts", "")) <= 4096)
+        if not ok:
+            bad += 1
+            continue
+        names = {}
+        for ax, which in (("x", rec.get("at_xaxis", 1)),
+                          ("y", rec.get("at_yaxis", 1))):
+            rname = ax + "2" if which == 2 else None
+            if rname is not None and rname not in (
+                    fig.extra_x_ranges if ax == "x" else fig.extra_y_ranges):
+                names = None
+                break
+            names[ax] = rname
+        if names is None:
+            bad += 1
+            continue
+        pos = {}
+        for ax in ("x", "y"):
+            kind = _dash_axis_date_kind(fig, names[ax] or ax)
+            pos[ax] = _dash_axis_positions([rec["at_" + ax]], kind)[0]
+        if pos["x"] is None or pos["y"] is None:
+            bad += 1
+            continue
+        if budget is not None:
+            budget["n"] = budget.get("n", 0) + 1
+            if budget["n"] > limit:
+                raise DashLimitError(
+                    f"dash: this dashboard draws more than {limit:,} added "
+                    "texts (text() and ttext() points times by() panels).  "
+                    + _dash_limit_hint("added_text", "draw more", start=True)
+                    + ".")
+        o = _dash_added_text_opts(rec.get("at_opts", ""), seen, key, scheme,
+                                  ref_in, base_pt, base_color)
+        boxed = o["box"] if o["box"] is not None else scheme.text_option_box
+        pad = o["padding"]
+        if pad is None:
+            pad = _dash_added_text_opts(
+                f"margin({scheme.text_option_margin})", None, "", scheme,
+                ref_in)["padding"] or 0
+        kw = {}
+        if names["x"]:
+            kw["x_range_name"] = names["x"]
+        if names["y"]:
+            kw["y_range_name"] = names["y"]
+        # C0 controls and DEL are not drawn (A34): a char(30) a line holds
+        # is its own, never the copies' separator.
+        fig.add_layout(Label(
+            x=pos["x"], y=pos["y"], x_units="data", y_units="data",
+            text="\n".join(re.sub(r"[\x00-\x1f\x7f]", "", s)
+                           for s in lines),
+            anchor=o["anchor"] or _DASH_ADDED_TEXT_PLACE.get(
+                scheme.text_option_placement, "center"),
+            angle=o["angle"] or 0.0,
+            text_align=o["align"] or scheme.text_option_justification,
+            text_font_size=o["px"] or base_pt,
+            text_color=o["color"] or base_color,
+            background_fill_color=(o["fill"] or scheme.text_option_fill_color)
+            if boxed else None,
+            border_line_color=(o["line"] or scheme.text_option_line_color)
+            if boxed else None,
+            border_line_width=(o["lwidth"] if o["lwidth"] is not None
+                               else scheme.text_option_line_width),
+            padding=pad, tags=["dash_added_text"], **kw), "center")
+    if bad:
+        _dash_warn_once(
+            ("added_text", key, bad),
+            f"dash: graph '{_dash_display(str(key))}': {bad} added_text "
+            "entr" + ("y was" if bad == 1 else "ies were") + " not drawn "
+            "(a hand-written added_text entry, or one on an axis the graph "
+            "does not draw).")
 
 
 def _dash_by_panel_label(fig, label, graph_opts, scheme=None, seen=None,
@@ -43490,6 +43755,13 @@ class DashRenderer:
         # note(), caption(), subtitle(), through the helper the generated
         # app runs as well, at the scheme's text-box sizes and colours.
         _dash_text_annotations(fig, graph_opts, _seen, _gkey, self.scheme)
+        # text() and ttext() (WP-30 P1.10): data-unit Labels, after the
+        # reference lines and the text boxes in both modes, counted over
+        # the render against the added_text limit.
+        _dash_added_text(fig, graph_opts, self.scheme, _seen, _gkey,
+                         self.__dict__.setdefault("_dash_at_budget",
+                                                  {"n": 0}),
+                         getattr(self, "limits", None))
 
         # xlabel()/ylabel(), xtick()/ytick(): Stata's full grammar, through
         # the helper the generated app runs as well.  Its own parser read a
@@ -46305,6 +46577,8 @@ class ServerAppBuilder:
                       "_DASH_LEGEND_SUBOPTS", "_DASH_LEGEND_LABEL_RE",
                       "_DASH_ORDER_WORD_RE", "_DASH_ORDER_BLANK_RE",
                       "_DASH_TEXTBOX_HONOURED",
+                      "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
+                      "_DASH_ADDED_TEXT_HONOURED",
                       "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
                       "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",
                       "_DASH_AXLABEL_SUBOPT_TABLE",
@@ -46885,6 +47159,7 @@ class ServerAppBuilder:
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
                          "_dash_text_annotations", "_dash_scale_spec",
+                         "_dash_added_text", "_dash_added_text_opts",
                          "_dash_apply_scale_ranges",
                          # the copied _dash_route_axis_titles reads the
                          # axis word as twoway does (WP-29 P0.5)
@@ -48598,6 +48873,8 @@ class ServerAppBuilder:
             "    # Sub-option reports already made this render, so a by()",
             "    # panel does not repeat its graph's.",
             "    _reported_subopts = set()",
+            "    # text() and ttext() Labels drawn this render (WP-30 P1.10).",
+            "    _at_budget = {'n': 0}",
             "",
             "    def _dash_draw_layer(fig, g_df, plot, pi, gname, _ln, _shared, _fallback,",
             "                         sidx=None, cv_domain=None):",
@@ -48935,6 +49212,10 @@ class ServerAppBuilder:
             "        _dash_text_annotations(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
             "        # xline()/yline(): the helper the saved renderer runs.",
             "        _dash_reference_lines(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
+            "        # text() and ttext(): the helper the saved renderer runs, last",
+            "        # of the three in both modes (WP-30 P1.10).",
+            "        _dash_added_text(fig, go, _DASH_SCHEME, _reported_subopts, gname,",
+            "                         _at_budget, _dash_lim)",
             "        # xlabel()/ylabel()/xtick()/ytick(): Stata's full grammar,",
             "        # through the helper the saved renderer runs.  A 14-line",
             "        # parser here read a bare numlist and angle() and nothing",

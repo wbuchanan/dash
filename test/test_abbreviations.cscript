@@ -388,6 +388,11 @@ def opt_cmd(abb, name):
         return "bar mpg weight, " + tok + " name(zqab)"
     return "scatter mpg weight, " + tok + " name(zqab)"
 
+# WP-30 P1.10: text() is written as added_text records, counted under the
+# string key added_text_n; the spec holds no text key.
+def spec_key(name):
+    return "" if name == "name" else {"text": "added_text_n"}.get(name, name)
+
 CASES = []
 def add(grp, ident, cmd, keys="", ptype="", optname="", mode="ok"):
     CASES.append({"g": grp, "i": ident, "c": cmd, "k": keys,
@@ -397,7 +402,7 @@ def add(grp, ident, cmd, keys="", ptype="", optname="", mode="ok"):
 for name in sorted(OPTS):
     mn = OPTS[name]["min_abbrev"]
     add("A1", name + " [" + mn + "]", opt_cmd(mn, name),
-        keys=("" if name == "name" else name), optname=name)
+        keys=spec_key(name), optname=name)
 
 # ---- A2: the whole prefix ladder --------------------------------------
 for name in sorted(OPTS):
@@ -407,7 +412,7 @@ for name in sorted(OPTS):
     for L in range(len(mn) + 1, len(name) + 1):
         pre = name[:L]
         add("A2", name + " [" + pre + "]", opt_cmd(pre, name),
-            keys=("" if name == "name" else name), optname=name)
+            keys=spec_key(name), optname=name)
 
 # ---- A3: the mis-mappings, by name ------------------------------------
 MISMAP = []
@@ -418,7 +423,7 @@ for row in D["dash_mismaps"]:
     MISMAP.append((ab, m.group(1), m.group(2)))
 for ab, wrong, right in MISMAP:
     add("A3", ab + " -> " + right + " (not " + wrong + ")",
-        opt_cmd(ab, right), keys=right, optname=right)
+        opt_cmd(ab, right), keys=spec_key(right), optname=right)
 
 # ---- A4: everything dash.sthlp documents ------------------------------
 with open(HELP, encoding="utf-8", errors="replace") as fh:
@@ -502,7 +507,7 @@ for spelling, full in DOC:
     # (WP-30 P1.6): the spec holds xlabel() for tlabel(), and so on.
     k = {"tlabel": "xlabel", "ttick": "xtick", "tmlabel": "xmlabel",
          "tmtick": "xmtick", "ttitle": "xtitle", "tscale": "xscale",
-         "tline": "xline"}.get(k, k)
+         "tline": "xline", "text": "added_text_n"}.get(k, k)
     if full in ("colorlevels", "colorvarminmax"):
         k = " ".join(sorted([full, "colorvar"]))
     add("A4", "dash.sthlp documents " + spelling + "() for " + full + "()",
@@ -510,7 +515,8 @@ for spelling, full in DOC:
         optname=spelling + "->" + full)
 # The documented names are candidates too: mlabangle, mlabformat and hover
 # are in neither the fixture nor the pinned lists above.
-CAND = sorted(set(CAND) | {f for _, f in DOC if f != "name"})
+CAND = sorted(set(CAND) | {f for _, f in DOC if f != "name"} |
+              {"added_text_n"})
 
 # ---- A5/A6: plot types -------------------------------------------------
 for name in sorted(PTS):
@@ -547,12 +553,12 @@ for ab in sorted(RES):
     if len(cand) > 1 and tgt:
         add("A7", ab + "() is legal for " + str(len(cand)) +
             " twoway options; twoway picks " + tgt,
-            opt_cmd(ab, tgt), keys=tgt, optname=tgt)
+            opt_cmd(ab, tgt), keys=spec_key(tgt), optname=tgt)
 
 # ---- R1: every full option name ---------------------------------------
 for name in DASH_PLOT_KEYS + DASH_GRAPH_KEYS:
     add("R1", name + "()", opt_cmd(name, name),
-        keys=("" if name == "name" else name), optname=name)
+        keys=spec_key(name), optname=name)
 
 # recastas() and type() are recast()'s synonyms (WP-30 P1.8b): each
 # spelling twoway takes lands on recast (test_twoway_option_parity.cscript
@@ -569,7 +575,7 @@ for ab in sorted(MATA_OPT_ALIAS):
     mismapped = bool(sr) and sr != tgt
     if tgt.startswith(ab) and not mismapped:
         add("R2", ab + "() -> " + tgt + "()", opt_cmd(ab, tgt),
-            keys=("" if tgt == "name" else tgt), optname=tgt)
+            keys=spec_key(tgt), optname=tgt)
     else:
         allowed = tgt if not sr else (tgt + " " + sr)
         if ab in D["dash_abbrev_unresolved"]:

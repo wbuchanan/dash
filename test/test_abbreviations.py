@@ -622,7 +622,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     assert len(with_syntax) >= 6
     # 16 -> 17: WP-30 P1.24's _dash_mlabv_parse declares MLABVposition(name),
     # twoway's own reading of mlabvposition().
-    assert len(with_syntax) == 17, with_syntax
+    # 17 -> 18: WP-30 P1.10's _dash_at_opts reads a text() copy's
+    # sub-options with twoway's own syntax statements.
+    assert len(with_syntax) == 18, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax

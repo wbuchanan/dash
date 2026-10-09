@@ -461,6 +461,7 @@ program define _dash_require_mata
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
+        _dash_at_parse _dash_at_copy _dash_at_place _dash_at_orient _dash_at_canon _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
@@ -1027,7 +1028,6 @@ program define _dash_parse_graph_opts, sclass
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
-    if `: length local text' local _dash_pending `"`_dash_pending' text"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
@@ -1371,7 +1371,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
-    if `: length local text' local _dash_pending `"`_dash_pending' text"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
@@ -4042,7 +4041,8 @@ program define _dash_limit_table
         by_groups=100,1000 ///
         tabs=50,500 ///
         filters=20,200 ///
-        reflines=10000,100000
+        reflines=10000,100000 ///
+        added_text=1000,100000
     c_local _dash_limit_rows "`rows'"
 end
 
@@ -6691,6 +6691,8 @@ program define _dash_plot
     local _g_ys ""
     local _g_xs ""
     local _tx_list ""
+    // The by() panels drawn, for the added_text count (WP-30 P1.10).
+    local _at_panels 1
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -7203,6 +7205,7 @@ program define _dash_plot
         local _by_copt ""
         if `: length local _by_chk_s' local _by_copt "check(`_by_chk_s') rules(`_by_rules')"
         _dash_by_panels `_by_vars', panel(`_by_base_s') `_by_mopt' `_by_copt'
+        local _at_panels = max(r(kept), 1)
         if r(n) == 0 {
             display as error "nothing to graph"
             exit 198
@@ -7325,6 +7328,9 @@ program define _dash_plot
           scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
+        // text() is written as added_text records below (WP-30 P1.10),
+        // never as its raw value.
+        if "`gk'" == "text" continue
         local gv : copy local g_`gk'
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv
@@ -7332,6 +7338,24 @@ program define _dash_plot
             local gopts_json `"`gopts_json'"`gk'":"`_gjv'""'
             local gfirst = 0
         }
+    }
+    // text() (WP-30 P1.10): each point a record, read by value and
+    // refused as twoway refuses it (_dash_added_text); the count of texts
+    // times by() panels first, so _dash_json_first_num finds dash's own
+    // key, then the records.  Both are appended in Mata, never expanded.
+    local _at_cnt 0
+    local _at_all ""
+    if `: length local g_text' {
+        _dash_added_text text "`_g_ys'" "`_g_xs'" `"`macval(g_text)'"'
+        local _at_all `"`_at_json'"'
+        local _at_cnt = `_at_total'
+    }
+    if `_at_cnt' > 0 {
+        _dash_limit, name(by_groups)
+        local _at_cnt = `_at_cnt' * min(`_at_panels', r(value))
+        _dash_added_text_cap `_at_cnt' `"`macval(g_name)'"'
+        mata: st_local("gopts_json", st_local("gopts_json") + (`gfirst' ? "" : ",") + char(34) + "added_text_n" + char(34) + ":" + char(34) + "`_at_cnt'" + char(34) + "," + char(34) + "added_text" + char(34) + ":[" + st_local("_at_all") + "]")
+        local gfirst = 0
     }
     local gopts_json `"`gopts_json'}"'
 
@@ -7711,6 +7735,166 @@ program define _dash_reflines_cap
     _dash_count_fmt _ceil_s `ceil'
     display as error "dash: this dashboard asks for up to `_n_s' reference lines (positions times by() panels), more than the `_lim_s' one dashboard draws."
     display as error "      Draw fewer lines, or set global dash_max_reflines to a higher value (at most `_ceil_s')."
+    exit 134
+end
+
+
+// ----------------------------------------------------------------
+// _dash_at_opts "<ys>" "<xs>" <state> `"<options>"'  -- one text() or
+// ttext() copy's sub-options, read as twoway reads them (WP-30 P1.10)
+//
+// twoway's _parse_log_1textbox (twowaygraph_g.class) reads AXes()
+// YAXis() XAXis() TSTYle() first and refuses an axis pair no plot region
+// has -- even for a copy with no point -- then, for a copy with a point,
+// hands the rest to the textbox chain (_fr_sztextbox_parse_and_log,
+// _fr_textbox_parse_and_log, _fr_tbstyle_parse_and_log), each level
+// passing its unknown words on and the last refusing them: one syntax
+// statement holding every level's options, with no catch-all, accepts and
+// refuses what the chain does.  <ys> and <xs> are the axes the graph's
+// layers use (dash's own digits); <state> is _dash_at_parse's for the
+// copy (0 no point, 1 valid, 2 its first point invalid: stop after the
+// axis pair, 3 a later one).  The options are read by value
+// (_dash_text_args) and reach syntax only through st_local("0"), never
+// a command line.  Returns by c_local only digits, option names and
+// _json_escape() output: _ao_y, _ao_x (the axis pair), _ao_canon (the
+// drawn sub-options, _dash_at_canon), _ao_noted (the names given that
+// dash does not draw).  An unknown placement() or orientation() is noted
+// here in twoway's words, so the name never crosses a program boundary.
+// ----------------------------------------------------------------
+program define _dash_at_opts
+    version 19
+    mata: _dash_text_args(3, 0, 0)
+    local _ys `_dash_a1'
+    local _xs `_dash_a2'
+    local _st `_dash_a3'
+    mata: st_local("0", ", " + st_local("_dash_txt"))
+    syntax [, AXes(string) YAXis(integer 1) XAXis(integer 1) TSTYle(string) *]
+    local _ay `yaxis'
+    local _ax `xaxis'
+    if `: length local axes' {
+        mata: st_local("_aw", strofreal(cols(tokens(st_local("axes")))))
+        if `_aw' != 2 {
+            mata: _dash_say("err", "invalid axes(", st_local("axes"), ")")
+            exit 198
+        }
+        mata: st_local("_ay", tokens(st_local("axes"))[1]); st_local("_ax", tokens(st_local("axes"))[2])
+        mata: st_local("_ay", st_local("_ay") == "." ? "1" : st_local("_ay")); st_local("_ax", st_local("_ax") == "." ? "1" : st_local("_ax"))
+    }
+    mata: st_local("_okp", strofreal(anyof(tokens(st_local("_ys")), st_local("_ay")) & anyof(tokens(st_local("_xs")), st_local("_ax"))))
+    if !`_okp' {
+        mata: _dash_say("err", "text() option invalid, specified axis pair (", st_local("_ay") + " " + st_local("_ax"), ") not in graph")
+        exit 198
+    }
+    c_local _ao_y `_ay'
+    c_local _ao_x `_ax'
+    c_local _ao_canon ""
+    c_local _ao_noted ""
+    if inlist(`_st', 0, 2) exit
+    mata: st_local("0", ", " + st_local("options"))
+    syntax [, WIDTH(string) HEIGHT(string) NOASTextbox NOBEXpand ///
+        ASTextbox BEXpand ORIENTation(string) DRAWVIEW(string) ///
+        XOFFSET(real -99999) YOFFSET(real -99999) ASCIRCLE ANGLE(string) ///
+        Size(string) Color(string) Justification(string) ///
+        Alignment(string) Margin(string) LINEGAP(string) NOBox Box ///
+        BMargin(string) PLACEment(string) BFColor(string) FColor(string) ///
+        BColor(string) BLSTyle(string) BLWidth(string) BLColor(string) ///
+        BLPattern(string) BLAlign(string) LSTyle(string) LWidth(string) ///
+        LColor(string) LPattern(string) LAlign(string)]
+    if `: length local placement' {
+        mata: st_local("_pl", _dash_at_place(st_local("placement")))
+        if "`_pl'" == "" {
+            mata: _dash_note("named style ", st_local("placement"), " not found in class compass2dir, default attributes used")
+        }
+    }
+    if `: length local orientation' {
+        mata: st_local("_or", _dash_at_orient(st_local("orientation")))
+        if "`_or'" == "" {
+            mata: _dash_note("named style ", st_local("orientation"), " not found in class tb_orientstyle, default attributes used")
+        }
+    }
+    local _nt ""
+    foreach _n in width height astextbox noastextbox bexpand nobexpand ///
+        drawview ascircle tstyle angle alignment linegap bmargin lpattern ///
+        lstyle lalign blpattern blstyle blalign {
+        if `: length local `_n'' local _nt `_nt' `_n'
+    }
+    if `xoffset' != -99999 local _nt `_nt' xoffset
+    if `yoffset' != -99999 local _nt `_nt' yoffset
+    mata: st_local("_cn", _dash_at_canon())
+    c_local _ao_canon `"`_cn'"'
+    c_local _ao_noted `_nt'
+end
+
+// ----------------------------------------------------------------
+// _dash_added_text <kind> "<ys>" "<xs>" `"<copies>"'  -- a graph's text()
+// or ttext() copies as added_text records (WP-30 P1.10)
+//
+// <kind> is text or ttext; <ys> and <xs> the axes the graph's layers use;
+// <copies> the option's value, its copies joined by char(30)
+// (_dash_rep_merge), read by value (_dash_text_args).  Mata reads every
+// copy's points and lines (_dash_at_parse); each copy's sub-options are
+// read as twoway reads them (_dash_at_opts), and the command is refused
+// r(198) in twoway's words on a malformed point, a missing axis pair or a
+// sub-option twoway does not take.  The sub-options dash does not draw are
+// named once in a note.  Returns by c_local _at_json, the records joined
+// by commas (_dash_at_json; JSON-escaped, safe inside compound quotes),
+// and _at_total, their number.
+// ----------------------------------------------------------------
+program define _dash_added_text
+    version 19
+    mata: _dash_text_args(3, 0, 0)
+    local _kind `_dash_a1'
+    local _ys `_dash_a2'
+    local _xs `_dash_a3'
+    mata: st_local("_at_rc", strofreal(_dash_at_parse(st_local("_dash_txt"), st_local("_kind") == "ttext")))
+    local _noted ""
+    forvalues k = 1/`_at_k' {
+        mata: _dash_at_copy(`k')
+        _dash_at_opts "`_ys'" "`_xs'" `_at_s' `"`macval(_at_o)'"'
+        if inlist(`_at_s', 2, 3) {
+            mata: _dash_say("err", "", st_local("_at_e"), "")
+            exit 198
+        }
+        local _at_ya`k' `_ao_y'
+        local _at_xa`k' `_ao_x'
+        local _at_cn`k' `"`_ao_canon'"'
+        local _noted : list _noted | _ao_noted
+    }
+    if "`_noted'" != "" {
+        local _nl ""
+        foreach _n of local _noted {
+            local _nl "`_nl' `_n'()"
+        }
+        mata: _dash_note("dash: `_kind'() draws no", st_local("_nl"), "; see help dash##added_text")
+    }
+    mata: _dash_at_records(st_local("_kind"))
+    c_local _at_json `"`_at_json'"'
+    c_local _at_total `_at_n'
+end
+
+// ----------------------------------------------------------------
+// _dash_added_text_cap <n> ["<graph>"]  -- refuse r(134) a graph, or with
+// no name a dashboard, whose added texts (text() and ttext() points times
+// by() panels) pass the added_text limit (WP-30 P1.10, A28)
+// ----------------------------------------------------------------
+program define _dash_added_text_cap
+    version 19
+    mata: _dash_text_args(1, 0, 0)
+    local n `_dash_a1'
+    _dash_limit, name(added_text)
+    local lim = r(value)
+    local ceil = r(ceiling)
+    if `n' <= `lim' exit
+    _dash_count_fmt _n_s `n'
+    _dash_count_fmt _lim_s `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    if `: length local _dash_txt' {
+        mata: _dash_say("err", "dash: graph '", st_local("_dash_txt"), "' draws `_n_s' added texts (text() and ttext() points times by() panels), more than the `_lim_s' dash draws.")
+    }
+    else {
+        display as error "dash: this dashboard draws `_n_s' added texts (text() and ttext() points times by() panels), more than the `_lim_s' dash draws."
+    }
+    display as error "      Set global dash_max_added_text to draw more (at most `_ceil_s')."
     exit 134
 end
 
@@ -9694,6 +9878,7 @@ program define _dash_prepare_spec, rclass
     // The time-series table, one for the dashboard (WP-30 P1.7).
     mata: _dash_tsop_reset()
     local _rl_sum 0
+    local _at_sum 0
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
@@ -9793,6 +9978,10 @@ program define _dash_prepare_spec, rclass
             mata: st_local("_rl_json", st_global("dash_json_" + st_local("gname")))
             _dash_reflines_of `"`macval(_rl_json)'"'
             local _rl_sum = `_rl_sum' + r(n)
+            // Added text (WP-30 P1.10): this graph's texts times panels,
+            // as registered, summed for _dash_added_text_cap below.
+            mata: st_local("_atn", strofreal(_dash_json_first_num(st_local("_rl_json"), "added_text_n")))
+            if `_atn' < . local _at_sum = `_at_sum' + `_atn'
             local _rl_json ""
             // The t-options' unit (WP-30 P1.6): read at registration; a
             // date format of the axis variable changed since is noted
@@ -9917,6 +10106,8 @@ program define _dash_prepare_spec, rclass
     // Reference lines: positions times by() panels over every graph
     // (WP-30 P1.21a), refused before any export.
     _dash_reflines_cap `_rl_sum'
+    // Added text over every graph (WP-30 P1.10).
+    _dash_added_text_cap `_at_sum'
 
     // ---- also include filter variables in the serialization ----
     // Filter variables (e.g. foreign from filter(foreign, type(dropdown)))

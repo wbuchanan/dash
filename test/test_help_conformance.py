@@ -537,8 +537,10 @@ class TestTheParsersFoundSomething:
         # 166 -> 173: P1.6's time-axis rows name the seven t-options
         # (tmlabel() and tmtick() in the Unsupported entry too).
         # 173 -> 178: P1.6's tlabel2() .. ttitle2() rows.
-        assert len(found) == 178, (
-            f"{len(found)} options parsed out of dash.sthlp, 178 measured "
+        # 178 -> 177: P1.10 text() drawn, its Unsupported entry gone (the
+        # Added text paragraph is prose under Plot types).
+        assert len(found) == 177, (
+            f"{len(found)} options parsed out of dash.sthlp, 177 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -627,7 +629,8 @@ class TestTheParsersFoundSomething:
         # 45 -> 44: P1.8b recast() honoured
         # 44 -> 42: P1.9a horizontal drawn, vertical silent
         # 42 -> 44: P1.6 tmlabel() and tmtick() stored and named
-        assert len(_ignored_options()) == 44
+        # 44 -> 43: P1.10 text() drawn
+        assert len(_ignored_options()) == 43
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -644,7 +647,8 @@ class TestTheParsersFoundSomething:
         # "Bar labels and positions"
         # 42 -> 44: P1.6 names tmlabel() and tmtick() in "Minor ticks and
         # minor labels"
-        assert len(_unsupported_section()) == 44
+        # 44 -> 43: P1.10 text() drawn, its entry gone
+        assert len(_unsupported_section()) == 43
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -699,8 +703,9 @@ class TestTheParsersFoundSomething:
         # 396 -> 402: P1.15c's six by() rows (iyaxes ixaxes, noedgelabel,
         # noytitles noxtitles, legend(), ilegends, clegend(on)).
         # WP-30 P1.28b: 402 -> 403, the toolbar's Save as SVG row.
-        assert len(defs) == 403, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 403 "
+        # 403 -> 404: P1.10's Added text paragraph under Plot types.
+        assert len(defs) == 404, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 404 "
             f"measured 09oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -1054,4 +1059,6 @@ class TestInternalLinksResolve:
         # 92 -> 93 links: P1.24's mlabt:extstyle() row links Style lists.
         # 93 -> 95 links: P1.31a's maxsessions() row and Server Mode's
         # flag list link Resource limits.
-        assert len(refs) == 95 and len(set(refs)) == 34
+        # 95 -> 97 links, 34 -> 35 targets: P1.10's Added text paragraph
+        # links Resource limits and, for the first time, Graph text.
+        assert len(refs) == 97 and len(set(refs)) == 35

@@ -39,6 +39,7 @@ input                                  model.property                    rendere
 title()                                Title.text                        canvas text
 subtitle() note() caption()            Title.text (Label.text for        canvas text
                                        economist's note)
+text()'s lines                         Label.text (data units)           canvas text
 xtitle() ytitle() ytitle2(), and the   Axis.axis_label                   canvas text
 default: the variable label
 xlabel(# "text")                       Axis.major_label_overrides, and   canvas text
@@ -315,7 +316,12 @@ def hostile_inputs(payload):
             note=textbox("gnote"), caption=textbox("gcap"),
             hover="make price",
             xlabel='2000 "%s" 3000' % quoted("tick1"),
-            legend='label(2 "%s")' % quoted("leglab")),
+            legend='label(2 "%s")' % quoted("leglab"),
+            # WP-30 P1.10: a text() record, as dash.ado writes it.
+            added_text=[{"at_kind": "text", "at_y": 30, "at_x": 3000,
+                         "at_yaxis": 1, "at_xaxis": 1,
+                         "at_lines": [quoted("atext")], "at_opts": ""}],
+            added_text_n="1"),
         graph("g2", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {}},
@@ -623,6 +629,8 @@ SINKS = (
     Sink("graph_subtitle", "gsub", ("Title",), "text", "text"),
     Sink("graph_note", "gnote", ("Title", "Label"), "text", "text"),
     Sink("graph_caption", "gcap", ("Title",), "text", "text"),
+    # WP-30 P1.10: text()'s lines, a data-unit Label.
+    Sink("added_text", "atext", ("Label",), "text", "text"),
     Sink("xtitle", "xtitle", ("LinearAxis",), "axis_label", "text"),
     Sink("ytitle", "ytitle", ("LinearAxis",), "axis_label", "text"),
     Sink("ytitle2", "ytitle2", ("LinearAxis",), "axis_label", "text"),

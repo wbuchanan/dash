@@ -1118,6 +1118,8 @@ FUNCTIONS = {
  # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
  '_dash_build_hover.<locals>._role_prop': 'test/test_horizontal_moves.py::TestTheTooltipFollowsTheTurn::test_a_turned_density_names_its_rows_as_upright',
  # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
+ '_dash_added_text': 'test/test_added_text.py::TestAgainstTwoway::test_probe',
+ '_dash_added_text_opts': 'test/test_added_text.py::TestTheOptions::test_each_drawn_sub_option',
  # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
 }
 

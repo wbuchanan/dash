@@ -397,7 +397,7 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // ================================================================
 // HC8-02 -- every option on the list: accepted, and named
 // ================================================================
-// Plot level, comma mode: the 39 names of _dash_parse_plot_opts' list
+// Plot level, comma mode: the 38 names of _dash_parse_plot_opts' list
 // (41 -> 39: WP-30 P1.9a draws horizontal and takes vertical silently,
 // and refuses both on a scatter, as twoway does; the HZ cases of
 // test_option_validation.cscript check them).
@@ -415,7 +415,10 @@ _hc_done "HC8-01" "the note is the help's, word for word"
 // four fitarea options among them, named on scatter: _dash_fold_typed takes
 // them off only on the ci types).
 local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b1title(b) b2title(b) blabel(total) bmlinestyle(p3) ciopts(lcolor(red)) cmissing(n) colorlist(red blue) coloruseplegend connect(l) dlstyle(p3) dstyle(p3) filter(foreign) fitopts(lcolor(red)) fxsize(50) fysize(50) l1title(l) l2title(l) link(g9) lineopts(lcolor(red)) mlabtextstyle(heading) mlabvposition(pos) mlabwidth(thick) mlpattern(dash) play(x) r1title(r) r2title(r) scale(1.5) sort subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
-local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmlinestyle ciopts colorlist coloruseplegend dlstyle dstyle filter fitopts fxsize fysize l1title l2title link lineopts mlabwidth mlpattern play r1title r2title scale subtitle2 t1title t2title text title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+// Flipped (WP-30 P1.10): text() named in the note was wrong, because dash
+// draws it as twoway does (added_text_truth.json); it is given and not
+// named, here and after the comma (39 -> 38 and 23 -> 22).
+local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmlinestyle ciopts colorlist coloruseplegend dlstyle dstyle filter fitopts fxsize fysize l1title l2title link lineopts mlabwidth mlpattern play r1title r2title scale subtitle2 t1title t2title title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -423,7 +426,7 @@ local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmline
 // Flipped (WP-30 P1.8a): connect(), cmissing() and sort named in the note
 // was wrong, because a scatter given connect() is drawn as twoway's
 // connected plot, its line joined in x order under sort.
-local p_honoured "mlabvposition mlabtextstyle cmissing connect sort"
+local p_honoured "mlabvposition mlabtextstyle cmissing connect sort text"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -450,9 +453,9 @@ foreach nm of local p_honoured {
     }
 }
 _hc_expect "HC8-02" "(`nnamed' == 0)" "`nnamed' honoured plot-level option(s) named"
-// Graph level, after the paren-mode comma: the 23 of _dash_parse_graph_opts.
+// Graph level, after the paren-mode comma: the 22 of _dash_parse_graph_opts.
 local g_opts `"b1title(b) b2title(b) filter(foreign) fxsize(50) fysize(50) l1title(l) l2title(l) link(g9) play(x) r1title(r) r2title(r) scale(1.5) subtitle2(s) t1title(t) t2title(t) text(20 3000 "hi") title2(t) xmlabel(2500 3500) xmtick(2500 3500) xoverhangs ymlabel(15 25) ymtick(15 25) yoverhangs"'
-local g_names "b1title b2title filter fxsize fysize l1title l2title link play r1title r2title scale subtitle2 t1title t2title text title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+local g_names "b1title b2title filter fxsize fysize l1title l2title link play r1title r2title scale subtitle2 t1title t2title title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
 _hc_run "" `"dash (scatter mpg weight), `g_opts' name(hc02g, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -470,7 +473,9 @@ foreach nm of local g_names {
     }
 }
 _hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
-_hc_done "HC8-02" "all 39 named plot-level and 23 graph-level options accepted and named; mlabvposition(), mlabtextstyle(), connect(), cmissing() and sort honoured"
+mata: st_local("gtext", strofreal(strpos(" " + st_local("note") + " ", " text() ") > 0))
+_hc_expect "HC8-02" "(`gtext' == 0)" "graph-level text() is drawn and named in the note"
+_hc_done "HC8-02" "all 38 named plot-level and 22 graph-level options accepted and named; mlabvposition(), mlabtextstyle(), connect(), cmissing(), sort and text() honoured"
 // HC8-02r (WP-30 P1.8b): recast() is drawn, so a scatter given it names
 // nothing; on pci it is still named (twoway draws arrows; P2 residual).
 _hc_run "" `"dash scatter mpg weight, recast(line) name(hc02r, replace)"'

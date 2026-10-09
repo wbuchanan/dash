@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-08T22:01:50Z",
+    "generated_utc": "2026-10-09T06:36:33Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11660,6 +11660,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -12362,6 +12368,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -15395,6 +15407,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -17596,6 +17650,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -18298,6 +18358,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -21331,6 +21397,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -23532,6 +23640,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -24234,6 +24348,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -27267,6 +27387,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -29546,6 +29708,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -30262,6 +30430,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -33282,6 +33456,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -35658,6 +35874,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -36390,6 +36612,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -39423,6 +39651,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -41908,6 +42178,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -42640,6 +42916,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -45673,6 +45955,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -48079,6 +48403,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -48781,6 +49111,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -51814,6 +52150,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -54088,6 +54466,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -54820,6 +55204,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -57853,6 +58243,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -60260,6 +60692,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -60962,6 +61400,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -63995,6 +64439,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -66192,6 +66678,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -66894,6 +67386,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -69930,6 +70428,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -72205,6 +72745,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -72921,6 +73467,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -75941,6 +76493,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -78237,6 +78831,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#606060",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -78939,6 +79539,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -81975,6 +82581,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "gs6",
+        "file": "scheme-s1rcolor.scheme",
+        "line": 46
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -84176,6 +84824,12 @@
       "sztype": "relative",
       "pt_at_4in": 7.0
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -84895,6 +85549,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -87968,6 +88628,48 @@
         "file": "scheme-economist.scheme",
         "line": 80
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -90362,6 +91064,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -91094,6 +91802,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -94127,6 +94841,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -96612,6 +97368,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -97344,6 +98106,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -100377,6 +101145,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -102863,6 +103673,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -103588,6 +104404,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -106608,6 +107430,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -108967,6 +109831,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -109713,6 +110583,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -112730,6 +113606,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -115235,6 +116153,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d2d7e4",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -115937,6 +116861,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -118970,6 +119900,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray8",
+        "file": "scheme-s2color8.scheme",
+        "line": 36
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -121170,6 +122142,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       20.0,
       20.0,
@@ -121872,6 +122850,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -124905,6 +125889,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -127107,6 +128133,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -127809,6 +128841,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -130842,6 +131880,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -133039,6 +134119,12 @@
       "sztype": "relative",
       "pt_at_4in": 3.6
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -133741,6 +134827,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -136774,6 +137866,48 @@
         "file": "scheme-meta.scheme",
         "line": 37
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -138975,6 +140109,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -139677,6 +140817,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -142710,6 +143856,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -144912,6 +146100,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -145614,6 +146808,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -148647,6 +149847,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -150848,6 +152090,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -151550,6 +152798,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -154583,6 +155837,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -156785,6 +158081,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -157487,6 +158789,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -160520,6 +161828,48 @@
         "file": "scheme-s2color.scheme",
         "line": 248
       },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
+      },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
         "directive": "color axisline",
@@ -162723,6 +164073,12 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "text_option_fill": "#d9e6eb",
+    "text_option_placement": "center",
+    "text_option_box": false,
+    "text_option_margin": "zero",
+    "text_option_justification": "center",
+    "text_option_vertical": "middle",
     "p_colors_opacity": [
       null,
       null,
@@ -163425,6 +164781,12 @@
         "intensity p"
       ],
       "symbolsize_default": "symbolsize",
+      "text_option_fill": "color text_option_fill",
+      "text_option_placement": "compass2dir text_option",
+      "text_option_box": "yesno text_option",
+      "text_option_margin": "margin text_option",
+      "text_option_justification": "horizontal text_option",
+      "text_option_vertical": "vertical_text text_option",
       "named_style_directives.color axisline": "color axisline",
       "named_style_directives.color background": "color background",
       "named_style_directives.color ci2_area": "color ci2_area",
@@ -166457,6 +167819,48 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 248
+      },
+      "text_option_fill": {
+        "kind": "transcribed",
+        "directive": "color text_option_fill",
+        "value": "bluishgray",
+        "file": "scheme-s2color.scheme",
+        "line": 334
+      },
+      "text_option_placement": {
+        "kind": "transcribed",
+        "directive": "compass2dir text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1901
+      },
+      "text_option_box": {
+        "kind": "transcribed",
+        "directive": "yesno text_option",
+        "value": "no",
+        "file": "scheme-s2color.scheme",
+        "line": 2099
+      },
+      "text_option_margin": {
+        "kind": "transcribed",
+        "directive": "margin text_option",
+        "value": "zero",
+        "file": "scheme-s2color.scheme",
+        "line": 741
+      },
+      "text_option_justification": {
+        "kind": "transcribed",
+        "directive": "horizontal text_option",
+        "value": "center",
+        "file": "scheme-s2color.scheme",
+        "line": 1784
+      },
+      "text_option_vertical": {
+        "kind": "transcribed",
+        "directive": "vertical_text text_option",
+        "value": "middle",
+        "file": "scheme-s2color.scheme",
+        "line": 1809
       },
       "named_style_directives.color axisline": {
         "kind": "transcribed",
