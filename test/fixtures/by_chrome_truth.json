@@ -1,0 +1,6721 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "87ec2a5da965e2c2440aa9e7fee0a5b8505e637e",
+  "extracted": " 8 Oct 2026 18:13:49",
+  "method": "twoway per probe under the named scheme; the graph object's rows, cols, holes, key holes, style switches, l1/b1/r1 title text, overall legend and colour key draw_view and relative_position, and per panel the draw_view of its y, x and y2 axes, their titles, its legend and colour key; label boxes from the rects written just before each panel label's text in the SVG export",
+  "script": "scripts/extract_by_chrome_truth.do",
+  "stata_version": "19.5"
+ },
+ "label_box": {
+  "box_economist": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": null,
+     "box": {
+      "fill": "#c6d3df",
+      "height": 105.29,
+      "outline": "#c6d3df",
+      "stroke_width": 3.0,
+      "width": 599.86,
+      "x": 171.37,
+      "y": 195.92
+     },
+     "font_size": 51.43,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#c6d3df",
+       "height": 105.29,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 599.86,
+       "x": 171.37,
+       "y": 195.92
+      },
+      {
+       "fill": "none",
+       "height": 102.29,
+       "stroke": "#c6d3df",
+       "stroke_width": 3.0,
+       "width": 596.86,
+       "x": 172.87,
+       "y": 197.42
+      }
+     ],
+     "text_x": 200.98
+    },
+    {
+     "anchor": null,
+     "box": {
+      "fill": "#c6d3df",
+      "height": 105.29,
+      "outline": "#c6d3df",
+      "stroke_width": 3.0,
+      "width": 701.88,
+      "x": 826.68,
+      "y": 195.92
+     },
+     "font_size": 51.43,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#c6d3df",
+       "height": 105.29,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 701.88,
+       "x": 826.68,
+       "y": 195.92
+      },
+      {
+       "fill": "none",
+       "height": 102.29,
+       "stroke": "#c6d3df",
+       "stroke_width": 3.0,
+       "width": 698.88,
+       "x": 828.18,
+       "y": 197.42
+      }
+     ],
+     "text_x": 856.28
+    }
+   ],
+   "rc": 0,
+   "scheme": "economist",
+   "units_per_rs": 15.84
+  },
+  "box_fcolor": {
+   "command": "scatter mpg weight, by(foreign) subtitle(, fcolor(red) lcolor(blue))",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#ff0000",
+      "height": 122.89,
+      "outline": "#0000ff",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#ff0000",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#0000ff",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#ff0000",
+      "height": 122.89,
+      "outline": "#0000ff",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#ff0000",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#0000ff",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "units_per_rs": 28.8
+  },
+  "box_meta": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 114.35,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1687.08,
+      "x": 381.15,
+      "y": 135.39
+     },
+     "font_size": 85.02,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2164.46,
+      "width": 1687.08,
+      "x": 381.15,
+      "y": 249.74
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 114.35,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1687.08,
+       "x": 381.15,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 109.45,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1682.19,
+       "x": 383.6,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1224.63
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 114.35,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1687.08,
+      "x": 2137.41,
+      "y": 135.39
+     },
+     "font_size": 85.02,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2164.46,
+      "width": 1687.08,
+      "x": 2137.41,
+      "y": 249.74
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 114.35,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1687.08,
+       "x": 2137.41,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 109.45,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1682.19,
+       "x": 2139.86,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2980.89
+    }
+   ],
+   "rc": 0,
+   "scheme": "meta",
+   "units_per_rs": 28.8
+  },
+  "box_nobox": {
+   "command": "scatter mpg weight, by(foreign) subtitle(, nobox)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": null,
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": null,
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "units_per_rs": 28.8
+  },
+  "box_s1color": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#e5daa5",
+      "height": 122.89,
+      "outline": "#000000",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#e5daa5",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#000000",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#e5daa5",
+      "height": 122.89,
+      "outline": "#000000",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#e5daa5",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#000000",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1color",
+   "units_per_rs": 28.8
+  },
+  "box_s1manual": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 74.68,
+      "outline": "#000000",
+      "stroke_width": 3.0,
+      "width": 943.32,
+      "x": 237.02,
+      "y": 80.93
+     },
+     "font_size": 57.06,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 74.68,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 943.32,
+       "x": 237.02,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 71.68,
+       "stroke": "#000000",
+       "stroke_width": 3.0,
+       "width": 940.32,
+       "x": 238.52,
+       "y": 82.43
+      }
+     ],
+     "text_x": 708.68
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 74.68,
+      "outline": "#000000",
+      "stroke_width": 3.0,
+      "width": 943.39,
+      "x": 1221.68,
+      "y": 80.93
+     },
+     "font_size": 57.06,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 74.68,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 943.39,
+       "x": 1221.68,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 71.68,
+       "stroke": "#000000",
+       "stroke_width": 3.0,
+       "width": 940.39,
+       "x": 1223.18,
+       "y": 82.43
+      }
+     ],
+     "text_x": 1693.34
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1manual",
+   "units_per_rs": 17.22
+  },
+  "box_s1mono": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 122.89,
+      "outline": "#000000",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#000000",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 122.89,
+      "outline": "#000000",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#000000",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono",
+   "units_per_rs": 28.8
+  },
+  "box_s1rcolor": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#90353b",
+      "height": 122.89,
+      "outline": "#ffffff",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#90353b",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#ffffff",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#90353b",
+      "height": 122.89,
+      "outline": "#ffffff",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#90353b",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#ffffff",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1rcolor",
+   "units_per_rs": 28.8
+  },
+  "box_s2color": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "units_per_rs": 28.8
+  },
+  "box_s2color8": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d2d7e4",
+      "height": 122.89,
+      "outline": "#d2d7e4",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d2d7e4",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d2d7e4",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d2d7e4",
+      "height": 122.89,
+      "outline": "#d2d7e4",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d2d7e4",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d2d7e4",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color8",
+   "units_per_rs": 28.8
+  },
+  "box_s2gcolor": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 73.49,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.0,
+      "width": 945.78,
+      "x": 232.18,
+      "y": 80.93
+     },
+     "font_size": 55.87,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.88,
+      "width": 945.78,
+      "x": 232.18,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 73.49,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 945.78,
+       "x": 232.18,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 70.49,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.0,
+       "width": 942.78,
+       "x": 233.68,
+       "y": 82.43
+      }
+     ],
+     "text_x": 705.1
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 73.49,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.0,
+      "width": 945.78,
+      "x": 1219.3,
+      "y": 80.93
+     },
+     "font_size": 55.87,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.88,
+      "width": 945.78,
+      "x": 1219.3,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 73.49,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 945.78,
+       "x": 1219.3,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 70.49,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.0,
+       "width": 942.78,
+       "x": 1220.8,
+       "y": 82.43
+      }
+     ],
+     "text_x": 1692.15
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2gcolor",
+   "units_per_rs": 17.22
+  },
+  "box_s2gmanual": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 73.49,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.0,
+      "width": 945.78,
+      "x": 232.18,
+      "y": 80.93
+     },
+     "font_size": 55.87,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.88,
+      "width": 945.78,
+      "x": 232.18,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 73.49,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 945.78,
+       "x": 232.18,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 70.49,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.0,
+       "width": 942.78,
+       "x": 233.68,
+       "y": 82.43
+      }
+     ],
+     "text_x": 705.1
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 73.49,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.0,
+      "width": 945.78,
+      "x": 1219.3,
+      "y": 80.93
+     },
+     "font_size": 55.87,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.88,
+      "width": 945.78,
+      "x": 1219.3,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 73.49,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 945.78,
+       "x": 1219.3,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 70.49,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.0,
+       "width": 942.78,
+       "x": 1220.8,
+       "y": 82.43
+      }
+     ],
+     "text_x": 1692.15
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2gmanual",
+   "units_per_rs": 17.22
+  },
+  "box_s2manual": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 73.49,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.0,
+      "width": 945.78,
+      "x": 232.18,
+      "y": 80.93
+     },
+     "font_size": 55.87,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.88,
+      "width": 945.78,
+      "x": 232.18,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 73.49,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 945.78,
+       "x": 232.18,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 70.49,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.0,
+       "width": 942.78,
+       "x": 233.68,
+       "y": 82.43
+      }
+     ],
+     "text_x": 705.1
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 73.49,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.0,
+      "width": 945.78,
+      "x": 1219.3,
+      "y": 80.93
+     },
+     "font_size": 55.87,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.88,
+      "width": 945.78,
+      "x": 1219.3,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 73.49,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 945.78,
+       "x": 1219.3,
+       "y": 80.93
+      },
+      {
+       "fill": "none",
+       "height": 70.49,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.0,
+       "width": 942.78,
+       "x": 1220.8,
+       "y": 82.43
+      }
+     ],
+     "text_x": 1692.15
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2manual",
+   "units_per_rs": 17.22
+  },
+  "box_s2mono": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2118.79,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2mono",
+   "units_per_rs": 28.8
+  },
+  "box_sj": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 79.88,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.18,
+      "width": 1094.27,
+      "x": 252.41,
+      "y": 88.0
+     },
+     "font_size": 60.81,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1377.21,
+      "width": 1094.27,
+      "x": 252.41,
+      "y": 167.88
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 79.88,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1094.27,
+       "x": 252.41,
+       "y": 88.0
+      },
+      {
+       "fill": "none",
+       "height": 76.69,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.18,
+       "width": 1091.09,
+       "x": 254.0,
+       "y": 89.59
+      }
+     ],
+     "text_x": 799.55
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 79.88,
+      "outline": "#d9e6eb",
+      "stroke_width": 3.18,
+      "width": 1094.27,
+      "x": 1391.65,
+      "y": 88.0
+     },
+     "font_size": 60.81,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1377.21,
+      "width": 1094.27,
+      "x": 1391.65,
+      "y": 167.88
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 79.88,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1094.27,
+       "x": 1391.65,
+       "y": 88.0
+      },
+      {
+       "fill": "none",
+       "height": 76.69,
+       "stroke": "#d9e6eb",
+       "stroke_width": 3.18,
+       "width": 1091.09,
+       "x": 1393.24,
+       "y": 89.59
+      }
+     ],
+     "text_x": 1938.79
+    }
+   ],
+   "rc": 0,
+   "scheme": "sj",
+   "units_per_rs": 18.72
+  },
+  "box_stcolor": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.62,
+       "x": 553.33,
+       "y": 152.21
+      }
+     ],
+     "text_x": 1651.56
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.45,
+       "x": 2976.75,
+       "y": 152.21
+      }
+     ],
+     "text_x": 4074.98
+    }
+   ],
+   "rc": 0,
+   "scheme": "stcolor",
+   "units_per_rs": 32.4
+  },
+  "box_stcolor_alt": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 122.85,
+      "outline": "#f0f0f0",
+      "stroke_width": 4.9,
+      "width": 1712.48,
+      "x": 491.81,
+      "y": 135.41
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2118.86,
+      "width": 1712.48,
+      "x": 491.81,
+      "y": 258.26
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 122.85,
+       "stroke": "#f0f0f0",
+       "stroke_width": 4.9,
+       "width": 1712.48,
+       "x": 491.81,
+       "y": 135.41
+      }
+     ],
+     "text_x": 1348.11
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 122.85,
+      "outline": "#f0f0f0",
+      "stroke_width": 4.9,
+      "width": 1712.48,
+      "x": 2405.84,
+      "y": 135.41
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2118.86,
+      "width": 1712.48,
+      "x": 2405.84,
+      "y": 258.26
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 122.85,
+       "stroke": "#f0f0f0",
+       "stroke_width": 4.9,
+       "width": 1712.48,
+       "x": 2405.84,
+       "y": 135.41
+      }
+     ],
+     "text_x": 3262.14
+    }
+   ],
+   "rc": 0,
+   "scheme": "stcolor_alt",
+   "units_per_rs": 28.8
+  },
+  "box_stcolor_meta": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.62,
+       "x": 553.33,
+       "y": 152.21
+      }
+     ],
+     "text_x": 1651.56
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.45,
+       "x": 2976.75,
+       "y": 152.21
+      }
+     ],
+     "text_x": 4074.98
+    }
+   ],
+   "rc": 0,
+   "scheme": "stcolor_meta",
+   "units_per_rs": 32.4
+  },
+  "box_stcolor_mv": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 122.85,
+      "outline": "#f0f0f0",
+      "stroke_width": 4.9,
+      "width": 1712.48,
+      "x": 491.81,
+      "y": 135.41
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2118.86,
+      "width": 1712.48,
+      "x": 491.81,
+      "y": 258.26
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 122.85,
+       "stroke": "#f0f0f0",
+       "stroke_width": 4.9,
+       "width": 1712.48,
+       "x": 491.81,
+       "y": 135.41
+      }
+     ],
+     "text_x": 1348.11
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 122.85,
+      "outline": "#f0f0f0",
+      "stroke_width": 4.9,
+      "width": 1712.48,
+      "x": 2405.84,
+      "y": 135.41
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2118.86,
+      "width": 1712.48,
+      "x": 2405.84,
+      "y": 258.26
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 122.85,
+       "stroke": "#f0f0f0",
+       "stroke_width": 4.9,
+       "width": 1712.48,
+       "x": 2405.84,
+       "y": 135.41
+      }
+     ],
+     "text_x": 3262.14
+    }
+   ],
+   "rc": 0,
+   "scheme": "stcolor_mv",
+   "units_per_rs": 28.8
+  },
+  "box_stcoloralias": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.62,
+       "x": 553.33,
+       "y": 152.21
+      }
+     ],
+     "text_x": 1651.56
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.45,
+       "x": 2976.75,
+       "y": 152.21
+      }
+     ],
+     "text_x": 4074.98
+    }
+   ],
+   "rc": 0,
+   "scheme": "stcoloralias",
+   "units_per_rs": 32.4
+  },
+  "box_stgcolor": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1167.78,
+      "x": 294.19,
+      "y": 80.91
+     },
+     "font_size": 55.89,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.97,
+      "width": 1167.78,
+      "x": 294.19,
+      "y": 154.37
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1167.78,
+       "x": 294.19,
+       "y": 80.91
+      }
+     ],
+     "text_x": 878.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1167.78,
+      "x": 1582.55,
+      "y": 80.91
+     },
+     "font_size": 55.89,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.97,
+      "width": 1167.78,
+      "x": 1582.55,
+      "y": 154.37
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1167.78,
+       "x": 1582.55,
+       "y": 80.91
+      }
+     ],
+     "text_x": 2166.44
+    }
+   ],
+   "rc": 0,
+   "scheme": "stgcolor",
+   "units_per_rs": 17.22
+  },
+  "box_stgcolor_alt": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1023.92,
+      "x": 294.06,
+      "y": 80.96
+     },
+     "font_size": 55.94,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.9,
+      "width": 1023.92,
+      "x": 294.06,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1023.92,
+       "x": 294.06,
+       "y": 80.96
+      }
+     ],
+     "text_x": 806.06
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1023.92,
+      "x": 1438.49,
+      "y": 80.96
+     },
+     "font_size": 55.94,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.9,
+      "width": 1023.92,
+      "x": 1438.49,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1023.92,
+       "x": 1438.49,
+       "y": 80.96
+      }
+     ],
+     "text_x": 1950.49
+    }
+   ],
+   "rc": 0,
+   "scheme": "stgcolor_alt",
+   "units_per_rs": 17.22
+  },
+  "box_stgcolor_meta": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1167.78,
+      "x": 294.19,
+      "y": 80.91
+     },
+     "font_size": 55.89,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.97,
+      "width": 1167.78,
+      "x": 294.19,
+      "y": 154.37
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1167.78,
+       "x": 294.19,
+       "y": 80.91
+      }
+     ],
+     "text_x": 878.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1167.78,
+      "x": 1582.55,
+      "y": 80.91
+     },
+     "font_size": 55.89,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.97,
+      "width": 1167.78,
+      "x": 1582.55,
+      "y": 154.37
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1167.78,
+       "x": 1582.55,
+       "y": 80.91
+      }
+     ],
+     "text_x": 2166.44
+    }
+   ],
+   "rc": 0,
+   "scheme": "stgcolor_meta",
+   "units_per_rs": 17.22
+  },
+  "box_stgcolor_mv": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1023.92,
+      "x": 294.06,
+      "y": 80.96
+     },
+     "font_size": 55.94,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1266.9,
+      "width": 1023.92,
+      "x": 294.06,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1023.92,
+       "x": 294.06,
+       "y": 80.96
+      }
+     ],
+     "text_x": 806.06
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 73.46,
+      "outline": "#f0f0f0",
+      "stroke_width": 3.0,
+      "width": 1023.92,
+      "x": 1438.49,
+      "y": 80.96
+     },
+     "font_size": 55.94,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1266.9,
+      "width": 1023.92,
+      "x": 1438.49,
+      "y": 154.42
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 73.46,
+       "stroke": "#f0f0f0",
+       "stroke_width": 3.0,
+       "width": 1023.92,
+       "x": 1438.49,
+       "y": 80.96
+      }
+     ],
+     "text_x": 1950.49
+    }
+   ],
+   "rc": 0,
+   "scheme": "stgcolor_mv",
+   "units_per_rs": 17.22
+  },
+  "box_stmono1": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#ffffff",
+      "height": 138.38,
+      "outline": "#ffffff",
+      "stroke_width": 5.51,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Domestic",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#ffffff",
+       "height": 138.38,
+       "stroke": "#ffffff",
+       "stroke_width": 5.51,
+       "width": 2196.62,
+       "x": 553.33,
+       "y": 152.21
+      }
+     ],
+     "text_x": 1651.56
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#ffffff",
+      "height": 138.38,
+      "outline": "#ffffff",
+      "stroke_width": 5.51,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Foreign",
+     "plotregion": null,
+     "rects": [
+      {
+       "fill": "#ffffff",
+       "height": 138.38,
+       "stroke": "#ffffff",
+       "stroke_width": 5.51,
+       "width": 2196.45,
+       "x": 2976.75,
+       "y": 152.21
+      }
+     ],
+     "text_x": 4074.98
+    }
+   ],
+   "rc": 0,
+   "scheme": "stmono1",
+   "units_per_rs": 32.4
+  },
+  "box_stmono2": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.62,
+      "x": 553.33,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.62,
+       "x": 553.33,
+       "y": 152.21
+      }
+     ],
+     "text_x": 1651.56
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#f0f0f0",
+      "height": 138.38,
+      "outline": "#f0f0f0",
+      "stroke_width": 5.51,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2196.45,
+      "x": 2976.75,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#f0f0f0",
+       "height": 138.38,
+       "stroke": "#f0f0f0",
+       "stroke_width": 5.51,
+       "width": 2196.45,
+       "x": 2976.75,
+       "y": 152.21
+      }
+     ],
+     "text_x": 4074.98
+    }
+   ],
+   "rc": 0,
+   "scheme": "stmono2",
+   "units_per_rs": 32.4
+  },
+  "box_stsj": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 79.88,
+      "outline": "#d0d0d0",
+      "stroke_width": 3.18,
+      "width": 1082.21,
+      "x": 276.62,
+      "y": 88.0
+     },
+     "font_size": 60.81,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 1377.21,
+      "width": 1082.21,
+      "x": 276.62,
+      "y": 167.88
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 79.88,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1082.21,
+       "x": 276.62,
+       "y": 88.0
+      },
+      {
+       "fill": "none",
+       "height": 76.69,
+       "stroke": "#d0d0d0",
+       "stroke_width": 3.18,
+       "width": 1079.02,
+       "x": 278.22,
+       "y": 89.59
+      }
+     ],
+     "text_x": 817.73
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d0d0d0",
+      "height": 79.88,
+      "outline": "#d0d0d0",
+      "stroke_width": 3.18,
+      "width": 1082.13,
+      "x": 1403.8,
+      "y": 88.0
+     },
+     "font_size": 60.81,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 1377.21,
+      "width": 1082.13,
+      "x": 1403.8,
+      "y": 167.88
+     },
+     "rects": [
+      {
+       "fill": "#d0d0d0",
+       "height": 79.88,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1082.13,
+       "x": 1403.8,
+       "y": 88.0
+      },
+      {
+       "fill": "none",
+       "height": 76.69,
+       "stroke": "#d0d0d0",
+       "stroke_width": 3.18,
+       "width": 1078.94,
+       "x": 1405.39,
+       "y": 89.59
+      }
+     ],
+     "text_x": 1944.82
+    }
+   ],
+   "rc": 0,
+   "scheme": "stsj",
+   "units_per_rs": 18.72
+  },
+  "box_sttrans": {
+   "command": "scatter mpg weight, by(foreign)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 138.38,
+      "outline": "#d9e6eb",
+      "stroke_width": 5.51,
+      "width": 2345.46,
+      "x": 478.91,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2345.46,
+      "x": 478.91,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 138.38,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 2345.46,
+       "x": 478.91,
+       "y": 152.21
+      },
+      {
+       "fill": "none",
+       "height": 132.87,
+       "stroke": "#d9e6eb",
+       "stroke_width": 5.51,
+       "width": 2339.95,
+       "x": 481.67,
+       "y": 154.97
+      }
+     ],
+     "text_x": 1651.56
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 138.38,
+      "outline": "#d9e6eb",
+      "stroke_width": 5.51,
+      "width": 2345.63,
+      "x": 2902.16,
+      "y": 152.21
+     },
+     "font_size": 105.13,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 2383.59,
+      "width": 2345.63,
+      "x": 2902.16,
+      "y": 290.59
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 138.38,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 2345.63,
+       "x": 2902.16,
+       "y": 152.21
+      },
+      {
+       "fill": "none",
+       "height": 132.87,
+       "stroke": "#d9e6eb",
+       "stroke_width": 5.51,
+       "width": 2340.12,
+       "x": 2904.92,
+       "y": 154.97
+      }
+     ],
+     "text_x": 4074.98
+    }
+   ],
+   "rc": 0,
+   "scheme": "sttrans",
+   "units_per_rs": 32.4
+  },
+  "box_total": {
+   "command": "scatter mpg weight, by(foreign, total)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Domestic",
+     "plotregion": {
+      "height": 886.94,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 137.83
+      }
+     ],
+     "text_x": 1230.08
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 135.39
+     },
+     "font_size": 93.56,
+     "label": "Foreign",
+     "plotregion": {
+      "height": 886.94,
+      "width": 1683.5,
+      "x": 2141.0,
+      "y": 258.27
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 2141.0,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 2143.45,
+       "y": 137.83
+      }
+     ],
+     "text_x": 2982.75
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 122.89,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.9,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 1367.23
+     },
+     "font_size": 93.56,
+     "label": "Total",
+     "plotregion": {
+      "height": 886.94,
+      "width": 1683.5,
+      "x": 388.33,
+      "y": 1490.12
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 122.89,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1683.5,
+       "x": 388.33,
+       "y": 1367.23
+      },
+      {
+       "fill": "none",
+       "height": 117.99,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.9,
+       "width": 1678.6,
+       "x": 390.78,
+       "y": 1369.68
+      }
+     ],
+     "text_x": 1230.08
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "units_per_rs": 28.8
+  },
+  "box_two": {
+   "command": "scatter mpg weight, by(foreign rep78)",
+   "panels": [
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.37,
+      "x": 379.29,
+      "y": 135.39
+     },
+     "font_size": 87.99,
+     "label": "Domestic, 1",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.37,
+      "x": 379.29,
+      "y": 250.97
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.37,
+       "x": 379.29,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.76,
+       "x": 381.6,
+       "y": 137.69
+      }
+     ],
+     "text_x": 930.48
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.24,
+      "x": 1550.84,
+      "y": 135.39
+     },
+     "font_size": 87.99,
+     "label": "Domestic, 2",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.24,
+      "x": 1550.84,
+      "y": 250.97
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.24,
+       "x": 1550.84,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.63,
+       "x": 1553.14,
+       "y": 137.69
+      }
+     ],
+     "text_x": 2101.89
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.24,
+      "x": 2722.25,
+      "y": 135.39
+     },
+     "font_size": 87.99,
+     "label": "Domestic, 3",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.24,
+      "x": 2722.25,
+      "y": 250.97
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.24,
+       "x": 2722.25,
+       "y": 135.39
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.63,
+       "x": 2724.56,
+       "y": 137.69
+      }
+     ],
+     "text_x": 3273.31
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.37,
+      "x": 379.29,
+      "y": 860.71
+     },
+     "font_size": 87.99,
+     "label": "Domestic, 4",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.37,
+      "x": 379.29,
+      "y": 976.29
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.37,
+       "x": 379.29,
+       "y": 860.71
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.76,
+       "x": 381.6,
+       "y": 863.01
+      }
+     ],
+     "text_x": 930.48
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.24,
+      "x": 1550.84,
+      "y": 860.71
+     },
+     "font_size": 87.99,
+     "label": "Domestic, 5",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.24,
+      "x": 1550.84,
+      "y": 976.29
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.24,
+       "x": 1550.84,
+       "y": 860.71
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.63,
+       "x": 1553.14,
+       "y": 863.01
+      }
+     ],
+     "text_x": 2101.89
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.24,
+      "x": 2722.25,
+      "y": 860.71
+     },
+     "font_size": 87.99,
+     "label": "Foreign, 3",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.24,
+      "x": 2722.25,
+      "y": 976.29
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.24,
+       "x": 2722.25,
+       "y": 860.71
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.63,
+       "x": 2724.56,
+       "y": 863.01
+      }
+     ],
+     "text_x": 3273.31
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.37,
+      "x": 379.29,
+      "y": 1729.96
+     },
+     "font_size": 87.99,
+     "label": "Foreign, 4",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.37,
+      "x": 379.29,
+      "y": 1845.54
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.37,
+       "x": 379.29,
+       "y": 1729.96
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.76,
+       "x": 381.6,
+       "y": 1732.26
+      }
+     ],
+     "text_x": 930.48
+    },
+    {
+     "anchor": "middle",
+     "box": {
+      "fill": "#d9e6eb",
+      "height": 115.59,
+      "outline": "#d9e6eb",
+      "stroke_width": 4.61,
+      "width": 1102.24,
+      "x": 1550.84,
+      "y": 1729.96
+     },
+     "font_size": 87.99,
+     "label": "Foreign, 5",
+     "plotregion": {
+      "height": 540.56,
+      "width": 1102.24,
+      "x": 1550.84,
+      "y": 1845.54
+     },
+     "rects": [
+      {
+       "fill": "#d9e6eb",
+       "height": 115.59,
+       "stroke": null,
+       "stroke_width": null,
+       "width": 1102.24,
+       "x": 1550.84,
+       "y": 1729.96
+      },
+      {
+       "fill": "none",
+       "height": 110.98,
+       "stroke": "#d9e6eb",
+       "stroke_width": 4.61,
+       "width": 1097.63,
+       "x": 1553.14,
+       "y": 1732.26
+      }
+     ],
+     "text_x": 2101.89
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "units_per_rs": 28.8
+  }
+ },
+ "probes": {
+  "a1": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ix)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": true,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a10": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ind)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": true,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a11": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iyt)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a12": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iyti)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a13": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iytit)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": true,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a2": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iy)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a3": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ixl)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a4": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ixt)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a5": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ixti)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a6": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ixtit)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": true,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a7": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, noixt)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": false,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a8": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, noedge)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": false,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "a9": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, ileg)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": true,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p01": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p02": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p02_ec": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "above"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "economist",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p02_s2": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "below"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "s2color",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p03": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(off))",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p04": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign) legend(off)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p05": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, total legend(at(4) pos(0)))",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": true,
+    "drawn": null,
+    "side": "on"
+   },
+   "legend_hole": 4,
+   "n": 3,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Total",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p06": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, total)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 3,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Total",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p08": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, holes(2))",
+   "holes": [
+    2
+   ],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p09": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, colfirst)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p18": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, iylabels)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p19": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iyaxes noiylabels)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": false,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p20": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iyaxes noiyticks)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": false,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p21": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, iyaxes ixaxes)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": true,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p22": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, iytitles ixtitles iyaxes ixaxes)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": true,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": true
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": true,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": true,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": true,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p23": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, total noedgelabel)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 3,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Total",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": false,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p24": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, total compact)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 3,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Total",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": false,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p25": {
+   "b1title": "",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, noytitles noxtitles)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": false,
+    "outer_yaxes": true,
+    "outer_ytitles": false
+   }
+  },
+  "p26": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, individual)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": true,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p27": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(scatter price weight, yaxis(2)), by(foreign) ytitle(\"Price\", axis(2))",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": false,
+     "y2title": false,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": true,
+     "y2title": false,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p28": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(scatter price weight, yaxis(2)), by(foreign, iytitles iyaxes) ytitle(\"Price\", axis(2))",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": true,
+     "y2title": true,
+     "ytitle": true
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": true,
+     "y2title": true,
+     "ytitle": true
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": true,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p32": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, ilegends)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": true,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": true,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": true,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p33": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, legend(on))",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p34": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign) legend(on)",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": true,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": true,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p40": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, holes(1 5))",
+   "holes": [
+    1,
+    5
+   ],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 3,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p41": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(rep78, colfirst holes(3))",
+   "holes": [
+    3
+   ],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 5,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "1",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "2",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "3",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "4",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p43": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, total ixaxes)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 3,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Total",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": true,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p44": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iyticks)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p46": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(at(3) pos(0)))",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": true,
+    "drawn": null,
+    "side": "on"
+   },
+   "legend_hole": 3,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p47": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 3,
+   "command": "scatter mpg weight, by(foreign rep78, compact)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 8,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic, 1",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Domestic, 2",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Domestic, 3",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Domestic, 4",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Domestic, 5",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign, 3",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign, 4",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign, 5",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 3,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": false,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p48": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, yrescale)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": true,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p49": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, iyaxes noiyaxes)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p50": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, noiyaxes iyaxes)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": true,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "p51": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, by(foreign, style(compact) total)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 3,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": false,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Total",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 2,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": false,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "q06": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, colorvar(price) by(foreign)",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": false,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": false,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "q07": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, colorvar(price) by(foreign, clegend(on))",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": false,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": false,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "q08": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, colorvar(rep78) colordiscrete by(foreign, clegend(on))",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": false,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": false,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "q09": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "below"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "scatter mpg weight, colorvar(price) by(foreign, clegend(on pos(6)))",
+   "holes": [],
+   "l1title": "Mileage (mpg)",
+   "legend": {
+    "at_drawn": false,
+    "drawn": false,
+    "side": "rightof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 1,
+   "panels": [
+    {
+     "clegend": false,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": false,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "r04": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(pos(6))) legend(order(2 1))",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "below"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "r05": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(pos(9)))",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "leftof"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  },
+  "r06": {
+   "b1title": "Weight (lbs.)",
+   "clegend": {
+    "at_drawn": false,
+    "drawn": null,
+    "side": "rightof"
+   },
+   "clegend_hole": 0,
+   "cols": 2,
+   "command": "(scatter mpg weight)(lfit mpg weight), by(foreign, legend(pos(12) ring(0)))",
+   "holes": [],
+   "l1title": "",
+   "legend": {
+    "at_drawn": false,
+    "drawn": true,
+    "side": "above"
+   },
+   "legend_hole": 0,
+   "n": 2,
+   "panel1_keys": 2,
+   "panels": [
+    {
+     "clegend": null,
+     "label": "Domestic",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": true,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    },
+    {
+     "clegend": null,
+     "label": "Foreign",
+     "legend": false,
+     "x": true,
+     "xtitle": false,
+     "y": false,
+     "y2": null,
+     "y2title": null,
+     "ytitle": false
+    }
+   ],
+   "r1title": "",
+   "rc": 0,
+   "rows": 1,
+   "scheme": "stcolor",
+   "style": {
+    "edgelabel": true,
+    "indiv_as_whole": false,
+    "indiv_legends": false,
+    "indiv_xaxes": false,
+    "indiv_xlabels": true,
+    "indiv_xrescale": false,
+    "indiv_xticks": true,
+    "indiv_xtitles": false,
+    "indiv_yaxes": false,
+    "indiv_ylabels": true,
+    "indiv_yrescale": false,
+    "indiv_yticks": true,
+    "indiv_ytitles": false,
+    "outer_xaxes": true,
+    "outer_xtitles": true,
+    "outer_yaxes": true,
+    "outer_ytitles": true
+   }
+  }
+ }
+}

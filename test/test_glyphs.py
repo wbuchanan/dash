@@ -27,6 +27,10 @@ from bokeh.models import ColumnDataSource, GlyphRenderer, HoverTool
 # Fixtures
 # ================================================================
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture
 def auto_df():
     """Small synthetic dataset that mimics Stata's auto.dta."""
@@ -363,8 +367,9 @@ class TestMapSpike:
     def test_spike_lwidth_applied(self, fig, cds, gm):
         """spike lwidth option must set glyph line_width."""
         renderer = gm.map_spike(fig, cds, "mpg", "weight", {"lwidth": "3"})
-        assert renderer.glyph.line_width == 3.0, \
-            f"Expected line_width=3.0, got {renderer.glyph.line_width!r}"
+        # Flipped (WP-30 P1.12b): 3 Stata units x 3.84 px (was 3 px).
+        assert renderer.glyph.line_width == pytest.approx(11.52), \
+            f"Expected line_width=11.52, got {renderer.glyph.line_width!r}"
 
     def test_spike_lpattern_applied(self, fig, cds, gm):
         """spike lpattern option must set glyph line_dash."""
@@ -813,10 +818,14 @@ class TestMapRcapsym:
     """P3-30 through P3-33: rcapsym = rcap + scatter markers."""
 
     def test_rcapsym_returns_five_renderers(self, fig, range_cds, gm):
-        """P3-30: map_rcapsym returns exactly 5 renderers (spine+2 caps+2 dots)."""
+        """P3-30: map_rcapsym returns exactly 3 renderers (spine+2 dots).
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
         assert isinstance(result, list)
-        assert len(result) == 5
+        assert len(result) == 3
 
     def test_rcapsym_spine_is_segment(self, fig, range_cds, gm):
         """P3-31: first renderer (spine) is a Segment glyph."""
@@ -825,18 +834,29 @@ class TestMapRcapsym:
         assert isinstance(result[0].glyph, Segment)
 
     def test_rcapsym_caps_are_segments(self, fig, range_cds, gm):
-        """P3-32: renderers 1 and 2 (horizontal caps) are Segment glyphs."""
-        from bokeh.models.glyphs import Segment
+        """P3-32: renderers 1 and 2 are the end markers; no Segment is drawn
+        but the spine.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
+        from bokeh.models.glyphs import Scatter, Segment
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
-        assert isinstance(result[1].glyph, Segment)
-        assert isinstance(result[2].glyph, Segment)
+        assert isinstance(result[1].glyph, Scatter)
+        assert isinstance(result[2].glyph, Scatter)
+        assert [r for r in fig.renderers
+                if isinstance(r.glyph, Segment)] == [result[0]]
 
     def test_rcapsym_dots_are_scatter(self, fig, range_cds, gm):
-        """P3-33: renderers 3 and 4 (cap markers) are Scatter glyphs."""
+        """P3-33: renderers 1 and 2 (end markers) are Scatter glyphs.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         from bokeh.models.glyphs import Scatter
         result = gm.map_rcapsym(fig, range_cds, "lo", "hi", "xvar", {})
-        assert isinstance(result[3].glyph, Scatter)
-        assert isinstance(result[4].glyph, Scatter)
+        assert isinstance(result[1].glyph, Scatter)
+        assert isinstance(result[2].glyph, Scatter)
 
 
 class TestMapScatteri:
@@ -876,34 +896,44 @@ class TestMapScatteri:
 # ================================================================
 class TestFillOptions:
     def test_map_area_fcolor(self, fig, std_cds):
-        """fcolor option sets fill_color on VArea glyph."""
+        """fcolor() is filled at the area's intensity, inten80: twoway's
+        area fcolor(yellow) is #FFFF33, so red is #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fcolor": "red"})
-        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.fill_color == "#ff3333"
 
     def test_map_area_fintensity(self, fig, std_cds):
-        """fintensity option sets fill_alpha on VArea glyph."""
+        """fintensity() is a colour, never an alpha: navy at 50 is the
+        opaque #8da3b7 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "50"})
-        assert abs(r.glyph.fill_alpha - 0.5) < 0.01
+        assert r.glyph.fill_color == "#8da3b7"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_area_fintensity_inten_keyword(self, fig, std_cds):
-        """fintensity 'inten75' keyword sets fill_alpha to 0.75."""
+        """inten75 is no Stata intensity style (twoway notes inten55 and
+        draws full intensity), so it draws navy at full with one note
+        (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
-        r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "inten75"})
-        assert abs(r.glyph.fill_alpha - 0.75) < 0.01
+        with pytest.warns(UserWarning) as rec:
+            r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "inten75"})
+        assert r.glyph.fill_color == "#1a476f"
+        assert len([w for w in rec
+                    if "fintensity(inten75)" in str(w.message)]) == 1
 
     def test_map_bar_fcolor(self, fig, std_cds):
-        """fcolor option sets fill_color on VBar glyph."""
+        """fcolor() is filled at the bar's intensity: magenta at inten80
+        is #ff33ff (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_bar(fig, std_cds, "y", "x", {"fcolor": "magenta"})
-        assert r.glyph.fill_color == "#ff00ff"
+        assert r.glyph.fill_color == "#ff33ff"
 
     def test_map_bar_fintensity(self, fig, std_cds):
-        """fintensity option sets fill_alpha on VBar glyph."""
+        """fintensity(80) is navy at inten80, #486c8c, opaque (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_bar(fig, std_cds, "y", "x", {"fintensity": "80"})
-        assert abs(r.glyph.fill_alpha - 0.8) < 0.01
+        assert r.glyph.fill_color == "#486c8c"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_histogram_fcolor(self, fig, std_cds):
         """fcolor option sets fill_color on histogram Quad glyph."""
@@ -912,56 +942,61 @@ class TestFillOptions:
         assert r.glyph.fill_color == "#ff0000"
 
     def test_map_histogram_fintensity(self, fig, std_cds):
-        """fintensity option sets fill_alpha on histogram Quad glyph."""
+        """fintensity(40) is the histogram's khaki at 40, #eae7cb, opaque
+        (WP-30 P1.2b; P1.4a: the histogram's own colour, where this was
+        the bar cycle's navy, #a3b5c5)."""
         gm = GlyphMapper()
         r = gm.map_histogram(fig, std_cds, "y", {"fintensity": "40"})
-        assert abs(r.glyph.fill_alpha - 0.4) < 0.01
+        assert r.glyph.fill_color == "#eae7cb"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_rarea_fcolor(self, fig, range_cds):
-        """fcolor option sets fill_color on rarea VArea glyph."""
+        """fcolor() is filled at rarea's intensity: #ff33ff (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "magenta"})
         r = result[0] if isinstance(result, list) else result
-        assert r.glyph.fill_color == "#ff00ff"
+        assert r.glyph.fill_color == "#ff33ff"
 
     def test_map_rarea_fintensity(self, fig, range_cds):
-        """fintensity option sets fill_alpha on rarea VArea glyph."""
+        """fintensity(30) is navy at 30, #bac8d4, opaque by area's rule
+        (WP-30 P1.2b; P1.4a: the 0.5 was dash's own, never twoway's)."""
         gm = GlyphMapper()
         result = gm.map_rarea(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "30"})
         r = result[0] if isinstance(result, list) else result
-        assert abs(r.glyph.fill_alpha - 0.3) < 0.01
+        assert r.glyph.fill_color == "#bac8d4"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_map_rbar_fcolor(self, fig, range_cds):
-        """fcolor option sets fill_color on rbar VBar glyph."""
+        """fcolor() is filled at rbar's intensity: twoway's rbar,
+        color(red) fills #FF3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rbar(fig, range_cds, "lo", "hi", "xvar", {"fcolor": "red"})
         r = result[0] if isinstance(result, list) else result
-        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.fill_color == "#ff3333"
 
     def test_map_rbar_fintensity(self, fig, range_cds):
-        """fintensity option sets fill_alpha on rbar VBar glyph."""
+        """fintensity(60) is navy at 60, #7691a9, opaque (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         result = gm.map_rbar(fig, range_cds, "lo", "hi", "xvar", {"fintensity": "60"})
         r = result[0] if isinstance(result, list) else result
-        assert abs(r.glyph.fill_alpha - 0.6) < 0.01
+        assert r.glyph.fill_color == "#7691a9"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_fintensity_clamped_max(self, fig, std_cds):
-        """fintensity values > 100 are clamped to 1.0.
-
-        Exactly 1.0: "<= 1.0" passed any alpha at all below it -- 150 read
-        modulo 100 as 0.5, say."""
+        """fintensity() above 100 darkens, as twoway draws it: navy at 150
+        is #112f4a, opaque (it was clamped to full) (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "150"})
+        assert r.glyph.fill_color == "#112f4a"
         assert r.glyph.fill_alpha == 1.0
 
     def test_fintensity_clamped_min(self, fig, std_cds):
-        """fintensity values < 0 are clamped to 0.0.
-
-        Exactly 0.0: ">= 0.0" passed any alpha at all above it -- -10 read
-        as its magnitude, 0.1, say."""
+        """fintensity() below 0 is 0, which twoway draws white, opaque (it
+        was an invisible alpha 0) (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         gm = GlyphMapper()
         r = gm.map_area(fig, std_cds, "y", "x", {"fintensity": "-10"})
-        assert r.glyph.fill_alpha == 0.0
+        assert r.glyph.fill_color == "#ffffff"
+        assert r.glyph.fill_alpha == 1.0
 
     def test_fcolor_invalid_ignored(self, fig, std_cds):
         """Invalid fcolor value does not raise; fill_color unchanged."""
@@ -1048,8 +1083,9 @@ class TestMlabelOption:
         label_sets = _get_labelsets(fig)
         assert label_sets, "mlabsize test: no LabelSet found in fig.center"
         ls = label_sets[0]
-        # Size must be a px string, e.g. "14px"
-        assert ls.text_font_size.endswith("px"), f"Expected px size, got {ls.text_font_size}"
+        # WP-30 P1.12a: twoway's mlabsize(large) is 14 pt, so the size is
+        # a point string ("14pt"), no longer a px string.
+        assert ls.text_font_size == "14pt", f"Expected 14pt, got {ls.text_font_size}"
 
     def test_mlabgap_increases_offset(self, fig, std_cds):
         """mlabgap increases x_offset beyond the default."""
@@ -1323,14 +1359,17 @@ class TestMapRcapsymOptions:
     """map_rcapsym must apply lcolor consistently to spine AND cap segments."""
 
     def test_rcapsym_lcolor_applied_to_all_segments(self, fig, range_cds_small, gm):
-        """lcolor must be applied to spine, bot_cap, and top_cap."""
+        """lcolor must be applied to the spine, and no cap Segment is drawn.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
+        from bokeh.models.glyphs import Segment
         renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                    {"lcolor": "maroon"})
-        spine, bot_cap, top_cap = renderers[0], renderers[1], renderers[2]
-        for seg, name in [(spine, "spine"), (bot_cap, "bot_cap"), (top_cap, "top_cap")]:
-            assert seg.glyph.line_color == "#90353b", (
-                f"{name} expected #90353b, got {seg.glyph.line_color!r}"
-            )
+        assert renderers[0].glyph.line_color == "#90353b"
+        assert [r for r in renderers
+                if isinstance(r.glyph, Segment)] == [renderers[0]]
 
     def test_rcapsym_lwidth_applied_to_spine(self, fig, range_cds_small, gm):
         """lwidth must be applied to at least the spine segment."""
@@ -1341,24 +1380,33 @@ class TestMapRcapsymOptions:
         assert renderers[0].glyph.line_width == expected
 
     def test_rcapsym_mcolor_applied_to_scatter_markers(self, fig, range_cds_small, gm):
-        """mcolor must be applied to the scatter marker renderers (indices 3 and 4)."""
+        """mcolor must be applied to the scatter marker renderers (indices 1 and 2).
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                    {"mcolor": "red"})
-        # renderers[3] and renderers[4] are scatter markers at cap positions
         default_color = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                        {})
-        default_fill = default_color[3].glyph.fill_color
-        assert renderers[3].glyph.fill_color != default_fill, \
-            "mcolor must change scatter marker fill_color from default"
+        for i in (1, 2):
+            assert renderers[i].glyph.fill_color != \
+                default_color[i].glyph.fill_color, \
+                "mcolor must change scatter marker fill_color from default"
 
     def test_rcapsym_msize_applied_to_scatter_markers(self, fig, range_cds_small, gm):
-        """msize must be applied to the scatter marker renderers."""
+        """msize must be applied to the scatter marker renderers.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         renderers = gm.map_rcapsym(fig, range_cds_small, "lo", "hi", "xvar",
                                    {"msize": "large"})
         from dash_render import OptionTranslator
         expected = OptionTranslator().translate_msize("large")
-        assert renderers[3].glyph.size == expected, \
-            f"Expected size={expected}, got {renderers[3].glyph.size}"
+        for i in (1, 2):
+            assert renderers[i].glyph.size == expected, \
+                f"Expected size={expected}, got {renderers[i].glyph.size}"
 
 
 # ================================================================
@@ -1444,10 +1492,11 @@ class TestMapRarea:
         assert isinstance(result[0].glyph, VArea)
 
     def test_rarea_fcolor_applied(self, fig, std_cds_small, gm):
-        """fcolor option applied to rarea VArea fill."""
+        """fcolor() is filled at rarea's intensity: magenta at inten80 is
+        #ff33ff (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         result = gm.map_rarea(fig, std_cds_small, "lo", "hi", "x",
                               {"fcolor": "magenta"})
-        assert result[0].glyph.fill_color == "#ff00ff"
+        assert result[0].glyph.fill_color == "#ff33ff"
 
 
 class TestMapRbar:
@@ -1465,10 +1514,11 @@ class TestMapRbar:
         assert isinstance(result[0].glyph, VBar)
 
     def test_rbar_fcolor_applied(self, fig, std_cds_small, gm):
-        """fcolor option applied to rbar fill."""
+        """fcolor() is filled at rbar's intensity: maroon at inten80 is
+        #a65d62 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         result = gm.map_rbar(fig, std_cds_small, "lo", "hi", "x",
                              {"fcolor": "maroon"})
-        assert result[0].glyph.fill_color == "#90353b"
+        assert result[0].glyph.fill_color == "#a65d62"
 
 
 class TestMapRspike:
@@ -1507,11 +1557,17 @@ class TestMapRcap:
         assert len(result) == 3
 
     def test_rcap_all_segments(self, fig, std_cds_small, gm):
-        """All three rcap renderers are Segment glyphs."""
-        from bokeh.models.glyphs import Segment
+        """rcap draws a Segment spine and two Scatter caps of marker dash.
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
+        from bokeh.models.glyphs import Scatter, Segment
         result = gm.map_rcap(fig, std_cds_small, "lo", "hi", "x", {})
-        for r in result:
-            assert isinstance(r.glyph, Segment)
+        assert isinstance(result[0].glyph, Segment)
+        for r in result[1:]:
+            assert isinstance(r.glyph, Scatter)
+            assert r.glyph.marker == "dash"
 
     def test_rcap_lpattern_applied_to_all_segments(self, fig, std_cds_small, gm):
         """lpattern applied to all three rcap segment renderers."""
@@ -1629,12 +1685,12 @@ class TestMapPcarrow:
         assert r is not None
 
     def test_pcarrow_lwidth_applied(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 applied to segment renderer via _apply_line_opts."""
+        """lwidth(thick)=3.072 applied to segment renderer via _apply_line_opts."""
         renderers = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
                                    {"lwidth": "thick"})
         seg = renderers[0]
-        assert abs(seg.glyph.line_width - 2.5) < 0.01, \
-            "map_pcarrow must apply lwidth(thick)=2.5 to segment"
+        assert abs(seg.glyph.line_width - 3.072) < 0.01, \
+            "map_pcarrow must apply lwidth(thick)=3.072 to segment"
 
     def test_pcarrow_lcolor_applied(self, fig, pc_cds, gm):
         """lcolor option applied to segment renderer."""
@@ -1645,7 +1701,7 @@ class TestMapPcarrow:
             "map_pcarrow must apply lcolor to segment"
 
     def test_pcarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 must also be applied to Arrow annotation objects.
+        """lwidth(thick)=3.072 must also be applied to Arrow annotation objects.
 
         Arrow annotations added via fig.add_layout() are stored in fig.center.
         """
@@ -1654,8 +1710,8 @@ class TestMapPcarrow:
         arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
         assert arrow_annots, "map_pcarrow must add Arrow annotations to fig"
         for arrow in arrow_annots:
-            assert abs(arrow.line_width - 2.5) < 0.01, \
-                f"Arrow annotation line_width must be 2.5 (thick) but got {arrow.line_width}"
+            assert abs(arrow.line_width - 3.072) < 0.01, \
+                f"Arrow annotation line_width must be 3.072 (thick) but got {arrow.line_width}"
 
 
 class TestMapPcbarrow:
@@ -1677,12 +1733,12 @@ class TestMapPcbarrow:
         assert r is not None
 
     def test_pcbarrow_lwidth_applied(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 applied to segment renderer via _apply_line_opts."""
+        """lwidth(thick)=3.072 applied to segment renderer via _apply_line_opts."""
         renderers = gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2",
                                     {"lwidth": "thick"})
         seg = renderers[0]
-        assert abs(seg.glyph.line_width - 2.5) < 0.01, \
-            "map_pcbarrow must apply lwidth(thick)=2.5 to segment"
+        assert abs(seg.glyph.line_width - 3.072) < 0.01, \
+            "map_pcbarrow must apply lwidth(thick)=3.072 to segment"
 
     def test_pcbarrow_lcolor_applied(self, fig, pc_cds, gm):
         """lcolor option applied to segment renderer."""
@@ -1693,7 +1749,7 @@ class TestMapPcbarrow:
             "map_pcbarrow must apply lcolor to segment"
 
     def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
-        """lwidth(thick)=2.5 must also be applied to Arrow annotation objects.
+        """lwidth(thick)=3.072 must also be applied to Arrow annotation objects.
 
         Arrow annotations added via fig.add_layout() are stored in fig.center.
         """
@@ -1702,8 +1758,8 @@ class TestMapPcbarrow:
         arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
         assert arrow_annots, "map_pcbarrow must add Arrow annotations to fig"
         for arrow in arrow_annots:
-            assert abs(arrow.line_width - 2.5) < 0.01, \
-                f"Arrow annotation line_width must be 2.5 (thick) but got {arrow.line_width}"
+            assert abs(arrow.line_width - 3.072) < 0.01, \
+                f"Arrow annotation line_width must be 3.072 (thick) but got {arrow.line_width}"
 
 
 class TestMapTsline:
@@ -2101,14 +2157,24 @@ class TestBarOptions:
             "base option must set vbar bottom attribute"
 
     def test_base_default_is_zero(self, fig, cds, gm):
-        """Absent base option must default bar bottom to 0."""
+        """Absent base option: the mapper draws the bar bottom from the
+        reserved __dash_base column, holding the provisional 0 until the
+        axis is finished (twoway draws a default base as 0 clamped into
+        the axis's scale, P1.17b).
+
+        Flipped: was ``bottom == 0`` (a number) -- twoway draws a default
+        base as 0 clamped into the axis's scale, so it is a column the
+        finisher fills (P1.17b)."""
         r = gm.map_bar(fig, cds, "mpg", "weight", {})
-        assert r.glyph.bottom == 0, "default bar bottom must be 0"
+        assert r.glyph.bottom == GlyphMapper._BASE_COL
+        col = r.data_source.data[GlyphMapper._BASE_COL]
+        assert len(col) and all(float(v) == 0.0 for v in col)
 
     def test_bfcolor_sets_fill(self, fig, cds, gm):
-        """bfcolor(red) must set bar fill_color to #ff0000."""
+        """bfcolor(red) fills the bar red at its intensity, #ff3333
+        (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         r = gm.map_bar(fig, cds, "mpg", "weight", {"bfcolor": "red"})
-        assert r.glyph.fill_color == "#ff0000", \
+        assert r.glyph.fill_color == "#ff3333", \
             "bfcolor must set bar fill_color"
 
     def test_blcolor_sets_line(self, fig, cds, gm):
@@ -2118,10 +2184,11 @@ class TestBarOptions:
             "blcolor must set bar line_color"
 
     def test_blcolor_bfcolor_independent(self, fig, cds, gm):
-        """blcolor and bfcolor must be settable independently."""
+        """blcolor and bfcolor are independent: the fill is blended at the
+        bar's intensity, the outline is not (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         r = gm.map_bar(fig, cds, "mpg", "weight",
                        {"bfcolor": "red", "blcolor": "magenta"})
-        assert r.glyph.fill_color == "#ff0000"
+        assert r.glyph.fill_color == "#ff3333"
         assert r.glyph.line_color == "#ff00ff"
 
 
@@ -2913,7 +2980,7 @@ def _make_dr_for_hover(plots, hover="", link="g1"):
         for p in (sp, dp, op):
             try: os.unlink(p)
             except OSError: pass
-    dr.render()
+    render_models(dr)
     return dr
 
 
@@ -3339,28 +3406,42 @@ class TestHardeningGuards:
         gm = self._make_gm()
         r = gm.map_histogram(self._fig(), ColumnDataSource({"mpg": []}),
                              "mpg", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "histogram")
+        # The scheme's histogram style (WP-30 P1.4a).  Flipped: this
+        # compared with the bar p# cycle, which twoway's histogram ignores.
+        sch = gm.scheme
+        assert self._colour(r) == gm._blend_intensity(
+            sch.histogram_color, sch.histogram_intensity,
+            sch.naturally_white)
 
     def test_bar_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource
         gm = self._make_gm()
         r = gm.map_bar(self._fig(), ColumnDataSource({"x": [], "y": []}),
                        "y", "x", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "bar")
+        # The fill is the scheme colour at its p1bar intensity (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert self._colour(r) == GlyphMapper._blend_intensity(
+            gm.scheme.default_color(0, "bar"), gm.scheme.p_bar_intensity[0],
+            gm.scheme.naturally_white)
 
     def test_rbar_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource
         gm = self._make_gm()
         r = gm.map_rbar(self._fig(), ColumnDataSource(
             {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "bar")
+        # The fill is the scheme colour at its p1bar intensity (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert self._colour(r) == GlyphMapper._blend_intensity(
+            gm.scheme.default_color(0, "bar"), gm.scheme.p_bar_intensity[0],
+            gm.scheme.naturally_white)
 
     def test_rarea_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource
         gm = self._make_gm()
         r = gm.map_rarea(self._fig(), ColumnDataSource(
             {"x": [], "y1": [], "y2": []}), "y1", "y2", "x", {})
-        assert self._colour(r) == gm.scheme.default_color(0, "area")
+        # The fill is the scheme colour at its p1area intensity (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert self._colour(r) == GlyphMapper._blend_intensity(
+            gm.scheme.default_color(0, "area"),
+            gm.scheme.p_area_intensity[0], gm.scheme.naturally_white)
 
     def test_rspike_empty_source_keeps_the_scheme_style(self):
         from bokeh.models import ColumnDataSource

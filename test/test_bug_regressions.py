@@ -90,6 +90,9 @@ _DF = pd.DataFrame({"mpg": np.linspace(12, 41, 74),
                     "weight": np.linspace(1760, 4840, 74)})
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, title, ylabel):
     """One graph as dash.ado writes it for
     ``dash scatter mpg weight, ylabel(<ylabel>) title("<title>") name(<name>)``
@@ -144,7 +147,7 @@ def _figures(mode, tmp_path, spec):
         warnings.simplefilter("always")
         if mode == "saved":
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
             figs = list(r.figures.values())
         else:
             ap = str(tmp_path / ("app_%d.py" % tag))
@@ -182,6 +185,10 @@ def _y_grids(fig):
             if type(g).__name__ == "Grid" and g.dimension == 1]
 
 
+# One worker for the class, so the module's drawn pair is made once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.55 s on six).
+@pytest.mark.xdist_group(name="ylabel-grid-drawn")
 @pytest.mark.parametrize("mode", _MODES)
 class TestYlabelCountWithAGridIsHonoured:
     """``ylabel(#5, grid)``: the count reaches the axis and the grid is drawn

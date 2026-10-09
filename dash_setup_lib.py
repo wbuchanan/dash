@@ -1,4 +1,5 @@
-"""dash_setup_lib -- the mechanics of dash_setup's pip and venv steps (WP-29 P0.19).
+"""dash_setup_lib -- the mechanics of dash_setup's pip and venv steps (WP-29 P0.19),
+and dash clear's pruning without the packages (WP-30 P1.32).
 dash_setup.ado decides and counts; this module runs children and formats commands.
 Stdlib only; parses as Python 3.8; nothing runs at import.
 
@@ -11,6 +12,7 @@ in-process view under Stata cannot see what a venv's own interpreter has.
 Environment-derived text is printed with print(), which Stata shows as plain
 text, never through SMCL.
 """
+import ast
 import importlib
 import json
 import ntpath
@@ -44,6 +46,10 @@ _ENV_SET = {"PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1",
 #: The venv() path stata_venv_check validated, held for the stata_venv call
 #: that follows it, so the path never passes through Stata's parser again.
 _PENDING = {}
+
+#: stdlib_entry's compiled slices, keyed by the file's realpath, size, time
+#: and the entry's name, so a file is compiled once per version.
+_SLICES = {}
 
 _PIP_FIXED = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]
 
@@ -120,6 +126,11 @@ VERIFY_CODE = (
     "                's2color', 'dash_setup').is_fallback\n"
     "    except Exception:\n"
     "        _out['schemes'] = False\n"
+    "    _out['above'] = []\n"
+    "    _c = _mins.get('bokeh_ceil', '')\n"
+    "    if _c and _out['packages'].get('bokeh') and \\\n"
+    "            _t(_out['packages']['bokeh'])[:2] >= _t(_c)[:2]:\n"
+    "        _out['above'].append('bokeh')\n"
     "    if _bad:\n"
     "        _out['why'] = 'packages: ' + ', '.join(_bad)\n"
     "    elif not _out['schemes']:\n"
@@ -250,6 +261,27 @@ def pip_install_argv(exe, specs, version, user=False):
             raise ValueError("dash_setup: refusing the requirement %r" % (spec,))
     return ([exe] + safe_flags(version) + ["-m", "pip", "install"] + _PIP_FIXED +
             (["--user"] if user else []) + list(specs))
+
+
+def bokeh_requirement(installed, floor, ceil):
+    """The bokeh requirement dash_setup installs (WP-30 P1.30, M9, A107).
+
+    ``bokeh>=<floor>,<<ceil>`` -- the verified window -- unless the bokeh
+    already installed is at or above the ceiling, when it is
+    ``bokeh>=<floor>``: a bokeh someone installed is never downgraded
+    (critic C5: a reused venv with bokeh 3.10).  ``floor`` and ``ceil``
+    are dash's own literals and must be dotted numbers.
+
+    Raises:
+        ValueError: if floor or ceil is not a dotted number.
+    """
+    for v in (floor, ceil):
+        if not isinstance(v, str) or not re.fullmatch(r"[0-9]+(\.[0-9]+)*", v):
+            raise ValueError("dash_setup: refusing the bokeh bound %r" % (v,))
+    m = re.match(r"(\d+)\.(\d+)", str(installed or "")[:40])
+    if m and (int(m.group(1)), int(m.group(2))) >= version_tuple(ceil)[:2]:
+        return "bokeh>=" + floor
+    return "bokeh>=%s,<%s" % (floor, ceil)
 
 
 def classify_failure(rc, err):
@@ -430,6 +462,76 @@ def verify_in(exe, render_py, minimums, version):
     return d
 
 
+
+def stdlib_entry(path, entry):
+    """dash_render.py's top-level function ``entry`` compiled with the
+    standard library alone, or None (WP-30 P1.32, register P1.32.3).
+
+    dash clear prunes dash's temporary files through the renderer's own
+    _dash_tmp_clear; this compiles that function and every top-level
+    definition it reaches, with the file's top-level imports outside a
+    `try', so the same code and checks run with numpy, pandas or bokeh
+    missing.  A name bound by an import inside a top-level `try' (the
+    guarded package imports) is foreign: a closure reaching one is refused
+    (None), never imported.  Line numbers stay the file's.  Only dash's own
+    shipped file is compiled; ``entry`` is a constant in dash.ado.  Never
+    raises.
+    """
+    try:
+        st = os.stat(path)
+        key = (os.path.realpath(path), st.st_size, st.st_mtime_ns, entry)
+        if key in _SLICES:
+            return _SLICES[key]
+        with open(path, "rb") as fh:
+            text = fh.read().decode("utf-8")
+        tree = ast.parse(text, filename=path)
+        imports = []
+        defs = {}
+        foreign = set()
+        for node in tree.body:
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                imports.append(node)
+            elif isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                defs.setdefault(node.name, []).append(node)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for tgt in targets:
+                    for sub in ast.walk(tgt):
+                        if isinstance(sub, ast.Name):
+                            defs.setdefault(sub.id, []).append(node)
+            elif isinstance(node, ast.Try):
+                for sub in ast.walk(node):
+                    if isinstance(sub, (ast.Import, ast.ImportFrom)):
+                        for alias in sub.names:
+                            foreign.add((alias.asname or alias.name).split(".")[0])
+        if not any(isinstance(n, ast.FunctionDef) for n in defs.get(entry, [])):
+            return None
+        keep = {}
+        todo = [entry]
+        seen = set()
+        while todo:
+            name = todo.pop()
+            if name in seen:
+                continue
+            seen.add(name)
+            for node in defs[name]:
+                keep[id(node)] = node
+                for sub in ast.walk(node):
+                    if isinstance(sub, ast.Name):
+                        if sub.id in foreign:
+                            return None
+                        if sub.id in defs and sub.id not in seen:
+                            todo.append(sub.id)
+        body = imports + [n for n in tree.body if id(n) in keep]
+        module = ast.Module(body=body, type_ignores=[])
+        code = compile(module, path, "exec", dont_inherit=True)
+        ns = {"__name__": "_dash_stdlib_slice", "__file__": path}
+        exec(code, ns)
+        _SLICES[key] = ns[entry]
+        return ns[entry]
+    except Exception:
+        return None
+
 def managed_message(exe, windows, environ):
     """(text, cmd) for an externally managed Python.  It never names the
     flag that overrides the protection."""
@@ -461,6 +563,22 @@ def nopip_message(exe, ensurepip, managed, windows):
         text += ("  Install pip with your system's package manager (on Debian and Ubuntu: "
                  "python3-pip and python3-venv), or use dash_setup, venv(path).\n")
     return text, cmd
+
+
+def below_floor_message(exe, pymin, kind):
+    """(text, "") for a managed (kind "managed") or pip-less Python below
+    dash's floor *pymin*.  WP-30 P1.33: both other messages suggested
+    dash_setup, venv(), which refuses a Python below the floor too -- an
+    advice loop.  This one names the floor and suggests no command."""
+    what = ("is externally managed (PEP 668)" if kind == "managed"
+            else "has no pip")
+    text = ("  This Python %s and is below dash's minimum, Python %s:\n"
+            "    %s\n"
+            "  A private environment made from it would be below the minimum too,\n"
+            "  so dash_setup suggests none. Install Python %s or later, link Stata\n"
+            "  to it (help python), restart Stata and run dash_setup again.\n"
+            ) % (what, pymin, exe, pymin)
+    return text, ""
 
 
 # ---------------------------------------------------------------------------
@@ -591,7 +709,8 @@ def stata_shell_line():
 
 def stata_guide():
     """Print the guidance for a managed (kind "managed") or pip-less
-    ("nopip") Python; sets guide_cmd."""
+    ("nopip") Python; sets guide_cmd.  Below the floor (local pyok "0",
+    pymin a version) it is below_floor_message's, with no command."""
     import sfi
     cmd = ""
     try:
@@ -599,7 +718,10 @@ def stata_guide():
         exe, raw = _linked()
         exe = exe or raw
         windows = os.name == "nt"
-        if kind == "managed":
+        pymin = sfi.Macro.getLocal("pymin")
+        if sfi.Macro.getLocal("pyok") == "0" and version_tuple(pymin):
+            text, cmd = below_floor_message(exe, pymin, kind)
+        elif kind == "managed":
             text, cmd = managed_message(exe, windows, os.environ)
         else:
             text, cmd = nopip_message(exe, sfi.Macro.getLocal("ensurepip") == "1",
@@ -646,7 +768,8 @@ def stata_venv():
         pymin = version_tuple(pymin_text)
         mins = {"python": pymin_text, "packaging": "",
                 "bokeh": sfi.Macro.getLocal("minb"), "numpy": sfi.Macro.getLocal("minn"),
-                "pandas": sfi.Macro.getLocal("minp")}
+                "pandas": sfi.Macro.getLocal("minp"),
+                "bokeh_ceil": sfi.Macro.getLocal("maxb")}
         pend = _PENDING.pop("venv", None)
         exe, raw = _linked()
         res["venv_base"] = exe or raw
@@ -682,9 +805,19 @@ def stata_venv():
                           + shell_line([vpy, "-m", "ensurepip", "--upgrade"], windows))
                     res["venv_step"] = "pip"
                 else:
+                    render_py = os.path.normpath(os.path.join(
+                        os.path.dirname(os.path.abspath(__file__)), "dash_render.py"))
+                    # WP-30 P1.30 (A107): a reused environment is probed
+                    # first, so a bokeh at or above the ceiling in it is
+                    # never downgraded.
+                    have = ""
+                    if state == "venv":
+                        pre = verify_in(vpy, render_py, mins, d["version"])
+                        have = (pre.get("packages") or {}).get("bokeh", "")
                     print("  installing packaging, bokeh, numpy and pandas into it...")
                     rc, out, err = run_child(pip_install_argv(
-                        vpy, ["packaging", "bokeh>=" + mins["bokeh"],
+                        vpy, ["packaging",
+                              bokeh_requirement(have, mins["bokeh"], mins["bokeh_ceil"]),
                               "numpy>=" + mins["numpy"], "pandas>=" + mins["pandas"]],
                         d["version"]))
                     print(out[-500:])
@@ -692,8 +825,6 @@ def stata_venv():
                     if rc != 0:
                         res["venv_step"] = "pip"
                     else:
-                        render_py = os.path.normpath(os.path.join(
-                            os.path.dirname(os.path.abspath(__file__)), "dash_render.py"))
                         v = verify_in(vpy, render_py, mins, d["version"])
                         if not v.get("ok"):
                             print("  The environment did not verify: %s" % v.get("why"))
@@ -703,6 +834,12 @@ def stata_venv():
                                 print("    dash's schemes could not be read in it")
                             res["venv_step"] = "verify"
                         else:
+                            if "bokeh" in (v.get("above") or []):
+                                print("  bokeh %s in it is outside the verified range (%s or "
+                                      "later, before %s); it was left as it is, and dash "
+                                      "notes it when it draws."
+                                      % ((v.get("packages") or {}).get("bokeh", ""),
+                                         mins["bokeh"], mins["bokeh_ceil"]))
                             linked = (os.path.realpath(os.path.dirname(os.path.dirname(exe)))
                                       == os.path.realpath(absp))
                             cmd = 'python set exec "%s", permanently' % vpy

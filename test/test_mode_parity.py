@@ -50,7 +50,7 @@ saved and one nested grid served.
 comparison -- a test that accepts unknown differences passes the next drift
 too. See ``ALLOWED``.
 """
-import importlib.util
+import copy
 import itertools
 import json
 import math
@@ -63,19 +63,24 @@ from unittest import mock
 
 import pandas as pd
 import pytest
+
+# Run at batch ends and at release (make test-all, make test-batch), not in
+# the default run of the whole suite (test/conftest.py, the batch tier).
+pytestmark = pytest.mark.batch
 from bokeh.document import Document
 from bokeh.models import (Arrow, Band, BoxAnnotation, ColorBar,
                           ColumnDataSource, Div,
                           GridBox, GridPlot, HoverTool,
-                          Label, LabelSet, Legend, RangeSlider, Select,
-                          Slider, Span, TabPanel, Tabs, ToolProxy, Widget)
+                          Label, LabelSet, Legend, Node, RangeSlider, Select,
+                          Slider, Span, TabPanel, Tabs, Title, ToolProxy,
+                          Widget)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 from test_server_layer_defects import plot_for
 
 _SEQ = itertools.count()
@@ -144,6 +149,9 @@ ALLOWED = {
         "never sets filterposition(left)."
     ),
 }
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _allowed(key):
@@ -225,9 +233,17 @@ def _standalone_page(spec):
 
 
 def _standalone(spec):
-    """(renderer, warnings) from the saved-dashboard renderer."""
-    r, caught, _page = _standalone_page(spec)
-    return r, caught
+    """(renderer, warnings) from the saved-dashboard renderer.
+
+    The page is dropped, so Bokeh's serialisation of it -- about two
+    fifths of a render -- is skipped (``file_html``, after every model is
+    built and finished: conftest.render_models); a test that reads
+    the page calls ``_standalone_page``."""
+    _, sp, dp = _write(spec)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        r = render_models(dr.DashRenderer(sp, dp))
+    return r, sorted(str(w.message) for w in caught)
 
 
 def _served(spec):
@@ -246,9 +262,7 @@ def _served(spec):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_parity_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_parity_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -323,7 +337,10 @@ def _drawn(r):
 _STYLE = ("marker", "size", "fill_color", "line_color", "line_width",
           "line_dash", "fill_alpha", "line_alpha", "angle")
 _COORDS = ("x", "y", "left", "right", "top", "bottom", "x0", "x1", "y0",
-           "y1", "xs", "ys", "base", "upper", "lower", "width", "height")
+           "y1", "xs", "ys", "base", "upper", "lower", "width", "height",
+           # WP-30 P1.9a: an area's second edge, upright (VArea) or turned
+           # (HArea).
+           "x2", "y2")
 
 
 def _glyph_profile(fig):
@@ -510,10 +527,26 @@ def _annotations(fig):
             _src = getattr(r, "source", None)
             _col = (list(_src.data.get(_tf[1], []))
                     if _tf[0] == "field" and _src is not None else [])
+            # WP-30 P1.24: mlabvposition() sets the offsets, align and
+            # baseline per row, as fields; their values are recorded beside
+            # the texts, so a per-row clock that drifts is seen.
+            def _rows_of(v):
+                _sv = _spec_of(v)
+                if _sv[0] == "field" and _src is not None:
+                    return [_num(x) if isinstance(x, (int, float))
+                            else str(x)
+                            for x in list(_src.data.get(_sv[1], []))]
+                return None
             out.append({"kind": "LabelSet", "text": _tf,
                         "font": r.text_font_size,
                         "color": _spec_of(r.text_color),
+                        # WP-30 P1.4b: the scheme's label opacity.
+                        "alpha": _spec_of(r.text_alpha),
                         "x_offset": r.x_offset, "y_offset": r.y_offset,
+                        "per_row": [_rows_of(r.x_offset),
+                                    _rows_of(r.y_offset),
+                                    _rows_of(r.text_align),
+                                    _rows_of(r.text_baseline)],
                         "angle": _spec_of(r.angle),
                         "angle_units": r.angle_units,
                         "texts": [_drawn_text(v) for v in _col],
@@ -521,11 +554,49 @@ def _annotations(fig):
         elif isinstance(r, Label):
             # Position too: the served caption sat at y = -12, where the
             # saved renderer's own comment says a Label is clipped and
-            # never drawn, and this profile did not look.
+            # never drawn, and this profile did not look.  WP-30 P1.2a: a
+            # Label pinned to the title by Node coordinates (economist's
+            # in-band note) records its target, symbol and anchor.
+            def _coord(v):
+                if isinstance(v, Node):
+                    return ("node", type(v.target).__name__, v.symbol,
+                            v.offset)
+                return _num(float(v))
             out.append({"kind": "Label", "text": r.text,
                         "font": r.text_font_size, "color": r.text_color,
-                        "x": _num(float(r.x)), "y": _num(float(r.y)),
-                        "x_units": r.x_units, "y_units": r.y_units})
+                        "x": _coord(r.x), "y": _coord(r.y),
+                        "x_units": r.x_units, "y_units": r.y_units,
+                        "anchor": str(r.anchor),
+                        "background": r.background_fill_color,
+                        # WP-30 P1.10: added text's angle, justification,
+                        # axis pair, box and tag.
+                        "angle": _num(float(r.angle)),
+                        "align": r.text_align,
+                        "range_names": (r.x_range_name, r.y_range_name),
+                        "border": (r.border_line_color,
+                                   _num(float(r.border_line_width))),
+                        "padding": str(r.padding),
+                        "tags": list(r.tags or []),
+                        "index": (fig.center.index(r)
+                                  if r in fig.center else None)})
+        elif isinstance(r, Title) and r is not fig.title \
+                and "dash_stale_cue" not in (r.tags or []):
+            # WP-30 P1.2a: subtitle(), note() and caption() are side-panel
+            # Titles placed by the scheme's clock and justification.
+            out.append({"kind": "Title", "text": r.text,
+                        "font": r.text_font_size, "color": r.text_color,
+                        "align": r.align, "font_style": r.text_font_style,
+                        "side": panel.get(id(r)),
+                        "background": r.background_fill_color,
+                        # Ranked among the Titles compared here: the saved
+                        # page's stale cue (put first in fig.above, never
+                        # compared) shifted every above row by one, which
+                        # showed once a by() panel label sat there (WP-30
+                        # P1.15a).
+                        "rank": [x for x in getattr(fig, panel.get(id(r)))
+                                 if isinstance(x, Title) and
+                                 "dash_stale_cue" not in (x.tags or [])
+                                 ].index(r)})
         elif isinstance(r, Span):
             out.append({"kind": "Span", "dimension": r.dimension,
                         "location": _num(r.location), "color": r.line_color,
@@ -555,7 +626,26 @@ def _annotations(fig):
                         "mapper": type(m).__name__,
                         "low": _num(getattr(m, "low", None)),
                         "high": _num(getattr(m, "high", None)),
-                        "side": panel.get(id(r))})
+                        "side": panel.get(id(r)),
+                        # WP-30 P1.4b: the scheme's text and tick chrome.
+                        "label_font": r.major_label_text_font_size,
+                        "label_color": r.major_label_text_color,
+                        "title_font": r.title_text_font_size,
+                        "title_color": r.title_text_color,
+                        "title_style": r.title_text_font_style,
+                        "tick_color": r.major_tick_line_color,
+                        "tick_in": r.major_tick_in,
+                        "tick_out": r.major_tick_out,
+                        "background_alpha": r.background_fill_alpha,
+                        # WP-30 P1.15c: a by() panel label's box -- its
+                        # fill, outline and text.
+                        "name": r.name,
+                        "box": ((list(getattr(m, "palette", []) or [])[:1],
+                                 r.bar_line_color,
+                                 sorted((str(k), str(v)) for k, v in
+                                        (r.major_label_overrides or {})
+                                        .items()))
+                                if r.name == "dash_by_label_box" else None)})
         elif isinstance(r, BoxAnnotation):
             out.append({"kind": "BoxAnnotation",
                         "left": _num(r.left), "right": _num(r.right),
@@ -649,6 +739,7 @@ def _tools(fig):
             hovers.append(e)
         else:
             out.append(e)
+            _svg_action(t, e)
     return out + sorted(hovers, key=lambda d: json.dumps(d, sort_keys=True,
                                                          default=str))
 
@@ -661,8 +752,25 @@ def _grid_toolbar(grid):
     a by() graph's cell on the saved layout(bs) page kept its toolbar on
     the right while the served cell's sat above."""
     return (grid.toolbar_location,
-            [(type(t).__name__, getattr(t, "filename", None))
+            [_svg_action(t, (type(t).__name__, getattr(t, "filename", None)))
              for t in grid.toolbar.tools if not isinstance(t, ToolProxy)])
+
+
+def _svg_action(tool, entry):
+    """*entry* with, for a ``CustomAction`` (WP-30 P1.28b: the Save as SVG
+    action), its description, tags, callback arg names but the model, and
+    the file name it writes, so a drift between modes is seen.  A dict
+    *entry* gains them as keys; a tuple is returned extended."""
+    if type(tool).__name__ != "CustomAction":
+        return entry
+    args = dict(getattr(tool.callback, "args", None) or {})
+    extra = {"description": tool.description, "tags": list(tool.tags),
+             "args": sorted(k for k in args if k != "grid"),
+             "name": args.get("name")}
+    if isinstance(entry, dict):
+        entry.update(extra)
+        return entry
+    return entry + tuple(sorted(extra.items(), key=lambda kv: kv[0]))
 
 
 def _axes(fig):
@@ -686,7 +794,27 @@ def _axes(fig):
                 "label_font": a.axis_label_text_font_size,
                 "tick_font": a.major_label_text_font_size,
                 "orientation": (ori if isinstance(ori, str)
-                                else _num(float(ori)))}
+                                else _num(float(ori))),
+                # WP-30 P1.2a: the scheme's axis chrome and panel.
+                "label_style": a.axis_label_text_font_style,
+                "tick_in": a.major_tick_in, "tick_out": a.major_tick_out,
+                "tick_color": a.major_tick_line_color,
+                "tick_width": _num(float(a.major_tick_line_width)),
+                "line_color": a.axis_line_color,
+                "minor_tick_color": a.minor_tick_line_color,
+                # WP-30 P1.18a: the axis look.
+                "minor_tick_in": a.minor_tick_in,
+                "minor_tick_out": a.minor_tick_out,
+                "label_color": a.major_label_text_color,
+                "label_alpha": _num(float(a.major_label_text_alpha)),
+                "label_standoff": a.major_label_standoff,
+                "axis_label_standoff": a.axis_label_standoff,
+                "line_dash": (a.axis_line_dash if isinstance(
+                    a.axis_line_dash, str) else list(a.axis_line_dash)),
+                "line_width": _num(float(a.axis_line_width)),
+                "panel": next((side for side in ("left", "right", "above",
+                                                 "below")
+                               if a in getattr(fig, side)), None)}
 
     def rng(r):
         e = {"type": type(r).__name__}
@@ -743,6 +871,12 @@ def _chrome(fig):
         "background_fill_color": fig.background_fill_color,
         "border_fill_color": fig.border_fill_color,
         "outline_line_color": fig.outline_line_color,
+        # WP-30 P1.20a: the rest of the region styling.
+        "outline_line_alpha": _num(float(fig.outline_line_alpha)),
+        "outline_line_width": _num(float(fig.outline_line_width)),
+        "outline_line_dash": list(fig.outline_line_dash),
+        "border_line_color": fig.border_line_color,
+        "border_line_width": _num(float(fig.border_line_width)),
         "xgrid": [g.grid_line_color for g in fig.xgrid],
         "ygrid": [g.grid_line_color for g in fig.ygrid],
         "xgrid_minor": [g.minor_grid_line_color for g in fig.xgrid],
@@ -757,6 +891,11 @@ def _chrome(fig):
         "title_font": t.text_font_size if t else "",
         "title_color": t.text_color if t else "",
         "title_style": t.text_font_style if t else "",
+        # WP-30 P1.2a: the title's alignment and side, the grid patterns.
+        "title_align": t.align if t else "",
+        "title_location": fig.title_location,
+        "xgrid_dash": [list(g.grid_line_dash) for g in fig.xgrid],
+        "ygrid_dash": [list(g.grid_line_dash) for g in fig.ygrid],
         "width": fig.width, "height": fig.height,
         "aspect_ratio": (_num(float(ar)) if isinstance(ar, (int, float))
                          else ar),
@@ -903,6 +1042,27 @@ def _layout_tree(m, figures):
         # With its own toolbar: a grid whose save button wrote a different
         # file in one mode compared equal while only its children were read.
         return (tn, _grid_toolbar(m), _layout_tree(m.children, figures))
+    if tn == "Plot" and getattr(m, "name", None) in ("dash_by_head",
+                                                     "dash_by_foot"):
+        # A by() grid's chrome cell (WP-30 P1.15a): its texts, sizes,
+        # colours and alignment, compared in both modes, never skipped.
+        rows = [m.title] + list(m.above) + list(m.below) + list(m.center)
+        return ("chrome", m.name, [
+            (type(x).__name__, x.text, x.text_font_size, x.text_color,
+             getattr(x, "align", None)) for x in rows
+            if type(x).__name__ in ("Title", "Label")])
+    if tn == "Plot" and str(getattr(m, "name", None) or "").startswith(
+            "dash_by_"):
+        # A by() grid's side cell (WP-30 P1.15c): the axis-title text, the
+        # overall legend's labels and the colour key's mapper, both modes.
+        side = [x for s in ("left", "right", "above", "below", "center")
+                for x in getattr(m, s)]
+        return ("side", m.name, [
+            (type(x).__name__, getattr(x, "text", None),
+             [str(i.label) for i in getattr(x, "items", None) or []],
+             type(getattr(x, "color_mapper", None)).__name__)
+            for x in side if type(x).__name__ in ("Title", "Legend",
+                                                  "ColorBar")])
     kids = getattr(m, "children", None)
     return (tn, _layout_tree(kids, figures) if kids is not None else [])
 
@@ -1200,6 +1360,41 @@ def _sc(**o):
     return plot_for("scatter", o)
 
 
+# WP-30 P1.23a (section 35): every name starts "P1.23a: ", so -k P1.23a
+# selects them.  `when' is the %td date.
+_P123A_W = {"formats": {"when": "%td"}}
+_P123A_SPECS = [
+    ("P1.23a: scatteri and function on a date axis",
+     [plot_for("line", yvar="mpg", xvar="when"),
+      {"type": "scatteri", "values": [[20.0, 15345.0]], "options": {}},
+      {"type": "function", "expr": "20",
+       "options": {"range": "15342 15344", "n": "3"}}], None),
+    ("P1.23a: rarea of a date y",
+     [{"type": "rarea", "yvar1": "when", "yvar2": "when", "xvar": "weight",
+       "options": {}}], None),
+    ("P1.23a: a date second axis with yline2 and yscale2 range",
+     [plot_for("line", yvar="mpg", xvar="weight"),
+      plot_for("line", {"yaxis": "2"}, yvar="when", xvar="weight")],
+     {"yline2": "15345", "yscale2": "range(15330 15360)"}),
+    ("P1.23a: a date beside a number",
+     [plot_for("scatter", yvar="mpg", xvar="when"),
+      plot_for("scatter", yvar="mpg", xvar="weight")], None),
+    ("P1.23a: a date beside a number under by()",
+     [plot_for("scatter", yvar="mpg", xvar="when"),
+      plot_for("scatter", yvar="mpg", xvar="weight")], {"by": "foreign"}),
+    ("P1.23a: an explicit base on a date axis",
+     [plot_for("bar", {"base": "15330"}, yvar="when", xvar="weight")], None),
+    ("P1.23a: an off-range scatteri on a date axis",
+     [plot_for("line", yvar="mpg", xvar="when"),
+      {"type": "scatteri", "values": [[20.0, 99999999.0]], "options": {}}],
+     None),
+    ("P1.23a: a literal past the browser's dates",
+     [plot_for("line", yvar="mpg", xvar="when"),
+      {"type": "scatteri", "values": [[20.0, 1e9]], "options": {}}], None),
+]
+_P123A_CASES = [_case(n, p, _P123A_W, go) for n, p, go in _P123A_SPECS]
+
+
 CORPUS = [
     # ---- every plot type, bare -------------------------------------------
     *[_case(t, [plot_for(t)]) for t in (
@@ -1470,11 +1665,16 @@ CORPUS = [
           {"legend": "position(6) span holes(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
-                          "yscale": "reverse noline"}),
-    _case("xline with an unimplemented sub-option", [_sc()], None,
-          {"xline": "3000, lcolor(red) lstyle(foreground)"}),
+                          "yscale": "reverse outergap(1)"}),
+    # Flipped (WP-30 P1.21a): lstyle(foreground) was the unimplemented
+    # sub-option; that was wrong because twoway draws lstyle()
+    # (refline_truth.json S probes).  Flipped (WP-30 P1.21b): noextend was
+    # named; that was wrong because twoway draws it
+    # (refline_extent_truth.json E02).
+    _case("xline with lcolor and noextend", [_sc()], None,
+          {"xline": "3000, lcolor(red) noextend"}),
     _case("xlabel with an unimplemented sub-option", [_sc()], None,
-          {"xlabel": "#5, labcolor(red)", "ytitle": "Miles, orientation(vertical)"}),
+          {"xlabel": "#5, labgap(2)", "ytitle": "Miles, orientation(vertical)"}),
     _case("graph title", [_sc()], None, {"title": "G"}),
     _case("graph title and subtitle with an ampersand", [_sc()], None,
           {"title": "R&D", "subtitle": "a & b"}),
@@ -1571,9 +1771,19 @@ CORPUS = [
     _case("pcspike under by()", [plot_for("pcspike")], None,
           {"by": "foreign"}),
     _case("by(, total cols(1))", [_sc()], None, {"by": "foreign, total cols(1)"}),
+    # WP-30 P1.15c: by()'s shared axes, one legend and one colour key.
+    _case("WP-30 P1.15c: two layers under by()", [_sc(), plot_for("lfit")],
+          None, {"by": "foreign"}),
+    _case("WP-30 P1.15c: colorvar() under by(, clegend(on))",
+          [_sc(colorvar="price")], None, {"by": "foreign, clegend(on)"}),
+    _case("WP-30 P1.15c: a second axis under by()",
+          [_sc(), plot_for("scatter", yvar="price", xvar="weight",
+                           options={"yaxis": "2"})], None,
+          {"by": "foreign", "ytitle2": '"Price"'}),
     _case("by() on two variables", [_sc()], None, {"by": "foreign rep"}),
+    # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
     _case("by() with an unimplemented sub-option", [_sc()], None,
-          {"by": "foreign, rows(2) compact"}),
+          {"by": "foreign, subtitleformat(%9s) shrink"}),
     _case("by() with a graph-level if", [_sc()], None, {"by": "foreign"},
           if_expr="price > 4500"),
     _case("by() with marker labels and hover",
@@ -1775,13 +1985,16 @@ CORPUS = [
           [plot_for("lpolyci", {"kernel": "gaussian", "degree": "3",
                                 "weight": "aweight", "wexp": "price"})]),
     # WP-29 P0.18: a layer whose own if keeps no row keeps its style in
-    # both modes (twoway keys it in its p# style).  bar, rbar and rarea
-    # are left out: after the fix they differ only in a warning (the saved
-    # page notes "drew nothing", the served app does not), which this
-    # section does not change; their served style is pinned by
-    # test_emptied_layer_style.py::TestAnEmptiedLayerKeepsItsStyle.
+    # both modes (twoway keys it in its p# style).  Under M6 (WP-30
+    # P1.26b) both modes draw it in silence, so the entries the saved
+    # page's "drew nothing" note kept out are restored: one per layer
+    # family (bar, xy line, range, pc), and scatter, which draws through
+    # its view.
     _case("rspike with its own if that keeps no row",
           [_sc(), plot_for("rspike", if_expr="price > 20000")]),
+    *[_case(f"{t} with its own if that keeps no row",
+            [_sc(), plot_for(t, if_expr="price > 20000")])
+      for t in ("bar", "line", "rarea", "pcspike", "scatter")],
     # WP-29 P0.11: the page holds only the rows a consumer reads.
     _case("two layers with their own qualifiers, range filter (embed rows)",
           [plot_for("scatter", if_expr="price > 4500"),
@@ -1795,6 +2008,328 @@ CORPUS = [
                                          "in_expr": ""})]),
     _case("a dropdown under a graph if (embed rows)", [_sc()],
           bo={"filter": "rep, type(dropdown)"}, if_expr="foreign == 1"),
+    # WP-30 P1.25a: StataCorp's six internal schemes.  Every shipped scheme
+    # reaches both modes through one lookup, so two stand for the six:
+    # meta (s2color's chain, legend at 4 o'clock, a minor grid) and
+    # stgcolor_mv (the deepest chain).
+    *[_case(f"scatter with yline, {s}", [_sc()], {"scheme": s},
+            {"yline": "20"})
+      for s in ("meta", "stgcolor_mv")],
+    _case("scatter, session scheme stcolor_meta", [_sc()],
+          {"session_scheme": "stcolor_meta"}),
+    # WP-30 S08 (P1.12a): sizes in Stata's units draw alike in both modes.
+    _case("S08 msize(*2) mlabgap(1) mlabsize(*2)",
+          [_sc(msize="*2", mlabel="foreign", mlabgap="1", mlabsize="*2")]),
+    _case("S08 msize(4pt) under stcolor", [_sc(msize="4pt")],
+          bo={"scheme": "stcolor"}),
+    _case("S08 title size(*1.5) and labsize(10pt)", [_sc()],
+          go={"title": "T, size(*1.5)", "ylabel": ", labsize(10pt)"}),
+    _case("S08 legend size(5)", [_sc(), plot_for("lfit")],
+          go={"legend": "size(5)"}),
+    _case("S08 mlabposition(2) and bar labels",
+          [_sc(mlabel="foreign", mlabposition="2"),
+           plot_for("bar", {"mlabel": "foreign"})]),
+    _case("S08 msize(HUGE) noted", [_sc(msize="HUGE")]),
+    _case("TeX pairs in every canvas text (WP-30 P1.11a)",
+          [_sc(), plot_for("lfit")],
+          go={"title": '"\\(y\\)"', "subtitle": '"\\[z\\]"',
+              "xtitle": '"$$x$$"', "xlabel": '3000 "\\(t\\)" 4000',
+              "legend": 'label(2 "\\(f\\)")'}),
+    # WP-30 P1.19: twoway's sub-option spellings, read alike in both modes.
+    _case("legend abbreviations", [_sc(), plot_for("lfit")],
+          go={"legend": 'c(1) lab(1 "XX") posi(9) s(large) lastlab(2 "ZZ")'}),
+    _case("legend rows beat cols", [_sc(), plot_for("lfit")],
+          go={"legend": "cols(3) rows(1)"}),
+    _case("legend on beats off", [_sc()], go={"legend": "on off"}),
+    _case("axis label abbreviations", [_sc()],
+          go={"ylabel": ", labs(large) ang(45) for(%9.1f) nog"}),
+    _case("quoted axis label text", [_sc()],
+          go={"ylabel": '10 "labsize(large)" 20'}),
+    _case("xline abbreviations", [_sc()],
+          go={"xline": "3000, lc(red) lp(dash) lw(thick)"}),
+    _case("title s() is size", [_sc()], go={"title": '"T", s(small)'}),
+    # WP-30 P1.1a: one options object per expanded series
+    _case("stylelist series, markers",
+          [plot_for("scatter", {"mcolor": "red", "msymbol": "O"}, yvar="mpg"),
+           plot_for("scatter", {"mcolor": "blue", "msymbol": "T"},
+                    yvar="price")]),
+    _case("stylelist series, lines",
+          [plot_for("line", {"lcolor": "red", "lpattern": "solid"}, yvar="mpg"),
+           plot_for("line", {"lcolor": "blue", "lpattern": "dash"},
+                    yvar="price")]),
+    # WP-30 P1.12b: Stata line widths
+    _case("line widths in Stata units",
+          [plot_for("line", {"lwidth": "*2"}),
+           plot_for("scatter", {"mlwidth": "thick"})],
+          go={"xline": "20, lwidth(1pt)", "plotregion": "lwidth(thick)"}),
+    _case("vvvthin and none",
+          [plot_for("line", {"lwidth": "vvvthin"}),
+           plot_for("lfitci", {"alwidth": "none"})]),
+    # WP-30 P1.17a: bar widths and range caps
+    _case("rbar barwidth(.3)", [plot_for("rbar", {"barwidth": ".3"})]),
+    _case("rcap msize(large)", [plot_for("rcap", {"msize": "large"})]),
+    # (bare rcapsym is the plot-type entry at the top of the corpus)
+    _case("bar on a %tm x", [plot_for("bar", xvar="when")],
+          {"formats": {"when": "%tm"}}),
+    # WP-30 P1.2a: scheme chrome -- economist's in-band note (placed at
+    # fig.center[0], before the yline's Span in both modes), its right-hand
+    # y axis and left-hand axis 2; stcolor's dashed grid; s1rcolor's ticks.
+    _case("scheme chrome: economist titles, note and axis 2",
+          [_sc(), plot_for("line", yvar="price", xvar="weight",
+                           options={"yaxis": "2"})], {"scheme": "economist"},
+          {"title": "T", "subtitle": "S", "note": "N", "caption": "C",
+           "yline": "20", "ylabel2": "5000 10000"}),
+    _case("scheme chrome: stcolor grid and xlabel grid", [_sc()],
+          {"scheme": "stcolor"}, {"xlabel": ", grid"}),
+    _case("scheme chrome: s1rcolor ticks", [_sc()], {"scheme": "s1rcolor"},
+          {"title": "T", "note": "N"}),
+    # WP-30 P1.2b: intensity drawn as an opaque blend, markers opaque.
+    _case("bar, fintensity(150)", [plot_for("bar", {"fintensity": "150"})]),
+    _case("area, s1rcolor, fintensity(50)",
+          [plot_for("area", {"fcolor": "navy", "fintensity": "50"})],
+          {"scheme": "s1rcolor"}),
+    _case("rconnected, sttrans", [plot_for("rconnected")],
+          {"scheme": "sttrans"}),
+    _case("rbar and rarea, color(red)",
+          [plot_for("rbar", {"color": "red"}),
+           plot_for("rarea", {"color": "red"})]),
+    _case("histogram, fcolor(navy) fintensity(50)",
+          [plot_for("histogram", {"fcolor": "navy", "fintensity": "50"})]),
+    _case("lfitci, fintensity(150)",
+          [plot_for("lfitci", {"fintensity": "150"})]),
+    # WP-30 P1.23b: colour-key text and computed tooltips
+    _case("colorvar() colorcuts() keyed %8.0gc",
+          [_sc(colorvar="price", colorcuts="5000 9000")]),
+    _case("colorvar() zlabel(, format(%9.2f))", [_sc(colorvar="price")],
+          go={"zlabel": ", format(%9.2f)"}),
+    _case("histogram, frequency tooltip",
+          [plot_for("histogram", {"frequency": "frequency"})]),
+    # WP-30 P1.5: axis ticks in twoway's display formats
+    # The primary axes' formats are drawn by the second-axis entry, and a
+    # bare histogram's height axis by the plot-type entry.
+    _case("S18 second axis fallback", [_sc(), _sc(yaxis="2")],
+          {"formats": {"weight": "%8.0gc", "mpg": "%9.2f"}}),
+    _case("S18 xvarformat and labels", [_sc(xvarformat="%9.2f")], None,
+          {"xlabel": '2000 "two" 3000'}),
+    _case("S18 date format() picture",
+          [plot_for("line", yvar="mpg", xvar="when")], {"formats": {"when": "%td"}},
+          {"xlabel": ", format(%tdDD/NN/CCYY)"}),
+    _case("S18 unwritable format noted", [_sc()], None,
+          {"ylabel": ", format(%12s)"}),
+    _case("Fit, range, pc and scatteri keys (WP-30 P1.16)",
+          [_sc(), plot_for("lowess"), plot_for("lpolyci"), plot_for("rcap"),
+           plot_for("pcspike"), plot_for("scatteri")]),
+    _case("First-equals-last titles and axis 2 (WP-30 P1.16)",
+          [_sc(), plot_for("scatter", yvar="price"),
+           plot_for("rcap", {"yaxis": "2"})]),
+    # WP-30 P1.1b: per-series value lists
+    _case("value lists, labels",
+          [plot_for("scatter", {"mlabel": "rep"}, yvar="mpg"),
+           plot_for("scatter", {"mlabel": "foreign"}, yvar="price")]),
+    _case("value lists, bars",
+          [plot_for("bar", {"base": "10", "barwidth": "0.4"}, yvar="mpg",
+                    xvar="rep"),
+           plot_for("bar", {"base": "20", "barwidth": "0.8"}, yvar="price",
+                    xvar="rep")]),
+    # WP-30 P1.3a: natscale ticks and twoway's margin
+    _case("default axes take natscale and the margin",
+          [plot_for("scatter"), plot_for("lfit")]),
+    _case("second axis default ticks",
+          [plot_for("scatter"), plot_for("scatter", {"yaxis": "2"},
+                                         yvar="price")]),
+    _case("bar default base stays out", [plot_for("bar")]),
+    _case("by() fits in the shared scale",
+          [plot_for("scatter", yvar="price"), plot_for("lfit", yvar="price")],
+          None, {"by": "foreign"}),
+    # WP-30 P1.4a: the scheme's opacity, histogram style and symbols reach
+    # every layer, alike in both modes.
+    _case("sttrans fits and ranges", [plot_for("lfit"), plot_for("rspike"),
+                                      plot_for("pcarrow"),
+                                      plot_for("scatteri")],
+          {"scheme": "sttrans"}),
+    _case("rarea, s2color", [plot_for("rarea")]),
+    _case("two histograms, stcolor",
+          [plot_for("histogram"), plot_for("histogram")],
+          {"scheme": "stcolor"}),
+    _case("s1mono symbol cycle",
+          [plot_for("scatter")] * 11 + [plot_for("dropline"),
+                                        plot_for("rcapsym")],
+          {"scheme": "s1mono"}),
+    _case("msymbol(smcircle) msize(large)",
+          [plot_for("scatter", {"msymbol": "smcircle", "msize": "large"})]),
+    _case("function without points needing Stata (WP-30 P1.22)",
+          [_sc(), plot_for("function", {"range": "0 2", "n": "3"},
+                           expr="normalden(x)")]),
+    # WP-30 P1.17b: twoway's default base
+    _case("spike base(5)", [plot_for("spike", {"base": "5"})]),
+    _case("area on a log y", [plot_for("area")], None, {"yscale": "log"}),
+    _case("dropline on yaxis(2)",
+          [_sc(), plot_for("dropline", {"yaxis": "2"}, yvar="price")]),
+    # WP-30 P1.15a: by() panel labels and overall text
+    _case("by() labels under a title and a prefixed subtitle (WP-30 P1.15a)",
+          [_sc()], None, {"by": "foreign rep", "title": '"T"',
+                          "subtitle": '"S", prefix'}),
+    _case("by() overall title, subtitle, note and caption (WP-30 P1.15a)",
+          [_sc()], None,
+          {"by": 'foreign, total title("X") subtitle("S") note("N", suffix) '
+                 'caption("C")'}),
+    # WP-30 P1.11b: graph-text markup, drawn and noted alike.
+    _case("SMCL graph text (WP-30 P1.11b)", [_sc(), plot_for("lfit")],
+          go={"title": '"{bf:a}b {&alpha}"',
+              "subtitle": '"{it:Whole italic}"',
+              "xtitle": '"{&mu} R{sup:2}"',
+              "xlabel": '3000 "{bf:a}" 4000 "{bf:b}"',
+              "legend": 'label(1 "{&beta} key")'}),
+    # WP-30 P1.13a: Stata's colour grammar, an unknown colour drawn black
+    _case("scatter, the colour grammar",
+          [_sc(mcolor="navy*.5", mfcolor="hsv 240 1 1", mlcolor="bg")]),
+    _case("line, an unknown colour drawn black",
+          [plot_for("line", {"lcolor": "bogus"})]),
+    _case("bar, an unknown fill", [plot_for("bar", {"fcolor": "bogus"})]),
+    _case("s1rcolor, fg", [_sc(mcolor="fg*.5")], {"scheme": "s1rcolor"}),
+    # WP-30 P1.18a: the axis look sub-options
+    _case("axis look: label sub-options", [_sc()], None,
+          {"ylabel": ", nolabels noticks labcolor(red%50) tlength(3) "
+                     "tposition(inside)",
+           "xlabel": ", labcolor(blue) tposition(crossing)",
+           "ytick": "25, tlength(5)"}),
+    _case("axis look: scale sub-options", [_sc()], None,
+          {"yscale": "noline alt titlegap(5)",
+           "xscale": "lcolor(red) lwidth(thick) lpattern(dash) off"}),
+    _case("axis look: anglestyle names", [_sc()], None,
+          {"ylabel": ", angle(rvertical)", "xlabel": ", angle(Vertical)"}),
+    _case("axis look: second axis alt and off",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
+          {"yscale": "alt", "yscale2": "alt noline", "ylabel2": ", nolabels"}),
+    _case("axis look: under by()", [_sc()], None,
+          {"by": "foreign", "yscale": "off noline alt titlegap(10)",
+           "ylabel": ", nolabels noticks labcolor(red) tlength(5)"}),
+    # WP-30 P1.14a: the named styles p1-p15, p() and the plot index
+    _case("named styles p1-p15",
+          [_sc(pstyle="p3"), plot_for("line", {"lstyle": "p4"}),
+           plot_for("bar", {"bstyle": "p5", "blcolor": "red"}),
+           plot_for("spike", {"alstyle": "p6"}),
+           plot_for("area", {"astyle": "p7"})], {"scheme": "stcolor"}),
+    _case("p() and the plot index",
+          [_sc(p="p3"), plot_for("scatteri", {"pstyle": "p4"}),
+           plot_for("function", {"pstyle": "p5"}),
+           plot_for("pci", {"pstyle": "p6"})], {"scheme": "stcolor"}),
+    _case("named styles on a ci fit",
+          [plot_for("lfitci", {"pstyle": "p3", "astyle": "p4",
+                               "alstyle": "p5"})], {"scheme": "stcolor"}),
+    # WP-30 P1.25b: scheme lookup and each graph's own scheme
+    _case("two graphs, two schemes",
+          graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
+                  ("g2", [_sc()], {"scheme": "s1rcolor"})]),
+    _case("graph-level theme alias mono", [_sc()], go={"scheme": "mono"}),
+    # WP-30 P1.14b: Stata's other style names, and a name twoway does not
+    # know.
+    _case("other named styles",
+          [plot_for("line", {"lstyle": "refline"}), _sc(pstyle="ci"),
+           plot_for("scatter", {"mstyle": "histogram"}, yvar="price")],
+          {"scheme": "s2color"}),
+    _case("an unknown named style",
+          [plot_for("area", {"astyle": "bogus"})], {"scheme": "s2color"}),
+    # WP-30 P1.24: each label at its row's clock, on a stacked-source type
+    # and a derived-column type too.
+    _case("Per-row label clocks (WP-30 P1.24)",
+          [_sc(mlabel="rep", mlabvposition="rep"),
+           plot_for("dropline", {"mlabel": "rep",
+                                 "mlabvposition": "foreign"})]),
+    _case("Per-row clocks on pc types (WP-30 P1.24)",
+          [plot_for("pcscatter", {"mlabel": "rep", "mlabvposition": "rep"}),
+           plot_for("pcarrow", {"mlabel": "rep", "mlabvposition": "rep"})]),
+    _case("Label text styles, per y (WP-30 P1.24)",
+          [_sc(mlabel="rep", mlabtextstyle="heading"),
+           plot_for("dropline", {"mlabel": "rep", "mlabtextstyle": "p3"})],
+          bo={"scheme": "stcolor"}),
+    # WP-30 P1.20a: region styling, and regions none over the canvas.
+    _case("Region styling (WP-30 P1.20a)", [_sc()], None,
+          {"plotregion": "c(red) lc(navy) lp(dash)",
+           "graphregion": "fc(gs14) lcolor(red)", "bgcolor": "blue"}),
+    _case("Regions none over the canvas (WP-30 P1.20a)", [_sc()], None,
+          {"bgcolor": "red", "graphregion": "color(none)",
+           "plotregion": "fcolor(none)"}),
+    # WP-30 P1.21a: reference-line numlists and lstyle().
+    _case("Reference-line numlists and lstyle (WP-30 P1.21a)", [_sc()], None,
+          {"xline": "2000(500)3000, lc(red) lstyle(foreground), 4000",
+           "yline": "10/12, lstyle(grid)"}),
+    # WP-30 P1.8a: connect() styles, and a scatter given connect().
+    _case("connect() styles (WP-30 P1.8a)",
+          [plot_for("line", {"connect": "stairstep"}),
+           plot_for("line", yvar="price", options={"connect": "ascending"}),
+           plot_for("line", yvar="rep", options={"connect": "none"}),
+           plot_for("connected", {"connect": "direct"})]),
+    _case("cmissing(n) and function (WP-30 P1.8a)",
+          [plot_for("line", {"cmissing": "n", "connect": "stepstair"}),
+           plot_for("rline", {"cmissing": "n"}),
+           {"type": "function", "expr": "sqrt(x^2-1)",
+            "options": {"range": "-2 2"}}]),
+    # WP-30 P1.13b: a bare *# and %# at the colour sites.
+    _case("Bare intensity at every site (WP-30 P1.13b)",
+          [_sc(mcolor="*.5", mlabel="foreign", mlabcolor="red%50"),
+           plot_for("bar", {"fcolor": "*.7"}),
+           plot_for("line", {"lcolor": "%50"})],
+          go={"title": "T, color(*.5)", "xline": "3000, lcolor(%50)"}),
+    # WP-30 P1.8b: recast().
+    _case("recast() (WP-30 P1.8b)",
+          [dict(plot_for("line"), recast_from="scatter"),
+           plot_for("lfit", {"recast": "scatter"}),
+           plot_for("kdensity", {"recast": "area"})]),
+    # WP-30 P1.20b: plot-region margin and inner box
+    _case("Plot-region margin and inner box (WP-30 P1.20b)", [_sc()], None,
+          {"plotregion": "margin(l+10) mar(t-1) ifcolor(red%50) ilc(blue)"}),
+    # WP-30 S48 (P1.15b): by() grid and size.
+    _case("by() grid and size (WP-30 P1.15b)", [_sc()], None,
+          {"by": "rep, rows(2) holes(1) colfirst iscale(.7) imargin(small)"}),
+    # WP-30 P1.9a: horizontal drawn.
+    _case("horizontal bar, rcap, histogram and pcarrow (WP-30 P1.9a)",
+          [plot_for("bar", {"horizontal": "horizontal", "mlabel": "mpg"}),
+           plot_for("rcap", {"horizontal": "horizontal"}),
+           plot_for("histogram", {"horizontal": "horizontal"}),
+           plot_for("pcarrow", {"horizontal": "horizontal"})]),
+    _case("horizontal area on a second y axis (WP-30 P1.9a)",
+          [_sc(), plot_for("area", {"horizontal": "horizontal",
+                                    "yaxis": "2"})]),
+    # WP-30 P1.21b: xline/yline extent.
+    _case("xline/yline noextend and style() (WP-30 P1.21b)", [_sc()], None,
+          {"xline": "3000, noextend", "yline": "20, style(unextended)"}),
+    # WP-30 P1.6: tlabel() ttitle() tline() as dash folds them on a %td x
+    # (tlabel(01jan2002 04jan2002 07jan2002) ttitle("Day") tline(05jan2002)).
+    _case("tsline time-axis options folded (WP-30 P1.6)",
+          [plot_for("line", yvar="mpg", xvar="when")],
+          {"formats": {"when": "%td"}},
+          {"xlabel": "15341 15344 15347", "xtitle": '"Day"',
+           "xline": "15345"}),
+    # WP-30 P1.18b: add unions with the default ticks.
+    _case("ylabel(25, add) (WP-30 P1.18b)", [_sc()], None,
+          {"ylabel": "25, add"}),
+    _case("ylabel2(6000, add) on a second axis (WP-30 P1.18b)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
+          {"ylabel2": "6000, add"}),
+    # WP-30 P1.9b: turned layers' tooltips and geometry in both modes.
+    _case("Turned layers (WP-30 P1.9b)",
+          [plot_for("histogram", {"horizontal": "horizontal"}),
+           plot_for("kdensity", {"horizontal": "horizontal"})]),
+    _case("Turned ranges and areas (WP-30 P1.9b)",
+          [plot_for("rcap", {"horizontal": "horizontal"}),
+           plot_for("area", {"horizontal": "horizontal"})]),
+    _case("Turned bar on axis 2 (WP-30 P1.9b)",
+          [_sc(), plot_for("bar", {"horizontal": "horizontal",
+                                   "yaxis": "2"})]),
+    # WP-30 P1.10: text() records, plain, boxed to the north-east, and
+    # vertical on the second y axis.
+    _case("Added text (WP-30 P1.10)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")], None,
+          {"added_text_n": "3", "added_text": [
+              {"at_kind": "text", "at_y": 30, "at_x": 3000, "at_yaxis": 1,
+               "at_xaxis": 1, "at_lines": ["AAA"], "at_opts": ""},
+              {"at_kind": "text", "at_y": 20, "at_x": 2500, "at_yaxis": 1,
+               "at_xaxis": 1, "at_lines": ["B1", "B2"],
+               "at_opts": "placement(ne) box fcolor(yellow) margin(small)"},
+              {"at_kind": "text", "at_y": 8000, "at_x": 3500, "at_yaxis": 2,
+               "at_xaxis": 1, "at_lines": ["V"],
+               "at_opts": "orientation(vertical) color(red)"}]}),
 ]
 
 
@@ -1880,6 +2415,16 @@ DATE_CORPUS = [
     _case("ylabel(0(20)100, norescale)", [_sc()], None,
           {"ylabel": "0(20)100, norescale"}),
     _case("yscale(range(abc))", [_sc()], None, {"yscale": "range(abc)"}),
+    # WP-30 P1.4b: marker labels and the colour bar in the scheme's style.
+    _case("mlabel, s1rcolor", [plot_for("scatter", {"mlabel": "mpg"})],
+          {"scheme": "s1rcolor"}),
+    _case("colour bar, s1rcolor", [plot_for("scatter", {"colorvar": "price"})],
+          {"scheme": "s1rcolor"}),
+    _case("mlabel on bar and pcarrow, sttrans",
+          [plot_for("scatter"), plot_for("bar", {"mlabel": "mpg"}),
+           plot_for("pcarrow", {"mlabel": "mpg"})], {"scheme": "sttrans"}),
+    # WP-30 P1.23a (section 35): date positions on every axis.
+    *_P123A_CASES,
 ]
 
 #: The entries a report is the point of, with the report each must make.
@@ -1889,6 +2434,10 @@ DATE_CORPUS = [
 #: but a layer drawn empty (the lpoly entries' "drew nothing" is not what
 #: they exist for).
 _MUST_WARN = {
+    "an unknown named style":
+        "dash: named style bogus not found in class areastyle",
+    "line, an unknown colour drawn black":
+        "dash: lcolor(bogus) is not a recognised colour; using black",
     "line, a colour clcolor() cannot name":
         "dash: clcolor(notacolour) is not a recognised colour",
     "a format mlabformat() cannot reproduce":
@@ -1903,16 +2452,14 @@ _MUST_WARN = {
         "dash: legend() sub-option(s) not implemented and ignored: "
         "span holes(1)",
     "xscale(range()) and yscale with an unimplemented sub-option":
-        "dash: yscale() sub-option(s) not implemented and ignored: noline",
-    "xline with an unimplemented sub-option":
-        "dash: xline() sub-option(s) not implemented and ignored: "
-        "lstyle(foreground)",
+        "dash: yscale() sub-option(s) not implemented and ignored: "
+        "outergap(1)",
     "xlabel with an unimplemented sub-option":
         "dash: xlabel() sub-option(s) not implemented and ignored: "
-        "labcolor(red)",
+        "labgap(2)",
     "by() with an unimplemented sub-option":
         "dash: by() sub-option(s) not implemented and ignored: "
-        "rows(2) compact",
+        "subtitleformat(%9s) shrink",
     "filter() with an unknown type":
         "dash: filter(price, type(bogus)): type() must be one of",
     "yscale(range(abc))":
@@ -1928,6 +2475,13 @@ _MUST_WARN = {
     "ylabel2 with no second-axis layer":
         "dash: graph 'g1': ylabel2() (ylabel(..., axis(2))) is not drawn: "
         "no layer is on yaxis(2).",
+    # WP-30 P1.22: the fallback names what it needs, in both modes.
+    "function without points needing Stata (WP-30 P1.22)":
+        "dash: graph 'g1' plot 2 (function) drew nothing: it needs the "
+        "points Stata computes for it when dash registers the graph",
+    # WP-30 P1.11b: markup on part of a title is noted, in both modes.
+    "SMCL graph text (WP-30 P1.11b)":
+        "dash: graph 'g1': {bf:}, {it:} or a font tag on part of a title",
 }
 
 #: The filter types that build a widget (dash.sthlp); a filter() group of
@@ -2063,6 +2617,40 @@ class _Agree:
 @pytest.mark.parametrize("name,spec", CORPUS)
 class TestTheTwoModesAgree(_Agree):
     pass
+
+
+@pytest.mark.parametrize("name,spec", CORPUS)
+class TestTheServedBuildNamesTheSavedNotes:
+    """WP-30 P1.26b (A83): ``dash build, server`` raises the notes the
+    saved build raises -- the planners' at build, then those of one trial
+    drawing of the app it wrote -- for every entry."""
+
+    def test_the_trial_names_what_the_saved_build_names(self, name, spec):
+        saved = _render_pair(name, spec)["std"]["warnings"]
+        _, sp, dp = _write(spec)
+        ap = os.path.join(_TMP, f"trial_{next(_SEQ)}.py")
+        with warnings.catch_warnings(record=True) as got:
+            warnings.simplefilter("always")
+            dr.ServerAppBuilder(sp, dp).build(ap, trial=True)
+        got = sorted(str(w.message) for w in got)
+        assert got == saved, (
+            f"{name}: the server build's notes differ\n  saved  {saved}"
+            f"\n  server {got}")
+
+
+@pytest.mark.parametrize("name", ["scatter"])
+def test_an_entrys_comparisons_share_one_group(request, name):
+    """Every comparison of an entry carries the entry's xdist group: the
+    mark always, and on a ``--dist loadgroup`` worker the group in its node
+    id as well, which is what xdist schedules by.  The mark alone was there
+    all along and grouped nothing (WP-30 test performance A1,
+    test_xdist_groups.py)."""
+    mark = request.node.get_closest_marker("xdist_group")
+    assert mark is not None and mark.kwargs == {"name": "parity:" + name}
+    if (getattr(request.config, "workerinput", None) is not None
+            and request.config.getvalue("loadgroup")):
+        assert request.node.nodeid.endswith("@parity:" + name), (
+            request.node.nodeid)
 
 
 class TestRangeLayersInALinkGroup:
@@ -2237,13 +2825,25 @@ _MOVES = [
      "price >= 4500"),
 ]
 
+# WP-30 P1.23a (section 35): a date beside a number, and a fit on a date
+# second axis, after a range move.
+_P123A_MOVE_SPECS = [
+    ("P1.23a: a date beside a number after a range move",
+     [plot_for("scatter", yvar="mpg", xvar="when"),
+      plot_for("scatter", yvar="mpg", xvar="weight")], None),
+    ("P1.23a: a date second axis with a fit after a range move",
+     [plot_for("scatter", yvar="mpg", xvar="weight"),
+      plot_for("line", {"yaxis": "2"}, yvar="when", xvar="weight"),
+      plot_for("lfit", {"yaxis": "2"}, yvar="when", xvar="weight")], None),
+]
+
 _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpoly", "rarea", "pcspike", "function", "connected",
                  "pcarrow", "pcbarrow",
                  # WP-29 P0.9: lpolyci's analytic band refits after a move.
                  "lpolyci"]
-# WP-29 P0.18: bar and rbar take the kept rows' width after a served move;
-# the other eight agreed already and are guards.
+# bar and rbar widths hold through a move (WP-30 P1.17a); the other eight
+# agreed already and are guards.
 _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
 
@@ -2279,6 +2879,10 @@ def _move_case(name, move, plots=None, go=None, graphs=None, kpis=None,
     bo = dict(bo or {}, filter=filt)
     spec = _spec(plots, bo, go, graphs, kpis, if_expr)
     return pytest.param(name, spec, action, oracle, id=name)
+
+
+_P123A_MOVES = [_move_case(n, _MOVES[1], p, go, bo=_P123A_W)
+                for n, p, go in _P123A_MOVE_SPECS]
 
 
 def _own(name, move, plots, truth, go=None, graphs=None, if_expr="",
@@ -2390,6 +2994,11 @@ _OWN_QUALIFIER_MOVES = [
 
 
 MOVE_CORPUS = [
+    # WP-30 P1.6: the folded time-axis keys after a range move.
+    _move_case("tsline time-axis options folded, range (WP-30 P1.6)",
+               _MOVES[1], [plot_for("line", yvar="mpg", xvar="when")],
+               {"xlabel": "15341 15344 15347", "xline": "15345"},
+               bo={"formats": {"when": "%td"}}),
     # Flipped (WP-29 P0.11): a literal layer reads no row, so its filter
     # reaches none unless a card it recomputes does; an unqualified
     # filter-mode card keeps the widget's reach every row.
@@ -2414,6 +3023,9 @@ MOVE_CORPUS = [
                {"by": "rep"}),
     _move_case("lfit under by(), range", _MOVES[1], [plot_for("lfit")],
                {"by": "foreign"}),
+    # WP-30 P1.15c: the shared chrome holds after a move.
+    _move_case("WP-30 P1.15c: two layers under by(), range", _MOVES[1],
+               [_sc(), plot_for("lfit")], {"by": "foreign"}),
     _move_case("a KPI, dropdown", _MOVES[0], [_sc()], kpis=[_kpi()]),
     _move_case("a KPI with its own if, range", _MOVES[1], [_sc()],
                kpis=[_kpi(if_expr="foreign == 0")]),
@@ -2487,7 +3099,7 @@ MOVE_CORPUS = [
     # from the rows the move keeps.
     _move_case("lpoly biweight degree 2, dropdown", _MOVES[0],
                [plot_for("lpoly", {"kernel": "biweight", "degree": "2"})]),
-    # WP-29 P0.18: a served bar's width is the kept rows' spacing.
+    # WP-29 P0.18: a served bar's width holds through a move (WP-30 P1.17a).
     _move_case("bar under by(rep), dropdown", _MOVES[0], [plot_for("bar")],
                {"by": "rep"}),
     _move_case("rbar under by(foreign), range", _MOVES[1],
@@ -2514,6 +3126,83 @@ MOVE_CORPUS = [
                                               "in_expr": ""}),
                        ("g2", [_sc()], None, {"if_expr": "price > 10000",
                                               "in_expr": ""})]),
+    # WP-30 P1.25a: StataCorp's six internal schemes, one for the six
+    _move_case("scatter with yline under stgcolor_mv, dropdown", _MOVES[0],
+               [_sc()], {"yline": "20"}, bo={"scheme": "stgcolor_mv"}),
+    # WP-30 P1.1a: one options object per expanded series
+    _move_case("stylelist series, dropdown", _MOVES[0],
+               [plot_for("scatter", {"mcolor": "red", "msymbol": "O"},
+                         yvar="mpg"),
+                plot_for("scatter", {"mcolor": "blue", "msymbol": "T"},
+                         yvar="price")]),
+    # WP-30 P1.12b: Stata line widths
+    _move_case("line, lwidth(*2), dropdown", _MOVES[0],
+               [plot_for("line", {"lwidth": "*2"})]),
+    # WP-30 P1.17a: bar widths and range caps
+    _move_case("rcap msize(large), dropdown", _MOVES[0],
+               [plot_for("rcap", {"msize": "large"})]),
+    _move_case("bar on a %tm x, range", _MOVES[1],
+               [plot_for("bar", xvar="when")],
+               bo={"formats": {"when": "%tm"}}),
+    # WP-30 P1.2a: scheme chrome -- economist's chrome after a move.
+    _move_case("scheme chrome: economist, dropdown", _MOVES[0], [_sc()],
+               {"title": "T", "note": "N", "caption": "C"},
+               bo={"scheme": "economist"}),
+    # WP-30 P1.23b: colour-key text and computed tooltips
+    # colorcuts(), not the manifest's colorlevels(): the standalone side
+    # of a move is rebuilt on the moved rows, whose levels differ by
+    # design (the served key keeps the build's levels, as before).
+    _move_case("colorvar() colorcuts(), dropdown", _MOVES[0],
+               [_sc(colorvar="price", colorcuts="5000 9000")]),
+    # WP-30 P1.1b: per-series value lists
+    _move_case("value lists, labels, dropdown", _MOVES[0],
+               [plot_for("scatter", {"mlabel": "rep"}, yvar="mpg"),
+                plot_for("scatter", {"mlabel": "foreign"}, yvar="price")]),
+    _move_case("value lists, bars, range", _MOVES[1],
+               [plot_for("bar", {"base": "10", "barwidth": "0.4"}, yvar="mpg",
+                         xvar="rep"),
+                plot_for("bar", {"base": "20", "barwidth": "0.8"}, yvar="price",
+                         xvar="rep")]),
+    # WP-30 P1.3a: natscale ticks and twoway's margin, after a move
+    _move_case("default axes after a range move", _MOVES[1],
+               [plot_for("scatter"), plot_for("lfit")]),
+    _move_case("y2 after a dropdown move", _MOVES[0],
+               [plot_for("scatter"), plot_for("scatter", {"yaxis": "2"},
+                                              yvar="price")]),
+    # WP-30 P1.17b: twoway's default base, after a move
+    _move_case("bar with 0 below the data, dropdown", _MOVES[0],
+               [plot_for("bar")]),
+    _move_case("area under by(), range", _MOVES[1], [plot_for("area")],
+               {"by": "foreign"}),
+    # WP-30 P1.18a: the axis look holds after a move
+    _move_case("axis look after a move, dropdown", _MOVES[0],
+               [plot_for("scatter")],
+               {"ylabel": ", noticks labcolor(red) angle(rvertical)",
+                "yscale": "noline alt"}),
+    # WP-30 P1.25b: scheme lookup and each graph's own scheme
+    _move_case("two graphs, two schemes, dropdown", _MOVES[0],
+               graphs=[("g1", [_sc()], {"scheme": "s1mono"}),
+                       ("g2", [_sc()], {"scheme": "s1rcolor"})]),
+    # WP-30 P1.13b: a bare *# and %# hold after a move.
+    _move_case("bare intensity after a move, dropdown", _MOVES[0],
+               [_sc(mcolor="*.5"), plot_for("bar", {"fcolor": "*.7"})],
+               {"title": "T, color(*.5)", "xline": "3000, lcolor(%50)"}),
+    # WP-30 P1.23a (section 35): date positions on every axis.
+    *_P123A_MOVES,
+    # WP-30 P1.8b: recast().
+    _move_case("lfit recast scatter, dropdown (WP-30 P1.8b)", _MOVES[0],
+               [plot_for("lfit", {"recast": "scatter"})]),
+    # WP-30 P1.20b: plot-region margin and inner box
+    _move_case("margin and box after a range move (WP-30 P1.20b)", _MOVES[1],
+               [_sc()], {"plotregion": "margin(l+10) ifcolor(red)",
+                         "by": "foreign"}),
+    # WP-30 P1.21b: an unextended line follows the axis.
+    _move_case("noextend after a dropdown move (WP-30 P1.21b)", _MOVES[0],
+               [_sc()], {"xline": "3000, noextend"}),
+    # WP-30 P1.18b: an added date holds after a move.
+    _move_case("xlabel(15345, add) on a date axis, range (WP-30 P1.18b)",
+               _MOVES[1], [plot_for("line", yvar="mpg", xvar="when")],
+               {"xlabel": "15345, add"}, bo=_P123A_W),
 ]
 
 
@@ -2527,11 +3216,36 @@ class TestAFilterMoveAgrees:
     the server refits, the saved page rescales in JS -- and this is where
     the refit is checked, since WP-09 left every served computed layer a
     row-index slice of its OLD curve after the first move.
+
+    Each entry's served move and saved oracle are rendered once per process
+    (``_once``) and shared by its four comparisons, which A1's xdist group
+    keeps on one worker; each comparison rendered both, and the arrowhead
+    one twice (WP-30 test performance A4).
     """
 
+    #: (which, spec, move or oracle) -> (figures, cards), plain data.
+    _RENDERED = {}
+
+    @classmethod
+    def _once(cls, render, spec, arg):
+        """``render(spec, arg)`` -- ``_served_after_move`` or
+        ``_saved_with_qualifier``, each ``(figures, cards)`` of plain data
+        -- made once and handed out as copies, so no comparison sees
+        another's changes."""
+        key = (render.__name__, json.dumps(spec, sort_keys=True),
+               json.dumps(arg))
+        if key not in cls._RENDERED:
+            cls._RENDERED[key] = render(spec, arg)
+        return copy.deepcopy(cls._RENDERED[key])
+
+    def _moved(self, spec, action, oracle):
+        """``(served, saved)``: the document after the move, and the saved
+        renderer given the move's rows as an ``if``."""
+        return (self._once(_served_after_move, spec, action),
+                self._once(_saved_with_qualifier, spec, oracle))
+
     def test_same_glyphs_after_the_move(self, name, spec, action, oracle):
-        srv, _ = _served_after_move(spec, action)
-        std, _ = _saved_with_qualifier(spec, oracle)
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
         assert len(std) == len(srv), f"{name}: figure counts differ"
         for i, (a, b) in enumerate(zip(std, srv)):
             diffs = _diff(a["glyphs"], b["glyphs"])
@@ -2539,8 +3253,7 @@ class TestAFilterMoveAgrees:
                                              f"move", diffs)
 
     def test_same_labels_after_the_move(self, name, spec, action, oracle):
-        srv, _ = _served_after_move(spec, action)
-        std, _ = _saved_with_qualifier(spec, oracle)
+        (srv, _), (std, _) = self._moved(spec, action, oracle)
         # zip() stops at the shorter list: a figure one mode lost would
         # have had its labels compared with nothing.
         assert len(std) == len(srv), f"{name}: figure counts differ"
@@ -2564,8 +3277,8 @@ class TestAFilterMoveAgrees:
         kept rows, on the shaft it heads.  Each head was one Arrow
         annotation fixed to its row, so after a move the shaft went and
         the head stayed (BUGS.md, 24sep2026)."""
-        srv, _ = _served_after_move(spec, action)
-        std, _ = _saved_with_qualifier(spec, oracle)
+        (srv, srv_cards), (std, std_cards) = self._moved(spec, action,
+                                                         oracle)
         assert len(std) == len(srv), f"{name}: figure counts differ"
         for i, (a, b) in enumerate(zip(std, srv)):
             ha, hb = _arrows_of(a["annotations"]), _arrows_of(b["annotations"])
@@ -2573,8 +3286,7 @@ class TestAFilterMoveAgrees:
                               f"\n  saved  {ha}\n  served {hb}")
             _assert_heads_on_shafts(name, b)
 
-        _, srv = _served_after_move(spec, action)
-        _, std = _saved_with_qualifier(spec, oracle)
+        srv, std = srv_cards, std_cards
         # One card per KPI, each a card: [] == [] passed for a KPI both
         # modes stopped drawing.
         assert None not in std and sorted(c[0] for c in std) == sorted(
@@ -2586,7 +3298,7 @@ class TestAFilterMoveAgrees:
     def test_the_move_changed_something(self, name, spec, action, oracle):
         """Guards the guard: a move that selects every row proves nothing."""
         before, _ = _render_pair(f"move-before:{name}", spec)["srv"], None
-        after, _ = _served_after_move(spec, action)
+        after, _ = self._once(_served_after_move, spec, action)
         assert _diff(before["figures"], after) or "function" in name, (
             f"{name}: the move left every figure unchanged")
 
@@ -2594,8 +3306,10 @@ class TestAFilterMoveAgrees:
 def _assert_heads_on_shafts(name, fig):
     """Every arrow a figure's Arrow annotations draw heads a Segment it
     draws, and every Segment of a pcarrow/pcbarrow layer has its head."""
+    # A headless Arrow is an unextended reference line (WP-30 P1.21b),
+    # no head.
     heads = sorted(a for x in fig["annotations"] if x["kind"] == "Arrow"
-                   for a in x["arrows"])
+                   and (x["start"] or x["end"]) for a in x["arrows"])
     if not heads:
         return
     shafts = []
@@ -3001,11 +3715,9 @@ class TestTheCopiedHelpersBringTheirCallees:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_callee_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            ms.loader.exec_module(mod)
+            mod = load_app(ap, f"_callee_{tag}")
         return mod
 
     def test_every_global_a_copied_helper_calls_is_defined(self):
@@ -3144,9 +3856,17 @@ class TestTheYLabelAngleEntry:
                 "horizontal"], (side, axes["x"])
 
     def test_the_control_reads_horizontal_without_the_option(self):
+        """Flipped (WP-30 P1.2a): the bare scatter, under the default
+        s2color, takes the scheme's ``anglestyle vertical_tick vertical``,
+        so its y labels read upwards as twoway draws them (register
+        P1.2.1); the control is now the x axis, which stays horizontal.
+        TestTickLabelAngle (test_scheme_chrome.py) pins the explicit
+        horizontal case."""
         for side, axes in self._axes("scatter").items():
             assert [a["orientation"] for a in axes["y"]] == [
-                "horizontal"], (side, axes["y"])
+                _num(math.pi / 2)], (side, axes["y"])
+            assert [a["orientation"] for a in axes["x"]] == [
+                "horizontal"], (side, axes["x"])
 
 
 
@@ -3754,3 +4474,77 @@ class TestTheStaleStatusSkip:
                    for m in r._last_layout_root.references())
         pair = _render_pair("lfit with a dropdown", spec)
         assert pair["std"]["tree"] == pair["srv"]["tree"]
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.23a (section 35): the transform per coordinate property
+# ---------------------------------------------------------------------------
+
+def _p123a_units(figs):
+    """``(model type, property, date-units kind)`` of every coordinate
+    property of every glyph variant, LabelSet and Arrow of *figs*, in
+    renderer order: ``_spec_of`` drops a spec's transform, and both modes
+    keep epoch ms in the source, so no profile sees a missing one."""
+    from bokeh.models import Arrow, Glyph, LabelSet
+    out = []
+    for f in figs:
+        for r in f.renderers:
+            for attr in ("glyph", "selection_glyph", "nonselection_glyph",
+                         "hover_glyph", "muted_glyph"):
+                g = getattr(r, attr, None)
+                if not isinstance(g, Glyph):
+                    continue
+                for p in dr._DASH_X_COORDS + dr._DASH_Y_COORDS:
+                    if p in g.properties():
+                        out.append((type(g).__name__, attr + "." + p,
+                                    dr._dash_spec_units(getattr(g, p))))
+        for a in f.center:
+            props = (("x", "y") if isinstance(a, LabelSet) else
+                     ("x_start", "x_end", "y_start", "y_end")
+                     if isinstance(a, Arrow) else ())
+            for p in props:
+                out.append((type(a).__name__, p,
+                            dr._dash_spec_units(getattr(a, p))))
+    return out
+
+
+def _p123a_figs(models):
+    from bokeh.plotting import figure as _Fig
+    seen, out = set(), []
+    for root in models:
+        for m in root.references():
+            if isinstance(m, _Fig) and id(m) not in seen:
+                seen.add(id(m))
+                out.append(m)
+    return sorted(out, key=lambda f: str(getattr(f.title, "text", "")))
+
+
+@pytest.mark.parametrize("name", [n for n, _p, _g in _P123A_SPECS]
+                         + [n for n, _p, _g in _P123A_MOVE_SPECS])
+class TestTheTwoModesAgreeOnDateUnits:
+
+    def test_the_same_properties_carry_the_same_units(self, name):
+        specs = {n: (p, g, False) for n, p, g in _P123A_SPECS}
+        specs.update({n: (p, g, True) for n, p, g in _P123A_MOVE_SPECS})
+        plots, go, move = specs[name]
+        _, filt, action, oracle = _MOVES[1]
+        bo = dict(_P123A_W, filter=filt) if move else dict(_P123A_W)
+        spec = _spec(plots, bo, go)
+        doc, _w = _served(spec)
+        if move:
+            w = [x for x in _widgets_of(doc)
+                 if type(x).__name__ == action[0]][0]
+            _fire(w, action[1])
+            q = json.loads(json.dumps(spec))
+            q["build_options"]["filter"] = ""
+            for g in q["graphs"]:
+                g["if_expr"] = oracle
+            r, _ = _standalone(q)
+        else:
+            r, _ = _standalone(spec)
+        srv = _p123a_units(_p123a_figs(doc.roots))
+        std = _p123a_units(_p123a_figs([r._last_layout_root]))
+        assert std == srv, (name, [x for x in std if x not in srv],
+                            [x for x in srv if x not in std])
+        if "a date beside a number" in name:
+            assert any(k == "td" for _t, _p, k in std), std

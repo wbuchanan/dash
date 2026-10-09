@@ -12,7 +12,6 @@ The rule (u04 A4): the first comma outside strings and parentheses that is
 followed, after blanks, by a name, another comma, or the end opens the
 sub-options; empty slots are ignored.  Only a typed ``""`` removes a title.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -32,16 +31,21 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 from test_dual_axis import _lone_figure, _axes  # noqa: E402
 from test_colorvar_forms import _both, _colorbar  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 
 MODES = ("saved", "served")
 _ONE = [{"type": "scatter", "yvar": "y1", "xvar": "x", "options": {}}]
-LARGE = f"{dr._textbox_size({'size': 'large'}, None):g}px"
+# WP-30 P1.12a: _textbox_size returns the CSS point string; twoway's
+# size(large) is 14 pt ('14pt'), no longer a px figure.
+LARGE = dr._textbox_size({'size': 'large'}, None)
 _SEQ = itertools.count()
 _FIXTURE = os.path.join(_HERE, "fixtures", "text_truth.json")
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _truth():
@@ -95,13 +99,10 @@ def _document(mode, tmp_path, spec, data=None):
         warnings.simplefilter("always")
         if mode == "saved":
             obj = dr.DashRenderer(sp, dp)
-            obj.render()
+            render_models(obj)
         else:
             dr.ServerAppBuilder(sp, dp).build(ap)
-            ms = importlib.util.spec_from_file_location(
-                f"_tnt_app_{next(_SEQ)}", ap)
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(ap, f"_tnt_app_{next(_SEQ)}")
             obj = Document()
             mod.make_document(obj)
     return obj, [str(w.message) for w in caught]
@@ -205,9 +206,12 @@ class TestTrailingComma:
     def test_facet_title_keeps_its_panel(self, mode, tmp_path):
         obj, _ = _document(mode, tmp_path,
                            _spec(_ONE, {"by": "g", "title": "A,"}))
-        titles = [f.title.text for f in _figs(mode, obj)
-                  if f.title is not None and f.title.text]
-        assert titles and all(t.startswith("A — ") for t in titles), titles
+        # Flipped (WP-30 P1.15a): "A — <label>" was wrong because twoway
+        # keeps the title on each panel and draws the label as its own row.
+        from by_panel_probe import panel_label
+        figs = [f for f in _figs(mode, obj) if panel_label(f)]
+        assert figs and all(f.title.text == "A" for f in figs), \
+            [(f.title.text, panel_label(f)) for f in figs]
 
     def test_a_routed_double_comma_is_silent(self):
         spec = {"graphs": [{"graph_options": {"ytitle": "A,, axis(2)"}}]}
@@ -290,9 +294,17 @@ class TestSubOptionsKeepTheDefault:
                            _spec(_ONE, {"by": "g", "ytitle": ", size(large)"}))
         ys = [a for f in _figs(mode, obj) for a in _axes(f.left)]
         assert ys
+        # Flipped (WP-30 P1.15c): twoway draws the y title once, beside
+        # the panels (its l1title, by_chrome_truth.json p01), not on each
+        # panel, so the merged text and size are the title cell's; it is
+        # not a panel, so it takes no by() multiplier.
         for a in ys:
-            assert a.axis_label == "y1"
-            assert a.axis_label_text_font_size == LARGE
+            assert a.axis_label is None
+        root = obj._last_layout_root if mode == "saved" else obj.roots[0]
+        (cell,) = [m for m in root.references()
+                   if getattr(m, "name", None) == "dash_by_ytitle"]
+        (t,) = [m for m in cell.left if type(m).__name__ == "Title"]
+        assert (t.text, t.text_font_size) == ("y1", LARGE)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_merged_values(self, mode, tmp_path):
@@ -507,7 +519,8 @@ class TestTheServedCopy:
         import re as _re
         assert _re.search(r"_dash_add_secondary_axes\(fig, plots, go, g_df,"
                           r"\s*_reported_subopts, gname,\s*var_labels, "
-                          r"_DASH_SCHEME\)", src)
+                          # WP-30 P1.23a: date_axes and more may follow.
+                          r"_DASH_SCHEME[,)]", src)
 
 
 # ---------------------------------------------------------------------------

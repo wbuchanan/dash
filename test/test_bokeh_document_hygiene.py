@@ -22,13 +22,15 @@ import dash_render as dr  # noqa: E402
 from conftest import _clear_bokeh_curdoc, make_data_json, make_spec  # noqa: E402
 
 
-def _exec_generated_app(tmp_path, auto_df):
+def _exec_generated_app(tmp_path, auto_df, graph_options=None):
     """Build a served app from a scatter spec and import it, as the server
     tests do.  Importing is what pollutes ``curdoc()``."""
     sp, dp, ap = (str(tmp_path / n) for n in ("s.json", "d.json", "app.py"))
+    spec = make_spec([{"type": "scatter", "yvar": "mpg", "xvar": "weight",
+                       "options": {}}])
+    spec["graphs"][0]["graph_options"].update(graph_options or {})
     with open(sp, "w") as fh:
-        json.dump(make_spec([{"type": "scatter", "yvar": "mpg",
-                              "xvar": "weight", "options": {}}]), fh)
+        json.dump(spec, fh)
     with open(dp, "w") as fh:
         json.dump(make_data_json(auto_df), fh)
     dr.ServerAppBuilder(sp, dp).build(ap)
@@ -53,6 +55,20 @@ def test_the_fixture_clears_what_an_imported_app_leaves_behind(tmp_path, auto_df
     with pytest.raises(StopIteration):
         next(gen)                             # tear-down: clear
     assert list(curdoc().roots) == []
+
+
+def test_the_fixture_clears_an_apps_document_callbacks(tmp_path, auto_df):
+    """WP-30 P1.15c: a by() app attaches its stacked view to curdoc()'s
+    document_ready, and Bokeh copies curdoc()'s callbacks into every
+    document file_html() makes, so a later test's saved page carried the
+    hook; the fixture clears them too."""
+    _exec_generated_app(tmp_path, auto_df, {"by": "foreign"})
+    assert curdoc().callbacks._js_event_callbacks.get("document_ready")
+    gen = _clear_bokeh_curdoc.__wrapped__()
+    next(gen)
+    with pytest.raises(StopIteration):
+        next(gen)
+    assert not curdoc().callbacks._js_event_callbacks.get("document_ready")
 
 
 def test_clearing_is_idempotent_on_an_empty_document():

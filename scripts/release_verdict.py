@@ -48,6 +48,7 @@ DIAGNOSTICS = (
     "traceback",
     "error:",           # ERROR:bokeh..., SyntaxError: ...
     "drew nothing",
+    "(note:",           # WP-30 P1.26a: a note, "(note:  dash: ...)", as twoway prints one
 )
 
 _GATE = re.compile(r"^GATE (\S+)(.*)$", re.M)

@@ -45,6 +45,9 @@ _TWO = [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}},
 _ONE = [{"type": "scatter", "yvar": "mpg", "xvar": "weight", "options": {}}]
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _figs(tmp_path, plots, graph_options=None, server=True):
     tag = next(_SEQ)
     go = dict(graph_options or {}, name="g1")
@@ -64,7 +67,7 @@ def _figs(tmp_path, plots, graph_options=None, server=True):
         warnings.simplefilter("ignore")
         if not server:
             r = dr.DashRenderer(str(spec), str(data))
-            r.render()
+            render_models(r)
             return list(r.figures.values())
         ap = tmp_path / f"a_{tag}.py"
         dr.ServerAppBuilder(str(spec), str(data)).build(str(ap))

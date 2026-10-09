@@ -91,6 +91,10 @@ def sizes(tmp_path_factory):
     return out
 
 
+# One worker for the class, so the module's pages are measured once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 2.6 s on two).
+@pytest.mark.xdist_group(name="filter-payload-sizes")
 class TestTheDataIsNotCopiedPerFilter:
     def test_the_measurement_is_meaningful(self, sizes):
         """Guards the guard: a tiny document would make the ratios noise."""

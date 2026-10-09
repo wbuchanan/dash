@@ -346,11 +346,11 @@ def test_the_repo_has_no_schemes_directory():
 
 
 def test_the_root_holds_exactly_the_twenty_dash_files_the_manifest_ships():
-    """WP-28: ``f dash-<name>.scheme`` for each of the twenty, and no other
+    """WP-28: ``f dash-<name>.scheme`` for each of the twenty-six, and no other
     ``dash-*.scheme`` in the root."""
     declared = sorted(d for d in parse_pkg_files()
                       if re.fullmatch(r"dash-[a-z0-9_]+\.scheme", d))
-    assert len(declared) == 20, declared
+    assert len(declared) == 26, declared  # 20 -> 26: P1.25a ships the six StataCorp schemes
     assert _shipped_scheme_files() == declared
     assert not [d for d in parse_pkg_files()
                 if d.endswith(".scheme") and d not in declared]
@@ -431,6 +431,7 @@ _ROOT_ALSO = frozenset({
     "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
     "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md",
     "GAPS2.md", "REMAINING.md", "ROADMAP.md", "TWOWAY_COVERAGE_AUDIT.md",
+    "PhilSchummSuggestion.md",
 })
 
 
@@ -577,6 +578,14 @@ class TestNoUnsuppressableBrowserWindow:
                     or "_dash_registry_nodraw" in body), (
                 f"{name} does not read nodraw")
         assert "`nobrowser'" in self._program_body("_dash_dashboard_browser")
+        # WP-30 P1.27: both also read batch mode and set graphics off,
+        # through _dash_display_on.
+        for name in self._DECIDERS:
+            body = self._program_body(name)
+            for needle in ("_dash_display_on", "c(mode)", "c(graphics)"):
+                assert needle in body, f"{name} does not read {needle}"
+        disp = self._program_body("_dash_display_on")
+        assert '"batch"' in disp and '"off"' in disp
 
     def _declared_options(self, name):
         """Every option token program *name*'s first ``syntax [, ///``

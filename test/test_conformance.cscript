@@ -2,7 +2,7 @@
 *! The drop-in claim, proved by RENDERING rather than by parsing.
 *!
 *! Usage:  do test/test_conformance.cscript
-*! Version: 1.0.0  20sep2026
+*! Version: 1.0.1  08oct2026
 *!
 *! WHY THIS EXISTS
 *!
@@ -64,6 +64,15 @@
 *!                                          mechanical)
 
 cscript "dash conformance: the corpus renders" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 adopath ++ ".."
 
@@ -209,7 +218,11 @@ file close `fh'
 //         to a points object with no y value, which passes the spec
 //         writer's character check and is refused where it is drawn
 //         (_dash_function_points) -- reported whatever the data:
-//           dash: graph 'ctl' plot 1 (function) drew nothing.
+//           dash: graph 'ctl' plot 1 (function) drew nothing: it needs
+//           the points Stata computes for it when dash registers the
+//           graph, and the points this spec carries for it cannot be read.
+//         (WP-30 P1.22: the note says why; it was the bare "drew
+//         nothing.", and the points cannot be read is that why.)
 //         (It was normal(x), which the renderer's whitelist refused; WP-29
 //         P0.6 has Stata evaluate every function layer, so normal(x) now
 //         draws twoway's points, and an empty function layer is made from
@@ -372,7 +385,11 @@ for _c3name, _c3cell in zip(_c3reg, _c3cells):
     if isinstance(_c3cell, Plot):
         _c3figs = [_c3cell]
     elif isinstance(_c3cell, GridPlot):
-        _c3figs = [c[0] for c in _c3cell.children if isinstance(c[0], Plot)]
+        # WP-30 P1.15a: a by() grid's head and foot cells hold its
+        # overall text, not a panel.  WP-30 P1.15c: nor do its title,
+        # legend, colour-key and ruler cells; every such cell is dash_by_*.
+        _c3figs = [c[0] for c in _c3cell.children if isinstance(c[0], Plot)
+                   and not str(c[0].name or "").startswith("dash_by_")]
     else:
         _c3figs = []
     if not _c3figs:
@@ -422,7 +439,7 @@ display "C-04 PASS: all `n_reg' registered graphs reached the page, each as a fi
 // its own words.
 cert_log_has "`buildlog'", needle(") drew nothing")
 local c3_nrep = r(count)
-cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing.")
+cert_log_has "`buildlog'", needle("dash: graph 'ctl' plot 1 (function) drew nothing: it needs the points Stata computes for it when dash registers the graph, and the points this spec carries for it cannot be read.")
 local c3_nctl = r(count)
 cert_log_has "`buildlog'", needle("dash: graph 'ctl2' plot 1 (scatter) drew nothing from 74 observations.")
 local c3_nctl2 = r(count)

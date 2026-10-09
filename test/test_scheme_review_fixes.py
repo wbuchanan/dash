@@ -35,7 +35,6 @@ written into the test's tmp_path, which is made the working directory so
 ``SchemeParser._resolve_path`` finds it as a file reference.
 """
 import html as _html
-import importlib.util
 import json
 import os
 import re
@@ -56,6 +55,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -88,9 +88,7 @@ def _served(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_review_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_review_{tag}")
         doc = Document()
         mod.make_document(doc)
     curdoc().clear()
@@ -347,9 +345,14 @@ class TestRowsAndColsAreAlternatives:
         lg = _legend(_fig(_three_series("s2color", "cols(1)"), mode))
         assert (lg.ncols, lg.nrows) == (1, "auto")
 
-    def test_both_given_are_both_kept(self, mode):
+    def test_both_given_rows_wins(self, mode):
+        # Was (2, 2): both kept.  WP-30 P1.19 measured twoway drawing the
+        # rows whenever rows() and cols() are both given, in either order,
+        # so rows() wins and the columns are left to Bokeh (as
+        # test_graph_options::test_legend_rows_and_cols_combined pins).
         lg = _legend(_fig(_three_series("s2color", "cols(2) rows(2)"), mode))
-        assert (lg.ncols, lg.nrows) == (2, 2)
+        assert (lg.ncols, lg.nrows) == ("auto", 2), (
+            f"{mode}: (ncols, nrows) = {(lg.ncols, lg.nrows)!r}")
 
     def test_neither_given_keeps_the_schemes_columns(self, mode):
         lg = _legend(_fig(_three_series("s2color", ""), mode))
@@ -362,6 +365,7 @@ class TestRowsAndColsAreAlternatives:
 
 LINE = "#111111"
 MARK = "#22aa22"
+OUTLINE = "#0000ff"
 
 #: What each type draws with which colour under a scheme whose p1 and
 #: p1mark differ.  ``S`` is the Segment line colour, ``M`` the Scatter fill.
@@ -385,13 +389,18 @@ MARK_CASES = [
 @pytest.mark.parametrize("ptype, seg, mark", MARK_CASES,
                          ids=[c[0] for c in MARK_CASES])
 class TestMarkColourIsForMarkers:
-    """Stata keeps ``color p#mark`` (style/markerstyle-p#.style) apart from
-    the ``p#`` colour its "other" plots draw with: a spike, a range cap, a
+    """Stata keeps a marker's colours (style/markerstyle-p#.style: fill
+    ``color p#markfill``, outline ``color p#markline``) apart from the
+    ``p#`` colour its "other" plots draw with: a spike, a range cap, a
     paired-coordinate spike or arrow is a line, and the line half of a
-    dropline or rcapsym is one too.  The shipped schemes declare p#mark
-    equal to p#, so only a user scheme can tell the two apart."""
+    dropline or rcapsym is one too.  ``color p#mark`` is never a marker
+    colour: twoway ignores a user scheme's ``color p1mark green`` (measured
+    03oct2026, WP-30 P1.4a).  Only a user scheme can tell them apart.
 
-    def test_markers_take_p1mark_and_segments_take_p1(
+    Flipped (WP-30 P1.4a): this test expected markers to take ``color
+    p1mark``, which followed the wrong chain."""
+
+    def test_markers_take_p1markfill_and_segments_take_p1(
             self, ptype, seg, mark, mode, tmp_path, monkeypatch):
         name = _user_scheme(tmp_path, monkeypatch, "marks.scheme", [
             f"color p1 {LINE}", f"color p1mark {MARK}",
@@ -403,9 +412,25 @@ class TestMarkColourIsForMarkers:
                 f"{ptype}/{mode}: segments drawn in {got['Segment']}, "
                 f"expected the p1 colour {seg}")
         if mark is not None:
-            assert got["Scatter"] == {mark}, (
-                f"{ptype}/{mode}: markers drawn in {got['Scatter']}, "
-                f"expected the p1mark colour {mark}")
+            assert got["Scatter"] == {LINE}, (
+                f"{ptype}/{mode}: markers drawn in {got['Scatter']}: "
+                f"`color p1mark' is not a marker colour")
+        name = _user_scheme(tmp_path, monkeypatch, "fills.scheme", [
+            f"color p1 {LINE}", f"color p1markfill {MARK}",
+            f"color p1markline {OUTLINE}",
+        ])
+        fig = _fig(tp._spec([plot_for(ptype)], {"scheme": name}), mode)
+        got = _glyph_colors(fig)
+        if seg is not None:
+            assert got["Segment"] == {seg}, (ptype, mode, got)
+        if mark is not None:
+            lines = {str(_val(r.glyph.line_color)).lower()
+                     for r in fig.renderers
+                     if isinstance(r, GlyphRenderer)
+                     and not dr._dash_is_swatch(r)
+                     and type(r.glyph).__name__ == "Scatter"}
+            assert (got["Scatter"], lines) == ({mark}, {OUTLINE}), (
+                ptype, mode, got["Scatter"], lines)
 
 
 # ---------------------------------------------------------------------------
@@ -501,7 +526,9 @@ class TestAxisLineWidth:
         axes = list(fig.xaxis) + list(fig.yaxis)
         assert len(axes) == 2, axes
         for ax in axes:
-            assert ax.axis_line_width == pytest.approx(3.0, abs=0.02)
+            # Flipped (WP-30 P1.12b): 0.6 Stata units x 3.84 px (was 5 px
+            # per unit on dash's private scale, 3.0).
+            assert ax.axis_line_width == pytest.approx(2.304, abs=0.02)
 
 
 def test_the_parser_exposes_axis_line_width():
@@ -541,7 +568,8 @@ class TestHostileSchemeValues:
             assert any(key in m for m in msgs), (key, msgs)
         assert sp.legend_position is None
         assert sp.legend_rows == 0
-        assert sp.grid_line_width == pytest.approx(0.8)
+        assert sp.grid_line_width == pytest.approx(
+            dr.OptionTranslator.translate_lwidth("thin"))  # WP-30 P1.2a: the default is the medium/thin rung on Stata's ladder (S13 D-13g)
 
     def test_a_negative_legend_cols_is_refused(self, tmp_path, monkeypatch):
         sp, msgs = self._parse(tmp_path, monkeypatch,
@@ -550,9 +578,13 @@ class TestHostileSchemeValues:
         assert sp.legend_cols is None
 
     @pytest.mark.parametrize("key, attr, default", [
-        ("linewidth p", "default_line_width", 1.5),
-        ("linewidth minor_grid", "minor_grid_line_width", 0.8),
-        ("linewidth axisline", "axis_line_width", 0.8),
+        ("linewidth p", "default_line_width",
+         dr.OptionTranslator.translate_lwidth("medium")),  # WP-30 P1.2a: the default is the medium/thin rung on Stata's ladder (S13 D-13g)
+        # P1.12b and P1.2a: the thin rung on Stata's ladder.
+        ("linewidth minor_grid", "minor_grid_line_width",
+         dr.OptionTranslator.translate_lwidth("thin")),
+        ("linewidth axisline", "axis_line_width",
+         dr.OptionTranslator.translate_lwidth("thin")),
     ])
     def test_every_negative_linewidth_is_refused(self, key, attr, default,
                                                  tmp_path, monkeypatch):
@@ -580,7 +612,8 @@ class TestHostileSchemeValues:
         grids = list(fig.xgrid) + list(fig.ygrid)
         assert len(grids) == 2, grids
         for grid in grids:
-            assert grid.grid_line_width == pytest.approx(0.8)
+            assert grid.grid_line_width == pytest.approx(
+                dr.OptionTranslator.translate_lwidth("thin"))  # WP-30 P1.2a: the default is the medium/thin rung on Stata's ladder (S13 D-13g)
 
 
 # ---------------------------------------------------------------------------
@@ -694,16 +727,19 @@ def test_the_carried_name_is_escaped():
     ("T", "T"),
 ])
 def test_both_modes_title_a_by_panel_the_same(title, want):
-    """The saved renderer joins the figure's own title text (what
-    ``_dash_figure_title`` puts on ``fig.title.text``) with the panel's
-    label; the served app html-escaped the RAW option, so ``title("By")``
-    was served as ``&quot;By&quot; -- Domestic``.  Bokeh draws a Title on
-    the canvas: there is nothing to escape."""
+    """The served app html-escaped the RAW option, so ``title("By")`` was
+    served as ``&quot;By&quot; -- Domestic``.  Bokeh draws a Title on
+    the canvas: there is nothing to escape.  Flipped (WP-30 P1.15a):
+    "<title> — Domestic" was wrong because twoway keeps the parsed title
+    on every panel and draws the label as a row of its own."""
+    from by_panel_probe import is_chrome, panel_label
     spec = tp._spec([plot_for("scatter")], {"scheme": "s2color"},
                     {"title": title, "by": "foreign"})
     titles = {}
     for mode in MODES:
-        titles[mode] = sorted(f.title.text for f in _figures(spec, mode))
-    assert titles["standalone"] == [f"{want} — Domestic",
-                                    f"{want} — Foreign"], titles
+        titles[mode] = sorted((f.title.text, panel_label(f))
+                              for f in _figures(spec, mode)
+                              if not is_chrome(f))
+    assert titles["standalone"] == [(want, "Domestic"),
+                                    (want, "Foreign")], titles
     assert titles["served"] == titles["standalone"], titles

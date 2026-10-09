@@ -18,7 +18,6 @@ against a ``legend(off)`` companion; ``keys_in_drawn_order`` is the
 legend's texts top to bottom, then left to right.
 """
 import html as _htmllib
-import importlib.util
 import itertools
 import json
 import os
@@ -36,7 +35,7 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json, make_spec  # noqa: E402
+from conftest import make_data_json, make_spec, load_app  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "text_truth.json")
 _SEQ = itertools.count()
@@ -118,9 +117,7 @@ def _build(mode, plots, legend, wd):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location("_lo_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_lo_app_%d" % tag)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()

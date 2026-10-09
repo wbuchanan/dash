@@ -109,7 +109,9 @@ def _key_cases():
     out = []
     for sch, s in d["schemes"].items():
         for t, e in s["probes"].items():
-            if t == "histogram" or e["rows0"]["rc"] != 0:
+            # A Quad's key is its outline (WP-30 P1.4a: the histogram was
+            # skipped while its key colour was left to P1.4).
+            if e["rows0"]["rc"] != 0:
                 continue
             out.append(pytest.param(sch, t, id=f"{sch}-{t}"))
     return out
@@ -127,6 +129,17 @@ class TestTheKeyIsTwoways:
         # line_alpha 0); a line's is its stroke.
         c = (g.fill_color if type(g).__name__ in ("VArea", "VBar")
              else g.line_color)
+        if type(g).__name__ in ("VArea", "VBar"):
+            # The fixture records the key's stroke, the unblended colour;
+            # the fill is that colour at the layer's (p2's) bar or area
+            # intensity (WP-30 P1.2b; twoway's SVG, plan section 16
+            # Evidence E3).
+            sp = dr.SchemeParser(scheme)
+            f = (sp.p_area_intensity if t == "rarea"
+                 else sp.p_bar_intensity)[1]
+            colours = {dr.GlyphMapper._blend_intensity(x, f,
+                                                       sp.naturally_white)
+                       for x in colours}
         assert str(c).lower() in colours, (scheme, t, c, colours)
 
 
@@ -224,17 +237,20 @@ def _rbar_width(gm, xs):
 class TestTheBarWidthFallback:
 
     def test_one_rule_for_none_one_and_the_tag(self):
+        """One rule with no rows and with one: one x unit, and no tag.
+
+        Flipped (WP-30 P1.17a): 0.8 and 0.64 with a spacing tag were wrong
+        because twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
         gm = _gm()
         for xs in ([], [3.0]):
             src = ColumnDataSource({"x": list(xs), "y": [1.0] * len(xs)})
             r = gm.map_bar(bk_figure(), src, "y", "x", {})
             r = r[0] if isinstance(r, list) else r
             assert float(getattr(r.glyph.width, "value", r.glyph.width)) \
-                == pytest.approx(0.8), xs
-            sp = getattr(r.data_source, "_dash_spacing", None)
-            assert sp is not None and sp["fallback"] == pytest.approx(0.8)
+                == pytest.approx(1.0), xs
+            assert not hasattr(r.data_source, "_dash_spacing")
             rr = _rbar_width(gm, xs)
             assert float(getattr(rr.glyph.width, "value", rr.glyph.width)) \
-                == pytest.approx(0.64), xs
-            sp = getattr(rr.data_source, "_dash_spacing", None)
-            assert sp is not None and sp["fallback"] == pytest.approx(0.64)
+                == pytest.approx(1.0), xs
+            assert not hasattr(rr.data_source, "_dash_spacing")

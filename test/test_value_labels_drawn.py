@@ -94,7 +94,8 @@ class TestValueLabelsOnAxes:
         from bokeh.models import FixedTicker
         fig = _rep("saved", tmp_path, {"xlabel": ", valuelabel"})[0]
         ax = _xaxis(fig)
-        assert not isinstance(ax.ticker, FixedTicker)
+        assert isinstance(ax.ticker, FixedTicker)
+        assert "dash_default" in ax.ticker.tags
         assert dict(ax.major_label_overrides) == _LABELS
 
     @pytest.mark.parametrize("mode", _MODES)

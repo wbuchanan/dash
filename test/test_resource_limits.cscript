@@ -14,12 +14,21 @@
 *! limit.  dash.ado's own refusals (graphs, plots, cells, a bad global) are
 *! certified in test_adversarial.cscript, P19.
 *!
-*! Tests: RL-01 through RL-14
+*! Tests: RL-01 through RL-14, AT-40 through AT-42
 *!
 *! Usage:  do test/test_resource_limits.cscript
 *! Version: 1.0  23sep2026
 
 cscript "dash resource limits reach the user" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Setup
@@ -319,6 +328,81 @@ cert_log_has "`rllog'", needle("would embed")
 assert r(found) == 1
 macro drop dash_max_cells
 display "RL-14 PASS: a graph of variables is still held to the cell limit"
+
+// ================================================================
+// AT-40..42 — text() points times by() panels over the added_text limit
+// (WP-30 P1.10, A28)
+// ================================================================
+// Counted at registration, per graph, and over the dashboard at build,
+// r(134) naming the global, as the reflines limit is.
+sysuse auto, clear
+dash clear
+local at_t ""
+forvalues i = 1/1001 {
+    local at_t `"`at_t' 30 3000 "x""'
+}
+_rl_on "`rllog'"
+capture noisily dash scatter mpg weight, text(`at_t') name(at40)
+local rc1 = _rc
+global dash_max_added_text 2000
+capture noisily dash scatter mpg weight, text(`at_t') name(at40)
+local rc2 = _rc
+macro drop dash_max_added_text
+_rl_off
+cert_log_has "`rllog'", needle("draws 1,001 added texts")
+local f1 = r(found)
+cert_log_has "`rllog'", needle("Set global dash_max_added_text to draw more (at most 100,000).")
+local f2 = r(found)
+if `rc1' != 134 | `rc2' != 0 | !`f1' | !`f2' {
+    display as error "AT-40 FAIL: rc `rc1' `rc2', named `f1' `f2'"
+}
+else display "AT-40 PASS: 1,001 texts refused r(134) naming the global; a raised limit draws them"
+assert `rc1' == 134 & `rc2' == 0 & `f1' & `f2'
+
+// AT-41: by(rep78) draws five panels, so eleven points are 55 texts.
+local at_t ""
+forvalues i = 1/11 {
+    local at_t `"`at_t' 30 3000 "x""'
+}
+dash clear
+_rl_on "`rllog'"
+capture noisily dash scatter mpg weight, by(rep78) text(`at_t') name(at41)
+local rc1 = _rc
+mata: st_local("n41", strofreal(_dash_json_first_num(st_global("dash_json_at41"), "added_text_n")))
+global dash_max_added_text 50
+capture noisily dash scatter mpg weight, by(rep78) text(`at_t') name(at41b)
+local rc2 = _rc
+macro drop dash_max_added_text
+_rl_off
+cert_log_has "`rllog'", needle("draws 55 added texts")
+local f1 = r(found)
+if `rc1' != 0 | `n41' != 55 | `rc2' != 134 | !`f1' {
+    display as error "AT-41 FAIL: rc `rc1' `rc2', counted `n41', named `f1'"
+}
+else display "AT-41 PASS: points times by() panels, 55, refused past a limit of 50"
+assert `rc1' == 0 & `n41' == 55 & `rc2' == 134 & `f1'
+
+// AT-42: two graphs of 600 each are 1,200 over the dashboard.
+local at_t ""
+forvalues i = 1/600 {
+    local at_t `"`at_t' 30 3000 "x""'
+}
+dash clear
+quietly dash scatter mpg weight, text(`at_t') name(at42a)
+quietly dash scatter mpg weight, text(`at_t') name(at42b)
+tempfile out42
+_rl_on "`rllog'"
+capture noisily dash build, saving("`out42'.html") replace nobrowser
+local rc1 = _rc
+_rl_off
+cert_log_has "`rllog'", needle("this dashboard draws 1,200 added texts")
+local f1 = r(found)
+if `rc1' != 134 | !`f1' {
+    display as error "AT-42 FAIL: rc `rc1', named `f1'"
+}
+else display "AT-42 PASS: 1,200 texts over two graphs refused at build"
+assert `rc1' == 134 & `f1'
+capture erase "`out42'.html"
 
 dash clear
 capture erase "`rllog'"

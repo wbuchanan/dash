@@ -20,7 +20,7 @@
 *! because batch mode writes its .log to the working directory, with the
 *! console binary (never the GUI application):
 *!
-*!   STATATMP=<scratch>/ arch -arm64 /usr/local/bin/stata-mp -b do \
+*!   STATATMP=<scratch>/ sh <repo>/scripts/stata_batch.sh -b do \
 *!       <repo>/scripts/extract_alias_spelling_truth.do \
 *!       <repo>/test/fixtures/alias_spelling_truth.json
 *!

@@ -17,7 +17,6 @@ otherwise the name.  A label of blanks is not empty and is drawn as given
 The data here are written by ``_dash_write_stata_data`` through
 ``FakeSfi``: byte for byte what Stata writes.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -28,7 +27,7 @@ import warnings
 import pytest
 from bokeh.document import Document
 from bokeh.models import (Axis, ColorBar, CustomJS, HoverTool, Legend,
-                          RangeSlider, Select, Slider)
+                          Plot, RangeSlider, Select, Slider)
 from bokeh.plotting import figure as _FIG
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,6 +35,8 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
+from by_panel_probe import side_title  # noqa: E402
+from conftest import load_app  # noqa: E402
 from test_string_value_export import FakeSfi  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 
@@ -59,6 +60,9 @@ _COLUMNS = {
 }
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "unlabelled_truth.json")
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _truth():
@@ -136,7 +140,7 @@ def _saved(tmp_path, spec, dp):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 
@@ -146,10 +150,7 @@ def _app_module(tmp_path, spec, dp):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(
-            f"_ul_app_{next(_SEQ)}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_ul_app_{next(_SEQ)}")
     return mod, ap
 
 
@@ -385,7 +386,10 @@ class TestBothModesNameAnUnlabelledVariable:
         p = _first(mode, tmp_path, _one([_plot("lfit", yvar="y2", xvar="y1")]))
         assert p["hover"] == [["y1", "y2"]]
         p = _first(mode, tmp_path, _one([_plot("kdensity", var="z")]))
-        assert p["hover"] == [["x", "y"]]
+        # WP-30 P1.23b: kdensity z's rows x and y were wrong because they
+        # are z's values and its density; the rule that no unrelated
+        # variable is named still holds.
+        assert p["hover"] == [["z", "Density"]]
 
     @pytest.mark.parametrize("mode", MODES)
     def test_a_range_tooltip_names_both_ends(self, mode, tmp_path):
@@ -399,7 +403,14 @@ class TestBothModesNameAnUnlabelledVariable:
         obj = _build(mode, tmp_path, _one([_sc()], by="g"))
         titles = {t for p in _profile(mode, obj)
                   for t in p["x"] + p["y"] if t}
-        assert titles == {"x", "y"}
+        # WP-30 P1.15c: twoway draws the titles once, beside and below the
+        # panels, so they are read on the grid's title cells too.
+        roots = [obj._last_layout_root] if mode == "saved" else obj.roots
+        sides = dict(st for root in roots for m in root.references()
+                     if isinstance(m, Plot)
+                     and (st := side_title(m)) is not None)
+        assert sides == {"y": "y", "x": "x"}
+        assert titles | set(sides.values()) == {"x", "y"}
 
     @pytest.mark.parametrize("mode", MODES)
     def test_a_date_axis_is_titled_by_name(self, mode, tmp_path):
@@ -443,11 +454,14 @@ _JS_TITLE_WRITE = re.compile(r"\.(axis_label|tooltips|title|label)\s*=(?!=)")
 
 class TestAfterAFilterMove:
     def test_served_names_survive_a_move(self, tmp_path):
+        """Flipped (WP-30 P1.16): a y title 'y' was wrong because twoway
+        draws none when the layers' labels differ (series_label_truth.json
+        M08)."""
         spec = _spec([("g1", [_sc(), _sc("y2")], {"hover": "z"})],
                      filters=[_filter("x", "range")])
         doc = _build("served", tmp_path, spec)
         before = _profile("served", doc)
-        assert before[0]["x"] == ["x"] and before[0]["y"] == ["y"]
+        assert before[0]["x"] == ["x"] and before[0]["y"] == [None]
         assert before[0]["legend"] == ["y", "y2"]
         _fire(doc, "x", (4.0, 24.0))
         assert _profile("served", doc) == before
@@ -492,7 +506,17 @@ class TestAfterAFilterMove:
         # never writes a title, axis label or tooltip, and no other write
         # is allowed anywhere.
         cue = "// ---- Marks on the layers a saved page does not recompute"
+        # WP-30 P1.15c: the by() grid's stacked view (_DASH_BY_STACK_JS)
+        # is a layout change, not a filter move: it writes each axis's
+        # build-time label back from its JSON data, and nothing else.
+        stack_write = "axes[i].axis_label = stacked ? r[2] : r[1];"
         for code in codes + module_js:
+            if code.strip() == dr._DASH_BY_STACK_JS.strip():
+                assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(code)] \
+                    == [".axis_label ="], code
+                assert stack_write in code
+                assert "const restore = JSON.parse(labels_json);" in code
+                continue
             if cue in code:
                 head, block = code.split(cue, 1)
                 assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(block)] \

@@ -6,6 +6,7 @@ Run with:  pytest test/test_scheme.py -v
 """
 import sys
 import os
+import re
 import math
 import tempfile
 import warnings
@@ -14,7 +15,9 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dash_render import SchemeParser, _apply_jitter, _compute_secondary_range
+from conftest import stata_base
 
 
 # ============================================================
@@ -221,9 +224,15 @@ class TestIntensitiesAndFonts:
         sp = SchemeParser("s2color")
         assert 0.0 <= sp.fill_alpha <= 1.0
 
-    def test_bar_alpha_is_float_between_0_and_1(self):
+    def test_the_bar_intensity_chain_is_unclamped(self):
+        """bar_alpha (graph bar's `intensity bar', which twoway's bar
+        ignores) is retired; the bar reads the p#bar chain, unclamped above
+        full (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         sp = SchemeParser("s2color")
-        assert 0.0 <= sp.bar_alpha <= 1.0
+        assert len(sp.p_bar_intensity) == 15
+        assert all(v >= 0.0 for v in sp.p_bar_intensity)
+        assert abs(sp.p_bar_intensity[0] - 0.8) < 0.01
+        assert not hasattr(sp, "bar_alpha")
 
     def test_s2color_fill_alpha_is_0_8(self):
         sp = SchemeParser("s2color")
@@ -421,7 +430,13 @@ class TestCssBlock:
                 "positive control: the file's own `color text white' must "
                 f"reach the KPI card rule, got {clean!r}"
             )
-            assert css == clean, (
+            # Flipped (WP-30 P1.13a): a malformed hex is drawn white, in
+            # silence, as twoway draws `color background #}a{b;c' (probe
+            # v01), so the body rule is white; every other rule is
+            # byte-identical to the clean file's.
+            body = re.compile(r"body \{[^{}]*\}")
+            assert "background-color: #ffffff;" in body.search(css).group(0)
+            assert body.sub("", css) == body.sub("", clean), (
                 "a payload value reached the CSS, or changed it:\n"
                 f"with payload:    {css!r}\nwithout payload: {clean!r}"
             )
@@ -430,10 +445,12 @@ class TestCssBlock:
             # file opened.
             assert (css.count("{"), css.count("}"), css.count(";")) == (
                 4, 4, 8), css
-            # The three colour payloads are refused aloud, not dropped.
+            # The unknown name is refused aloud; the two malformed hex
+            # codes are drawn white in silence, as twoway draws them.
             said = " ".join(str(w.message) for w in caught)
-            for bad in ("#}a{b;c", "<script>alert(1)</script>", "#;}{"):
-                assert f"colour '{bad}'" in said, (bad, said)
+            assert "colour '<script>alert(1)</script>'" in said, said
+            for bad in ("#}a{b;c", "#;}{"):
+                assert f"colour '{bad}'" not in said, (bad, said)
         finally:
             for name in names:
                 os.unlink(os.path.join(os.getcwd(), name))
@@ -529,9 +546,11 @@ class TestSecurity:
 
     def test_real_stata_scheme_via_cwd_copy(self):
         """Parser handles full Stata scheme format when copied to CWD."""
-        stata_path = "/Applications/Stata 15/ado/base/s/scheme-s2color.scheme"
+        # The configured Stata tree (DASH_STATA_BASE, WP-30 P1.34), where
+        # s2color's p1 is the same navy.
+        stata_path = os.path.join(stata_base(), "s", "scheme-s2color.scheme")
         if not os.path.isfile(stata_path):
-            pytest.skip("Stata 15 not installed")
+            pytest.skip("Stata's scheme-s2color.scheme is not under DASH_STATA_BASE")
         import shutil
         cwd_copy = os.path.join(os.getcwd(), "stata_s2color_test.scheme")
         shutil.copy(stata_path, cwd_copy)
@@ -620,14 +639,17 @@ class TestSecurity:
                 os.unlink(real_name)
 
     def test_BUG_51_1e_realpath_check_covers_abspath_bypass(self):
-        """BUG-51-1e: _resolve_path must perform realpath validation, not just abspath."""
+        """BUG-51-1e: path resolution must perform realpath validation, not
+        just abspath.  Since WP-30 P1.25b _resolve_path hands a shipped name
+        to _shipped_path and a found file to _admit, which hold the checks."""
         # Verify the security fix is present in the source code
         import inspect
-        source = inspect.getsource(SchemeParser._resolve_path)
-        assert "realpath" in source, (
-            "SchemeParser._resolve_path must call os.path.realpath for symlink "
-            "traversal protection (BUG-51 regression)"
-        )
+        for fn in (SchemeParser._shipped_path, SchemeParser._admit):
+            source = inspect.getsource(fn)
+            assert "realpath" in source, (
+                f"SchemeParser.{fn.__name__} must call os.path.realpath for "
+                "symlink traversal protection (BUG-51 regression)"
+            )
 
 
 # ============================================================

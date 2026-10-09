@@ -583,6 +583,10 @@ def _by_rule(violations, rule):
 # The guard, over the whole suite
 # ---------------------------------------------------------------------------
 
+# One worker for the class, so the module's scan of the suite (the
+# suite fixture) runs once, not once per worker its tests land on
+# (WP-30 test performance A4; measured 07oct2026: 5.6 s on five).
+@pytest.mark.xdist_group(name="test-integrity-suite")
 class TestTheSuiteCanFail:
 
     def test_no_test_catches_assertion_error(self, suite):

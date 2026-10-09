@@ -45,6 +45,9 @@ from dash_render import DashRenderer, ServerAppBuilder
 from conftest import make_spec, make_data_json
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _flat_payload():
     """The shape real jsonio emits: flat, ``variableIsString``, no wrapper."""
     return {
@@ -95,7 +98,7 @@ def _standalone_frame(payload, tmpdir):
     with open(dp, "w") as f:
         json.dump(payload, f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     return dr.df
 
 

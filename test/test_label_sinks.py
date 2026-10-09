@@ -37,7 +37,9 @@ canvas or appended as a DOM text node.
 input                                  model.property                    rendered as
 =====================================  ================================  ===========================
 title()                                Title.text                        canvas text
-subtitle() note() caption()            Label.text                        canvas text
+subtitle() note() caption()            Title.text (Label.text for        canvas text
+                                       economist's note)
+text()'s lines                         Label.text (data units)           canvas text
 xtitle() ytitle() ytitle2(), and the   Axis.axis_label                   canvas text
 default: the variable label
 xlabel(# "text")                       Axis.major_label_overrides, and   canvas text
@@ -88,8 +90,9 @@ Why each classification holds (bundled BokehJS, bokeh/server/static/js)
   as a text child; only an ``HTML`` model would be rendered as markup.
 * ``TabsView``: ``div({class: [...]}, tab.title)``.
 * ``Title``, ``Label``, ``LabelSet``, ``ColorBar`` and axis and tick labels
-  are drawn on the canvas.  A TeX string among them is rendered by MathJax
-  to an SVG that is drawn as an image, which runs nothing.
+  are drawn on the canvas.  A TeX string among them would be rendered by
+  MathJax to an SVG drawn as an image, which runs nothing; dash's own
+  canvas text never reaches MathJax (WP-30 P1.11a, below).
 * ``Div.text`` is ``innerHTML`` (``MarkupView``), after ``process_tex``
   unless ``disable_math`` is set.
 
@@ -115,12 +118,26 @@ slider title, Div, axis label or text annotation holds a TeX pair
 (``bokeh.embed.bundle._model_requires_mathjax``), so the hostile label
 switched MathJax on by itself.  Filter titles now pass through
 ``_dash_inert_tex``, and every Div dash builds sets ``disable_math``.
+
+Canvas text followed (WP-30 P1.11a): twoway draws a TeX pair in a title,
+label, axis title, tick label, legend or colour key as typed, while
+BokehJS typeset it with MathJax and a saved page shipped MathJax for it.
+``_dash_finish_graph_text`` now finishes every canvas sink
+(``_DASH_GRAPH_TEXT_SINKS``) with ``_dash_inert_tex`` in both modes, last
+in each, so a saved page no longer ships MathJax for them.
+
+Graph-text markup (WP-30 P1.11b): canvas and DOM text sinks carry Stata's
+graph-text markup (``{bf:}``, ``{&alpha}``, ``{c 233}`` ...) translated,
+as twoway draws it (``_dash_graph_text``; filter titles, value-label
+dropdown options and tooltip row names without the style), while HTML and
+data sinks keep it raw.  The payloads here hold no recognised directive,
+so every sink still carries them exactly; test_graph_text.py pins the
+translation.
 """
 from __future__ import annotations
 
 import ast
 import html
-import importlib.util
 import io
 import itertools
 import json
@@ -147,11 +164,20 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
-#: The bokeh versions the behaviour described above was verified on.  See
+#: The bokeh minors the behaviour described above was verified on: the
+#: verified window's (dash_render._DASH_BOKEH_VERIFIED, WP-30 P1.30).  A
+#: patch release inherits its minor's verification (A104).  See
 #: TestBokehVersion for what "verified" means and how to extend this set.
-VERIFIED_BOKEH = {"3.8.0", "3.9.0"}
+VERIFIED_BOKEH = {"%d.%d" % p for p in dr._DASH_BOKEH_VERIFIED}
+
+#: When and how each minor's text sinks were checked in a browser;
+#: test_label_sinks_browser.py repeats it under every baseline.
+VERIFIED_ON = {
+    "3.8": "24sep2026, WP-25 (Chromium, saved page and dash serve)",
+    "3.9": "23sep2026 (Chromium, saved page)",
+}
 
 # ---------------------------------------------------------------------------
 # Payloads
@@ -290,15 +316,29 @@ def hostile_inputs(payload):
             note=textbox("gnote"), caption=textbox("gcap"),
             hover="make price",
             xlabel='2000 "%s" 3000' % quoted("tick1"),
-            legend='label(2 "%s")' % quoted("leglab")),
+            legend='label(2 "%s")' % quoted("leglab"),
+            # WP-30 P1.10: a text() record, as dash.ado writes it.
+            added_text=[{"at_kind": "text", "at_y": 30, "at_x": 3000,
+                         "at_yaxis": 1, "at_xaxis": 1,
+                         "at_lines": [quoted("atext")], "at_opts": ""}],
+            added_text_n="1"),
         graph("g2", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {}},
-        ], by="foreign", xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
+        ],
+            # WP-30 P1.15a: by()'s own text, drawn once over the panels.
+            by='foreign, title("%s") subtitle("%s") note("%s") caption("%s")'
+            % (quoted("btitle"), quoted("bsub"), quoted("bnote"),
+               quoted("bcap")),
+            xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
         graph("g3", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "rep", "colordiscrete": "yes"}},
-        ]),
+        ],
+            # WP-30 P1.15c: g2's by() panels draw their axis titles once,
+            # in the grid's title cells; a plain graph still carries them
+            # on its axes.
+            xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
         graph("g4", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "price"}},
@@ -327,6 +367,11 @@ def hostile_inputs(payload):
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "rep", "colordiscrete": "yes"}},
         ], ztitle=textbox("zt")),
+        # WP-30 P1.15a: twoway's default note, "Graphs by <rep's label>".
+        graph("g9", [
+            {"type": "scatter", "yvar": "mpg", "xvar": "weight",
+             "options": {}},
+        ], by="rep"),
     ]
     kpis = [
         {"name": "k1", "stat": "mean", "var": "mpg", "fmt": "%9.1f",
@@ -346,7 +391,7 @@ def hostile_inputs(payload):
             "layout": "auto", "link": "", "theme": "", "scheme": "",
             "session_scheme": "",
             "title": free("dtitle"), "subtitle": free("dsub"),
-            "registry": "g1 g2 g3 g4 g5 g6 g7 g8 k1 k2 k3",
+            "registry": "g1 g2 g3 g4 g5 g6 g7 g8 g9 k1 k2 k3",
             "tabs": "%s: g1 g2 g3 k1 / %s: g4 g5 g6 g7 g8 k2 k3"
                     % (tab("tab1"), tab("tab2")),
             "filter": filters,
@@ -475,10 +520,7 @@ def _build(root, mode, pid, layout="auto", inputs=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-        ms = importlib.util.spec_from_file_location(
-            f"_label_sinks_app_{n}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_label_sinks_app_{n}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -527,6 +569,9 @@ CLASSIFIED = {
     ("DatetimeAxis", "axis_label"): CANVAS,
     ("LinearAxis", "major_label_overrides"): CANVAS,
     ("ColorBar", "title"): CANVAS,
+    # WP-30 P1.15c: a by() panel label's box draws the label as its one
+    # tick label.
+    ("ColorBar", "major_label_overrides"): CANVAS,
     ("LegendItem", "label"): TEXT_NODE,
     ("Legend", "title"): TEXT_NODE,
     ("TabPanel", "title"): TEXT_NODE,
@@ -578,9 +623,14 @@ class Sink:
 SINKS = (
     # Canvas text.
     Sink("graph_title", "gtitle", ("Title",), "text", "text"),
-    Sink("graph_subtitle", "gsub", ("Label",), "text", "text"),
-    Sink("graph_note", "gnote", ("Label",), "text", "text"),
-    Sink("graph_caption", "gcap", ("Label",), "text", "text"),
+    # Flipped (WP-30 P1.2a): ("Label",) was wrong because twoway places
+    # the boxes by the scheme's clock, which S15 draws as side-panel Titles
+    # (economist's note a Label in the title's band).
+    Sink("graph_subtitle", "gsub", ("Title",), "text", "text"),
+    Sink("graph_note", "gnote", ("Title", "Label"), "text", "text"),
+    Sink("graph_caption", "gcap", ("Title",), "text", "text"),
+    # WP-30 P1.10: text()'s lines, a data-unit Label.
+    Sink("added_text", "atext", ("Label",), "text", "text"),
     Sink("xtitle", "xtitle", ("LinearAxis",), "axis_label", "text"),
     Sink("ytitle", "ytitle", ("LinearAxis",), "axis_label", "text"),
     Sink("ytitle2", "ytitle2", ("LinearAxis",), "axis_label", "text"),
@@ -593,6 +643,19 @@ SINKS = (
     Sink("ylabel2_tick_formatter_map", "tick2", ("CustomJSTickFormatter",),
          "args", "json-text"),
     Sink("facet_title_from_value_label", "vlo0", ("Title",), "text", "text"),
+    # WP-30 P1.15a: by()'s overall text and its default note, canvas Titles
+    # of the panel grid's chrome cells.
+    Sink("by_title", "btitle", ("Title",), "text", "text"),
+    Sink("by_subtitle", "bsub", ("Title",), "text", "text"),
+    Sink("by_note", "bnote", ("Title",), "text", "text"),
+    Sink("by_caption", "bcap", ("Title",), "text", "text"),
+    Sink("by_note_from_variable_label", "vlrep", ("Title",), "text", "text"),
+    # WP-30 P1.15c: the axis titles drawn once beside and below by()'s
+    # panels, and each panel label drawn in its box.
+    Sink("by_ytitle_cell", "ytitle", ("Title",), "text", "text"),
+    Sink("by_xtitle_cell", "xtitle", ("Title",), "text", "text"),
+    Sink("by_label_box_from_value_label", "vlo0", ("ColorBar",),
+         "major_label_overrides", "text"),
     Sink("colorbar_title_from_variable_label", "vlprice", ("ColorBar",),
          "title", "text"),
     # WP-28 X2: ztitle() is a second source for the same (model, property)
@@ -650,6 +713,15 @@ SINKS = (
     # Data.
     Sink("string_data_values", "sv0", ("ColumnDataSource",), "data", "data"),
 )
+
+
+def _finished(c):
+    """Whether carrier *c* sits on a property the canvas-text pass finishes
+    (``dr._DASH_GRAPH_TEXT_SINKS``, WP-30 P1.11a)."""
+    for cls, prop, _how in dr._DASH_GRAPH_TEXT_SINKS:
+        if isinstance(c.model, getattr(bokeh.models, cls)) and c.prop == prop:
+            return True
+    return False
 
 
 def _matching(b, sink):
@@ -741,11 +813,20 @@ class TestTextSinks:
 
     @pytest.mark.parametrize("sink,mode,pid", _cases({"text"}))
     def test_it_carries_the_raw_text(self, built, sink, mode, pid):
+        """Flipped (WP-30 P1.11a): a TeX pair in canvas text was typeset by
+        MathJax where twoway draws it as typed; every canvas sink now
+        carries the typed text with each delimiter broken by a WORD JOINER,
+        which the reader does not see."""
         b = built(mode, pid)
         want = b.expected[sink.tag]
         found = _matching(b, sink)
         assert found, f"{sink.sid}: not reached ({mode}, {pid})"
         for c in found:
+            if pid in TEX_PAYLOADS and _finished(c):
+                assert not _TEX_DELIM_RE.search(c.text), (sink.sid, c.text)
+                assert not contains_tex_string(c.text), (sink.sid, c.text)
+                assert want in c.text.replace(WJ, ""), (sink.sid, c.text)
+                continue
             assert want in c.text, (
                 f"{sink.sid} ({mode}): {c.kind}.{c.prop} = {c.text!r}; "
                 f"expected the raw {want!r}.  BokehJS renders it as "
@@ -754,6 +835,10 @@ class TestTextSinks:
     @pytest.mark.parametrize("sink,mode,pid", _cases({"json-text"}))
     def test_a_tick_label_map_carries_the_raw_text(self, built, sink, mode,
                                                    pid):
+        """Flipped (WP-30 P1.11a): a TeX pair in canvas text was typeset by
+        MathJax where twoway draws it as typed; every canvas sink now
+        carries the typed text with each delimiter broken by a WORD JOINER,
+        which the reader does not see."""
         b = built(mode, pid)
         want = b.expected[sink.tag]
         found = _matching(b, sink)
@@ -761,6 +846,13 @@ class TestTextSinks:
         for c in found:
             vals = [v for v in _json_strings(json.loads(c.text))
                     if tag(sink.tag) in v]
+            if pid in TEX_PAYLOADS and _finished(c):
+                assert vals, (sink.sid, c.text)
+                for v in vals:
+                    assert not _TEX_DELIM_RE.search(v), (sink.sid, v)
+                    assert not contains_tex_string(v), (sink.sid, v)
+                    assert want in v.replace(WJ, ""), (sink.sid, v)
+                continue
             assert vals and all(want in v for v in vals), (
                 f"{sink.sid} ({mode}): the formatter's map holds {vals!r}; "
                 f"a tick label is canvas text, so it must be the raw {want!r}")
@@ -953,7 +1045,7 @@ class TestTooltips:
                     # The code is the one fixed writer for every format:
                     # the format is data in args, never spliced into code.
                     assert f.code == (dr._DASH_FMT_JS + dr._DASH_FMT_MODEL_JS
-                                      % ("value", "value")), f.args
+                                      % (("value",) * 3)), f.args
         assert customs >= 2, f"{mode}: no {{custom}} tooltip field"
 
     @pytest.mark.parametrize("pid", list(PAYLOADS))
@@ -1057,6 +1149,32 @@ class TestTeX:
         for s in sliders:
             assert not contains_tex_string(s.title or ""), (
                 f"{mode}: {type(s).__name__}.title {s.title!r} holds TeX")
+
+
+    @pytest.mark.parametrize("pid", list(TEX_PAYLOADS))
+    @pytest.mark.parametrize("mode", MODES)
+    def test_no_canvas_sink_holds_tex(self, built, mode, pid):
+        """Every canvas text sink is finished by ``_dash_finish_graph_text``
+        in both modes (WP-30 P1.11a): no delimiter pair is left for BokehJS
+        to typeset, and no model makes Bokeh load MathJax."""
+        from bokeh.embed.bundle import _model_requires_mathjax
+        b = built(mode, pid)
+        fin = [c for c in b.carriers if _finished(c)]
+        assert len(fin) >= 40, f"{mode}: only {len(fin)} canvas carriers"
+        for c in fin:
+            texts = (list(_json_strings(json.loads(c.text)))
+                     if c.prop == "args" else [c.text])
+            for t in texts:
+                assert not _TEX_DELIM_RE.search(t), (mode, c.kind, c.prop, t)
+                assert not contains_tex_string(t), (mode, c.kind, c.prop, t)
+        bad = [type(m).__name__ for m in b.models
+               if _model_requires_mathjax(m)]
+        assert not bad, f"{mode}: {bad} would load MathJax"
+
+    @pytest.mark.parametrize("pid", list(TEX_PAYLOADS))
+    def test_the_saved_page_ships_no_mathjax(self, built, pid):
+        page = built("standalone", pid).html
+        assert page and "bokeh-mathjax" not in page
 
 
 class TestInertTex:
@@ -1185,10 +1303,12 @@ class TestBokehVersion:
         So did the legend entry and the hover tooltip, where the label is a
         text node inside a DIV reading ``<img src=x onerror=...>Y label: ``.
         There was no IMG element anywhere in the document, shadow roots
-        included, and ``document.title`` was unchanged.  The page's CSP
-        includes ``script-src 'unsafe-inline'``, which would allow an inline
-        ``onerror``, so what protected it was BokehJS rendering the label as
-        text, not the CSP.
+        included, and ``document.title`` was unchanged.  Before WP-30 the
+        page's CSP included ``script-src 'unsafe-inline'``, which would have
+        allowed an inline ``onerror``; it now names each of its scripts by
+        hash (P1.29), so an inline handler would also be blocked by the
+        policy, but what protects the label is still BokehJS rendering it
+        as text.
 
         In the bundled BokehJS source (bokeh/server/static/js):
         ``HoverToolView._create_template`` (label cell as a text child) and
@@ -1240,12 +1360,20 @@ class TestBokehVersion:
            (search shadow roots too), and that ``document.title`` is
            unchanged.
         3. Repeat step 2 under ``dash serve``, which always loads MathJax.
-        4. Run this file, then add the new version to ``VERIFIED_BOKEH``.
+        4. Run this file and test_label_sinks_browser.py, then add the
+           minor to ``_DASH_BOKEH_VERIFIED`` and ``VERIFIED_ON``.
+
+        Flipped (WP-30 P1.30): exact patch versions were wrong, because a
+        patch release inherits its minor's verification (A104).
         """
-        assert bokeh.__version__ in VERIFIED_BOKEH, (
+        mm = ".".join(bokeh.__version__.split(".")[:2])
+        assert mm in VERIFIED_BOKEH, (
             f"bokeh {bokeh.__version__} is installed, but the text sinks "
             f"test_label_sinks.py pins were verified only on "
             f"{sorted(VERIFIED_BOKEH)}.  Their safety comes from BokehJS "
             f"rendering labels as text, which can change between releases.  "
             f"Re-verify in a browser as this test's docstring describes, "
             f"then add the version to VERIFIED_BOKEH.")
+
+    def test_every_minor_in_the_window_was_verified(self):
+        assert set(VERIFIED_ON) == VERIFIED_BOKEH

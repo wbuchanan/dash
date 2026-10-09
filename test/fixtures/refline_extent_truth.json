@@ -1,0 +1,1378 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "1dfee5e7fb2430c8bd40951aa5576d5055e75390",
+  "extracted": " 8 Oct 2026",
+  "scheme": {
+   "E01": "s2color",
+   "E02": "s2color",
+   "E03": "s2color",
+   "E04": "s2color",
+   "E05": "s2color",
+   "E06": "s2color",
+   "E07": "s2color",
+   "E08": "s2color",
+   "E09": "s2color",
+   "E10": "s2color",
+   "E11": "s2color",
+   "E12": "dashxlow",
+   "E13": "dashxhigh",
+   "E14": "dashxlow",
+   "E15": "s2color",
+   "E16": "s2color",
+   "E17": "s2color",
+   "E18": "s2color",
+   "E19": "dashxlow",
+   "E20": "s2color",
+   "E21": "s2color",
+   "E22": "stcolor",
+   "E23": "economist",
+   "E24": "s2color",
+   "E25": "s2color",
+   "E26": "s2color"
+  },
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "E01": {
+   "notes": [],
+   "opt": "xline(3000) yline(25)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E02": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.026533,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.018269,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E03": {
+   "notes": [],
+   "opt": "xline(3000, extend) yline(25, extend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E04": {
+   "notes": [],
+   "opt": "xline(3000, style(unextended)) yline(25, style(unextended))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.026533,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.018269,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E05": {
+   "notes": [],
+   "opt": "xline(3000, style(extended)) yline(25, style(extended))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E06": {
+   "notes": [],
+   "opt": "xline(3000, style(default)) yline(25, style(default))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E07": {
+   "notes": [
+    "(note: named style nosuch not found in class gridlinestyle, default attributes used)",
+    "(note: named style nosuch not found in class gridlinestyle, default attributes used)"
+   ],
+   "opt": "xline(3000, style(nosuch)) yline(25, style(nosuch))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E08": {
+   "notes": [
+    "(note: named style Unextended not found in class gridlinestyle, default attributes used)",
+    "(note: named style Unextended not found in class gridlinestyle, default attributes used)"
+   ],
+   "opt": "xline(3000, style(Unextended)) yline(25, style(Unextended))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E09": {
+   "notes": [],
+   "opt": "xline(3000, style()) yline(25, style())",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E10": {
+   "notes": [],
+   "opt": "xline(3000, noextend extend) yline(25, noextend extend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E11": {
+   "notes": [],
+   "opt": "xline(3000, style(unextended) extend) yline(25, style(unextended) extend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E12": {
+   "notes": [],
+   "opt": "xline(3000) yline(25)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "dashxlow",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2425.82
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.026533,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.018269,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E13": {
+   "notes": [],
+   "opt": "xline(3000) yline(25)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "dashxhigh",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2489.19
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E14": {
+   "notes": [],
+   "opt": "xline(3000, extend) yline(25, extend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "dashxlow",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E15": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend) yscale(log)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.026533,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.018269,
+     "px": 957.1,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E16": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend) plotregion(margin(zero))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2489.19
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1718.2,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      390.8,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.0,
+     "px": 1333.6,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E17": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend) plotregion(margin(large))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      331.17,
+      2258.76
+     ],
+     "high_inset": 0.096431,
+     "low_inset": 0.096482,
+     "px": 1772.2,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      621.23,
+      3628.72
+     ],
+     "high_inset": 0.066403,
+     "low_inset": 0.06644,
+     "px": 1326.2,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E18": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend) plotregion(margin(l=10 b=0))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2489.19
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.0,
+     "px": 1871.7,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      678.77,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.083031,
+     "px": 1364.1,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E19": {
+   "notes": [],
+   "opt": "xline(3000) yline(25) xscale(reverse) yscale(reverse)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "dashxlow",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      100.86,
+      2425.82
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.026533,
+     "px": 2516.8,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3859.02
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.018269,
+     "px": 1258.6,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E20": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(5000, axis(2) noextend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3569.07,
+    2233.63
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2170.27
+     ],
+     "high_inset": 0.029708,
+     "low_inset": 0.029708,
+     "px": 1622.0,
+     "region": [
+      390.8,
+      100.86,
+      3569.07,
+      2233.63
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3505.71
+     ],
+     "high_inset": 0.019935,
+     "low_inset": 0.019935,
+     "px": 1539.8,
+     "region": [
+      390.8,
+      100.86,
+      3569.07,
+      2233.63
+     ]
+    }
+   ]
+  },
+  "E21": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend) by(foreign)",
+   "rc": 0,
+   "region": [
+    388.33,
+    258.27,
+    2071.83,
+    2377.06
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      312.11,
+      2323.23
+     ],
+     "high_inset": 0.025411,
+     "low_inset": 0.025406,
+     "px": 1045.3,
+     "region": [
+      388.33,
+      258.27,
+      2071.83,
+      2377.06
+     ]
+    },
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      312.11,
+      2323.23
+     ],
+     "high_inset": 0.025411,
+     "low_inset": 0.025406,
+     "px": 2798.0,
+     "region": [
+      2141.0,
+      258.27,
+      3824.5,
+      2377.06
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      442.16,
+      2017.99
+     ],
+     "high_inset": 0.031981,
+     "low_inset": 0.031975,
+     "px": 1350.2,
+     "region": [
+      388.33,
+      258.27,
+      2071.83,
+      2377.06
+     ]
+    },
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      2194.83,
+      3770.66
+     ],
+     "high_inset": 0.031981,
+     "low_inset": 0.031975,
+     "px": 1350.2,
+     "region": [
+      2141.0,
+      258.27,
+      3824.5,
+      2377.06
+     ]
+    }
+   ]
+  },
+  "E22": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend)",
+   "rc": 0,
+   "region": [
+    522.79,
+    113.4,
+    5286.6,
+    2766.6600000000003
+   ],
+   "scheme": "stcolor",
+   "xline": [
+    {
+     "colour": "#000000",
+     "dashed": true,
+     "ends": [
+      200.47,
+      2695.28
+     ],
+     "high_inset": 0.032816,
+     "low_inset": 0.026903,
+     "px": 2362.7,
+     "region": [
+      522.79,
+      113.4,
+      5286.6,
+      2766.66
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#000000",
+     "dashed": true,
+     "ends": [
+      594.0,
+      5215.39
+     ],
+     "high_inset": 0.014948,
+     "low_inset": 0.014948,
+     "px": 1480.4,
+     "region": [
+      522.79,
+      113.4,
+      5286.6,
+      2766.66
+     ]
+    }
+   ]
+  },
+  "E23": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend)",
+   "rc": 0,
+   "region": [
+    158.9,
+    1358.08,
+    1342.53,
+    1380.06
+   ],
+   "scheme": "economist",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      64.99,
+      1370.56
+     ],
+     "high_inset": 0.0,
+     "low_inset": 0.432211,
+     "px": 550.3,
+     "region": [
+      158.9,
+      1358.08,
+      1342.53,
+      1380.06
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      64.95,
+      1333.03
+     ],
+     "high_inset": 0.008026,
+     "low_inset": 0.0,
+     "px": 738.8,
+     "region": [
+      158.9,
+      1358.08,
+      1342.53,
+      1380.06
+     ]
+    }
+   ]
+  },
+  "E24": {
+   "notes": [],
+   "opt": "xline(3000, noextend) yline(25, noextend) xscale(range(1000 6000))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.026533,
+     "px": 1790.8,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.018269,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E25": {
+   "notes": [],
+   "opt": "xline(14700, noextend) yline(25, noextend)",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.026533,
+     "px": 1267.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#c10534",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.018269,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  },
+  "E26": {
+   "notes": [],
+   "opt": "xline(3000, noextend lstyle(p1)) yline(25, noextend lstyle(p1))",
+   "rc": 0,
+   "region": [
+    390.8,
+    100.86,
+    3859.02,
+    2489.19
+   ],
+   "scheme": "s2color",
+   "xline": [
+    {
+     "colour": "#1a476f",
+     "dashed": false,
+     "ends": [
+      164.22,
+      2425.82
+     ],
+     "high_inset": 0.026529,
+     "low_inset": 0.026533,
+     "px": 1733.0,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ],
+   "yline": [
+    {
+     "colour": "#1a476f",
+     "dashed": false,
+     "ends": [
+      454.16,
+      3795.66
+     ],
+     "high_inset": 0.018269,
+     "low_inset": 0.018269,
+     "px": 1331.5,
+     "region": [
+      390.8,
+      100.86,
+      3859.02,
+      2489.19
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -15,7 +15,6 @@ no residual degrees of freedom (the fixture's ``no_df``, computed with
 numpy from the data, not by dash) are pinched: se 0 where Stata's value is
 round-off, often missing (documented divergence D4).
 """
-import importlib.util
 import json
 import os
 import sys
@@ -32,9 +31,13 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import exec_app  # noqa: E402
 import test_lpoly_rot as tl  # noqa: E402
 
 _FIX = os.path.join(_HERE, "fixtures", "lpolyci_truth.json")
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _load():
@@ -491,7 +494,7 @@ class TestSources:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                render_models(r)
             return list(r.figures.values())
         doc, _w, _ap = tl._served_doc(tmp_path, spec, _df("auto"))
         return [p for p in doc.select({"type": Plot}) if p.renderers]
@@ -587,7 +590,7 @@ class TestLegendKey:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                render_models(r)
             figs = list(r.figures.values())
             srcs = tl._sources_saved(tmp_path, spec, _df("auto"))[0]
         else:
@@ -647,7 +650,7 @@ class TestTheServedAppCarriesTheBandHelpers:
         ns = {"__name__": "_lpci_exec"}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(text, ap, "exec"), ns)
+            exec_app(text, ap, ns)
         x, y, _ = _sample(c)
         gx = _arr(c["gx"])
         a = ns["_lpoly_se"](x, y, gx, 500.0, 800.0, 1, "epanechnikov")

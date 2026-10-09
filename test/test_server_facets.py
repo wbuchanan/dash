@@ -27,7 +27,6 @@ spec, because "what the saved dashboard does" is the specification.
 """
 from __future__ import annotations
 
-import importlib.util
 import itertools
 import json
 import os
@@ -46,7 +45,8 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
+from by_panel_probe import by_grid, chrome_texts, panel_label
 from test_server_layer_defects import ALL_TYPES, plot_for, make_spec, _walk
 
 _SEQ = itertools.count()
@@ -64,6 +64,9 @@ _DF = pd.DataFrame({
 })
 _VALUE_LABELS = {"origin": {"0": "Domestic", "1": "Foreign"}}
 _LABEL_NAMES = {"foreign": "origin"}
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _write(tmp_path, spec, df=_DF):
@@ -85,7 +88,7 @@ def standalone(tmp_path, spec, df=_DF, dataset=None):
         r = dr.DashRenderer(sp, dp)
         if dataset is not None:
             r.mapper.dataset = dataset
-        r.render()
+        render_models(r)
     return dict(r.figures), [str(w.message) for w in caught]
 
 
@@ -101,9 +104,7 @@ def served(tmp_path, spec, df=_DF):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        ms = importlib.util.spec_from_file_location(f"_wp11_{tag}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_wp11_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -151,7 +152,9 @@ def panel_profile(fig):
         rows.append(len(idx) if idx is not None else n)
     f = fig
     return {
-        "title": f.title.text if f.title else "",
+        # Flipped (WP-30 P1.15a): the panel's title held its label; twoway
+        # draws the label as a row of its own (by_panel_probe).
+        "title": panel_label(f),
         "glyphs": [type(r.glyph).__name__ for r in f.renderers
                    if getattr(r, "glyph", None) is not None],
         "rows": rows,
@@ -190,10 +193,20 @@ def by_spec(ptype, by="foreign", options=None, **graph_extra):
 # AC-11.1 -- every plot type under by(), model for model
 # ===========================================================================
 
-class TestEveryTypeFacetsTheSameWayInBothModes:
-    """The sweep GAPS.md D4 should have been: all 38 types, not 18."""
+#: The plot types the by() sweep compares served as well as saved (WP-30
+#: test performance E), one per family: point, line, area/range, bar,
+#: fit/smooth, pc.  Every type is still drawn saved (test_every_panel_draws);
+#: the served app facets through the same code, test_mode_parity's corpus
+#: has 23 by() entries, and the classes below compare by() in both modes.
+_SERVED_TYPES = ("scatter", "line", "rarea", "bar", "lfitci", "pccapsym")
 
-    @pytest.mark.parametrize("ptype", ALL_TYPES)
+
+class TestEveryTypeFacetsTheSameWayInBothModes:
+    """The sweep GAPS.md D4 should have been: every type, not 18 -- saved
+    for every type, compared with the served app for ``_SERVED_TYPES``."""
+
+    @pytest.mark.parametrize("ptype", [t for t in ALL_TYPES
+                                       if t in _SERVED_TYPES])
     def test_the_panels_agree(self, tmp_path, ptype):
         spec = by_spec(ptype)
         std = profiles_std(tmp_path, spec)
@@ -203,15 +216,22 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
             % (ptype, std, srv)
         )
 
-    @pytest.mark.parametrize("ptype", ALL_TYPES)
-    def test_every_panel_draws(self, tmp_path, ptype):
-        """Stated positively: no served panel is an empty plot region."""
-        figs, _, warns = served(tmp_path, by_spec(ptype))
+    @pytest.mark.parametrize("ptype,mode", [
+        *[(t, "saved") for t in ALL_TYPES],
+        *[(t, "served") for t in ALL_TYPES if t in _SERVED_TYPES]])
+    def test_every_panel_draws(self, tmp_path, ptype, mode):
+        """Stated positively: no panel is an empty plot region -- saved for
+        every type, served for ``_SERVED_TYPES``."""
+        if mode == "saved":
+            figs, warns = standalone(tmp_path, by_spec(ptype))
+            figs = list(figs.values())
+        else:
+            figs, _, warns = served(tmp_path, by_spec(ptype))
         assert len(figs) == 2, "by(foreign) should give two panels"
         for f in figs:
             assert any(getattr(r, "glyph", None) is not None
                        for r in f.renderers), (
-                "%s: served panel %r has no glyph" % (ptype, f.title.text))
+                "%s: %s panel %r has no glyph" % (ptype, mode, f.title.text))
         assert not [w for w in warns if "no glyph mapper" in w], warns
 
     def test_the_no_glyph_mapper_needle_is_live(self, tmp_path):
@@ -248,7 +268,10 @@ class TestEveryTypeFacetsTheSameWayInBothModes:
         std = profiles_std(tmp_path, spec, df)
         srv = profiles_srv(tmp_path, spec, df)
         assert std == srv
-        assert [p["title"] for p in srv] == ["Domestic", "Foreign", "Missing"]
+        # Flipped (WP-30 P1.15a): "Missing" was wrong; twoway writes
+        # "(missing)".
+        assert [p["title"] for p in srv] == ["Domestic", "Foreign",
+                                             "(missing)"]
 
     def test_a_layered_graph_agrees(self, tmp_path):
         spec = make_spec([plot_for("scatter"), plot_for("lfit")], None,
@@ -503,16 +526,24 @@ class TestAnUnimplementedBySuboptionIsNamed:
             dr._dash_parse_by(by_raw)
         return [str(w.message) for w in caught if "by()" in str(w.message)]
 
+    # Flipped (WP-30 P1.15b): rows(), compact, holes(), iscale() and
+    # colfirst were the examples; they are drawn now (by_grid_truth.json),
+    # so the still unimplemented subtitleformat() and shrink words are.
     @pytest.mark.parametrize("by_raw,names", [
-        ("foreign, rows(2)", ["rows(2)"]),
-        ("foreign, compact", ["compact"]),
-        ("foreign, rows(2) compact", ["rows(2)", "compact"]),
-        ("foreign, holes(1 3) iscale(*.8)", ["holes(1 3)", "iscale(*.8)"]),
-        ("foreign, title(\"By origin\")", ["title(\"By origin\")"]),
+        ("foreign, subtitleformat(%9s)", ["subtitleformat(%9s)"]),
+        ("foreign, shrink", ["shrink"]),
+        ("foreign, subtitleformat(%9s) shrink",
+         ["subtitleformat(%9s)", "shrink"]),
+        ("foreign, ishrink noishrink", ["ishrink", "noishrink"]),
+        # Flipped (WP-30 P1.15a): by()'s title() is drawn now, as twoway
+        # draws it; shrink (twoway's SHRink) is still named.
+        ("foreign, title(\"By origin\") shrink", ["shrink"]),
         # Flipped (WP-29 P0.2): norescale is twoway's default and is
-        # honoured, so only noixlabel is named.
-        ("foreign, norescale noixlabel", ["noixlabel"]),
-        ("foreign, cols(2) total colfirst", ["colfirst"]),
+        # honoured, so only noixlabel is named.  Flipped (WP-30 P1.15c):
+        # noixlabel is drawn too now (by_chrome_truth.json), so shrink is
+        # the word still named.
+        ("foreign, norescale noixlabel shrink", ["shrink"]),
+        ("foreign, cols(2) total shrink", ["shrink"]),
     ])
     def test_each_unimplemented_sub_option_is_named(self, by_raw, names):
         got = self._warnings_for(by_raw)
@@ -528,8 +559,9 @@ class TestAnUnimplementedBySuboptionIsNamed:
         assert self._warnings_for(by_raw) == []
 
     def test_the_warning_does_not_name_the_supported_ones_beside_them(self):
-        got = self._warnings_for("foreign, cols(2) rows(3)")
-        assert len(got) == 1 and "rows(3)" in got[0] and "cols" not in got[0]
+        # Flipped (WP-30 P1.15b): rows(3) is drawn now; shrink is not.
+        got = self._warnings_for("foreign, cols(2) shrink")
+        assert len(got) == 1 and "shrink" in got[0] and "cols" not in got[0]
 
     def test_the_parsed_values_are_unchanged(self):
         assert dr._dash_parse_by("foreign, cols(2) rows(3) total")[:4] \
@@ -540,17 +572,18 @@ class TestAnUnimplementedBySuboptionIsNamed:
         in the Stata log, and not again when a session opens (WP-23: the
         note came only from a session, whose output the Stata user never
         sees -- test_help_claims_5.cscript HC5-08)."""
-        spec = by_spec("scatter", by="foreign, rows(2) compact")
+        # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
+        spec = by_spec("scatter", by="foreign, subtitleformat(%9s) shrink")
         tag, sp, dp = _write(tmp_path, spec, _DF)
         with warnings.catch_warnings(record=True) as built:
             warnings.simplefilter("always")
             dr.ServerAppBuilder(sp, dp).build(str(tmp_path / f"b_{tag}.py"))
         hits = [str(w.message) for w in built if "by()" in str(w.message)
-                and "rows(2)" in str(w.message)
-                and "compact" in str(w.message)]
+                and "subtitleformat(%9s)" in str(w.message)
+                and "shrink" in str(w.message)]
         assert len(hits) == 1, [str(w.message) for w in built]
         _, _, warns = served(tmp_path, spec)
-        assert not [w for w in warns if "by()" in w and "rows(2)" in w], warns
+        assert not [w for w in warns if "by()" in w and "shrink" in w], warns
 
     def test_an_unsafe_by_string_still_facets_nothing(self, tmp_path):
         spec = by_spec("scatter", by='__import__("os")')
@@ -583,8 +616,9 @@ class TestAByTextHoldingMacroCharactersFacets:
     twoway scatter mpg weight, by(foreign, title(`"'90s bc"')), and the
     same with title("Cost in \\$US") and title("a\\b c"), each draw the two
     panels Domestic and Foreign.  Only the variable list is held to the
-    pattern now; the sub-options are text, and a by() title is named as not
-    implemented, as typed."""
+    pattern now; the sub-options are text.  Flipped (WP-30 P1.15a): the
+    by() title was named as not implemented; twoway draws by()'s text once
+    over the panels, so it is drawn, as typed, and not named."""
 
     _BT, _AP = "`", "'"
 
@@ -603,13 +637,17 @@ class TestAByTextHoldingMacroCharactersFacets:
         srv = profiles_srv(tmp_path, spec)
         assert len(figs) == len(srv) == 2, (len(figs), len(srv))
         assert sorted(p["title"] for p in srv) == \
-               sorted(f.title.text for f in figs.values()) == \
+               sorted(panel_label(f) for f in figs.values()) == \
                ["Domestic", "Foreign"]
         assert not _by_note(msgs), msgs
-        # The sub-option dash does not draw is named, as the user typed it.
-        sub = by_raw.split(",", 1)[1].strip()
-        named = [m for m in msgs if "by() sub-option" in m]
-        assert len(named) == 1 and sub in named[0], msgs
+        assert not [m for m in msgs if "by() sub-option" in m], msgs
+        # The text is drawn in the chrome cells, as the user typed it.
+        want = sorted(dr._dash_textbox(v, k)[0] for k, v in
+                      dr._dash_by_text_options(by_raw).items() if v)
+        cells = next(f for f in figs.values()
+                     if getattr(f, "_dash_by_chrome", None))._dash_by_chrome
+        got = sum((chrome_texts(c) for c in cells.values() if c), [])
+        assert all(w in got for w in want), (want, got)
 
     def test_the_parse_keeps_the_implemented_sub_options(self):
         got = dr._dash_parse_by(
@@ -722,9 +760,12 @@ class TestTheGeneratedAppHasOneDispatch:
         from bokeh.models import GridPlot
         spec = by_spec("scatter", by="foreign, cols(1)")
         _, doc, _ = served(tmp_path, spec)
-        grids = [m for m in _walk(doc) if isinstance(m, GridPlot)]
-        inner = [g for g in grids
-                 if all(type(c[0]).__name__ == "figure" for c in g.children)]
-        assert inner, "no facet sub-grid found"
-        cols = max(c[2] for c in inner[0].children) + 1
+        # Flipped (WP-30 P1.15a): the sub-grid holds the overall text's
+        # chrome cells beside its panels; the panels are read through
+        # by_panel_probe.by_grid.
+        (root,) = [x for x in doc.roots
+                   if any(isinstance(m, GridPlot) for m in x.references())]
+        panels = by_grid(root)[0]
+        assert panels, "no facet sub-grid found"
+        cols = max(c for _, c, _ in panels) + 1
         assert cols == 1, "cols(1) gave a %d-column facet grid" % cols

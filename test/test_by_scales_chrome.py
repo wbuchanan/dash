@@ -3,9 +3,11 @@ test_by_scales_chrome.py -- a by() graph's shared scale, as a browser draws
 it, in real time (WP-29 P0.2, TR-10.21).
 
 Whether the panels of a by() graph keep one scale after a filter move is
-decided by BokehJS (a DataRange1d shared by several plots spans the union
-of their bounds), so it is read from headless Chrome over the DevTools
-protocol (``range_probe.RangeProbe``), never by forcing an update.  Without
+decided in the browser -- since WP-30 P1.3a by the page's own re-finish
+(``_DASH_AXIS_FINISH_JS``), which writes the one Range1d the panels share
+over every panel's hull (it was a DataRange1d BokehJS spanned) -- so it is
+read from headless Chrome over the DevTools protocol
+(``range_probe.RangeProbe``), never by forcing an update.  Without
 Chrome these tests skip, as test_responsive_layout.py's do.
 """
 import os
@@ -29,6 +31,9 @@ if responsive_probe.find_chrome() is None:
     pytest.skip("headless Chrome is not installed (set DASH_CHROME); "
                 "the browser's shared range is not measured",
                 allow_module_level=True)
+
+#: Headless Chrome: the release tier, not the default run (WP-30 D).
+pytestmark = pytest.mark.release
 
 _TMP = tempfile.mkdtemp(prefix="dash_by_chrome_")
 
@@ -74,8 +79,10 @@ class TestTheBrowserDrawsOneScale:
             assert p.move_range_slider(0.3) >= 1
             time.sleep(0.3)
             after = p.wait_settled(3)
-            assert len(_ys(after)) == 1, after
-            assert _ys(after) != _ys(before)
+            assert len(_ys(after)) == 1 and len(_xs(after)) == 1, after
+            # WP-30 P1.3a: y spans twoway's ticks 10(10)40 before and after
+            # the move; the weights it kept narrow x.
+            assert _xs(after) != _xs(before)
             assert p.js_errors() == []
 
     def test_served_document_initial_and_after_a_move(self):

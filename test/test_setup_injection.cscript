@@ -51,6 +51,15 @@
 *! a value, and handed to Stata with st_local.
 
 cscript "dash_setup rejects code injection through untrusted values" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // cscript drops every global (incl. the runner's $dash_nobrowser); this
 // script builds no dashboard, but set it so a stray build could never open a

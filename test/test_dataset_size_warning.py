@@ -68,6 +68,7 @@ def _render(tmp_path, n_rows, n_cols, tag):
 
 
 class TestALargeDatasetIsReported:
+    @pytest.mark.release  # a dataset over the size threshold (WP-30 D)
     def test_a_dataset_over_the_threshold_is_named(self, tmp_path):
         n_rows = int(dr._LARGE_DATASET_CELLS // 4) + 5000
         msgs = _render(tmp_path, n_rows, 4, "big")
@@ -80,6 +81,7 @@ class TestALargeDatasetIsReported:
             f"the warning does not name the row count: {hits}"
         )
 
+    @pytest.mark.release  # a dataset over the size threshold (WP-30 D)
     def test_the_warning_says_how_large_the_file_will_be(self, tmp_path):
         n_rows = int(dr._LARGE_DATASET_CELLS // 4) + 5000
         msgs = _render(tmp_path, n_rows, 4, "big2")
@@ -110,6 +112,7 @@ class TestALargeDatasetIsReported:
 
 
 class TestTheServedAppReportsItToo:
+    @pytest.mark.release  # a dataset over the size threshold (WP-30 D)
     def test_the_builder_warns_on_the_same_data(self, tmp_path):
         rng = np.random.default_rng(3)
         n_rows = int(dr._LARGE_DATASET_CELLS // 4) + 5000

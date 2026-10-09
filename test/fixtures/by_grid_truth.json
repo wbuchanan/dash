@@ -1,0 +1,3307 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "1dfee5e7fb2430c8bd40951aa5576d5055e75390",
+  "extracted": " 8 Oct 2026 16:41:26",
+  "method": "twoway scatter mpg weight per probe; rows/cols and indiv_margin from the .Graph object; panel cells from the label texts of the SVG export, as drawn: twoway draws no empty row or column, so cells are counted over the rows and columns that hold a panel (rows/cols are the object's, before that); the size multiplier from the smallest numeric text (the marker labels) over the plain graph's; by_indiv from the scheme files' #include chains",
+  "script": "scripts/extract_by_grid_truth.do",
+  "stata_version": "19.5"
+ },
+ "accepted": {
+  "b1(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "b1title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "b2(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "b2title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "bg(white)": {
+   "at_draw": false,
+   "message": "option bg() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "bgc(white)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "bgcolor(white)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "c(2)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ca(\"a\")": {
+   "at_draw": false,
+   "message": "option ca() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "cap(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "caption(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "cle(on)": {
+   "at_draw": false,
+   "message": "option cle() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "cleg(on)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "clegend(on)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "cleglo(3)": {
+   "at_draw": false,
+   "message": "option cleglo() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "clegloc(3)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "co": {
+   "at_draw": false,
+   "message": "option co not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "col": {
+   "at_draw": false,
+   "message": "option col not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "colf": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "colfirst": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "cols(2)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "com": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "compact": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "edg": {
+   "at_draw": false,
+   "message": "option edg not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "edge": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "edgelabel": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "graph(color(white))": {
+   "at_draw": false,
+   "message": "option graph() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "graphr(color(white))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "graphregion(color(white))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ho(3)": {
+   "at_draw": false,
+   "message": "option ho() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "hol(3)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "holes(3)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "i": {
+   "at_draw": false,
+   "message": "option i not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ile": {
+   "at_draw": false,
+   "message": "option ile not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ileg": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ilegends": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "im(small)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "imargin(small)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "in": {
+   "at_draw": false,
+   "message": "option in not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ind": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "individual": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iscal(.5)": {
+   "at_draw": false,
+   "message": "option iscal() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale(.5)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ish": {
+   "at_draw": false,
+   "message": "option ish not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ishr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ishrink": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ix": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixaxes": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixl": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixlabels": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixti": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixticks": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ixtitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iy": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iyaxes": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iyl": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iylabels": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iyt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iyti": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iyticks": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iytitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "l1(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "l1title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "l2(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "l2title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "le(off)": {
+   "at_draw": false,
+   "message": "option le() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "leg(off)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "legend(off)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "leglo(6)": {
+   "at_draw": false,
+   "message": "option leglo() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "legloc(6)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "mis": {
+   "at_draw": false,
+   "message": "option mis not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "miss": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "missing": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "no": {
+   "at_draw": false,
+   "message": "option no not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "noed": {
+   "at_draw": false,
+   "message": "option noed not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "noedge": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noedgelabel": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noin": {
+   "at_draw": false,
+   "message": "option noin not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "noind": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noindividual": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noishr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noishrink": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noix": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixaxes": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixl": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixlabels": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixti": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixticks": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixtitle": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noixtitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiy": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiyaxes": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiyl": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiylabels": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiyt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiyti": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiyticks": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noiytitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nooverallshr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nooverallshrink": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nor": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "norescale": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noshr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noshrin": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noshrink": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "not(\"a\")": {
+   "at_draw": false,
+   "message": "option not() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "note(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noxr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noxrescale": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noxt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noxtitle": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noxtitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noyr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noyrescale": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noyt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "noytitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "overallshr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "overallshrink": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ple(off)": {
+   "at_draw": false,
+   "message": "option ple() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "pleg(off)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "plegend(off)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "pleglo(6)": {
+   "at_draw": false,
+   "message": "option pleglo() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "plegloc(6)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "plot(margin(zero))": {
+   "at_draw": false,
+   "message": "option plot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "plotr(margin(zero))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "plotregion(margin(zero))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "r": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "r(2)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "r1(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "r1title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "r2(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "r2title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "rescale": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "rows(2)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "scal(1)": {
+   "at_draw": false,
+   "message": "option scal() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "scale(1)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "sh": {
+   "at_draw": false,
+   "message": "option sh not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "shr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "shrink": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "spac(ring(1))": {
+   "at_draw": false,
+   "message": "option spac() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "space(ring(1))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "spacers(ring(1))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "styl(compact)": {
+   "at_draw": false,
+   "message": "option styl() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "style(compact)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "su(\"a\")": {
+   "at_draw": false,
+   "message": "option su() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "sub(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "subtitle(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "subtitleforma(%9s)": {
+   "at_draw": false,
+   "message": "option subtitleforma() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "subtitleformat(%9s)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "t(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "t1(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "t1title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "t2(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "t2title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "title(\"a\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "to": {
+   "at_draw": false,
+   "message": "option to not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "tot": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "total": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "x": {
+   "at_draw": false,
+   "message": "option x not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "xr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "xrescale": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "xt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "xtitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "y": {
+   "at_draw": false,
+   "message": "option y not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "yr": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "yrescale": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "yt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ytitles": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  }
+ },
+ "by_indiv": {
+  "economist": {
+   "margin": "medium",
+   "sides": [
+    3.5,
+    3.5,
+    3.5,
+    3.5
+   ]
+  },
+  "meta": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s1color": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s1manual": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s1mono": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s1rcolor": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s2color": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s2color8": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s2gcolor": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s2gmanual": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s2manual": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "s2mono": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "sj": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "stcolor": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stcolor_alt": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stcolor_meta": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stcolor_mv": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stcoloralias": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stgcolor": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stgcolor_alt": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stgcolor_meta": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stgcolor_mv": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stmono1": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stmono2": {
+   "margin": "allsides-ms",
+   "sides": [
+    3.5,
+    3.5,
+    1.2,
+    1.2
+   ]
+  },
+  "stsj": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  },
+  "sttrans": {
+   "margin": "small",
+   "sides": [
+    1.2,
+    1.2,
+    1.2,
+    1.2
+   ]
+  }
+ },
+ "declared": [
+  "TOTal",
+  "MISSing",
+  "Rows()",
+  "COLFirst",
+  "Cols()",
+  "SCALE()",
+  "ISCALE()",
+  "LEGend()",
+  "LEGLOC()",
+  "PLEGend()",
+  "PLEGLOC()",
+  "CLEGend()",
+  "CLEGLOC()",
+  "COMpact",
+  "STYLE()",
+  "NORescale",
+  "Rescale",
+  "NOXRescale",
+  "NOYRescale",
+  "XRescale",
+  "YRescale",
+  "HOLes()",
+  "NOEDGElabel",
+  "EDGElabel",
+  "NOIXaxes",
+  "NOIYaxes",
+  "IXaxes",
+  "IYaxes",
+  "NOXTitles",
+  "XTitles",
+  "NOYTitles",
+  "YTitles",
+  "NOIXLabels",
+  "NOIYLabels",
+  "IXLabels",
+  "IYLabels",
+  "NOIXTicks",
+  "NOIYTicks",
+  "IXTicks",
+  "IYTicks",
+  "NOIXTitles",
+  "NOIYTitles",
+  "IXTitles",
+  "IYTitles",
+  "NOINDividual",
+  "INDividual",
+  "ILEGends",
+  "IMargin()",
+  "NOSHRink",
+  "NOISHRink",
+  "NOOVERALLSHRink",
+  "SHRink",
+  "ISHRink",
+  "OVERALLSHRink",
+  "subtitleformat()",
+  "GRAPHRegion()",
+  "PLOTRegion()",
+  "BGColor()",
+  "SPACErs()"
+ ],
+ "grid": {
+  "foreign": {
+   "by": "foreign",
+   "cells": [
+    [
+     "Domestic",
+     0,
+     0
+    ],
+    [
+     "Foreign",
+     0,
+     1
+    ]
+   ],
+   "cols": 2,
+   "n": 2,
+   "rc": 0,
+   "rows": 1
+  },
+  "foreign, cols(5)": {
+   "by": "foreign, cols(5)",
+   "cells": [
+    [
+     "Domestic",
+     0,
+     0
+    ],
+    [
+     "Foreign",
+     0,
+     1
+    ]
+   ],
+   "cols": 5,
+   "n": 2,
+   "rc": 0,
+   "rows": 1
+  },
+  "foreign, total cols(5)": {
+   "by": "foreign, total cols(5)",
+   "cells": [
+    [
+     "Domestic",
+     0,
+     0
+    ],
+    [
+     "Foreign",
+     0,
+     1
+    ],
+    [
+     "Total",
+     0,
+     2
+    ]
+   ],
+   "cols": 5,
+   "n": 3,
+   "rc": 0,
+   "rows": 1
+  },
+  "g10": {
+   "by": "g10",
+   "cells": [
+    [
+     "0",
+     0,
+     0
+    ],
+    [
+     "1",
+     0,
+     1
+    ],
+    [
+     "2",
+     0,
+     2
+    ],
+    [
+     "3",
+     0,
+     3
+    ],
+    [
+     "4",
+     1,
+     0
+    ],
+    [
+     "5",
+     1,
+     1
+    ],
+    [
+     "6",
+     1,
+     2
+    ],
+    [
+     "7",
+     1,
+     3
+    ],
+    [
+     "8",
+     2,
+     0
+    ],
+    [
+     "9",
+     2,
+     1
+    ]
+   ],
+   "cols": 4,
+   "n": 10,
+   "rc": 0,
+   "rows": 3
+  },
+  "g3, rows(5)": {
+   "by": "g3, rows(5)",
+   "cells": [
+    [
+     "0",
+     0,
+     0
+    ],
+    [
+     "1",
+     1,
+     0
+    ],
+    [
+     "2",
+     2,
+     0
+    ]
+   ],
+   "cols": 1,
+   "n": 3,
+   "rc": 0,
+   "rows": 5
+  },
+  "rep78": {
+   "by": "rep78",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     0,
+     2
+    ],
+    [
+     "4",
+     1,
+     0
+    ],
+    [
+     "5",
+     1,
+     1
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 2
+  },
+  "rep78, c(1) colf": {
+   "by": "rep78, c(1) colf",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     1,
+     0
+    ],
+    [
+     "3",
+     2,
+     0
+    ],
+    [
+     "4",
+     3,
+     0
+    ],
+    [
+     "5",
+     4,
+     0
+    ]
+   ],
+   "cols": 1,
+   "n": 5,
+   "rc": 0,
+   "rows": 5
+  },
+  "rep78, colfirst total": {
+   "by": "rep78, colfirst total",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     1,
+     0
+    ],
+    [
+     "3",
+     0,
+     1
+    ],
+    [
+     "4",
+     1,
+     1
+    ],
+    [
+     "5",
+     0,
+     2
+    ],
+    [
+     "Total",
+     1,
+     2
+    ]
+   ],
+   "cols": 3,
+   "n": 6,
+   "rc": 0,
+   "rows": 2
+  },
+  "rep78, cols(1)": {
+   "by": "rep78, cols(1)",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     1,
+     0
+    ],
+    [
+     "3",
+     2,
+     0
+    ],
+    [
+     "4",
+     3,
+     0
+    ],
+    [
+     "5",
+     4,
+     0
+    ]
+   ],
+   "cols": 1,
+   "n": 5,
+   "rc": 0,
+   "rows": 5
+  },
+  "rep78, cols(3) holes(2) colfirst": {
+   "by": "rep78, cols(3) holes(2) colfirst",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     1,
+     1
+    ],
+    [
+     "4",
+     0,
+     2
+    ],
+    [
+     "5",
+     1,
+     2
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 2
+  },
+  "rep78, hol(2 2 9)": {
+   "by": "rep78, hol(2 2 9)",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     2
+    ],
+    [
+     "3",
+     1,
+     0
+    ],
+    [
+     "4",
+     1,
+     1
+    ],
+    [
+     "5",
+     1,
+     2
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 3
+  },
+  "rep78, holes(1 2 3)": {
+   "by": "rep78, holes(1 2 3)",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     0,
+     2
+    ],
+    [
+     "4",
+     1,
+     0
+    ],
+    [
+     "5",
+     1,
+     1
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 3
+  },
+  "rep78, holes(3) total": {
+   "by": "rep78, holes(3) total",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     1,
+     0
+    ],
+    [
+     "4",
+     1,
+     1
+    ],
+    [
+     "5",
+     1,
+     2
+    ],
+    [
+     "Total",
+     2,
+     0
+    ]
+   ],
+   "cols": 3,
+   "n": 6,
+   "rc": 0,
+   "rows": 3
+  },
+  "rep78, holes(9)": {
+   "by": "rep78, holes(9)",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     0,
+     2
+    ],
+    [
+     "4",
+     1,
+     0
+    ],
+    [
+     "5",
+     1,
+     1
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 2
+  },
+  "rep78, r(2)": {
+   "by": "rep78, r(2)",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     0,
+     2
+    ],
+    [
+     "4",
+     1,
+     0
+    ],
+    [
+     "5",
+     1,
+     1
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 2
+  },
+  "rep78, rows(1)": {
+   "by": "rep78, rows(1)",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     0,
+     2
+    ],
+    [
+     "4",
+     0,
+     3
+    ],
+    [
+     "5",
+     0,
+     4
+    ]
+   ],
+   "cols": 5,
+   "n": 5,
+   "rc": 0,
+   "rows": 1
+  },
+  "rep78, rows(2) colfirst holes(1)": {
+   "by": "rep78, rows(2) colfirst holes(1)",
+   "cells": [
+    [
+     "1",
+     1,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     1,
+     1
+    ],
+    [
+     "4",
+     0,
+     2
+    ],
+    [
+     "5",
+     1,
+     2
+    ]
+   ],
+   "cols": 3,
+   "n": 5,
+   "rc": 0,
+   "rows": 2
+  },
+  "rep78, total": {
+   "by": "rep78, total",
+   "cells": [
+    [
+     "1",
+     0,
+     0
+    ],
+    [
+     "2",
+     0,
+     1
+    ],
+    [
+     "3",
+     0,
+     2
+    ],
+    [
+     "4",
+     1,
+     0
+    ],
+    [
+     "5",
+     1,
+     1
+    ],
+    [
+     "Total",
+     1,
+     2
+    ]
+   ],
+   "cols": 3,
+   "n": 6,
+   "rc": 0,
+   "rows": 2
+  }
+ },
+ "refusals": {
+  "COMPACT": {
+   "at_draw": false,
+   "message": "option COMPACT not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "Rows(2)": {
+   "at_draw": false,
+   "message": "option Rows() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "TITLE(\"x\") bogus": {
+   "at_draw": false,
+   "message": "option TITLE() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "TOTAL rows(0)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "YRESCALE holes(0)": {
+   "at_draw": false,
+   "message": "holes() invalid -- invalid numlist has elements outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "bgcolor(white) bgcolor(red)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "bogus": {
+   "at_draw": false,
+   "message": "option bogus not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "bogus TITLE(\"x\")": {
+   "at_draw": false,
+   "message": "option bogus not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "bogus rows(0)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "c(1) colf": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "clegend(on) clegend(off)": {
+   "at_draw": false,
+   "message": "option clegend() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "colfirst colfirst rows(0)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "cols(0) rows(0)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "cols(0) rows(2)": {
+   "at_draw": false,
+   "message": "cols() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "cols(2) cols(0)": {
+   "at_draw": false,
+   "message": "option cols() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "cols(500)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "compact compact": {
+   "at_draw": false,
+   "message": "option compact not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "graphregion(color(white)) graphregion(color(red))": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "hol(2 2 9)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "holes()": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "holes(1) holes(2) style(compact) style(default)": {
+   "at_draw": false,
+   "message": "option holes() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "holes(1.5)": {
+   "at_draw": false,
+   "message": "holes() invalid -- invalid numlist has noninteger elements",
+   "notes": [],
+   "rc": 126
+  },
+  "holes(1/301)": {
+   "at_draw": false,
+   "message": "holes() invalid -- invalid numlist has too many elements",
+   "notes": [],
+   "rc": 123
+  },
+  "holes(301)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "holes(abc)": {
+   "at_draw": false,
+   "message": "holes() invalid -- invalid numlist",
+   "notes": [],
+   "rc": 121
+  },
+  "imargin(-1)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "imargin(1 2 3 4)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "imargin(bogus)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [
+    "(note:  named style bogus not found in class margin, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "imargin(l=5)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "imargin(small) imargin(large)": {
+   "at_draw": false,
+   "message": "option imargin() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale()": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iscale(*-1)": {
+   "at_draw": false,
+   "message": "gm_linewidth must be between 0.000 and  1.0e+04",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale(-1)": {
+   "at_draw": false,
+   "message": "gm_linewidth must be between 0.000 and  1.0e+04",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale(-1) YRESCALE": {
+   "at_draw": false,
+   "message": "option YRESCALE not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale(-1) rows(0)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "iscale(.)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [
+    "(note:  named style . not found in class numstyle, default attributes used)",
+    "(note:  named style 1 not found in class numstyle, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "iscale(.5) iscale(2)": {
+   "at_draw": false,
+   "message": "option iscale() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale(0)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iscale(1 2)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [
+    "(note:  named style 1 2 not found in class numstyle, default attributes used)",
+    "(note:  named style 1 not found in class numstyle, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "iscale(100)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iscale(1e4)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "iscale(1e5)": {
+   "at_draw": false,
+   "message": "gm_linewidth must be between 0.000 and  1.0e+04",
+   "notes": [],
+   "rc": 198
+  },
+  "iscale(abc)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [
+    "(note:  named style abc not found in class numstyle, default attributes used)",
+    "(note:  named style 1 not found in class numstyle, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "ixt": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "legend(off) legend(on)": {
+   "at_draw": false,
+   "message": "option legend() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "missing missing": {
+   "at_draw": false,
+   "message": "option missing not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nolegend": {
+   "at_draw": false,
+   "message": "option nolegend not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "r(2)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "rows()": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "rows(0) cols(0)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "rows(0) rows(2)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, outside of allowed range",
+   "notes": [],
+   "rc": 125
+  },
+  "rows(1) cols(1) holes(0)": {
+   "at_draw": false,
+   "message": "may not specify both rows() and cols()",
+   "notes": [],
+   "rc": 198
+  },
+  "rows(1.5)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number, noninteger value",
+   "notes": [],
+   "rc": 126
+  },
+  "rows(2 3)": {
+   "at_draw": false,
+   "message": "rows() invalid -- single number required",
+   "notes": [],
+   "rc": 123
+  },
+  "rows(2) cols()": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "rows(2) cols(2) YRESCALE": {
+   "at_draw": false,
+   "message": "may not specify both rows() and cols()",
+   "notes": [],
+   "rc": 198
+  },
+  "rows(2) rows(3)": {
+   "at_draw": false,
+   "message": "option rows() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "rows(abc)": {
+   "at_draw": false,
+   "message": "rows() invalid -- invalid number",
+   "notes": [],
+   "rc": 121
+  },
+  "spacers(ring(1)) spacers(ring(2))": {
+   "at_draw": false,
+   "message": "option spacers() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "style(compact) style(default) YRESCALE": {
+   "at_draw": false,
+   "message": "option style() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "t1title(a) t1title(b)": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "title(\"a\") title(\"b\")": {
+   "at_draw": false,
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "total TOTAL": {
+   "at_draw": false,
+   "message": "option TOTAL not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "total total": {
+   "at_draw": false,
+   "message": "option total not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "yrescale yrescale": {
+   "at_draw": false,
+   "message": "option yrescale not allowed",
+   "notes": [],
+   "rc": 198
+  }
+ },
+ "sizes": {
+  "economist": {
+   "by_foreign": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, compact) scheme(economist)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_imargin_1_2_3_4": {
+    "col_gap": 3.0,
+    "cols": 2,
+    "indiv_margin": [
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(1 2 3 4)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_imargin_bogus": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [
+     "(note:  named style bogus not found in class margin, default attributes used)"
+    ],
+    "options": "mlabel(rep78) by(foreign, imargin(bogus)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_imargin_l_5": {
+    "col_gap": 8.5,
+    "cols": 2,
+    "indiv_margin": [
+     5.0,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(l=5)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_imargin_large": {
+    "col_gap": 16.0,
+    "cols": 2,
+    "indiv_margin": [
+     8.0,
+     8.0,
+     8.0,
+     8.0
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(large)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 16.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_imargin_zero_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(zero) compact) scheme(economist)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_iscale_0": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 0.0,
+    "mult": 0.0,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(0)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_iscale_2": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 74.8,
+    "mult": 1.6996,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(*2)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_iscale_5": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 21.98,
+    "mult": 0.4994,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(.5)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_iscale_abc": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [
+     "(note:  named style abc not found in class numstyle, default attributes used)",
+     "(note:  named style 1 not found in class numstyle, default attributes used)"
+    ],
+    "options": "mlabel(rep78) by(foreign, iscale(abc)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_style_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 37.37,
+    "mult": 0.8491,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, style(compact)) scheme(economist)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "by_foreign_xsize12_ysize3": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 51.03,
+    "mult": 0.8514,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign) xsize(12) ysize(3) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     8640.0,
+     2160.0
+    ]
+   },
+   "by_g10": {
+    "col_gap": 7.0,
+    "cols": 4,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     3.5,
+     3.5
+    ],
+    "label_size": 26.38,
+    "mult": 0.5994,
+    "notes": [],
+    "options": "mlabel(rep78) by(g10) scheme(economist)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 3,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "plain": {
+    "label_size": 44.01,
+    "mult": 1.0,
+    "notes": [],
+    "options": "mlabel(rep78)  scheme(economist)",
+    "rc": 0,
+    "viewbox": [
+     1584.0,
+     1584.0
+    ]
+   },
+   "plain_xsize12_ysize3": {
+    "label_size": 59.94,
+    "mult": 1.0,
+    "notes": [],
+    "options": "mlabel(rep78) xsize(12) ysize(3) scheme(economist)",
+    "rc": 0,
+    "viewbox": [
+     8640.0,
+     2160.0
+    ]
+   }
+  },
+  "s2color": {
+   "by_foreign": {
+    "col_gap": 2.4,
+    "cols": 2,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, compact) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_imargin_1_2_3_4": {
+    "col_gap": 3.0,
+    "cols": 2,
+    "indiv_margin": [
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(1 2 3 4)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_imargin_bogus": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [
+     "(note:  named style bogus not found in class margin, default attributes used)"
+    ],
+    "options": "mlabel(rep78) by(foreign, imargin(bogus)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_imargin_l_5": {
+    "col_gap": 6.2,
+    "cols": 2,
+    "indiv_margin": [
+     5.0,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(l=5)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_imargin_large": {
+    "col_gap": 16.0,
+    "cols": 2,
+    "indiv_margin": [
+     8.0,
+     8.0,
+     8.0,
+     8.0
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(large)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 16.0,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_imargin_zero_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(zero) compact) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_iscale_0": {
+    "col_gap": 2.4,
+    "cols": 2,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 0.0,
+    "mult": 0.0,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(0)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_iscale_2": {
+    "col_gap": 2.4,
+    "cols": 2,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 136.0,
+    "mult": 1.7013,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(*2)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_iscale_5": {
+    "col_gap": 2.4,
+    "cols": 2,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 39.97,
+    "mult": 0.5,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(.5)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_iscale_abc": {
+    "col_gap": 2.4,
+    "cols": 2,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [
+     "(note:  named style abc not found in class numstyle, default attributes used)",
+     "(note:  named style 1 not found in class numstyle, default attributes used)"
+    ],
+    "options": "mlabel(rep78) by(foreign, iscale(abc)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_style_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 67.94,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, style(compact)) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "by_foreign_xsize12_ysize3": {
+    "col_gap": 2.4,
+    "cols": 2,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 51.03,
+    "mult": 0.8514,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign) xsize(12) ysize(3) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     8640.0,
+     2160.0
+    ]
+   },
+   "by_g10": {
+    "col_gap": 2.4,
+    "cols": 4,
+    "indiv_margin": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "label_size": 48.02,
+    "mult": 0.6007,
+    "notes": [],
+    "options": "mlabel(rep78) by(g10) scheme(s2color)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 3,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "plain": {
+    "label_size": 79.94,
+    "mult": 1.0,
+    "notes": [],
+    "options": "mlabel(rep78)  scheme(s2color)",
+    "rc": 0,
+    "viewbox": [
+     3960.0,
+     2880.0
+    ]
+   },
+   "plain_xsize12_ysize3": {
+    "label_size": 59.94,
+    "mult": 1.0,
+    "notes": [],
+    "options": "mlabel(rep78) xsize(12) ysize(3) scheme(s2color)",
+    "rc": 0,
+    "viewbox": [
+     8640.0,
+     2160.0
+    ]
+   }
+  },
+  "stcolor": {
+   "by_foreign": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, compact) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_imargin_1_2_3_4": {
+    "col_gap": 3.0,
+    "cols": 2,
+    "indiv_margin": [
+     1.0,
+     2.0,
+     3.0,
+     4.0
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(1 2 3 4)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 7.0,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_imargin_bogus": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [
+     "(note:  named style bogus not found in class margin, default attributes used)"
+    ],
+    "options": "mlabel(rep78) by(foreign, imargin(bogus)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_imargin_l_5": {
+    "col_gap": 8.5,
+    "cols": 2,
+    "indiv_margin": [
+     5.0,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(l=5)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_imargin_large": {
+    "col_gap": 16.0,
+    "cols": 2,
+    "indiv_margin": [
+     8.0,
+     8.0,
+     8.0,
+     8.0
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(large)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 16.0,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_imargin_zero_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, imargin(zero) compact) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_iscale_0": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 0.0,
+    "mult": 0.0,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(0)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_iscale_2": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 152.89,
+    "mult": 1.6999,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(*2)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_iscale_5": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 45.06,
+    "mult": 0.501,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, iscale(.5)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_iscale_abc": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [
+     "(note:  named style abc not found in class numstyle, default attributes used)",
+     "(note:  named style 1 not found in class numstyle, default attributes used)"
+    ],
+    "options": "mlabel(rep78) by(foreign, iscale(abc)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_style_compact": {
+    "col_gap": 0,
+    "cols": 2,
+    "indiv_margin": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "label_size": 76.44,
+    "mult": 0.8499,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign, style(compact)) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 0,
+    "rows": 1,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "by_foreign_xsize12_ysize3": {
+    "col_gap": 7.0,
+    "cols": 2,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 51.03,
+    "mult": 0.8514,
+    "notes": [],
+    "options": "mlabel(rep78) by(foreign) xsize(12) ysize(3) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 1,
+    "viewbox": [
+     8640.0,
+     2160.0
+    ]
+   },
+   "by_g10": {
+    "col_gap": 7.0,
+    "cols": 4,
+    "indiv_margin": [
+     3.5,
+     3.5,
+     1.2,
+     1.2
+    ],
+    "label_size": 54.0,
+    "mult": 0.6004,
+    "notes": [],
+    "options": "mlabel(rep78) by(g10) scheme(stcolor)",
+    "rc": 0,
+    "row_gap": 2.4,
+    "rows": 3,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "plain": {
+    "label_size": 89.94,
+    "mult": 1.0,
+    "notes": [],
+    "options": "mlabel(rep78)  scheme(stcolor)",
+    "rc": 0,
+    "viewbox": [
+     5400.0,
+     3240.0
+    ]
+   },
+   "plain_xsize12_ysize3": {
+    "label_size": 59.94,
+    "mult": 1.0,
+    "notes": [],
+    "options": "mlabel(rep78) xsize(12) ysize(3) scheme(stcolor)",
+    "rc": 0,
+    "viewbox": [
+     8640.0,
+     2160.0
+    ]
+   }
+  }
+ }
+}

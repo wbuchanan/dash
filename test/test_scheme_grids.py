@@ -81,9 +81,24 @@ _GRID_TRUTH = {
     "s2color8":    (False, True),
     "sttrans":     (True,  True),
     "stgcolor_alt": (True,  True),
+    # WP-30 P1.25a: StataCorp's six internal schemes.  meta #includes
+    # s2color and sets `yesno draw_major_hgrid yes' (and vgrid) itself; the
+    # other five reach stcolor's both-grids through their chains --
+    # stcolor_meta/stcoloralias #include stcolor, stgcolor_meta #includes
+    # stcolor_meta, stcolor_mv #includes stcolor_alt, stgcolor_mv
+    # #includes stgcolor_alt.
+    "meta":          (True,  True),
+    "stcolor_meta":  (True,  True),
+    "stcolor_mv":    (True,  True),
+    "stcoloralias":  (True,  True),
+    "stgcolor_meta": (True,  True),
+    "stgcolor_mv":   (True,  True),
 }
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
+
+
+from conftest import render_models  # noqa: E402
 
 
 class TestTheTruthTableIsTheFixture:
@@ -98,7 +113,7 @@ class TestTheTruthTableIsTheFixture:
         assert sorted(_GRID_TRUTH) == names, (
             f"_GRID_TRUTH covers {sorted(_GRID_TRUTH)}, the fixture {names}"
         )
-        assert len(names) == 20
+        assert len(names) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
 
     @pytest.mark.parametrize("name,truth", sorted(_GRID_TRUTH.items()))
     def test_the_table_agrees_with_the_fixtures_effective_flags(self, name, truth):
@@ -126,7 +141,7 @@ def _render(scheme):
     with open(dp, "w") as f:
         json.dump(make_data_json(df), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)
@@ -229,7 +244,7 @@ class TestExplicitOptionsStillWin:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         fig = list(dr.figures.values())[0]
         for p in (sp, dp, op):
             try:
@@ -253,7 +268,7 @@ class TestExplicitOptionsStillWin:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         fig = list(dr.figures.values())[0]
         for p in (sp, dp, op):
             try:

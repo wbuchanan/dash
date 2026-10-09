@@ -27,12 +27,12 @@
 *! HOW TO RUN (from a scratch directory, NOT the repo -- Stata writes its
 *! batch .log and the probe by-products into the PROCESS working directory):
 *!
-*!     mkdir -p /tmp/dash-corpus && cd /tmp/dash-corpus
-*!     arch -arm64 /usr/local/bin/stata-mp -b do \
-*!         /Users/billy/Desktop/Programs/StataPrograms/d/dash/test/fixtures/twoway_corpus.do
+*!     DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/test/fixtures/twoway_corpus.do
 *!
-*!   The arch -arm64 prefix is required; the x86_64 slice dies with r(7100) on
-*!   libpython.  Stata batch mode exits 0 even on error -- read the .log.
+*!   scripts/stata_slot.sh starts Stata through scripts/stata_batch.sh, which
+*!   picks the arm64 slice where there is one; the x86_64 slice dies with
+*!   r(7100) on libpython.  Stata batch mode exits 0 even on error -- read
+*!   the .log.
 *!
 *! DELIBERATELY NO `version` STATEMENT AT THE TOP OF THIS FILE.
 *!   See section 26: a leading `version 17.0` or lower makes EVERY dash graph
@@ -50,8 +50,27 @@
 clear all
 set more off
 
-adopath ++ "/Users/billy/Desktop/Programs/Java/StataJSON"
-adopath ++ "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+* Root (WP-30 P1.34): DASH_REPO, else the current directory when it is a
+* dash tree; never another checkout.
+local repo : environment DASH_REPO
+if `"`macval(repo)'"' == "" local repo `"`c(pwd)'"'
+mata: st_local("_zr_bad", strofreal(any(strpos(st_local("repo"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zr_bad' {
+    display as error "twoway_corpus.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+while strlen(`"`repo'"') > 1 & inlist(substr(`"`repo'"', -1, 1), "/", char(92)) {
+    local repo = substr(`"`repo'"', 1, strlen(`"`repo'"') - 1)
+}
+capture confirm file `"`repo'/dash.ado"'
+local _zr_rc = _rc
+capture confirm file `"`repo'/test/run_all_cscripts.do"'
+if `_zr_rc' | _rc {
+    local _zr_show = substr(`"`repo'"', 1, 200)
+    display as error `"twoway_corpus.do: `_zr_show' is not a dash tree; set DASH_REPO to the repository root"'
+    exit 601
+}
+adopath ++ "`repo'/"
 
 // ================================================================
 // probe harness

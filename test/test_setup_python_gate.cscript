@@ -22,6 +22,15 @@
 *! be driven through every case from any interpreter.
 
 cscript "dash_setup python version gate" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 adopath ++ ".."
 qui do "../dash_setup.ado"
@@ -107,40 +116,39 @@ _chk "dash_setup.sthlp states the same minimum (`pymin')" "`found'" "1"
 // production, while all of the cases above passed.  The comparator now
 // decides once and returns after the loop.
 //
-// These cases call it the way dash_setup does.
-capture program drop _gate16
-program define _gate16, rclass
-    version 16.0
+// These cases call it the way dash_setup does: at version 19, which
+// dash_setup declares since WP-30 (P1.35; it was 16.0).
+capture program drop _gate19
+program define _gate19, rclass
+    version 19
     args got want
     _dash_pyver_ok "`got'" "`want'"
     return scalar ok = r(ok)
 end
 
-_gate16 "3.8.0"  "3.8"
-_chk "v16: 3.8.0 >= 3.8"   "`r(ok)'" "1"
-_gate16 "3.7.9"  "3.8"
-_chk "v16: 3.7.9 < 3.8"    "`r(ok)'" "0"
-_gate16 "2.7.18" "3.8"
-_chk "v16: 2.7.18 < 3.8"   "`r(ok)'" "0"
-_gate16 "3.10.0" "3.9"
-_chk "v16: 3.10.0 >= 3.9"  "`r(ok)'" "1"
-_gate16 "3.9"    "3.10"
-_chk "v16: 3.9 < 3.10"     "`r(ok)'" "0"
-_gate16 ""       "3.8"
-_chk "v16: empty is unknown"  "`r(ok)'" "-1"
-_gate16 "abc"    "3.8"
-_chk "v16: non-numeric is unknown" "`r(ok)'" "-1"
+_gate19 "3.8.0"  "3.8"
+_chk "v19: 3.8.0 >= 3.8"   "`r(ok)'" "1"
+_gate19 "3.7.9"  "3.8"
+_chk "v19: 3.7.9 < 3.8"    "`r(ok)'" "0"
+_gate19 "2.7.18" "3.8"
+_chk "v19: 2.7.18 < 3.8"   "`r(ok)'" "0"
+_gate19 "3.10.0" "3.9"
+_chk "v19: 3.10.0 >= 3.9"  "`r(ok)'" "1"
+_gate19 "3.9"    "3.10"
+_chk "v19: 3.9 < 3.10"     "`r(ok)'" "0"
+_gate19 ""       "3.8"
+_chk "v19: empty is unknown"  "`r(ok)'" "-1"
+_gate19 "abc"    "3.8"
+_chk "v19: non-numeric is unknown" "`r(ok)'" "-1"
 
-capture program drop _gate16
+capture program drop _gate19
 
-// ---- the floor is 3.13, not 3.8 (WP-28 K2) ----
-// dash_setup.ado's _dash_pymin now returns "3.13": bokeh 3.8 needs Python
-// 3.10, and 3.13 is the interpreter Stata is linked to on the machine
-// both test suites run under (test/conftest.py's `stata' baseline).
-// These cases pin the new floor's SHAPE, the way the block above pins
-// the old one -- comparator inputs, not the declared minimum, which
-// "dash_setup names a minimum" and "dash_setup.sthlp states the same
-// minimum" already read from _dash_pymin/dash_setup.sthlp directly.
+// ---- comparator inputs with a 3.13 want (WP-28 K2) ----
+// These cases pin the comparator's SHAPE around a 3.13 want, the way the
+// block above pins it around 3.8 -- comparator inputs, not the declared
+// minimum, which is read below, and which "dash_setup names a minimum"
+// and "dash_setup.sthlp states the same minimum" read from
+// _dash_pymin/dash_setup.sthlp directly.
 _dash_pyver_ok "3.13.9" "3.13"
 _chk "3.13.9 >= 3.13" "`r(ok)'" "1"
 _dash_pyver_ok "3.13"   "3.13"
@@ -150,6 +158,7 @@ _chk "3.12.11 < 3.13" "`r(ok)'" "0"
 _dash_pyver_ok "3.10.10" "3.13"
 _chk "3.10.10 < 3.13" "`r(ok)'" "0"
 
+// A caller at version 16 is still supported on Stata 19 (WP-30 P1.35).
 capture program drop _gate16
 program define _gate16, rclass
     version 16.0
@@ -178,6 +187,17 @@ if `"`c(python_exec)'"' != "" {
     mata: st_local("_haspx", strofreal(strpos(st_local("_pipcmd"), " -m pip install 'bokeh>=3.8'") > 1))
     _chk "the upgrade command names c(python_exec)" "`_haspx'" "1"
 }
+
+// ---- the floor dash_setup declares admits 3.11 and 3.12 (WP-30 P1.33) ----
+// The declared floor is measured: both test suites pass under it.
+_dash_pymin
+local _fl "`r(pymin)'"
+_dash_pyver_ok "3.12.12" "`_fl'"
+_chk "3.12.12 >= the floor `_fl'" "`r(ok)'" "1"
+_dash_pyver_ok "3.11.0" "`_fl'"
+_chk "3.11.0 against the floor `_fl'" "`r(ok)'" "1"
+_dash_pyver_ok "3.10.10" "`_fl'"
+_chk "3.10.10 < the floor `_fl'" "`r(ok)'" "0"
 
 if `fail' {
     display as error "SOME TESTS FAILED"

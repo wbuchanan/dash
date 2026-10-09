@@ -15,7 +15,6 @@ seriesid of 0 draws as p1.  A layer that is plot n draws in p((n-1) mod 15
 Everything keyed on the plot index follows: colour, line width, pattern,
 symbol, marker size.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -33,7 +32,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from dash_render import SchemeParser  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "ci_plot_index_truth.json"),
           encoding="utf-8") as _fh:
@@ -180,9 +179,7 @@ def _figure(mode, wd, plots, scheme, legend=""):
             return list(r._build_figures().values())[0]
         ap = str(wd / ("app_%d.py" % tag))
         dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-        ms = importlib.util.spec_from_file_location("_ci_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_ci_app_%d" % tag)
         doc = Document()
         mod.make_document(doc)
     figs = [m for root in doc.roots for m in root.references()
@@ -209,7 +206,9 @@ _DRAWS = {"scatter": [("Scatter", "scatter")], "line": [("Line", "line")],
           "qfitci": [("Line", "line")], "lpolyci": [("Line", "line")],
           "fpfitci": [("Line", "line")],
           "connected": [("Line", "connected"), ("Scatter", "scatter")],
-          "rcap": [("Segment", "rcap")],
+          # Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a
+          # marker of its msize, so dash draws them as dash Scatters.
+          "rcap": [("Segment", "rcap"), ("Scatter", "rcap")],
           "rcapsym": [("Segment", "rcapsym"), ("Scatter", "scatter")],
           "pcarrow": [("Segment", "pcarrow")], "rarea": [("VArea", "area")]}
 
@@ -242,11 +241,17 @@ class TestBothModes:
         fig = _figure(mode, wd, plots, case["scheme"])
         sp = SchemeParser(case["scheme"])
         for glyph in sorted({g for t in types for g, _ in _DRAWS[t]}):
-            expect = [_hex(sp.default_color(i, cyc))
+            # A VArea's fill is the p# colour at the p#area intensity
+            # (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3);
+            # the plot index rule pinned here is unchanged.
+            expect = [_hex(sp.default_color(i, cyc)) if g != "VArea"
+                      else _hex(dr.GlyphMapper._blend_intensity(
+                          sp.default_color(i, cyc),
+                          sp.p_area_intensity[i % 15], sp.naturally_white))
                       for t, i in zip(types, want)
                       for g, cyc in _DRAWS[t] if g == glyph]
             got = _drawn(fig, glyph)
-            # rcapsym draws its caps and spike as three Segments.
+            # rcapsym draws its spike as one Segment.
             dedup = [c for k, c in enumerate(got) if k == 0 or got[k - 1] != c]
             assert dedup == [c for k, c in enumerate(expect)
                              if k == 0 or expect[k - 1] != c], (glyph, got)

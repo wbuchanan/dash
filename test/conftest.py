@@ -4,11 +4,19 @@ conftest.py — Shared pytest fixtures for the dash test suite.
 Centralises commonly-used fixtures so individual test files don't each
 define their own copy of auto_df, make_spec, make_dr, etc.
 """
+import __future__
+import contextlib
+import importlib.util
+import itertools
 import sys
 import os
 import json
+import re
+import symtable
 import tempfile
 import time
+import types
+import warnings
 
 try:
     import fcntl
@@ -41,11 +49,28 @@ def pytest_configure(config):
         "serve: starts a real `bokeh serve` subprocess; slow. "
         "Deselect with -m 'not serve'.",
     )
+    config.addinivalue_line(
+        "markers",
+        "release: the release tier (Chrome, nested pytest runs, subprocess "
+        "sweeps, large files).  A run of the whole suite leaves it out "
+        "unless DASH_TEST_TIER=release or -m names release (make "
+        "test-release); a file, a node id, -k or --lf runs it.",
+    )
+    config.addinivalue_line(
+        "markers",
+        "batch: the batch-end tier (test_mode_parity.py).  A run of the "
+        "whole suite leaves it out unless DASH_TEST_TIER is batch or "
+        "release or -m names batch (make test-all, make test-batch); a "
+        "file, a node id, -k or --lf runs it.",
+    )
     if not config.pluginmanager.hasplugin("xdist"):
         # xdist registers this itself; without xdist the marks on the parity
         # corpus must still be known, or every run warns.
         config.addinivalue_line(
             "markers", "xdist_group(name): run these tests on one worker")
+    # DASH_SUITE_TIMING=<path>: write a per-test/file/worker timing report.
+    from test import suite_timing
+    suite_timing.register(config)
 
 
 # ============================================================
@@ -147,7 +172,61 @@ def pytest_sessionfinish(session, exitstatus):
 
 
 
-def pytest_collection_modifyitems(items):
+#: DASH_TEST_TIER: "batch" keeps the batch tier in a run of the whole
+#: suite; "release" keeps the release tier and the batch tier.
+TIER_ENV = "DASH_TEST_TIER"
+
+#: The tiers a value of DASH_TEST_TIER keeps.
+_TIERS_KEPT = {"batch": ("batch",), "release": ("batch", "release")}
+
+
+def _runs_tier(mark, args, rootpath, *, keyword="", lastfailed=False,
+               collectonly=False, markexpr="", tier=""):
+    """Whether a run keeps the tests marked *mark* (``release``: WP-30 test
+    performance D; ``batch``: test_mode_parity.py, run at batch ends and at
+    release).  A run of the whole suite (``_covers_whole_suite``) is the
+    fast default and leaves them out, unless *tier* (DASH_TEST_TIER) keeps
+    *mark* or the mark expression *markexpr* names it; any narrower run --
+    a file, a node id, -k, --lf, --collect-only -- keeps them."""
+    if mark in _TIERS_KEPT.get(tier, ()) or re.search(
+            r"\b%s\b" % re.escape(mark), markexpr or ""):
+        return True
+    return not _covers_whole_suite(args, rootpath, keyword=keyword,
+                                   lastfailed=lastfailed,
+                                   collectonly=collectonly)
+
+
+def _runs_release_tier(args, rootpath, **kw):
+    """``_runs_tier`` for the release tier."""
+    return _runs_tier("release", args, rootpath, **kw)
+
+
+def _deselect_tier(config, items, mark):
+    """Drop the tests marked *mark* from *items* when this run leaves that
+    tier out, and report them as deselected; returns them."""
+    if _runs_tier(
+            mark, config.args, config.rootpath,
+            keyword=config.getoption("keyword", ""),
+            lastfailed=config.getoption("lf", False),
+            collectonly=config.getoption("collectonly", False),
+            markexpr=config.getoption("markexpr", ""),
+            tier=os.environ.get(TIER_ENV, "")):
+        return []
+    dropped = [i for i in items if i.get_closest_marker(mark)]
+    if dropped:
+        keep = [i for i in items if not i.get_closest_marker(mark)]
+        items[:] = keep
+        config.hook.pytest_deselected(items=dropped)
+    return dropped
+
+
+def _deselect_release_tier(config, items):
+    """``_deselect_tier`` for the release tier."""
+    return _deselect_tier(config, items, "release")
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(config, items):
     """Keep every comparison of one parity corpus entry on one xdist worker.
 
     test_mode_parity.py renders each corpus entry once per process and
@@ -156,7 +235,17 @@ def pytest_collection_modifyitems(items):
     ``--dist loadgroup`` (pyproject.toml) a group runs on a single worker,
     so an entry renders once.  A test module cannot implement this hook;
     only a conftest can.
+
+    ``tryfirst``: an xdist worker reads the ``xdist_group`` marks in its own
+    implementation of this hook, which pluggy called first because xdist
+    registers it after this conftest is loaded -- so until 07oct2026 no
+    mark was there to read and nothing was grouped (test_xdist_groups.py).
+
+    First, a run of the whole suite drops the release tier and the batch
+    tier (``_deselect_tier``).
     """
+    _deselect_release_tier(config, items)
+    _deselect_tier(config, items, "batch")
     for item in items:
         if not item.nodeid.startswith("test/test_mode_parity.py"):
             continue
@@ -166,6 +255,27 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.xdist_group(name="parity:" + str(name)))
 
 # ============================================================
+# subtests under pytest 8
+# ============================================================
+# pytest 9 ships the subtests fixture; Stata's Python (make test) carries
+# pytest 8.4 without the pytest-subtests plugin, and every test taking
+# the fixture errored there.  The stand-in runs each subtest inline, so
+# the first failing subtest fails its test.
+
+class _InlineSubtests:
+
+    def test(self, msg=None, **kwargs):
+        return contextlib.nullcontext()
+
+
+if (importlib.util.find_spec("_pytest.subtests") is None
+        and importlib.util.find_spec("pytest_subtests") is None):
+    @pytest.fixture
+    def subtests():
+        return _InlineSubtests()
+
+
+# ============================================================
 # An empty global Bokeh document for every test
 # ============================================================
 # A generated server app calls make_document(curdoc()) when it is imported,
@@ -173,6 +283,10 @@ def pytest_collection_modifyitems(items):
 # process-global document.  Nothing cleared it, Bokeh walks it on every
 # later operation, and the served render path slowed from 0.19 s to about
 # 1.8 s per test over a run.  See test_bokeh_document_hygiene.py.
+# Its document callbacks go too (WP-30 P1.15c): a by() app attaches its
+# stacked view to document_ready, and Bokeh copies the global document's
+# callbacks into every document file_html() makes (embed.util._new_doc),
+# so a later test's saved page carried another app's hook.
 
 @pytest.fixture(autouse=True)
 def _clear_bokeh_curdoc():
@@ -180,8 +294,236 @@ def _clear_bokeh_curdoc():
     try:
         from bokeh.io import curdoc
         curdoc().clear()
+        curdoc().callbacks._js_event_callbacks.clear()
     except Exception:
         pass
+
+
+# ============================================================
+# Generated server apps: each block of text compiled once (WP-30 A3)
+# ============================================================
+# A generated server app is about 26,000 lines, and the tests compiled every
+# one they loaded: 0.14 s of the 0.4 s a served render cost them (measured
+# 07oct2026), for a text that differs from the previous app's in a line or
+# two -- the embedded spec and data.  load_app and exec_app run the exact
+# text of the app they are given, compiled in blocks: each top-level
+# statement (with what follows it up to the next one) is compiled once per
+# process, keyed by its exact text, its first line and the compiler flags
+# it needs, and the blocks run in order in the module's namespace.
+#
+# What makes that the same program as the file compiled whole:
+#   * the blocks are consecutive slices that cover the text exactly, each
+#     cut where a line starts in column 0 with a name or a decorator, and
+#     merged with the next until it compiles on its own -- a cut inside a
+#     string, a bracket or a decorated definition does not;
+#   * each block is compiled at its own line numbers, so tracebacks, the
+#     code's lines and a class's __firstlineno__ are the file's;
+#   * the module's __future__ flags apply from the block that imports them,
+#     and every block ends with a dead ``if 0: import ...`` of the names the
+#     module imports at its top level: the compiler emits a different call
+#     for an attribute of an imported name, and a block compiled alone would
+#     not know which names those are;
+#   * the module's own annotations, which the compiler sets up at the top
+#     of the module, are all in the first block;
+#   * a text with a bare carriage return, one that warns as it compiles, and
+#     one with any block that will not compile alone is compiled whole, as
+#     before.
+# test_app_loader.py checks that every function and class code object of a
+# real app is equal to the whole compile's.  Nothing here patches the import
+# system.
+
+#: A line that may start a top-level statement: a name or a decorator in
+#: column 0 -- not a string's prefix, and not a clause continuing a compound
+#: statement.
+_APP_BLOCK_START = re.compile(
+    r"^(?![rRbBuUfFtT]{1,2}['\"])(?!(?:else|elif|except|finally)\b)"
+    r"[A-Za-z_@]", re.M)
+#: Every __future__ feature's compiler flag.
+_APP_FUTURE_FLAGS = 0
+for _feature in __future__.all_feature_names:
+    _APP_FUTURE_FLAGS |= getattr(__future__, _feature).compiler_flag
+#: The most blocks either cache holds; the older half goes when it is full.
+_APP_CACHE_MAX = 8192
+#: Block text -> (names imported at its top level, whether it annotates a
+#: top-level name), None when it does not parse alone, or _APP_WARNS.
+_APP_BLOCK_INFO = {}
+#: (block text, compiler flags, dead-import tail, first line) -> code
+#: object compiled under a placeholder file name, or None.
+_APP_BLOCK_CODE = {}
+#: Counters for test_app_loader.py: blocks compiled, blocks reused, and texts
+#: compiled whole.
+APP_LOADER_STATS = {"compiled": 0, "reused": 0, "whole": 0}
+_APP_MISSING = object()
+_APP_WARNS = object()
+_APP_PLACEHOLDER = "<dash app block>"
+
+
+def _app_cache_put(cache, key, value):
+    """Store *value*, dropping the older half of *cache* when it is full."""
+    if len(cache) >= _APP_CACHE_MAX:
+        for old in list(itertools.islice(cache, len(cache) // 2)):
+            del cache[old]
+    cache[key] = value
+
+
+def _app_block_info(text):
+    """``(imported names, annotates)`` for a block's top level, None when
+    the block does not parse alone, or _APP_WARNS when parsing it warns --
+    a warning the whole compile must then raise where the caller sees it."""
+    hit = _APP_BLOCK_INFO.get(text, _APP_MISSING)
+    if hit is not _APP_MISSING:
+        return hit
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            table = symtable.symtable(text, _APP_PLACEHOLDER, "exec")
+        except (SyntaxError, ValueError):
+            table = None
+    if caught:
+        info = _APP_WARNS
+    elif table is None:
+        info = None
+    else:
+        syms = table.get_symbols()
+        info = (frozenset(s.get_name() for s in syms if s.is_imported()),
+                any(s.is_annotated() for s in syms))
+    _app_cache_put(_APP_BLOCK_INFO, text, info)
+    return info
+
+
+def _app_blocks(source):
+    """``([(start, end)], imported names)``: the offsets of the blocks that
+    cover *source* exactly, and the names its top level imports; or None
+    when it is to be compiled whole."""
+    if "\r" in source:
+        return None
+    bounds = [0] + [m.start() for m in _APP_BLOCK_START.finditer(source)
+                    if m.start()] + [len(source)]
+    spans, imported, annotated = [], set(), -1
+    i = 0
+    while i < len(bounds) - 1:
+        j = i + 1
+        info = _app_block_info(source[bounds[i]:bounds[j]])
+        while info is None:
+            j += 1
+            if j == len(bounds):
+                return None
+            info = _app_block_info(source[bounds[i]:bounds[j]])
+        if info is _APP_WARNS:
+            return None
+        imported |= info[0]
+        if info[1]:
+            annotated = len(spans)
+        spans.append((bounds[i], bounds[j]))
+        i = j
+    if annotated > 0:
+        spans = [(0, spans[annotated][1])] + spans[annotated + 1:]
+    return spans, frozenset(imported)
+
+
+def _app_block_code(text, flags, tail, line):
+    """*text* compiled with its first line at *line*, or None when it does
+    not compile alone or warns as it compiles."""
+    key = (text, flags, tail, line)
+    hit = _APP_BLOCK_CODE.get(key, _APP_MISSING)
+    if hit is not _APP_MISSING:
+        if hit is not None:
+            APP_LOADER_STATS["reused"] += 1
+        return hit
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            code = compile("\n" * (line - 1) + text + tail, _APP_PLACEHOLDER,
+                           "exec", flags=flags, dont_inherit=True)
+        except (SyntaxError, ValueError):
+            code = None
+    if caught:
+        code = None
+    if code is not None:
+        APP_LOADER_STATS["compiled"] += 1
+    _app_cache_put(_APP_BLOCK_CODE, key, code)
+    return code
+
+
+def _app_code_in(code, filename):
+    """*code* and every code object nested in it, as compiled from
+    *filename*."""
+    consts = code.co_consts
+    if any(isinstance(c, types.CodeType) for c in consts):
+        consts = tuple(_app_code_in(c, filename)
+                       if isinstance(c, types.CodeType) else c
+                       for c in consts)
+    return code.replace(co_filename=filename, co_consts=consts)
+
+
+def compile_app(source, filename):
+    """The code objects that run *source*, the text of a generated server
+    app, as a module compiled from *filename* would run, in order."""
+    whole = None
+    plan = _app_blocks(source)
+    if plan is not None:
+        spans, imported = plan
+        tail = ("if 0: import %s\n" % ", ".join(sorted(imported))
+                if imported else "")
+        codes, flags, line, pos = [], 0, 1, 0
+        for start, end in spans:
+            text = source[start:end]
+            line += source.count("\n", pos, start)
+            pos = start
+            sep = "" if (not tail or not text or text.endswith("\n")) else "\n"
+            code = _app_block_code(text, flags, sep + tail, line)
+            if code is None:
+                break
+            flags |= code.co_flags & _APP_FUTURE_FLAGS
+            codes.append(_app_code_in(code, filename))
+        else:
+            whole = codes
+    if whole is None:
+        APP_LOADER_STATS["whole"] += 1
+        whole = [compile(source, filename, "exec", dont_inherit=True)]
+    return whole
+
+
+def exec_app(source, filename, namespace):
+    """Run *source*, a generated app's text, in *namespace* as the module
+    compiled from *filename* would run; returns *namespace*."""
+    for code in compile_app(source, filename):
+        exec(code, namespace)
+    return namespace
+
+
+
+def _no_page(*_a, **_k):
+    """``file_html``'s stand-in where the page is not kept: a page with no
+    script, so the renderer's seal and head splice still run on it."""
+    return "<!DOCTYPE html>\n<html><head></head><body></body></html>"
+
+
+def render_models(renderer):
+    """``renderer.render()`` for its models alone: every model is built and
+    finished as for the page, but Bokeh's serialisation of the page
+    (``file_html``, about two fifths of a render) is skipped.  A test that
+    reads the page, or a model's ``document``, calls ``render()``.
+    Returns *renderer*."""
+    from unittest import mock
+    mod = sys.modules[type(renderer).__module__]
+    with mock.patch.object(mod, "file_html", _no_page):
+        renderer.render()
+    return renderer
+
+
+def load_app(path, name):
+    """Import the generated app at *path* as module *name*, as
+    ``spec.loader.exec_module`` would -- the same module attributes and the
+    same text, read and decoded as the import system reads it -- with its
+    blocks compiled once per process (see above).  Like ``exec_module`` it
+    does not enter the module in ``sys.modules``."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    with open(spec.origin, "rb") as fh:
+        source = importlib.util.decode_source(fh.read())
+    exec_app(source, spec.origin, module.__dict__)
+    return module
 
 
 # ============================================================
@@ -203,12 +545,27 @@ def _clear_bokeh_curdoc():
 # machine is legitimately on another build -- but never silent.  In strict
 # mode (DASH_STRICT=1, which `make check' sets) it stops the run before any
 # test, and any skip turns the run red at its end: a skip is not a pass.
+#
+# WP-30 P1.33: py311, py311-dev, py312 and py312-dev are the floor matrix's
+# stacks (scripts/floor_matrix.sh, make test-floor): the stata pins and the
+# dev pins on an older Python, each held by test/requirements-stata.txt or
+# test/requirements-dev.txt.  Every entry is a stack both suites pass under,
+# and the lowest entry's Python is the declared floor, dash_setup's
+# _dash_pymin (test/test_version_floor.py).
 
 _BASELINES = {
     "stata": {"python": "3.13", "bokeh": "3.8", "pandas": "2.3",
               "numpy": "2.3", "scipy": "1.16"},
     "dev": {"python": "3.14", "bokeh": "3.9", "pandas": "3.0",
             "numpy": "2.4", "scipy": "1.17"},
+    "py311": {"python": "3.11", "bokeh": "3.8", "pandas": "2.3",
+              "numpy": "2.3", "scipy": "1.16"},
+    "py311-dev": {"python": "3.11", "bokeh": "3.9", "pandas": "3.0",
+                  "numpy": "2.4", "scipy": "1.17"},
+    "py312": {"python": "3.12", "bokeh": "3.8", "pandas": "2.3",
+              "numpy": "2.3", "scipy": "1.16"},
+    "py312-dev": {"python": "3.12", "bokeh": "3.9", "pandas": "3.0",
+                  "numpy": "2.4", "scipy": "1.17"},
 }
 
 
@@ -232,10 +589,17 @@ def _running_env() -> dict:
 
 
 def _baseline_name(actual: dict, requested: str = "") -> str:
-    """The baseline to hold *actual* to: *requested* (DASH_BASELINE) when
-    given, else the one whose Python matches, else "dev"."""
+    """The baseline to hold *actual* to, in three steps: *requested*
+    (DASH_BASELINE) when given; else the first baseline *actual* matches in
+    every pin; else the first whose Python matches; else "dev".  The full
+    match comes first because an older Python has two baselines (py311 and
+    py311-dev, WP-30 P1.33), and the first by Python alone is wrong for the
+    second's stack."""
     if requested:
         return requested
+    for name, env in _BASELINES.items():
+        if not _env_drift(actual, env):
+            return name
     for name, env in _BASELINES.items():
         if env["python"] == actual.get("python"):
             return name
@@ -252,6 +616,20 @@ def _env_drift(actual: dict, baseline: dict) -> dict:
 def _strict() -> bool:
     """Whether this run is strict: DASH_STRICT=1."""
     return os.environ.get("DASH_STRICT", "") == "1"
+
+
+STATA_BASE_DEFAULT = "/Applications/StataNow/ado/base"
+STATA_PLUS_DEFAULT = "~/Library/Application Support/Stata/ado/plus"
+
+
+def stata_base():
+    """Stata's base ado tree: DASH_STATA_BASE, else StataNow's (WP-30 P1.34)."""
+    return os.environ.get("DASH_STATA_BASE") or STATA_BASE_DEFAULT
+
+
+def stata_plus():
+    """Stata's PLUS tree: DASH_STATA_PLUS, else the macOS default."""
+    return os.path.expanduser(os.environ.get("DASH_STATA_PLUS") or STATA_PLUS_DEFAULT)
 
 
 def _drift_problem(actual: dict, requested: str = "") -> str:
@@ -527,7 +905,7 @@ def make_dr(
             json.dump(data, f)
         dr = DashRenderer(sp, dp, op)
         if render:
-            dr.render()
+            render_models(dr)
     finally:
         for p in (sp, dp, op):
             try:

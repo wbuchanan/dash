@@ -29,6 +29,9 @@ from test_help_claims_3 import (TestAnExclusionHoldsAgainstEveryMove as  # noqa:
                                 _Seq, _card_value, _kpi_card)
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _two_filter_spec(graphs, kpis=(), price_excl=(), link=""):
     names = [g["graph_options"]["name"] for g in graphs] + [
         k["name"] for k in kpis]
@@ -47,7 +50,7 @@ def _render(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 
@@ -62,7 +65,7 @@ def _saved_after(tmp_path, spec, order):
                     else (w_price, cb_price, _Seq.PRICE))
         s.set(w, v)
         s.run(cb)
-    out = {f.title.text: tfe._rows(tfe._renderer_source(f))
+    out = {tfe._key(f): tfe._rows(tfe._renderer_source(f))
            for f in r.figures.values()}
     for name, div in r.kpi_divs.items():
         out[name] = _card_value(div.text, name)
@@ -144,7 +147,9 @@ class TestAByPanelFollowsItsOwner:
         spec = _two_filter_spec([tfe._graph("g1", by="foreign"),
                                  tfe._graph("g2")], price_excl=["g1"])
         got = run(tmp_path, spec, ["price", "foreign"])
-        p0, p1 = ("g1 %s %s" % (chr(0x2014), g) for g in ("0", "1"))
+        # Flipped (WP-30 P1.15a): panels keyed "g1 <label>" (tfe._key);
+        # "g1 — 0" was the title, which held the label.
+        p0, p1 = ("g1 %s" % g for g in ("0", "1"))
         assert (got[p0], got[p1], got["g2"]) == (0, 5, 3)
 
 

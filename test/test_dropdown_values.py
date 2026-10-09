@@ -53,6 +53,9 @@ _NAN = float("nan")
 # _dash_option_value / _dash_dropdown_values / _dash_filter_numeric
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 class TestOptionValues:
 
     def test_a_string_code_keeps_its_exact_text(self):
@@ -115,7 +118,7 @@ class TestTheWidget:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         w_for, w_s = r.filter_widgets
         for_vals = [v for v, _ in w_for.options][1:]
         s_vals = [v for v, _ in w_s.options][1:]
@@ -168,7 +171,7 @@ class TestTheSnapshot:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [w] = r.filter_widgets
         [cb] = r.filter_callbacks
         sess = JsSession(r.filter_callbacks)
@@ -286,7 +289,7 @@ class TestBothModes:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [w_s, w_x] = r.filter_widgets
         cb_of = dict(zip(r.filter_widgets, r.filter_callbacks))
         [gsrc] = list(r.sources.values())
@@ -355,7 +358,7 @@ class TestColorvarStrings:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [gsrc] = list(r.sources.values())
         # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
         import colour_bins as cb

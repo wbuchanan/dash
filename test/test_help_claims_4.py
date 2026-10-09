@@ -61,6 +61,9 @@ _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_pctile_truth.json")
 _SEQ = count()
 
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture(scope="module")
 def truth():
     with open(_FIXTURE, encoding="utf-8") as fh:
@@ -214,7 +217,7 @@ def _saved(tmp_path, spec, df):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 
@@ -1111,7 +1114,7 @@ class TestAStringVariablesCountAndDistinctCount:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         self._check(_cards(d.text for d in r.kpi_divs.values()), want,
                     "all", "saved, as it opens")
         self._check(_saved_filter_move(r, 0, "1"), want, "f1",
@@ -1184,14 +1187,17 @@ def _agg_rows(df, case, title):
 
 
 def _agg_renderers(figures):
-    """``[(figure title, renderer)]`` for every aggregate layer."""
+    """``[(panel label, renderer)]`` for every aggregate layer.  Flipped
+    (WP-30 P1.15a): keyed on the figure's title, which held the by()
+    panel's label; the label is its own row now (by_panel_probe)."""
+    from by_panel_probe import panel_label
     out = []
     for fig in figures:
         for rr in fig.renderers:
             data = rr.data_source.data
             if "top" in data or ("x" in data and "y" in data
                                  and _ROW_ID_NOT_IN(data)):
-                out.append((fig.title.text, rr))
+                out.append((panel_label(fig), rr))
     return out
 
 
@@ -1621,8 +1627,9 @@ class TestUnderBokehServe:
 
 
 class TestOneRecomputationAtATime:
-    """The launcher's server is one process with one event loop, so the
-    recomputations of every session run one at a time."""
+    """The launcher's server is one process with one recompute worker, so
+    the recomputations of every session run one at a time, off the event
+    loop."""
 
     def test_the_launcher_asks_for_one_process(self, tmp_path, truth):
         from test_adversarial_matrix import _app_source
@@ -1709,8 +1716,9 @@ class TestTheLauncherOpensABrowserOnlyWhenAsked:
         assert len(asked["opened"]) == 1 and \
             asked["opened"][0].startswith("file://")
         assert (60, "stop") in asked["later"]
+        # WP-30 P1.31a: the key's provider inside the open-session cap's.
         assert type(asked["kw"]["auth_provider"]).__name__ == \
-            "_DashTokenAuth"
+            "_DashCapAuth"
 
 
 @pytest.mark.serve
@@ -1784,7 +1792,9 @@ class TestTheLauncherServes:
         assert "<title>Served Dashboard</title>" in page, page[:600]
         # The control: the same pattern finds the viewport the saved page
         # declares, in the form dash writes it.
-        assert re.search(r'<meta[^>]+name="viewport"', dr._CSP_META)
+        # Flipped (WP-30 P1.29): the saved head is built per page.
+        assert re.search(r'<meta[^>]+name="viewport"',
+                         dr._dash_saved_head([]))
         assert page.count(dr._DASH_VIEWPORT_META) == 1
         assert page.index("Content-Security-Policy") < page.index(
             dr._DASH_VIEWPORT_META)

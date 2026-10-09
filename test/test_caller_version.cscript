@@ -2,7 +2,8 @@
 *! Certification script: dash behaves the same whatever version its CALLER
 *! has set.
 *!
-*! dash's programs declare `version 16.0', but some of Stata's behaviour is
+*! dash's programs declare their own version (19 since WP-30), but some of
+*! Stata's behaviour is
 *! resolved by the user version, c(userversion), which only the caller's own
 *! `version' statement sets.  regexm() is one such behaviour: from Stata 18
 *! it runs an engine that knows bounded repetition, and under a user version
@@ -11,8 +12,9 @@
 *!
 *!     ^[a-zA-Z_][a-zA-Z0-9_]{0,31}$
 *!
-*! so a do-file that begins `version 16' -- dash's own minimum, and the first
-*! line of many do-files -- could not name anything:
+*! so a do-file that begins `version 16' -- once dash's declared minimum,
+*! still a supported caller on Stata 19, and the first line of many
+*! do-files -- could not name anything:
 *!
 *!     version 16
 *!     dash scatter mpg weight, name(g1)   -> "invalid graph name 'g1'", r(198)
@@ -30,12 +32,21 @@
 *! the global with Stata's bare "dash_spec_<name> invalid name".  The limits
 *! are now what the globals allow: 22 for a graph, 18 for a KPI.
 *!
-*! Tests: CV-01 through CV-11
+*! Tests: CV-01 through CV-12
 *!
 *! Usage:  do test/test_caller_version.cscript
 *! Version: 1.0  23sep2026
 
 cscript "dash under the caller's version" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Setup
@@ -146,6 +157,34 @@ assert _rc == 0
 cert_file_has "`out5'.html", needle("eighteen")
 assert r(found) == 1
 display "CV-11 PASS: the longest graph and KPI names build a dashboard"
+
+// CV-12 (WP-30 P1.6): a graph holding a t-option's date keeps the unit it
+// was read in, in a global named within Stata's 32 characters at the
+// longest graph name, and builds.  dash_tunit_<name> was 33 characters.
+preserve
+quietly {
+    clear
+    set obs 24
+    generate t = tm(2001m1) + _n - 1
+    format t %tm
+    generate y = _n
+    tsset t
+}
+dash clear
+capture noisily dash tsline y, tline(2002m1) name(`g22')
+assert _rc == 0
+mata: _dash_item_globals("`g22'", "_left")
+assert "`_left'" != ""
+assert `"${dash_tu_`g22'}"' != ""
+tempfile out12
+capture erase "`out12'.html"
+capture noisily dash build, saving("`out12'.html") replace nobrowser
+assert _rc == 0
+dash clear
+mata: _dash_item_globals("`g22'", "_left")
+assert "`_left'" == ""
+restore
+display "CV-12 PASS: the longest graph name keeps its t-options' unit and builds"
 
 // ================================================================
 // CV-06 — the grammar still refuses what it refused

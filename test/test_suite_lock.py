@@ -54,6 +54,7 @@ def _run(args, lock_path, workers="0"):
     )
 
 
+@pytest.mark.release  # nested pytest runs of the whole suite (WP-30 D)
 class TestASecondFullRunIsRefused:
     def test_it_exits_at_once_naming_the_holder(self, tmp_path):
         lock = tmp_path / "suite.lock"

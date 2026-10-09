@@ -42,19 +42,20 @@
 *!           accepting each value; the options twoway does not have
 *!   HC2-15  bands() 1 to 200 is twoway's own bound, twoway's message
 *!   HC2-16  values twoway refuses and dash accepts: kernel(GAUSSIAN),
-*!           a style option given (()), a string colorvar(), and a colour
-*!           written with commas
+*!           a style option given (()), a string colorvar(); and a colour
+*!           written with commas, which dash refuses, as twoway
 *!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
 *!           refuses; twoway has no theme() at all
-*!   HC2-18  forms twoway reads and dash refuses: mlabel() with two
-*!           variables, range(varname), a . in range(), and a width or angle
+*!   HC2-18  forms twoway reads and dash refuses: an mlabel() element that
+*!           names several variables, range(varname), a . in range(), and a width or angle
 *!           bound on a plot type that does not draw what it styles
 *!   HC2-19  the statistical switches: refused on every other plot type, as
 *!           twoway refuses them, with twoway's messages
 *!   HC2-20  a weight the plot type does not take is r(101), as in twoway
 *!   HC2-21  colours, msymbol(), lpattern() and the sub-options are not
 *!           checked in Stata; twoway notes an unknown style and refuses an
-*!           unknown sub-option word
+*!           unknown sub-option word, as dash refuses legend(garbage) and
+*!           (HC2-21l, flipped WP-30 P1.18a) xscale(bogus)
 *! Subcommands and Dashboard Options:
 *!   HC2-22  the plot definition: name() registers and renders nothing;
 *!           without it the graph is written at once
@@ -86,6 +87,8 @@
 *!           shut; it has no nobrowser option
 *!   HC2-35  dash clear leaves $dash_nobrowser in force
 *!   HC2-36  dash build, server opens nothing
+*!   CF-21   in batch, with the test seam dropped, no route opens a window
+*!   CF-22   a hostile path reaches the stub opener as one argument
 *!   (dash serve's routes are test_serve_browser.cscript SB-07..SB-10.)
 *! Exporting:
 *!   HC2-37  what export delimited writes, which the help compares the CSV
@@ -107,6 +110,15 @@
 cscript "dash help claims: option values, subcommands, dashboard options, exporting" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 if `"`c(python_exec)'"' == "" {
@@ -536,7 +548,8 @@ _hc2_expect "HC2-15b" 198 `"twoway mband mpg weight, bands(0)"' "bands must be b
 _hc2_dash   "HC2-15c" 198 `"dash mband mpg weight, bands(201) name(hc)"'
 _hc2_tail   "HC2-15d" bands "" 201
 
-// HC2-16 -- values twoway refuses and dash accepts.
+// HC2-16 -- values twoway refuses and dash accepts (HC2-16a-n), and a
+// colour written with commas, which dash refuses, as twoway (HC2-16o-q).
 _hc2_expect "HC2-16a" 198 `"twoway kdensity mpg, kernel(GAUSSIAN)"' "invalid kernel function"
 _hc2_dash   "HC2-16b" 0   `"dash kdensity mpg, kernel(GAUSSIAN) name(hc)"'
 _hc2_reg    "HC2-16c" hc `""kernel":"gaussian""'
@@ -552,8 +565,11 @@ _hc2_expect "HC2-16l" 7   `"twoway scatter mpg weight, colorvar(make)"' "found w
 _hc2_dash   "HC2-16m" 0   `"dash scatter mpg weight, colorvar(make) name(hc)"'
 _hc2_reg    "HC2-16n" hc `""colorvar":"make""'
 _hc2_expect "HC2-16o" 198 `"twoway scatter mpg weight, mcolor(255,0,0)"'
-_hc2_dash   "HC2-16p" 0   `"dash scatter mpg weight, mcolor(255,0,0) name(hc)"'
-_hc2_reg    "HC2-16q" hc `""mcolor":"255,0,0""'
+// WP-30 P1.13a: a colour written with commas is refused, as twoway
+// refuses it (invalid '0', r(198)), and no graph hc is registered.
+_hc2_dash   "HC2-16p" 198 `"dash scatter mpg weight, mcolor(255,0,0) name(hc)"' "invalid '0'"
+mata: st_local("_hc2q", strofreal(st_global("dash_json_hc") == ""))
+_hc2_ok     "HC2-16q" `_hc2q' "no graph hc is registered"
 
 // HC2-17 -- an unknown scheme: twoway notes and draws s2color, dash
 // refuses; theme() is not a twoway option at all.
@@ -563,7 +579,7 @@ _hc2_expect "HC2-17c" 198 `"twoway scatter mpg weight, theme(dark)"' "option the
 
 // HC2-18 -- forms twoway reads and dash refuses.
 _hc2_expect "HC2-18a" 0   `"twoway scatter mpg weight, mlabel(make foreign)"'
-_hc2_dash   "HC2-18b" 198 `"dash scatter mpg weight, mlabel(make foreign) name(hc)"' "mlabel() must name one variable"
+_hc2_dash   "HC2-18b" 0   `"dash scatter mpg weight, mlabel(make foreign) name(hc)"'  // P1.1b: twoway labels with the first variable (HC2-18a)
 _hc2_expect "HC2-18c" 0   `"twoway function y=x, range(mpg)"'
 _hc2_dash   "HC2-18d" 198 `"dash function y=x, range(mpg) name(hc)"' "range()"
 _hc2_expect "HC2-18e" 0   `"twoway kdensity mpg, range(weight)"'
@@ -630,10 +646,13 @@ _hc2_expect "HC2-21e" 0 `"twoway scatter mpg weight, msymbol(bogus)"' "named sty
 _hc2_expect "HC2-21f" 0 `"twoway scatter mpg weight, title(T, size(bogus))"' "named style bogus not found in class gsize"
 _hc2_dash   "HC2-21g" 0 `"dash scatter mpg weight, title(T, size(bogus)) name(hc)"'
 _hc2_expect "HC2-21h" 198 `"twoway scatter mpg weight, legend(garbage)"' "option garbage not allowed"
-_hc2_dash   "HC2-21i" 0 `"dash scatter mpg weight, legend(garbage) name(hc)"'
-_hc2_reg    "HC2-21j" hc `""legend":"garbage""'
+_hc2_dash   "HC2-21i" 198 `"dash scatter mpg weight, legend(garbage) name(hc)"' "option garbage not allowed"
+// Refused as twoway refuses it (WP-30 P1.19): no graph hc is registered.
+mata: st_local("_hit", strofreal(st_global("dash_json_hc") == ""))
+_hc2_ok     "HC2-21j" `_hit' "no graph hc is registered"
 _hc2_expect "HC2-21k" 198 `"twoway scatter mpg weight, xscale(bogus)"' "option bogus not allowed"
-_hc2_dash   "HC2-21l" 0 `"dash scatter mpg weight, xscale(bogus) name(hc)"'
+// Flipped (WP-30 P1.18a): refused as twoway refuses it.
+_hc2_dash   "HC2-21l" 198 `"dash scatter mpg weight, xscale(bogus) name(hc)"' "option bogus not allowed"
 graph drop _all
 
 // ================================================================
@@ -659,7 +678,11 @@ quietly dash clear
 _hc2_expect "HC2-23a" 198 `"dash build, saving("`hc2f'_23.html") replace"' "no graphs registered"
 quietly dash scatter mpg weight, name(b1)
 _hc2_expect "HC2-23b" 198 `"dash build, replace"' "saving() is required"
-_hc2_expect "HC2-23c" 198 `"dash build, saving("`hc2f'_23.html") server replace"'
+// WP-30 P1.27: .py is appended to a server saving() name that does not end
+// in it, as .html is on the HTML route (it was refused, r(198)).
+capture erase "`hc2f'_23.html.py"
+_hc2_expect "HC2-23c" 0 `"dash build, saving("`hc2f'_23.html") server replace"' "server app written to"
+capture erase "`hc2f'_23.html.py"
 local hc2py "`hc2f'_23.py"
 capture erase "`hc2py'"
 _hc2_expect "HC2-23d" 0 `"dash build, saving("`hc2py'") server"' "server app written to"
@@ -817,6 +840,10 @@ else {
 
     if `hc2_guard' {
         macro drop dash_nobrowser
+        // WP-30 P1.27: this script runs in batch, where dash opens no
+        // window now; the undocumented test seam lets these controls reach
+        // the stub opener, which is first on PATH.  Dropped after the block.
+        global dash__display on
         capture noisily {
             quietly dash clear
             quietly dash scatter mpg weight, name(w1)
@@ -904,9 +931,41 @@ else {
             local rc36 = r(rc)
             _hc2_b_opened "`stubdir'"
             _hc2_ok "HC2-36" `=`rc36' == 0 & r(n) == 0' "with server the build writes its app and opens nothing"
+
+            // CF-21 -- WP-30 P1.27: the seam dropped, real batch: neither
+            // dash build nor the one-line preview opens a window.
+            macro drop dash__display
+            quietly dash clear
+            quietly dash scatter mpg weight, name(cf21)
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`bo'" ""
+            local rc21a = r(rc)
+            _hc2_b_plot ""
+            local rc21b = r(rc)
+            _hc2_b_opened "`stubdir'"
+            _hc2_ok "CF-21" `=`rc21a' == 0 & `rc21b' == 0 & r(n) == 0' "in batch dash build and the one-line preview open no window"
+            global dash__display on
+
+            // CF-22 (G9) -- the seam on: a path holding ; reaches the stub
+            // opener as one argument, and nothing it names runs.
+            mata: st_local("cf22p", st_local("stubdir") + "/a;touch PWNED;b.html")
+            capture erase "`stubdir'/open.log"
+            _hc2_b_build "`cf22p'" ""
+            local rc22 = r(rc)
+            _hc2_b_opened "`stubdir'"
+            local cf22first `"`r(first)'"'
+            mata: st_local("cf22ok", strofreal(anyof(("open " + st_local("cf22p"), "xdg-open " + st_local("cf22p")), st_local("cf22first"))))
+            capture confirm file "PWNED"
+            local cf22a = _rc
+            capture confirm file "`stubdir'/PWNED"
+            local cf22b = _rc
+            _hc2_ok "CF-22" `=`rc22' == 0 & `cf22ok' == 1 & `cf22a' != 0 & `cf22b' != 0' "a path holding ; reaches the opener whole and runs nothing"
+            capture erase "`cf22p'"
+            quietly dash clear
         }
         local rc_b = _rc
         global dash_nobrowser 1
+        capture macro drop dash__display
         if `rc_b' {
             _hc2_ok "HC2-3x" 0 "the browser section stopped with rc `rc_b'"
         }

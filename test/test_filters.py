@@ -27,6 +27,10 @@ from bokeh.models import ColumnDataSource, Select, Slider, RangeSlider
 # Fixtures
 # ================================================================
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture
 def auto_df():
     """Synthetic dataset with known values."""
@@ -396,8 +400,14 @@ class TestFilterSecurity:
         df = auto_df.rename(columns={"foreign": malicious_varname})
         _r, page = _saved_page(spec, make_data_json(df))
         models = _document_models(page)
-        assert [m["attributes"]["code"]
-                for m in _named(models, "CustomJS")] == [_FILTER_JS]
+        # WP-30 P1.3a: the page also carries the axes' one zoom callback,
+        # fixed code too ("only _FILTER_JS" was wrong once it did).
+        import dash_render as _dr
+        assert sorted({m["attributes"]["code"]
+                       for m in _named(models, "CustomJS")}) == sorted(
+            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
+             # WP-30 P1.28b: the Save as SVG action, fixed code too.
+             _dr._DASH_SVG_SAVE_JS})
         assert [m["attributes"]["title"]
                 for m in _named(models, "Select")] == [malicious_varname]
 
@@ -447,8 +457,14 @@ class TestFilterSecurity:
             data["StataJSON"][key]["cat"] = True
         _r, page = _saved_page(spec, data)
         models = _document_models(page)
-        assert [m["attributes"]["code"]
-                for m in _named(models, "CustomJS")] == [_FILTER_JS]
+        # WP-30 P1.3a: the page also carries the axes' one zoom callback,
+        # fixed code too ("only _FILTER_JS" was wrong once it did).
+        import dash_render as _dr
+        assert sorted({m["attributes"]["code"]
+                       for m in _named(models, "CustomJS")}) == sorted(
+            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
+             # WP-30 P1.28b: the Save as SVG action, fixed code too.
+             _dr._DASH_SVG_SAVE_JS})
         assert [m["attributes"]["options"]
                 for m in _named(models, "Select")] == [[
                     ["__all__", "All"],
@@ -733,7 +749,7 @@ class TestParseFilterRaw:
                 try: os.unlink(p)
                 except OSError: pass
 
-        r.render()
+        render_models(r)
         # One dropdown over foreign, whose callback writes the graph's own
         # source.  ``>= 1'' passed however many widgets were built (measured
         # 24sep2026: it passed with every filter built twice).
@@ -838,7 +854,7 @@ class TestFilterVarMissingFromData:
         and render() creates the dropdown filter widget.
         """
         r = self._build_renderer_with_data(include_foreign=True)
-        r.render()
+        render_models(r)
         # Exactly the one dropdown over foreign, and its one callback writing
         # the linked graph's source: ``>= 1'' passed with every filter built
         # twice (measured 24sep2026).
@@ -863,7 +879,7 @@ class TestFilterVarMissingFromData:
         variable is serialized), but it documents the pre-fix failure mode.
         """
         r = self._build_renderer_with_data(include_foreign=False)
-        r.render()
+        render_models(r)
         # When 'foreign' is absent from data, Python correctly skips it
         assert len(r.filter_widgets) == 0, (
             "Filter widget must NOT be created when filter variable 'foreign' "
@@ -1131,7 +1147,7 @@ class TestFilterWiringPrimarySourceOnly:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data_json, f)
             r = DashRenderer(sp, dp, op)
-            r.render()
+            render_models(r)
         finally:
             for p in (sp, dp, op):
                 try: os.unlink(p)
@@ -1282,7 +1298,7 @@ class TestValueLabelPipelineRegression:
             for p in (sp, dp, op):
                 try: os.unlink(p)
                 except OSError: pass
-        r.render()
+        render_models(r)
         return r
 
     def _option_labels(self, r: "DashRenderer") -> list:
@@ -1418,7 +1434,7 @@ class TestFilterWidgetLabels:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data, f)
             dr = DashRenderer(sp, dp, op)
-            dr.render()
+            render_models(dr)
             titles = [w.title for w in dr.filter_widgets]
             assert any("Vehicle Weight" in t for t in titles), (
                 f"Expected a widget with title containing 'Vehicle Weight'. Got: {titles}"
@@ -1472,7 +1488,7 @@ class TestFilterWidgetLabels:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data, f)
             dr = DashRenderer(sp, dp, op)
-            dr.render()
+            render_models(dr)
             return [w.title for w in dr.filter_widgets]
         finally:
             for p in (sp, dp, op):
@@ -1647,7 +1663,7 @@ class TestFilterReachesTheRenderedSource:
         with open(dp, "w") as f:
             json.dump(make_data_json(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for path in (sp, dp, op):
             try:
                 os.unlink(path)
@@ -1759,7 +1775,7 @@ class TestTheFilterReadsTheWholeDataset:
                 self._DF, {"origin": {"0": "Domestic", "1": "Foreign"}},
                 {"foreign": "origin"}), f)
         r = DashRenderer(sp, dp, op)
-        r.render()
+        render_models(r)
         return r
 
     def test_a_range_under_by_spans_every_row(self):

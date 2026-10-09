@@ -37,6 +37,7 @@ from bokeh.plotting import figure
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # by_panel_probe (WP-30 P1.15a)
 
 import dash_render as dr
 
@@ -567,9 +568,13 @@ class TestTheLimitsTable:
     """One table: a default, a ceiling nothing moves, and the global."""
 
     def test_every_limit_has_a_default_within_its_ceiling(self):
+        # Flipped (WP-30 P1.21a): 8 -> 9 keys; the eight-key set was
+        # wrong because P1.21a adds the reflines limit (A68).
+        # Flipped (WP-30 P1.10): 9 -> 10 keys; the nine-key set was wrong
+        # because P1.10 adds the added_text limit (A28).
         assert set(dr._DASH_LIMITS) == {
             "cells", "bytes", "graphs", "plots", "filter_options",
-            "by_groups", "tabs", "filters"}
+            "by_groups", "tabs", "filters", "reflines", "added_text"}
         for key, (default, ceiling, glob) in dr._DASH_LIMITS.items():
             assert 1 <= default <= ceiling, key
             assert glob == "dash_max_" + key, key
@@ -1067,7 +1072,15 @@ class TestByColsCannotOutgrowThePanels:
         ({"by": "g"}, 1, 1),
     ])
     def test_the_columns_are_at_most_the_panels(self, gopts, n, want):
-        assert dr._dash_facet_cols(gopts, n) == want
+        # Flipped (WP-30 P1.15b): _dash_facet_cols clamped cols(#) to the
+        # panels; the grid is now twoway's (_dash_by_positions), which
+        # draws no empty column (by_grid_truth.json "foreign, cols(5)"),
+        # so the columns drawn are still at most the panels, and cols()
+        # is bounded at the by_groups ceiling before any arithmetic.
+        opts = dr._dash_by_grid_options(gopts.get("by"))
+        if not opts["cols"]:
+            opts["cols"] = max(0, int(gopts.get("by_cols", "0")))
+        assert dr._dash_by_positions(n, opts)[3]["drawn"][2] == want
 
     @pytest.mark.parametrize("build", [
         {"layout": "auto"}, {"layout": "bs"}, {"layout": "bs: g1=12"},
@@ -1113,9 +1126,17 @@ class TestByColsCannotOutgrowThePanels:
         want = [(0, 0), (0, 1), (0, 2), (0, 3)]
 
         def panels(grids):
+            # Flipped (WP-30 P1.15a): the grid holds the overall text's
+            # chrome cells too; the panel rows are read without them.
+            from by_panel_probe import is_chrome
             [g] = [g for g in grids
-                   if all(type(c[0]).__name__ == "figure" for c in g.children)]
-            return [(row, col) for _, row, col in g.children]
+                   if any(type(c[0]).__name__ == "figure"
+                          for c in g.children)]
+            # WP-30 P1.15c: columns from the first panel column, past the
+            # y-axis title's.
+            got = [(c[1], c[2]) for c in g.children if not is_chrome(c[0])]
+            c0 = min((c for _, c in got), default=0)
+            return [(r, c - c0) for r, c in got]
 
         r, _, _ = _standalone(tmp_path, spec, _frame(12, groups=4))
         assert panels(r._last_layout_root.select({"type": GridPlot})) == want

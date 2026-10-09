@@ -1,0 +1,4041 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "e728a1fabbdcc83ccfb56e8e9788f160faada901",
+  "excluded": {
+   "bgfg_14": "UNCLEAR: color foreground bg after color background red",
+   "opt_17": "UNCLEAR clamp at an exact half (research p1-13 section 3)"
+  },
+  "extracted": " 8 Oct 2026 01:35:00",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "bgfg_01": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 255 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb01",
+   "value": "t01: color background \"255 0 0\"; color p1 bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_02": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 0 1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 0 1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 0 1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 0 1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 0 1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 0 1 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb02",
+   "value": "t02: color background \"hsv 0 1 1\"; color p1 bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_03": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 255 255 0 not found in class color, default attributes used)",
+    "(note:  named style 0 255 255 0 not found in class color, default attributes used)",
+    "(note:  named style 0 255 255 0 not found in class color, default attributes used)",
+    "(note:  named style 0 255 255 0 not found in class color, default attributes used)",
+    "(note:  named style 0 255 255 0 not found in class color, default attributes used)",
+    "(note:  named style 0 255 255 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb03",
+   "value": "t03: color background \"0 255 255 0\"; color p1 bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_04": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style red%50 not found in class color, default attributes used)",
+    "(note:  named style red%50 not found in class color, default attributes used)",
+    "(note:  named style red%50 not found in class color, default attributes used)",
+    "(note:  named style red%50 not found in class color, default attributes used)",
+    "(note:  named style red%50 not found in class color, default attributes used)",
+    "(note:  named style red%50 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb04",
+   "value": "t04: color background red%50; color p1 bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_05": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style #ff0000 not found in class color, default attributes used)",
+    "(note:  named style #ff0000 not found in class color, default attributes used)",
+    "(note:  named style #ff0000 not found in class color, default attributes used)",
+    "(note:  named style #ff0000 not found in class color, default attributes used)",
+    "(note:  named style #ff0000 not found in class color, default attributes used)",
+    "(note:  named style #ff0000 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb05",
+   "value": "t05: color background \"#ff0000\"; color p1 bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_06": {
+   "command": "scatter mpg weight, mcolor(bg)",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style navy*.5 not found in class color, default attributes used)",
+    "(note:  named style navy*.5 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#8da3b7",
+   "scheme": "cgb06",
+   "value": "t06: color background navy*.5 + mcolor(bg)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_07": {
+   "command": "scatter mpg weight, mcolor(bg*.5)",
+   "context": "scheme",
+   "fill": "#ff8080",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb07",
+   "value": "t20: color background red + mcolor(bg*.5)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_08": {
+   "command": "scatter mpg weight, mcolor(fg)",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 128 0 not found in class color, default attributes used)",
+    "(note:  named style 0 128 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgb08",
+   "value": "t21: color foreground \"0 128 0\" + mcolor(fg)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_09": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#1a476f",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "cgb09",
+   "value": "sa: color background bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_10": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#1a476f",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "cgb10",
+   "value": "sb: color background fg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_11": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgb11",
+   "value": "sc: color foreground bg; color p1 fg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_12": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)",
+    "(note:  named style fg not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgb12",
+   "value": "sd: color foreground fg; color p1 fg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_13": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style navy*.5 not found in class color, default attributes used)",
+    "(note:  named style navy*.5 not found in class color, default attributes used)",
+    "(note:  named style navy*.5 not found in class color, default attributes used)",
+    "(note:  named style navy*.5 not found in class color, default attributes used)",
+    "(note:  named style navy*.5 not found in class color, default attributes used)",
+    "(note:  named style navy*.5 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#8da3b7",
+   "scheme": "cgb13",
+   "value": "si: color background navy*.5; color p1 bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgfg_14": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "bgfg",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)",
+    "(note:  named style bg not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ff0000",
+   "scheme": "cgb14",
+   "value": "sj: color background red; color foreground bg; color p1 fg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgs_01": {
+   "command": "scatter mpg weight, mcolor(bg)",
+   "context": "option",
+   "fill": "#ffffff",
+   "group": "bgs",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ffffff",
+   "scheme": "stcolor",
+   "value": "bg",
+   "vstrokes": [
+    "#000000",
+    "#f0f0f0"
+   ]
+  },
+  "bgs_02": {
+   "command": "scatter mpg weight, mcolor(fg)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "bgs",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#ffffff",
+   "scheme": "stcolor",
+   "value": "fg",
+   "vstrokes": [
+    "#000000",
+    "#f0f0f0"
+   ]
+  },
+  "bgs_03": {
+   "command": "scatter mpg weight, mcolor(bg)",
+   "context": "option",
+   "fill": "#c6d3df",
+   "group": "bgs",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#c6d3df",
+   "scheme": "economist",
+   "value": "bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "bgs_04": {
+   "command": "scatter mpg weight, mcolor(fg)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "bgs",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#c6d3df",
+   "scheme": "economist",
+   "value": "fg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "comma_01": {
+   "command": "scatter mpg weight, mcolor(\"255,0,128\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 198,
+   "refusal": "invalid '0'",
+   "region": null,
+   "scheme": "s2color",
+   "value": "\"255,0,128\"",
+   "vstrokes": []
+  },
+  "comma_02": {
+   "command": "scatter mpg weight, mcolor(\"255, 0, 128\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 198,
+   "refusal": "invalid '0'",
+   "region": null,
+   "scheme": "s2color",
+   "value": "\"255, 0, 128\"",
+   "vstrokes": []
+  },
+  "comma_03": {
+   "command": "line mpg weight, lcolor(\"1,2,3\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 198,
+   "refusal": "invalid '2'",
+   "region": null,
+   "scheme": "s2color",
+   "value": "\"1,2,3\"",
+   "vstrokes": []
+  },
+  "comma_04": {
+   "command": "scatter mpg weight, mcolor(\"red,blue\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 198,
+   "refusal": "invalid 'blue'",
+   "region": null,
+   "scheme": "s2color",
+   "value": "\"red,blue\"",
+   "vstrokes": []
+  },
+  "comma_05": {
+   "command": "scatter mpg weight, mcolor(\"1,\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 198,
+   "refusal": "invalid 'editcopy'",
+   "region": null,
+   "scheme": "s2color",
+   "value": "\"1,\"",
+   "vstrokes": []
+  },
+  "comma_06": {
+   "command": "scatter mpg weight, mcolor(\"1,,2\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [
+    "(note:  named style 1 2 not found in class color, default attributes used)",
+    "(note:  named style 1 2 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"1,,2\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "comma_07": {
+   "command": "scatter mpg weight, bgcolor(\"1,2,3\")",
+   "context": "option",
+   "fill": null,
+   "group": "comma",
+   "kind": "refusal",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"1,2,3\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_01": {
+   "command": "scatter mpg weight, mcolor(navy*.5)",
+   "context": "option",
+   "fill": "#8da3b7",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_02": {
+   "command": "scatter mpg weight, mcolor(navy*.25)",
+   "context": "option",
+   "fill": "#c6d1db",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.25",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_03": {
+   "command": "scatter mpg weight, mcolor(navy*.75)",
+   "context": "option",
+   "fill": "#537593",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.75",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_04": {
+   "command": "scatter mpg weight, mcolor(navy*.333)",
+   "context": "option",
+   "fill": "#b3c2cf",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.333",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_05": {
+   "command": "scatter mpg weight, mcolor(navy*.1)",
+   "context": "option",
+   "fill": "#e8edf1",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.1",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_06": {
+   "command": "scatter mpg weight, mcolor(navy*.01)",
+   "context": "option",
+   "fill": "#fdfdfe",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.01",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_07": {
+   "command": "scatter mpg weight, mcolor(navy*0)",
+   "context": "option",
+   "fill": "#ffffff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*0",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_08": {
+   "command": "scatter mpg weight, mcolor(navy*1e-5)",
+   "context": "option",
+   "fill": "#ffffff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*1e-5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_09": {
+   "command": "scatter mpg weight, mcolor(navy*1.5)",
+   "context": "option",
+   "fill": "#112f4a",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*1.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_10": {
+   "command": "scatter mpg weight, mcolor(navy*2)",
+   "context": "option",
+   "fill": "#0d2438",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*2",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_100": {
+   "command": "scatter mpg weight, mcolor(red%150)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red%150",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_101": {
+   "command": "scatter mpg weight, mcolor(red%abc)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red%abc",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_102": {
+   "command": "scatter mpg weight, mcolor(navy%50%30)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy%50%30",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_103": {
+   "command": "scatter mpg weight, mcolor(*abc)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "*abc",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_104": {
+   "command": "scatter mpg weight, mcolor(\"\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_105": {
+   "command": "scatter mpg weight, mcolor(bogus%150)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bogus%150",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_106": {
+   "command": "scatter mpg weight, mcolor(bogus*abc)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bogus*abc",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_107": {
+   "command": "scatter mpg weight, mcolor(red*abc)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*abc",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_108": {
+   "command": "scatter mpg weight, mcolor(red*-1)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*-1",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_109": {
+   "command": "scatter mpg weight, mcolor(red*1e400)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*1e400",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_11": {
+   "command": "scatter mpg weight, mcolor(navy*3)",
+   "context": "option",
+   "fill": "#091825",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*3",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_110": {
+   "command": "scatter mpg weight, mcolor(red*.5*2)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*.5*2",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_111": {
+   "command": "scatter mpg weight, mcolor(red**.5)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red**.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_112": {
+   "command": "scatter mpg weight, mcolor(red*.)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*.",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_113": {
+   "command": "scatter mpg weight, mcolor(red%50*abc)",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red%50*abc",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_114": {
+   "command": "scatter mpg weight, mcolor(\"0 255 0*abc\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 255 0*abc\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_115": {
+   "command": "scatter mpg weight, mcolor(red%)",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red%",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_116": {
+   "command": "scatter mpg weight, mcolor(#ff0000)",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "#ff0000",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_117": {
+   "command": "scatter mpg weight, mcolor(#FF0000)",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "#FF0000",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_118": {
+   "command": "scatter mpg weight, mcolor(\"#ff0000\")",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"#ff0000\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_119": {
+   "command": "scatter mpg weight, mcolor(navy*.5%50)",
+   "context": "option",
+   "fill": "#8da3b7",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*.5%50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_12": {
+   "command": "scatter mpg weight, mcolor(navy*5)",
+   "context": "option",
+   "fill": "#050e16",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_120": {
+   "command": "scatter mpg weight, mcolor(navy%50*.5)",
+   "context": "option",
+   "fill": "#8da3b7",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy%50*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_121": {
+   "command": "scatter mpg weight, mcolor(*.5%50)",
+   "context": "option",
+   "fill": "#8da3b7",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "*.5%50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_122": {
+   "command": "scatter mpg weight, mcolor(\"0 255 0%50*.5\")",
+   "context": "option",
+   "fill": "#80ff80",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 255 0%50*.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_123": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1 1%50\")",
+   "context": "option",
+   "fill": "#0000ff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 1 1%50\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_124": {
+   "command": "scatter mpg weight, mcolor(\"0 0 255%50\")",
+   "context": "option",
+   "fill": "#0000ff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 255%50\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_125": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1 1%50*.5\")",
+   "context": "option",
+   "fill": "#8080ff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 1 1%50*.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_13": {
+   "command": "scatter mpg weight, mcolor(navy*10)",
+   "context": "option",
+   "fill": "#03070b",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*10",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_14": {
+   "command": "scatter mpg weight, mcolor(navy*20)",
+   "context": "option",
+   "fill": "#010406",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*20",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_15": {
+   "command": "scatter mpg weight, mcolor(navy*30)",
+   "context": "option",
+   "fill": "#010204",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*30",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_16": {
+   "command": "scatter mpg weight, mcolor(navy*50)",
+   "context": "option",
+   "fill": "#010102",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_17": {
+   "command": "scatter mpg weight, mcolor(navy*52)",
+   "context": "option",
+   "fill": "#010304",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*52",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_18": {
+   "command": "scatter mpg weight, mcolor(navy*100)",
+   "context": "option",
+   "fill": "#010304",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*100",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_19": {
+   "command": "scatter mpg weight, mcolor(navy*1000)",
+   "context": "option",
+   "fill": "#010304",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "navy*1000",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_20": {
+   "command": "scatter mpg weight, mcolor(maroon*1.25)",
+   "context": "option",
+   "fill": "#732a2f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "maroon*1.25",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_21": {
+   "command": "scatter mpg weight, mcolor(gs8*3)",
+   "context": "option",
+   "fill": "#2b2b2b",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "gs8*3",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_22": {
+   "command": "scatter mpg weight, mcolor(red*10)",
+   "context": "option",
+   "fill": "#1a0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*10",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_23": {
+   "command": "scatter mpg weight, mcolor(gs8*100)",
+   "context": "option",
+   "fill": "#010101",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "gs8*100",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_24": {
+   "command": "scatter mpg weight, mcolor(white*255)",
+   "context": "option",
+   "fill": "#010101",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "white*255",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_25": {
+   "command": "scatter mpg weight, mcolor(red*.5)",
+   "context": "option",
+   "fill": "#ff8080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_26": {
+   "command": "scatter mpg weight, mcolor(fg*.5)",
+   "context": "option",
+   "fill": "#808080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "fg*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_27": {
+   "command": "scatter mpg weight, mcolor(bg*.5)",
+   "context": "option",
+   "fill": "#f5f9f9",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bg*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_28": {
+   "command": "scatter mpg weight, mcolor(none*.5)",
+   "context": "option",
+   "fill": "#808080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "none*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_29": {
+   "command": "scatter mpg weight, mcolor(\"#FF0000*.5\")",
+   "context": "option",
+   "fill": "#ff8080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"#FF0000*.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_30": {
+   "command": "scatter mpg weight, mcolor(\"0 255 255*1.2\")",
+   "context": "option",
+   "fill": "#00d5d5",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 255 255*1.2\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_31": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1 1*.5\")",
+   "context": "option",
+   "fill": "#8080ff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 1 1*.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_32": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 128*.5\")",
+   "context": "option",
+   "fill": "#bfbfbf",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 128*.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_33": {
+   "command": "scatter mpg weight, mcolor(red*+.5)",
+   "context": "option",
+   "fill": "#ff8080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*+.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_34": {
+   "command": "scatter mpg weight, mcolor(red*5e-1)",
+   "context": "option",
+   "fill": "#ff8080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*5e-1",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_35": {
+   "command": "scatter mpg weight, mcolor(red*)",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "red*",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_36": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 255\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 255\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_37": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_38": {
+   "command": "scatter mpg weight, mcolor(\"85 40 0 144\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"85 40 0 144\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_39": {
+   "command": "scatter mpg weight, mcolor(\".334 .157 0 .565\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\".334 .157 0 .565\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_40": {
+   "command": "scatter mpg weight, mcolor(\"0 255 255 0\")",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 255 255 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_41": {
+   "command": "scatter mpg weight, mcolor(\"10 10 5 0\")",
+   "context": "option",
+   "fill": "#f5f5fa",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"10 10 5 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_42": {
+   "command": "scatter mpg weight, mcolor(\"128 0 0 0\")",
+   "context": "option",
+   "fill": "#7fffff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"128 0 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_43": {
+   "command": "scatter mpg weight, mcolor(\"100 100 100 100\")",
+   "context": "option",
+   "fill": "#373737",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"100 100 100 100\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_44": {
+   "command": "scatter mpg weight, mcolor(\"200 0 0 100\")",
+   "context": "option",
+   "fill": "#009b9b",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"200 0 0 100\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_45": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 .5\")",
+   "context": "option",
+   "fill": "#808080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 .5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_46": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 .3\")",
+   "context": "option",
+   "fill": "#b3b3b3",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 .3\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_47": {
+   "command": "scatter mpg weight, mcolor(\".5 .5 .5 .5\")",
+   "context": "option",
+   "fill": "#010101",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\".5 .5 .5 .5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_48": {
+   "command": "scatter mpg weight, mcolor(\".2 .4 .6 .1\")",
+   "context": "option",
+   "fill": "#b3804d",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\".2 .4 .6 .1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_49": {
+   "command": "scatter mpg weight, mcolor(\"1 0 0 0\")",
+   "context": "option",
+   "fill": "#00ffff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"1 0 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_50": {
+   "command": "scatter mpg weight, mcolor(\"1 1 1 1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"1 1 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_51": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 2\")",
+   "context": "option",
+   "fill": "#fdfdfd",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 2\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_52": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 128\")",
+   "context": "option",
+   "fill": "#7f7f7f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 128\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_53": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 300\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 300\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_54": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 127.5\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 0 0 127.5 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 127.5 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 127.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_55": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 -1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 0 0 -1 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 -1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 -1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_56": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 1e400\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 0 0 1e400 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 1e400 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 1e400\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_57": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 0 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"0 0 0 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_58": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1 1\")",
+   "context": "option",
+   "fill": "#0000ff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_59": {
+   "command": "scatter mpg weight, mcolor(\"hsv 0 0 1\")",
+   "context": "option",
+   "fill": "#ffffff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 0 0 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_60": {
+   "command": "scatter mpg weight, mcolor(\"hsv 209 .766 .435\")",
+   "context": "option",
+   "fill": "#19456e",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 209 .766 .435\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_61": {
+   "command": "scatter mpg weight, mcolor(\"hsv 120 1 .502\")",
+   "context": "option",
+   "fill": "#008000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 120 1 .502\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_62": {
+   "command": "scatter mpg weight, mcolor(\"hsv 30 .5 .5\")",
+   "context": "option",
+   "fill": "#7f5f3f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 30 .5 .5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_63": {
+   "command": "scatter mpg weight, mcolor(\"hsv 0 0 .5\")",
+   "context": "option",
+   "fill": "#7f7f7f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 0 0 .5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_64": {
+   "command": "scatter mpg weight, mcolor(\"hsv 180 .5 1\")",
+   "context": "option",
+   "fill": "#7fffff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 180 .5 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_65": {
+   "command": "scatter mpg weight, mcolor(\"hsv 300 .25 .75\")",
+   "context": "option",
+   "fill": "#bf8fbf",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 300 .25 .75\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_66": {
+   "command": "scatter mpg weight, mcolor(\"hsv 90 .3 .9\")",
+   "context": "option",
+   "fill": "#c3e5a0",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 90 .3 .9\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_67": {
+   "command": "scatter mpg weight, mcolor(\"hsv 200 .7 .3\")",
+   "context": "option",
+   "fill": "#163a4c",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 200 .7 .3\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_68": {
+   "command": "scatter mpg weight, mcolor(\"hsv 15.5 1 1\")",
+   "context": "option",
+   "fill": "#ff4100",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 15.5 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_69": {
+   "command": "scatter mpg weight, mcolor(\"hsv 360 1 1\")",
+   "context": "option",
+   "fill": "#ff0000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 360 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_70": {
+   "command": "scatter mpg weight, mcolor(\"hsv 400 1 1\")",
+   "context": "option",
+   "fill": "#ffaa00",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 400 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_71": {
+   "command": "scatter mpg weight, mcolor(\"hsv -30 1 1\")",
+   "context": "option",
+   "fill": "#ff007f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv -30 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_72": {
+   "command": "scatter mpg weight, mcolor(\"hsv 0 0 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 0 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_73": {
+   "command": "scatter mpg weight, mcolor(\"HSV 240 1 1\")",
+   "context": "option",
+   "fill": "#0000ff",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"HSV 240 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_74": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 2 1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 2 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_75": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 -1 1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 240 -1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 -1 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 -1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_76": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_77": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1 1 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 240 1 1 0 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 1 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 240 1 1 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_78": {
+   "command": "scatter mpg weight, mcolor(\"hsv 1e400 1 1\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 1e400 1 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 1e400 1 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"hsv 1e400 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_79": {
+   "command": "scatter mpg weight, mcolor(hsv)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv not found in class color, default attributes used)",
+    "(note:  named style hsv not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "hsv",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_80": {
+   "command": "scatter mpg weight, mcolor(bg)",
+   "context": "option",
+   "fill": "#eaf2f3",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_81": {
+   "command": "scatter mpg weight, mcolor(fg)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "fg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_82": {
+   "command": "scatter mpg weight, mcolor(background)",
+   "context": "option",
+   "fill": "#eaf2f3",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "background",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_83": {
+   "command": "scatter mpg weight, mcolor(foreground)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "foreground",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_84": {
+   "command": "scatter mpg weight, mcolor(BG)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style BG not found in class color, default attributes used)",
+    "(note:  named style BG not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "BG",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_85": {
+   "command": "scatter mpg weight, mcolor(Bg)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style Bg not found in class color, default attributes used)",
+    "(note:  named style Bg not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "Bg",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_86": {
+   "command": "scatter mpg weight, mcolor(FOREGROUND)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style FOREGROUND not found in class color, default attributes used)",
+    "(note:  named style FOREGROUND not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "FOREGROUND",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_87": {
+   "command": "scatter mpg weight, mcolor(bogus)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bogus",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_88": {
+   "command": "scatter mpg weight, mcolor(Navy)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "Navy",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_89": {
+   "command": "scatter mpg weight, mcolor(grey)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style grey not found in class color, default attributes used)",
+    "(note:  named style grey not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "grey",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_90": {
+   "command": "scatter mpg weight, mcolor(\"300 0 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 300 0 0 not found in class color, default attributes used)",
+    "(note:  named style 300 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"300 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_91": {
+   "command": "scatter mpg weight, mcolor(\"255 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 255 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"255 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_92": {
+   "command": "scatter mpg weight, mcolor(\"1.5 0 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)",
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"1.5 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_93": {
+   "command": "scatter mpg weight, mcolor(\"255 0 0 0 0\")",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"255 0 0 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_94": {
+   "command": "scatter mpg weight, mcolor(Red*.5)",
+   "context": "option",
+   "fill": "#808080",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style Red not found in class color, default attributes used)",
+    "(note:  named style Red not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "Red*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_95": {
+   "command": "scatter mpg weight, mcolor(Red%50)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style Red not found in class color, default attributes used)",
+    "(note:  named style Red not found in class color, default attributes used)"
+   ],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "Red%50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_96": {
+   "command": "scatter mpg weight, mcolor(\"#F00\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"#F00\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_97": {
+   "command": "scatter mpg weight, mcolor(\"#ff00\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"#ff00\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_98": {
+   "command": "scatter mpg weight, mcolor(\"#GG0000\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"#GG0000\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "opt_99": {
+   "command": "scatter mpg weight, mcolor(\"#F00%50\")",
+   "context": "option",
+   "fill": "#1a476f",
+   "group": "opt",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "\"#F00%50\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "s1r_01": {
+   "command": "scatter mpg weight, mcolor(navy*.5)",
+   "context": "option",
+   "fill": "#0d2438",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "navy*.5",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_02": {
+   "command": "scatter mpg weight, mcolor(navy*1.5)",
+   "context": "option",
+   "fill": "#276ba7",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "navy*1.5",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_03": {
+   "command": "scatter mpg weight, mcolor(fg)",
+   "context": "option",
+   "fill": "#ffffff",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "fg",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_04": {
+   "command": "scatter mpg weight, mcolor(bg)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "bg",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_05": {
+   "command": "scatter mpg weight, mcolor(fg*.5)",
+   "context": "option",
+   "fill": "#808080",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "fg*.5",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_06": {
+   "command": "scatter mpg weight, mcolor(bg*.5)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "bg*.5",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_07": {
+   "command": "scatter mpg weight, mcolor(\"hsv 240 1 1*.5\")",
+   "context": "option",
+   "fill": "#000080",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "\"hsv 240 1 1*.5\"",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "s1r_08": {
+   "command": "scatter mpg weight, mcolor(\"0 0 0 128\")",
+   "context": "option",
+   "fill": "#7f7f7f",
+   "group": "s1r",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s1rcolor",
+   "value": "\"0 0 0 128\"",
+   "vstrokes": [
+    "#ffffff"
+   ]
+  },
+  "sch_01": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#8da3b7",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs01",
+   "value": "navy*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_02": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs02",
+   "value": "\"0 0 0 255\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_03": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#0000ff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs03",
+   "value": "\"hsv 240 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_04": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ff0000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs04",
+   "value": "\"0 255 255 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_05": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#7f7f7f",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs05",
+   "value": "\"0 0 0 128\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_06": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#112f4a",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs06",
+   "value": "navy*1.5%50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_07": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#8da3b7",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs07",
+   "value": "navy*+.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_08": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#8080ff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs08",
+   "value": "\"hsv 240 1 1*.5\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_09": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffaa00",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs09",
+   "value": "\"hsv 400 1 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_10": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs10",
+   "value": "navy*0",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_11": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#1a476f",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs11",
+   "value": "navy*",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_12": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ff0000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs12",
+   "value": "\"#ff0000\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_13": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ff0000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs13",
+   "value": "\"#FF0000\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_14": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ff0000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs14",
+   "value": "\"255,0,0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_15": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#faf9f8",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs15",
+   "value": "\"1,2,3,4\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_16": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs16",
+   "value": "*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_17": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs17",
+   "value": "\"#F00\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_18": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs18",
+   "value": "\"#0F0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_19": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs19",
+   "value": "\"#ff00\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_20": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs20",
+   "value": "\"#GG0000\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_21": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs21",
+   "value": "navy*abc",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_22": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs22",
+   "value": "navy*-1",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_23": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs23",
+   "value": "navy*1e400",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_24": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs24",
+   "value": "navy*.5*2",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_25": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs25",
+   "value": "navy**.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_26": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs26",
+   "value": "red%150",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_27": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs27",
+   "value": "bogus%150",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_28": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs28",
+   "value": "\"255,0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_29": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ff0000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs29",
+   "value": "red%",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_30": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#ffffff",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs30",
+   "value": "%50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_31": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs31",
+   "value": "bogus",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_32": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs32",
+   "value": "Navy",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_33": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style grey not found in class color, default attributes used)",
+    "(note:  named style grey not found in class color, default attributes used)",
+    "(note:  named style grey not found in class color, default attributes used)",
+    "(note:  named style grey not found in class color, default attributes used)",
+    "(note:  named style grey not found in class color, default attributes used)",
+    "(note:  named style grey not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs33",
+   "value": "grey",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_34": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 255 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs34",
+   "value": "\"255 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_35": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 300 0 0 not found in class color, default attributes used)",
+    "(note:  named style 300 0 0 not found in class color, default attributes used)",
+    "(note:  named style 300 0 0 not found in class color, default attributes used)",
+    "(note:  named style 300 0 0 not found in class color, default attributes used)",
+    "(note:  named style 300 0 0 not found in class color, default attributes used)",
+    "(note:  named style 300 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs35",
+   "value": "\"300 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_36": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)",
+    "(note:  named style 0 0 0 300 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs36",
+   "value": "\"0 0 0 300\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_37": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 2 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs37",
+   "value": "\"hsv 240 2 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_38": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)",
+    "(note:  named style hsv 240 1 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs38",
+   "value": "\"hsv 240 1\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_39": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)",
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)",
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)",
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)",
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)",
+    "(note:  named style 1.5 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs39",
+   "value": "\"1.5 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_40": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)",
+    "(note:  named style 255 0 0 0 0 not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs40",
+   "value": "\"255 0 0 0 0\"",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_41": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#808080",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)",
+    "(note:  named style Navy not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs41",
+   "value": "Navy*.5",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "sch_42": {
+   "command": "scatter mpg weight",
+   "context": "scheme",
+   "fill": "#000000",
+   "group": "sch",
+   "kind": "marker",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": 0.5,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "cgs42",
+   "value": "bogus%50",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_01": {
+   "command": "line mpg weight, lcolor(navy*.5)",
+   "context": "option",
+   "fill": "#8da3b7",
+   "group": "site",
+   "kind": "line",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "line mpg weight, lcolor(navy*.5)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_02": {
+   "command": "line mpg weight, lcolor(bogus)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "site",
+   "kind": "line",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "line mpg weight, lcolor(bogus)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_03": {
+   "command": "bar mpg rep78 if rep78<., lcolor(none) fcolor(bogus)",
+   "context": "option",
+   "fill": "#333333",
+   "group": "site",
+   "kind": "bar",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bar mpg rep78 if rep78<., lcolor(none) fcolor(bogus)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_04": {
+   "command": "bar mpg rep78 if rep78<., lcolor(none) color(navy*.5)",
+   "context": "option",
+   "fill": "#a4b5c5",
+   "group": "site",
+   "kind": "bar",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bar mpg rep78 if rep78<., lcolor(none) color(navy*.5)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_05": {
+   "command": "scatter mpg weight, title(\"T\", color(bogus))",
+   "context": "option",
+   "fill": "#000000",
+   "group": "site",
+   "kind": "text",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "scatter mpg weight, title(\"T\", color(bogus))",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_06": {
+   "command": "scatter mpg weight, title(\"T\", color(navy*.5))",
+   "context": "option",
+   "fill": "#8da3b7",
+   "group": "site",
+   "kind": "text",
+   "notes": [],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "scatter mpg weight, title(\"T\", color(navy*.5))",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_07": {
+   "command": "scatter mpg weight, xline(3000, lcolor(bogus))",
+   "context": "option",
+   "fill": null,
+   "group": "site",
+   "kind": "refline",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "scatter mpg weight, xline(3000, lcolor(bogus))",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_08": {
+   "command": "scatter mpg weight, graphregion(color(bogus))",
+   "context": "option",
+   "fill": null,
+   "group": "site",
+   "kind": "region",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": null,
+   "rc": 0,
+   "refusal": null,
+   "region": "#000000",
+   "scheme": "s2color",
+   "value": "scatter mpg weight, graphregion(color(bogus))",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_09": {
+   "command": "scatter mpg weight, mlabel(make) mlabcolor(bogus)",
+   "context": "option",
+   "fill": "#000000",
+   "group": "site",
+   "kind": "mlabel",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": "S43",
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "scatter mpg weight, mlabel(make) mlabcolor(bogus)",
+   "vstrokes": [
+    "#000000"
+   ]
+  },
+  "site_10": {
+   "command": "bar mpg rep78 if rep78<., color(bogus)",
+   "context": "option",
+   "fill": "#333333",
+   "group": "site",
+   "kind": "bar",
+   "notes": [
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)",
+    "(note:  named style bogus not found in class color, default attributes used)"
+   ],
+   "opacity": null,
+   "owner": "S43",
+   "rc": 0,
+   "refusal": null,
+   "region": "#eaf2f3",
+   "scheme": "s2color",
+   "value": "bar mpg rep78 if rep78<., color(bogus)",
+   "vstrokes": [
+    "#000000"
+   ]
+  }
+ }
+}

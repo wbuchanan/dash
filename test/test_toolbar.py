@@ -158,7 +158,11 @@ def _served_models(doc):
 
 
 def _figures(models):
-    return [m for m in models if isinstance(m, Plot)]
+    # Flipped (WP-30 P1.15a): a by() grid's chrome cells are bare Plots
+    # that hold its overall text and carry no tools by design; they are
+    # not figures (by_panel_probe.is_chrome).
+    from by_panel_probe import is_chrome
+    return [m for m in models if isinstance(m, Plot) and not is_chrome(m)]
 
 
 def _grids(models):
@@ -194,7 +198,15 @@ def _page_save_filenames(html):
 def _assert_nine_tools(fig, where):
     names = _names(fig)
     assert tuple(names[:len(_NINE)]) == _NINE, (where, names)
-    assert set(names[len(_NINE):]) <= {"HoverTool"}, (where, names)
+    # Flipped (WP-30 P1.28b): only HoverTool after the nine was wrong
+    # because a layout(bs) item's own toolbar now carries the Save as SVG
+    # action (register P1.28.7): at most one, tagged dash_svg_save.
+    rest = fig.tools[len(_NINE):]
+    acts = [t for t in rest if type(t).__name__ == "CustomAction"]
+    assert len(acts) <= 1 and all("dash_svg_save" in t.tags
+                                  for t in acts), (where, names)
+    assert set(names[len(_NINE):]) <= {"HoverTool", "CustomAction"}, (
+        where, names)
 
 
 def _assert_grid_saves_as_dashboard(grid, where):
@@ -342,7 +354,10 @@ class TestNameSave:
             warnings.simplefilter("ignore")     # "SaveTool are being repeated"
             f = figure(tools=[SaveTool(), SaveTool()])
         dr._dash_name_save(f, "g1")
-        assert [t.filename for t in f.tools] == ["g1", "g1"]
+        # Flipped (WP-30 P1.28b): every tool's filename was wrong because
+        # the toolbar now also holds the Save as SVG action, which has none.
+        assert [t.filename for t in f.tools
+                if isinstance(t, SaveTool)] == ["g1", "g1"]
 
     def test_a_toolbar_with_no_save_tool_is_left_as_it_is(self):
         f = _fig("pan,reset")
@@ -673,7 +688,10 @@ class TestWhatIsActiveWhenThePageOpens:
             models = _saved_models(_saved(tmp_path, spec)[0])
         else:
             models = _served_models(_served(tmp_path, spec)[0])
-        bars = [m for m in models if isinstance(m, (Plot, GridPlot))]
+        # Flipped (WP-30 P1.15a): the toolless chrome cells left out.
+        from by_panel_probe import is_chrome
+        bars = [m for m in models if isinstance(m, (Plot, GridPlot))
+                and not is_chrome(m)]
         # The "by() graph in a tab" corpus draws exactly six toolbar-bearing
         # models in each mode -- three GridPlots and three figures (measured
         # 24sep2026) -- and the two modes must match.  `>= 5' passed if a
@@ -735,7 +753,9 @@ class TestTheHelpDocumentsTheToolbar:
         sec = _toolbar_section()
         rows = re.findall(r"\{synopt:([^}]*)\}", sec)
         want = [_HELP_LABELS[a] for a in dr._DASH_FIGURE_TOOLS.split(",")]
-        assert rows == want, rows
+        # Flipped (WP-30 P1.28b): the nine rows alone was wrong because
+        # the Save as SVG action has a row after Save.
+        assert rows == want + ["Save as SVG"], rows
 
     def test_it_names_the_files_the_save_button_writes(self):
         sec = " ".join(_toolbar_section().split())
@@ -751,8 +771,12 @@ class TestTheHelpDocumentsTheToolbar:
         # modes' cells), so a row is its feature, then one cell per mode.
         h = _help()
         sec = h[h.index("{marker server_mode}"):h.index("{marker limits}")]
-        row = [ln for ln in sec.split("\n")
-               if re.match(r"\{col \d+\}Toolbar, save as PNG\{col ", ln)]
-        assert len(row) == 1, row
-        cells = [c.strip() for c in re.split(r"\{col \d+\}", row[0])[2:]]
-        assert cells == ["Yes", "Yes"], row
+        # WP-30 P1.28b: the Save as SVG row as well, in both modes.
+        for kind in ("PNG", "SVG"):
+            row = [ln for ln in sec.split("\n")
+                   if re.match(r"\{col \d+\}Toolbar, save as %s\{col "
+                               % kind, ln)]
+            assert len(row) == 1, (kind, row)
+            cells = [c.strip()
+                     for c in re.split(r"\{col \d+\}", row[0])[2:]]
+            assert cells == ["Yes", "Yes"], row

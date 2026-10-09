@@ -64,7 +64,8 @@
 *!   HC1-13  An unknown option is accepted and named without its value.
 *!   HC1-14  titl() is title(); titel() is named in the note.
 *!   HC1-15  twoway refuses legend(garbage) and xscale(bogus), r(198); dash
-*!           draws the graph and names both in its sub-option warnings.
+*!           refuses legend(garbage) as twoway does (WP-30 P1.19) and
+*!           xscale(bogus) too (flipped, WP-30 P1.18a).
 *!   HC1-16  Values twoway accepts and dash cannot draw -- yaxis(3),
 *!           degree(4), bin(2000) -- are refused.  MEASURED FALSE: the help
 *!           said a command copied from a do-file "runs whenever dash draws
@@ -105,6 +106,15 @@
 cscript "dash help claims: Title to Differences from twoway" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 set graphics off
 
@@ -815,7 +825,9 @@ else display as text "HC1-14 PASS: titl() abbreviates title(); titel() is not an
 dash clear
 
 // ================================================================
-// HC1-15 -- legend(garbage), xscale(bogus): twoway r(198), dash names them
+// HC1-15 -- legend(garbage), xscale(bogus): twoway r(198); dash refuses
+// legend(garbage) with twoway's words (WP-30 P1.19) and xscale(bogus) too
+// (flipped, WP-30 P1.18a: it was drawn and named)
 // ================================================================
 graph drop _all
 capture twoway scatter mpg weight, legend(garbage) nodraw
@@ -824,29 +836,34 @@ capture twoway scatter mpg weight, xscale(bogus) nodraw
 local twx = _rc
 local out15 "`c(tmpdir)'dash_hc1_15.html"
 capture erase "`out15'"
-_hc_logged 15 dash scatter mpg weight, legend(garbage) xscale(bogus) saving("`out15'")
+_hc_logged 15 dash scatter mpg weight, legend(garbage) saving("`out15'")
+local rcl = r(rc)
+local lf "`r(logfile)'"
+cert_log_has "`lf'", needle("option garbage not allowed")
+local nl = r(found)
+capture erase "`out15'"
+_hc_logged 15 dash scatter mpg weight, xscale(bogus) saving("`out15'")
 local rc = r(rc)
 local lf "`r(logfile)'"
 // Each warning reaches the log after the path to dash_render.py, so the
 // column it wraps at depends on where the checkout lives: searched as the
-// file's bytes, both needles failed from a checkout path of 210 characters
+// file's bytes, the needle failed from a checkout path of 210 characters
 // (measured 24sep2026).  cert_log_has undoes the wrap.
-cert_log_has "`lf'", needle("dash: legend() sub-option(s) not implemented and ignored: garbage")
-local nl = r(found)
-cert_log_has "`lf'", needle("dash: xscale() sub-option(s) not implemented and ignored: bogus")
+cert_log_has "`lf'", needle("option bogus not allowed")
 local nx = r(found)
 capture confirm file "`out15'"
 local fx = _rc
 capture {
     assert `twl' == 198 & `twx' == 198
-    assert `rc' == 0 & `fx' == 0 & `nl' == 1 & `nx' == 1
+    assert `rcl' == 198 & `nl' == 1
+    assert `rc' == 198 & `fx' != 0 & `nx' == 1
 }
 if _rc {
-    display as error "HC1-15 FAIL: twoway `twl' `twx'; dash rc=`rc' file=`fx' legend named=`nl' xscale named=`nx'"
+    display as error "HC1-15 FAIL: twoway `twl' `twx'; dash legend rc=`rcl' refused=`nl'; xscale rc=`rc' file=`fx' named=`nx'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-15"'
 }
-else display as text "HC1-15 PASS: twoway refuses legend(garbage) and xscale(bogus); dash draws and names both in its sub-option warnings"
+else display as text "HC1-15 PASS: twoway refuses legend(garbage) and xscale(bogus); dash refuses both as twoway does"
 dash clear
 
 // ================================================================

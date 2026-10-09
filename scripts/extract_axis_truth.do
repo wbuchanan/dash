@@ -7,13 +7,10 @@
 *!
 *! Output: test/fixtures/axis_truth.json
 *!
-*! Run with (Stata must be forced to its arm64 slice, and must be launched from
-*! a scratch directory because batch mode writes its .log to the process
-*! working directory):
+*! Run with (the slot wrapper starts Stata from a scratch directory, because
+*! batch mode writes its .log to the process working directory):
 *!
-*!   mkdir -p /tmp/dash-s09 && cd /tmp/dash-s09 && \
-*!   arch -arm64 /usr/local/bin/stata-mp -b do \
-*!     /Users/billy/Desktop/Programs/StataPrograms/d/dash/scripts/extract_axis_truth.do
+*!   DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/scripts/extract_axis_truth.do
 *!
 *! ---------------------------------------------------------------------------
 *! METHOD -- and why the .gph oracle is not enough on its own
@@ -82,7 +79,27 @@ set graphics off
 set more off
 set linesize 200
 
-global ZA_REPO "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+* Root (WP-30 P1.34): DASH_REPO, else the current directory when it is a
+* dash tree; never another checkout.
+local repo : environment DASH_REPO
+if `"`macval(repo)'"' == "" local repo `"`c(pwd)'"'
+mata: st_local("_zr_bad", strofreal(any(strpos(st_local("repo"), (char(34), char(36), char(39), char(96), char(10), char(13))))))
+if `_zr_bad' {
+    display as error "extract_axis_truth.do: DASH_REPO may not hold a double quote, dollar sign, single quote, backtick or line break"
+    exit 198
+}
+while strlen(`"`repo'"') > 1 & inlist(substr(`"`repo'"', -1, 1), "/", char(92)) {
+    local repo = substr(`"`repo'"', 1, strlen(`"`repo'"') - 1)
+}
+capture confirm file `"`repo'/dash.ado"'
+local _zr_rc = _rc
+capture confirm file `"`repo'/test/run_all_cscripts.do"'
+if `_zr_rc' | _rc {
+    local _zr_show = substr(`"`repo'"', 1, 200)
+    display as error `"extract_axis_truth.do: `_zr_show' is not a dash tree; set DASH_REPO to the repository root"'
+    exit 601
+}
+global ZA_REPO "`repo'"
 global ZA_OUT  "${ZA_REPO}/test/fixtures/axis_truth.json"
 
 local scratch "`c(tmpdir)'/dash_axis_probe"

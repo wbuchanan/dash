@@ -18,17 +18,58 @@
 *!   SR-01  legend(span stack holes(1)) names all three, once, and not the
 *!          honoured position(6).
 *!   SR-02  xlabel(, valuelabel) is drawn (WP-28 S14, G16), not named.
-*!   SR-03  ylabel(, labcolor(red)) names labcolor(red).
-*!   SR-04  yscale(reverse noline titlegap(2)) names noline and titlegap(2),
-*!          not the honoured reverse.
+*!   SR-03  ylabel(, labgap(2)) names labgap(2) (flipped, WP-30 P1.18a:
+*!          labcolor() is drawn).
+*!   SR-04  yscale(reverse noline titlegap(2) outergap(1)) names
+*!          outergap(1), not the drawn reverse, noline and titlegap()
+*!          (flipped, WP-30 P1.18a).
 *!   SR-05  xtitle("Weight", orientation(vertical)) names orientation() and
 *!          titles the axis "Weight" -- not "Weight, orientation(vertical)".
-*!   SR-06  xline(3000, lcolor(red) lstyle(foreground)) names lstyle() only.
+*!   SR-06  xline(3000, lcolor(red) lstyle(foreground) noextend) names
+*!          nothing (flipped, WP-30 P1.21a: lstyle() is drawn; WP-30
+*!          P1.21b: noextend is drawn).
 *!   SR-07  filter(price, type(range) label("R&D __ spend")) produces the
 *!          widget: the label used to trip the injection filter and the whole
 *!          group vanished with rc 0.
 *!   SR-08  filter(price, type(bogus)) is named, with the accepted types.
 *!   SR-09  a command whose sub-options are all honoured emits no warning.
+*!   SA-01  legend(c() r() lab() posi() s() lastlab()) draws, no note
+*!          (WP-30 P1.19: twoway's sub-option spellings).
+*!   SA-02  ylabel(, labs() ang() for() nog g ...) draws, no note.
+*!   SA-03  xline(, lc() lp() lw()) draws, no note.
+*!   SA-04  legend(lab(1 ..)) legend(lab(2 ..)) keeps both labels.
+*!   SA-05  legend() refusals: twoway's rc and first line.
+*!   SA-06  axis-label, tick and zlabel() refusals.
+*!   SA-07  the first refusal is the one twoway gives.
+*!   SA-08  position(13), ring(x), order(1 x): twoway's note, once.
+*!   SA-09  xline(, LCOLOR()) is refused as twoway refuses it (flipped,
+*!          WP-30 P1.21a).
+*!   SA-10  127 legend() copies draw; a 3,000-word legend() is refused.
+*!   SA-15  title and axis-title refusals.
+*!   AXL-01 ylabel(, angle(400)): r(198), twoway's line then dash's
+*!          (WP-30 P1.18a).
+*!   AXL-02 angle() out of range on every label and tick family, axis 2,
+*!          by() and nodraw: r(198).
+*!   AXL-03 a scale lwidth() out of range: r(198), gm_linewidth.
+*!   AXL-04 yscale(OFF), yscale(Alt), xscale(bogus), yscale(alt alt) and
+*!          a repeated lwidth(): r(198), "option ... not allowed".
+*!   AXL-05 the refusals come in twoway's order.
+*!   AXL-06 the bounds are checked on the merged option.
+*!   AXL-07 the bounds draw; angle(Vertical) is noted once and drawn at 0.
+*!   AXL-08 the axis look sub-options draw with no note.
+*!   XP-01  xline()/yline() refusals and accepted forms: dash's rc and
+*!          first error line equal live twoway's, in twoway's order (x
+*!          before y, copies in order, sub-options before positions)
+*!          (WP-30 P1.21a).
+*!   XP-04  the spec holds each copy's positions as numlist expands them.
+*!   XP-05  explicit numbers pass unchanged.
+*!   XP-06  position text holding a quote or $ is refused without
+*!          running numlist on it.
+*!   XP-07  the reflines limit refuses r(134), with by() panels counted.
+*!   XP-08  _dash_line_expand keeps each copy's own style.
+*!   AD-01 .. AD-09  add merged across copies and spent after a rule as
+*!          twoway reads it (WP-30 P1.18b; test/fixtures/
+*!          axis_add_truth.json); norescale dropped from a lone rule.
 *!
 *! Every render is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_by_suboptions.cscript does.
@@ -39,6 +80,15 @@
 cscript "dash sub-option reporting" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 if `"`c(python_exec)'"' == "" {
@@ -187,25 +237,25 @@ if r(bad) {
 }
 else display as text "SR-02 PASS: xlabel(, valuelabel) is drawn and not named"
 
-_sr_render `"dash scatter mpg weight, ylabel(, labcolor(red))"'
+_sr_render `"dash scatter mpg weight, ylabel(, labgap(2))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-03 "`lg'" ylabel "labcolor(red)" ""
+_sr_check SR-03 "`lg'" ylabel "labgap(2)" ""
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-03"
 }
-else display as text "SR-03 PASS: ylabel(, labcolor(red)) is named"
+else display as text "SR-03 PASS: ylabel(, labgap(2)) is named"
 
-_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2))"'
+_sr_render `"dash scatter mpg weight, yscale(reverse noline titlegap(2) outergap(1))"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-04 "`lg'" yscale "noline titlegap(2)" "reverse"
+_sr_check SR-04 "`lg'" yscale "outergap(1)" "reverse noline titlegap"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-04"
 }
-else display as text "SR-04 PASS: yscale(noline titlegap(2)) is named, reverse is not"
+else display as text "SR-04 PASS: yscale(outergap(1)) is named, reverse noline titlegap are not"
 
 _sr_render `"dash scatter mpg weight, xtitle("Weight", orientation(vertical))"'
 local lg `"`r(logfile)'"'
@@ -229,15 +279,19 @@ if `bad' {
 }
 else display as text "SR-05 PASS: xtitle() names orientation() and titles the axis Weight"
 
-_sr_render `"dash scatter mpg weight, xline(3000, lcolor(red) lstyle(foreground))"'
+// Flipped (WP-30 P1.21a): lstyle(foreground) was named; twoway draws it
+// (refline_truth.json S probes).  Flipped (WP-30 P1.21b): noextend was
+// named; that was wrong because twoway draws it (refline_extent_truth.json
+// E02), so nothing is named.
+_sr_render `"dash scatter mpg weight, xline(3000, lcolor(red) lstyle(foreground) noextend)"'
 local lg `"`r(logfile)'"'
 assert r(rc) == 0
-_sr_check SR-06 "`lg'" xline "lstyle(foreground)" "lcolor"
+_sr_check SR-06 "`lg'" xline "" "lcolor lstyle noextend"
 if r(bad) {
     local nfail = `nfail' + 1
     local faillist "`faillist' SR-06"
 }
-else display as text "SR-06 PASS: xline(lstyle()) is named, lcolor() is not"
+else display as text "SR-06 PASS: xline() names none of lcolor(), lstyle() and noextend"
 
 // ----------------------------------------------------------------
 // SR-07 / SR-08: filter(), through dash build
@@ -316,6 +370,736 @@ if r(n) != 0 {
     local faillist "`faillist' SR-09"
 }
 else display as text "SR-09 PASS: honoured sub-options draw no warning"
+
+// ----------------------------------------------------------------
+// SA-01 .. SA-10, SA-15 (WP-30 P1.19): twoway's sub-option spellings are
+// read, and what twoway refuses is refused with its rc and words.
+// ----------------------------------------------------------------
+// _sa_expect id want needle cmd: one command's rc is `want' and, when
+// `needle' is given, its log holds that line; `nonote' (a local of the
+// caller, passed as the 5th argument) names an option whose sub-option
+// warning must not appear.
+capture program drop _sa_expect
+program define _sa_expect, rclass
+    version 16.0
+    args id want needle cmdtext nonote
+    _sr_render `"`macval(cmdtext)'"'
+    local rc = r(rc)
+    local lg `"`r(logfile)'"'
+    local bad = 0
+    if "`want'" != "." & `rc' != `want' {
+        display as error `"`id' FAIL: rc `rc', expected `want': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `"`macval(needle)'"' != "" {
+        _sr_count "`lg'" `"`macval(needle)'"'
+        if r(n) < 1 {
+            display as error `"`id' FAIL: the log lacks `macval(needle)': `macval(cmdtext)'"'
+            local bad = 1
+        }
+    }
+    if "`nonote'" != "" {
+        _sr_count "`lg'" "`nonote'() sub-option"
+        if r(n) != 0 {
+            display as error `"`id' FAIL: `nonote'() was named: `r(line)'"'
+            local bad = 1
+        }
+    }
+    return scalar bad = `bad'
+    return local logfile "`lg'"
+end
+
+local _sab "dash (scatter mpg weight) (lfit mpg weight),"
+
+// SA-01: legend spellings draw with no legend note.
+_sa_expect SA-01 0 "" `"`_sab' legend(c(1) r(1) lab(1 "A") posi(6) s(small) lastlab(2 "Z"))"' legend
+if r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-01"
+}
+else display as text "SA-01 PASS: legend(c() r() lab() posi() s() lastlab()) draws with no note"
+
+// SA-02: axis-label spellings draw with no note.
+_sa_expect SA-02 0 "" `"`_sab' ylabel(, labs(small) ang(0) for(%9.1f) nog)"' ylabel
+local b = r(bad)
+_sa_expect SA-02 0 "" `"`_sab' ylabel(, g labsi(large) form(%9.0f))"' ylabel
+if `b' | r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-02"
+}
+else display as text "SA-02 PASS: ylabel(, labs() ang() for() nog g) draws with no note"
+
+// SA-03: xline spellings draw with no note.
+_sa_expect SA-03 0 "" `"`_sab' xline(3000, lc(red) lp(dash) lw(thick))"' xline
+if r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-03"
+}
+else display as text "SA-03 PASS: xline(, lc() lp() lw()) draws with no note"
+
+// SA-04: legend copies merge under full names: both labels are kept.
+_sr_render `"`_sab' legend(lab(1 "AAKEY")) legend(lab(2 "BBKEY"))"'
+local rc = r(rc)
+local html "`r(html)'"
+local na = 0
+local nb = 0
+capture confirm file "`html'"
+if !_rc {
+    _sr_count "`html'" "AAKEY"
+    local na = r(n)
+    _sr_count "`html'" "BBKEY"
+    local nb = r(n)
+}
+if `rc' | !`na' | !`nb' {
+    display as error "SA-04 FAIL: rc `rc', AAKEY in page `na', BBKEY in page `nb'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-04"
+}
+else display as text "SA-04 PASS: legend(lab(1)) legend(lab(2)) keeps both labels"
+
+// SA-05: legend refusals, twoway's rc and first line (measured 03oct2026).
+local b = 0
+foreach row in ///
+    `"198|option po() not allowed|legend(po(9))"' ///
+    `"198|option OFF not allowed|legend(OFF)"' ///
+    `"198|option Cols() not allowed|legend(Cols(1))"' ///
+    `"198|option cols() not allowed|legend(c(2) cols(1))"' ///
+    `"198|option s() not allowed|legend(size(large) s(small))"' ///
+    `"198|option on not allowed|legend(on on)"' ///
+    `"198|option r() not allowed|legend(rows(1) r(2))"' ///
+    `"198|option cols not allowed|legend(cols)"' ///
+    `"198|option garbage not allowed|legend(garbage)"' ///
+    `"198|option xoffset() not allowed|legend(xoffset(x))"' ///
+    `"121|cols() invalid -- invalid number|legend(c(red))"' ///
+    `"125|cols() invalid -- invalid number, outside of allowed range|legend(cols(0))"' ///
+    `"126|cols() invalid -- invalid number, noninteger value|legend(cols(1.5))"' ///
+    `"123|cols() invalid -- single number required|legend(cols(1 2))"' ///
+    `"127|cols() invalid -- invalid number, missing not allowed|legend(cols(.))"' ///
+    `"121|rows() invalid -- invalid number|legend(rows(x))"' ///
+    `"125|holes() invalid -- invalid numlist has elements outside of allowed range|legend(holes(0))"' ///
+    `"123|holes() invalid -- invalid numlist has too many elements|legend(holes(1/301))"' ///
+    `"198|x not an integer in option label()|legend(label(x "A"))"' ///
+    `"198|A not an integer in option label()|legend(label("A"))"' ///
+    `"198|legend.labels[0] invalid name|legend(label(0 "A"))"' ///
+    `"198|legend.labels[-1] invalid name|legend(label(-1 "A"))"' ///
+    `"198|legend.labels[0] invalid name|legend(lastlabel(0 "A"))"' ///
+    `"0||legend(cols(1) c(red))"' ///
+    `"0||legend(cols(2/2))"' ///
+    `"0||legend(label(+1 "A"))"' ///
+    `"0||legend(ring(-1))"' {
+    gettoken w rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken nd rest : rest, parse("|")
+    if `"`nd'"' == "|" {
+        local nd ""
+    }
+    else gettoken bar rest : rest, parse("|")
+    _sa_expect SA-05 `w' `"`nd'"' `"`_sab' `rest'"'
+    if r(bad) local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-05"
+}
+else display as text "SA-05 PASS: legend() refuses what twoway refuses, with its rc and words"
+
+// SA-06: axis-label refusals.
+local b = 0
+foreach row in ///
+    `"198|option lab() not allowed|ylabel(, lab(large))"' ///
+    `"198|option LABS() not allowed|ylabel(, LABS(large))"' ///
+    `"198|option a() not allowed|ylabel(, a(0))"' ///
+    `"198|option nola not allowed|ylabel(, nola)"' ///
+    `"198|option labs incorrectly specified|ylabel(, labs)"' ///
+    `"198|option nog() incorrectly specified|ylabel(, nog(1))"' ///
+    `"198|option ang() not allowed|ylabel(, angle(45) ang(0))"' ///
+    `"198|option labs not allowed|ylabel(, labs(large) labs)"' ///
+    `"198|option bogus not allowed|ylabel(, labs(large) bogus)"' ///
+    `"198|option a() not allowed|ytick(, a(45))"' ///
+    `"198|option a() not allowed|ymlabel(, a(45))"' ///
+    `"198|option labelminlen() incorrectly specified|ylabel(, labelminlen(x))"' ///
+    `"0||ylabel(, nogr nogrid)"' ///
+    `"0||ylabel(, grid nogrid)"' ///
+    `"0||ytick(, labs(large))"' {
+    gettoken w rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken nd rest : rest, parse("|")
+    if `"`nd'"' == "|" {
+        local nd ""
+    }
+    else gettoken bar rest : rest, parse("|")
+    _sa_expect SA-06 `w' `"`nd'"' `"`_sab' `rest'"'
+    if r(bad) local b = 1
+}
+_sa_expect SA-06 198 "option a() not allowed" `"dash scatter mpg weight, colorvar(price) zlabel(, a(45))"'
+if r(bad) local b = 1
+_sa_expect SA-06 0 "" `"dash scatter mpg weight, colorvar(price) zlabel(, labs(large))"'
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-06"
+}
+else display as text "SA-06 PASS: the axis labels and ticks refuse what twoway refuses"
+
+// SA-07: refusal order, as twoway's.
+local b = 0
+foreach row in ///
+    `"option po() not allowed|legend(po(9)) ylabel(, a(45))"' ///
+    `"option po() not allowed|ylabel(, a(45)) legend(po(9))"' ///
+    `"option a() not allowed|xlabel(, a(45)) ylabel(, axis(3))"' ///
+    `"option f() not allowed|ytick(, a(45)) ylabel(, f(1))"' ///
+    `"option a() not allowed|ylabel(, f(1)) xtick(, a(45))"' ///
+    `"cols() invalid -- invalid number|legend(c(red) po(9))"' ///
+    `"x not an integer in option label()|legend(po(9) label(x "A"))"' ///
+    `"cols() invalid -- invalid number|legend(label(x "A") cols(red))"' ///
+    `"rows() invalid -- invalid number|legend(cols(x) rows(y))"' ///
+    `"ylabels(, axis(3) a(45)) not allowed, yaxis3 does not exist|ylabel(, axis(3) a(45))"' {
+    gettoken nd rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    _sa_expect SA-07 . `"`nd'"' `"`_sab' `rest'"'
+    _sr_count "`r(logfile)'" `"`macval(nd)'"'
+    if r(n) < 1 local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-07"
+}
+else display as text "SA-07 PASS: the first refusal is twoway's"
+
+// SA-08: twoway's notes, once each; a copy replaced is silent.
+local b = 0
+_sa_expect SA-08 0 "named style 13 not found in class clockdir" `"`_sab' legend(pos(13))"'
+_sr_count "`r(logfile)'" "named style 13 not found in class clockdir"
+if r(n) != 1 local b = 1
+_sa_expect SA-08 0 "named style x not found in class gridringstyle" `"`_sab' legend(ring(x))"'
+if r(bad) local b = 1
+_sa_expect SA-08 0 "x not an integer, option order() ignored" `"`_sab' legend(order(1 x))"'
+if r(bad) local b = 1
+_sa_expect SA-08 0 "" `"`_sab' legend(pos(x)) legend(pos(3))"'
+_sr_count "`r(logfile)'" "class clockdir"
+if r(n) != 0 local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-08"
+}
+else display as text "SA-08 PASS: position(13), ring(x) and order(1 x) print twoway's note once"
+
+// SA-09: xline(3000, LCOLOR(red)) is refused, as twoway refuses it.
+// Flipped (WP-30 P1.21a): it was drawn and named; twoway says "option
+// LColor() not allowed" (refline_truth.json R12).
+_sa_expect SA-09 198 "option LCOLOR() not allowed" `"`_sab' xline(3000, LCOLOR(red))"'
+if r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-09"
+}
+else display as text "SA-09 PASS: xline(, LCOLOR()) is refused"
+
+// SA-10: 127 legend() copies merge; a 3,000-word legend ending in po(9)
+// is refused.
+local many ""
+forvalues i = 1/127 {
+    local many `"`many' legend(c(2) lab(1 "A"))"'
+}
+_sa_expect SA-10 0 "" `"`_sab' `many'"'
+local b = r(bad)
+local long ""
+forvalues i = 1/3000 {
+    local long `"`long' lab(1 "A")"'
+}
+_sa_expect SA-10 198 "option po() not allowed" `"`_sab' legend(`long' po(9))"'
+if `b' | r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-10"
+}
+else display as text "SA-10 PASS: 127 legend() copies draw; a 3,000-word legend() is refused"
+
+// SA-15: titles and axis titles (TR-10.6a).
+local b = 0
+foreach row in ///
+    `"198|option SIZE() not allowed|title("T", SIZE(small))"' ///
+    `"198|option ls() not allowed|title("T", ls(x))"' ///
+    `"198|option s() not allowed|title("T", size(small) s(large))"' ///
+    `"198|option SIZE() not allowed|title("A") title(, SIZE(small))"' ///
+    `"198|option SIZE() not allowed|note("N", SIZE(small))"' ///
+    `"198|option SIZE() not allowed|ytitle(, SIZE(small))"' ///
+    `"198|option s() not allowed|ytitle(, size(small) s(large))"' ///
+    `"198|options prefix and suffix may not be combined|ytitle("Y", prefix suffix)"' ///
+    `"0||title("T", s(small))"' ///
+    `"0||title("T", nob)"' ///
+    `"0||ytitle(, s(small))"' {
+    gettoken w rest : row, parse("|")
+    gettoken bar rest : rest, parse("|")
+    gettoken nd rest : rest, parse("|")
+    if `"`nd'"' == "|" {
+        local nd ""
+    }
+    else gettoken bar rest : rest, parse("|")
+    _sa_expect SA-15 `w' `"`nd'"' `"`_sab' `rest'"'
+    if r(bad) local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' SA-15"
+}
+else display as text "SA-15 PASS: the titles refuse what twoway refuses"
+
+// ----------------------------------------------------------------
+// AXL-01 .. AXL-08 (WP-30 P1.18a): the axis look.  twoway refuses an
+// angle() outside -360..360, a scale lwidth() outside 0..10000 and a
+// scale word it does not know, r(198), in its words and order; dash
+// refuses the same, and draws the look sub-options unnamed.  Each case
+// runs twoway's twin in the same session and compares rc and line.
+// ----------------------------------------------------------------
+// _axl_twin id want needle opts [y2]: dash and twoway, the same options.
+capture program drop _axl_twin
+program define _axl_twin, rclass
+    version 19
+    args id want needle opts y2
+    local plots "scatter mpg weight"
+    if "`y2'" != "" local plots "(scatter mpg weight) (scatter price weight, yaxis(2) xaxis(2))"
+    _sa_expect `id' `want' `"`macval(needle)'"' `"dash `plots', `macval(opts)'"'
+    local bad = r(bad)
+    local logfile "`c(tmpdir)'dash_axl_tw.log"
+    capture log close _axltw
+    log using "`logfile'", name(_axltw) text replace
+    capture noisily twoway `plots', `opts'
+    local trc = _rc
+    log close _axltw
+    if `trc' != `want' {
+        display as error `"`id' FAIL: twoway rc `trc', expected `want': `macval(opts)'"'
+        local bad = 1
+    }
+    if `"`macval(needle)'"' != "" {
+        _sr_count "`logfile'" `"`macval(needle)'"'
+        if r(n) < 1 {
+            display as error `"`id' FAIL: twoway's log lacks `macval(needle)'"'
+            local bad = 1
+        }
+    }
+    capture graph drop _all
+    return scalar bad = `bad'
+end
+
+// AXL-01: angle(400) is refused, twoway's line then dash's.
+_axl_twin AXL-01 198 "textangle must be between -360.000 and 360.000" "ylabel(, angle(400))"
+local b = r(bad)
+_sr_count "`c(tmpdir)'dash_sr.log" "dash: ylabel(): angle()"
+if `b' | r(n) < 1 {
+    if r(n) < 1 display as error "AXL-01 FAIL: dash's own line is missing"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-01"
+}
+else display as text "AXL-01 PASS: ylabel(, angle(400)) is refused r(198) in twoway's words"
+
+// AXL-02: every label and tick family, axis 2, by() and nodraw.
+local b = 0
+foreach o in "xlabel(, ang(-361))" "ylabel(, angle(1e3))" "ytick(25, angle(400))" ///
+        "ymlabel(25, angle(400))" "ymtick(25, angle(400))" ///
+        "xlabel(, angle(400)) by(foreign)" {
+    _axl_twin AXL-02 198 "textangle must be between" `"`o'"'
+    if r(bad) local b = 1
+}
+_axl_twin AXL-02 198 "textangle must be between" "ylabel(, axis(2) angle(400))" y2
+if r(bad) local b = 1
+// twoway checks only when it draws; dash always draws the page.
+_sa_expect AXL-02 198 "textangle must be between" `"dash scatter mpg weight, ylabel(, angle(400)) nodraw"'
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-02"
+}
+else display as text "AXL-02 PASS: angle() out of range is refused on every family"
+
+// AXL-03: a scale lwidth() out of range.
+local b = 0
+foreach o in "yscale(lwidth(-1))" "yscale(lw(20000))" "yscale(lwidth(-1)) by(foreign)" {
+    _axl_twin AXL-03 198 "gm_linewidth must be between 0.000 and" `"`o'"'
+    if r(bad) local b = 1
+}
+_axl_twin AXL-03 198 "gm_linewidth must be between 0.000 and" "yscale(axis(2) lwidth(-1))" y2
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-03"
+}
+else display as text "AXL-03 PASS: a scale lwidth() out of range is refused"
+
+// AXL-04: scale words twoway refuses.
+local b = 0
+foreach row in "OFF|yscale(OFF)" "Alt|yscale(Alt)" "bogus|xscale(bogus)" ///
+        "alt|yscale(alt alt)" "lwidth()|yscale(lwidth(1) lwidth(2))" {
+    gettoken w o : row, parse("|")
+    local o = substr(`"`o'"', 2, .)
+    _axl_twin AXL-04 198 "option `w' not allowed" `"`o'"'
+    if r(bad) local b = 1
+}
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-04"
+}
+else display as text "AXL-04 PASS: the scale words twoway refuses are refused"
+
+// AXL-05: the order of the refusals.
+local b = 0
+_axl_twin AXL-05 198 "gm_linewidth" "xlabel(, angle(400)) yscale(lwidth(-1))"
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "textangle" "ylabel(, angle(400)) xscale(lwidth(-1))"
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "option OFF not allowed" "ylabel(, angle(400)) yscale(OFF)"
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "gm_linewidth" "ylabel(, axis(2) angle(400)) xscale(lwidth(-1))" y2
+if r(bad) local b = 1
+_axl_twin AXL-05 198 "textangle" "ylabel(, axis(2) angle(400)) xscale(axis(2) lwidth(-1))" y2
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-05"
+}
+else display as text "AXL-05 PASS: the refusals come in twoway's order"
+
+// AXL-06: the merged option is checked.
+local b = 0
+_sa_expect AXL-06 0 "" `"dash (scatter mpg weight, ylabel(, angle(400))), ylabel(, angle(0))"'
+if r(bad) local b = 1
+_sa_expect AXL-06 0 "" `"dash (scatter mpg weight, yscale(lw(-1))), yscale(lw(1))"'
+if r(bad) local b = 1
+_sa_expect AXL-06 198 "textangle" `"dash (scatter mpg weight, ylabel(, angle(0))), ylabel(, angle(400))"'
+if r(bad) local b = 1
+capture noisily twoway (scatter mpg weight, ylabel(, angle(400))), ylabel(, angle(0))
+if _rc local b = 1
+capture noisily twoway (scatter mpg weight, ylabel(, angle(0))), ylabel(, angle(400))
+if _rc != 198 local b = 1
+capture graph drop _all
+if `b' {
+    display as error "AXL-06 FAIL: the merged option was not the one checked"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-06"
+}
+else display as text "AXL-06 PASS: the bounds are checked on the merged option"
+
+// AXL-07: the bounds themselves and the forms twoway accepts.
+local b = 0
+foreach o in "ylabel(, angle(360))" "ylabel(, angle(-360))" "ylabel(, angle(400deg))" ///
+        "yscale(lwidth(10000))" "ylabel(, tlength(-1))" "yscale(titlegap(-2))" {
+    _axl_twin AXL-07 0 "" `"`o'"'
+    if r(bad) local b = 1
+}
+_sa_expect AXL-07 0 "ylabel(angle(Vertical)) is not a recognised angle" `"dash scatter mpg weight, ylabel(, angle(Vertical))"'
+if r(bad) local b = 1
+_sr_count "`c(tmpdir)'dash_sr.log" "is not a recognised angle"
+if r(n) != 1 local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-07"
+}
+else display as text "AXL-07 PASS: the bounds draw; angle(Vertical) is noted once"
+
+// AXL-08: the look sub-options are drawn, not named.
+_sa_expect AXL-08 0 "" `"dash scatter mpg weight, yscale(off noline alt lcolor(red) lwidth(thick) lpattern(dash) titlegap(5))"' yscale
+local b = r(bad)
+_sa_expect AXL-08 0 "" `"dash scatter mpg weight, ylabel(, nolabels noticks labcolor(red) tlength(3) tposition(inside) angle(rvertical))"' ylabel
+if `b' | r(bad) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AXL-08"
+}
+else display as text "AXL-08 PASS: the axis look draws with no not-implemented note"
+capture erase "`c(tmpdir)'dash_axl_tw.log"
+
+// ----------------------------------------------------------------
+// XP-01 .. XP-08 (WP-30 P1.21a): xline() and yline() as twoway reads
+// them.  twoway's _gs_parse_and_log_lines (1.1.6) reads the sub-options,
+// then "something required" for an empty list given a comma, then the
+// positions through numlist ("invalid line argument, <text>").
+// ----------------------------------------------------------------
+capture mata: mata drop _xp_first()
+mata:
+// The first line of a log that is not its header, a note or blank.
+void _xp_first(string scalar fn)
+{
+    real scalar   fh
+    string scalar line, s
+    fh = fopen(fn, "r")
+    s = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        line = strtrim(line)
+        if (line == "" | substr(line, 1, 1) == "(" | substr(line, 1, 2) == "r(" |
+            substr(line, 1, 5) == "name:" | substr(line, 1, 4) == "log:" |
+            substr(line, 1, 9) == "log type:" | substr(line, 1, 10) == "opened on:" |
+            substr(line, 1, 1) == "-" | substr(line, 1, 2) == "> ") continue
+        s = line
+        break
+    }
+    fclose(fh)
+    st_local("_xp_line", s)
+}
+end
+
+// XP-01: every refusal probe and every accepted form: dash's rc equals
+// live twoway's and dash's first error line is twoway's.
+local b = 0
+local twlog "`c(tmpdir)'dash_xp_tw.log"
+foreach o in `"xline(, foo)"' `"xline(,)"' `"xline(abc, foo)"'          ///
+    `"xline(3000, foo bar(1))"' `"xline(abc, lstyle(p1) lstyle(p2))"'  ///
+    `"xline(1(1)2501)"' `"xline(3000 nan)"' `"xline(1_000)"'            ///
+    `"xline(abc) yline(def)"' `"yline(def) xline(abc)"'                 ///
+    `"xline(3000, lcolor(red)) xline(abc)"' `"xline(3000, LColor(red))"' ///
+    `"xline(3000, lalign(inside) la(outside))"' `"xline(3000, ex ex)"'  ///
+    `"xline(3000, st(unextended) style(default))"'                      ///
+    `"xline(3000, ax(1) axis(1))"' `"xline(3000,, lcolor(red))"'        ///
+    `"xline(3000, axis(2))"' `"xline(1(0)5)"' `"xline(.)"'              ///
+    `"xline(. 3000)"' `"xline(1e400)"' `"xline(2000 3000 to)"'          ///
+    `"xline(2000,3000)"' `"xline(3000, s(unextended))"'                 ///
+    `"xline(3000, noe)"' `"xline(3000, ls(p1))"' `"xline(3000, l(red))"' ///
+    `"xline(3000, NOEXTEND)"' `"xline(3000, extend extend)"'            ///
+    `"xline(3000, ex extend)"' `"xline(3000, noex noextend)"'           ///
+    `"xline(3000, noextend noextend)"' `"xline()"' `"xline(3000,)"'      ///
+    `"xline(3000, st(default) lst(p1) lc(red) lw(thick) lp(dash) la(inside) ax(1) noex)"' ///
+    `"xline(3000, ex)"' `"xline(abc, foo) yline(, bar)"' {
+    capture log close _xptw
+    log using "`twlog'", name(_xptw) text replace
+    capture noisily twoway scatter mpg weight, `o' nodraw
+    local trc = _rc
+    log close _xptw
+    mata: _xp_first(st_local("twlog"))
+    local want `"`macval(_xp_line)'"'
+    _sr_render `"dash scatter mpg weight, `o'"'
+    local drc = r(rc)
+    local lg `"`r(logfile)'"'
+    if `drc' != `trc' {
+        display as error `"XP-01 FAIL: `o': dash rc `drc', twoway rc `trc' (`macval(want)')"'
+        local b = 1
+    }
+    else if `trc' {
+        _sr_count "`lg'" `"`macval(want)'"'
+        if r(n) < 1 {
+            display as error `"XP-01 FAIL: `o': dash's log lacks twoway's `macval(want)'"'
+            local b = 1
+        }
+    }
+}
+capture graph drop _all
+capture erase "`twlog'"
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' XP-01"
+}
+else display as text "XP-01 PASS: xline()/yline() refuse and accept what twoway does, in its words"
+
+// XP-04 / XP-05: the spec holds each copy's positions as numlist
+// expands them, each value once; explicit numbers pass unchanged.
+capture mata: mata drop _xp_hasval()
+mata:
+real scalar _xp_hasval(string scalar g, string scalar key, string scalar val)
+{
+    string scalar q
+    q = char(34)
+    return(strpos(st_global("dash_json_" + g), q + key + q + ":" + q + val + q) > 0)
+}
+end
+dash clear
+capture noisily dash scatter mpg weight, xline(2000(500)3000, lc(red)) xline(4000) yline(10/12 11) name(zxp)
+local rc = _rc
+mata: st_local("hx", strofreal(_xp_hasval("zxp", "xline", "2000 2500 3000, lc(red), 4000")))
+mata: st_local("hy", strofreal(_xp_hasval("zxp", "yline", "10 11 12")))
+if `rc' | !`hx' | !`hy' {
+    display as error "XP-04 FAIL: rc `rc', xline expanded `hx', yline expanded `hy'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' XP-04"
+}
+else display as text "XP-04 PASS: the spec holds every copy's positions as numlist expands them"
+dash clear
+capture noisily dash scatter mpg weight, xline(2000 2500 3000) name(zxp)
+local rc = _rc
+mata: st_local("hx", strofreal(_xp_hasval("zxp", "xline", "2000 2500 3000")))
+if `rc' | !`hx' {
+    display as error "XP-05 FAIL: rc `rc', explicit numbers kept `hx'"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' XP-05"
+}
+else display as text "XP-05 PASS: explicit numbers pass unchanged"
+dash clear
+
+// XP-06: position text numlist must never see is refused by Mata
+// before any is handed back (-1 would hand it to numlist), and dash
+// says twoway's words.
+local b = 0
+foreach o in `"xline(1 `"x"')"' `"xline(1\$xp_x)"' `"xline(1\`xp_y')"' {
+    mata: _dash_axreq_clear()
+    mata: _dash_axreq_add(st_local("o"), 1)
+    capture noisily mata: st_local("_xprc", strofreal(_dash_axreq_check("1", "1")))
+    if _rc | "`_xprc'" != "198" {
+        display as error `"XP-06 FAIL: `macval(o)': the check gave `_xprc' (rc `=_rc')"'
+        local b = 1
+    }
+}
+mata: _dash_axreq_clear()
+_sa_expect XP-06 198 "invalid line argument, 1 " `"dash scatter mpg weight, xline(1 `"x"')"'
+if r(bad) local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' XP-06"
+}
+else display as text "XP-06 PASS: unsafe position text is refused without running numlist"
+
+// XP-07: the reflines limit, positions times by() panels.
+local b = 0
+global dash_max_reflines 5
+_sa_expect XP-07 134 "asks for up to 6 reference lines" `"dash scatter mpg weight, xline(1/6)"'
+if r(bad) local b = 1
+_sr_count `"`r(logfile)'"' "set global dash_max_reflines to a higher value"
+if r(n) != 1 local b = 1
+_sa_expect XP-07 134 "asks for up to 6 reference lines" `"dash scatter mpg weight, by(foreign) xline(1/3)"'
+if r(bad) local b = 1
+_sa_expect XP-07 0 "" `"dash scatter mpg weight, xline(1/5)"'
+if r(bad) local b = 1
+macro drop dash_max_reflines
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' XP-07"
+}
+else display as text "XP-07 PASS: the reflines limit refuses r(134), by() panels counted"
+
+// XP-08: _dash_line_expand keeps each copy's own style.
+local xl "20, lcolor(red), 10(5)40, lcolor(blue)"
+capture noisily _dash_line_expand xl `"`xl'"'
+if _rc | `"`xl'"' != "20, lcolor(red), 10 15 20 25 30 35 40, lcolor(blue)" {
+    display as error `"XP-08 FAIL: rc `=_rc', `xl'"'
+    local nfail = `nfail' + 1
+    local faillist "`faillist' XP-08"
+}
+else display as text "XP-08 PASS: _dash_line_expand keeps each copy's style"
+
+// ----------------------------------------------------------------
+// AD: add merged and kept as twoway reads it (WP-30 P1.18b)
+// AD-01 .. AD-06: repeated ylabel() copies merge as twoway merges them
+// (test/fixtures/axis_add_truth.json m_both, m_plain, m_second, a01,
+// m_nolab): a copy with values and add appends and keeps add only when
+// the copy before it held add; a copy with no values keeps the earlier
+// copy's values and add.  AD-07 / AD-08: dash.ado spends add after a
+// leading rule and norescale after a lone a(b)c rule, as twoway does
+// (rule, rule50, n2_25, nr_rule, nr_list).  AD-09: the Mata splitter's
+// _ap_rule on every head form.  Values are read from $dash_json_<name>
+// through Mata (_xp_hasval), never by macro expansion.
+// ----------------------------------------------------------------
+capture program drop _ad_case
+program define _ad_case
+    // _ad_case <id> `"<options>"' `"<want>"' : the ylabel value dash
+    // writes for scatter mpg weight with <options> is <want>.
+    args id opts want
+    dash clear
+    capture noisily dash scatter mpg weight, `opts' name(zad)
+    local rc = _rc
+    global AD_WANT `"`want'"'
+    mata: st_local("ok", strofreal(_xp_hasval("zad", "ylabel", st_global("AD_WANT"))))
+    macro drop AD_WANT
+    c_local ad_bad 0
+    if `rc' | !`ok' {
+        display as error `"`id' FAIL: `opts': rc `rc'; want "ylabel":"`want'""'
+        c_local ad_bad 1
+    }
+end
+local b = 0
+_ad_case AD-01 `"ylabel(25, add) ylabel(35, add)"' `"25 35, add"'
+if `ad_bad' local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-01"
+}
+else display as text "AD-01 PASS: ylabel(25, add) ylabel(35, add) keeps add"
+_ad_case AD-02 `"ylabel(25) ylabel(35, add)"' `"25 35"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-02"
+}
+else display as text "AD-02 PASS: ylabel(25) ylabel(35, add) appends and spends add"
+_ad_case AD-03 `"ylabel(25, add) ylabel(35)"' `"35"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-03"
+}
+else display as text "AD-03 PASS: a later copy without add replaces"
+_ad_case AD-04 `"ylabel(25, add) ylabel(, nolabels)"' `"25, nolabels add"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-04"
+}
+else display as text "AD-04 PASS: a later copy with no values keeps the earlier add"
+_ad_case AD-05 `"ylabel(25, nolabels) ylabel(35, add)"' `"25 35, nolabels"'
+if `ad_bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-05"
+}
+else display as text "AD-05 PASS: ylabel(25, nolabels) ylabel(35, add) appends, nolabels kept"
+dash clear
+capture noisily dash (scatter mpg weight, ylabel(25, add)), ylabel(35, add) name(zad)
+local rc = _rc
+mata: st_local("ok", strofreal(_xp_hasval("zad", "ylabel", "25 35, add")))
+if `rc' | !`ok' {
+    display as error "AD-06 FAIL: rc `rc'; the after-comma copy did not merge to 25 35, add"
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-06"
+}
+else display as text "AD-06 PASS: the after-comma copy merges with the segment's"
+local b = 0
+_ad_case AD-07 `"ylabel(15(10)35, add)"' `"15 25 35"'
+if `ad_bad' local b = 1
+_ad_case AD-07 `"ylabel(15(10)35 50, add)"' `"15 25 35 50"'
+if `ad_bad' local b = 1
+_ad_case AD-07 `"ylabel(15 25 35, add)"' `"15 25 35, add"'
+if `ad_bad' local b = 1
+_ad_case AD-07 `"ylabel(#2 25, add)"' `"#2 25"'
+if `ad_bad' local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-07"
+}
+else display as text "AD-07 PASS: a leading rule spends add; a value list keeps it"
+local b = 0
+_ad_case AD-08 `"ylabel(0(10)100, norescale)"' `"0 10 20 30 40 50 60 70 80 90 100"'
+if `ad_bad' local b = 1
+_ad_case AD-08 `"ylabel(0 10 20, norescale)"' `"0 10 20, norescale"'
+if `ad_bad' local b = 1
+_ad_case AD-08 `"ylabel(15/17, add)"' `"15 16 17, add"'
+if `ad_bad' local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-08"
+}
+else display as text "AD-08 PASS: a lone rule drops norescale; a list keeps it and add"
+dash clear
+// AD-09: _dash_axis_pieces' _ap_rule and its tail, on every head form.
+local b = 0
+local k = 0
+foreach v in `", add"' `"25, add"' `""a" 25, add"' `"15(10)35, add"' `"15(10)35 50, add"' `"#3 25, add"' `"minmax, add"' `"none, add"' `"15/17, add"' `"0(10)100, add norescale"' {
+    local ++k
+    local want : word `k' of 0 0 0 2 1 1 1 1 0 2
+    local _ap_rule ""
+    mata: _dash_axis_pieces(st_local("v"))
+    local t : copy local _ap_txt`_ap_n'
+    local tw ", add"
+    if `want' local tw ""
+    if "`_ap_rule'" != "`want'" | `"`macval(t)'"' != `"`tw'"' {
+        display as error `"AD-09 FAIL: `macval(v)': _ap_rule `_ap_rule' (want `want'), tail [`macval(t)'] (want [`tw'])"'
+        local b = 1
+    }
+}
+local v "15(10)35, norescale"
+mata: _dash_axis_pieces(st_local("v"))
+local t : copy local _ap_txt`_ap_n'
+if "`_ap_rule'" != "2" | `"`macval(t)'"' != "" local b = 1
+local v "15 25, add norescale grid"
+mata: _dash_axis_pieces(st_local("v"))
+local t : copy local _ap_txt`_ap_n'
+if "`_ap_rule'" != "0" | `"`macval(t)'"' != ", add norescale grid" local b = 1
+local v "15(10)35 50, add norescale grid"
+mata: _dash_axis_pieces(st_local("v"))
+local t : copy local _ap_txt`_ap_n'
+if "`_ap_rule'" != "1" | `"`macval(t)'"' != ", norescale grid" local b = 1
+if `b' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AD-09"
+}
+else display as text "AD-09 PASS: _dash_axis_pieces rates the head and spends add and norescale"
 
 // ----------------------------------------------------------------
 // Summary

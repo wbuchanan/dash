@@ -1,0 +1,2157 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "b79db35e54c4a093209e847fd97a94e36de167a1",
+  "extracted": " 8 Oct 2026 08:27:14",
+  "generator": "scripts/extract_mlabtextstyle_truth.do",
+  "stata_version": "19.5",
+  "table": {
+   "axis_title": [
+    "axis_title",
+    "axis_title"
+   ],
+   "body": [
+    "body",
+    "body"
+   ],
+   "bordered": [
+    "filled_text",
+    "filled_text"
+   ],
+   "clegend": [
+    "subheading",
+    "subheading"
+   ],
+   "editor": [
+    "text_option",
+    "text_option"
+   ],
+   "filled": [
+    "filled_text",
+    "filled_text"
+   ],
+   "fpbody": [
+    "fpbody",
+    "fpbody"
+   ],
+   "fpcollabel": [
+    "fpcoltitle",
+    "fpcoltitle"
+   ],
+   "fpcoltitle": [
+    "fpcoltitle",
+    "fpcoltitle"
+   ],
+   "fpcustom": [
+    "fpbody",
+    "fpbody"
+   ],
+   "fplabel": [
+    "fpbody",
+    "fpbody"
+   ],
+   "fpnulllefttext": [
+    "fpnulllefttext",
+    "fpnulllefttext"
+   ],
+   "fpnullrighttext": [
+    "fpnullrighttext",
+    "fpnullrighttext"
+   ],
+   "fpspacer": [
+    "fpspacer",
+    "fpspacer"
+   ],
+   "fptick_label": [
+    "fpbody",
+    "tick_label"
+   ],
+   "heading": [
+    "heading",
+    "heading"
+   ],
+   "key_label": [
+    "key_label",
+    "key_label"
+   ],
+   "label": [
+    "label",
+    "label"
+   ],
+   "legend_key": [
+    "key_label",
+    "key_label"
+   ],
+   "legend_title": [
+    "heading",
+    "heading"
+   ],
+   "matrix_label": [
+    "matrix_label",
+    "matrix_label"
+   ],
+   "matrix_marklbl": [
+    "matrix_marklbl",
+    "matrix_marklbl"
+   ],
+   "minortick_label": [
+    "minortick_label",
+    "tick_label"
+   ],
+   "p#": [
+    "p#label",
+    "p#label"
+   ],
+   "p#barlabel": [
+    "p#barlabel",
+    "p#barlabel"
+   ],
+   "p#boxlabel": [
+    "p#boxlabel",
+    "p#boxlabel"
+   ],
+   "reverse_big": [
+    "reverse_big",
+    "reverse_big_text"
+   ],
+   "small_body": [
+    "small_body",
+    "small_body"
+   ],
+   "small_label": [
+    "small_label",
+    "label"
+   ],
+   "smbody": [
+    "small_body",
+    "body"
+   ],
+   "sts_risktable": [
+    "sts_risk_label",
+    "sts_risk_label"
+   ],
+   "sts_risktitle": [
+    "sts_risk_title",
+    "sts_risk_title"
+   ],
+   "subheading": [
+    "subheading",
+    "subheading"
+   ],
+   "subheading_gs": [
+    "subheading",
+    "subheading"
+   ],
+   "text_option": [
+    "text_option",
+    "text_option"
+   ],
+   "tick_biglabel": [
+    "tick_biglabel",
+    "tick_biglabel"
+   ],
+   "tick_label": [
+    "tick_label",
+    "tick_label"
+   ]
+  }
+ },
+ "schemes": {
+  "economist": {
+   "DEF": {
+    "Q": {
+     "fill": "#3e647d",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab)",
+    "notes": [],
+    "rc": 0
+   },
+   "H2": {
+    "Q": {
+     "fill": "#000000",
+     "size": 190.09
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(*2)",
+    "notes": [],
+    "rc": 0
+   },
+   "HR": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 95.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabcolor(red)",
+    "notes": [],
+    "rc": 0
+   },
+   "HV": {
+    "Q": {
+     "fill": "#000000",
+     "size": 33.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(vsmall)",
+    "notes": [],
+    "rc": 0
+   },
+   "L1": {
+    "Q": {
+     "fill": "#000000",
+     "size": 95.04
+    },
+    "S": {
+     "fill": "#7b92a8",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "L2": {
+    "Q": {
+     "fill": "#000000",
+     "size": 95.04
+    },
+    "S": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading body)",
+    "notes": [],
+    "rc": 0
+   },
+   "LD": {
+    "Q": {
+     "fill": "#3e647d",
+     "size": 44.01
+    },
+    "S": {
+     "fill": "#000000",
+     "size": 95.04
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(. heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "QT": {
+    "Q": {
+     "fill": "#000000",
+     "size": 95.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(\"heading\")",
+    "notes": [],
+    "rc": 0
+   },
+   "RH": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 95.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabcolor(red) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "TW": {
+    "Q": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "UC_Heading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(Heading)",
+    "notes": [
+     "(note:  named style Heading not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "VH": {
+    "Q": {
+     "fill": "#000000",
+     "size": 33.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabsize(vsmall) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "axis_title": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(axis_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "body": {
+    "Q": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "bordered": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(bordered)",
+    "notes": [],
+    "rc": 0
+   },
+   "clegend": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(clegend)",
+    "notes": [],
+    "rc": 0
+   },
+   "editor": {
+    "Q": {
+     "fill": "#000000",
+     "size": 55.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(editor)",
+    "notes": [],
+    "rc": 0
+   },
+   "filled": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(filled)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcollabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcollabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcoltitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcoltitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcustom": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcustom)",
+    "notes": [],
+    "rc": 0
+   },
+   "fplabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fplabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnulllefttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnulllefttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnullrighttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnullrighttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpspacer": {
+    "Q": {
+     "fill": "#000000",
+     "size": 0.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpspacer)",
+    "notes": [],
+    "rc": 0
+   },
+   "fptick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 109.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fptick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "heading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 95.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "key_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(key_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(label)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_key": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_key)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_title": {
+    "Q": {
+     "fill": "#000000",
+     "size": 95.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 65.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_marklbl": {
+    "Q": {
+     "fill": "#000000",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_marklbl)",
+    "notes": [],
+    "rc": 0
+   },
+   "minortick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 33.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(minortick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "nosuch": {
+    "Q": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(nosuch)",
+    "notes": [
+     "(note:  named style nosuch not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p0": {
+    "Q": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p0)",
+    "notes": [
+     "(note:  named style p0 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p1": {
+    "Q": {
+     "fill": "#3e647d",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p1)",
+    "notes": [],
+    "rc": 0
+   },
+   "p16": {
+    "Q": {
+     "fill": "#000000",
+     "size": 47.52
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p16)",
+    "notes": [
+     "(note:  named style p16 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p3": {
+    "Q": {
+     "fill": "#82c0e9",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3barlabel": {
+    "Q": {
+     "fill": "#82c0e9",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3barlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3boxlabel": {
+    "Q": {
+     "fill": "#82c0e9",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3boxlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "reverse_big": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 65.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(reverse_big)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_body": {
+    "Q": {
+     "fill": "#000000",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_body)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 55.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "smbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 44.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(smbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktable": {
+    "Q": {
+     "fill": "#000000",
+     "size": 55.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktable)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 55.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading_gs": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading_gs)",
+    "notes": [],
+    "rc": 0
+   },
+   "text_option": {
+    "Q": {
+     "fill": "#000000",
+     "size": 55.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(text_option)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_biglabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_biglabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.49
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_label)",
+    "notes": [],
+    "rc": 0
+   }
+  },
+  "s1rcolor": {
+   "DEF": {
+    "Q": {
+     "fill": "#ffff00",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab)",
+    "notes": [],
+    "rc": 0
+   },
+   "H2": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 280.05
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(*2)",
+    "notes": [],
+    "rc": 0
+   },
+   "HR": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabcolor(red)",
+    "notes": [],
+    "rc": 0
+   },
+   "HV": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 60.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(vsmall)",
+    "notes": [],
+    "rc": 0
+   },
+   "L1": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "S": {
+     "fill": "#00ff00",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "L2": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "S": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading body)",
+    "notes": [],
+    "rc": 0
+   },
+   "LD": {
+    "Q": {
+     "fill": "#ffff00",
+     "size": 79.94
+    },
+    "S": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(. heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "QT": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(\"heading\")",
+    "notes": [],
+    "rc": 0
+   },
+   "RH": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabcolor(red) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "TW": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "UC_Heading": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(Heading)",
+    "notes": [
+     "(note:  named style Heading not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "VH": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 60.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabsize(vsmall) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "axis_title": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(axis_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "body": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "bordered": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(bordered)",
+    "notes": [],
+    "rc": 0
+   },
+   "clegend": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(clegend)",
+    "notes": [],
+    "rc": 0
+   },
+   "editor": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(editor)",
+    "notes": [],
+    "rc": 0
+   },
+   "filled": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(filled)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcollabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcollabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcoltitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcoltitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcustom": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcustom)",
+    "notes": [],
+    "rc": 0
+   },
+   "fplabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fplabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnulllefttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnulllefttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnullrighttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnullrighttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpspacer": {
+    "Q": {
+     "fill": "#000000",
+     "size": 0.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpspacer)",
+    "notes": [],
+    "rc": 0
+   },
+   "fptick_label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fptick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "heading": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "key_label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(key_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(label)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_key": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_key)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_title": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 120.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_marklbl": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_marklbl)",
+    "notes": [],
+    "rc": 0
+   },
+   "minortick_label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 60.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(minortick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "nosuch": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(nosuch)",
+    "notes": [
+     "(note:  named style nosuch not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p0": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p0)",
+    "notes": [
+     "(note:  named style p0 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p1": {
+    "Q": {
+     "fill": "#ffff00",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p1)",
+    "notes": [],
+    "rc": 0
+   },
+   "p16": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p16)",
+    "notes": [
+     "(note:  named style p16 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p3": {
+    "Q": {
+     "fill": "#0080ff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3barlabel": {
+    "Q": {
+     "fill": "#0080ff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3barlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3boxlabel": {
+    "Q": {
+     "fill": "#0080ff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3boxlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "reverse_big": {
+    "Q": {
+     "fill": "#000000",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(reverse_big)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_body": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_body)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "smbody": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(smbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktable": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktable)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktitle": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading_gs": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading_gs)",
+    "notes": [],
+    "rc": 0
+   },
+   "text_option": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(text_option)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_biglabel": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_biglabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_label": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_label)",
+    "notes": [],
+    "rc": 0
+   }
+  },
+  "s2color": {
+   "DEF": {
+    "Q": {
+     "fill": "#1a476f",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab)",
+    "notes": [],
+    "rc": 0
+   },
+   "H2": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 280.05
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(*2)",
+    "notes": [],
+    "rc": 0
+   },
+   "HR": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabcolor(red)",
+    "notes": [],
+    "rc": 0
+   },
+   "HV": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 60.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(vsmall)",
+    "notes": [],
+    "rc": 0
+   },
+   "L1": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 139.96
+    },
+    "S": {
+     "fill": "#90353b",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "L2": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 139.96
+    },
+    "S": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading body)",
+    "notes": [],
+    "rc": 0
+   },
+   "LD": {
+    "Q": {
+     "fill": "#1a476f",
+     "size": 79.94
+    },
+    "S": {
+     "fill": "#1e2d53",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(. heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "QT": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(\"heading\")",
+    "notes": [],
+    "rc": 0
+   },
+   "RH": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabcolor(red) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "TW": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "UC_Heading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(Heading)",
+    "notes": [
+     "(note:  named style Heading not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "VH": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 60.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabsize(vsmall) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "axis_title": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(axis_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "body": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "bordered": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(bordered)",
+    "notes": [],
+    "rc": 0
+   },
+   "clegend": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(clegend)",
+    "notes": [],
+    "rc": 0
+   },
+   "editor": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(editor)",
+    "notes": [],
+    "rc": 0
+   },
+   "filled": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(filled)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcollabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcollabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcoltitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcoltitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcustom": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcustom)",
+    "notes": [],
+    "rc": 0
+   },
+   "fplabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fplabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnulllefttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnulllefttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnullrighttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnullrighttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpspacer": {
+    "Q": {
+     "fill": "#000000",
+     "size": 0.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpspacer)",
+    "notes": [],
+    "rc": 0
+   },
+   "fptick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fptick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "heading": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "key_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(key_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(label)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_key": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_key)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_title": {
+    "Q": {
+     "fill": "#1e2d53",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 120.04
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_marklbl": {
+    "Q": {
+     "fill": "#000000",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_marklbl)",
+    "notes": [],
+    "rc": 0
+   },
+   "minortick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 60.02
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(minortick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "nosuch": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(nosuch)",
+    "notes": [
+     "(note:  named style nosuch not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p0": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p0)",
+    "notes": [
+     "(note:  named style p0 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p1": {
+    "Q": {
+     "fill": "#1a476f",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p1)",
+    "notes": [],
+    "rc": 0
+   },
+   "p16": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p16)",
+    "notes": [
+     "(note:  named style p16 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p3": {
+    "Q": {
+     "fill": "#55752f",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3barlabel": {
+    "Q": {
+     "fill": "#55752f",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3barlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3boxlabel": {
+    "Q": {
+     "fill": "#55752f",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3boxlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "reverse_big": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 139.96
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(reverse_big)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_body": {
+    "Q": {
+     "fill": "#000000",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_body)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "smbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 79.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(smbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktable": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktable)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading_gs": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading_gs)",
+    "notes": [],
+    "rc": 0
+   },
+   "text_option": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(text_option)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_biglabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.01
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_biglabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 99.99
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_label)",
+    "notes": [],
+    "rc": 0
+   }
+  },
+  "stcolor": {
+   "DEF": {
+    "Q": {
+     "fill": "#1a85ff",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab)",
+    "notes": [],
+    "rc": 0
+   },
+   "H2": {
+    "Q": {
+     "fill": "#000000",
+     "size": 315.06
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(*2)",
+    "notes": [],
+    "rc": 0
+   },
+   "HR": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabcolor(red)",
+    "notes": [],
+    "rc": 0
+   },
+   "HV": {
+    "Q": {
+     "fill": "#000000",
+     "size": 67.5
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabsize(vsmall)",
+    "notes": [],
+    "rc": 0
+   },
+   "L1": {
+    "Q": {
+     "fill": "#000000",
+     "size": 157.44
+    },
+    "S": {
+     "fill": "#d41159",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "L2": {
+    "Q": {
+     "fill": "#000000",
+     "size": 157.44
+    },
+    "S": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(heading body)",
+    "notes": [],
+    "rc": 0
+   },
+   "LD": {
+    "Q": {
+     "fill": "#1a85ff",
+     "size": 89.94
+    },
+    "S": {
+     "fill": "#000000",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y y2 x, mlabel(lab lab2) mlabtextstyle(. heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "QT": {
+    "Q": {
+     "fill": "#000000",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(\"heading\")",
+    "notes": [],
+    "rc": 0
+   },
+   "RH": {
+    "Q": {
+     "fill": "#ff0000",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabcolor(red) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "TW": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "UC_Heading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(Heading)",
+    "notes": [
+     "(note:  named style Heading not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "VH": {
+    "Q": {
+     "fill": "#000000",
+     "size": 67.5
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabsize(vsmall) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "axis_title": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(axis_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "body": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(body)",
+    "notes": [],
+    "rc": 0
+   },
+   "bordered": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(bordered)",
+    "notes": [],
+    "rc": 0
+   },
+   "clegend": {
+    "Q": {
+     "fill": "#000000",
+     "size": 123.69
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(clegend)",
+    "notes": [],
+    "rc": 0
+   },
+   "editor": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(editor)",
+    "notes": [],
+    "rc": 0
+   },
+   "filled": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(filled)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcollabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcollabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcoltitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcoltitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpcustom": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpcustom)",
+    "notes": [],
+    "rc": 0
+   },
+   "fplabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fplabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnulllefttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnulllefttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpnullrighttext": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpnullrighttext)",
+    "notes": [],
+    "rc": 0
+   },
+   "fpspacer": {
+    "Q": {
+     "fill": "#000000",
+     "size": 0.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fpspacer)",
+    "notes": [],
+    "rc": 0
+   },
+   "fptick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 110.03
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(fptick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "heading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(heading)",
+    "notes": [],
+    "rc": 0
+   },
+   "key_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(key_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(label)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_key": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_key)",
+    "notes": [],
+    "rc": 0
+   },
+   "legend_title": {
+    "Q": {
+     "fill": "#000000",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(legend_title)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 135.0
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "matrix_marklbl": {
+    "Q": {
+     "fill": "#000000",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(matrix_marklbl)",
+    "notes": [],
+    "rc": 0
+   },
+   "minortick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 67.5
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(minortick_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "nosuch": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(nosuch)",
+    "notes": [
+     "(note:  named style nosuch not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p0": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p0)",
+    "notes": [
+     "(note:  named style p0 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p1": {
+    "Q": {
+     "fill": "#1a85ff",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p1)",
+    "notes": [],
+    "rc": 0
+   },
+   "p16": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p16)",
+    "notes": [
+     "(note:  named style p16 not found in class textstyle, default attributes used)"
+    ],
+    "rc": 0
+   },
+   "p3": {
+    "Q": {
+     "fill": "#00bf7f",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3barlabel": {
+    "Q": {
+     "fill": "#00bf7f",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3barlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "p3boxlabel": {
+    "Q": {
+     "fill": "#00bf7f",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(p3boxlabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "reverse_big": {
+    "Q": {
+     "fill": "#ffffff",
+     "size": 157.44
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(reverse_big)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_body": {
+    "Q": {
+     "fill": "#000000",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_body)",
+    "notes": [],
+    "rc": 0
+   },
+   "small_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(small_label)",
+    "notes": [],
+    "rc": 0
+   },
+   "smbody": {
+    "Q": {
+     "fill": "#000000",
+     "size": 89.94
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(smbody)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktable": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktable)",
+    "notes": [],
+    "rc": 0
+   },
+   "sts_risktitle": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(sts_risktitle)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading": {
+    "Q": {
+     "fill": "#000000",
+     "size": 123.69
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading)",
+    "notes": [],
+    "rc": 0
+   },
+   "subheading_gs": {
+    "Q": {
+     "fill": "#000000",
+     "size": 123.69
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(subheading_gs)",
+    "notes": [],
+    "rc": 0
+   },
+   "text_option": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(text_option)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_biglabel": {
+    "Q": {
+     "fill": "#000000",
+     "size": 123.69
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_biglabel)",
+    "notes": [],
+    "rc": 0
+   },
+   "tick_label": {
+    "Q": {
+     "fill": "#000000",
+     "size": 112.56
+    },
+    "cmd": "twoway scatter y x, mlabel(lab) mlabtextstyle(tick_label)",
+    "notes": [],
+    "rc": 0
+   }
+  }
+ }
+}

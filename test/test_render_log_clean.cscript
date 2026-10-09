@@ -4,7 +4,7 @@
 *! Usage:  do test/test_render_log_clean.cscript
 *!
 *! Requires: dash_setup completed (Python).
-*! Version: 1.1.0  22sep2026
+*! Version: 1.2.0  07oct2026
 *!
 *! WHY THIS EXISTS
 *!
@@ -25,26 +25,38 @@
 *! `dash serve' had the same line and was fixed when it was rewritten; this
 *! script covers the path every other command takes.
 *!
-*! NO PYTHON WARNING EITHER (WP-17, 22sep2026)
+*! NO NOTE AND NO PYTHON WARNING EITHER (WP-17, 22sep2026; WP-30 P1.26a)
 *!
 *! cscript sets the session scheme to c(scheme_cscript) -- s2color8 -- so
 *! every certification render inherits s2color8 as its c(scheme).  Until
 *! WP-17 dash shipped no translation of s2color8, and the renderer put one
-*! Python UserWarning ("'s2color8' is not a known theme or scheme; using
+*! raw Python warning ("'s2color8' is not a known theme or scheme; using
 *! s2color") into the log of every render, this script's own captured log
 *! included (test/run_all_cscripts.log, the WP-16 run: the render below
-*! printed it, wrapped by Stata as "UserWar" / "> ning").  s2color8 is one
-*! of the twenty shipped translations since WP-17, so the log of a plain
-*! render must carry no Python warning at all.  Check 4 re-joins Stata's
-*! "> " continuation lines -- a raw line-by-line search would miss the
-*! wrapped word -- and asserts that no logical line carries "UserWarning".
-*! A session scheme dash cannot translate is still one warning
-*! (test_custom_scheme.cscript CS-10); this script asserts that the scheme
-*! cscript sets is not such a scheme.  Check 5 is check 4's control: a
-*! render under such a scheme, counted by the same scanner, must show its
-*! one warning (24sep2026).
+*! printed it, wrapped by Stata in the middle of the class name).
+*! s2color8 is one of the twenty shipped translations since WP-17, so the
+*! log of a plain render must carry no note at all.  Since WP-30 P1.26a a
+*! note prints as twoway prints its notes, "(note:  dash: ...)", never as
+*! a Python warning, so check 4 counts both: no logical line carries
+*! "(note:" and none carries "Warning:" (any Python warning that got
+*! through).  It re-joins Stata's "> " continuation lines -- a raw
+*! line-by-line search would miss a wrapped word.  A session scheme dash
+*! cannot translate is still one note (test_custom_scheme.cscript CS-10);
+*! this script asserts that the scheme cscript sets is not such a scheme.
+*! Check 5 is check 4's control: a render under such a scheme, counted by
+*! the same scanner, must show exactly one note and no Python warning
+*! (24sep2026; the note form since WP-30 P1.26a).
 
 cscript "render log clean" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 
 // See test_cscript_hygiene.py: do NOT probe Python by running it.
@@ -143,15 +155,19 @@ assert `nlines' < 60
 display as result "  [3/5] the log is short: PASS"
 
 // ---------------------------------------------------------------
-// 4. No Python warning.  The session scheme cscript sets (s2color8)
-//    ships since WP-17, so a plain render inherits it silently; the
-//    one line every certification log used to carry is gone.
+// 4. No note and no Python warning.  The session scheme cscript sets
+//    (s2color8) ships since WP-17, so a plain render inherits it
+//    silently; the one line every certification log used to carry is
+//    gone.  A note is "(note:  dash: ...)" since WP-30 P1.26a, and
+//    "Warning:" is any Python warning that got through.
 // ---------------------------------------------------------------
-mata: st_local("nwarn", strofreal(_rlc_count(st_local("logfile"), "UserWarning")))
-display as text "     UserWarning lines in the log (wrapped lines re-joined): `nwarn'"
+mata: st_local("nnote", strofreal(_rlc_count(st_local("logfile"), "(note:")))
+mata: st_local("nwarn", strofreal(_rlc_count(st_local("logfile"), "Warning:")))
+display as text "     note / Python warning lines in the log (wrapped lines re-joined): `nnote' / `nwarn'"
+assert `nnote' == 0
 assert `nwarn' == 0
 
-display as result "  [4/5] no Python warning in the log: PASS"
+display as result "  [4/5] no note and no Python warning in the log: PASS"
 
 // ---------------------------------------------------------------
 // 5. The control for check 4: a render that must warn does, and the
@@ -161,10 +177,12 @@ display as result "  [4/5] no Python warning in the log: PASS"
 //    silencing Python's warnings for the session passes it whatever
 //    the renderer says, as dash_setup's scheme probe once did,
 //    leaving warnings.simplefilter("ignore") installed for every
-//    later render.  A session scheme dash cannot translate is one
-//    warning (CS-10): zzdashrlc, a scheme file in a scratch working
-//    directory that includes s2color, so that `set scheme' takes it
-//    and the renderer does not.
+//    later render.  An #include that resolves nowhere is one note
+//    (WP-30 P1.25b: a session scheme Stata found no longer notes, so
+//    the control is now its include): zzdashrlc, a scheme file in a
+//    scratch working directory holding `#include zzdashrlcnone', which
+//    `set scheme' takes and the renderer reads, noting the include once
+//    as twoway does.
 // ---------------------------------------------------------------
 local rlc_home    "`c(pwd)'"
 local rlc_scheme0 "`c(scheme)'"
@@ -173,7 +191,7 @@ local ctlfile     "`logdir'dash_render_log_clean_ctl.log"
 capture mkdir "`rlc_dir'"
 tempname sfh
 file open `sfh' using "`rlc_dir'/scheme-zzdashrlc.scheme", write text replace
-file write `sfh' "#include s2color" _n
+file write `sfh' "#include zzdashrlcnone" _n
 file close `sfh'
 capture erase "`ctlfile'"
 quietly cd "`rlc_dir'"
@@ -191,13 +209,343 @@ capture erase "`rlc_dir'/scheme-zzdashrlc.scheme"
 capture rmdir "`rlc_dir'"
 capture erase "`outhtml'_ctl.html"
 
-mata: st_local("nctl", strofreal(_rlc_count(st_local("ctlfile"), "UserWarning")))
-display as text "     UserWarning lines in the control's log: `nctl'"
+mata: st_local("nctl", strofreal(_rlc_count(st_local("ctlfile"), "(note:")))
+mata: st_local("nctlw", strofreal(_rlc_count(st_local("ctlfile"), "Warning:")))
+display as text "     note / Python warning lines in the control's log: `nctl' / `nctlw'"
 assert `src' == 0
 assert `crc' == 0
 assert `nctl' == 1
+assert `nctlw' == 0
 
 display as result "  [5/5] a render that must warn is counted: PASS"
+
+// ---------------------------------------------------------------
+// NC-03..NC-06 (WP-30 P1.26a): every note dash prints takes twoway's
+// channel -- one "(note:  dash: ...)" line in text colour, shown under
+// quietly, hidden by capture -- whatever the session's Python warnings
+// filters say, with no path, no Python warning and no live SMCL.  Each
+// command runs under its own named text log, counted by _rlc_count.
+// The session's filters are changed only inside a catch_warnings()
+// entered and exited around one `capture noisily' command, so a filter
+// never outlives its case (check 5's hazard).
+// ---------------------------------------------------------------
+local nc_fail = 0
+local nc_log  "`logdir'dash_rlc_nc.log"
+local nc_page "`outhtml'_nc.html"
+capture log close _dashnc
+
+// NC-03: an "ignore" filter hides no note.
+capture erase "`nc_log'"
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'") replace
+local nc_rc0 = _rc
+log close _dashnc
+mata: st_local("nc_d", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+python: import warnings as _nc_w
+python: _nc_cm = _nc_w.catch_warnings()
+python: _nc_cm.__enter__()
+python: _nc_w.filterwarnings("ignore")
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'") replace
+local nc_rc1 = _rc
+log close _dashnc
+python: _nc_cm.__exit__(None, None, None)
+mata: st_local("nc_i", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+if `nc_rc0' == 0 & `nc_rc1' == 0 & `nc_d' >= 1 & `nc_i' == `nc_d' {
+    display as text "NC-03 PASS: `nc_d' note line(s) by default and `nc_i' under an ignore filter"
+}
+else {
+    display as error "NC-03 FAIL: rc `nc_rc0'/`nc_rc1'; `nc_d' note line(s) by default, `nc_i' under an ignore filter"
+    local nc_fail = `nc_fail' + 1
+}
+
+// NC-04: an "error" filter makes no note an error.
+python: _nc_cm = _nc_w.catch_warnings()
+python: _nc_cm.__enter__()
+python: _nc_w.simplefilter("error")
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) saving("`nc_page'") replace
+local nc_rc2 = _rc
+log close _dashnc
+python: _nc_cm.__exit__(None, None, None)
+mata: st_local("nc_e", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+if `nc_rc2' == 0 & `nc_d' >= 1 & `nc_e' == `nc_d' {
+    display as text "NC-04 PASS: rc 0 and `nc_e' note line(s) under an error filter"
+}
+else {
+    display as error "NC-04 FAIL: rc `nc_rc2'; `nc_e' note line(s) under an error filter, `nc_d' by default"
+    local nc_fail = `nc_fail' + 1
+}
+
+// NC-05: the note form, with no Python warning and no path of dash's.
+log using "`nc_log'", name(_dashnc) text replace
+capture noisily dash scatter mpg weight, mcolor(notacolor) play(x) saving("`nc_page'") replace
+local nc_rc3 = _rc
+log close _dashnc
+mata: st_local("nc_uw", strofreal(_rlc_count(st_local("nc_log"), "User" + "Warning")))
+mata: st_local("nc_pa", strofreal(_rlc_count(st_local("nc_log"), "dash_render.py:")))
+mata: st_local("nc_n5", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+if `nc_rc3' == 0 & `nc_uw' == 0 & `nc_pa' == 0 & `nc_n5' >= 2 {
+    display as text "NC-05 PASS: `nc_n5' note lines, no Python warning and no path"
+}
+else {
+    display as error "NC-05 FAIL: rc `nc_rc3'; `nc_uw' Python warning, `nc_pa' path and `nc_n5' note line(s)"
+    local nc_fail = `nc_fail' + 1
+}
+
+// NC-06: (a) quietly shows the renderer's and the ado's notes;
+// (b) capture hides them; (c) a value typed with SMCL braces is never
+// live SMCL in an SMCL log, and reads as typed in a text log; (d) the
+// renderer's escape is Mata _dash_smcl_text's twin.
+local nc6_bad ""
+log using "`nc_log'", name(_dashnc) text replace
+quietly dash scatter mpg weight, mcolor(notacolor) play(x) saving("`nc_page'") replace
+log close _dashnc
+mata: st_local("nc_qa", strofreal(_rlc_count(st_local("nc_log"), "(note:  dash: ")))
+mata: st_local("nc_qi", strofreal(_rlc_count(st_local("nc_log"), "ignoring unsupported option(s): play()")))
+if !(`nc_qa' >= 2 & `nc_qi' >= 1) {
+    local nc6_bad "`nc6_bad' (a) quietly: `nc_qa' note line(s), `nc_qi' naming play();"
+}
+log using "`nc_log'", name(_dashnc) text replace
+capture dash scatter mpg weight, mcolor(notacolor) play(x) saving("`nc_page'") replace
+local nc_rc4 = _rc
+log close _dashnc
+mata: st_local("nc_cn", strofreal(_rlc_count(st_local("nc_log"), "(note:")))
+mata: st_local("nc_cw", strofreal(_rlc_count(st_local("nc_log"), "Warning:")))
+mata: st_local("nc_ci", strofreal(_rlc_count(st_local("nc_log"), "ignoring")))
+if !(`nc_rc4' == 0 & `nc_cn' == 0 & `nc_cw' == 0 & `nc_ci' == 0) {
+    local nc6_bad "`nc6_bad' (b) capture: rc `nc_rc4', `nc_cn' (note:, `nc_cw' Warning:, `nc_ci' ignoring;"
+}
+local nc_smcl "`logdir'dash_rlc_nc.smcl"
+capture erase "`nc_smcl'"
+capture log close _dashncs
+log using "`nc_smcl'", name(_dashncs) smcl replace
+log using "`nc_log'", name(_dashnc) text replace
+// Quoted: msymbol() is a stylelist since WP-30 P1.1a, so unquoted the value
+// is three elements and the note echoes only the first one, "{stata"; one
+// quoted element keeps the whole SMCL text in the note.
+capture noisily dash scatter mpg weight, msymbol("{stata display 999:x}") saving("`nc_page'") replace
+log close _dashnc
+log close _dashncs
+cert_file_has "`nc_smcl'", needle("{stata display 999")
+local nc_live = r(found)
+mata: st_local("nc_lit", strofreal(_rlc_count(st_local("nc_log"), "{stata display 999:x}")))
+if !(`nc_live' == 0 & `nc_lit' >= 2) {
+    local nc6_bad "`nc6_bad' (c) SMCL: live link `nc_live', `nc_lit' literal line(s) in the text log;"
+}
+capture erase "`nc_smcl'"
+capture noisily _dash_xm_load
+local nc_xrc = _rc
+mata: st_local("nc_s1", "{bf:x} a}b{c")
+mata: st_local("nc_s2", "x" + char(1) + char(127) + "y")
+mata: st_local("nc_s3", "a" + char(194) + char(133) + "b")
+mata: st_local("nc_s4", "caf" + uchar(233))
+forvalues k = 1/4 {
+    mata: st_local("nc_m`k'", _dash_smcl_text(st_local("nc_s`k'")))
+}
+python:
+def _nc_twin():
+    import sys
+    from sfi import Macro
+    f = getattr(sys.modules.get("_dash_render_export"), "_dash_smcl_escape", None)
+    if f is None:
+        return "MISSING"
+    bad = [k for k in range(1, 5)
+           if f(Macro.getLocal("nc_s%d" % k)) != Macro.getLocal("nc_m%d" % k)]
+    return " ".join("s%d" % k for k in bad) or "same"
+from sfi import Macro as _nc_M
+_nc_M.setLocal("nc_twin", _nc_twin())
+end
+if !(`nc_xrc' == 0 & "`nc_twin'" == "same") {
+    local nc6_bad "`nc6_bad' (d) twin: rc `nc_xrc', `nc_twin';"
+}
+if "`nc6_bad'" == "" {
+    display as text "NC-06 PASS: quietly shows, capture hides, SMCL stays text, and the escape is _dash_smcl_text's twin"
+}
+else {
+    display as error "NC-06 FAIL:`nc6_bad'"
+    local nc_fail = `nc_fail' + 1
+}
+capture erase "`nc_log'"
+capture erase "`nc_page'"
+assert `nc_fail' == 0
+
+// ---------------------------------------------------------------
+// RC-01..RC-03 (WP-30 test performance, B1): the renderer is compiled
+// once a session.  _dash_do_render and _dash_serve ran
+// runpy.run_path(dash_render.py), which compiled the 38,000-line file on
+// every build (0.22 s of a 0.26 s build, measured 07oct2026).  They now
+// run it through _dash_run_renderer, which keeps the compiled code in the
+// module dash keeps loaded (_dash_render_export) and runs it in a new
+// __main__ every build.
+//   RC-01  two consecutive builds of one command write the same page --
+//          byte for byte once Bokeh's per-run ids, its document UUID and
+//          the CSP's script hashes are set aside -- and the second build
+//          compiled nothing: it ran the code object the first one kept.
+//   RC-02  the page _dash_do_render writes is the page runpy.run_path,
+//          the route every build took before, writes from the same spec
+//          and data, set aside as in RC-01.
+//   RC-03  a renderer edited in place between two builds, to the same
+//          size and modification time, runs its new bytes: the code is
+//          keyed by the bytes read, never by the file's name or time.
+// ---------------------------------------------------------------
+capture mata: mata drop _rlc_norm()
+capture mata: mata drop _rlc_same()
+mata:
+// Bokeh's per-run model ids and document UUID, and the CSP's sha256 of
+// each inline script, which carries them (test_varlist_expansion.cscript
+// V2-05's normaliser): all two renders of one command differ by.
+string scalar _rlc_norm(string scalar s0)
+{
+    string scalar s
+    s = ustrregexra(s0, "'sha256-[A-Za-z0-9+/]{43}='", "HASH")
+    s = ustrregexra(s, "\bp[0-9][0-9][0-9][0-9]?[0-9]?[0-9]?[0-9]?\b", "ID")
+    s = ustrregexra(s, "\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", "UUID")
+    return(s)
+}
+
+// 1 when both files exist and are the same line by line once normalised;
+// lines that are equal raw are never run through the regex engine.
+real scalar _rlc_same(string scalar fa, string scalar fb)
+{
+    real scalar   ha, hb, same
+    string scalar la, lb
+
+    if ((ha = _fopen(fa, "r")) < 0) return(0)
+    if ((hb = _fopen(fb, "r")) < 0) {
+        fclose(ha)
+        return(0)
+    }
+    same = 1
+    while (1) {
+        la = fget(ha)
+        lb = fget(hb)
+        if (la == J(0, 0, "") & lb == J(0, 0, "")) break
+        if (la == J(0, 0, "") | lb == J(0, 0, "")) {
+            same = 0
+            break
+        }
+        if (la != lb) {
+            if (_rlc_norm(la) != _rlc_norm(lb)) {
+                same = 0
+                break
+            }
+        }
+    }
+    fclose(ha)
+    fclose(hb)
+    return(same)
+}
+end
+
+local rc_fail = 0
+sysuse auto, clear
+dash clear
+_dash_find_render
+local rc_rpy `"`r(fn)'"'
+python: import sys
+python: from sfi import Macro as _rc_M
+python: _rc_codes = lambda: [c for k, c in sys.modules["_dash_render_export"]._DASH_RENDER_CODE.items() if k[0] == _rc_M.getLocal("rc_rpy")]
+
+// RC-01: two consecutive builds, one compile, one page.
+tempfile rc_a rc_b
+local rc_pa "`rc_a'.html"
+local rc_pb "`rc_b'.html"
+capture erase "`rc_pa'"
+capture erase "`rc_pb'"
+capture noisily dash scatter mpg weight, saving("`rc_pa'") replace
+local rc_r1 = _rc
+python: _rc_code1 = _rc_codes()
+capture noisily dash scatter mpg weight, saving("`rc_pb'") replace
+local rc_r2 = _rc
+python: _rc_code2 = _rc_codes()
+python: _rc_M.setLocal("rc_kept", "1" if len(_rc_code1) == 1 and len(_rc_code2) == 1 and _rc_code1[0] is _rc_code2[0] else "0")
+mata: st_local("rc_same1", strofreal(_rlc_same(st_local("rc_pa"), st_local("rc_pb"))))
+cert_file_has "`rc_pa'", needle("bokeh") lower
+local rc_bk = r(found)
+if `rc_r1' == 0 & `rc_r2' == 0 & `rc_bk' == 1 & "`rc_kept'" == "1" & `rc_same1' == 1 {
+    display as text "RC-01 PASS: two builds write the same page (ids and script hashes aside), and the second ran the code the first compiled"
+}
+else {
+    display as error "RC-01 FAIL: rc `rc_r1'/`rc_r2', a Bokeh page `rc_bk', one kept code object `rc_kept', same page `rc_same1'"
+    local rc_fail = `rc_fail' + 1
+}
+
+// RC-02: the page is the page run_path writes from the same spec and data.
+dash clear
+quietly dash scatter mpg weight, name(rc02)
+tempfile rc_mj rc_dj rc_c rc_d
+local rc_pc "`rc_c'.html"
+local rc_pd "`rc_d'.html"
+capture erase "`rc_pc'"
+capture erase "`rc_pd'"
+capture noisily _dash_serve_spec, specpath("`rc_mj'") datapath("`rc_dj'")
+local rc_r3 = _rc
+capture noisily _dash_do_render, spec("`rc_mj'") data("`rc_dj'") output("`rc_pc'") renderpy(`"`rc_rpy'"')
+local rc_r4 = _rc
+python: import runpy
+python: sys.argv = ["dash_render.py", "--spec", _rc_M.getLocal("rc_mj"), "--data", _rc_M.getLocal("rc_dj"), "--output", _rc_M.getLocal("rc_pd"), "--mode", "standalone"]
+python: _rc_old = runpy.run_path(_rc_M.getLocal("rc_rpy"), run_name="__main__")
+mata: st_local("rc_same2", strofreal(_rlc_same(st_local("rc_pc"), st_local("rc_pd"))))
+cert_file_has "`rc_pc'", needle("bokeh") lower
+local rc_bk2 = r(found)
+if `rc_r3' == 0 & `rc_r4' == 0 & `rc_bk2' == 1 & `rc_same2' == 1 {
+    display as text "RC-02 PASS: _dash_do_render writes the page runpy.run_path writes from the same spec and data"
+}
+else {
+    display as error "RC-02 FAIL: rc `rc_r3'/`rc_r4', a Bokeh page `rc_bk2', the page run_path writes `rc_same2'"
+    local rc_fail = `rc_fail' + 1
+}
+
+// RC-03: a stand-in renderer, first on the ado-path, edited in place
+// between two builds to the same size and modification time.
+tempfile rc_base rc_e rc_f
+local rc_sd "`rc_base'_rc03"
+local rc_pe "`rc_e'.html"
+local rc_pf "`rc_f'.html"
+capture mkdir "`rc_sd'"
+capture erase "`rc_pe'"
+capture erase "`rc_pf'"
+tempname rc_fh
+file open `rc_fh' using "`rc_sd'/dash_render.py", write text replace
+file write `rc_fh' "import sys" _n
+file write `rc_fh' `"_a = sys.argv[1:]"' _n
+file write `rc_fh' `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("RC-STAND-IN-1")"' _n
+file close `rc_fh'
+dash clear
+adopath ++ "`rc_sd'"
+capture noisily {
+    _dash_find_render
+    assert `"`r(fn)'"' == "`rc_sd'/dash_render.py"
+    dash scatter mpg weight, saving("`rc_pe'") replace
+    python: import os
+    python: _rc_sp = _rc_M.getLocal("rc_sd") + "/dash_render.py"
+    python: _rc_st = os.stat(_rc_sp)
+    python: _rc_src = open(_rc_sp, encoding="utf-8").read().replace("RC-STAND-IN-1", "RC-STAND-IN-2")
+    python: _rc_nw = open(_rc_sp, "w", encoding="utf-8").write(_rc_src)
+    python: os.utime(_rc_sp, ns=(_rc_st.st_atime_ns, _rc_st.st_mtime_ns))
+    python: _rc_M.setLocal("rc_samestat", "1" if (os.stat(_rc_sp).st_size, os.stat(_rc_sp).st_mtime_ns) == (_rc_st.st_size, _rc_st.st_mtime_ns) else "0")
+    dash scatter mpg weight, saving("`rc_pf'") replace
+}
+local rc_r5 = _rc
+adopath - "`rc_sd'"
+cert_file_has "`rc_pe'", needle("RC-STAND-IN-1")
+local rc_v1 = r(found)
+cert_file_has "`rc_pf'", needle("RC-STAND-IN-2")
+local rc_v2 = r(found)
+capture erase "`rc_sd'/dash_render.py"
+capture rmdir "`rc_sd'"
+if `rc_r5' == 0 & "`rc_samestat'" == "1" & `rc_v1' == 1 & `rc_v2' == 1 {
+    display as text "RC-03 PASS: a renderer edited in place to the same size and time runs its new bytes"
+}
+else {
+    display as error "RC-03 FAIL: rc `rc_r5', same size and time `rc_samestat', first build ran the first bytes `rc_v1', second the second `rc_v2'"
+    local rc_fail = `rc_fail' + 1
+}
+foreach f in rc_pa rc_pb rc_pc rc_pd rc_pe rc_pf {
+    capture erase "``f''"
+}
+assert `rc_fail' == 0
 
 dash clear
 display as result "test_render_log_clean.cscript: ALL PASS"

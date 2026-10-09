@@ -228,7 +228,8 @@ COVERAGE = {
         # stub openers receive the path whole; dash build reaches it.
         "_dash_open_page": ("test_serve_browser.cscript:SB-14",
                             "test_serve_browser.cscript:SB-19",
-                            "test_help_claims_2.cscript:HC2-30"),
+                            "test_help_claims_2.cscript:HC2-30",
+                            "test_serve_browser.cscript:SB-22"),
         # e2e: the superseded item's globals are gone, a neighbour's kept.
         "_dash_drop_item": ("test_registry_collision.cscript:REG-05",
                             "test_registry_collision.cscript:REG-13",
@@ -295,6 +296,65 @@ COVERAGE = {
                         # e2e: TOK-02, a real dash serve refuses without its
                         # key and serves with it (WP-29 P0.12a).
                         "test_serve_launch.cscript:TOK-02"),
+        # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
+        # ENV-25: below the floor (comparator stubbed) the refusal names the
+        # floor and the running release, r(9) (direct); ENV-28: every dash
+        # route of both modes is refused first (e2e).
+        "_dash_require_stata": ("test_env_guards.cscript:ENV-25",
+                                "test_env_guards.cscript:ENV-28"),
+        # ENV-24: the comparator's table, by value (direct); ENV-26: the
+        # guard passes silently through it at or above the floor (direct).
+        "_dash_stata_ok": ("test_env_guards.cscript:ENV-24",
+                           "test_env_guards.cscript:ENV-26"),
+        # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
+        "_dash_subopt_check": ("test_suboption_reporting.cscript:SA-05",),
+        # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
+        "_dash_stylelist_check": ("test_varlist_expansion.cscript:SL-18",
+                                  "test_varlist_expansion.cscript:SL-19",
+                                  "test_varlist_expansion.cscript:SL-24",
+                                  "test_adversarial.cscript:P20-18b"),
+        # Batch-4 fix: a stylelist value twoway's string cannot bind is refused
+        "_dash_stylelist_bind": ("test_adversarial.cscript:P20-18b",),
+        # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
+        "_dash_display_on": ("test_serve_browser.cscript:SB-31", "test_serve_browser.cscript:SB-32"),
+        # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
+        "_dash_mlabel_list": ("test_varlist_expansion.cscript:PS-05", "test_varlist_expansion.cscript:PS-06"),
+        "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
+        # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
+        "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),
+        # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
+        "_dash_pyfloor": ("test_env_guards.cscript:ENV-33",),
+        "_dash_require_deps": ("test_env_guards.cscript:ENV-31", "test_env_guards.cscript:ENV-34", "test_env_guards.cscript:ENV-35"),
+        # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
+        "_dash_scheme_dirs": ("test_custom_scheme.cscript:SP-04", "test_wp30_truth.cscript:SP-18"),
+        # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
+        "_dash_fold_mlabv": ("test_twoway_option_parity.cscript:MV-01", "test_twoway_option_parity.cscript:MV-02"),
+        "_dash_mlabv_parse": ("test_twoway_option_parity.cscript:MV-06", "test_twoway_option_parity.cscript:MV-07"),
+        # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
+        "_dash_line_check": ("test_suboption_reporting.cscript:XP-01",),
+        "_dash_line_expand": ("test_suboption_reporting.cscript:XP-08", "test_suboption_reporting.cscript:XP-04"),
+        "_dash_refline_panels": ("test_suboption_reporting.cscript:XP-07",),
+        "_dash_reflines_cap": ("test_suboption_reporting.cscript:XP-07",),
+        "_dash_reflines_of": ("test_suboption_reporting.cscript:XP-07",),
+        # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
+        "_dash_connect_opt": ("test_twoway_option_parity.cscript:CM-01", "test_twoway_option_parity.cscript:CM-12"),
+        # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
+        "_dash_parse_varpart_ts": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-04"),
+        "_dash_tsop_gen": ("test_parser.cscript:TSO-06", "test_parser.cscript:TSO-11"),
+        # WP-30 S45 (P1.8b): recast() (P1.8 part b)
+        "_dash_recast_opt": ("test_twoway_option_parity.cscript:RC-01", "test_twoway_option_parity.cscript:RC-13"),
+        "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),
+        "_dash_recast_named": ("test_twoway_option_parity.cscript:RC-07",),
+        # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
+        "_dash_by_check": ("test_by_suboptions.cscript:BYG-01", "test_by_suboptions.cscript:BYG-17"),
+        # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
+        "_dash_hz_check": ("test_option_validation.cscript:HZ-03",),
+        # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
+        "_dash_taxis_fold": ("test_twoway_option_parity.cscript:TA-01", "test_twoway_option_parity.cscript:TA-05"),
+        # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
+        "_dash_added_text": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-33"),
+        "_dash_added_text_cap": ("test_resource_limits.cscript:AT-40", "test_resource_limits.cscript:AT-42"),
+        "_dash_at_opts": ("test_twoway_option_parity.cscript:AT-05", "test_twoway_option_parity.cscript:AT-06"),
     },
     "dash_setup.ado": {
         # e2e: every branch this machine can reach, installing nothing.
@@ -335,6 +395,18 @@ COVERAGE = {
                               "test_program_coverage.cscript:PEP-04"),
         "_dash_setup_venv": ("test_program_coverage.cscript:PEP-08",
                              "test_setup_honesty.cscript:PEP-18"),
+        # WP-30 S03 (P1.35): Stata 19 floor declared and enforced (P1.35 under M2)
+        # ENV-29: passes silently at or above the floor and refuses dash_setup
+        # first below it (direct); PC-15: a full dash_setup reports the
+        # Stata OK line (e2e).
+        "_dash_setup_stata": ("test_env_guards.cscript:ENV-29",
+                              "test_program_coverage.cscript:PC-15"),
+        # ENV-29: r(statamin) is "19" (direct); PC-15: a full dash_setup
+        # passes the guard that reads it (e2e).
+        "_dash_statamin": ("test_env_guards.cscript:ENV-29",
+                           "test_program_coverage.cscript:PC-15"),
+        # WP-30 S25 (P1.32): Render-time dependency guards (P1.32)
+        "_dash_setup_pystart": ("test_setup_honesty.cscript:HON-42", "test_setup_honesty.cscript:HON-40", "test_setup_honesty.cscript:HON-41"),
     },
     "dash_parse.mata": {
         # e2e: through _dash_json_str_args; direct in PC-28.
@@ -369,7 +441,8 @@ COVERAGE = {
         # WP-28 S14 (B1): direct -- an axis-label value split into strings,
         # bare runs and hostile runs; the hostile run is never expanded.
         "_dash_axis_pieces": ("test_gaps2_truth.cscript:AL-02",
-                              "test_gaps2_truth.cscript:AL-01"),
+                              "test_gaps2_truth.cscript:AL-01",
+                              "test_suboption_reporting.cscript:AD-09"),
         "_dash_axis_run_tag": ("test_gaps2_truth.cscript:AL-02",),
         "_dash_layout_refusal": ("test_echo_text.cscript:ECH-11",),
         # P1A-76: every prefix of every name, direct, and no prefix that
@@ -417,6 +490,9 @@ COVERAGE = {
                             "test_tokenizer.cscript:P1A-28"),
         "_dash_split_segs": ("test_tokenizer.cscript:P1A-21",
                              "test_parser_integrity.cscript:P1B-06"),
+        "_dash_piece_is_bare": ("test_parser.cscript:P1A-85",),
+        "_dash_split_groups": ("test_parser.cscript:P1A-85",
+                               "test_tokenizer.cscript:P1A-24"),
         "_dash_extract_vars": ("test_parser.cscript:P1A-48",
                                "test_help_claims_6.cscript:HC6-48"),
         # e2e: the names _dash_extract_qual_vars returns past escapes.
@@ -605,6 +681,95 @@ COVERAGE = {
                                   "test_help_claims_3.cscript:HC3-20"),
         "_dash_graph_touched": ("test_adversarial.cscript:DL-03b",),
         "_dash_qual_cols_in": ("test_adversarial.cscript:DL-04",),
+        # WP-30 S04 (P1.29): CSP without 'unsafe-inline'; safe Windows opener (P1.29, M11)
+        "_dash_cmd_metachar": ("test_serve_browser.cscript:SB-21",),
+        # WP-30 S06 (P1.26a): One note channel (P1.26 part a)
+        "_dash_note": ("test_render_log_clean.cscript:NC-06", "test_render_log_clean.cscript:NC-05"),
+        # WP-30 S10 (P1.19): Sub-option abbreviations (P1.19)
+        "_dash_so_canon": ("test_suboption_reporting.cscript:SA-04",),
+        "_dash_so_family": ("test_suboption_reporting.cscript:SA-04",),
+        "_dash_so_isnum": ("test_suboption_reporting.cscript:SA-08",),
+        "_dash_so_resolve": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-06"),
+        "_dash_so_rows": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-06"),
+        "_dash_so_unsafe": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_accept": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_add": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-15"),
+        "_dash_subreq_check": ("test_suboption_reporting.cscript:SA-05", "test_suboption_reporting.cscript:SA-15"),
+        "_dash_subreq_clear": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_drop": ("test_suboption_reporting.cscript:SA-06",),
+        "_dash_subreq_label": ("test_suboption_reporting.cscript:SA-05",),
+        "_dash_subreq_toks": ("test_suboption_reporting.cscript:SA-05",),
+        # WP-30 S11 (P1.1a): Stylelists of style options across an expanded varlist (P1.1 part a)
+        "_dash_stylelist_bad": ("test_varlist_expansion.cscript:SL-08",),
+        "_dash_stylelist_blank": ("test_varlist_expansion.cscript:SL-25",),
+        "_dash_stylelist_elems": ("test_varlist_expansion.cscript:SL-02",),
+        "_dash_stylelist_keys": ("test_varlist_expansion.cscript:SL-01",),
+        "_dash_stylelist_norm": ("test_varlist_expansion.cscript:SL-09",),
+        "_dash_stylelist_pick": ("test_varlist_expansion.cscript:SL-03",),
+        "_dash_stylelist_probe": ("test_varlist_expansion.cscript:SL-10",),
+        # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
+        "_dash_launch_quote": ("test_serve_browser.cscript:SB-37",),
+        "_dash_launch_warn": ("test_serve_browser.cscript:SB-37",),
+        "_dash_saving_opt_toks": ("test_path_validation.cscript:PV-36",),
+        "_dash_saving_parse": ("test_path_validation.cscript:PV-36", "test_path_validation.cscript:PV-37"),
+        "_dash_saving_split": ("test_path_validation.cscript:PV-35",),
+        "_dash_seg_saving": ("test_path_validation.cscript:PV-37",),
+        "_dash_strip_prefix": ("test_wp30_truth.cscript:CF-01", "test_wp30_truth.cscript:CF-03"),
+        # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
+        "_dash_barwidth_typed": ("test_twoway_option_parity.cscript:BG-07",),
+        # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
+        "_dash_axis_fmts": ("test_option_validation.cscript:AF-01", "test_option_validation.cscript:AF-06"),
+        # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
+        "_dash_stylelist_locals": ("test_varlist_expansion.cscript:PS-01",),
+        # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
+        "_dash_abs_path": ("test_export.cscript:GE-11",),
+        "_dash_graph_names": ("test_export.cscript:GE-14",),
+        # WP-30 S31 (P1.18a): Axis look sub-options (P1.18 part a, M5/M6)
+        "_dash_angle_out": ("test_suboption_reporting.cscript:AXL-01",),
+        "_dash_axbound_list": ("test_suboption_reporting.cscript:AXL-05",),
+        # WP-30 S34 (P1.25b): Stata's scheme lookup along the ado-path (P1.25 part b, M7)
+        "_dash_scheme_dirs_json": ("test_wp30_truth.cscript:SP-18", "test_custom_scheme.cscript:SP-04"),
+        # WP-30 S38 (P1.20a): plotregion()/graphregion() styling (P1.20 part a)
+        "_dash_rep_region": ("test_twoway_option_parity.cscript:RS-12",),
+        "_dash_rep_region_word": ("test_twoway_option_parity.cscript:RS-10",),
+        "_dash_subreq_region": ("test_twoway_option_parity.cscript:RS-01",),
+        # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
+        "_dash_axreq_accept_line": ("test_suboption_reporting.cscript:XP-01",),
+        "_dash_reflines_positions": ("test_suboption_reporting.cscript:XP-07",),
+        # WP-30 S40 (P1.8a): connect() and cmissing() (P1.8 part a)
+        "_dash_connect_canon": ("test_twoway_option_parity.cscript:CM-08", "test_twoway_option_parity.cscript:CM-05"),
+        # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
+        "_dash_tsop_canon": ("test_parser.cscript:TSO-11",),
+        "_dash_tsop_export": ("test_parser.cscript:TSO-01",),
+        "_dash_tsop_meta": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-09"),
+        "_dash_tsop_reset": ("test_parser.cscript:TSO-01",),
+        "_dash_tsop_rewrite": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-11"),
+        # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
+        "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),
+        "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
+        # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
+        "_dash_hz_order": ("test_option_validation.cscript:HZ-03",),
+        # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
+        "_dash_taxis_unit": ("test_twoway_option_parity.cscript:TA-04",),
+        "_dash_tdate_value": ("test_twoway_option_parity.cscript:TA-08", "test_twoway_option_parity.cscript:TA-09"),
+        "_dash_tdate_ticks": ("test_twoway_option_parity.cscript:TA-01",),
+        "_dash_tdate_lines": ("test_twoway_option_parity.cscript:TA-05",),
+        "_dash_tdate_tok": ("test_twoway_option_parity.cscript:TA-02", "test_twoway_option_parity.cscript:TA-05"),
+        "_dash_tdate_range": ("test_twoway_option_parity.cscript:TA-02",),
+        "_dash_xdate_find": ("test_twoway_option_parity.cscript:TA-15",),
+        "_dash_taxis_fmt": ("test_twoway_option_parity.cscript:TA-12",),
+        # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
+        "_dash_at_lex": ("test_twoway_option_parity.cscript:AT-04b", "test_json_escaping.cscript:AT-16"),
+        "_dash_at_unq": ("test_twoway_option_parity.cscript:AT-02", "test_twoway_option_parity.cscript:AT-04"),
+        "_dash_at_isnum": ("test_twoway_option_parity.cscript:AT-01",),
+        "_dash_at_parse": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-02"),
+        "_dash_at_copy": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-03"),
+        "_dash_at_place": ("test_wp30_truth.cscript:AT-21", "test_twoway_option_parity.cscript:AT-05"),
+        "_dash_at_orient": ("test_twoway_option_parity.cscript:AT-05",),
+        "_dash_at_json": ("test_twoway_option_parity.cscript:AT-04", "test_wp30_truth.cscript:AT-20"),
+        "_dash_at_records": ("test_twoway_option_parity.cscript:AT-04",),
+        "_dash_at_canon": ("test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-05"),
+        "_dash_at_dates": ("test_twoway_option_parity.cscript:AT-30", "test_twoway_option_parity.cscript:AT-31"),
     },
 }
 

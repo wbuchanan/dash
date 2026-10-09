@@ -53,11 +53,25 @@
 *! (TOK-01); a real dash serve refuses without the key and serves 74 rows
 *! with it, the link in a 0600 file of a 0700 folder (TOK-02); no log
 *! holds the key (TOK-03); the help names it (TOK-04).
+*! GE-20 (WP-30 P1.28a), after TOK-04 and before SRV-19: dash serve stores
+*! nothing in r().
+*! NC-07..NC-08 (WP-30 P1.26b), after TOK-04 and before SRV-19: dash
+*! build, server prints the notes dash build prints (NC-07); a real dash
+*! serve relays the app's notes once each and no key (NC-08).
 *!
 *! Usage:  do test/test_serve_launch.cscript
 *! Version: 1.2  24sep2026
 
 cscript "dash serve accepts its own options" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Setup
@@ -398,8 +412,11 @@ dash clear
 // the output path into python: lines; a double quote in either ended the
 // literal and the rest ran as Python.  LOC-17 runs the immediate route's
 // _dash_do_render with payload paths; nothing ran dash serve, whose own
-// interpolation (dash.ado ~5481, `runpy.run_path("`_py_render'", ...)') is
-// a SECOND copy of the same idiom.  This drives `dash serve' whole against
+// interpolation (dash.ado ~5481, `runpy.run_path("`_py_render'", ...)';
+// since WP-30's test performance work, B1, the same escaped literal is
+// the first argument of _dash_xm._dash_run_renderer, which runs the file
+// as run_path did) is a SECOND copy of the same idiom.  This drives
+// `dash serve' whole against
 // a renderer whose DIRECTORY name is a Python payload -- whose double quote
 // would end the literal the path is interpolated into -- located through
 // the real _dash_find_render (findfile off S_ADO, as LOC-10/11 do), so the
@@ -805,7 +822,8 @@ cert_log_has "`tok01lg'", needle("a new key for each launch")
 local tok01a = r(found)
 cert_file_has "`tok01py'", needle("--token-stdin")
 local tok01b = r(found)
-cert_file_has "`tok01py'", needle("auth_provider=_dash_token_auth(")
+// WP-30 P1.31a: the key's provider inside the open-session cap's.
+cert_file_has "`tok01py'", needle("auth_provider=_dash_cap_auth(_dash_token_auth(")
 local tok01c = r(found)
 cert_file_has "`tok01py'", needle("_DASH_SERVE_TOKEN = None")
 local tok01d = r(found)
@@ -982,6 +1000,211 @@ assert `tok04d' == 0
 assert `tok04e' == 0
 display "TOK-04 PASS: the help names DASH_SERVE_TOKEN, ?token= and --token-stdin, and no longer claims only this machine can reach it"
 dash clear
+
+// ================================================================
+// GE-20 (WP-30 P1.28a) -- dash serve stores nothing in r(), so neither a
+// path nor the served key can be: a stub renderer (SRV-17's) stands in.
+// Paths are built by hand, never from tempfile or tempname (the session
+// counter SRV-19 reads; see SPU-01).
+// ================================================================
+local ge20d "`c(tmpdir)'dash_ge20_`c(current_time)'"
+local ge20d = subinstr("`ge20d'", ":", "", .)
+capture mkdir "`ge20d'"
+capture file close ge20fh
+file open ge20fh using "`ge20d'/dash_render.py", write text replace
+file write ge20fh `"import os, shutil, sys"' _n
+file write ge20fh `"_a = sys.argv[1:]"' _n
+file write ge20fh `"_d = os.path.dirname(os.path.abspath(__file__))"' _n
+file write ge20fh `"shutil.copyfile(_a[_a.index("--spec") + 1], os.path.join(_d, "spec.json"))"' _n
+file write ge20fh `"shutil.copyfile(_a[_a.index("--data") + 1], os.path.join(_d, "data.json"))"' _n
+file write ge20fh `"open(_a[_a.index("--output") + 1], "w", encoding="utf-8").write("# app")"' _n
+file close ge20fh
+dash clear
+qui sysuse auto, clear
+dash scatter mpg weight, name(ge20)
+dash build, saving("`ge20d'/ge20.html") replace nobrowser
+adopath ++ "`ge20d'"
+capture noisily {
+    quietly summarize price
+    dash serve
+    mata: st_local("ge20m", invtokens(st_dir("r()", "macro", "*")'))
+    mata: st_local("ge20s", strofreal(rows(st_dir("r()", "numscalar", "*"))))
+}
+local rc20 = _rc
+adopath - "`ge20d'"
+local fl : dir "`ge20d'" files "*"
+foreach f of local fl {
+    capture erase "`ge20d'/`f'"
+}
+capture rmdir "`ge20d'"
+dash clear
+assert `rc20' == 0
+assert "`ge20m'" == "" & "`ge20s'" == "0"
+display "GE-20 PASS: dash serve stores nothing in r()"
+
+// ================================================================
+// NC-07..NC-08 (WP-30 P1.26b) -- the served app's notes reach Stata
+// ================================================================
+// _nc_notes reads a text log (path in local nclog), joins Stata's "> "
+// continuation lines, and sets local ncnotes to its sorted lines holding
+// "(note:" joined by " || ", and ncn to their count.  Each case opens with
+// graph drop _all: S22 notes graph export while a Stata graph is in memory.
+python:
+import re as _nc_re
+from sfi import Macro as _nc_M
+def _nc_notes():
+    with open(_nc_M.getLocal("nclog"), encoding="utf-8", errors="replace") as fh:
+        txt = fh.read().replace("\n> ", "")
+    got = sorted(_nc_re.sub(r"\(note: +", "(note:  ", l.strip())
+                 for l in txt.splitlines() if "(note:" in l)
+    _nc_M.setLocal("ncnotes", " || ".join(got))
+    _nc_M.setLocal("ncn", str(len(got)))
+end
+local ncdir "`c(tmpdir)'"
+local ncls = c(linesize)
+set linesize 255
+
+// NC-07: dash build, server names what dash build names
+quietly graph drop _all
+sysuse auto, clear
+dash clear
+dash (scatter mpg weight, mcolor(notacolor) msymbol(weird)) (lfit mpg weight if price > 20000) (bar mpg weight if price > 20000) (line mpg weight if price > 20000), name(nc07)
+foreach q in noisily quietly {
+    foreach m in saved server {
+        local nclog "`ncdir'dash_nc07_`q'_`m'.log"
+        local ext = cond("`m'" == "saved", "html", "py")
+        local opt = cond("`m'" == "saved", "", "server")
+        capture erase "`nclog'"
+        quietly log using "`nclog'", replace text name(_nc07)
+        // capture would hide the notes (S06): quietly runs uncaptured.
+        if "`q'" == "quietly" quietly dash build, saving("`ncdir'dash_nc07.`ext'") replace `opt'
+        else capture noisily dash build, saving("`ncdir'dash_nc07.`ext'") replace `opt'
+        local nc07rc_`q'_`m' = _rc
+        quietly log close _nc07
+        python: _nc_notes()
+        local nc07_`q'_`m' `"`ncnotes'"'
+        local nc07n_`q'_`m' = `ncn'
+        cert_log_has "`nclog'", needle("drew nothing")
+        local nc07dn_`q'_`m' = r(found)
+        capture erase "`nclog'"
+    }
+}
+capture erase "`ncdir'dash_nc07.html"
+capture erase "`ncdir'dash_nc07.py"
+display as text `"  NC-07 saved   `nc07_noisily_saved'"'
+display as text `"  NC-07 server  `nc07_noisily_server'"'
+display as text `"  NC-07 quietly `nc07n_quietly_saved' `nc07n_quietly_server'"'
+foreach q in noisily quietly {
+    assert `nc07rc_`q'_saved' == 0 & `nc07rc_`q'_server' == 0
+    assert `nc07dn_`q'_saved' == 0 & `nc07dn_`q'_server' == 0
+    assert `"`nc07_`q'_saved'"' == `"`nc07_`q'_server'"'
+}
+assert `nc07n_noisily_saved' >= 3
+assert `nc07n_quietly_saved' >= 2
+local ncsaved `"`nc07_noisily_saved'"'
+display "NC-07 PASS: dash build, server prints the notes dash build prints, noisily and quietly, and no drew-nothing note"
+
+// NC-08: a real dash serve relays the app's notes once each, never the key
+quietly graph drop _all
+local nclog "`ncdir'dash_nc08.log"
+local ncsm "`ncdir'dash_nc08.smcl"
+capture erase "`nclog'"
+capture erase "`ncsm'"
+python:
+import glob as _nc_glob, os as _nc_os, signal as _nc_sig, socket as _nc_sock
+import subprocess as _nc_sp, threading as _nc_th, time as _nc_time
+import urllib.error as _nc_ue, urllib.request as _nc_url
+_nc_s = _nc_sock.socket()
+_nc_s.bind(("127.0.0.1", 0))
+_nc_port = _nc_s.getsockname()[1]
+_nc_s.close()
+_nc_M.setLocal("ncport", str(_nc_port))
+_nc_tmp = _nc_M.getLocal("ncdir")
+_nc_state = {}
+def _nc_get(url):
+    try:
+        with _nc_url.urlopen(url, timeout=20) as r:
+            return r.status
+    except _nc_ue.HTTPError as e:
+        return e.code
+    except Exception as e:
+        return type(e).__name__
+def _nc_run():
+    try:
+        t0 = _nc_time.time()
+        while _nc_time.time() - t0 < 60:
+            if _nc_get("http://127.0.0.1:%d/health" % _nc_port) == 200:
+                break
+            _nc_time.sleep(0.2)
+        pat = _nc_os.path.join(_nc_tmp, "dash-%d" % _nc_os.getuid(),
+                               "run-%d-*" % _nc_os.getpid(), "link.html")
+        t0 = _nc_time.time()
+        while _nc_time.time() - t0 < 10 and not _nc_glob.glob(pat):
+            _nc_time.sleep(0.2)
+        with open(_nc_glob.glob(pat)[0], encoding="utf-8") as fh:
+            m = _nc_re.search(r"\?token=([A-Za-z0-9_-]{43})", fh.read())
+        _nc_state["token"] = m.group(1)
+        url = "http://127.0.0.1:%d/?token=%s" % (_nc_port, m.group(1))
+        _nc_state["gets"] = [_nc_get(url), _nc_get(url),
+                             _nc_get("http://127.0.0.1:%d/" % _nc_port)]
+        _nc_time.sleep(3)
+    except Exception as e:
+        _nc_state["error"] = type(e).__name__
+    finally:
+        try:
+            out = _nc_sp.run(["lsof", "-ti", "tcp:%d" % _nc_port,
+                              "-sTCP:LISTEN"], capture_output=True,
+                             text=True, timeout=10).stdout
+            for pid in out.split():
+                try:
+                    _nc_os.kill(int(pid), _nc_sig.SIGTERM)
+                except (ValueError, OSError):
+                    pass
+        except Exception:
+            pass
+_nc_thread = _nc_th.Thread(target=_nc_run, daemon=True)
+_nc_thread.start()
+end
+quietly log using "`nclog'", replace text name(_nc08t)
+quietly log using "`ncsm'", replace smcl name(_nc08s)
+timer clear 94
+timer on 94
+capture noisily dash serve, port(`ncport') timeout(1) nobrowser
+local nc08rc = _rc
+timer off 94
+quietly timer list 94
+local nc08s = r(t94)
+quietly log close _nc08s
+quietly log close _nc08t
+python:
+_nc_thread.join(60)
+_nc_notes()
+_nc_bad = []
+_nc_key = _nc_state.get("token", "")
+for _nc_p in (_nc_M.getLocal("nclog"), _nc_M.getLocal("ncsm")):
+    with open(_nc_p, encoding="utf-8", errors="replace") as fh:
+        _nc_txt = fh.read().replace("\n> ", "")
+    if not _nc_key or _nc_key in _nc_txt:
+        _nc_bad.append("key")
+    for _nc_w in ("UserWarning", "Traceback", ".py:", "403 GET"):
+        if _nc_w in _nc_txt:
+            _nc_bad.append(_nc_w)
+_nc_M.setLocal("nc08bad", " ".join(_nc_bad))
+_nc_M.setLocal("nc08gets", str(_nc_state.get("gets", _nc_state.get("error"))))
+end
+local nc08 `"`ncnotes'"'
+capture erase "`nclog'"
+capture erase "`ncsm'"
+display as text `"  NC-08 rc `nc08rc' after `nc08s' s, requests `nc08gets', bad [`nc08bad']"'
+display as text `"  NC-08 notes `nc08'"'
+assert `nc08rc' == 0
+assert `nc08s' < 60
+assert "`nc08gets'" == "[200, 200, 403]"
+assert "`nc08bad'" == ""
+assert `"`nc08'"' == `"`ncsaved'"'
+set linesize `ncls'
+dash clear
+display "NC-08 PASS: a real dash serve relays the app's notes once each over two sessions, with no warning path, traceback, access line or key"
 
 // ================================================================
 // SRV-19 -- dash serve writes its app into a private run folder of this

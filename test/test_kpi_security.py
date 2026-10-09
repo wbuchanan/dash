@@ -59,6 +59,9 @@ from dash_render import DashRenderer, _sanitize_css_color
 from conftest import make_spec, make_data_json
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _df():
     return pd.DataFrame({
         "mpg": np.linspace(12.0, 41.0, 10),
@@ -360,7 +363,7 @@ class TestBothPathsAgree:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -449,7 +452,7 @@ def _saved(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 

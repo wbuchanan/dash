@@ -177,6 +177,11 @@ class FakeSfi:
                 fake.shown.append(text)
 
             @staticmethod
+            def errprintln(text):
+                # A note's channel since WP-30 P1.26a, as twoway's notes.
+                fake.shown.append(text)
+
+            @staticmethod
             def stata(cmd):
                 fake.commands.append(cmd)
                 m = re.fullmatch(r"quietly generate strL (\w+) = ustrfix\((\w+)\)", cmd)
@@ -365,7 +370,8 @@ class TestTheWriter:
             made[0])
         assert len(fake.shown) == 1
         assert fake.shown[0].startswith(
-            "{txt}dash: string variable s holds text that is not valid UTF-8")
+            "{txt}(note:  dash: string variable s holds text that is not "
+            "valid UTF-8")
         assert "unicode translate" in fake.shown[0]
 
     def test_a_binary_strl_is_refused_naming_it(self, tmp_path):
@@ -385,7 +391,8 @@ class TestTheWriter:
         assert _load(path)["variableLabels"]["s"] == "Mile\ufffdage"
         assert fake.globals == {}                   # the global is dropped
         assert fake.shown[0].startswith(
-            "{txt}dash: the variable label of s holds text that is not valid")
+            "{txt}(note:  dash: the variable label of s holds text that is "
+            "not valid")
         fake = _fake_auto()
         fake.label_sets["gl"][1] = "For\ufffd"
         fake.bad_labelset = {"gl"}
@@ -394,7 +401,8 @@ class TestTheWriter:
         assert _load(path)["valueLabels"]["g"]["1"] == "For\ufffd"
         assert set(fake.label_sets) == {"gl"}       # the copy is dropped
         assert fake.shown[0].startswith(
-            "{txt}dash: value label gl, on g, holds text that is not valid")
+            "{txt}(note:  dash: value label gl, on g, holds text that is not "
+            "valid")
 
     def test_a_name_that_is_not_a_stata_name_is_refused(self, tmp_path):
         """Names reach Stata commands (the ustrfix() reads): one holding
@@ -551,12 +559,21 @@ class TestDashAdoUsesTheWriter:
         """Flipped (WP-29 P0.12b): dash.ado calls the module for its private
         temporary folder too -- the run folder, its close, the preview's
         name, the spec and empty-data writer and dash clear's pruning --
-        so the six names of TR-08.9, not the data writer alone."""
-        called = set(re.findall(r"_dash_xm\.(_dash_\w+)\(", _ado()))
+        so the six names of TR-08.9, not the data writer alone.  And
+        (WP-30 test performance, B1) the renderer run itself, which
+        compiles dash_render.py once a session
+        (test_render_compile_once.py).  Flipped (WP-30 P1.32): dash clear
+        now reaches _dash_tmp_clear through dash_setup_lib.stdlib_entry,
+        so it runs without the packages, and _dash_xm_load calls
+        _dash_dep_versions."""
+        ado = _ado()
+        called = (set(re.findall(r"_dash_xm\.(_dash_\w+)\(", ado))
+                  | set(re.findall(r'stdlib_entry\(.*?"(_dash_\w+)"\)', ado)))
         declared = {f.__name__ for f in dr._DASH_ADO_ENTRY_POINTS}
         assert called == declared == {
             "_dash_write_stata_data", "_dash_run_open", "_dash_run_close",
-            "_dash_preview_path", "_dash_tmp_write_text", "_dash_tmp_clear"}
+            "_dash_preview_path", "_dash_tmp_write_text", "_dash_tmp_clear",
+            "_dash_run_renderer", "_dash_dep_versions"}
 
     def test_names_and_path_reach_python_by_value(self):
         """The path and the variable names are read by Macro.getLocal(),

@@ -33,7 +33,7 @@ pandas 3.0.1, numpy 2.4.3, bokeh 3.9.0):
   refuses past 2262, and the card showed the bare number.
 
 Every expected date is Stata's, measured with the console binary
-(``arch -arm64 stata-mp -b``) and cited beside it.  Epoch milliseconds are
+(the console binary, ``stata-mp -b``) and cited beside it.  Epoch milliseconds are
 days after 01jan1970 times 86,400,000; 01jan1960, Stata's day 0, is
 -3,653 days (so %td 14977 is (14977 - 3653) * 86400000 = 978393600000).
 """
@@ -52,7 +52,8 @@ import pandas as pd
 import pytest
 from bokeh.document import Document
 from bokeh.embed import json_item
-from bokeh.models import (Arrow, DateRangeSlider, DateSlider, GlyphRenderer,
+from bokeh.models import (Arrow, DateRangeSlider, DateSlider, DatetimeAxis,
+                          GlyphRenderer,
                           HoverTool, LabelSet, LinearColorMapper, VBar)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -60,7 +61,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, exec_app  # noqa: E402
 
 _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 
@@ -73,6 +74,9 @@ _MS = [978393600000.0, 978480000000.0, 978566400000.0, 978652800000.0,
 # `display %td 2936550' prints 2936550: one day past Stata's last date is no
 # date at all (24sep2026).
 _PAST = 2936550.0
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _iso(ts):
@@ -154,7 +158,7 @@ def _saved(tmp_path, spec, data):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp, os.path.join(str(tmp_path), "o.html"))
-        r.render()
+        render_models(r)
     return r, [str(w.message) for w in caught]
 
 
@@ -169,7 +173,7 @@ def _served(tmp_path, spec, data):
             src = fh.read()
         assert _ATTACH in src
         ns = {"__name__": "date_range_app"}
-        exec(compile(src.replace(_ATTACH, "pass"), ap, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), ap, ns)
         doc = Document()
         ns["make_document"](doc)
         # Everything in it must be writable as the page's JSON.
@@ -591,7 +595,9 @@ class TestTheSavedPageHoldsThePlaceholder:
         spec = _spec([{"type": "scatter", "yvar": "close", "xvar": "x",
                        "options": {}}], graph_options={"by": "date"})
         r, _w = _saved(tmp_path, spec, df)
-        assert [r.figures[k].title.text for k in ("g1__by__0", "g1__by__1")
+        # Flipped (WP-30 P1.15a): the date is the panel's label row.
+        from by_panel_probe import panel_label
+        assert [panel_label(r.figures[k]) for k in ("g1__by__0", "g1__by__1")
                 ] == [_td(14977.0), _td(2936549.0)]  # # GAPS2 E3/G6, WP-28 S12: Stata text
 
     def test_the_download_writes_the_placeholder(self, tmp_path):
@@ -663,8 +669,10 @@ class TestTheServedAppWritesThePlaceholder:
         spec = _spec([{"type": "scatter", "yvar": "close", "xvar": "x",
                        "options": {}}], graph_options={"by": "date"})
         doc, _w = _served(tmp_path, spec, df)
-        titles = sorted(p.title.text for p in doc.select({"type": Plot})
-                        if p.title is not None and p.title.text)
+        # Flipped (WP-30 P1.15a): the date is the panel's label row.
+        from by_panel_probe import panel_label
+        titles = sorted(panel_label(p) for p in doc.select({"type": Plot})
+                        if panel_label(p))
         # GAPS2 E3/G6, WP-28 S12: Stata's %td text.
         assert titles == [_td(14977.0), _td(2936549.0)]
 
@@ -801,11 +809,16 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
         assert not wrong, wrong
 
     def test_a_bar_over_dates_is_as_wide_as_their_spacing(self, tmp_path):
-        """0.8 of the thirty-day gap, in milliseconds; it was 0.8 ms."""
+        """One day, in milliseconds (twoway's bar_size 1 on a %td axis,
+        fixture widths.bar_td_daily); it was 0.8 ms.
+
+        Flipped (WP-30 P1.17a): 0.8 of the thirty-day gap was wrong because
+        twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
         r, _w = _saved(tmp_path, _spec([_plot_for("bar")]), _spread_frame())
         widths = [x.glyph.width for x in r.figures["g1"].renderers
                   if isinstance(x.glyph, VBar)]
-        assert widths == [0.8 * 30 * 86400000.0]
+        assert widths == [86400000.0]
 
     def test_a_dropline_labels_a_date_with_its_date(self, tmp_path):
         """Its own date column was replaced by floats, read as Stata days,
@@ -916,10 +929,20 @@ class TestAComputedLayerIsDrawnOnTheDateAxis:
                       {"type": "line", "yvar": "date", "xvar": "hi",
                        "options": {"yaxis": "2"}}])
         r, _w = _saved(tmp_path, spec, _spread_frame(hole=True))
-        (y2,) = r.figures["g1"].extra_y_ranges.values()
-        # The data's span with its padding either side.
-        assert _LO_MS - 0.1 * (_HI_MS - _LO_MS) <= y2.start <= _LO_MS
-        assert _HI_MS <= y2.end <= _HI_MS + 0.1 * (_HI_MS - _LO_MS)
+        fig = r.figures["g1"]
+        (y2,) = fig.extra_y_ranges.values()
+        (ax,) = [a for a in fig.right if a.y_range_name != "default"]
+        # The hull of the data and its ticks (WP-30 P1.3a), in milliseconds,
+        # with twoway's margin either side.  Flipped (WP-30 P1.23a): a
+        # second axis of dates is a DatetimeAxis that keeps Bokeh's date
+        # ticker, as the first axis does (S44 gives it twoway's), so the
+        # hull is the data's alone; it read a numeric axis's fixed ticks.
+        assert isinstance(ax, DatetimeAxis), type(ax).__name__
+        ticks = list(getattr(ax.ticker, "ticks", None) or [])
+        lo = min([_LO_MS] + ticks[:1])
+        hi = max([_HI_MS] + ticks[-1:])
+        assert lo - 0.1 * (hi - lo) <= y2.start <= _LO_MS
+        assert _HI_MS <= y2.end <= hi + 0.1 * (hi - lo)
 
 
 # ===========================================================================
@@ -1051,7 +1074,7 @@ def _ms_of(td):
 
 class TestADateColorvarUnderALayersIf:
     """The colour key of a %td colorvar() is drawn from the layer's own
-    rows, in epoch milliseconds, in both modes -- a served frame's date
+    rows, its mapper in epoch milliseconds, its text in Stata days, in both modes -- a served frame's date
     column is datetime64, which the domain reads on the column itself."""
 
     _PLOT = {"type": "scatter", "yvar": "lo", "xvar": "hi",
@@ -1080,10 +1103,12 @@ class TestADateColorvarUnderALayersIf:
         (rend,) = cb.colour_renderers(root)
         bounds = sorted({b for lo_hi in cb.interval_bounds(
             cb.colour_mapper(rend).factors) for b in lo_hi if b is not None})
-        lo, hi = _ms_of(_SPREAD[6]), _ms_of(_SPREAD[11])
+        lo, hi = _SPREAD[6], _SPREAD[11]
         want = [lo + k * (hi - lo) / 3 for k in (1, 2)]
         assert len(bounds) == 4
-        # The key writes a date's milliseconds with :g (six digits).
+        # WP-30 P1.23b: bounds in epoch milliseconds were wrong because
+        # twoway cuts and writes a date key in its Stata days (15,098
+        # 15,219), in %8.0gc.
         for got, w in zip(bounds[1:3], want):
-            assert abs(got - w) <= 5e6, (bounds, want)
-        assert abs(bounds[0] - lo) <= 5e6 and abs(bounds[-1] - hi) <= 5e6
+            assert abs(got - w) <= 0.5, (bounds, want)
+        assert abs(bounds[0] - lo) <= 0.5 and abs(bounds[-1] - hi) <= 0.5

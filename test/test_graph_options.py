@@ -15,17 +15,22 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # by_panel_probe (WP-30 P1.15a)
 from dash_render import DashRenderer
 # The parsers both render modes call: DashRenderer's _parse_axis_label_opt
 # and _parse_by_raw only delegated to them (the latter dropping the list
 # of unimplemented sub-options), only tests called them, and WP-26
 # deleted them (24sep2026).
 from dash_render import _dash_parse_axis_label_opt, _dash_parse_by
+from dash_render import _dash_range_reversed
 
 
 # ================================================================
 # Helpers
 # ================================================================
+
+from conftest import render_models  # noqa: E402
+
 
 def _make_graph_spec(name: str, ptype: str = "scatter",
                      yvar: str = "mpg", xvar: str = "weight",
@@ -184,22 +189,27 @@ class TestAspectRatio:
 class TestNote:
     def test_note_creates_label(self):
         """P6-04: note option creates a Label annotation on the figure."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"note": "This is a note"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert len(labels) >= 1, "Expected at least one Label in fig.below"
         assert any("This is a note" in lbl.text for lbl in labels)
 
     def test_note_is_canvas_text_not_html(self):
         """P6-04: a Label is drawn on the canvas, so its text stays literal.
+        Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        the box by the scheme's clock, which S15 draws as a side-panel Title.
+
 
         Escaping it turned note("R&D") into "R&amp;D" on screen.  Nothing
         executable reaches the document -- Bokeh escapes the model text again
         when it serialises it -- and that is asserted in test_axis_options.py.
         """
-        from bokeh.models import Label
+        from bokeh.models import Title
         fig = _get_figure({"note": "<script>bad()</script>"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert labels, "note() drew no label"
         assert any(lbl.text == "<script>bad()</script>" for lbl in labels)
 
@@ -210,16 +220,20 @@ class TestNote:
 class TestCaption:
     def test_caption_creates_label(self):
         """P6-05: caption option creates a Label annotation on the figure."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"caption": "Figure 1: Scatter"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert any("Figure 1: Scatter" in lbl.text for lbl in labels)
 
     def test_both_note_and_caption(self):
         """P6-05: both note and caption can coexist."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"note": "Note text", "caption": "Caption text"})
-        labels = [r for r in fig.below if isinstance(r, Label)]
+        labels = [r for r in fig.below if isinstance(r, Title) and r is not fig.title]
         assert len(labels) >= 2
         # Two labels of any text passed: a caption drawn with the note's
         # text, say.  Measured 24sep2026: exactly these two, below.
@@ -306,25 +320,31 @@ class TestXlineYline:
 class TestSubtitle:
     def test_subtitle_creates_label_above(self):
         """P6-08: subtitle option creates a Label annotation in fig.above."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"subtitle": "My subtitle"})
-        labels = [r for r in fig.above if isinstance(r, Label)]
+        labels = [r for r in fig.above if isinstance(r, Title) and r is not fig.title]
         assert len(labels) >= 1
         assert any("My subtitle" in lbl.text for lbl in labels)
 
     def test_subtitle_is_canvas_text_not_html(self):
         """P6-08: canvas text stays literal -- see test_note_is_canvas_text."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({"subtitle": "<script>xss()</script>"})
-        labels = [r for r in fig.above if isinstance(r, Label)]
+        labels = [r for r in fig.above if isinstance(r, Title) and r is not fig.title]
         assert labels, "subtitle() drew no label"
         assert any(lbl.text == "<script>xss()</script>" for lbl in labels)
 
     def test_no_subtitle_no_label(self):
         """P6-08: without subtitle option, no Label appears in fig.above."""
-        from bokeh.models import Label
+        # Flipped (WP-30 P1.2a): a Label was wrong because twoway places
+        # the box by the scheme's clock, which S15 draws as a side-panel Title.
+        from bokeh.models import Title
         fig = _get_figure({})
-        labels = [r for r in fig.above if isinstance(r, Label)]
+        labels = [r for r in fig.above if isinstance(r, Title) and r is not fig.title]
         assert len(labels) == 0
 
 
@@ -361,10 +381,10 @@ class TestXlabelYlabel:
         assert fig is not None
 
     def test_no_xlabel_default_ticker(self):
-        """P6-13: without xlabel, axis uses default (non-Fixed) ticker."""
-        from bokeh.models.tickers import FixedTicker
+        """P6-13: without xlabel, axis uses the default ticker (WP-30
+        P1.3a: twoway's ticks, tagged as a default)."""
         fig = _get_figure({})
-        assert not isinstance(fig.xaxis.ticker, FixedTicker)
+        assert "dash_default" in fig.xaxis.ticker.tags
 
     def test_xlabel_with_labels(self):
         """P6-13: xlabel with 'value label' pairs sets tick labels via CustomJSTickFormatter."""
@@ -738,7 +758,10 @@ class TestByFaceting:
         """Facet figure titles include the group value label."""
         r = _make_by_renderer("foreign")
         figs = r._build_figures()
-        titles = [figs[k].title.text for k in sorted(figs) if "__by__" in k]
+        # Flipped (WP-30 P1.15a): the group label is each panel's label
+        # row, as twoway draws it, not part of its title.
+        from by_panel_probe import panel_label
+        titles = [panel_label(figs[k]) for k in sorted(figs) if "__by__" in k]
         # foreign has value labels: 0→Domestic, 1→Foreign
         assert any("Domestic" in t for t in titles), f"No 'Domestic' in titles: {titles}"
         assert any("Foreign" in t for t in titles), f"No 'Foreign' in titles: {titles}"
@@ -1106,7 +1129,7 @@ class TestPerFacetKpis:
             "value": "", "subtitle": "", "color": "", "bgcolor": "",
         }
         r = self._build_renderer_with_kpi(kpi)
-        r.render()
+        render_models(r)
         assert list(r.kpi_divs) == ["k1"]
 
     def test_facet_kpi_titles_include_label(self):
@@ -1119,7 +1142,7 @@ class TestPerFacetKpis:
             "value": "", "subtitle": "", "color": "", "bgcolor": "",
         }
         r = self._build_renderer_with_kpi(kpi)
-        r.render()
+        render_models(r)
         text = r.kpi_divs["k1"].text
         assert "Avg MPG" in text and "Avg MPG (" not in text
         assert ">14.5<" in text   # the mean of mpg 10, 11, ..., 19
@@ -1132,7 +1155,7 @@ class TestPerFacetKpis:
             "subtitle": "", "color": "", "bgcolor": "",
         }
         r = self._build_renderer_with_kpi(kpi)
-        r.render()
+        render_models(r)
         # No stat/var → falls back to single div
         assert "k1" in r.kpi_divs
 
@@ -1144,9 +1167,9 @@ class TestXscaleYscaleReverse:
     """xscale(reverse) and yscale(reverse) must flip the axis direction."""
 
     def test_xscale_reverse_flips_x_range(self):
-        """P6-25a: xscale(reverse) must set fig.x_range.flipped = True."""
+        """P6-25a: xscale(reverse) must run the x range high to low."""
         fig = _get_figure({"xscale": "reverse"})
-        assert getattr(fig.x_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.x_range) is True
 
     def test_reverse_with_a_range_is_start_above_end(self):
         """WP-28 B2: reverse beside range() was dropped (a Range1d has no
@@ -1159,37 +1182,37 @@ class TestXscaleYscaleReverse:
         assert _dr._dash_range_reversed(fig.y_range) is True
 
     def test_yscale_reverse_flips_y_range(self):
-        """P6-25b: yscale(reverse) must set fig.y_range.flipped = True."""
+        """P6-25b: yscale(reverse) must run the y range high to low."""
         fig = _get_figure({"yscale": "reverse"})
-        assert getattr(fig.y_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.y_range) is True
 
     def test_xscale_log_reverse_both_applied(self):
-        """P6-25c: xscale(log reverse) must produce log axis AND flipped = True."""
+        """P6-25c: xscale(log reverse) must produce a log axis run high to low."""
         fig = _get_figure({"xscale": "log reverse"})
         # Log axis is set via x_axis_type; verify the axis type name
         assert fig.xaxis[0].__class__.__name__ == "LogAxis"
-        assert getattr(fig.x_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.x_range) is True
 
     def test_xscale_reverse_order_independent(self):
         """P6-25d: xscale(reverse log) (reversed word order) must still flip the axis."""
         fig = _get_figure({"xscale": "reverse log"})
-        assert getattr(fig.x_range, "flipped", False) is True
+        assert _dash_range_reversed(fig.x_range) is True
 
     def test_xscale_log_only_does_not_flip(self):
         """P6-25e: xscale(log) alone must NOT set flipped (regression guard)."""
         fig = _get_figure({"xscale": "log"})
-        assert getattr(fig.x_range, "flipped", False) is False
+        assert _dash_range_reversed(fig.x_range) is False
 
     def test_yscale_log_only_does_not_flip(self):
         """P6-25e2: yscale(log) alone must NOT set flipped."""
         fig = _get_figure({"yscale": "log"})
-        assert getattr(fig.y_range, "flipped", False) is False
+        assert _dash_range_reversed(fig.y_range) is False
 
     def test_no_scale_opts_no_flip(self):
         """P6-25f: No xscale/yscale options must leave flipped at default (False)."""
         fig = _get_figure({})
-        assert getattr(fig.x_range, "flipped", False) is False
-        assert getattr(fig.y_range, "flipped", False) is False
+        assert _dash_range_reversed(fig.x_range) is False
+        assert _dash_range_reversed(fig.y_range) is False
 
 
 # ================================================================
@@ -1313,12 +1336,12 @@ class TestLegendColsRows:
         assert fig.legend[0] in fig.above
 
     def test_legend_rows_and_cols_combined(self):
-        """legend(cols(2) rows(4)) must set both ncols and nrows."""
+        """legend(cols(2) rows(4)): rows() wins, as twoway's does (WP-30
+        P1.19, measured: every order of rows/cols draws the rows)."""
         fig = _get_figure({"legend": "cols(2) rows(4)"})
         assert len(fig.legend) == 1, len(fig.legend)
-        if fig.legend:
-            assert fig.legend[0].ncols == 2
-            assert fig.legend[0].nrows == 4
+        assert fig.legend[0].nrows == 4
+        assert fig.legend[0].ncols == "auto"
 
     def test_legend_cols_zero_ignored(self):
         """legend(cols(0)) — zero column count must not raise."""
@@ -1650,14 +1673,16 @@ class TestByLinkIntegration:
         facet_keys = sorted(k for k in figs if k.startswith("g1__by__"))
         for fkey in facet_keys:
             fig = figs[fkey]
-            title = fig.title.text if fig.title else ""
-            assert len(title) > 0, f"{fkey}: facet figure must have a non-empty title"
+            # Flipped (WP-30 P1.15a): the group is the panel's label row.
+            from by_panel_probe import panel_label
+            title = panel_label(fig)
+            assert len(title) > 0, f"{fkey}: facet figure must have a non-empty label"
         # Non-empty is not the group value, and no facet at all checked
         # nothing.  Measured 24sep2026: two panels titled by foreign's
         # values, "0" and "1" (the data has no value labels).
         assert facet_keys == ["g1__by__0", "g1__by__1"], facet_keys
-        assert [figs[k].title.text for k in facet_keys] == ["0", "1"], (
-            [figs[k].title.text for k in facet_keys])
+        assert [panel_label(figs[k]) for k in facet_keys] == ["0", "1"], (
+            [panel_label(figs[k]) for k in facet_keys])
 
     def test_bl_10_render_produces_valid_html(self):
         """BL-10: render() with by()+link() must produce valid non-trivial HTML."""

@@ -25,7 +25,9 @@ Since a2c7502 the rule is one function both renderers run,
 _dash_note_empty_layer: scatteri, pci and pcarrowi draw from their own values
 and are never reported; a function drawn empty is reported whatever the
 data, in the form without a count ("dash: graph 'g1' plot 2 (function) drew
-nothing."); every other layer as above.
+nothing."); every other layer as above.  Flipped (WP-30 P1.22): the note now
+says why the fallback drew nothing ("drew nothing: it needs the points Stata
+computes for it when dash registers the graph, ...").
 """
 import json
 import os
@@ -49,6 +51,18 @@ _DF = pd.DataFrame({
     "y2": [2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
     "x2": [2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
 })
+
+
+#: WP-30 P1.22: the one note for a rejected function expression, plot 2.
+_REJECTED_FN_NOTE = (
+    "dash: graph 'g1' plot 2 (function) drew nothing: it needs the points "
+    "Stata computes for it when dash registers the graph, and this spec "
+    "carries none; without them dash evaluates only x, _pi, numbers, "
+    "+ - * / ^ and sin(), cos(), tan(), exp(), log(), log10(), sqrt(), "
+    "abs(), floor() and ceil(), and __import__() is not one of them.")
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _render_full(plots, graph_options=None, graph_keys=None):
@@ -75,7 +89,7 @@ def _render_full(plots, graph_options=None, graph_keys=None):
     renderer = dr.DashRenderer(sp, dp)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        renderer.render()
+        render_models(renderer)
     return renderer, [str(w.message) for w in caught]
 
 
@@ -103,7 +117,10 @@ class TestALayerThatDrawsNothingIsNamed:
         )
 
     def test_a_function_whose_expression_is_rejected_is_reported(self):
-        """The validator refuses it and the layer is drawn empty."""
+        """The validator refuses it and the layer is drawn empty.
+
+        Flipped (WP-30 P1.22): the note now says why the fallback drew
+        nothing."""
         msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
                          "options": {}},
                         {"type": "function", "expr": "__import__('os')",
@@ -113,21 +130,22 @@ class TestALayerThatDrawsNothingIsNamed:
         )
         # Since a2c7502 a function is reported in the form without a count:
         # it draws from its own grid and never read the 6 observations.
-        assert _empty_reports(msgs) == [
-            "dash: graph 'g1' plot 2 (function) drew nothing."], msgs
+        assert _empty_reports(msgs) == [_REJECTED_FN_NOTE], msgs
 
     def test_a_rejected_function_is_reported_when_no_row_is_selected(self):
         """The positive control for the qualifier test below: the same graph
         and the same qualifier, and the report still runs.  A function drawn
         empty is reported whatever the data (since a2c7502); the scatter,
-        plot 1, drew from no rows and is not."""
+        plot 1, drew from no rows and is not.
+
+        Flipped (WP-30 P1.22): the note now says why the fallback drew
+        nothing."""
         msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",
                          "options": {}},
                         {"type": "function", "expr": "__import__('os')",
                          "options": {}}],
                        graph_keys={"if_expr": "y > 1000"})
-        assert _empty_reports(msgs) == [
-            "dash: graph 'g1' plot 2 (function) drew nothing."], msgs
+        assert _empty_reports(msgs) == [_REJECTED_FN_NOTE], msgs
 
     def test_the_report_names_the_observation_count(self):
         msgs = _render([{"type": "scatter", "yvar": "y", "xvar": "x",

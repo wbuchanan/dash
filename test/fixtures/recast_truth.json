@@ -1,0 +1,953 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "classes": {
+   "functiontype": [
+    "area",
+    "bar",
+    "connected",
+    "dot",
+    "dropline",
+    "function",
+    "line",
+    "scatter",
+    "spike"
+   ],
+   "y2xtype": [
+    "area",
+    "bar",
+    "connected",
+    "dot",
+    "dropline",
+    "line",
+    "rarea",
+    "rbar",
+    "rbarm",
+    "rcap",
+    "rcapsym",
+    "rconnected",
+    "rline",
+    "rscatter",
+    "rspike",
+    "scatter",
+    "spike"
+   ],
+   "yxtype": [
+    "area",
+    "bar",
+    "connected",
+    "dot",
+    "dropline",
+    "line",
+    "scatter",
+    "spike"
+   ],
+   "yxyxtype": [
+    "pcarrow",
+    "pcbarrow",
+    "pccapsym",
+    "pcscatter",
+    "pcspike"
+   ]
+  },
+  "dash_commit": "c48a92c5b150c5f3f800bb18800aeb21f68dc39c",
+  "extracted": " 8 Oct 2026",
+  "scheme": "stcolor",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "B-2line": {
+   "cmd": "twoway line y y2 x",
+   "counts": {
+    "circle": 0,
+    "line": 284,
+    "path": 2,
+    "polygon": 0,
+    "rect": 7
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-2scatter": {
+   "cmd": "twoway scatter y y2 x",
+   "counts": {
+    "circle": 36,
+    "line": 291,
+    "path": 0,
+    "polygon": 0,
+    "rect": 7
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-bar": {
+   "cmd": "twoway bar y x",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-connected": {
+   "cmd": "twoway connected y x",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-dot": {
+   "cmd": "twoway dot y x",
+   "counts": {
+    "circle": 1232,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-function": {
+   "cmd": "twoway function y=x, range(1 5)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-line": {
+   "cmd": "twoway line y x",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-pcbarrow": {
+   "cmd": "twoway pcbarrow y x y2 x",
+   "counts": {
+    "circle": 0,
+    "line": 340,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-pccapsym": {
+   "cmd": "twoway pccapsym y x y2 x",
+   "counts": {
+    "circle": 32,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-pcspike": {
+   "cmd": "twoway pcspike y x y2 x",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-rbar": {
+   "cmd": "twoway rbar y y2 x",
+   "counts": {
+    "circle": 0,
+    "line": 300,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-rscatter": {
+   "cmd": "twoway rscatter y y2 x",
+   "counts": {
+    "circle": 32,
+    "line": 300,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-rspike": {
+   "cmd": "twoway rspike y y2 x",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-scatter": {
+   "cmd": "twoway scatter y x",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "B-tsconn": {
+   "cmd": "twoway connected y t, sort",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-function-scatter": {
+   "cmd": "twoway function y=x^2, range(0 3) recast(scatter)",
+   "counts": {
+    "circle": 600,
+    "line": 424,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-histogram-base": {
+   "cmd": "twoway histogram mpg",
+   "counts": {
+    "circle": 0,
+    "line": 476,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-histogram-line": {
+   "cmd": "twoway histogram mpg, recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 476,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-histogram-rline": {
+   "cmd": "twoway histogram mpg, recast(rline)",
+   "counts": {
+    "circle": 0,
+    "line": 476,
+    "path": 2,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-kdensity-area": {
+   "cmd": "twoway kdensity mpg, recast(area)",
+   "counts": {
+    "circle": 0,
+    "line": 368,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-kdensity-base": {
+   "cmd": "twoway kdensity mpg",
+   "counts": {
+    "circle": 0,
+    "line": 368,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-lfit-base": {
+   "cmd": "twoway lfit mpg weight",
+   "counts": {
+    "circle": 0,
+    "line": 373,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "D-lfit-rline": {
+   "cmd": "twoway lfit mpg weight, recast(rline)",
+   "counts": {
+    "circle": 6,
+    "line": 373,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [
+    "(note:  named style rline not found in class yxtype, default attributes used)",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "D-lfit-scatter": {
+   "cmd": "twoway lfit mpg weight, recast(scatter)",
+   "counts": {
+    "circle": 6,
+    "line": 373,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "FB-func": {
+   "cmd": "twoway function y=x, range(1 5) recast(rline)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-function",
+   "lines": [
+    "(note:  named style rline not found in class functiontype, default attributes",
+    "(note:  functiontype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "FB-line": {
+   "cmd": "twoway line y x, recast(rline)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-scatter",
+   "lines": [
+    "(note:  named style rline not found in class yxtype, default attributes used)",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "FB-pcspike": {
+   "cmd": "twoway pcspike y x y2 x, recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style line not found in class yxyxtype, default attributes",
+    "(note:  yxyxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "FB-rbogus": {
+   "cmd": "twoway rline y y2 x, recast(bogus)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style bogus not found in class y2xtype, default attributes",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "FB-rline": {
+   "cmd": "twoway rline y y2 x, recast(pcspike)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style pcspike not found in class y2xtype, default attributes",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "L-pci": {
+   "cmd": "twoway pci 1 1 2 2, recast(pcarrow)",
+   "counts": {
+    "circle": 0,
+    "line": 479,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "L-scatteri": {
+   "cmd": "twoway scatteri 1 1 2 2 3 1, recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 426,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-1": {
+   "cmd": "twoway scatter y x, recast(line) type(bar)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-2": {
+   "cmd": "twoway scatter y x, type(bar) recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-3": {
+   "cmd": "twoway scatter y x, recastas(bar) recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-4": {
+   "cmd": "twoway scatter y x, recast(line) recast(bar)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "B-bar",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-5": {
+   "cmd": "twoway scatter y x, type(line) type(bar)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "B-bar",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-6": {
+   "cmd": "twoway scatter y x, recasta(line)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "PR-7": {
+   "cmd": "twoway scatter y x, ty(line)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "RF-fpfitci-recast": {
+   "cmd": "twoway fpfitci y x, recast(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-fpfitci-recastas": {
+   "cmd": "twoway fpfitci y x, recastas(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-fpfitci-type": {
+   "cmd": "twoway fpfitci y x, type(line)",
+   "equal_to": "",
+   "lines": [
+    "type() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-lfitci-recast": {
+   "cmd": "twoway lfitci y x, recast(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-lfitci-recastas": {
+   "cmd": "twoway lfitci y x, recastas(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-lfitci-type": {
+   "cmd": "twoway lfitci y x, type(line)",
+   "equal_to": "",
+   "lines": [
+    "type() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-lpolyci-recast": {
+   "cmd": "twoway lpolyci y x, recast(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-lpolyci-recastas": {
+   "cmd": "twoway lpolyci y x, recastas(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-lpolyci-type": {
+   "cmd": "twoway lpolyci y x, type(line)",
+   "equal_to": "",
+   "lines": [
+    "type() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-qfitci-recast": {
+   "cmd": "twoway qfitci y x, recast(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-qfitci-recastas": {
+   "cmd": "twoway qfitci y x, recastas(line)",
+   "equal_to": "",
+   "lines": [
+    "recastas() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-qfitci-type": {
+   "cmd": "twoway qfitci y x, type(line)",
+   "equal_to": "",
+   "lines": [
+    "type() option not allowed"
+   ],
+   "rc": 198
+  },
+  "RF-rec": {
+   "cmd": "twoway scatter y x, rec(line)",
+   "equal_to": "",
+   "lines": [
+    "option rec() not allowed"
+   ],
+   "rc": 198
+  },
+  "SP-LINE": {
+   "cmd": "twoway scatter y x, recast(LINE)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-scatter",
+   "lines": [
+    "(note:  named style LINE not found in class yxtype, default attributes used)",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "SP-l": {
+   "cmd": "twoway scatter y x, recast(l)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-scatter",
+   "lines": [
+    "(note:  named style l not found in class yxtype, default attributes used)",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "SP-ls": {
+   "cmd": "twoway scatter y y2 x, recast(line scatter)",
+   "counts": {
+    "circle": 36,
+    "line": 291,
+    "path": 0,
+    "polygon": 0,
+    "rect": 7
+   },
+   "equal_to": "B-2scatter",
+   "lines": [
+    "(note:  named style scatterline not found in class yxtype, default attributes",
+    "(note:  yxtype not found in scheme, default attributes used)",
+    "(note:  named style scatterline not found in class yxtype, default attributes",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "SP-pcl": {
+   "cmd": "twoway pcspike y x y2 x, recast(pcl)",
+   "counts": {
+    "circle": 0,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rspike",
+   "lines": [
+    "(note:  named style pcline not found in class yxyxtype, default attributes",
+    "(note:  yxyxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "SP-rsc": {
+   "cmd": "twoway scatter y x, recast(rsc)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-scatter",
+   "lines": [
+    "(note:  named style rsc not found in class yxtype, default attributes used)",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "W-2-line": {
+   "cmd": "twoway scatter y y2 x, recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 284,
+    "path": 2,
+    "polygon": 0,
+    "rect": 7
+   },
+   "equal_to": "B-2line",
+   "lines": [],
+   "rc": 0
+  },
+  "W-2-lineline": {
+   "cmd": "twoway scatter y y2 x, recast(line line)",
+   "counts": {
+    "circle": 0,
+    "line": 284,
+    "path": 2,
+    "polygon": 0,
+    "rect": 7
+   },
+   "equal_to": "B-2line",
+   "lines": [],
+   "rc": 0
+  },
+  "W-dot-line": {
+   "cmd": "twoway dot y x, recast(line)",
+   "counts": {
+    "circle": 1232,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-dot",
+   "lines": [],
+   "rc": 0
+  },
+  "W-fn-scatter": {
+   "cmd": "twoway function y=x, range(1 5) recast(scatter)",
+   "counts": {
+    "circle": 600,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "W-li-scatter": {
+   "cmd": "twoway line y x, recast(scatter)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-scatter",
+   "lines": [],
+   "rc": 0
+  },
+  "W-pc-pcbar": {
+   "cmd": "twoway pcspike y x y2 x, recast(pcbar)",
+   "counts": {
+    "circle": 0,
+    "line": 340,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "W-pc-pccaps": {
+   "cmd": "twoway pcspike y x y2 x, recast(pccaps)",
+   "counts": {
+    "circle": 32,
+    "line": 308,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-pccapsym",
+   "lines": [],
+   "rc": 0
+  },
+  "W-rl-line": {
+   "cmd": "twoway rline y y2 x, recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 300,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "W-rl-rbarm": {
+   "cmd": "twoway rline y y2 x, recast(rbarm)",
+   "counts": {
+    "circle": 0,
+    "line": 300,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "W-rl-rsc": {
+   "cmd": "twoway rline y y2 x, recast(rsc)",
+   "counts": {
+    "circle": 32,
+    "line": 300,
+    "path": 0,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-rscatter",
+   "lines": [],
+   "rc": 0
+  },
+  "W-sc-b": {
+   "cmd": "twoway scatter y x, recast(b)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 0,
+    "polygon": 0,
+    "rect": 21
+   },
+   "equal_to": "",
+   "lines": [],
+   "rc": 0
+  },
+  "W-sc-co": {
+   "cmd": "twoway scatter y x, recast(co)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-connected",
+   "lines": [],
+   "rc": 0
+  },
+  "W-sc-li": {
+   "cmd": "twoway scatter y x, recast(li)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "W-sc-line": {
+   "cmd": "twoway scatter y x, recast(line)",
+   "counts": {
+    "circle": 0,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-line",
+   "lines": [],
+   "rc": 0
+  },
+  "W-ts-conn": {
+   "cmd": "twoway tsline y, recast(connected)",
+   "counts": {
+    "circle": 16,
+    "line": 402,
+    "path": 1,
+    "polygon": 0,
+    "rect": 5
+   },
+   "equal_to": "B-tsconn",
+   "lines": [],
+   "rc": 0
+  }
+ }
+}

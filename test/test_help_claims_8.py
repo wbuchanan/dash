@@ -54,7 +54,7 @@ from bokeh.models import Plot                                    # noqa: E402
 from bokeh.models.tickers import (BasicTicker, CustomJSTicker,   # noqa: E402
                                   FixedTicker)
 
-from conftest import make_spec                                   # noqa: E402
+from conftest import make_spec, stata_base                       # noqa: E402
 from test_adversarial_matrix import (_app_source, _load_app,     # noqa: E402
                                      _session, _write_inputs)
 
@@ -174,8 +174,10 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_alone_it_keeps_the_default_labels(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"xtick": "2250(500)3750"}),
                       tag="alone")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), [2250.0, 2750.0, 3250.0, 3750.0])
+            ("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [2250.0, 2750.0, 3250.0, 3750.0])
 
     def test_beside_xlabel_both_are_drawn(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter(
@@ -202,16 +204,20 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_ytick_alone_keeps_the_default_labels(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"ytick": "15 25 35"}),
                       tag="ytick")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.yaxis[0]) == (
-            ("auto", "BasicTicker"), [15.0, 25.0, 35.0])
+            ("fixed", [15.0, 20.0, 25.0, 30.0]), [15.0, 25.0, 35.0])
         # and the x axis is left as it was
-        assert _tick_plan(fig.xaxis[0]) == (("auto", "BasicTicker"), [])
+        assert _tick_plan(fig.xaxis[0]) == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [])
 
     def test_minmax_marks_the_extremes(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"xtick": "minmax"}),
                       tag="minmax")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), [1760.0, 4840.0])
+            ("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [1760.0, 4840.0])
 
     def test_a_count_marks_about_that_many(self, tmp_path, mode):
         """xtick(#10) over weight's 1760 to 4840 marks 1500(500)5000, the
@@ -219,8 +225,10 @@ class TestXtickDrawsMarksWithoutLabels:
         #10)."""
         fig = _figure(mode, tmp_path, _scatter({"xtick": "#10"}),
                       tag="tcount")
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
         assert _tick_plan(fig.xaxis[0]) == (
-            ("auto", "BasicTicker"), [1500.0 + 500 * i for i in range(8)])
+            ("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [1500.0 + 500 * i for i in range(8)])
 
     def test_a_label_written_in_xtick_is_not_drawn(self, tmp_path, mode):
         """twoway draws `xtick(2500 "a" 3500)' as two bare marks."""
@@ -254,7 +262,9 @@ class TestXtickDrawsMarksWithoutLabels:
     def test_xtick_none_changes_nothing(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter({"xtick": "none"}),
                       tag="tnone")
-        assert _tick_plan(fig.xaxis[0]) == (("auto", "BasicTicker"), [])
+        # WP-30 P1.3a: Bokeh's BasicTicker was wrong because a default axis
+        # is now ticked as twoway ticks it (natscale #5, a FixedTicker).
+        assert _tick_plan(fig.xaxis[0]) == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [])
 
 
 class TestTheTickMarkCodeCarriesNoUserText:
@@ -314,7 +324,8 @@ class TestTheTickMarkCodeCarriesNoUserText:
             warnings.simplefilter("always")
             fig = _figure(mode, tmp_path / "range", _scatter(
                 {"xtick": "0(0.000001)1000000"}), tag="hugerange")
-        assert _tick_plan(fig.xaxis[0]) == (("auto", "BasicTicker"), [])
+        # WP-30 P1.3a: the default labels are now natscale's FixedTicker.
+        assert _tick_plan(fig.xaxis[0]) == (("fixed", [2000.0, 3000.0, 4000.0, 5000.0]), [])
         assert time.time() - t0 < 30
 
 
@@ -494,6 +505,10 @@ def _run_dep_script(mode):
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
+# One worker for the class, so each of its two subprocess sweeps runs
+# once, not once per worker its tests land on (WP-30 test performance
+# A4; measured 07oct2026: the 33-second blocked sweep ran on three).
+@pytest.mark.xdist_group(name="hc8-no-scipy-or-statsmodels")
 class TestNoLayerNeedsScipyOrStatsmodels:
 
     @pytest.fixture(scope="class")
@@ -504,12 +519,15 @@ class TestNoLayerNeedsScipyOrStatsmodels:
     def watched(self):
         return _run_dep_script("watch")
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_every_layer_draws_with_both_packages_unimportable(self, blocked):
         assert not blocked["failures"], "\n".join(blocked["failures"])
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_nothing_asks_for_them_when_they_are_unimportable(self, blocked):
         assert blocked["attempts"] == [], blocked["attempts"]
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_every_plot_type_was_run(self, blocked):
         ran = {k.split()[0] for k in blocked["counts"]}
         assert ran == set(dr._dash_plot_type_names())
@@ -520,6 +538,7 @@ class TestNoLayerNeedsScipyOrStatsmodels:
         assert len(blocked["counts"]) == len(dr._dash_plot_type_names()) + 33, (
             sorted(blocked["counts"]))
 
+    @pytest.mark.release  # a 33-second subprocess sweep (WP-30 D)
     def test_an_installed_copy_is_not_read(self, watched):
         """With scipy and statsmodels importable, nothing imports them --
         not dash, not a library dash calls on the way."""
@@ -555,7 +574,8 @@ class TestNoLayerNeedsScipyOrStatsmodels:
 # 3. Stata scheme support
 # ===========================================================================
 
-_STATA_BASE = "/Applications/StataNow/ado/base"
+#: Stata's base ado tree: DASH_STATA_BASE, else StataNow's (WP-30 P1.34).
+_STATA_BASE = stata_base()
 
 
 def _stata_file(rel):
@@ -752,8 +772,9 @@ def _layer_styles(mode, tmp_path, spec, tag):
     return sorted(out)
 
 
-#: The layers dash.sthlp says take the scheme's colour but not yet its
-#: opacity: range, spike, fit, band, density, function and immediate.
+#: Range, spike, fit, band, density, function and immediate layers: the
+#: ones dash.sthlp used to say took the scheme's colour but not yet its
+#: opacity (WP-30 P1.4a carried it to them).
 _NOT_YET_OPACITY = ("rspike", "rcap", "rarea", "spike", "dropline", "lfit",
                     "lfitci", "kdensity", "function", "scatteri", "pci",
                     "pcspike", "mband")
@@ -763,12 +784,16 @@ _NOT_YET_OPACITY = ("rspike", "rcap", "rarea", "spike", "dropline", "lfit",
 class TestTheSchemeOpacityStopsWhereTheHelpSays:
 
     @pytest.mark.parametrize("ptype", _NOT_YET_OPACITY)
-    def test_the_colour_but_not_the_opacity(self, tmp_path, mode, ptype):
+    def test_the_colour_and_the_opacity(self, tmp_path, mode, ptype):
         """Under sttrans the second layer is drawn in sttrans' p2, #cc6677,
-        at the alphas it has under s2color -- where no opacity is declared
-        -- so the %20 does not reach it.  (lfitci's band is not in p2: it
-        is the scheme's ci style, opaque gs12 under both, as twoway draws
-        it -- test_ci_band_style.py -- and is left out here.)"""
+        at its declared %20 -- twoway's stroke-opacity and fill-opacity
+        0.20 (measured 03oct2026) -- and under s2color, which declares
+        none, opaque.  lfitci's band is not in p2: it is the scheme's ci
+        style, opaque gs12 under both, as twoway draws it.
+
+        Flipped (WP-30 P1.4a): this was test_the_colour_but_not_the_opacity,
+        which expected sttrans' alphas to equal s2color's; twoway draws
+        these layers at 0.20."""
         trans = _layer_styles(mode, tmp_path / "t",
                               _two_layer(ptype, "sttrans"), "t" + ptype)
         plain = _layer_styles(mode, tmp_path / "p",
@@ -777,9 +802,14 @@ class TestTheSchemeOpacityStopsWhereTheHelpSays:
             assert ("#c0c0c0", 1.0) in trans and ("#c0c0c0", 1.0) in plain
             trans = [s for s in trans if s[0] != "#c0c0c0"]
             plain = [s for s in plain if s[0] != "#c0c0c0"]
-        assert trans and {c for c, _a in trans} == {"#cc6677"}, trans
-        assert plain and {c for c, _a in plain} == {"#90353b"}, plain
-        assert [a for _c, a in trans] == [a for _c, a in plain]
+        # rarea's fill is p2 at its p2area intensity, inten80 (WP-30 P1.2b;
+        # twoway's SVG, plan section 16 Evidence E3).
+        want_t, want_p = (("#d68592", "#a65d62") if ptype == "rarea"
+                          else ("#cc6677", "#90353b"))
+        assert trans and {c for c, _a in trans} == {want_t}, trans
+        assert plain and {c for c, _a in plain} == {want_p}, plain
+        assert all(abs(a - 0.2) < 1e-9 for _c, a in trans), trans
+        assert {a for _c, a in plain} == {1.0}, plain
 
     def test_malpha_wins_over_the_declared_opacity(self, tmp_path, mode):
         spec = _one_graph([{"type": "scatter", "yvar": "mpg",
@@ -871,7 +901,11 @@ class TestAnExplicitOptionBeatsTheScheme:
     """Under economist, whose every default differs from s2color's."""
 
     def test_bgcolor_and_plotregion(self, tmp_path, mode):
-        spec = _scatter({"bgcolor": "red", "plotregion": "color(blue)"},
+        # Flipped (WP-30 P1.20a): a lone bgcolor(red) on the border was
+        # wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); it shows where the
+        # graph region is none, and alone it changes nothing visible.
+        spec = _scatter({"bgcolor": "red", "plotregion": "color(blue)",
+                         "graphregion": "color(none)"},
                         build={"scheme": "economist"})
         fig = _figure(mode, tmp_path, spec, tag="regions")
         assert fig.border_fill_color.lower() == "#ff0000"
@@ -917,9 +951,12 @@ def _chrome_and_figure(mode, tmp_path, spec, tag):
 
 @pytest.mark.parametrize("mode", _MODES)
 class TestAWorkingDirectorySchemeWinsOverAShippedOne:
-    """dash.sthlp: "A file in the working directory wins over a shipped
-    scheme of the same name."  test_installed_layout.py pins the lookup on
-    an installed tree; this renders it, in both modes, from a checkout."""
+    """WP-30 P1.25b reversed the claim this class was named for: a file in
+    the working directory named like a shipped scheme no longer replaces it,
+    as it never does in twoway, whose BASE comes first (dash.sthlp: "no
+    longer wins over the shipped one").  test_installed_layout.py pins the
+    lookup on an installed tree; this renders it, in both modes, from a
+    checkout."""
 
     @pytest.mark.parametrize("where", ["build", "graph"])
     def test_s2color_in_the_working_directory(self, tmp_path, monkeypatch,
@@ -932,14 +969,16 @@ class TestAWorkingDirectorySchemeWinsOverAShippedOne:
         spec = (_scatter(build={"scheme": "s2color"}) if where == "build"
                 else _scatter({"scheme": "s2color"}))
         page, bg = _chrome_and_figure(mode, tmp_path, spec, "wd" + where)
-        assert bg.lower() == "#123456"
-        assert "#123456" in page.lower()
+        assert bg.lower() == dr.SchemeParser("s2color").background_color.lower()
+        assert "#123456" not in page.lower()
 
 
 class TestWhatAnIncludeResolvesTo:
-    """A user file's #include: the working directory first, then a shipped
-    translation, never Stata's own scheme-<name>.scheme, and one that
-    resolves to neither is read as s2color, with Stata's note."""
+    """A user file's #include resolves as scheme() does (WP-30 P1.25b): a
+    shipped translation first, whatever file of that name is in the working
+    directory, then Stata's scheme-<name>.scheme and <name>.scheme along the
+    ado-path; one that resolves nowhere is read as s2color, with Stata's
+    note."""
 
     @staticmethod
     def _parse(wd, text, monkeypatch):
@@ -956,7 +995,9 @@ class TestWhatAnIncludeResolvesTo:
         (wd / "s2color.scheme").write_text(_custom_scheme("s2color",
                                                           "#abcdef"))
         sch, w = self._parse(wd, "#include s2color\n", monkeypatch)
-        assert sch.background_color.lower() == "#abcdef", w
+        # WP-30 P1.25b: the translation, never the working-directory file.
+        assert (sch.background_color.lower()
+                == dr.SchemeParser("s2color").background_color.lower()), w
 
     def test_then_a_shipped_translation(self, tmp_path, monkeypatch):
         wd = tmp_path / "wd"
@@ -972,7 +1013,8 @@ class TestWhatAnIncludeResolvesTo:
             "#include s2color\ncolor background #ff00ff\n")
         sch, w = self._parse(
             wd, "#include zzinc\ncolor p1 #112233\n", monkeypatch)
-        assert sch.background_color.lower() != "#ff00ff"
+        # WP-30 P1.25b: Stata's setscheme tries scheme-NAME.scheme first.
+        assert sch.background_color.lower() == "#ff00ff"
         assert sch.p_colors[0].lower() == "#112233"
 
     def test_an_include_that_resolves_to_nothing_stands_s2color_in(
@@ -984,13 +1026,13 @@ class TestWhatAnIncludeResolvesTo:
         wd = tmp_path / "wd"
         wd.mkdir()
         sch, w = self._parse(
-            wd, "#include stcolor_meta\ncolor p1 #445566\n", monkeypatch)
+            wd, "#include w26nosuch\ncolor p1 #445566\n", monkeypatch)
         s2 = dr.SchemeParser("s2color")
         assert sch.p_colors[0].lower() == "#445566"
         assert sch.p_colors[1:] == s2.p_colors[1:]
         assert sch.background_color == s2.background_color
         assert (sch.graphsize_x, sch.graphsize_y) == (5.5, 4.0)
-        assert any("(note: scheme stcolor_meta not found, using s2color)"
+        assert any("(note: scheme w26nosuch not found, using s2color)"
                    in m for m in w), w
         help_text = re.sub(r"\s+", " ", _read(_HELP))
         assert "skipped in silence" not in help_text
@@ -1011,23 +1053,42 @@ class TestWhatAnIncludeResolvesTo:
 class TestTheShippedFiles:
 
     @pytest.mark.parametrize("name", sorted(dr.SchemeParser._BUILTIN_NAMES))
-    def test_80_to_140_directives(self, name):
-        """80 to 140 directives: 79 or 80 for the colour schemes, 109 to 111
-        for the monochrome ones, whose chains declare a connecting-line
-        colour or pattern, a line-plot cycle and their marker symbols, 118
-        for s1manual, which declares symbolsize p1..p9, and 138 for
-        s2gmanual, which declares every p#line and p#lineplot key -- each
-        eleven more (economist twelve) since the S3 batch carried a ci
-        band's keys.  (About 135 and 165 before the S3 batch, when every
-        p#stub cycle and every marker symbol was written out resolved; the
-        batch also added the reference line's, the plot region border's and
-        note()'s text box's keys.)"""
+    def test_the_directive_count_is_what_the_help_says(self, name):
+        """100 to 170 directives, measured: 109 for the colour schemes
+        (110 for s2color, 113 for economist), 139 to 141 for the
+        monochrome ones, whose chains declare a connecting-line colour or
+        pattern, a line-plot cycle and their marker symbols, 148 for
+        s1manual, which declares symbolsize p1..p9, and 168 for s2gmanual,
+        which declares every p#line and p#lineplot key.  They moved with
+        WP-30 P1.2a's chrome keys (twenty-four more), P1.3a's three axis
+        keys and P1.4a's four histogram keys, and lost graph bar's
+        `intensity bar' and `intensity area' (P1.4a), which twoway's bar
+        and area do not read.  WP-30 P1.4b added `gsize plabel' to every
+        file and `color plabel' to the nine monochrome ones (s2gmanual
+        168 -> 170, the bound).  Renamed (WP-30 P1.4a) from
+        test_80_to_140_directives, whose name had outlived its bounds.
+        WP-30 P1.14b carried the keys the named styles read: 219 to 279
+        directives, measured over the 26 regenerated files."""
         n = sum(1 for k, _v in _directives(os.path.join(_SCHEMES,
                                                         "dash-" + name + ".scheme"))
                 if not k.startswith(("sequence", "label")))
-        assert 80 <= n <= 140, (name, n)
+        # Flipped (WP-30 P1.14b): 100 to 170 was wrong because the files
+        # now carry the keys Stata's style files read for the named styles.
+        # 100..170 -> 210..280: P1.14b named-style keys (219 to 279,
+        # rounded outward to ten).
+        # Flipped (WP-30 P1.24): 210 to 280 was wrong because the files
+        # now carry the keys the text box styles read for mlabtextstyle().
+        # 210..280 -> 250..320: P1.24 textbox keys (251 to 311, rounded
+        # outward to ten).
+        # WP-30 P1.20b: the margin ladder (gsize *margin) is read now:
+        # 250..320 -> 260..330 (262 to 322, rounded outward to ten).
+        # Flipped (WP-30 P1.15c): 260..330 -> 280..350: P1.15c by() keys
+        # (286 to 346, rounded outward to ten).
+        # Flipped (WP-30 P1.10): 280..350 -> 290..360: text()'s six
+        # text_option keys (292 to 352, rounded outward to ten).
+        assert 290 <= n <= 360, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"80\s+to\s+140\s+directives", help_text)
+        assert re.search(r"290\s+to\s+360\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1061,8 +1122,17 @@ class TestTheShippedFiles:
                 if k == "color plotregion_line" and v.split()[0] == "none":
                     assert name == "economist", (name, k, v)
                     continue
+                # Flipped (WP-30 P1.14b): "only economist's plot-region
+                # border is none" was wrong because the named styles carry
+                # `color pieline' and `color fpspacer', which every Stata
+                # scheme declares as none.
+                if k in ("color pieline", "color fpspacer"):
+                    assert v.split()[0] == "none", (name, k, v)
+                    continue
+                # sttrans' histogram keys carry the %20 too (WP-30 P1.4a).
                 pat = (r"#[0-9a-f]{6}%20" if name == "sttrans"
-                       and re.fullmatch(r"color p\d*(line|bar|mark)?", k)
+                       and re.fullmatch(r"color (p\d*(line|bar|mark)?"
+                                        r"|histogram(_line)?)", k)
                        else r"#[0-9a-f]{6}")
                 assert re.fullmatch(pat, v.split()[0].lower()), (name, k, v)
 
@@ -1083,7 +1153,8 @@ class TestTheShippedFiles:
     def test_some_uncarried_directives_govern_what_dash_draws_its_own_way_in_dash(
             self, tmp_path, mode):
         """The half that needs no Stata (see TestTheSchemeTableSaysWhat-
-        StataSays): no shipped file carries `color refline', every one
+        StataSays): every shipped file carries `color refline' (WP-30
+        P1.14b: lstyle(refline) draws it) and
         carries `color ci_area' (the S3 batch's ci band); xline()
         takes the scheme's `color xyline' and `linepattern xyline' --
         s2color's cranberry and solid, as twoway draws it (measured
@@ -1091,7 +1162,9 @@ class TestTheShippedFiles:
         for name in dr.SchemeParser._BUILTIN_NAMES:
             keys = {k for k, _v in _directives(
                 os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
-            assert "color refline" not in keys, name
+            # Flipped (WP-30 P1.14b): "not in keys" was wrong because
+            # lstyle(refline) draws `color refline' now.
+            assert "color refline" in keys, name
             assert "color ci_area" in keys, name
             assert {"color xyline", "linepattern xyline"} <= keys, name
         fig = _figure(mode, tmp_path, _scatter({"xline": "3000"},
@@ -1102,20 +1175,53 @@ class TestTheShippedFiles:
         assert list(spans[0].line_dash) == []
 
     def test_no_directive_for_what_dash_does_not_draw(self):
-        """graph bar/box/pie/dot/matrix styling, margins, tick geometry."""
+        """graph bar/box/pie/dot/matrix styling, margins."""
+        # Flipped (WP-30 P1.14b): "no key matches" was wrong because the
+        # named styles' group carries the line styles of those names
+        # (lstyle(tick), lstyle(pie), lstyle(dot) ... draw them); the
+        # pattern holds outside that group, read from the fixture.
+        with open(os.path.join(_ROOT, "test", "fixtures",
+                               "scheme_truth.json"), encoding="utf-8") as fh:
+            truth = json.load(fh)
         keys = set()
+        named = set()
+        # Flipped (WP-30 P1.24): the text box styles' keys (matrix_label,
+        # pbarlabel, pboxlabel ...) are drawn now, by mlabtextstyle().
+        textbox = {f"{c} {k}" for k in
+                   {k for pair in dr.SchemeParser._TEXTBOX_STYLES.values()
+                    for k in pair} | {"pbarlabel", "pboxlabel"}
+                   for c in ("gsize", "color")}
+        # WP-30 P1.20b: the margin ladder (gsize tinymargin ...) is read
+        # by margin_sides() for the marginstyle names now.
+        ladder = {f"gsize {k}" for k in dr.SchemeParser._MARGIN_LADDER}
         for name in dr.SchemeParser._BUILTIN_NAMES:
+            group = (set(truth[name]["named_style_directives"]) | textbox
+                     | ladder)
+            named |= group
             keys |= {k for k, _v in _directives(
-                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))}
+                os.path.join(_SCHEMES, "dash-" + name + ".scheme"))
+                if k not in group}
+        assert {k for k in named if k.split()[0] in
+                ("color", "linewidth", "linepattern")
+                and re.search(r"pie|\bdot|matrix|tick", k)}, named
         bad = sorted(k for k in keys if re.search(
-            r"(?<!text)box|pie|\bdot|matrix|margin|barlabel|barstyle|bar_|"
-            r"tick(?!_label)", k))
-        assert not bad, bad
+            # WP-30 P1.3a: `margin twoway' is drawn now (the plot-region
+            # margin), so it is no longer in this list.  Flipped (WP-30
+            # P1.15c): `margin by_indiv' (the space between by() panels)
+            # and `margin subheading' (the panel label's box) are drawn
+            # too, by the "by() axes and keys (WP-30 P1.15c)" group.
+            # Flipped (WP-30 P1.10): `margin text_option' (text()'s box)
+            # is drawn now.
+            r"(?<!text)box|pie|\bdot|matrix|"
+            r"margin(?! twoway| by_indiv| subheading| text_option)|barlabel|"
+            r"barstyle|bar_",
+            k))
+        assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn
 
 
 class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
-    """test_installed_layout.py stages fourteen of the twenty; this stages
-    all twenty where `net install` files them, plants a third-party scheme
+    """test_installed_layout.py stages fourteen of the twenty-six; this
+    stages all twenty-six where `net install` files them, plants a third-party scheme
     beside them, and asks for each."""
 
     def test_all_twenty_and_nothing_else(self, tmp_path, monkeypatch):
@@ -1126,7 +1232,7 @@ class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
         shutil.copy2(os.path.join(_ROOT, "dash_render.py"),
                      str(root / "py" / "dash_render.py"))
         names = sorted(dr.SchemeParser._BUILTIN_NAMES)
-        assert len(names) == 20
+        assert len(names) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         for name in names:
             (root / "d").mkdir(exist_ok=True)
             shutil.copy2(os.path.join(_SCHEMES, "dash-" + name + ".scheme"),
@@ -1147,6 +1253,9 @@ class TestAnInstalledTreeLooksOnlyForItsOwnTwenty:
                 assert sch.is_fallback is False and sch.name == name
             assert not mod.SchemeParser.can_resolve("zzthird")
             assert not mod.SchemeParser.can_resolve("scheme-zzthird")
+            # WP-30 P1.25b: along the ado-path it is found, as Stata does.
+            assert mod.SchemeParser.can_resolve("zzthird",
+                                                ado_dirs=(str(root),))
         finally:
             sys.modules.pop(mod_name, None)
 
@@ -1217,17 +1326,17 @@ class TestTheUnitsAreStatas:
 
 
 class TestDashDrawsBokehsMinorTicks:
-    """The disclosure the scheme section now makes: tick geometry is not
-    carried, so an axis with its default labels keeps Bokeh's minor ticks,
-    which twoway draws only for xmtick() or ymtick()."""
+    """WP-30 P1.3a: an axis with its default labels no longer keeps Bokeh's
+    minor ticks -- twoway draws them only for xmtick() or ymtick() -- so the
+    old disclosure (BasicTicker with minor ticks) was wrong: the default
+    axis is ticked by natscale on a FixedTicker with no minor ticks."""
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_default_axis_has_minor_ticks(self, tmp_path, mode):
         fig = _figure(mode, tmp_path, _scatter(), tag="minor")
         for ax in (fig.xaxis[0], fig.yaxis[0]):
-            assert isinstance(ax.ticker, BasicTicker)
-            assert ax.ticker.num_minor_ticks > 0
-            assert ax.minor_tick_line_color is not None
+            assert isinstance(ax.ticker, FixedTicker)
+            assert list(ax.ticker.minor_ticks) == []
 
     def test_the_help_says_so(self):
         sec = _flat(_help_between("{marker scheme}", "{marker unsupported}"))
@@ -1339,15 +1448,20 @@ class TestTheUnsupportedProseIsTrue:
     @pytest.mark.parametrize("flag", ["", "horizontal"])
     def test_bars_are_drawn_vertically_at_the_x_values(self, tmp_path, mode,
                                                        flag):
+        """Flipped (WP-30 P1.9a): a VBar under horizontal was wrong because
+        twoway turns the bars (horizontal_truth.json draw bar); they are
+        an HBar at the x values, which run on the y axis."""
         opts = {"horizontal": "horizontal"} if flag else {}
         spec = _one_graph([{"type": "bar", "yvar": "mpg", "xvar": "weight",
                             "options": opts}])
         fig = _figure(mode, tmp_path, spec, tag="bar" + flag)
+        cls, at = ("HBar", "y") if flag else ("VBar", "x")
         bars = [r for r in fig.renderers
-                if type(getattr(r, "glyph", None)).__name__ == "VBar"]
+                if type(getattr(r, "glyph", None)).__name__ == cls]
         assert len(bars) == 1
         g = bars[0].glyph
-        xs = sorted(float(v) for v in bars[0].data_source.data[g.x])
+        xs = sorted(float(v) for v in bars[0].data_source.data[
+            getattr(g, at)])
         assert xs == sorted(_DF["weight"].tolist())
 
     @pytest.mark.parametrize("ptype", ["line", "connected"])
@@ -1370,6 +1484,9 @@ class TestTheUnsupportedProseIsTrue:
 
     def test_a_spike_is_drawn_upright_even_with_horizontal(self, tmp_path,
                                                            mode):
+        """Flipped (WP-30 P1.9a): an upright spike under horizontal was
+        wrong because twoway turns it (horizontal_truth.json draw spike):
+        its segments are horizontal, y0 == y1."""
         spec = _one_graph([{"type": "spike", "yvar": "mpg", "xvar": "weight",
                             "options": {"horizontal": "horizontal"}}])
         fig = _figure(mode, tmp_path, spec, tag="spikeh")
@@ -1377,7 +1494,7 @@ class TestTheUnsupportedProseIsTrue:
                 if type(getattr(r, "glyph", None)).__name__ == "Segment"]
         assert segs
         g, d = segs[0].glyph, segs[0].data_source.data
-        assert list(d[g.x0]) == list(d[g.x1])      # vertical segments
+        assert list(d[g.y0]) == list(d[g.y1])      # horizontal segments
 
     def test_a_markers_outline_is_drawn_solid(self, tmp_path, mode):
         spec = _one_graph([{"type": "scatter", "yvar": "mpg",
@@ -1396,22 +1513,26 @@ class TestTheUnsupportedProseIsTrue:
         assert fig.x_range.start <= 1000.0 and fig.x_range.end >= 6000.0
         assert _tick_plan(fig.xaxis[0])[1] == [1000.0, 6000.0]
 
-    def test_xscale_alt_is_named_and_reverse_honoured(self, tmp_path, mode):
+    def test_xscale_alt_is_drawn_and_reverse_honoured(self, tmp_path, mode):
+        # Flipped (WP-30 P1.18a), was test_xscale_alt_is_named_and_reverse_
+        # honoured: twoway draws xscale(alt) above the plot, unnamed.
         spec = _scatter({"xscale": "alt"})
         if mode == "saved":
-            _fig, _html, msgs = _saved_figure(tmp_path, spec)
+            fig, _html, msgs = _saved_figure(tmp_path, spec)
         else:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                d = tmp_path / "served"
-                d.mkdir()
-                _document_for(_load_app(_app_source(d, spec, _DF), "alt"))
+                fig = _served_figure(tmp_path, spec, tag="alt")[0]
             msgs = [str(x.message) for x in w]
-        assert any("xscale() sub-option(s) not implemented and ignored: alt"
-                   in m for m in msgs), msgs
+        assert not any("xscale() sub-option" in m for m in msgs), msgs
+        xs = [a for a in fig.above
+              if getattr(a, "x_range_name", "default") == "default"
+              and type(a).__name__.endswith("Axis")]
+        assert xs, fig.above
         fig = _figure(mode, tmp_path / "rev", _scatter({"xscale": "reverse"}),
                       tag="rev")
-        assert fig.x_range.flipped is True
+        # WP-30 P1.3a: a flipped DataRange1d is now a Range1d high to low.
+        assert fig.x_range.start > fig.x_range.end
 
 
 class TestTheUnsupportedSectionSaysWhatTwowayDoes:
@@ -1543,7 +1664,12 @@ class TestTheDependenciesAreOneList:
         import ast
         tree = ast.parse(_read(os.path.join(_ROOT, "dash_render.py")))
         top = set()
+        # WP-30 P1.32: the three are imported inside the top-level `try'
+        # blocks that stop in one line naming dash_setup (_dash_dep_fail).
+        body = []
         for node in tree.body:
+            body += node.body if isinstance(node, ast.Try) else [node]
+        for node in body:
             if isinstance(node, ast.Import):
                 top |= {a.name.split(".")[0] for a in node.names}
             elif isinstance(node, ast.ImportFrom) and node.module:
@@ -1658,8 +1784,12 @@ class TestDashSetupHelpMatchesTheAdo:
                 "environment instead.") in help_
         assert ("Tornado is installed with Bokeh, which depends on it, so no "
                 "separate installation is needed") in help_
+        # WP-30 P1.30: and one at or above the verified window's ceiling
+        # is a warning.
         assert ("one below 3.8 is reported as an unmet requirement -- it is "
-                "not upgraded for you -- and the run ends with r(198).") in help_
+                "not upgraded for you -- and the run ends with r(198); one at "
+                "or above 3.10 is reported as outside the verified range, a "
+                "warning, and left as it is.") in help_
 
     def test_it_installs_only_what_is_missing(self):
         """Every pip install in dash_setup.ado sits in the branch a failed

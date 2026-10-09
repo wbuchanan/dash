@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Regenerate dash.ado's option surface from one canonical inventory.
+"""RETIRED (WP-30 P1.34): historical, do not run.
+
+Regenerate dash.ado's option surface from one canonical inventory.
 
 dash.ado repeats the option list in five places (two syntax blocks, two sreturn
 blocks, the plot-option JSON key list, and the graph-level propagation loops).
@@ -10,11 +12,15 @@ Minimum abbreviations come from test/fixtures/abbrev_truth.json, which was
 measured against real twoway with a .gph resolution oracle.  dash-only options
 (no twoway equivalent) keep the short form dash already accepted.
 """
-import json
-import re
 import sys
 
-REPO = "/Users/billy/Desktop/Programs/StataPrograms/d/dash"
+sys.exit("scripts/regen_option_surface.py is retired (WP-30 P1.34): historical, do not run; add an option in dash.ado's five option-surface places by hand")
+
+import json
+import os
+import re
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 truth = json.load(open(REPO + "/test/fixtures/abbrev_truth.json"))
 TRUTH_OPTS = truth["options"]
 

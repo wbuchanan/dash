@@ -28,6 +28,10 @@ from bokeh.plotting import figure
 # Helpers
 # ================================================================
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from conftest import render_models  # noqa: E402
+
+
 def _make_data_json(columns: dict) -> dict:
     """Build a jsonio-format data JSON dict from a column dict.
 
@@ -316,7 +320,11 @@ class TestPipelineDropline:
 # ================================================================
 class TestPipelineRcapsym:
     def test_rcapsym_renders(self):
-        """rcapsym spec produces >=5 renderers (spine+2 caps+2 dots)."""
+        """rcapsym spec produces 3 renderers (spine+2 dots).
+
+        Flipped (WP-30 P1.17a): twoway draws rcap caps as long as a marker of
+        its msize, and rcapsym none.
+        """
         graph = {
             "plots": [{
                 "type": "rcapsym",
@@ -331,7 +339,7 @@ class TestPipelineRcapsym:
         figs = renderer._build_figures()
         assert "rcs1" in figs
         fig = figs["rcs1"]
-        assert len(fig.renderers) >= 5
+        assert len(fig.renderers) == 3
 
 
 # ================================================================
@@ -595,7 +603,7 @@ class TestCollectGraphVarsConsistency:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data, f)
             dr = DashRenderer(sp, dp, op)
-            dr.render()
+            render_models(dr)
         finally:
             for p in (sp, dp, op):
                 try: os.unlink(p)
@@ -669,7 +677,7 @@ class TestEdgeCaseData:
             with open(sp, "w") as f: json.dump(spec, f)
             with open(dp, "w") as f: json.dump(data, f)
             dr = DashRenderer(sp, dp, op)
-            dr.render()
+            render_models(dr)
         finally:
             for p in (sp, dp, op):
                 try: os.unlink(p)

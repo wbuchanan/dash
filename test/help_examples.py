@@ -561,7 +561,8 @@ def registered_name(text):
 #: shows that very line): GAPS.md F5's standard -- nothing named as ignored --
 #: and any warning or traceback the renderer lets through.
 FLAGGED = (
-    (re.compile(r"^dash: ignoring unsupported option\(s\):"),
+    # WP-30 P1.26a: a note prints as twoway's do, "(note:  dash: ...)".
+    (re.compile(r"^(?:\(note:\s+)?dash: ignoring unsupported option\(s\):"),
      "names an option as ignored"),
     (re.compile(r"not implemented and ignored"),
      "names a sub-option as ignored"),
@@ -576,6 +577,12 @@ FLAGGED = (
      "prints a logged warning or error"),
     (re.compile(r"Traceback \(most recent call last\)"),
      "prints a Python traceback"),
+    # WP-30 P1.26a: every note dash prints is one "(note:  dash: ...)" line
+    # in twoway's form, and dash's copies of twoway's estimator and scheme
+    # notes keep twoway's "(note:  ...)" words; no "Warning:" is left in
+    # either.  Last, so the specific labels above still win.
+    (re.compile(r"\(note:\s"),
+     "prints a note"),
 )
 
 

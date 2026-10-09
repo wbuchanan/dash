@@ -31,7 +31,7 @@ Rendering goes through test_mode_parity's spec and file helpers, in both
 modes, in a tmp working directory that holds the custom file.
 """
 import ast
-import importlib.util
+import inspect
 import json
 import os
 import re
@@ -49,16 +49,21 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
-#: The twenty StataCorp schemes dash ships as translations (DESIGN §2): the
-#: fourteen of WP-16 plus the six user-selectable ones that were missing.
+#: The twenty-six StataCorp schemes dash ships as translations (DESIGN §2):
+#: the fourteen of WP-16, the six user-selectable ones that were missing,
+#: plus StataCorp's six internal schemes (WP-30 P1.25a).
 SHIPPED = (
     "economist", "s1color", "s1manual", "s1mono", "s1rcolor",
     "s2color", "s2color8", "s2gcolor", "s2gmanual", "s2manual", "s2mono",
     "sj", "stcolor", "stcolor_alt", "stgcolor", "stgcolor_alt",
     "stmono1", "stmono2", "stsj", "sttrans",
+    # WP-30 P1.25a: StataCorp's six internal schemes
+    "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+    "stgcolor_mv",
 )
 THEMES = ("clean", "dark", "default", "economist", "mono", "sj")
 MODES = ("standalone", "served")
@@ -76,6 +81,40 @@ INHERITED = (
 )
 
 _SENTINEL_BEGIN = "// BEGIN shipped schemes (WP-17)"
+
+
+def each(argnames, values):
+    """Run a check once per value inside ONE test, each value a subtest.
+
+    The decorated function takes *argnames* (comma-separated, like
+    ``pytest.mark.parametrize``) plus any fixtures; the test pytest sees
+    takes the fixtures and ``subtests`` instead.  Every value is still
+    checked and every mismatch reported, without a test item per value --
+    for checks that run the same code path for every value."""
+    names = [n.strip() for n in argnames.split(",")]
+
+    def deco(check):
+        sig = inspect.signature(check)
+        params = [q for q in sig.parameters.values() if q.name not in names]
+        if "subtests" not in sig.parameters:
+            params.append(inspect.Parameter(
+                "subtests", inspect.Parameter.POSITIONAL_OR_KEYWORD))
+
+        def run(*args, **kwargs):
+            sub = kwargs["subtests"]
+            if "subtests" not in sig.parameters:
+                del kwargs["subtests"]
+            for v in values:
+                vals = dict(zip(names, v if len(names) > 1 else (v,)))
+                with sub.test(msg=", ".join(f"{k}={x!r}"
+                                            for k, x in vals.items())):
+                    check(*args, **vals, **kwargs)
+        run.__name__ = check.__name__
+        run.__qualname__ = check.__qualname__
+        run.__doc__ = check.__doc__
+        run.__signature__ = sig.replace(parameters=params)
+        return run
+    return deco
 _SENTINEL_END = "// END shipped schemes (WP-17)"
 
 
@@ -127,9 +166,7 @@ def _served(spec):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_resolution_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_resolution_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -284,7 +321,7 @@ class TestCanResolve:
         assert self._quiet("") is False
         assert self._quiet(None) is False
 
-    @pytest.mark.parametrize("name", SHIPPED)
+    @each("name", SHIPPED)
     def test_every_shipped_scheme_is_true(self, name):
         assert self._quiet(name) is True, f"{name} does not resolve"
 
@@ -444,7 +481,7 @@ class TestTheShippedListIsOneList:
     def test_the_parser_ships_the_twenty(self):
         assert set(dr.SchemeParser._BUILTIN_NAMES) == set(SHIPPED), (
             sorted(set(dr.SchemeParser._BUILTIN_NAMES) ^ set(SHIPPED)))
-        assert len(SHIPPED) == 20
+        assert len(SHIPPED) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
 
     def test_the_extractor_agrees(self):
         assert set(_extractor_schemes()) == set(SHIPPED)
@@ -480,7 +517,7 @@ class TestTheShippedListIsOneList:
         assert len(schemes) == len(set(schemes)), "a name is listed twice"
         assert set(themes) == set(THEMES), sorted(set(themes) ^ set(THEMES))
 
-    @pytest.mark.parametrize("name", SHIPPED)
+    @each("name", SHIPPED)
     def test_every_shipped_name_has_a_file(self, name):
         assert os.path.isfile(
             os.path.join(_ROOT, f"dash-{name}.scheme")), name
@@ -491,14 +528,15 @@ class TestTheShippedListIsOneList:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("mode", MODES)
-@pytest.mark.parametrize("name", SHIPPED)
 class TestEveryShippedSchemeResolves:
+    @each("name", SHIPPED)
     def test_by_name(self, name, mode):
         d = _draw(_spec({"scheme": name}, kpi=False), mode)
         assert d.scheme.name == name, (name, d.scheme.name)
         assert d.scheme.is_fallback is False
         assert d.warnings == [], f"{name} [{mode}] warned: {d.warnings}"
 
+    @each("name", SHIPPED)
     def test_as_the_session_scheme(self, name, mode):
         """`set scheme <name>' then any dash: what cscript does with
         s2color8 in every certification session."""
@@ -540,25 +578,27 @@ ALPHA_LISTS = {
     "p_line_alphas":     "p_line_colors_opacity",
     "p_bar_alphas":      "p_bar_colors_opacity",
     "p_mark_alphas":     "p_mark_colors_opacity",
+    "p_markline_alphas": "p_markline_colors_opacity",
     "p_lineplot_alphas": "p_lineplot_colors_opacity",
 }
 
 #: Glyph class -> (fill_alpha, line_alpha) every shipped scheme other than
 #: sttrans drew on 22sep2026, captured before this change (scratchpad
 #: wp17/B2/capture.py, both modes agreed): the intensity-derived values.
-#: A Line has no fill and a VArea no line.  Only s1rcolor's `intensity bar'
-#: differs from full.
+#: A Line has no fill and a VArea no line.  Since WP-30 P1.2b markers are
+#: opaque, as twoway draws them (they were 0.8, the scheme's `intensity p'
+#: read as an alpha), and an intensity is a colour, never an alpha, so
+#: s1rcolor's bar and histogram (0.8 from graph bar's `intensity bar') are
+#: opaque too: no scheme is an exception (twoway's SVG, plan section 16
+#: Evidence E3).
 PINNED_ALPHAS = {
-    "Scatter": (0.8, 0.8),
+    "Scatter": (1.0, 1.0),
     "Line":    (None, 1.0),
     "VBar":    (1.0, 1.0),
     "VArea":   (1.0, None),
     "Quad":    (1.0, 1.0),
 }
-PINNED_EXCEPTIONS = {
-    ("s1rcolor", "VBar"): (0.8, 1.0),
-    ("s1rcolor", "Quad"): (0.8, 1.0),
-}
+PINNED_EXCEPTIONS = {}
 
 #: The five plot types whose mapper site reads a scheme alpha, one graph
 #: each, told apart afterwards by the glyph class they draw.
@@ -628,13 +668,13 @@ class TestTheParserCarriesTheColourOpacity:
         # The colour itself is still the plain hex the fixture records.
         assert sp.p_colors[0] == "#1a476f"
 
-    @pytest.mark.parametrize("name", OTHER_SCHEMES)
+    @each("name", OTHER_SCHEMES)
     def test_every_other_shipped_scheme_declares_none(self, name):
         sp = dr.SchemeParser(name)
         for attr in ALPHA_LISTS:
             assert getattr(sp, attr) == [None] * 15, (name, attr)
 
-    @pytest.mark.parametrize("name", SHIPPED)
+    @each("name", SHIPPED)
     def test_the_fixture_agrees(self, name):
         """The extractor's p_colors_opacity (Stata's percent) is what the
         parser carries, divided by 100."""
@@ -686,21 +726,23 @@ class TestTheParserCarriesTheColourOpacity:
         assert sp.p_line_alphas[0] == pytest.approx(0.3)
         assert sp.p_bar_alphas[0] is None
         assert sp.p_mark_alphas[0] is None
+        assert sp.p_markline_alphas[0] is None
         assert sp.p_lineplot_alphas[0] is None
         assert sp.default_alpha(0, "connected") == pytest.approx(0.3)
         assert sp.default_alpha(0, "line") is None
         assert sp.default_alpha(0, "scatter") is None
 
-    def test_an_unresolvable_colour_carries_no_opacity(self):
-        """The colour degrades loudly to the default, as _color does; the
-        %NN on a colour dash could not resolve is not kept."""
+    def test_an_unknown_colour_keeps_its_opacity(self):
+        """An unknown colour is black with a warning, its own %NN kept, as
+        twoway draws `color p1 bogus%50' (colour_grammar_truth.json
+        sch_42).  Flipped (WP-30 P1.13a): the opacity was dropped."""
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             sp = _props_scheme({"color p1": "nosuchcolour%20"})
         assert any("nosuchcolour%20" in str(w.message) for w in caught), [
             str(w.message) for w in caught]
         assert sp.p_colors[0] == "#000000"
-        assert sp.p_alphas[0] is None
+        assert sp.p_alphas[0] == 0.2
 
 
 @pytest.mark.parametrize("mode", MODES)
@@ -736,7 +778,10 @@ class TestSttransIsDrawnTranslucent:
 
     def test_a_user_fcolor_with_its_own_alpha_wins_on_a_bar(self, mode):
         g = _one_plot("bar", {"fcolor": "red%60"}, mode)[0]
-        assert g.fill_color == "#ff0000"
+        # Red at the bar's intensity, inten80, keeping its own %60
+        # (twoway: fcolor(navy%50) is #486C8C at 0.50; WP-30 P1.2b, plan
+        # section 16 Evidence E3).
+        assert g.fill_color == "#ff3333"
         assert g.fill_alpha == pytest.approx(0.6)
 
     def test_a_user_lcolor_with_its_own_alpha_wins_on_a_line(self, mode):
@@ -760,8 +805,8 @@ class TestBothModesAgreeOnTheOpacity:
 
 
 @pytest.mark.parametrize("mode", MODES)
-@pytest.mark.parametrize("name", OTHER_SCHEMES)
 class TestEveryOtherSchemeIsUnchanged:
+    @each("name", OTHER_SCHEMES)
     def test_the_alphas_are_what_they_were(self, name, mode):
         got = _alphas_by_glyph(name, mode)
         want = {cls: PINNED_EXCEPTIONS.get((name, cls), v)
@@ -826,7 +871,10 @@ class TestTheShippedFilesAreDashNameDotDash:
 
     def test_a_scheme_file_in_the_working_directory_still_wins(
             self, tmp_path, monkeypatch, kind):
-        mod_name, mod, _files_dir, cwd = _layout(tmp_path, kind)
+        """A user's own mytheme.scheme still resolves from the working
+        directory, but a file there named like a shipped scheme no longer
+        replaces it: twoway draws BASE's scheme first (WP-30 P1.25b)."""
+        mod_name, mod, files_dir, cwd = _layout(tmp_path, kind)
         (cwd / "mytheme.scheme").write_text(
             "#include s1rcolor\ncolor background #123456\n", encoding="utf-8")
         (cwd / "s2color.scheme").write_text(
@@ -837,8 +885,10 @@ class TestTheShippedFilesAreDashNameDotDash:
             for spelling in ("mytheme", "mytheme.scheme"):
                 assert os.path.realpath(inst._resolve_path(spelling)) == \
                     os.path.realpath(str(cwd / "mytheme.scheme"))
+            # WP-30 P1.25b: the shipped translation wins.
             assert os.path.realpath(inst._resolve_path("s2color")) == \
-                os.path.realpath(str(cwd / "s2color.scheme"))
+                os.path.realpath(os.path.join(files_dir,
+                                              "dash-s2color.scheme"))
             sch = mod.SchemeParser("mytheme")
             assert sch.name == "mytheme" and sch.is_fallback is False
             assert sch._props.get("color background") == "#123456"

@@ -288,11 +288,14 @@ def test_a_degraded_layer_still_applies_lwidth(name):
     options -- so ``lwidth(thick)`` was silently dropped for that layer.
     Measured with a constant x, which makes every one of them bail:
 
-        map_lowess   line_width 1    (should be 2.5)
-        map_mspline  line_width 1    (should be 2.5)
-        map_mband    line_width 1    (should be 2.5)
-        map_fpfit    line_width 1    (should be 2.5)
-        map_lpoly, map_lfit, map_qfit  2.5   -- already correct
+        map_lowess   line_width 1    (should be thick)
+        map_mspline  line_width 1    (should be thick)
+        map_mband    line_width 1    (should be thick)
+        map_fpfit    line_width 1    (should be thick)
+        map_lpoly, map_lfit, map_qfit  thick -- already correct
+
+    thick was 2.5 px on dash's private ladder; it is Stata's .8 units,
+    3.072 px (flipped, WP-30 P1.12b).
 
     It mattered beyond tidiness while ``statsmodels`` was an OPTIONAL
     dependency of lowess (until WP-18): on a machine without it EVERY
@@ -311,7 +314,7 @@ def test_a_degraded_layer_still_applies_lwidth(name):
     renderers = result if isinstance(result, (list, tuple)) else [result]
     widths = [getattr(getattr(r, "glyph", None), "line_width", None)
               for r in renderers if r is not None]
-    assert any(w == pytest.approx(2.5) for w in widths), (
+    assert any(w == pytest.approx(3.072) for w in widths), (
         "%s dropped lwidth(thick) on its bail-out path; got %r. A layer that "
         "could not be computed is still the user's layer." % (name, widths)
     )

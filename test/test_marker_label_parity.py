@@ -65,7 +65,6 @@ The served app copies ``GlyphMapper`` by source, so every drawing check runs
 in both render modes and asserts they agree.
 """
 import html
-import importlib.util
 import itertools
 import json
 import math
@@ -87,7 +86,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 from test_abbreviations import _program_body  # noqa: E402
@@ -110,6 +109,9 @@ _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_marker_label_parity_")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _write(spec, df, value_labels, label_names):
     tag = next(_SEQ)
     sp = os.path.join(_TMP, f"spec_{tag}.json")
@@ -129,12 +131,13 @@ def _write(spec, df, value_labels, label_names):
 
 
 def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
-          go=None):
+          go=None, served=True):
     """(saved figure, served figure, saved warnings, served warnings).
 
     By default ``foreign`` carries the label set ``origin`` keyed by the
     label set's name; real jsonio keys valueLabels by the VARIABLE's name,
-    which ``value_labels=`` can say instead.
+    which ``value_labels=`` can say instead.  ``served=False`` renders the
+    saved page alone: the served figure and warnings are then None.
     """
     if value_labels is None:
         value_labels = {"origin": dict(_ORIGIN)}
@@ -146,8 +149,10 @@ def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     std_w = sorted(str(w.message) for w in caught)
+    if not served:
+        return list(r.figures.values())[0], None, std_w, None
 
     tag, sp, dp = _write(spec, df, value_labels, label_names)
     ap = os.path.join(_TMP, f"app_{tag}.py")
@@ -156,9 +161,7 @@ def _both(plots, df=_DF, value_labels=None, label_names=None, formats=None,
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_mlp_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_mlp_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -330,19 +333,38 @@ class TestTheApplierLeavesTheOutlineToTheMarkerOptions:
         assert g.line_color == "#1a476f"
 
 
+#: The marker types whose served half the line-option sweep keeps (WP-30
+#: test performance E): point, line, range, spike, pc and immediate.  The
+#: saved half keeps all nine; the served app draws markers through the same
+#: GlyphMapper text, and test_mode_parity's corpus compares every type.
+_LINE_OPTION_SERVED = ("scatter", "connected", "rcapsym", "dropline",
+                       "pcscatter", "scatteri")
+
+
 @pytest.mark.parametrize("ptype", _MARKER_TYPES)
 @pytest.mark.parametrize("options", [
     {"lcolor": "red"}, {"lwidth": "vthick"}, {"lcolor": "red%50"},
     {"lalpha": "30"},
 ], ids=["lcolor", "lwidth", "lcolor%", "lalpha"])
 def test_the_line_options_leave_every_marker_alone(ptype, options):
-    """In both modes, the markers are the ones drawn with no option."""
-    b_std, b_srv, _, _ = _both([plot_for(ptype)])
-    std, srv, std_w, srv_w = _both([plot_for(ptype, options)])
-    assert std_w == srv_w
-    for base, fig in ((b_std, std), (b_srv, srv)):
+    """The markers are the ones drawn with no option: saved for every
+    marker type, served as well for ``_LINE_OPTION_SERVED``."""
+    served = ptype in _LINE_OPTION_SERVED
+    b_std, b_srv, _, _ = _both([plot_for(ptype)], served=served)
+    std, srv, std_w, srv_w = _both([plot_for(ptype, options)], served=served)
+    pairs = [(b_std, std)]
+    if served:
+        assert std_w == srv_w
+        pairs.append((b_srv, srv))
+    for base, fig in pairs:
         assert _markers(base), ptype
         assert _markers(fig) == _markers(base), (ptype, options)
+
+
+def test_the_line_option_sweep_serves_a_type_of_each_family():
+    """Guards the pruning: every served representative is a marker type."""
+    assert set(_LINE_OPTION_SERVED) < set(_MARKER_TYPES)
+    assert len(_LINE_OPTION_SERVED) == 6
 
 
 @pytest.mark.parametrize("ptype,kind", [
@@ -445,7 +467,13 @@ def test_the_label_options_reach_every_label(ptype):
         for ls in sets:
             assert float(ls.angle) == pytest.approx(math.radians(45))
             assert str(ls.text_color).lower() == _hex("red")
-            assert (ls.x_offset, ls.y_offset) == (-4, 0)
+            # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
+            # -(radius + default gap): radius 2.93334 px (half symbolsize
+            # medium 1.52778 rs at 3.84 px per rs; pcarrow/pcbarrow use half
+            # the scheme marker size) + gsize label_gap 2pt (2.66667 px).
+            assert ls.x_offset == pytest.approx(
+                -(1.52778 * 2.88 * (4 / 3) / 2 + 2 * (4 / 3)))
+            assert ls.y_offset == 0
 
 
 def test_an_out_of_range_angle_on_an_arrow_is_reported_and_drawn_flat():
@@ -801,9 +829,7 @@ def _served_after_filter(ptype, df, label, value):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_mlpf_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_mlpf_{tag}")
         doc = Document()
         mod.make_document(doc)
         w = [m for m in doc.select({"type": Select})][0]

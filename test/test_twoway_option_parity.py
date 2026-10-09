@@ -36,7 +36,6 @@ work notes hold the probes); what the renderer must reproduce:
 The served app copies ``GlyphMapper`` by source, so every check here runs in
 both render modes and asserts they agree.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -56,7 +55,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -75,6 +74,9 @@ _VALUE_LABELS = {"origin": {"0": "Domestic", "1": "Foreign"}}
 _LABEL_NAMES = {"foreign": "origin"}
 _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_twoway_parity_")
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _write(spec):
@@ -123,7 +125,7 @@ def _both(plots, go=None):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     std_w = sorted(str(w.message) for w in caught)
 
     tag, sp, dp = _write(spec)
@@ -133,9 +135,7 @@ def _both(plots, go=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_twp_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_twp_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -406,11 +406,12 @@ class TestTheConnectingLineOptions:
         assert g.line_alpha == 0.0
 
     def test_a_bad_clcolor_is_named_as_written(self):
-        """twoway: "named style notacolour not found in class color, default
-        attributes used" -- the DEFAULT, not lcolor()'s colour."""
+        """twoway: "named style notacolour not found in class color" --
+        black, not lcolor()'s colour.  Flipped (WP-30 P1.13a): the note
+        said the scheme's default; twoway draws an unknown colour black."""
         g, notes = _line_with({"lcolor": "red", "clcolor": "notacolour"})
         assert notes == ["dash: clcolor(notacolour) is not a recognised "
-                         "colour; using the scheme's default."], notes
+                         "colour; using black."], notes
         assert g.line_color.lower() != _hex("red")
 
     def test_a_bad_clwidth_and_clpattern_are_named_as_written(self):

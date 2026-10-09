@@ -36,6 +36,9 @@ _DF = pd.DataFrame({"mpg": [22.0, 18.0, 25.0, 30.0],
                     "weight": [2930.0, 3350.0, 2200.0, 1800.0]})
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(tmp_path, layout, names):
     tag = next(_SEQ)
     graphs = [{"name": n, "graph_options": {"name": n}, "options": {},
@@ -55,7 +58,7 @@ def _render(tmp_path, layout, names):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(str(spec), str(data))
-        r.render()
+        render_models(r)
     return r
 
 

@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # by_panel_probe (WP-30 P1.15a)
 from dash_render import DashRenderer
 
 
@@ -400,7 +401,10 @@ class TestByFacetingSecurity:
                 except OSError:
                     pass
         figs = r._build_figures()
-        titles = [figs[k].title.text for k in figs if "__by__" in k]
+        # Flipped (WP-30 P1.15a): the label is the panel's label row (a
+        # canvas Title), no longer its title.
+        from by_panel_probe import panel_label
+        titles = [panel_label(figs[k]) for k in figs if "__by__" in k]
         assert any("<script>alert(1)</script>" in t for t in titles), titles
         assert not any("&lt;" in t for t in titles), "escaped: " + repr(titles)
 

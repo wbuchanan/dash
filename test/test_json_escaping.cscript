@@ -77,6 +77,15 @@
 *! Version: 1.2  24sep2026
 
 cscript "every spec string is valid JSON on the way out" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // `cscript' drops every global macro, the runner's $dash_nobrowser with them;
 // set it again before this script builds a dashboard (test_cscript_hygiene.py).
@@ -452,12 +461,13 @@ display "JSE-16 PASS: the saved page and the served app draw the 22 rows, no qua
 macro drop JSE_*
 
 // JSE-17 -- and dash build itself, on the same registry: rc 0, and nothing
-// in what it prints says the qualifier was skipped.  It printed Python's
-// "UserWarning: dash: if_expr filter skipped -- invalid syntax".
+// in what it prints says the qualifier was skipped.  Before WP-30 it
+// printed Python's "UserWarning: dash: if_expr filter skipped -- invalid
+// syntax"; since WP-30 P1.26a that note is a "(note:  dash: ...)" line.
 //
 // The log is searched with cert_log_has, which rejoins the lines Stata
-// wraps: the warning begins with the path to dash_render.py, so where it
-// wraps depends on where the checkout lives, and a search of the file's
+// wraps: the Python warning began with the path to dash_render.py, and a
+// note is as long as its text, so where it wraps varies, and a search of the file's
 // bytes does not see "filter skipped" broken across two lines.  And the
 // same search must find those words where the renderer does skip a
 // qualifier -- the control below -- or their absence proves nothing.  Since
@@ -1874,9 +1884,12 @@ local jg_r7 = _rc
 capture noisily dash (scatter mpg weight) (line mpg weight), text(30 3000 "'90s tq") name(jg46h)
 local jg_r8 = _rc
 _jg_log_off
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() text() foo() bar()")
+* Flipped (WP-30 P1.10): text() is drawn, so the note names at() foo()
+* bar() and no note names text(); it was "at() text() foo() bar()" and
+* "text()" once each.
+cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): at() foo() bar()")
 local jg_m1 = r(count)
-cert_log_has "`jg_l46'", needle("ignoring unsupported option(s): text()")
+cert_log_has "`jg_l46'", needle("text()")
 local jg_m2 = r(count)
 capture erase "`jg_l46'"
 local jg_ok ""
@@ -1913,23 +1926,28 @@ local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "3000 " + _jg_pq(char(39) + "3k"))
 _jg_stored jg46f "graph_options xlabel2"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "30 3000 " + _jg_pq(char(39) + "90s tp"))
-_jg_stored jg46g "graph_options text"
+* Flipped (WP-30 P1.10): text() is stored as an added_text record whose
+* line is the text as typed; it was the option's raw value.
+mata: st_global("JG_WANT", char(39) + "90s tp")
+_jg_stored jg46g "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "1 " + _jg_pq(char(39) + "x"))
 _jg_stored jg46g "plots 0 options at"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "30 3000 " + _jg_pq(char(39) + "90s tq"))
-_jg_stored jg46h "graph_options text"
+mata: st_global("JG_WANT", char(39) + "90s tq")
+_jg_stored jg46h "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
 tempfile jg_p46
 _jg_build "`jg_p46'.html"
 local jg_rb = r(rc)
 local jg_rows "`r(rows)'"
 local jg_dr ""
+* Flipped (WP-30 P1.2a): subtitle(), note() and caption() were Labels,
+* which was wrong because twoway places them by the scheme's clock; S15
+* draws them as side-panel Titles in both modes.
 foreach jg_v in sp sc np nc cp cc {
     mata: st_global("JG_WANT", char(39) + "90s " + st_local("jg_v"))
-    _jg_drawn Label
+    _jg_drawn Title
     local jg_dr "`jg_dr'`r(n)'"
 }
 foreach jg_v in lp lq lc {
@@ -1958,7 +1976,7 @@ assert `jg_rb' == 0 & `jg_rb2' == 0
 assert "`jg_dr'" == "111111111"
 assert "`jg_rows'" == "`jg_nf' `jg_nd' 74 74 74 74 74 74"
 assert "`jg_rows2'" == "`jg_nf' `jg_nf' `jg_nd' `jg_nd' 74 74 74 74 74 74"
-assert `jg_m1' == 1 & `jg_m2' == 1
+assert `jg_m1' == 1 & `jg_m2' == 0
 // The axis and side titles are declared as title() is, string asis, so the
 // quotes the user typed reach the spec.  Declared string, Stata stripped
 // them: ytitle("line 1" "line 2") was stored, and drawn, as one line, and
@@ -3112,16 +3130,18 @@ assert `j5_sthere' == 1
 local j5_here "`c(pwd)'"
 quietly cd "`j5_sdir'"
 mata: st_global("J5_CMD", "_dash_serve, scheme(j58" + char(36) + "J5_G) nobrowser")
+// Flipped (WP-30 P1.25b, BR-34.5): a scheme name holding a $ is refused
+// r(198) before any file is looked for, the name shown as typed -- never
+// the global's value.
+tempfile j5_slog
+quietly log using "`j5_slog'", text replace name(j5s)
 _j5_serve "`j5_stub'"
 local j5_rc = r(rc)
-local j5_st = r(stub)
+quietly log close j5s
 quietly cd "`j5_here'"
-assert `j5_rc' == 0 & `j5_st' == 1
-mata: st_global("J5_WANT_T", "j58" + char(36) + "J5_G")
-global J5_PATH "build_options scheme"
-python: _j5_spec_field()
-local j5_ok "`j5_ok'$J5_OK"
-mata: _dash_say("txt", "  served scheme: [", st_global("J5_GOT_T"), "]")
+assert `j5_rc' == 198
+mata: st_local("j5_named", strofreal(strpos(subinstr(invtokens(cat(st_local("j5_slog"))', char(10)), char(10) + "> ", ""), "(got: j58" + char(36) + "J5_G)") > 0))
+local j5_ok "`j5_ok'`j5_named'"
 mata: st_local("j5_rm", strofreal(_unlink(st_local("j5_sfile"))))
 capture rmdir "`j5_sdir'"
 // The validated options are validated as written: a macro that expands to
@@ -3310,21 +3330,28 @@ def _jr_page_check():
         page = fh.read()
     blocks = _jr_re.findall('<script type="application/json"[^>]*>(.*?)</script>', page, _jr_re.S)
     titles, labels, style = [], [], []
+    title, want = _jr_wanted()
     stack = [_jr_json.loads(_jr_html.unescape(b)) for b in blocks]
     while stack:
         v = stack.pop()
         if isinstance(v, dict):
             if v.get("type") == "object" and v.get("name") in ("Title", "Label"):
                 a = v.get("attributes", {})
+                # Flipped (WP-30 P1.2a): subtitle(), note() and caption()
+                # are side-panel Titles now; one Title reading the title's
+                # text is the graph's title, every other text a box.
                 if v["name"] == "Title":
-                    titles.append(a.get("text"))
-                    style.append(repr(a.get("text_color")) + repr(a.get("text_font_size")))
+                    titles.append((a.get("text"), repr(a.get("text_color")) + repr(a.get("text_font_size"))))
                 else:
                     labels.append(a.get("text"))
             stack.extend(v.values())
         elif isinstance(v, list):
             stack.extend(v)
-    title, want = _jr_wanted()
+    hit = [i for i, (t, _st) in enumerate(titles) if t == title]
+    if hit:
+        style.append(titles[hit[0]][1])
+    labels.extend(t for i, (t, _st) in enumerate(titles) if not hit or i != hit[0])
+    titles = [title] if hit else [t for t, _st in titles]
     ok = len(blocks) == 1 and titles == [title] and sorted(labels) == want
     _jr_M.setGlobal("JR_OK", "1" if ok else "0")
     _jr_M.setGlobal("JR_STYLE", _jr_hash.sha1(ascii(style).encode()).hexdigest()[:12])
@@ -3458,14 +3485,17 @@ display "JSE-63 PASS: text inside a string or parentheses is drawn as text, neve
 
 // JSE-64 -- SMCL, markup, JSON punctuation and Python code between double
 // quotes, in a compound-quoted title and note (CLAUDE.md rule 18,
-// injection), are drawn exactly as typed, and nothing runs.  Measured
-// before: the text was cut at each double quote.
+// injection), are drawn as twoway draws them, and nothing runs.  Measured
+// before: the text was cut at each double quote.  Flipped (WP-30 P1.11b):
+// {bf:...} is graph-text markup, which twoway draws as the bold text; the
+// label stays text, never HTML or script.
 local jr_sent "`c(tmpdir)'jse64_executed"
 capture erase "`jr_sent'"
 mata: st_local("jr_t64", "{bf:" + char(34) + "z" + char(34) + "} {stata dash clear} <script>alert(" + char(34) + "x" + char(34) + ")</script> <b>'q'</b> & &amp; }, ] {" + char(34) + "k" + char(34) + ": 1} __import__('os').system('touch " + st_local("jr_sent") + "')")
-mata: st_global("JR_WANT", st_local("jr_t64"))
+mata: st_local("jr_d64", subinstr(st_local("jr_t64"), "{bf:" + char(34) + "z" + char(34) + "}", char(34) + "z" + char(34), 1))
+mata: st_global("JR_WANT", st_local("jr_d64"))
 global JR_NL 1
-mata: st_global("JR_L1", st_local("jr_t64"))
+mata: st_global("JR_L1", st_local("jr_d64"))
 global JR_QUIET 1
 tempfile jr_p64
 global JR_PAGE "`jr_p64'.html"
@@ -3477,10 +3507,10 @@ capture erase "$JR_PAGE"
 capture confirm file "`jr_sent'"
 local jr_ran64 = (_rc == 0)
 capture erase "`jr_sent'"
-display as text "  drawn as typed: `jr_ok64'  code ran: `jr_ran64'"
+display as text "  drawn as twoway draws them: `jr_ok64'  code ran: `jr_ran64'"
 assert "`jr_ok64'" == "1"
 assert `jr_ran64' == 0
-display "JSE-64 PASS: SMCL, markup, JSON and Python code in a title and note are drawn as typed and run nowhere"
+display "JSE-64 PASS: SMCL, markup, JSON and Python code in a title and note are drawn as twoway draws them and run nowhere"
 
 python: _jr_gone = _jr_sys.modules.pop("_jr_dash_render", None)
 macro drop JR_*
@@ -3553,7 +3583,8 @@ foreach jg_x in "s" "n" "c" {
     if "`jg_x'" == "s" mata: st_global("JG_WANT", "s" + char(36) + "J6_G " + char(96) + "=1+1" + char(39))
     if "`jg_x'" == "n" mata: st_global("JG_WANT", "n" + char(96) + "jgnone" + char(39) + " " + char(36) + "J6_G")
     if "`jg_x'" == "c" mata: st_global("JG_WANT", "c" + char(36) + "J6_G")
-    _jg_drawn Label
+    * Flipped (WP-30 P1.2a): the subtitle, note and caption are Titles.
+    _jg_drawn Title
     local jg_dr "`jg_dr'`r(n)'"
 }
 mata: st_global("JG_WANT", "l" + char(36) + "J6_G")
@@ -3781,8 +3812,9 @@ macro drop J6_*
 // weight expression, a scatteri label and mcolor()
 // ----------------------------------------------------------------
 // Each value is judged as typed: by()'s title and text() are kept, with no
-// =exp run; legend(\$J6_T) is not the word top that J6_T holds, so it is
-// kept, where twoway expands it and refuses top, r(198); bw() and mlabel()
+// =exp run; legend(label(1 \$J6_T)) keeps the text as typed, not the word
+// top that J6_T holds (a bare legend(\$J6_T) word is refused since WP-30
+// P1.19, as twoway refuses a word it does not know); bw() and mlabel()
 // are refused showing the text, where both were expanded to nothing and
 // dropped with rc 0; colormissing() is named in the note; a weight
 // [aw=\$J6_W] is not the variable J6_W holds -- Stata's syntax refuses the
@@ -3803,7 +3835,7 @@ local jg_l69 "`c(tmpdir)'dash_jse69.log"
 _jg_log_on "`jg_l69'"
 capture noisily dash scatter mpg weight, by(foreign, title("b\$J6_G \`=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))'")) name(jg69a)
 local jg_v1 = _rc
-capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G") legend(\$J6_T) name(jg69b)
+capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G") legend(label(1 \$J6_T)) name(jg69b)
 local jg_v2 = _rc
 capture noisily dash lpoly mpg weight, bw("\`jgnone'") name(jg69c)
 local jg_v3 = _rc
@@ -3855,10 +3887,12 @@ local jg_ok ""
 mata: st_global("JG_WANT", "foreign, title(" + _jg_pq("b" + char(36) + "J6_G " + char(96) + "=filewrite(c(tmpdir)+char(106)+char(54)+char(57),char(120))" + char(39)) + ")")
 _jg_stored jg69a "graph_options by"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", "30 3000 " + _jg_pq("t" + char(36) + "J6_G"))
-_jg_stored jg69b "graph_options text"
+* Flipped (WP-30 P1.10): text()'s line is stored as typed in its
+* added_text record; it was the option's raw value.
+mata: st_global("JG_WANT", "t" + char(36) + "J6_G")
+_jg_stored jg69b "graph_options added_text 0 at_lines 0"
 local jg_ok "`jg_ok'`r(ok)'"
-mata: st_global("JG_WANT", char(36) + "J6_T")
+mata: st_global("JG_WANT", "label(1 " + char(36) + "J6_T)")
 _jg_stored jg69b "graph_options legend"
 local jg_ok "`jg_ok'`r(ok)'"
 mata: st_global("JG_WANT", "s" + char(36) + "J6_G")
@@ -4074,6 +4108,108 @@ assert `j72_rb' == 0
 assert "`j72_dr'" == "111"
 display "JSE-72 PASS: a nested compound title and legend label are accepted and drawn as twoway draws them"
 capture dash clear
+
+// ----------------------------------------------------------------
+// AT-13, AT-14, AT-16 -- text() read by value (WP-30 P1.10)
+// ----------------------------------------------------------------
+// A copy's lines, point and sub-options are read by Mata as data
+// (_dash_at_parse, _dash_at_opts): a $global or an =exp in them is never
+// expanded or run, and a char(30) inside a quoted line is the line's own,
+// not the separator _dash_rep_merge puts between copies.
+global J6_G "Audi 5000"
+global J6_P "30"
+global J6_C "red"
+local at_sent "`c(tmpdir)'j13"
+capture erase "`at_sent'"
+capture dash clear
+// AT-13: the line as typed, a $global and an =exp in it.
+capture noisily dash scatter mpg weight, text(30 3000 "t\$J6_G" "\`=filewrite(c(tmpdir)+char(106)+char(49)+char(51),char(120))'") name(at13)
+local at_r13 = _rc
+mata: st_global("JG_WANT", "t" + char(36) + "J6_G")
+_jg_stored at13 "graph_options added_text 0 at_lines 0"
+local at_ok13 "`r(ok)'"
+mata: st_global("JG_WANT", char(96) + "=filewrite(c(tmpdir)+char(106)+char(49)+char(51),char(120))" + char(39))
+_jg_stored at13 "graph_options added_text 0 at_lines 1"
+local at_ok13 "`at_ok13'`r(ok)'"
+capture confirm file "`at_sent'"
+local at_ran = (_rc == 0)
+if `at_r13' | "`at_ok13'" != "11" | `at_ran' {
+    display as error "AT-13 FAIL: rc `at_r13', stored `at_ok13', filewrite ran `at_ran'"
+}
+else display "AT-13 PASS: a global and an =exp in a line are stored as typed and nothing runs"
+// AT-14: a $global as a point is no number (refused, shown as typed); in a
+// sub-option it is kept as typed.
+local at_l14 "`c(tmpdir)'dash_at14.log"
+_jg_log_on "`at_l14'"
+capture noisily dash scatter mpg weight, text(\$J6_P 3000 "x") name(at14a)
+local at_r14a = _rc
+capture noisily dash scatter mpg weight, text(30 3000 "x", color(\$J6_C)) name(at14b)
+local at_r14b = _rc
+_jg_log_off
+// Shown as typed: the line names the global, never its value 30.
+cert_log_has "`at_l14'", needle("invalid point, 3000 ")
+local at_w14 = r(count)
+cert_log_has "`at_l14'", needle("invalid point, 3000 30")
+local at_w14 = `at_w14' - r(count)
+capture erase "`at_l14'"
+mata: st_global("JG_WANT", "color(" + char(36) + "J6_C)")
+_jg_stored at14b "graph_options added_text 0 at_opts"
+local at_ok14 "`r(ok)'"
+if `at_r14a' != 198 | `at_w14' != 1 | `at_r14b' | "`at_ok14'" != "1" {
+    display as error "AT-14 FAIL: rc `at_r14a' `at_r14b', shown `at_w14', stored `at_ok14'"
+}
+else display "AT-14 PASS: a global as a point is refused as typed, a global colour kept as typed"
+// AT-16: a char(30) inside a quoted line: one record, the line its own,
+// and the control character not drawn.
+local at_rs = char(30)
+capture noisily dash scatter mpg weight, text(30 3000 "p`at_rs'q") name(at16)
+local at_r16 = _rc
+mata: st_global("JG_WANT", "p" + char(30) + "q")
+_jg_stored at16 "graph_options added_text 0 at_lines 0"
+local at_ok16 "`r(ok)'"
+mata: st_local("at_n16", strofreal(_dash_json_first_num(st_global("dash_json_at16"), "added_text_n")))
+capture dash clear
+capture noisily dash scatter mpg weight, text(30 3000 "p`at_rs'q") name(at16)
+tempfile at_p16
+_jg_build "`at_p16'.html"
+local at_rb16 = r(rc)
+mata: st_global("JG_WANT", "pq")
+_jg_drawn Label
+local at_dr16 "`r(n)'"
+capture erase "`at_p16'.html"
+if `at_r16' | "`at_ok16'" != "1" | `at_n16' != 1 | `at_rb16' | "`at_dr16'" != "1" {
+    display as error "AT-16 FAIL: rc `at_r16', stored `at_ok16', records `at_n16', build `at_rb16', drawn `at_dr16'"
+}
+else display "AT-16 PASS: a char(30) in a line is the line's own, one record, not drawn"
+// AT-15: a $global as ttext()'s date is no date of the axis (refused,
+// shown as typed); the month J6_D holds would be read if it were expanded.
+preserve
+clear
+quietly set obs 24
+quietly generate t = tm(2000m1) + _n - 1
+format t %tm
+quietly generate double y = _n
+quietly tsset t
+global J6_D "2001m1"
+local at_l15 "`c(tmpdir)'dash_at15.log"
+_jg_log_on "`at_l15'"
+capture noisily dash tsline y, ttext(12 \$J6_D "x") name(at15)
+local at_r15 = _rc
+_jg_log_off
+cert_log_has "`at_l15'", needle("J6_D is not a number")
+local at_w15 = r(count)
+capture erase "`at_l15'"
+restore
+if `at_r15' != 198 | `at_w15' != 1 {
+    display as error "AT-15 FAIL: rc `at_r15', shown `at_w15'"
+}
+else display "AT-15 PASS: a global as a ttext() date is refused as typed, never expanded"
+assert `at_r13' == 0 & "`at_ok13'" == "11" & `at_ran' == 0
+assert `at_r15' == 198 & `at_w15' == 1
+assert `at_r14a' == 198 & `at_w14' == 1 & `at_r14b' == 0 & "`at_ok14'" == "1"
+assert `at_r16' == 0 & "`at_ok16'" == "1" & `at_n16' == 1 & `at_rb16' == 0 & "`at_dr16'" == "1"
+capture dash clear
+macro drop J6_*
 
 display ""
 display "All JSON escaping tests PASSED."

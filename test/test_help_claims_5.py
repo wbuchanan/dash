@@ -46,7 +46,6 @@ The served app copies GlyphMapper and the shared helpers by source, so each
 drawing check below renders the same spec through DashRenderer (the saved
 page) and through ServerAppBuilder and make_document (the served app).
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -68,6 +67,8 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from by_panel_probe import by_grid, chrome_texts, panel_label  # noqa: E402
+from conftest import load_app  # noqa: E402
 
 _SEQ = itertools.count()
 _TMP = tempfile.mkdtemp(prefix="dash_help_claims_5_")
@@ -77,6 +78,9 @@ _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 # ===========================================================================
 # Inputs as dash.ado writes them, rendered both ways
 # ===========================================================================
+
+from conftest import render_models  # noqa: E402
+
 
 def _auto():
     """Twelve cars: auto's first rows, with rep78 missing twice."""
@@ -174,7 +178,7 @@ def _both(spec, payload):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     saved = sorted({str(w.message) for w in caught})
     tag, sp, dp = _write(spec, payload)
     ap = os.path.join(_TMP, f"app_{tag}.py")
@@ -183,9 +187,7 @@ def _both(spec, payload):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_hc5_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_hc5_{tag}")
     with warnings.catch_warnings(record=True) as session:
         warnings.simplefilter("always")
         doc = Document()
@@ -266,23 +268,24 @@ def _pair_figures(r, doc):
     return saved[0], served[0]
 
 
-def _grid_panels(grids):
-    """The panels of the one grid made only of figures, as
-    ``[(row, col, title)]`` sorted by place."""
-    panel_grids = [g for g in grids
-                   if g.children and all(type(c[0]).__name__ == "figure"
-                                         for c in g.children)]
-    assert len(panel_grids) == 1, panel_grids
-    return sorted((row, col, fig.title.text if fig.title is not None else "")
-                  for fig, row, col in panel_grids[0].children)
+def _grid_panels(root):
+    """The panels of the one by() grid under *root*, as ``[(row, col,
+    label)]`` sorted by place.  Flipped (WP-30 P1.15a): read the title,
+    which held the label, and took every grid child for a panel; twoway
+    keeps the graph's title on every panel and draws the label as a row
+    of its own, and the grid now holds the overall text's chrome cells."""
+    panels, _head, _foot = by_grid(root)
+    return [(row, col, panel_label(fig)) for row, col, fig in panels]
 
 
 def _saved_panels(r):
-    return _grid_panels(r._last_layout_root.select({"type": GridPlot}))
+    return _grid_panels(r._last_layout_root)
 
 
 def _served_panels(doc):
-    return _grid_panels(list(doc.select({"type": GridPlot})))
+    (root,) = [x for x in doc.roots
+               if any(isinstance(m, GridPlot) for m in x.references())]
+    return _grid_panels(root)
 
 
 def _help_section(start_marker, end_marker):
@@ -311,6 +314,17 @@ _ANCHOR = {
     10: ("right", "bottom"), 11: ("right", "bottom"),
     12: ("center", "bottom"),
 }
+
+
+# WP-30 P1.12a: twoway's label offset, as measured in Evidence E5, is
+# (marker radius + gap) along the clock's unit vector.  Under s2color the
+# default marker is symbolsize medium, 1.52778 rs (1 rs = 2.88 pt, 1 pt =
+# 4/3 px), so its radius is half that; the default gap is gsize label_gap,
+# 2 pt; one Stata size unit (rs) is 2.88 pt = 3.84 px.
+_R = 1.52778 * 2.88 * (4 / 3) / 2      # 2.93334 px
+_GAP = 2 * (4 / 3)                     # 2.66667 px
+_U = 2.88 * (4 / 3)                    # 3.84 px per Stata unit
+_DEF = _R + _GAP                       # 5.6 px
 
 
 def _direction(p):
@@ -353,33 +367,46 @@ class TestTheClockPositionPlacesTheLabelAsTwowayDoes:
     def test_the_default_is_three_oclock(self):
         for ls in _labelled()[:2]:
             assert (ls.text_align, ls.text_baseline) == _ANCHOR[3]
-            assert (ls.x_offset, ls.y_offset) == (4, 0)
+            # WP-30 P1.12a (Evidence E5, twoway measured): radius 2.93334
+            # + default gap 2pt (2.66667 px) at 3 o'clock, not 4 px.
+            assert ls.x_offset == pytest.approx(_DEF)
+            assert ls.y_offset == 0
 
+    # WP-30 P1.12a (Evidence E5, twoway measured): the offset is
+    # (radius + gap) along the clock's unit vector, the gap in Stata units:
+    # mlabgap(10) is 10 x 3.84 px, so 2.93334 + 38.4 px from the centre.
     @pytest.mark.parametrize("p,want", [
-        (3, (14, 0)), (9, (-14, 0)), (12, (0, 14)), (6, (0, -14)),
-        (0, (0, 0)), (1, (8, 3 + 10 * math.sqrt(3) / 2)),
-        (2, (3 + 10 * math.sqrt(3) / 2, 7)),
-        (7, (-8, -3 - 10 * math.sqrt(3) / 2)),
+        (3, (_R + 38.4, 0)), (9, (-(_R + 38.4), 0)),
+        (12, (0, _R + 38.4)), (6, (0, -(_R + 38.4))),
+        (0, (0, 0)),
+        (1, ((_R + 38.4) / 2, (_R + 38.4) * math.sqrt(3) / 2)),
+        (2, ((_R + 38.4) * math.sqrt(3) / 2, (_R + 38.4) / 2)),
+        (7, (-(_R + 38.4) / 2, -(_R + 38.4) * math.sqrt(3) / 2)),
     ])
     def test_mlabgap_widens_the_gap_along_the_clock_direction(self, p, want):
         """HC5-05: twoway's mlabgap(10) moves a 9 o'clock label further
-        left and does nothing at 0.  dash's gap is in pixels."""
+        left and does nothing at 0.  The gap is in Stata's size units."""
         for ls in _labelled(mlabposition=str(p), mlabgap="10")[:2]:
             assert ls.x_offset == pytest.approx(want[0]), (p, ls.x_offset)
             assert ls.y_offset == pytest.approx(want[1]), (p, ls.y_offset)
 
+    # WP-30 P1.12a (Evidence E5, twoway measured): the gap is Stata units
+    # (3.84 px each) added to the marker radius 2.93334 px; small and tiny
+    # are gsize 2.777 and 1.3888 units.
     @pytest.mark.parametrize("gap,want", [
-        ("0", 4), ("-2", 2), ("2.5", 6.5), ("small", 4 + 7), ("tiny", 4 + 3),
+        ("0", _R), ("-2", _R - 2 * _U), ("2.5", _R + 2.5 * _U),
+        ("small", _R + 2.777 * _U), ("tiny", _R + 1.3888 * _U),
     ])
-    def test_mlabgap_is_the_pixels_given(self, gap, want):
-        """A zero gap adds nothing, a negative one moves the label toward
-        the point (twoway accepts mlabgap(-5): measured, the label crosses
-        the marker), a fraction is kept, and a size keyword is the pixels
-        mlabsize() reads it as."""
+    def test_mlabgap_is_in_statas_units(self, gap, want):
+        """A zero gap leaves the label at the marker's edge, a negative one
+        moves it toward the point (twoway accepts mlabgap(-5): measured, the
+        label crosses the marker), a fraction is kept, and a size keyword is
+        read from Stata's gsize ladder."""
         a, b, saved, served = _labelled(mlabgap=gap)
         assert not [m for m in saved + served if "mlabgap" in m], saved
         for ls in (a, b):
-            assert (ls.x_offset, ls.y_offset) == (pytest.approx(want), 0)
+            assert (ls.x_offset, ls.y_offset) == (
+                pytest.approx(want, rel=1e-4), 0)
 
     @pytest.mark.parametrize("raw", ["13", "2.5", "03", "3.0", "-1", "abc"])
     def test_a_position_twoway_does_not_recognise_is_drawn_at_twelve(
@@ -392,7 +419,10 @@ class TestTheClockPositionPlacesTheLabelAsTwowayDoes:
         assert [m for m in served if "mlabposition" in m] == want, served
         for ls in (a, b):
             assert (ls.text_align, ls.text_baseline) == _ANCHOR[12]
-            assert (ls.x_offset, ls.y_offset) == (0, 4)
+            # WP-30 P1.12a (Evidence E5, twoway measured): 12 o'clock is
+            # radius + default gap, 2.93334 + 2.66667 px, straight up.
+            assert ls.x_offset == 0
+            assert ls.y_offset == pytest.approx(_DEF)
 
     def test_every_label_of_a_two_ended_type_is_placed_alike(self):
         """rcapsym labels both ends, each with the same anchor."""
@@ -405,7 +435,10 @@ class TestTheClockPositionPlacesTheLabelAsTwowayDoes:
             assert len(sets) == 2
             for ls in sets:
                 assert (ls.text_align, ls.text_baseline) == _ANCHOR[9]
-                assert (ls.x_offset, ls.y_offset) == (-4, 0)
+                # WP-30 P1.12a (Evidence E5, twoway measured): 9 o'clock is
+                # -(radius + default gap), -(2.93334 + 2.66667) px.
+                assert ls.x_offset == pytest.approx(-_DEF)
+                assert ls.y_offset == 0
 
     def test_an_immediate_label_takes_its_own_clock_position(self):
         """scatteri's per-point clock positions go through the same
@@ -431,15 +464,21 @@ class TestTheClockHelpers:
             assert (_sign(base[0]), _sign(base[1])) == _direction(p), p
             assert math.hypot(*unit) == pytest.approx(0 if p == 0 else 1)
 
+    # WP-30 P1.12a (Evidence E5, twoway measured): the reader returns
+    # signed px at 3.84 px per Stata unit; small is gsize 2.777 units and
+    # *2 is twice the 2pt default gap.  HUGE is not a gsize name (case).
     @pytest.mark.parametrize("raw,want", [
-        ("10", 10.0), (" 3 ", 3.0), ("-4", -4.0), ("0", 0.0), (".5", 0.5),
-        ("1e2", 100.0), ("small", 7.0), ("HUGE", 24.0),
+        ("10", 10 * 3.84), (" 3 ", 3 * 3.84), ("-4", -4 * 3.84),
+        ("0", 0.0), (".5", 0.5 * 3.84), ("1e2", 100 * 3.84),
+        ("small", 2.777 * 3.84), ("*2", 2 * 2 * (4 / 3)),
     ])
     def test_the_gap_reader(self, raw, want):
         assert dr.GlyphMapper._mlabel_gap_px(raw) == pytest.approx(want)
 
     @pytest.mark.parametrize("raw", [
-        "abc", "", "inf", "-inf", "nan", "1e400", "*2", "\u0665", "5px",
+        # WP-30 P1.12a (Evidence E5): *2 is now read (above); HUGE is
+        # refused, as Stata's size names are lower case.
+        "abc", "", "inf", "-inf", "nan", "1e400", "HUGE", "\u0665", "5px",
         "1" * 400,
     ])
     def test_the_gap_reader_refuses_what_is_not_a_gap(self, raw):
@@ -464,7 +503,8 @@ def _by(by, df=None, value_labels=None, label_names=None, formats=None,
 
 class TestThePanelTitles:
     """HC5-07 measured twoway's titles; the help promises value labels and
-    composite titles such as "Domestic / 3"."""
+    composite titles such as "Domestic, 3".  Flipped (WP-30 P1.15a):
+    "Domestic / 3" was wrong because twoway joins labels ", "."""
 
     def test_an_unlabelled_value_is_written_as_stata_writes_it(self):
         r, doc, _, _ = _by("rep78")
@@ -475,8 +515,8 @@ class TestThePanelTitles:
         r, doc, _, _ = _by("foreign rep78",
                            value_labels={"foreign": dict(_ORIGIN)},
                            label_names={"foreign": "origin"})
-        want = ["Domestic / 3", "Domestic / 4", "Foreign / 3",
-                "Foreign / 4", "Foreign / 5"]
+        want = ["Domestic, 3", "Domestic, 4", "Foreign, 3",
+                "Foreign, 4", "Foreign, 5"]
         for panels in (_saved_panels(r), _served_panels(doc)):
             assert [t for _, _, t in panels] == want, panels
 
@@ -524,13 +564,18 @@ class TestThePanelTitles:
                                            "03jan2000"], (saved, served)
 
     def test_the_graphs_title_leads_each_panels(self):
+        """Flipped (WP-30 P1.15a): "Cars — Domestic" was wrong because
+        twoway keeps title() on every panel and draws the label as a row
+        under it (probe p14)."""
         r, doc, _, _ = _by("foreign",
                            value_labels={"foreign": dict(_ORIGIN)},
                            label_names={"foreign": "origin"},
                            graph_opts={"title": "Cars"})
-        for panels in (_saved_panels(r), _served_panels(doc)):
-            assert [t for _, _, t in panels] == [
-                "Cars \u2014 Domestic", "Cars \u2014 Foreign"], panels
+        saved = [f for _, _, f in by_grid(r._last_layout_root)[0]]
+        served = _served_figures(doc)
+        for figs in (saved, served):
+            assert [f.title.text for f in figs] == ["Cars", "Cars"]
+            assert [panel_label(f) for f in figs] == ["Domestic", "Foreign"]
 
 
 class TestTheFacetLabelHelper:
@@ -542,7 +587,9 @@ class TestTheFacetLabelHelper:
     @pytest.mark.parametrize("key,want", [
         (3.0, "3"), (0.25, ".25"), (-0.25, "-.25"), (1234567.0, "1234567"),
         (2.5e-12, "2.50000000000e-12"), (np.float64(4.0), "4"),
-        (float("nan"), "Missing"),
+        # Flipped (WP-30 P1.15a): "Missing" was wrong because twoway
+        # writes "(missing)".
+        (float("nan"), "(missing)"),
     ])
     def test_one_unlabelled_variable(self, key, want):
         assert dr._dash_facet_label(["rep78"], key) == want
@@ -554,8 +601,9 @@ class TestTheFacetLabelHelper:
             == "2"
 
     def test_two_variables_are_joined(self):
+        # Flipped (WP-30 P1.15a): " / " was wrong because twoway joins ", ".
         assert dr._dash_facet_label(["foreign", "rep78"], (0.0, 3.0),
-                                    self._N, self._L) == "Domestic / 3"
+                                    self._N, self._L) == "Domestic, 3"
 
     def test_the_label_wins_over_a_display_format(self):
         assert dr._dash_facet_label(
@@ -636,8 +684,10 @@ class TestTheTotalAndMissingPanels:
         return n
 
     def _counts(self, r, doc):
-        saved = {f.title.text: self._points(f) for f in r.figures.values()}
-        served = {f.title.text: self._points(f)
+        # Flipped (WP-30 P1.15a): keyed on the title, which held the label;
+        # the label is its own row now.
+        saved = {panel_label(f): self._points(f) for f in r.figures.values()}
+        served = {panel_label(f): self._points(f)
                   for f in _served_figures(doc)}
         return saved, served
 
@@ -649,7 +699,8 @@ class TestTheTotalAndMissingPanels:
     def test_total_with_missing_is_every_observation(self):
         r, doc, _, _ = _by("rep78, missing total")
         for got in self._counts(r, doc):
-            assert got == {"3": 7, "4": 2, "5": 1, "Missing": 2,
+            # Flipped (WP-30 P1.15a): twoway writes "(missing)".
+            assert got == {"3": 7, "4": 2, "5": 1, "(missing)": 2,
                            "Total": 12}, got
 
     def test_the_total_panel_is_one_more_than_the_group_limit(self):
@@ -658,8 +709,9 @@ class TestTheTotalAndMissingPanels:
         df["g"] = [float(i) for i in range(len(df))]
         r, doc, saved, served = _by("g, total", df=df,
                                     build={"limits": {"by_groups": 4}})
-        for titles in ([f.title.text for f in r.figures.values()],
-                       [f.title.text for f in _served_figures(doc)]):
+        # Flipped (WP-30 P1.15a): the panels are named by their label row.
+        for titles in ([panel_label(f) for f in r.figures.values()],
+                       [panel_label(f) for f in _served_figures(doc)]):
             assert sorted(titles) == sorted(["0", "1", "2", "3", "Total"])
         for notes in (saved, served):
             assert [m for m in notes if "has 12 groups, more than the 4"
@@ -673,15 +725,31 @@ class TestThePanelArrangement:
 
     @staticmethod
     def _spy(namespace):
-        rows = []
+        """``(rows, spy)``: *rows* fills, as each grid is laid out, with the
+        panels per row of every grid gridplot() made.  Flipped (WP-30
+        P1.15b): the by() grid is made from one row and its children then
+        placed in twoway's cells (_dash_by_positions), so the rows are read
+        from the grid's children, not from gridplot()'s argument."""
+        grids = []
         real = namespace.gridplot if not isinstance(namespace, dict) \
             else namespace["gridplot"]
 
+        class _Rows(list):
+            def __contains__(self, want):
+                for g in grids:
+                    per = {}
+                    for c in g.children:
+                        if type(c[0]).__name__ == "figure":
+                            per[int(c[1])] = per.get(int(c[1]), 0) + 1
+                    if [per[r] for r in sorted(per)] == want:
+                        return True
+                return False
+
         def spy(children, *a, **k):
-            rows.append([sum(1 for c in row if c is not None)
-                         for row in children if isinstance(row, list)])
-            return real(children, *a, **k)
-        return rows, spy
+            g = real(children, *a, **k)
+            grids.append(g)
+            return g
+        return _Rows(), spy
 
     @pytest.mark.parametrize("build", [
         {"layout": "auto"}, {"layout": "auto", "tabs": "A: g1"},
@@ -746,7 +814,7 @@ class TestTheOneLineFormHonoursCols:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         assert [(row, col) for row, col, _ in _saved_panels(r)] == want
 
     def test_the_options_are_found_by_the_layout_key(self):
@@ -765,14 +833,16 @@ class TestTheOneLineFormHonoursCols:
 
 
 class TestTheSubOptionsDashDoesNotImplement:
-    """rows(), holes() and compact are accepted, named in one note -- the
-    ones dash implements never -- and ignored, in both modes."""
+    """subtitleformat() and the shrink words are accepted, named in one
+    note -- the ones dash implements never -- and ignored, in both modes.
+    Flipped (WP-30 P1.15b): rows(), holes() and compact were the examples;
+    they are drawn now, as twoway draws them (by_grid_truth.json)."""
 
     def test_named_and_ignored(self):
-        r, doc, saved, served = _by("foreign, rows(2) holes(1) compact "
+        r, doc, saved, served = _by("foreign, subtitleformat(%9s) shrink "
                                     "cols(2) total missing")
         want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "rows(2) holes(1) compact"]
+                "subtitleformat(%9s) shrink"]
         assert [m for m in saved if "sub-option" in m] == want, saved
         assert [m for m in served if "sub-option" in m] == want, served
         # cols(2), total and missing were honoured: two groups and the
@@ -787,7 +857,7 @@ class TestTheSubOptionsDashDoesNotImplement:
         never the Stata log.  HC5-08 measured it missing from the log; the
         build names them now, once, and a session does not again."""
         spec = _spec([("g1", [_scatter()],
-                       {"by": "foreign, rows(2) holes(1) compact"})])
+                       {"by": "foreign, subtitleformat(%9s) shrink"})])
         tag, sp, dp = _write(spec, _payload(_auto()))
         ap = os.path.join(_TMP, f"app_sub_{tag}.py")
         with warnings.catch_warnings(record=True) as built:
@@ -800,7 +870,7 @@ class TestTheSubOptionsDashDoesNotImplement:
             warnings.simplefilter("always")
             ns["make_document"](Document())
         want = ("dash: by() sub-option(s) not implemented and ignored: "
-                "rows(2) holes(1) compact")
+                "subtitleformat(%9s) shrink")
         assert [str(w.message) for w in built].count(want) == 1, \
             [str(w.message) for w in built]
         assert want not in [str(w.message) for w in session]
@@ -830,19 +900,26 @@ class TestTheSubOptionSplitterReadsStataQuotes:
         assert dr._dash_by_tokens(raw) == want
 
     def test_by_keeps_its_cols_after_an_apostrophe(self):
+        # Flipped (WP-30 P1.15a): title() was named as unsupported; by()'s
+        # title() is drawn now, as twoway draws it.
         assert dr._dash_parse_by("foreign, title(Bob's cars) cols(2)",
                                  warn=False) == (
-            "foreign", 2, False, False, ["title(Bob's cars)"])
+            "foreign", 2, False, False, [])
 
     def test_legend_names_what_follows_an_apostrophe(self):
         assert dr._dash_legend_unsupported("label(1 Bob's) span") == ["span"]
 
     def test_in_both_modes(self):
+        """Flipped (WP-30 P1.15a): title(Bob's cars) was named as not
+        implemented; twoway draws by()'s title once over the panels."""
         r, doc, saved, served = _by("foreign, title(Bob's cars) cols(1)")
-        want = ["dash: by() sub-option(s) not implemented and ignored: "
-                "title(Bob's cars)"]
-        assert [m for m in saved if "sub-option" in m] == want, saved
-        assert [m for m in served if "sub-option" in m] == want, served
+        assert [m for m in saved if "sub-option" in m] == [], saved
+        assert [m for m in served if "sub-option" in m] == [], served
+        (served_root,) = [x for x in doc.roots
+                          if any(isinstance(m, GridPlot)
+                                 for m in x.references())]
+        for root in (r._last_layout_root, served_root):
+            assert chrome_texts(by_grid(root)[1]) == ["Bob's cars"]
         for panels in (_saved_panels(r), _served_panels(doc)):
             assert [(row, col) for row, col, _ in panels] == [(0, 0),
                                                               (1, 0)]
@@ -1159,11 +1236,15 @@ class TestADateVariablesLabels:
 
 class TestTheOtherLabelOptions:
     def test_mlabsize_takes_a_keyword_or_a_number(self):
-        for raw, px in (("small", 7), ("large", 15), ("12", 12)):
+        # WP-30 P1.12a (Evidence E5, twoway measured): label sizes are
+        # CSS points from Stata's gsize ladder: small 2.777 units = 7.998pt
+        # (8pt), large 4.8611 units = 14pt, 12 units = 12 x 2.88 = 34.56pt.
+        for raw, pt in (("small", "8pt"), ("large", "14pt"),
+                        ("12", "34.56pt")):
             a, b, saved, served = _labelled(mlabsize=raw)
             assert not [m for m in saved + served if "mlabsize" in m]
             for ls in (a, b):
-                assert ls.text_font_size == f"{px}px", (raw, ls)
+                assert ls.text_font_size == pt, (raw, ls)
 
     def test_mlabcolor_colours_the_text(self):
         a, b, _, _ = _labelled(mlabcolor="navy")
@@ -1326,7 +1407,9 @@ class TestTheHelpSaysSo:
     def test_the_panel_title_rule_is_stated(self):
         sec = self._facets()
         assert "whatever its display format" in sec
-        assert '"Domestic / 3"' in sec
+        # Flipped (WP-30 P1.15a): "Domestic / 3" was wrong because twoway
+        # joins the labels of several by() variables ", ".
+        assert '"Domestic, 3"' in sec
 
     def test_the_by_group_limit_counts_groups(self):
         for sec in (self._facets(), self._limits()):
@@ -1436,13 +1519,17 @@ class TestAdversarialLabelPlacement:
                                      "5e", "--5", "5,0"])
     def test_a_gap_in_another_spelling_is_not_a_gap(self, raw):
         """float() reads other scripts' digits, underscores and "infinity";
-        Stata reads none of them.  Each is named and no gap added."""
+        Stata reads none of them.  Each is named and drawn at medium."""
         a, b, saved, served = _labelled(mlabgap=raw)
         for notes in (saved, served):
-            assert [m for m in notes if m.startswith("dash: mlabgap(")], \
-                notes
+            assert [m for m in notes if m == f"dash: mlabgap({raw}) is not "
+                    "a recognised size; using medium."], notes
         for ls in (a, b):
-            assert (ls.x_offset, ls.y_offset) == (4, 0)
+            # WP-30 P1.12a (Evidence E5, twoway measured; P1.12.2): an
+            # unknown gap draws medium, gsize 3.8194 units = 14.667 px,
+            # beyond the radius 2.93334 px.
+            assert ls.x_offset == pytest.approx(_R + 3.8194 * _U, rel=1e-4)
+            assert ls.y_offset == 0
 
     # ---- injection: markup in a value is named as text, never drawn --------
     def test_markup_in_either_option_is_named_as_text(self):

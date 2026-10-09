@@ -46,7 +46,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from js_runner import JsSession  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 from test_mode_parity import (_DF, _LABEL_NAMES, _VALUE_LABELS,  # noqa: E402
                               _arrows_of, _assert_heads_on_shafts, _diff,
                               _explain, _kpi, _layout_tree, _spec)
@@ -84,6 +84,9 @@ _ROW_TYPES = ["scatter", "line", "tsline", "connected", "area", "bar",
 # The page's own callback, run under node (test/js_runner.py, WP-28 S03)
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _run(code, args, cb_obj=None):
     """Run *code* under node with *args*; write what it left in every
     ColumnDataSource, BooleanFilter and Div back into the Python models."""
@@ -106,7 +109,7 @@ def _render(spec, df=_DF):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 
@@ -223,6 +226,26 @@ _CORPUS = [
             bo={"link": "g1 g2"})
       for t in ("scatter", "connected", "dot", "rspike", "rconnected",
                 "line", "area", "bar", "rcap")],
+    # WP-30 P1.24: each kept label keeps its own row's clock.
+    _case("a scatter labelled at per-row clocks, dropdown", _MOVES[0],
+          [plot_for("scatter", {"mlabel": "rep", "mlabvposition": "rep"})]),
+    _case("a pcscatter labelled at per-row clocks, range", _MOVES[1],
+          [plot_for("pcscatter", {"mlabel": "rep",
+                                  "mlabvposition": "rep"})]),
+    # WP-30 P1.8a: stairs and ascending breaks are rebuilt from the kept
+    # rows (dash_join_rebuild).
+    _case("a stairstep line (WP-30 P1.8a)", _MOVES[0],
+          [plot_for("line", {"connect": "stairstep"})]),
+    _case("an ascending cmissing(n) connected (WP-30 P1.8a)", _MOVES[0],
+          [plot_for("connected", {"connect": "ascending",
+                                  "cmissing": "n"})]),
+    # WP-30 P1.9b: a turned layer after a saved move.
+    _case("a turned bar, dropdown", _MOVES[0],
+          [plot_for("bar", {"horizontal": "horizontal"})]),
+    # (A histogram's bins stay over every row on the saved page, upright
+    # or turned (WP-29 P0.17): test_horizontal_moves.py holds it.)
+    _case("a turned rcap, range slider", _MOVES[1],
+          [plot_for("rcap", {"horizontal": "horizontal"})]),
 ]
 
 
@@ -492,35 +515,33 @@ class TestTheSubsetSource:
 
 
 class TestTheSpacingTag:
-    """``GlyphMapper._tag_spacing`` records the rule the page's script
-    recomputes a width by, and the glyphs whose width it sets."""
+    """No width is taken from the rows' spacing any more, so nothing records
+    a rule for the page's script to recompute (WP-30 P1.17a)."""
 
     def test_the_rule_is_recorded(self):
-        src = ColumnDataSource({"x": [1.0]})
-        g = object()
-        dr.GlyphMapper._tag_spacing(src, "x", 0.2, 0.2, distinct=False,
-                                    cols=(("lo", -1), ("hi", 1)), glyphs=[g])
-        assert src._dash_spacing == {"x": "x", "factor": 0.2,
-                                     "fallback": 0.2, "distinct": False,
-                                     "cols": [["lo", -1], ["hi", 1]]}
-        assert src._dash_spacing_glyphs == [g]
-        json.dumps(src._dash_spacing)          # travels as JSON
+        """Flipped (WP-30 P1.17a): twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a); no source is tagged."""
+        assert not hasattr(dr.GlyphMapper, "_tag_spacing")
+        for ptype in ("bar", "rbar"):
+            r = _render(_spec([plot_for(ptype)], {"filter": _MOVES[0][1]}))
+            for g in r.figures["g1"].renderers:
+                assert not hasattr(g.data_source, "_dash_spacing"), ptype
 
     @pytest.mark.parametrize("ptype,attr", [("bar", "width"),
                                             ("rbar", "width")])
     def test_a_moved_bar_is_as_wide_as_its_kept_rows_are_spaced(self, ptype,
                                                                  attr):
-        """_DF's foreign cars weigh 3350, 1800, 3100, 2010 and 2650: the
-        smallest gap between them is 210, so a bar is 0.8 x 210 = 168
-        wide, where the ten cars' smallest gap (2930 to 3000, 70) gave
-        56."""
+        """A bar is one x unit wide before and after a move, whatever the
+        kept rows' spacing.
+
+        Flipped (WP-30 P1.17a): 56 then 168 was wrong because twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
         spec = _spec([plot_for(ptype)], {"filter": _MOVES[0][1]})
         r = _render(spec)
         [bar] = [g for g in r.figures["g1"].renderers
                  if type(g.glyph).__name__ == "VBar"]
-        assert bar.glyph.width == pytest.approx(56.0)
+        assert bar.glyph.width == pytest.approx(1.0)
         _move(r, _MOVES[0][2])
-        assert bar.glyph.width == pytest.approx(168.0)
+        assert bar.glyph.width == pytest.approx(1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -547,14 +568,17 @@ class TestTheCopiesAgainstHostileInput:
         assert xs == [3350.0, 1800.0, 3100.0, 2010.0, 2650.0], xs
 
     def test_the_spacing_travels_as_data_not_code(self):
-        """The rule reaches the page as a JSON string that the script
-        parses; nothing of it is spliced into the script's text."""
+        """Nothing is spliced into the script's text, and no spacing rule
+        reaches the page at all.
+
+        Flipped (WP-30 P1.17a): the derived_spacing_json argument is gone
+        because twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
         r = _render(_spec([plot_for("bar")], {"filter": _MOVES[0][1]}))
         [cb] = r.filter_callbacks
         assert cb.code == dr._FILTER_JS
-        assert isinstance(cb.args["derived_spacing_json"], str)
-        assert json.loads(cb.args["derived_spacing_json"])[0]["x"] == \
-            "weight"
+        assert "derived_spacing_json" not in cb.args
+        assert "derived_spacing_glyphs" not in cb.args
 
     def test_the_copies_snapshots_are_shared_by_every_filter(self):
         """One snapshot per copy, however many filters: a copy per
@@ -989,17 +1013,13 @@ class TestALinkedJitteredScatter:
 
 def _served_doc(spec, df):
     """The generated server app's document for *spec* over *df*."""
-    import importlib.util
     from bokeh.document import Document
     sp, dp = _write(spec, df)
     ap = os.path.join(_TMP, f"app_{next(_SEQ)}.py")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(
-            f"_served_jit_{next(_SEQ)}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_served_jit_{next(_SEQ)}")
         doc = Document()
         mod.make_document(doc)
     return doc
@@ -1253,10 +1273,14 @@ def _colour_layouts(opts):
         ("linked graph if", dict(graphs=[
             ("g1", [lay], None, {"if_expr": "foreign == 1"}),
             ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
+        # Flipped (WP-30 P1.15c): twoway draws no colour key under by()
+        # unless by(, clegend(on)), then one, the first panel's
+        # (by_chrome_truth.json q06, q07), so the by() layouts ask for it.
         ("linked by()", dict(graphs=[
-            ("g1", [lay], {"by": "foreign"}),
+            ("g1", [lay], {"by": "foreign, clegend(on)"}),
             ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
-        ("unlinked by()", dict(plots=[lay], go={"by": "foreign"})),
+        ("unlinked by()", dict(plots=[lay],
+                               go={"by": "foreign, clegend(on)"})),
     ]
 
 

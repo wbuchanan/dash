@@ -52,6 +52,9 @@ _VLN = {"rep78": "repair"}
 _CATEGORIES = ["Poor", "Fair", "Avg", "Good", "Exc"]
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _df(n=20):
     return pd.DataFrame({
         "mpg": np.linspace(12.0, 41.0, n),
@@ -77,7 +80,7 @@ def _render(plots, *, scheme="", gopts=None):
         json.dump(make_data_json(_df(), value_labels=_VL,
                                  value_label_names=_VLN), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)
@@ -177,7 +180,9 @@ class TestTheSchemeChromeIsStillApplied:
         fig, _ = _render(_DISCRETE, scheme="economist",
                          gopts={"legend": "on size(4)"})
         sizes = {str(l.label_text_font_size) for l in _legends(fig)}
-        assert "4px" in sizes, sizes
+        # WP-30 P1.12a (Evidence E4): legend(size(4)) is 4 % of the 4-inch
+        # reference, twoway's 11.52 pt (was '4px').
+        assert "11.52pt" in sizes, sizes
 
 
 class TestTheMixedCase:

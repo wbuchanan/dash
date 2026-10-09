@@ -28,6 +28,15 @@
 *! hardening did not do what its comment claimed.
 
 cscript "dash saving() path validation" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // Load the Mata helpers explicitly.  `cscript ... adodir ".."' does not put
 // the package directory on the ado-path -- measured, `findfile
@@ -80,16 +89,20 @@ mata: st_local("_bad", strofreal(_dash_path_badchar("/tmp/ordinary.html")))
 assert `_bad' == 0
 display "PV-03c PASS: an ordinary path scans clean"
 
+// WP-30 P1.27 (M11): ; & | < > are accepted, as twoway's saving() takes
+// them; the opener single-quotes the path (Mac, Unix) and declines cmd's
+// metacharacters on Windows.
 foreach _m in ";" "&" "|" "<" ">" {
     capture _dash_validate_path "/tmp/a`_m'x.html"
-    assert _rc == 198
+    assert _rc == 0
 }
-display "PV-04 PASS: shell metacharacters are rejected"
+display "PV-04 PASS: ; & | < > are accepted, as twoway accepts them"
 
-// Path traversal and the extension requirement still hold.
+// WP-30 P1.27 (M11): a `..' segment is accepted, as twoway's saving()
+// writes ../up.gph; the extension requirement still holds (PV-06).
 capture _dash_validate_path "/tmp/../etc/passwd.html"
-assert _rc == 198
-display "PV-05 PASS: path traversal is rejected"
+assert _rc == 0
+display "PV-05 PASS: a '..' segment is accepted, as twoway accepts it"
 
 capture _dash_validate_path "/tmp/dashboard.txt"
 assert _rc == 198
@@ -126,10 +139,11 @@ display "PV-10 PASS: the default is still .html"
 local dq2 = "/tmp/a" + char(34) + "; touch /tmp/pwned2; echo .py"
 capture _dash_validate_path `"`dq2'"' "py"
 assert _rc == 198
+// WP-30 P1.27 (M11): ; and a `..' segment are accepted on both routes.
 capture _dash_validate_path "/tmp/a;rm -rf x.py" "py"
-assert _rc == 198
+assert _rc == 0
 capture _dash_validate_path "/tmp/../etc/passwd.py" "py"
-assert _rc == 198
+assert _rc == 0
 display "PV-11 PASS: a server-mode path gets the same checks as an HTML one"
 
 // ----------------------------------------------------------------
@@ -143,10 +157,19 @@ qui sysuse auto, clear
 global dash_nobrowser 1
 capture dash clear
 dash scatter mpg weight, name(pvg1)
-capture dash build, saving("/tmp/a;b.py") server replace
+// WP-30 P1.27 (M11): ; is written, under c(tmpdir); a double quote is
+// still refused by the command.
+local pv12 "`c(tmpdir)'a;b.py"
+capture erase "`pv12'"
+capture noisily dash build, saving("`pv12'") server replace
+assert _rc == 0
+confirm file "`pv12'"
+capture erase "`pv12'"
+mata: st_local("pv12q", st_global("c(tmpdir)") + "a" + char(34) + "b.py")
+capture dash build, saving(`"`pv12q'"') server replace
 assert _rc == 198
 capture dash clear
-display "PV-12 PASS: dash build, server rejects a hostile saving() path"
+display "PV-12 PASS: dash build, server writes a path holding ; and refuses a double quote"
 
 // ----------------------------------------------------------------
 // PV-13 — `..' is a path SEGMENT, not two characters anywhere
@@ -160,16 +183,16 @@ capture _dash_validate_path "/tmp/quarterly..2026.html"
 assert _rc == 0
 display "PV-13 PASS: a file name containing '..' is accepted"
 
-// And every real traversal is still refused.
+// WP-30 P1.27 (M11): a `..' segment is accepted, as twoway accepts it.
 capture _dash_validate_path "../out.html"
-assert _rc == 198
+assert _rc == 0
 capture _dash_validate_path "/tmp/../etc/x.html"
-assert _rc == 198
+assert _rc == 0
 capture _dash_validate_path "a/../../b.html"
-assert _rc == 198
+assert _rc == 0
 capture _dash_validate_path "..\\out.html"
-assert _rc == 198
-display "PV-14 PASS: a '..' path segment is still rejected, both separators"
+assert _rc == 0
+display "PV-14 PASS: a '..' path segment is accepted, both separators"
 
 // ----------------------------------------------------------------
 // PV-15 — a leading `-' would be read by the shell as an option
@@ -239,10 +262,26 @@ capture noisily dash build, saving("`pv20'") server replace
 assert _rc == 0
 confirm file "`pv20'"
 capture erase "`pv20'"
-capture noisily dash build, saving("`c(tmpdir)'../pv20.py") server replace
-assert _rc == 198
+// WP-30 P1.27 (M11): a `..' segment is written, from a fresh scratch
+// subfolder into its parent, never outside c(tmpdir).
+tempfile pv20b
+local pv20d "`pv20b'_pv20d"
+mkdir "`pv20d'"
+mkdir "`pv20d'/sub"
+local pwd20 "`c(pwd)'"
+capture noisily {
+    cd "`pv20d'/sub"
+    dash build, saving("../pv20b.py") server replace
+}
+local rc20 = _rc
+quietly cd "`pwd20'"
+assert `rc20' == 0
+confirm file "`pv20d'/pv20b.py"
+capture erase "`pv20d'/pv20b.py"
+capture rmdir "`pv20d'/sub"
+capture rmdir "`pv20d'"
 capture dash clear
-display "PV-20 PASS: dash build, server takes my..report.py, as the HTML route takes my..report.html, and still refuses a '..' segment"
+display "PV-20 PASS: dash build, server takes my..report.py, as the HTML route takes my..report.html, and writes a '..' segment where it points"
 
 // ----------------------------------------------------------------
 // PV-21 -- a double quote in dash build's saving() is refused by the
@@ -461,12 +500,379 @@ if c(os) != "Windows" {
 else {
     display "PV-27 PASS: quote, dollar and backtick are refused first (no symbolic link on Windows)"
 }
+
+// PV-28..34 (WP-30 P1.29): %, !, %% and ^ are written as typed, as
+// twoway's saving() writes them (test/fixtures/saving_chars_truth.json).
+// dash runs no shell for saving(); only its Windows opener declines such a
+// path (test_serve_browser.cscript SB-22).
+local pvn 28
+foreach stem in "pct%PATH%x" "bang!x!y" "pct%%x" "caret^x" {
+    local pvf "`pvd'/`stem'.html"
+    capture erase "`pvf'"
+    capture noisily dash scatter mpg weight, saving("`pvf'")
+    assert _rc == 0
+    confirm file "`pvf'"
+    capture erase "`pvf'"
+    display "PV-`pvn' PASS: saving(`stem'.html) is written under its name as typed"
+    local ++pvn
+}
+
+// PV-32: dash build, a page.
+local pvf "`pvd'/b%HOME%!x.html"
+capture erase "`pvf'"
+dash clear
+dash scatter mpg weight, name(pv32)
+capture noisily dash build, saving("`pvf'") replace
+assert _rc == 0
+confirm file "`pvf'"
+capture erase "`pvf'"
+dash clear
+display "PV-32 PASS: dash build writes b%HOME%!x.html under its name as typed"
+
+// PV-33: dash build, server, an app.
+local pvf "`pvd'/b%HOME%!x.py"
+capture erase "`pvf'"
+dash scatter mpg weight, name(pv33)
+capture noisily dash build, saving("`pvf'") server replace
+assert _rc == 0
+confirm file "`pvf'"
+capture erase "`pvf'"
+dash clear
+display "PV-33 PASS: dash build, server writes b%HOME%!x.py under its name as typed"
+
+// PV-34: the validator itself.
+capture noisily _dash_validate_path "`pvd'/v%PATH%!^%%x.html"
+assert _rc == 0
+display "PV-34 PASS: the validator accepts a path holding % ! ^ and %%"
 capture erase "`pvd'/ln.html"
 capture erase "`pvu'"
 capture erase "`pvl'"
 capture rmdir "`pvdir'"
 capture rmdir "`pvd'"
 capture program drop _pv_userfile _pv_is_user
+
+// ================================================================
+// PV-35..44 -- WP-30 P1.27: one saving() grammar, twoway's, and twoway's
+// path characters
+// ================================================================
+// PV-35 -- _dash_saving_split's accepted forms, (file|replace|asis|comma|err).
+capture program drop _pv_split
+program define _pv_split
+    args text want
+    mata: st_local("_got", invtokens(_dash_saving_split(st_local("text")), "|"))
+    mata: _dash_say("txt", "PV split got ", st_local("_got"), "")
+    mata: assert(st_local("_got") == st_local("want"))
+end
+_pv_split "n1, asis" "n1|0|1|1|"
+_pv_split "n1, asis replace" "n1|1|1|1|"
+_pv_split "n1, replace asis" "n1|1|1|1|"
+_pv_split "n1," "n1|0|0|1|"
+_pv_split "n1,," "n1|0|0|1|"
+_pv_split "n1, replace," "n1|1|0|1|"
+_pv_split `""a,b.html", replace"' "a,b.html|1|0|1|"
+_pv_split `""n, replace""' "n, replace|0|0|0|"
+_pv_split `"`"a b.html"', replace"' "a b.html|1|0|1|"
+_pv_split ", replace" "Graph|1|0|1|"
+_pv_split "   " "Graph|0|0|0|"
+_pv_split `""", replace"' "Graph|1|0|1|"
+display "PV-35 PASS: _dash_saving_split reads replace, asis, quotes and an empty name as twoway does"
+
+// PV-36 -- refusals in twoway's words, r(198).
+capture program drop _pv_refuse
+program define _pv_refuse
+    args text want
+    mata: st_local("_e", _dash_saving_split(st_local("text"))[5])
+    mata: assert(st_local("_e") == st_local("want"))
+    capture mata: _dash_saving_parse(st_local("text"), "html")
+    assert _rc == 198
+end
+_pv_refuse "n1, bogus" "option bogus not allowed"
+_pv_refuse "n1, as" "option as not allowed"
+_pv_refuse "n1, rep" "option rep not allowed"
+_pv_refuse "n1, REPLACE" "option REPLACE not allowed"
+_pv_refuse "n1, replace replace" "option replace not allowed"
+_pv_refuse "n1, asis(x)" "option asis() incorrectly specified"
+_pv_refuse "n1, bogus(1)" "option bogus() not allowed"
+_pv_refuse "n1, , replace" "invalid 'replace'"
+_pv_refuse "my file.html" "invalid syntax,  file.html not allowed"
+_pv_refuse `""a b" c"' "invalid syntax,  c not allowed"
+display "PV-36 PASS: a saving() twoway refuses is refused in twoway's words"
+
+// PV-37 -- the one-line route, in a fresh scratch folder.
+tempfile pv37b
+local pv37d "`pv37b'_pv37"
+mkdir "`pv37d'"
+local pwd37 "`c(pwd)'"
+qui sysuse auto, clear
+capture dash clear
+capture noisily {
+    cd "`pv37d'"
+    dash scatter mpg weight, saving(n1, asis)
+    confirm file "n1.html"
+    capture confirm file "n1, asis.html"
+    assert _rc != 0
+    dash scatter mpg weight, saving(n2, replace asis)
+    confirm file "n2.html"
+    dash scatter mpg weight, saving(k1, asis)
+    dash scatter mpg weight, saving(k1, asis) replace
+    confirm file "k1.html"
+    capture dash scatter mpg weight, saving(n3, bogus)
+    assert _rc == 198
+    capture confirm file "n3.html"
+    assert _rc != 0
+    capture confirm file "n3, bogus.html"
+    assert _rc != 0
+    dash scatter mpg weight, saving("n, replace")
+    confirm file "n, replace.html"
+    capture dash scatter mpg weight, saving(my file.html)
+    assert _rc == 198
+    dash scatter mpg weight, saving(, replace)
+    confirm file "Graph.html"
+    dash scatter mpg weight, saving(   ) replace
+    confirm file "Graph.html"
+    capture dash scatter mpg weight, saving(n4, bogus) name(cfn)
+    assert _rc == 198
+    assert strpos(" ${dash_graph_registry} ", " cfn ") == 0
+}
+local rc37 = _rc
+quietly cd "`pwd37'"
+local fl : dir "`pv37d'" files "*"
+foreach f of local fl {
+    capture erase "`pv37d'/`f'"
+}
+capture rmdir "`pv37d'"
+assert `rc37' == 0
+display "PV-37 PASS: the one-line form reads saving() as twoway does"
+
+// PV-38 -- dash build, HTML and server, through the same grammar.
+tempfile pv38b
+local pv38d "`pv38b'_pv38"
+mkdir "`pv38d'"
+local pwd38 "`c(pwd)'"
+capture dash clear
+capture noisily {
+    cd "`pv38d'"
+    dash scatter mpg weight, name(pv38)
+    dash build, saving(b1.html, replace)
+    dash build, saving(b1.html, replace)
+    confirm file "b1.html"
+    dash build, saving(b2)
+    confirm file "b2.html"
+    dash build, saving(b3.py, replace) server
+    dash build, saving(b3.py, replace) server
+    confirm file "b3.py"
+    dash build, saving(b4) server
+    confirm file "b4.py"
+    dash build, saving(bx.gph)
+    confirm file "bx.html"
+    capture dash build, saving(b5.html, bogus)
+    assert _rc == 198
+    capture confirm file "b5.html"
+    assert _rc != 0
+    dash build, saving(b6.html, asis)
+    confirm file "b6.html"
+    dash build, saving("b,7.html", replace)
+    confirm file "b,7.html"
+}
+local rc38 = _rc
+quietly cd "`pwd38'"
+local fl : dir "`pv38d'" files "*"
+foreach f of local fl {
+    capture erase "`pv38d'/`f'"
+}
+capture rmdir "`pv38d'"
+capture dash clear
+assert `rc38' == 0
+display "PV-38 PASS: dash build reads saving() with the one-line form's grammar"
+
+// PV-39 -- the character rule: the sink-tied bytes only.
+mata: assert(_dash_path_badchar("/tmp/a;b&c|d<e>f.html") == 0)
+mata: assert(_dash_path_badchar("../x.html") == 0)
+foreach b in 34 96 36 9 27 127 1 31 {
+    mata: assert(_dash_path_badchar("a" + char(`b') + "b.html") == `b')
+}
+capture _dash_validate_path "/tmp/a;b.html"
+assert _rc == 0
+capture _dash_validate_path "../out.html"
+assert _rc == 0
+display "PV-39 PASS: only a double quote, backquote, dollar sign and control characters are refused"
+
+// PV-40, PV-41 -- the one-line form and dash build write twoway's
+// characters and a `..' segment, in a fresh scratch folder.
+tempfile pv40b
+local pv40d "`pv40b'_pv40"
+mkdir "`pv40d'"
+mkdir "`pv40d'/sub"
+local pwd40 "`c(pwd)'"
+capture dash clear
+capture noisily {
+    cd "`pv40d'"
+    foreach n in "R&D.html" "a;b.html" "a|b.html" "a<b.html" "a>b.html" {
+        dash scatter mpg weight, saving("`n'")
+        confirm file "`n'"
+    }
+}
+local rc40 = _rc
+quietly cd "`pwd40'"
+assert `rc40' == 0
+display "PV-40 PASS: saving() writes R&D.html and ; | < > as twoway does"
+capture noisily {
+    cd "`pv40d'/sub"
+    dash scatter mpg weight, saving(../up.html)
+    dash scatter mpg weight, name(pv41)
+    dash build, saving(../upb.html)
+    dash build, saving(../ups.py) server
+}
+local rc41 = _rc
+quietly cd "`pwd40'"
+assert `rc41' == 0
+confirm file "`pv40d'/up.html"
+confirm file "`pv40d'/upb.html"
+confirm file "`pv40d'/ups.py"
+capture dash clear
+display "PV-41 PASS: a '..' segment is written where it points, on both routes"
+
+// PV-42 -- still refused, with the validator's words, nothing written.
+local pwd42 "`c(pwd)'"
+capture noisily {
+    cd "`pv40d'"
+    foreach b in 34 96 36 9 27 127 {
+        mata: st_local("_p", "x" + char(`b') + "y.html")
+        capture dash scatter mpg weight, saving(`"`macval(_p)'"')
+        assert _rc == 198
+    }
+    capture dash scatter mpg weight, saving(-e.html)
+    assert _rc == 198
+    capture confirm file "-e.html"
+    assert _rc != 0
+}
+local rc42 = _rc
+quietly cd "`pwd42'"
+local fl : dir "`pv40d'" files "*"
+local nfl : word count `fl'
+foreach d in "`pv40d'/sub" "`pv40d'" {
+    local fl : dir "`d'" files "*"
+    foreach f of local fl {
+        capture erase "`d'/`f'"
+    }
+}
+capture rmdir "`pv40d'/sub"
+capture rmdir "`pv40d'"
+assert `rc42' == 0
+display "PV-42 PASS: a double quote, backquote, dollar, tab, ESC, DEL and a leading - are refused"
+
+// PV-43 -- linear: 200,000 characters, 50,000 commas inside quotes.
+mata: st_local("_big", char(34) + (",xyz" * 50000) + char(34) + ", replace")
+timer clear 43
+timer on 43
+mata: st_local("_r43", _dash_saving_split(st_local("_big"))[2])
+timer off 43
+quietly timer list 43
+assert "`_r43'" == "1"
+assert r(t43) < 2
+display "PV-43 PASS: the grammar reads a 200,000-character saving() in linear time"
+
+// PV-44 (guard) -- dash serve still names saving() in its note, rc 0.
+capture dash clear
+dash scatter mpg weight, name(pv44)
+tempfile pv44s pv44d
+capture noisily _dash_serve_spec, specpath("`pv44s'") datapath("`pv44d'") saving(x, bogus)
+local rc44 = _rc
+capture dash clear
+assert `rc44' == 0
+display "PV-44 PASS: dash serve's saving() is still named and ignored"
+capture program drop _pv_split _pv_refuse
+
+// ---------------------------------------------------------------
+// GE-16..GE-19 (WP-30 P1.28a) -- a suffix graph export writes is
+// replaced by .html (.py with server), with a note, on both routes;
+// other names are written as before.  In a fresh scratch folder.
+// ---------------------------------------------------------------
+tempfile ge16b
+local ge16d "`ge16b'_ge16"
+mkdir "`ge16d'"
+local pwd16 "`c(pwd)'"
+set linesize 255
+capture dash clear
+capture log close ge16
+capture noisily {
+    cd "`ge16d'"
+    local ge16pwd "`c(pwd)'"
+    quietly log using "ge16.log", text replace name(ge16)
+    foreach k in png svg pdf eps ps jpg jpeg tif gif emf wmf {
+        dash scatter mpg weight, title(GE16) saving(ge16_`k'.`k', replace)
+        mata: st_local("rf", st_global("r(filename)"))
+        assert "`rf'" == "`ge16pwd'/ge16_`k'.html"
+    }
+    dash scatter mpg weight, title(GE16) saving(ge16u.SVG, replace)
+    // GE-17 -- dash build, HTML and server.
+    dash scatter mpg weight, name(ge17)
+    dash build, saving(ge17.pdf) replace
+    dash build, saving(ge17s.png) replace server
+    // GE-18 -- names graph export does not write are kept.
+    dash scatter mpg weight, saving(ge18.tiff, replace)
+    dash scatter mpg weight, saving(ge18.png.html, replace)
+    dash scatter mpg weight, saving(ge18.png.gph, replace)
+    dash scatter mpg weight, saving(.png, replace)
+    quietly log close ge16
+}
+local rc16 = _rc
+capture log close ge16
+quietly cd "`pwd16'"
+assert `rc16' == 0
+local bad ""
+foreach k in png svg pdf eps ps jpg jpeg tif gif emf wmf {
+    cert_file_has "`ge16d'/ge16_`k'.html", needle("GE16")
+    if r(found) != 1 local bad "`bad' `k':page"
+    capture confirm file "`ge16d'/ge16_`k'.`k'.html"
+    if _rc == 0 local bad "`bad' `k':appended"
+    cert_log_has "`ge16d'/ge16.log", needle("(note:  dash: saving() writes HTML, not a .`k' image; using ge16_`k'.html)")
+    if r(count) != 1 local bad "`bad' `k':note"
+}
+cert_log_has "`ge16d'/ge16.log", needle("(note:  dash: saving() writes HTML, not a .svg image; using ge16u.html)")
+if r(count) != 1 local bad "`bad' SVG:note"
+if "`bad'" != "" display as error "GE-16 FAIL:`bad'"
+assert "`bad'" == ""
+confirm file "`ge16d'/ge16u.html"
+display "GE-16 PASS: the one-line form writes .html for each suffix graph export writes, with one note"
+confirm file "`ge16d'/ge17.html"
+confirm file "`ge16d'/ge17s.py"
+cert_log_has "`ge16d'/ge16.log", needle("(note:  dash build: saving() writes HTML, not a .pdf image; using ge17.html)")
+assert r(count) == 1
+cert_log_has "`ge16d'/ge16.log", needle("(note:  dash build: saving() writes a server app, not a .png image; using ge17s.py)")
+assert r(count) == 1
+cert_file_has "`ge16d'/ge17s.py", needle("def make_document")
+assert r(found) == 1
+display "GE-17 PASS: dash build writes .html, or .py with server, for an image suffix, with one note"
+foreach f in ge18.tiff.html ge18.png.html .png.html {
+    confirm file "`ge16d'/`f'"
+}
+cert_log_has "`ge16d'/ge16.log", needle("image; using ge18")
+assert r(count) == 0
+cert_log_has "`ge16d'/ge16.log", needle("image; using .png")
+assert r(count) == 0
+display "GE-18 PASS: .tiff, .html, .gph and a bare .png name are written as before"
+local fl : dir "`ge16d'" files "*", respectcase
+foreach f of local fl {
+    capture erase "`ge16d'/`f'"
+}
+capture erase "`ge16d'/.png.html"
+capture rmdir "`ge16d'"
+capture dash clear
+
+// GE-19 -- _dash_saving_parse's _sv_img: the row's word, not the user's
+// bytes; none after a .gph, for a bare folder name, or a name kept.
+local bad ""
+foreach c in "a.JPEG|html|a.html|jpeg" "a.gph|html|a.html|" "a.html|html|a.html|" ///
+    "dir/.png|html|dir/.png.html|" "a.eps|html|a.html|eps" "a.ps|html|a.html|ps" ///
+    "a.svg|py|a.py|svg" {
+    tokenize "`c'", parse("|")
+    mata: _dash_saving_parse(st_local("1"), st_local("3"))
+    if "`_sv_file'" != "`5'" | "`_sv_img'" != "`7'" local bad "`bad' `1'->`_sv_file'/`_sv_img'"
+}
+if "`bad'" != "" display as error "GE-19 FAIL:`bad'"
+assert "`bad'" == ""
+display "GE-19 PASS: _sv_img names the suffix replaced, from the fixed row"
 
 display ""
 display "test_path_validation.cscript: ALL CHECKS PASSED"

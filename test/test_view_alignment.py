@@ -110,6 +110,9 @@ _ALIGNED_ALREADY = [
 ]
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _source(frame):
     """A ColumnDataSource carrying the row-identity column the views use."""
     data = {c: list(frame[c]) for c in frame.columns}
@@ -222,8 +225,7 @@ class TestTheReproductionFromTheReport:
         renderer = dr.DashRenderer(str(spec_path), str(data_path))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            renderer.render()
-
+            render_models(renderer)
         seen = []
         for fig in renderer.figures.values():
             for rend in fig.renderers:
@@ -329,7 +331,12 @@ _SPACED_QUALIFIER = _SPACED.g == 1.0
 
 
 def _bar_width(name, varnames, source, view):
-    """The bar or cap width the mapper derives from the data."""
+    """The bar width, or the cap's or end marker's size, the mapper draws.
+
+    Flipped (WP-30 P1.17a): rcap's caps and rcapsym's markers are Scatters
+    whose size is read, because twoway draws a bar one x unit wide and caps
+    as long as a marker of its msize (P1.17a).
+    """
     mapper = dr.GlyphMapper()
     fig = figure()
     with warnings.catch_warnings():
@@ -342,6 +349,9 @@ def _bar_width(name, varnames, source, view):
         width = getattr(glyph, "width", None)
         if isinstance(width, (int, float)):
             return round(float(width), 6)
+        size = getattr(glyph, "size", None)
+        if type(glyph).__name__ == "Scatter" and isinstance(size, (int, float)):
+            return round(float(size), 6)
         src = getattr(rend, "data_source", None)
         if src is None:
             continue
@@ -357,13 +367,11 @@ def _bar_width(name, varnames, source, view):
 
 
 class TestADerivedWidthComesFromTheRowsDrawn:
-    """A bar or cap width is derived from the data, so the qualifier moves it.
-
-    These four size their glyphs from the spacing of the x values.  Three of
-    them took that spacing from the WHOLE column while drawing only the
-    selected rows, so adding a qualifier changed the bars' width rather than
-    just which bars appeared -- measured, 0.8 where plotting the same subset
-    on its own gives 8.0, an order of magnitude and plainly visible.
+    """No bar width or cap is derived from the rows any more (WP-30 P1.17a):
+    a bar is one x unit wide and a cap is a marker of its msize(), so a
+    qualifier never changes one.  These four once sized their glyphs from
+    the spacing of the x values, three of them from the WHOLE column while
+    drawing only the selected rows (0.8 where the subset alone gave 8.0).
 
     map_rbar, map_rcap and map_rcapsym do not have the stale-mask defect the
     rest of this file is about: their sources keep every row, so the mask

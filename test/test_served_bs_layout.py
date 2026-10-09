@@ -112,8 +112,12 @@ def _name(m):
         assert k, f"a Div in the grid that is not a KPI card: {m.text[:80]}"
         return k.group(1)
     if isinstance(m, GridPlot):
+        # Flipped (WP-30 P1.15a): the chrome cells, which hold the
+        # overall text, are not panels (by_panel_probe).
+        from by_panel_probe import is_chrome
         return "facets:" + ",".join(c[0].title.text for c in m.children
-                                    if c[0] is not None)
+                                    if c[0] is not None
+                                    and not is_chrome(c[0]))
     return m.title.text
 
 
@@ -685,10 +689,21 @@ def _served_by_cell(tmp_path, spec):
 
 
 def _panels(grid):
-    """A by() cell as the browser draws it: each panel's title with its row
-    and column, the side of the cell its toolbar sits on, and the file its
-    save button writes."""
-    return ([(f.title.text, r, c) for f, r, c in grid.children],
+    """A by() cell as the browser draws it: each panel's label with its row
+    and column, the head and foot cells' texts, the side of the cell its
+    toolbar sits on, and the file its save button writes.  Flipped (WP-30
+    P1.15a): this read each child as a (panel, row, col) 3-tuple keyed by
+    title; the cell now holds the overall text's chrome cells, compared
+    too, and a panel is named by its label row."""
+    from by_panel_probe import chrome_texts, is_chrome, panel_label
+    kids = [tuple(k) for k in grid.children]
+    chrome = [(m.name, chrome_texts(m), tuple(rest)) for m, *rest in kids
+              if is_chrome(m)]
+    base = 1 if any(n == "dash_by_head" for n, _, _ in chrome) else 0
+    # WP-30 P1.15c: the y-axis title's column sits left of the panels.
+    cbase = min((c for f, _r, c, *_ in kids if not is_chrome(f)), default=0)
+    return ([(panel_label(f), r - base, c - cbase) for f, r, c, *_ in kids
+             if not is_chrome(f)], chrome,
             grid.toolbar_location,
             [t.filename for t in grid.toolbar.tools
              if isinstance(t, SaveTool)])
@@ -738,7 +753,8 @@ class TestAByGraphsCellHonoursCols:
         dashboard.png the resolver names a grid everywhere else."""
         spec = _spec(["g1", "g2"], layout="bs",
                      graph_options={"g1": {"by": "rep, cols(2)"}})
-        _, side, saves = _panels(_saved_by_cell(tmp_path, spec, monkeypatch))
+        _, _, side, saves = _panels(
+            _saved_by_cell(tmp_path, spec, monkeypatch))
         assert saves == ["g1"]
         assert side == "above"
 
@@ -874,7 +890,8 @@ class TestTheServedPageDeclaresTheSavedPagesViewport:
         csp_at = page.lower().find('http-equiv="content-security-policy"')
         assert csp_at >= 0
         assert csp_at < page.index(dr._DASH_VIEWPORT_META)
-        assert dr._DASH_VIEWPORT_META in dr._CSP_META
+        # Flipped (WP-30 P1.29): the saved head is built per page.
+        assert dr._DASH_VIEWPORT_META in dr._dash_saved_head([])
 
     def test_the_app_carries_the_constant(self, tmp_path):
         import ast

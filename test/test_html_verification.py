@@ -476,13 +476,16 @@ class TestAlphaTransparency:
         """ALP-16: malpha(200) (>100%) is ignored (not applied)."""
         fig = figure()
         src = ColumnDataSource({"x": [1.0], "y": [1.0]})
-        gm = GlyphMapper()
+        # Drawn under sttrans, whose declared opacity is 0.2: markers are
+        # opaque by default since WP-30 P1.2b (twoway draws them so), and a
+        # default of 1.0 would hide a clamp to 1.0.
+        from dash_render import SchemeParser
+        gm = GlyphMapper(scheme=SchemeParser("sttrans"))
         # Ignored means the scheme's default stays, on the fill and the
         # outline alike.  `<= 1.0' alone let an out-of-range malpha be
         # applied in any in-range form: clamped to 1.0 (fully opaque) it
-        # passed.  Measured 24sep2026: the default is 0.8, not 0.7, and
-        # Bokeh 3.9 neither clamps nor rejects an alpha of 2.0, so the
-        # ceiling does catch the raw 2.0 and is kept.
+        # passed.  Bokeh 3.9 neither clamps nor rejects an alpha of 2.0,
+        # so the ceiling does catch the raw 2.0 and is kept.
         base = gm.map_scatter(figure(), src, "y", "x", {})
         r = gm.map_scatter(fig, src, "y", "x", {"malpha": "200"})
         assert r.glyph.fill_alpha <= 1.0
@@ -853,13 +856,14 @@ class TestColorHexInJson:
 
         This asserted #a00000, which is not Stata's cranberry.  Its own
         style/color-cranberry.style sets rgb "193 5 52" = #c10534.  See
-        test_color_fidelity.py for the other 51.
+        test_color_fidelity.py for the other 51.  The bar fills it at its
+        intensity, inten80: #cd375d (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
         """
         html = _render([{"type": "bar", "yvar": "y", "xvar": "x",
                          "options": {"fcolor": "cranberry"}}])
         model = _bokeh_model_json(html)
         raw = json.dumps(model).lower()
-        assert "#c10534" in raw  # Stata cranberry
+        assert "#cd375d" in raw  # Stata cranberry at inten80
 
     def test_mcolor_alpha_hex_still_present(self):
         """COL-V4: mcolor(magenta%50) -> the marker is #ff00ff, and the 50%
@@ -878,8 +882,11 @@ class TestColorHexInJson:
                  and (d.get("attributes", {}).get("fill_color") or {})
                  .get("value") == "#ff00ff"]
         assert marks, "no marker is drawn in #ff00ff"
-        assert [a["fill_alpha"]["value"] for a in marks] == \
-            [pytest.approx(0.5)] * len(marks), marks
+        # WP-30 P1.12a (ratification row 27): the brushed-away (0.1) and
+        # muted (0.2) copies now carry the glyph's magenta too, dimmed and
+        # never above the glyph's 0.5; they were drawn in the scheme's navy.
+        assert sorted(a["fill_alpha"]["value"] for a in marks) == \
+            [pytest.approx(0.1), pytest.approx(0.2), pytest.approx(0.5)], marks
         # The drawn layer itself: one, magenta fill and outline, at 0.5.
         layers = _layers(_page_figure(html))
         assert len(layers) == 1, f"{len(layers)} layers, not 1"

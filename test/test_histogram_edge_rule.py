@@ -56,6 +56,9 @@ from conftest import make_data_json
 _DATA_DIR = os.path.join(_HERE, "fixtures", "data")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _load(name):
     return pd.read_csv(os.path.join(_DATA_DIR, f"{name}.csv"))
 
@@ -166,7 +169,7 @@ def _write_spec_and_data(spec, df, tmp_path, tag="hist_edge"):
 def _saved_histogram_bars(spec, df, tmp_path, tag="hist_edge"):
     sp, dp = _write_spec_and_data(spec, df, tmp_path, tag)
     r = dr.DashRenderer(sp, dp)
-    r.render()
+    render_models(r)
     fig = r.figures["g1"]
     for gr in fig.renderers:
         data = getattr(gr.data_source, "data", {})

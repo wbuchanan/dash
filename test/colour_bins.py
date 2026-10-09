@@ -116,13 +116,29 @@ def drawn_colour_values(renderer):
     return vals
 
 
-def colour_bars(model):
-    """(low, high) of every ColorBar's mapper under *model*."""
+def _key_cells(model):
+    """The by() colour-key cells (``dash_by_clegend``, WP-30 P1.15c) under
+    *model*: bare Plots beside the panels, holding the one key."""
+    roots = list(getattr(model, "roots", None) or [model])
     out = []
-    for f in _figures(model):
+    for r in roots:
+        for m in (r.references() if hasattr(r, "references") else ()):
+            if getattr(m, "name", None) == "dash_by_clegend" and m not in out:
+                out.append(m)
+    return out
+
+
+def colour_bars(model):
+    """(low, high) of every ColorBar's mapper under *model*, a by() grid's
+    colour-key cell included."""
+    out = []
+    for f in _figures(model) + _key_cells(model):
         for side in ("right", "left", "above", "below", "center"):
             for a in getattr(f, side):
-                if type(a).__name__ == "ColorBar":
+                # A by() panel label's box is a one-colour ColorBar named
+                # dash_by_label_box (WP-30 P1.15c), not a colour key.
+                if type(a).__name__ == "ColorBar" and \
+                        a.name != "dash_by_label_box":
                     m = a.color_mapper
                     out.append((m.low, m.high))
     return out
@@ -136,7 +152,7 @@ def colour_keys(model):
         for side in ("right", "left", "above", "below", "center"):
             for a in getattr(f, side):
                 tn = type(a).__name__
-                if tn == "ColorBar" or (
+                if (tn == "ColorBar" and a.name != "dash_by_label_box") or (
                         tn == "Legend"
                         and str(a.name or "") == dr._COLORVAR_LEGEND_NAME):
                     n += 1

@@ -20,10 +20,11 @@
 *!          the same run.
 *!   CB-02  on each ci type the four options and pstyle(p3) reach the spec
 *!          and are not named in the note.
-*!   CB-03  on scatter they are named in the note, by their full names.
+*!   CB-03  on scatter they are named in the note, by their full names;
+*!          pstyle() is not (it is drawn on every type, WP-30 P1.14a).
 *!   CB-04  twoway's minimum abbreviations, ac() alc() alw() alp(), reach
 *!          the spec under the full names; al(), which twoway reads as
-*!          alstyle(), is not alcolor() (named as typed).
+*!          alstyle(), is alstyle(): not alcolor() and not named.
 *!   CB-05  alwidth()'s bounds on lfitci: 0 and 10000 accepted, 10000.001
 *!          and 20000 refused, as twoway refuses them.
 *!   CB-06  adversarial values (CLAUDE.md rule 18): a hostile pstyle() and
@@ -36,6 +37,15 @@
 cscript "dash ci band options (S3)" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 set graphics off
 
@@ -204,7 +214,9 @@ foreach tt in lfitci qfitci lpolyci fpfitci {
 }
 
 // ----------------------------------------------------------------
-// CB-03 -- on scatter: named, by their full names.
+// CB-03 -- on scatter: named, by their full names.  Flipped (WP-30
+// P1.14a): pstyle() was named here; it is drawn on every type, so it is
+// not named, and the four fitarea options still are.
 // ----------------------------------------------------------------
 _zcb_run `"dash (scatter mpg weight, acol(red) alc(navy) alw(thick) alp(dash) psty(p3)), name(zqcb)"' "`logfile'"
 local bad = 0
@@ -212,12 +224,17 @@ if r(rc) != 0 | r(note) != 1 {
     display as error "CB-03 FAIL: rc `r(rc)', note `r(note)'"
     local bad = 1
 }
-foreach nm in acolor() alcolor() alwidth() alpattern() pstyle() {
+foreach nm in acolor() alcolor() alwidth() alpattern() {
     _zcb_logged "`logfile'" "`nm'"
     if r(found) != 1 {
         display as error "CB-03 FAIL: `nm' not named on scatter"
         local bad = 1
     }
+}
+_zcb_logged "`logfile'" "pstyle()"
+if r(found) != 0 {
+    display as error "CB-03 FAIL: pstyle() named on scatter"
+    local bad = 1
 }
 if `bad' {
     local nfail = `nfail' + 1
@@ -256,8 +273,9 @@ foreach ab in ac alc alw alp {
         local bad = 1
     }
 }
-// al() is not alcolor() in twoway (it is alstyle()): dash names it as
-// typed and carries no alcolor.
+// al() is not alcolor() in twoway (it is alstyle()).  Flipped (WP-30
+// P1.14a): dash named it as typed; it is alstyle() now, so it is not named,
+// carries no alcolor, and the spec holds "alstyle":"red".
 capture graph drop _all
 capture twoway lfitci mpg weight, al(red) nodraw
 local tw_rc = _rc
@@ -268,7 +286,7 @@ if "`tw_rgb'" == "255 0 0" {
     local bad = 1
 }
 _zcb_run `"dash (lfitci mpg weight, al(red)), name(zqcb)"' "`logfile'"
-if r(rc) != 0 | r(note) != 1 {
+if r(rc) != 0 | r(note) != 0 {
     display as error "CB-04 FAIL: al() rc `r(rc)', note `r(note)'"
     local bad = 1
 }
@@ -277,11 +295,27 @@ if r(found) {
     display as error "CB-04 FAIL: al() reached alcolor"
     local bad = 1
 }
+_zcb_hasval zqcb alstyle "red"
+if r(found) != 1 {
+    display as error "CB-04 FAIL: al(red) did not reach alstyle"
+    local bad = 1
+}
+// WP-30 P1.14b: red is no line style, so twoway notes it in its words
+// and draws the foreground line; dash prints the same note when it draws.
+tempfile cb04
+quietly graph drop _all
+_zcb_run `"dash lfitci mpg weight, al(red) saving("`cb04'.html", replace)"' "`logfile'"
+capture erase "`cb04'.html"
+_zcb_logged "`logfile'" "named style red not found in class linestyle, default attributes used"
+if r(found) != 1 {
+    display as error "CB-04 FAIL: al(red) did not print twoway's linestyle note"
+    local bad = 1
+}
 if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' CB-04"
 }
-else display as text "CB-04 PASS: ac() alc() alw() alp() are the options, as in twoway; al() is not alcolor()"
+else display as text "CB-04 PASS: ac() alc() alw() alp() are the options, as in twoway; al() is alstyle(), not alcolor()"
 
 // ----------------------------------------------------------------
 // CB-05 -- alwidth()'s bounds on lfitci.
@@ -308,8 +342,10 @@ else display as text "CB-05 PASS: alwidth() takes 0 to 10000, as twoway"
 // ----------------------------------------------------------------
 local bad = 0
 // Injection: a pstyle() that is no style, stored as text; the renderer
-// draws p1 and says so (test_ci_band_style.py).
-_zcb_run `"dash (lfitci mpg weight, pstyle(p3;rm -rf)), name(zqcb)"' "`logfile'"
+// draws p1 and says so (test_ci_band_style.py).  Flipped (WP-30 P1.14a):
+// pstyle() is a stylelist now, so the value is quoted to stay one element,
+// as twoway reads a quoted element.
+_zcb_run `"dash (lfitci mpg weight, pstyle("p3;rm -rf")), name(zqcb)"' "`logfile'"
 _zcb_hasval zqcb pstyle "p3;rm -rf"
 if r(found) != 1 {
     display as error "CB-06 FAIL: pstyle(p3;rm -rf) not stored as text"

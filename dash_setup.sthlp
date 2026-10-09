@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.1.0  02oct2026}{...}
+{* *! version 0.1.0  09oct2026}{...}
 {viewerjumpto "Syntax"      "dash_setup##syntax"}{...}
 {viewerjumpto "Description" "dash_setup##description"}{...}
 {viewerjumpto "Options" "dash_setup##options"}{...}
@@ -41,9 +41,13 @@ present but older than {cmd:dash} needs is reported, not upgraded.
 {phang2}1.  Python.  Whether Python is linked to Stata is read from the
     setting {cmd:c(python_exec)}; with none, {cmd:dash_setup} stops at once,
     r(198).  The linked interpreter's version is then compared with the
-    3.13 minimum, numerically per component, so 3.10 is correctly newer
-    than 3.9; a version below 3.13 is reported as such and counted as
-    unmet.
+    3.11 minimum, numerically per component, so 3.10 is correctly newer
+    than 3.9; a version below 3.11 is reported as such and counted as
+    unmet.  Python is started to read its version; a first start that
+    fails is tried once more, and a Python that still cannot be started is
+    reported in the summary with its path and, on a Mac, a reminder that
+    Stata and Python must be built for the same processor (both arm64 or
+    both x86_64), r(198).
 
 {phang2}2.  {cmd:packaging}, which the version comparisons below use, is
     installed with {cmd:pip} if it is missing.  If it cannot be installed,
@@ -95,8 +99,9 @@ the packages {cmd:dash} needs, for a Python that refuses {cmd:pip}
 installs.  {it:path} may be relative to the working directory and may start
 with {cmd:~}.  {cmd:dash_setup} creates the environment with the linked
 Python's {cmd:venv} module, or reuses one already at {it:path}; installs
-packaging, bokeh, numpy and pandas at their minimums into it; checks their
-versions, and that {cmd:dash}'s schemes can be read, inside it; and prints
+packaging, bokeh, numpy and pandas at their minimums, bokeh within the
+verified range, into it; checks their versions, and that {cmd:dash}'s
+schemes can be read, inside it; and prints
 the command that links Stata to it, such as
 
 {phang2}{cmd:python set exec "/path/to/venv/bin/python", permanently}
@@ -113,7 +118,7 @@ A {it:path} that exists must be an empty directory or a virtual environment,
 owned by you and writable by no one else.  A {it:path} that is a symbolic
 link, or that holds a double quote, a backtick, a dollar sign or a control
 character, is refused before anything runs, r(198); so is a linked Python
-below 3.13, or a reused environment whose Python is.  Missing directories
+below 3.11, or a reused environment whose Python is.  Missing directories
 above {it:path} inside your home directory are created, readable by you
 alone.  If a step fails, {cmd:dash_setup} names it and leaves the
 environment in place; you may delete it.
@@ -122,9 +127,18 @@ environment in place; you may delete it.
 {marker dependencies}
 {title:Dependencies}
 
+{pstd}{ul:Stata}
+
+{phang2}Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64.
+Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are admitted but
+have not been run.  {cmd:dash_setup} checks this before anything else and
+reports {cmd:Stata .............. OK} with the release; on an older Stata
+it stops at once with "dash requires Stata 19 or later; this is Stata
+{it:#}", r(9), and checks and installs nothing.
+
 {pstd}{ul:Python}
 
-{phang2}Python 3.13 or later must be installed and linked to Stata.
+{phang2}Python 3.11 or later must be installed and linked to Stata.
 {cmd:dash_setup} does not install Python.  See {helpb python} for
 instructions on linking Python.
 
@@ -134,7 +148,7 @@ instructions on linking Python.
 starts, so without any of them {cmd:dash} cannot draw anything at all:
 
 {synoptset 20 tabbed}{...}
-{synopt:{opt bokeh}}3.8 or later{p_end}
+{synopt:{opt bokeh}}3.8 or later, before 3.10{p_end}
 {synopt:{opt numpy}}2.3 or later{p_end}
 {synopt:{opt pandas}}2.3 or later{p_end}
 {synoptline}
@@ -147,9 +161,10 @@ neither installs nor checks them, and an installed copy is not used.
 {pstd}{cmd:dash_setup} also installs {cmd:packaging}, before the packages
 above, because the version comparisons use it.
 
-{pstd}These minimums are the versions {cmd:dash}'s own test suites run
-under (Python 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 when this was
-written); nothing older is tested.  bokeh before 3.6 lacks
+{pstd}These minimums are what {cmd:dash}'s own test suites run under:
+bokeh 3.8.0, numpy 2.3.5 and pandas 2.3.3 under Python 3.11, 3.12 and 3.13,
+and bokeh 3.9, numpy 2.4 and pandas 3.0 under 3.11 and 3.14 (measured
+07oct2026); nothing older is tested.  bokeh before 3.6 lacks
 {cmd:CustomJSTicker}, which every {cmd:dash} render imports, and
 {cmd:pandas} is required by {cmd:dash} itself: bokeh 3.9 no longer
 installs it.  A package below its minimum is not upgraded for you;
@@ -157,13 +172,23 @@ installs it.  A package below its minimum is not upgraded for you;
 linked to, or on an externally managed Python the way to set up a private
 environment, and stops.
 
+{pstd}{ul:The verified range of bokeh.}  {cmd:dash} was verified on bokeh
+3.8 and 3.9: its test suites, and a browser check that text from your data
+-- a variable label in an axis title, a legend or a tooltip -- is drawn as
+text.  A patch release of either is covered.  {cmd:dash_setup} installs
+{cmd:bokeh>=3.8,<3.10}.  A bokeh at or above 3.10 that you already have is
+reported as outside the verified range, a warning, and is never changed:
+something else in that Python may need it.  On an externally managed
+Python the way to set up a private environment is printed instead of a
+{cmd:pip} line.  Only bokeh has a ceiling.
+
 {pstd}Missing packages are installed automatically.  If automatic
 installation fails (e.g., in a restricted network environment), install
 manually.  The command {cmd:dash_setup} prints names the Python Stata is
 linked to, {cmd:c(python_exec)}, quoted for your system; in a terminal it
 reads like this, with that path in place of {it:/path/to/python3}:
 
-{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8" "numpy>=2.3" "pandas>=2.3"}
+{phang2}{cmd:"/path/to/python3" -m pip install "bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"}
 
 {pstd}The double quotes matter: without them a shell reads {cmd:>} as a
 redirection, installs bokeh unpinned and writes a file named {cmd:=3.8}.
@@ -184,7 +209,8 @@ framework.  Tornado is installed with Bokeh, which depends on it, so no
 separate installation is needed and {cmd:dash_setup} does not check it.
 {cmd:dash_setup} reports the installed bokeh version; one below 3.8 is
 reported as an unmet requirement -- it is not upgraded for you -- and the
-run ends with r(198).
+run ends with r(198); one at or above 3.10 is reported as outside the
+verified range, a warning, and left as it is.
 
 
 {marker pep668}
@@ -209,6 +235,11 @@ then restart Stata, type the {cmd:python set exec} line that command
 prints, and run {cmd:dash_setup} again.  On Windows, {cmd:dash_setup}
 suggests {cmd:%LOCALAPPDATA%\dash\venv}.
 
+{pstd}
+On a Python below the minimum, a private environment made from it would be
+below the minimum too, so {cmd:dash_setup} does not suggest one: link Stata
+to Python 3.11 or later instead.
+
 
 {marker troubleshooting}
 {title:Troubleshooting}
@@ -220,6 +251,14 @@ suggests {cmd:%LOCALAPPDATA%\dash\venv}.
 {phang2}{cmd:python set exec "/path/to/python3", permanently}
 
 {pstd}See {helpb python} for full instructions.
+
+{pstd}{ul:Python could not be started}
+
+{phang2}A Python linked to Stata that cannot be started is reported as
+"Python ............. could not be started", with its path.  On a Mac with
+Apple Silicon an arm64 Stata cannot start an x86_64 Python, nor the
+reverse: link a Python built for the same processor ({helpb python}), then
+run {cmd:dash_setup} again.
 
 {pstd}{ul:No pip}
 
@@ -238,13 +277,13 @@ package manager, or use {opt venv()}.
 {phang2}In restricted environments (no internet, corporate proxy), install
 packages using your organization's package mirror or a pre-downloaded wheel:
 
-{phang2}{cmd:"/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8"}
+{phang2}{cmd:"/path/to/python3" -m pip install --index-url https://your.mirror/simple "bokeh>=3.8,<3.10"}
 
 {pstd}{ul:Package version below minimum}
 
 {phang2}Upgrade a specific package, unless the Python is externally managed (see above):
 
-{phang2}{cmd:"/path/to/python3" -m pip install --upgrade "bokeh>=3.8"}
+{phang2}{cmd:"/path/to/python3" -m pip install --upgrade "bokeh>=3.8,<3.10"}
 
 
 {title:Also see}

@@ -36,7 +36,6 @@ does" is the specification here.
 """
 from __future__ import annotations
 
-import importlib.util
 import itertools
 import json
 import os
@@ -54,7 +53,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 
 _SEQ = itertools.count()
 
@@ -164,9 +163,7 @@ def served(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(str(ap))
-        ms = importlib.util.spec_from_file_location(f"_wp10_{tag}", str(ap))
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(str(ap), f"_wp10_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -719,9 +716,7 @@ class TestEveryFigureCarriesTheSameHover:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr.ServerAppBuilder(str(sp), str(dp)).build(str(ap))
-            ms = importlib.util.spec_from_file_location(f"_hv_{tag}", str(ap))
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(str(ap), f"_hv_{tag}")
             doc = Document()
             mod.make_document(doc)
         assert drawn_rows(_figures_of(doc)) == [("Scatter", 3)], (
@@ -754,9 +749,14 @@ class TestTheLegendSaysTheSameThing:
     @pytest.mark.parametrize("ptype", ["lfitci", "qfitci", "lpolyci",
                                        "fpfitci"])
     def test_a_band_and_its_line_are_keyed_separately(self, tmp_path, ptype):
+        """Flipped (WP-30 P1.16): "Fitted values" for every line was wrong
+        because twoway keys an lpolyci line "lpoly smooth: <y>" and an
+        fpfitci line "Predicted <y>" (series_label_truth.json F22, F20)."""
+        line = {"lpolyci": "lpoly smooth: mpg",
+                "fpfitci": "Predicted mpg"}.get(ptype, "Fitted values")
         spec = make_spec([plot_for(ptype)])
         srv = legends(served(tmp_path, spec)[0])
-        assert srv and srv[0][0] == ["95% CI", "Fitted values"], (
+        assert srv and srv[0][0] == ["95% CI", line], (
             "%s served legend keys %r" % (ptype, srv))
 
     def test_the_level_reaches_the_bands_key(self, tmp_path):
@@ -1001,14 +1001,25 @@ class TestTheEmptyLayerReport:
 
 class TestTheLegendKeyRule:
     @pytest.mark.parametrize("ptype", sorted(dr._DASH_FIT_TYPES))
-    def test_a_computed_layer_is_keyed_fitted_values(self, ptype):
+    def test_a_computed_layer_is_keyed_as_twoway_keys_it(self, ptype):
+        """Flipped (WP-30 P1.16): "Fitted values" was wrong because twoway
+        keys each fit in its own text (series_label_truth.json F01-F16)."""
+        want = {"fpfit": "Predicted mpg", "function": "y",
+                "lfit": "Fitted values", "qfit": "Fitted values",
+                "lowess": "lowess mpg", "lpoly": "lpoly smooth: mpg",
+                "mband": "Median bands", "mspline": "Median spline"}
         assert dr._dash_legend_key({"type": ptype, "yvar": "mpg"}) == \
-               "Fitted values"
+               want[ptype]
 
     @pytest.mark.parametrize("ptype", sorted(dr._DASH_CI_TYPES))
-    def test_a_ci_layer_is_keyed_fitted_values_on_its_own(self, ptype):
+    def test_a_ci_layer_is_keyed_by_its_line_on_its_own(self, ptype):
+        """Flipped (WP-30 P1.16): "Fitted values" was wrong for fpfitci and
+        lpolyci because twoway keys their lines "Predicted <y>" and "lpoly
+        smooth: <y>" (series_label_truth.json F20, F22)."""
+        want = {"fpfitci": "Predicted mpg", "lpolyci": "lpoly smooth: mpg",
+                "lfitci": "Fitted values", "qfitci": "Fitted values"}
         assert dr._dash_legend_key({"type": ptype, "yvar": "mpg"}) == \
-               "Fitted values"
+               want[ptype]
 
     def test_a_data_layer_is_keyed_with_the_variable_label(self):
         assert dr._dash_legend_key({"type": "scatter", "yvar": "mpg"},
@@ -1039,8 +1050,13 @@ class TestTheLegendKeyRule:
     def test_a_range_layer_uses_its_first_boundary(self):
         assert dr._dash_legend_key({"type": "rbar", "yvar1": "lo"}) == "lo"
 
-    def test_a_layer_with_no_variable_is_keyed_by_its_type(self):
-        assert dr._dash_legend_key({"type": "pci"}) == "pci"
+    def test_an_immediate_layer_is_keyed_as_twoway_keys_it(self):
+        """Flipped (WP-30 P1.16): "pci" was wrong because twoway keys pci
+        "y/yb" and scatteri "y" (series_label_truth.json I01, I02); a data
+        layer with no variable still falls back to its type."""
+        assert dr._dash_legend_key({"type": "pci"}) == "y/yb"
+        assert dr._dash_legend_key({"type": "scatteri"}) == "y"
+        assert dr._dash_legend_key({"type": "scatter"}) == "scatter"
 
     def test_a_ci_layer_splits_into_a_band_key_and_a_line_key(self):
         from bokeh.plotting import figure
@@ -1274,7 +1290,10 @@ class TestTheHoverBuilder:
                                           "right": [1.0]}))
         dr._dash_build_hover(fig, "", "", "", [], univar="mpg")
         t = [x for x in fig.tools if isinstance(x, HoverTool)][0]
-        assert t.tooltips[0][0] == "mpg" and t.tooltips[1][0] == "Count"
+        # WP-30 P1.23b: 'Count' was wrong because a histogram's height is
+        # the measure its y axis is titled with; an untagged bar is
+        # Density, twoway's default.
+        assert t.tooltips[0][0] == "mpg" and t.tooltips[1][0] == "Density"
         assert t.mode == "vline"
 
     def test_a_density_curve_gets_the_generic_tooltip(self):

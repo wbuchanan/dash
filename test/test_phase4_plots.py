@@ -125,7 +125,9 @@ class TestMapPcspike:
     def test_pcspike_lwidth_option_applied(self, fig, pc_cds, gm):
         """P4-07: lwidth option is applied to the segment line width."""
         result = gm.map_pcspike(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
-        assert result[0].glyph.line_width == 2.5
+        # Flipped (WP-30 P1.12b): thick is .8 Stata units, 3.072 px (2.5 on
+        # dash's private ladder).
+        assert result[0].glyph.line_width == pytest.approx(3.072)
 
 
 # ================================================================

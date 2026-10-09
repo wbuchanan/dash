@@ -2,9 +2,20 @@
 *! Certification script: the twoway options GAPS.md F3 listed as landing in
 *! the note as UNKNOWN -- ROADMAP WP-22 TR-22.3 and AC-22.2.
 *!
-*! Every expectation below is measured against twoway in the same run, the
-*! way test_alias_semantics.cscript measures bw(): twoway is asked first, and
-*! dash must do what twoway did.  The measurements behind the design (the
+*! Every expectation below is measured against twoway, the way
+*! test_alias_semantics.cscript measures bw(): twoway is asked first, and
+*! dash must do what twoway did.
+*!
+*! twoway's answers are measured once and replayed (WP-30 test performance,
+*! B2; cert_truth.do): a certification run reads them from
+*! test/fixtures/twoway_option_parity_truth.json, which
+*! scripts/extract_twoway_oracle_truth.do writes by running this script
+*! with twoway asked; DASH_CERT_REMEASURE=1 asks twoway in the run again and
+*! fails on any answer that is no longer the fixture's (the release run).
+*! Where a comment below says twoway is asked in the run, it is asked in
+*! the run that measures its answers.
+*!
+*! The measurements behind the design (the
 *! pictures twoway draws, exported to SVG and compared) are recorded in the
 *! WP-22 work notes; the oracles used here are the cheap ones that decide the
 *! same questions:
@@ -45,9 +56,11 @@
 *!   TP-06  the declared-but-not-honoured ones are named in the note by
 *!          their full names, however they were abbreviated, in comma mode
 *!          and after the paren-mode comma: sort(varlist) where dash does
-*!          not join (scatter), mlabvposition(), mlabtextstyle(),
-*!          xoverhangs, yoverhangs; sort sort(varlist) on line is honoured,
-*!          silent and written as "sortvars" (WP-29 P0.1).
+*!          not join (scatter), xoverhangs, yoverhangs;
+*!          sort sort(varlist) on line is honoured, silent and written as
+*!          "sortvars" (WP-29 P0.1).  TP-06h: mlabvposition() and
+*!          mlabtextstyle() are honoured (WP-30 P1.24): not named, written
+*!          to the spec.
 *!   TP-07  what twoway itself refuses stays UNKNOWN and is named as typed:
 *!          xreverse yreverse xalternate yalternate xcommon ycommon
 *!          lockaspect zoom() altaxis ddensity addplot() margin() region()
@@ -125,6 +138,46 @@
 *!          plot groups, by(), the plurals) dash accepts.
 *!   AX-07  the stored spec keeps each axis's copy through the repeat merge.
 *!   AX-08  10,000 copies end r(1003) quickly and leave nothing behind.
+*!   MV-01  mlabvposition() (WP-30 P1.24) is refused r(103) in twoway's
+*!          words on the 21 types that count their variables; MV-02 with
+*!          abbreviated variables and mlabel(); MV-03 a string variable;
+*!   MV-04  a missing variable r(111); MV-05 a second copy r(198); MV-06
+*!          two names r(103); MV-07 an expression r(198); MV-08 the empty
+*!          option and the abbreviations taken, s() kept; MV-09 not read on
+*!          histogram, function, scatteri, pci, pcarrowi; MV-10 taken in
+*!          silence on line, spike, area, pcspike, tsline; MV-11 (and 11b)
+*!          twoway's count quirks.
+*!   MV-12  mlabtextstyle() (part 2) is taken in silence on line, lfit and
+*!          rscatter, the rightmost copy kept, mlabt() read; MV-13 it is a
+*!          style list, one element per y.
+*!   RS-01  the region refusals twoway gives, rc and words (WP-30 P1.20a).
+*!   RS-02  graphregion() before plotregion(), both before legend()/axes.
+*!   RS-03  every region sub-option from its minimum spelling to its name.
+*!   RS-04  what twoway takes with rc 0 (a trailing comma, bad style names).
+*!   RS-10  repeated region copies merge as twoway applies them.
+*!   RS-11  two abbreviated copies are written under their full names.
+*!   RS-12  the measured copy pairs (region_truth.json M) merge as drawn.
+*!   CM-01..CM-12  connect() and cmissing() read as twoway reads them
+*!          (WP-30 P1.8a; connect_truth.json): refusals, notes, spellings,
+*!          copies, per-y types, the silent and the named types.
+*!   BG-07  barwidth() on rcap and rcapsym is refused r(198) in twoway's words,
+*!          in comma mode, in a plot group and after || (WP-30 P1.17a).
+*!   BG-08  barw(), barwi(), barwidth() on rcap: the spelling typed is named.
+*!   BG-09  guards: bar, rbar and spike take barwidth(); quoted and nested
+*!          text is not read; rcap bw() keeps its note.
+*!   NP-20  p(p3) p(p4) writes "p":"p3" (the first copy); under p() no
+*!          mcolor/lcolor/mlabcolor is written and mlabel() is kept.
+*!   NP-21  pstyle(p4) p(p3) writes p only.
+*!   NP-22  area/rarea: lstyle() alstyle() blstyle() named, astyle() not.
+*!   NP-23  pcarrow: mstyle() and mlstyle() named.
+*!   NP-24  spike, clstyle(p3) writes no clstyle.
+*!   NP-25  scatter, astyle(p3) is silent, rc 0 (WP-30 P1.14a, NP-20..25).
+*!   TA-01..TA-10, TA-15, TA-16  the t-options (tlabel() .. tline())
+*!          folded onto the x axis as twoway reads them: values, order,
+*!          abbreviations, units, refusals, the first-plot rule, any graph,
+*!          lenient literals, hostile tokens, minor ticks, x-option literals
+*!          and the unit noted at build (WP-30 P1.6).  TA-11..TA-13:
+*!          axis(2) and the t...2() spellings, format() overrides, %-tm.
 *!
 *! TP-01 to TP-08 render nothing: every dash probe registers with name(),
 *! and the spec is read back out of the registry, as in
@@ -136,6 +189,15 @@
 cscript "dash twoway option parity (WP-22 TR-22.3)" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 set graphics off
 
@@ -143,6 +205,17 @@ do "cert_helpers.do"
 quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
+
+// twoway's answers (WP-30 test performance, B2): every question below is
+// asked of twoway in a run with DASH_CERT_REMEASURE set, and read from
+// fixtures/twoway_option_parity_truth.json otherwise (cert_truth.do).  Each
+// case group names its questions with cert_truth_ctx, so one command asked
+// with other data in memory is another question.  `_ct_l' is 1 when this
+// run asks twoway, else 0.
+do "cert_truth.do"
+cert_truth_init twoway_option_parity
+python: _dct = __import__("sys").modules["_dash_cert_truth"]
+python: _dct.flag("_ct_l")
 
 // cscript drops every global; cert_helpers.do set it again, and so does this.
 global dash_nobrowser 1
@@ -194,16 +267,34 @@ end
 // "absent" -- an absence check that could not see what it looked for
 // (changed with TP-13, 24sep2026; every TP case passes either way on this
 // tree, where no note here reaches the column).
+// A twoway command's answer -- its rc and the words its log holds -- is
+// asked of twoway in a live run and read back otherwise (cert_truth.do),
+// the same words in the same log either way; a dash command always runs.
 capture program drop _ztp_run
 program define _ztp_run, rclass
     args cmdtext logpath
     capture log close _ztplog
     capture erase "`logpath'"
     capture dash clear
-    log using "`logpath'", name(_ztplog) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    log close _ztplog
+    mata: st_local("_ct_tw", strofreal(substr(st_local("cmdtext"), 1, 7) == "twoway "))
+    local _ct_l 1
+    if `_ct_tw' {
+        python: _dct = __import__("sys").modules["_dash_cert_truth"]
+        python: _dct.flag("_ct_l")
+    }
+    if `_ct_l' {
+        log using "`logpath'", name(_ztplog) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        log close _ztplog
+        if `_ct_tw' {
+            python: _dct.log_put("cmdtext", "rc", "logpath")
+        }
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logpath", "rc")
+        if "`rc'" == "" local rc 9
+    }
     cert_log_has "`logpath'", needle("ignoring unsupported")
     return scalar note = r(found)
     return scalar rc   = `rc'
@@ -245,6 +336,7 @@ local v_pci       "20 3000 30 4000"
 // ----------------------------------------------------------------
 // TP-01 -- the cl triple, per plot type.
 // ----------------------------------------------------------------
+cert_truth_ctx "TP-01"
 foreach tt of local types {
     local v `v_`tt''
     // twoway: does this type draw the connecting line?  clwidth(-1) is
@@ -252,7 +344,7 @@ foreach tt of local types {
     local sep ","
     if strpos("`v'", ",") local sep ""
     capture graph drop _all
-    capture twoway `tt' `v'`sep' clwidth(-1)
+    capture cert_tw twoway `tt' `v'`sep' clwidth(-1)
     local tw_rc = _rc
     capture graph drop _all
     local draws = (`tw_rc' == 198)
@@ -316,7 +408,8 @@ quietly tsset, clear
 // TP-02 -- twoway's own minimum abbreviations.
 // ----------------------------------------------------------------
 local bad = 0
-capture twoway line mpg weight, clc(red) clp(dash) clw(thick) nodraw
+cert_truth_ctx "TP-02"
+capture cert_tw twoway line mpg weight, clc(red) clp(dash) clw(thick) nodraw
 if _rc {
     display as error "TP-02 FAIL: the twoway oracle rejects clc() clp() clw(), r(`=_rc')"
     local bad = 1
@@ -333,7 +426,7 @@ foreach k in clcolor clpattern clwidth {
         local bad = 1
     }
 }
-capture twoway line mpg weight, cl(red) nodraw
+capture cert_tw twoway line mpg weight, cl(red) nodraw
 local tw_rc = _rc
 _ztp_run `"dash line mpg weight, cl(red) name(zqtp)"' "`logfile'"
 local drc = r(rc)
@@ -377,7 +470,8 @@ else display as text "TP-03 PASS: lcolor() and clcolor() both recorded; the rend
 // TP-04 -- mlabangle().
 // ----------------------------------------------------------------
 local bad = 0
-capture twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw
+cert_truth_ctx "TP-04"
+capture cert_tw twoway scatter mpg weight, mlabel(make) mlabang(45) nodraw
 if _rc {
     display as error "TP-04 FAIL: the twoway oracle rejects mlabang(45), r(`=_rc')"
     local bad = 1
@@ -395,7 +489,7 @@ if r(note) != 0 {
     local bad = 1
 }
 capture graph drop _all
-capture twoway scatter mpg weight, mlabel(make) mlabangle(abc)
+capture cert_tw twoway scatter mpg weight, mlabel(make) mlabangle(abc)
 local tw_rc = _rc
 capture graph drop _all
 _ztp_run `"dash scatter mpg weight, mlabel(make) mlabangle(abc) name(zqtp)"' "`logfile'"
@@ -405,11 +499,12 @@ if `tw_rc' != 0 | r(rc) != 0 {
 }
 // mlabangle(400), per type: refused where twoway draws marker labels.
 quietly tsset t
+cert_truth_ctx "TP-04 tsset"
 local lab_types "scatter connected bar dot dropline rcapsym rconnected rscatter pcarrow pcbarrow pcscatter pccapsym line area spike rcap rarea rline histogram lfitci tsline"
 foreach tt of local lab_types {
     local v `v_`tt''
     capture graph drop _all
-    capture twoway `tt' `v', mlabel(make) mlabangle(400)
+    capture cert_tw twoway `tt' `v', mlabel(make) mlabangle(400)
     local tw_rc = _rc
     capture graph drop _all
     _ztp_run `"dash (`tt' `v', mlabel(make) mlabangle(400)), name(zqtp)"' "`logfile'"
@@ -428,7 +523,7 @@ foreach tt of local lab_types {
 }
 // scatteri labels its points from the literal list.
 capture graph drop _all
-capture twoway scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)
+capture cert_tw twoway scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)
 local tw_rc = _rc
 capture graph drop _all
 _ztp_run `"dash (scatteri 20 3000 "A" 30 4000 "B", mlabangle(400)), name(zqtp)"' "`logfile'"
@@ -447,14 +542,15 @@ else display as text "TP-04 PASS: mlabangle() recorded, a name passed on, 400 re
 // TP-05 -- mlabformat().
 // ----------------------------------------------------------------
 local bad = 0
-capture twoway scatter mpg weight, mlabel(mpg) mlabf(%9.2f) nodraw
+cert_truth_ctx "TP-05"
+capture cert_tw twoway scatter mpg weight, mlabel(mpg) mlabf(%9.2f) nodraw
 if _rc local bad = 1
 _ztp_run `"dash scatter mpg weight, mlabel(mpg) mlabf(%9.2f) name(zqtp)"' "`logfile'"
 if r(rc) != 0 | r(note) != 0 local bad = 1
 _ztp_has zqtp mlabformat
 if r(found) != 1 local bad = 1
 capture graph drop _all
-capture twoway scatter mpg weight, mlabel(mpg) mlabformat(abc)
+capture cert_tw twoway scatter mpg weight, mlabel(mpg) mlabformat(abc)
 local tw_rc = _rc
 capture graph drop _all
 _ztp_run `"dash scatter mpg weight, mlabel(mpg) mlabformat(abc) name(zqtp)"' "`logfile'"
@@ -477,14 +573,11 @@ local ++n6
 local c6_`n6' `"dash scatter mpg weight, sort(mpg) name(zqtp)"'
 local t6_`n6' `"twoway scatter mpg weight, sort(mpg) nodraw"'
 local w6_`n6' "sort()"
-local ++n6
-local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
-local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw"'
-local w6_`n6' "mlabvposition()"
-local ++n6
-local c6_`n6' `"dash scatter mpg weight, mlabel(make) mlabt(heading) name(zqtp)"'
-local t6_`n6' `"twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw"'
-local w6_`n6' "mlabtextstyle()"
+// Flipped (WP-30 P1.24): mlabv(pos) named in the note was wrong, because
+// dash draws mlabvposition() per row as twoway does; it is TP-06h's row.
+// Flipped (WP-30 P1.24, part 2): mlabt(heading) named in the note was
+// wrong, because dash draws the scheme's heading style as twoway does; it
+// is TP-06h's second row.
 local ++n6
 local c6_`n6' `"dash scatter mpg weight, xoverhang name(zqtp)"'
 local t6_`n6' `"twoway scatter mpg weight, xoverhang nodraw"'
@@ -501,8 +594,9 @@ local ++n6
 local c6_`n6' `"dash (scatter mpg weight) (line mpg weight), yoverhangs name(zqtp)"'
 local t6_`n6' `"twoway (scatter mpg weight) (line mpg weight), yoverhangs nodraw"'
 local w6_`n6' "yoverhangs()"
+cert_truth_ctx "TP-06"
 forvalues i = 1/`n6' {
-    capture `t6_`i''
+    capture cert_tw `t6_`i''
     local tw_rc = _rc
     _ztp_run `"`c6_`i''"' "`logfile'"
     local drc = r(rc)
@@ -516,6 +610,36 @@ forvalues i = 1/`n6' {
         local faillist "`faillist' TP-06(`i')"
     }
     else display as text `"TP-06 PASS: `w6_`i'' named in the note"'
+}
+// TP-06h -- declared and honoured (WP-30 P1.24): rc as twoway's, not
+// named in the note, and the full name with its value in the spec.
+// id | dash command | twoway command | option | value
+local n6h = 0
+local ++n6h
+local c6h_`n6h' `"dash scatter mpg weight, mlabel(make) mlabv(pos) name(zqtp)"'
+local t6h_`n6h' `"twoway scatter mpg weight, mlabel(make) mlabv(pos) nodraw"'
+local o6h_`n6h' "mlabvposition"
+local v6h_`n6h' "pos"
+local ++n6h
+local c6h_`n6h' `"dash scatter mpg weight, mlabel(make) mlabt(heading) name(zqtp)"'
+local t6h_`n6h' `"twoway scatter mpg weight, mlabel(make) mlabt(heading) nodraw"'
+local o6h_`n6h' "mlabtextstyle"
+local v6h_`n6h' "heading"
+cert_truth_ctx "TP-06h"
+forvalues i = 1/`n6h' {
+    capture cert_tw `t6h_`i''
+    local tw_rc = _rc
+    _ztp_run `"`c6h_`i''"' "`logfile'"
+    local drc = r(rc)
+    _ztp_logged "`logfile'" "`o6h_`i''()"
+    local named = r(found)
+    mata: st_local("_zv", strofreal(_ztp_hasval("zqtp", st_local("o6h_`i'"), st_local("v6h_`i'"))))
+    if `tw_rc' != `drc' | `named' != 0 | `_zv' != 1 {
+        display as error `"TP-06h FAIL: `c6h_`i'' -- twoway r(`tw_rc'), dash rc `drc', named `named', `o6h_`i'' `v6h_`i'' in the spec `_zv'"'
+        local nfail = `nfail' + 1
+        local faillist "`faillist' TP-06h(`i')"
+    }
+    else display as text `"TP-06h PASS: `o6h_`i''() honoured, not named"'
 }
 // Flipped (WP-29 P0.1): sort sort(mpg) on line was named sort() once
 // and carried nowhere, which was wrong: twoway joins the line in mpg's
@@ -547,10 +671,11 @@ else display as text "TP-06 PASS: sort sort(mpg) on line is honoured in silence 
 // sort is still named.  Flipped (WP-29 P0.1): sort(varlist) on a connected
 // type is honoured now, so it is not named either (the last loop below).
 quietly tsset t
+cert_truth_ctx "TP-06b"
 foreach tt in line connected area tsline rline rarea rconnected tsrline {
     local v `v_`tt''
     capture graph drop _all
-    capture twoway `tt' `v', sort nodraw
+    capture cert_tw twoway `tt' `v', sort nodraw
     local tw_rc = _rc
     _ztp_run `"dash `tt' `v', sort name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -571,7 +696,7 @@ foreach c in "scatter mpg weight, sort" "bar mpg weight, sort" {
     local sep ""
     if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
     capture graph drop _all
-    capture twoway `c'`sep' nodraw
+    capture cert_tw twoway `c'`sep' nodraw
     local tw_rc = _rc
     _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -586,7 +711,7 @@ foreach c in "line mpg weight, sort(price)" "(line mpg weight, sort(price)) (sca
     local sep ""
     if !strpos("`c'", ",") | substr("`c'", 1, 1) == "(" local sep ","
     capture graph drop _all
-    capture twoway `c'`sep' nodraw
+    capture cert_tw twoway `c'`sep' nodraw
     local tw_rc = _rc
     _ztp_run `"dash `c'`sep' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -613,15 +738,27 @@ display as text "TP-06b: a bare sort, and sort(varlist), on a connected type are
 // read.  dash used to accept every sort() with a note.  Every expectation
 // is asked of twoway in the same run.
 local jologtw "`c(tmpdir)'dash_jo_twoway.log"
+// twoway's answer -- its rc and the words its log holds -- asked here in a
+// live run and read back otherwise (cert_truth.do), the same words in the
+// same log either way.
 capture program drop _zjo_tw
 program define _zjo_tw, rclass
     args cmdtext logpath
     capture log close _zjotw
     capture erase "`logpath'"
-    log using "`logpath'", name(_zjotw) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    log close _zjotw
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        log using "`logpath'", name(_zjotw) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        log close _zjotw
+        python: _dct.log_put("cmdtext", "rc", "logpath")
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logpath", "rc")
+        if "`rc'" == "" local rc 9
+    }
     return scalar rc = `rc'
 end
 // twoway and dash given one plot type, varlist and option: r(ok) is 1
@@ -663,6 +800,7 @@ local jo_six "line connected area rline rarea rconnected"
 
 // JO-21: a malformed name, on all forty types.
 local bad = 0
+cert_truth_ctx "JO-21"
 foreach tt of local jo_all {
     local v `v_`tt''
     local k = 0
@@ -686,6 +824,7 @@ else display as text "JO-21 PASS: a malformed name in sort() is refused r(198) i
 generate zz = mod(_n, 5)
 generate zb = mod(_n, 3)
 local bad = 0
+cert_truth_ctx "JO-22"
 foreach tt of local jo_ser {
     local v `v_`tt''
     foreach o in nosuch z _N int in if using with _b "zz nosuch" {
@@ -710,6 +849,7 @@ else display as text "JO-22 PASS: a name that is no usable variable is refused r
 // JO-23: the 17 other types take sort(nosuch); dash names it in the
 // note, except on tsline and tsrline, which join in time order.
 local bad = 0
+cert_truth_ctx "JO-23"
 foreach tt of local jo_oth {
     local v `v_`tt''
     _zjo_pair `tt' `"`v'"' "sort(nosuch)" "`jologtw'" "`logfile'" 0
@@ -734,6 +874,7 @@ else display as text "JO-23 PASS: the 17 types twoway does not sort take sort(no
 // JO-24: an abbreviation is unabbreviated, and _all where twoway takes it.
 local bad = 0
 drop zb
+cert_truth_ctx "JO-24"
 _zjo_pair line "mpg weight" "sort(z)" "`jologtw'" "`logfile'" 0
 mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "zz")))
 if !r(ok) | !`hv' {
@@ -742,6 +883,7 @@ if !r(ok) | !`hv' {
 }
 preserve
 keep mpg weight zz
+cert_truth_ctx "JO-24 three variables"
 _zjo_pair line "mpg weight" "sort(_all)" "`jologtw'" "`logfile'" 0
 mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "mpg weight zz")))
 if !r(ok) | !`hv' {
@@ -760,6 +902,7 @@ else display as text "JO-24 PASS: sort(z) is written as zz and sort(_all) as eve
 generate z = -_n
 local bad = 0
 local k = 0
+cert_truth_ctx "JO-25"
 foreach o in "sort(x*) sort(z)" "sort(z) sort(x*)" "sort(nosuch) sort(z)" "sort(z) sort(nosuch)" "sort(zz) sort()" "sort() sort(zz)" "sort()" {
     local ++k
     local wrc : word `k' of 0 198 0 198 0 0 0
@@ -828,6 +971,7 @@ if `bad' {
 else display as text "JO-26 PASS: sort and sort() are silent where dash honours them and named once where it does not"
 
 // JO-27: a name given twice.
+cert_truth_ctx "JO-27"
 _zjo_pair line "mpg weight" "sort(z z)" "`jologtw'" "`logfile'" 0
 mata: st_local("hv", strofreal(_ztp_hasval("zqtp", "sortvars", "z z")))
 if !r(ok) | !`hv' {
@@ -843,11 +987,12 @@ capture dash clear
 // ----------------------------------------------------------------
 // TP-07 -- what twoway refuses stays unknown, named as typed.
 // ----------------------------------------------------------------
+cert_truth_ctx "TP-07"
 foreach o in xreverse yreverse xalternate yalternate xcommon ycommon lockaspect "zoom(2)" altaxis ddensity "addplot(line mpg weight)" "margin(zero)" "region(fcolor(red))" "bargap(10)" {
     local nm = "`o'"
     local pp = strpos("`o'", "(")
     if `pp' local nm = substr("`o'", 1, `pp' - 1)
-    capture twoway scatter mpg weight, `o' nodraw
+    capture cert_tw twoway scatter mpg weight, `o' nodraw
     local tw_rc = _rc
     _ztp_run `"dash scatter mpg weight, `o' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -951,13 +1096,14 @@ local mtypes "`types' pccapsym"
 local _ztp_imm "scatteri pci"
 local mtypes : list mtypes - _ztp_imm
 quietly tsset t
+cert_truth_ctx "TP-08"
 foreach tt of local mtypes {
     local v `v_`tt''
     local sep ","
     if strpos("`v'", ",") local sep ""
     foreach lab in make nosuchvar {
         capture graph drop _all
-        capture twoway `tt' `v'`sep' mlabel(`lab')
+        capture cert_tw twoway `tt' `v'`sep' mlabel(`lab')
         local tw_rc = _rc
         capture graph drop _all
         _ztp_run `"dash (`tt' `v'`sep' mlabel(`lab')), name(zqtp)"' "`logfile'"
@@ -1003,22 +1149,36 @@ local bad = 0
 local _ztp_ref "mspline mband"
 local dtypes : list mtypes - _ztp_ref
 quietly tsset t
+cert_truth_ctx "TP-09"
 foreach tt of local dtypes {
     local v `v_`tt''
     local sep ","
     if strpos("`v'", ",") local sep ""
-    capture erase "`svgfile'"
-    capture graph drop _all
-    capture twoway `tt' `v'`sep' mlabel(zq)
-    local tw_rc = _rc
-    if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
-    capture graph drop _all
-    // WP-28 S02: cert_svg_has_text, through scripts/svg_truth.py, in place
-    // of the raw byte search; guarded because it exits 603 on a missing
-    // file where the old mata _ztp_count returned -1 (twoway itself
-    // failed to draw for this plot type, so no SVG exists to open).
-    capture cert_svg_has_text, file("`svgfile'") text("ZQLAB1")
-    local tw_n = cond(_rc == 0, r(count), -1)
+    // twoway's rc, and how many times its SVG holds the first label: asked
+    // in a live run, read back otherwise (cert_truth.do).
+    local _ct_q "twoway `tt' `v'`sep' mlabel(zq)"
+    if `_ct_l' {
+        capture erase "`svgfile'"
+        capture graph drop _all
+        capture twoway `tt' `v'`sep' mlabel(zq)
+        local tw_rc = _rc
+        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
+        capture graph drop _all
+        // WP-28 S02: cert_svg_has_text, through scripts/svg_truth.py, in place
+        // of the raw byte search; guarded because it exits 603 on a missing
+        // file where the old mata _ztp_count returned -1 (twoway itself
+        // failed to draw for this plot type, so no SVG exists to open).
+        capture cert_svg_has_text, file("`svgfile'") text("ZQLAB1")
+        local tw_n = cond(_rc == 0, r(count), -1)
+        local _ct_a "`tw_rc' `tw_n'"
+        python: _dct.val_put("rc and svg count of ZQLAB1", "_ct_q", "_ct_a")
+    }
+    else {
+        python: _dct.val_get("rc and svg count of ZQLAB1", "_ct_q", "_ct_a")
+        if "`_ct_a'" == "" local _ct_a "9 -1"
+        local tw_rc : word 1 of `_ct_a'
+        local tw_n  : word 2 of `_ct_a'
+    }
     if `tw_rc' != 0 | `tw_n' < 0 {
         display as error "TP-09 FAIL `tt': the twoway oracle failed, r(`tw_rc')"
         local bad = 1
@@ -1062,19 +1222,34 @@ label define zqorigin 0 "ZQDOM" 1 "ZQFOR"
 capture drop zqf
 generate zqf = foreign
 label values zqf zqorigin
+cert_truth_ctx "TP-10"
 foreach spec in "scatter mpg weight" "rscatter lo hi weight" "pccapsym mpg weight turn length" {
     gettoken tt : spec
-    capture erase "`svgfile'"
-    capture graph drop _all
-    capture twoway `spec', mlabel(zqf)
-    local tw_rc = _rc
-    if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
-    capture graph drop _all
-    // WP-28 S02: cert_svg_has_text (guarded as TP-09's is).
-    capture cert_svg_has_text, file("`svgfile'") text("ZQFOR")
-    local tw_n = cond(_rc == 0, r(count), -1)
-    capture cert_svg_has_text, file("`svgfile'") text("ZQDOM")
-    local tw_m = cond(_rc == 0, r(count), -1)
+    // twoway's rc, and how many times its SVG holds each value label:
+    // asked in a live run, read back otherwise (cert_truth.do).
+    local _ct_q "twoway `spec', mlabel(zqf)"
+    if `_ct_l' {
+        capture erase "`svgfile'"
+        capture graph drop _all
+        capture twoway `spec', mlabel(zqf)
+        local tw_rc = _rc
+        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
+        capture graph drop _all
+        // WP-28 S02: cert_svg_has_text (guarded as TP-09's is).
+        capture cert_svg_has_text, file("`svgfile'") text("ZQFOR")
+        local tw_n = cond(_rc == 0, r(count), -1)
+        capture cert_svg_has_text, file("`svgfile'") text("ZQDOM")
+        local tw_m = cond(_rc == 0, r(count), -1)
+        local _ct_a "`tw_rc' `tw_n' `tw_m'"
+        python: _dct.val_put("rc and svg counts of ZQFOR ZQDOM", "_ct_q", "_ct_a")
+    }
+    else {
+        python: _dct.val_get("rc and svg counts of ZQFOR ZQDOM", "_ct_q", "_ct_a")
+        if "`_ct_a'" == "" local _ct_a "9 -1 -1"
+        local tw_rc : word 1 of `_ct_a'
+        local tw_n  : word 2 of `_ct_a'
+        local tw_m  : word 3 of `_ct_a'
+    }
     capture erase "`htmlfile'"
     _ztp_run `"dash `spec', mlabel(zqf) saving("`htmlfile'")"' "`logfile'"
     local drc = r(rc)
@@ -1106,17 +1281,31 @@ else display as text "TP-10 PASS: a value-labelled variable is labelled with its
 // is drawn.  The saved dashboard must draw no red line either.
 // ----------------------------------------------------------------
 local bad = 0
+cert_truth_ctx "TP-11"
 foreach spec in "scatter mpg weight" "dot mpg weight" "rscatter lo hi weight" "pcscatter mpg weight turn length" {
     gettoken tt : spec
     foreach o in lcolor mlcolor {
-        capture erase "`svgfile'"
-        capture graph drop _all
-        capture twoway `spec', `o'(red)
-        local tw_rc = _rc
-        if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
-        capture graph drop _all
-        _ztp_count "`svgfile'" "stroke:#FF0000"
-        local tw_n = r(n)
+        // twoway's rc, and how many red strokes its SVG holds: asked in a
+        // live run, read back otherwise (cert_truth.do).
+        local _ct_q "twoway `spec', `o'(red)"
+        if `_ct_l' {
+            capture erase "`svgfile'"
+            capture graph drop _all
+            capture twoway `spec', `o'(red)
+            local tw_rc = _rc
+            if `tw_rc' == 0 cert_svg_export, file("`svgfile'")
+            capture graph drop _all
+            _ztp_count "`svgfile'" "stroke:#FF0000"
+            local tw_n = r(n)
+            local _ct_a "`tw_rc' `tw_n'"
+            python: _dct.val_put("rc and svg count of stroke:#FF0000", "_ct_q", "_ct_a")
+        }
+        else {
+            python: _dct.val_get("rc and svg count of stroke:#FF0000", "_ct_q", "_ct_a")
+            if "`_ct_a'" == "" local _ct_a "9 -1"
+            local tw_rc : word 1 of `_ct_a'
+            local tw_n  : word 2 of `_ct_a'
+        }
         capture erase "`htmlfile'"
         _ztp_run `"dash `spec', `o'(red) saving("`htmlfile'")"' "`logfile'"
         local drc = r(rc)
@@ -1165,9 +1354,10 @@ local _ztp_long ""
 forvalues i = 1/400 {
     local _ztp_long "`_ztp_long' make"
 }
+cert_truth_ctx "TP-12"
 foreach v in "mak" "make make" `"`_ztp_long'"' {
     capture graph drop _all
-    capture twoway mspline mpg weight, mlabel(`v')
+    capture cert_tw twoway mspline mpg weight, mlabel(`v')
     local tw_rc = _rc
     capture graph drop _all
     _ztp_run `"dash mspline mpg weight, mlabel(`v') name(zqtp)"' "`logfile'"
@@ -1224,6 +1414,7 @@ local bad = 0
 // names its full name.  The minimum is run first, on the same command:
 // the control that shows the key and the note can be seen.
 local n13 = 0
+cert_truth_ctx "TP-13a"
 foreach row in "mlabang(45) mlaban(45) key mlabangle" ///
                "sort(mpg) sor(mpg) note sort()" ///
                "xoverhang xoverhan note xoverhangs()" ///
@@ -1240,9 +1431,9 @@ foreach row in "mlabang(45) mlaban(45) key mlabangle" ///
     local pp = strpos("`sh'", "(")
     if `pp' local shn = substr("`sh'", 1, `pp' - 1)
     local shn "`shn'()"
-    capture twoway scatter mpg weight, mlabel(make) `mn' nodraw
+    capture cert_tw twoway scatter mpg weight, mlabel(make) `mn' nodraw
     local tw_mn = _rc
-    capture twoway scatter mpg weight, mlabel(make) `sh' nodraw
+    capture cert_tw twoway scatter mpg weight, mlabel(make) `sh' nodraw
     local tw_sh = _rc
     if `tw_mn' != 0 | `tw_sh' != 198 {
         display as error "TP-13a FAIL `mn'/`sh': the twoway oracle gives r(`tw_mn') for the minimum and r(`tw_sh') for the shorter spelling, not rc 0 and r(198)"
@@ -1280,8 +1471,10 @@ assert `n13' == 4
 // mlab(heading) is r(111), no variable heading (measured 24sep2026).  So
 // dash must read it as mlabel() and never as mlabformat(),
 // mlabtextstyle() or mlabvposition().  The controls: mlabf(%9.2f)
-// records mlabformat, and mlabt(heading) and mlabv(pos) are named in the
-// note by their full names.
+// records mlabformat, and mlabt(heading) and mlabv(pos) are recorded as
+// mlabtextstyle and mlabvposition and not named.
+// Flipped (WP-30 P1.24): c2v expected 1 (named), which was wrong because
+// dash draws mlabvposition() per row as twoway does.
 _ztp_run `"dash scatter mpg weight, mlabf(%9.2f) name(zqtp)"' "`logfile'"
 local c1 = r(rc)
 _ztp_has zqtp mlabformat
@@ -1292,11 +1485,15 @@ _ztp_logged "`logfile'" "mlabtextstyle()"
 local c2t = r(found)
 _ztp_logged "`logfile'" "mlabvposition()"
 local c2v = r(found)
-if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 1 | `c2v' != 1 {
-    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v'"
+mata: st_local("c2vk", strofreal(_ztp_hasval("zqtp", "mlabvposition", "pos")))
+// Flipped (WP-30 P1.24, part 2): c2t expected 1 (named), which was wrong
+// because dash draws mlabtextstyle() as twoway does.
+mata: st_local("c2tk", strofreal(_ztp_hasval("zqtp", "mlabtextstyle", "heading")))
+if `c1' != 0 | `c1k' != 1 | `c2' != 0 | `c2t' != 0 | `c2tk' != 1 | `c2v' != 0 | `c2vk' != 1 {
+    display as error "TP-13a FAIL: the mlab controls -- mlabf(%9.2f) rc `c1' key `c1k'; mlabt() mlabv() rc `c2', named `c2t' `c2v', mlabtextstyle heading `c2tk', mlabvposition pos `c2vk'"
     local bad = 1
 }
-capture twoway scatter mpg weight, mlab(pos) nodraw
+capture cert_tw twoway scatter mpg weight, mlab(pos) nodraw
 local tw_p = _rc
 _ztp_run `"dash scatter mpg weight, mlab(pos) name(zqtp)"' "`logfile'"
 local drc = r(rc)
@@ -1308,7 +1505,7 @@ if `tw_p' != 0 | `drc' != 0 | `dnote' != 0 | `_zv' != 1 | `fk' != 0 {
     display as error "TP-13a FAIL mlab(pos): twoway r(`tw_p'); dash rc `drc', a note `dnote', mlabel=pos `_zv', mlabformat key `fk'"
     local bad = 1
 }
-capture twoway scatter mpg weight, mlab(heading) nodraw
+capture cert_tw twoway scatter mpg weight, mlab(heading) nodraw
 local tw_h = _rc
 _ztp_run `"dash scatter mpg weight, mlab(heading) name(zqtp)"' "`logfile'"
 local drc = r(rc)
@@ -1327,6 +1524,7 @@ else display as text "TP-13a mlab(): read as mlabel(), as twoway reads it -- nev
 // xoverhan and yoverhan are refused by twoway, r(198), and named as typed
 // by dash (measured 24sep2026).
 local n13b = 0
+cert_truth_ctx "TP-13b"
 foreach row in "xoverhang xoverhangs() 0" "yoverhang yoverhangs() 0" ///
                "xoverhan xoverhangs() 198" "yoverhan yoverhangs() 198" {
     local ++n13b
@@ -1334,7 +1532,7 @@ foreach row in "xoverhang xoverhangs() 0" "yoverhang yoverhangs() 0" ///
     local o "`1'"
     local full "`2'"
     local want "`3'"
-    capture twoway (scatter mpg weight) (line mpg weight), `o' nodraw
+    capture cert_tw twoway (scatter mpg weight) (line mpg weight), `o' nodraw
     local tw_rc = _rc
     _ztp_run `"dash (scatter mpg weight) (line mpg weight), `o' name(zqtp)"' "`logfile'"
     local drc = r(rc)
@@ -1366,11 +1564,12 @@ assert `n13b' == 4
 // ask, the bound is checked when drawn).  dash's rc must be twoway's, a
 // refusal must name the option, and the two options must agree.
 local n13c = 0
+cert_truth_ctx "TP-13c"
 foreach v in -0.001 0 10000 10000.001 {
     foreach o in clwidth lwidth {
         local ++n13c
         capture graph drop _all
-        capture twoway line mpg weight, `o'(`v')
+        capture cert_tw twoway line mpg weight, `o'(`v')
         local tw_`o' = _rc
         capture graph drop _all
         _ztp_run `"dash (line mpg weight, `o'(`v')), name(zqtp)"' "`logfile'"
@@ -1480,20 +1679,52 @@ local r32 `"scatter mpg weight, title(A) || scatter price weight, title(B)"'
 local e32 `"scatter mpg weight || scatter price weight, title(B)"'
 local r33 `"(scatter mpg weight, title(INSIDE)) (line mpg weight), title(AFTER)"'
 local e33 `"(scatter mpg weight) (line mpg weight), title(AFTER)"'
-local n14 33
+// Rows 34-39 (WP-30 P1.19): copies merge sub-option by sub-option under
+// twoway's full names.
+local r34 `"(scatter mpg weight) (scatter price weight), legend(lab(1 "A")) legend(lab(2 "B"))"'
+local e34 `"(scatter mpg weight) (scatter price weight), legend(lab(1 "A") lab(2 "B"))"'
+local r35 `"(scatter mpg weight) (scatter price weight), legend(c(1)) legend(r(1))"'
+local e35 `"(scatter mpg weight) (scatter price weight), legend(r(1))"'
+local r36 `"(scatter mpg weight) (scatter price weight), legend(posi(9)) legend(pos(3))"'
+local e36 `"(scatter mpg weight) (scatter price weight), legend(pos(3))"'
+local r37 `"scatter mpg weight, ylabel(, labs(large)) ylabel(, labsize(small))"'
+local e37 `"scatter mpg weight, ylabel(, labsize(small))"'
+local r38 `"scatter mpg weight, title(A, s(large)) title(, size(small))"'
+local e38 `"scatter mpg weight, title(A, size(small))"'
+local r39 `"scatter mpg weight, xscale(r(1000 3000)) xscale(range(2000 6000))"'
+local e39 `"scatter mpg weight, xscale(range(1000 6000))"'
+local n14 39
 local bad = 0
+cert_truth_ctx "TP-14a"
 forvalues k = 1/`n14' {
     foreach w in r e {
-        capture graph drop _all
-        capture twoway ``w'`k''
-        if _rc {
-            display as error "TP-14a FAIL row `k': twoway refused the `w' command, r(`=_rc')"
+        // twoway's rc and its SVG export's checksum: asked in a live run,
+        // read back otherwise (cert_truth.do).
+        local _ct_q `"twoway ``w'`k''"'
+        if `_ct_l' {
+            capture graph drop _all
+            capture twoway ``w'`k''
+            local _ct_rc = _rc
+            local _ct_ck ""
+            if !`_ct_rc' {
+                quietly graph export "`c(tmpdir)'dash_tp14_`w'.svg", replace
+                quietly checksum "`c(tmpdir)'dash_tp14_`w'.svg"
+                local _ct_ck = r(checksum)
+            }
+            local _ct_a "`_ct_rc' `_ct_ck'"
+            python: _dct.val_put("rc and svg checksum", "_ct_q", "_ct_a")
+        }
+        else {
+            python: _dct.val_get("rc and svg checksum", "_ct_q", "_ct_a")
+            if "`_ct_a'" == "" local _ct_a 9
+        }
+        local _ct_rc : word 1 of `_ct_a'
+        if `_ct_rc' {
+            display as error "TP-14a FAIL row `k': twoway refused the `w' command, r(`_ct_rc')"
             local bad = 1
             continue
         }
-        quietly graph export "`c(tmpdir)'dash_tp14_`w'.svg", replace
-        quietly checksum "`c(tmpdir)'dash_tp14_`w'.svg"
-        local ck_`w' = r(checksum)
+        local ck_`w' : word 2 of `_ct_a'
         _ztp_run `"dash ``w'`k'' name(zq14)"' "`logfile'"
         local rc_`w' = r(rc)
         local note_`w' = r(note)
@@ -1547,9 +1778,10 @@ local u11 `"scatter mpg weight, xsize(3) || scatter price weight, xsize(4)"'
 local m11 "option xsize() not allowed"
 local u12 `"scatter mpg weight, yaxis(1) yaxis(1)"'
 local m12 "option yaxis() not allowed"
+cert_truth_ctx "TP-14b"
 forvalues k = 1/12 {
     capture graph drop _all
-    capture noisily twoway `u`k'' nodraw
+    capture noisily cert_tw twoway `u`k'' nodraw
     local tw = _rc
     _ztp_run `"dash `u`k'' name(zq14u)"' "`logfile'"
     local rc = r(rc)
@@ -1565,7 +1797,7 @@ forvalues k = 1/12 {
 // twoway, which takes them together in either order (rc 0, measured
 // 24sep2026): not a unique option given twice.
 foreach o in "sort(mpg) sort" "sort sort(mpg)" {
-    capture twoway line mpg weight, `o' nodraw
+    capture cert_tw twoway line mpg weight, `o' nodraw
     local tw = _rc
     _ztp_run `"dash line mpg weight, `o' name(zq14s)"' "`logfile'"
     if `tw' | r(rc) {
@@ -1630,13 +1862,14 @@ if `rc' | `note' | !`ok' {
 // repeat is stored as text, its macro characters escaped, never run; a copy whose value Stata cannot
 // bind is refused with twoway's code as before (P20-18b), and a copy that
 // only looks like another option inside a title() is text.
+cert_truth_ctx "TP-14e"
 local many ""
 forvalues i = 1/10000 {
     local many "`many' mcolor(blue)"
 }
 timer clear 14
 timer on 14
-capture twoway scatter mpg weight, `many' nodraw
+capture cert_tw twoway scatter mpg weight, `many' nodraw
 local tw = _rc
 _ztp_run `"dash scatter mpg weight, name(zq14x) `many'"' "`logfile'"
 local rc = r(rc)
@@ -1653,7 +1886,7 @@ forvalues i = 1/127 {
 local many "`many' mcolor(blue)"
 timer clear 14
 timer on 14
-capture twoway scatter mpg weight, `many' nodraw
+capture cert_tw twoway scatter mpg weight, `many' nodraw
 local tw = _rc
 _ztp_run `"dash scatter mpg weight, `many' name(zq14x)"' "`logfile'"
 local rc = r(rc)
@@ -1688,7 +1921,7 @@ if `rc' | `note' | !`ok' {
 }
 // A copy Stata cannot bind: refused as twoway refuses it, no directive run.
 local brk = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
-capture twoway scatter mpg weight, jitter(1) jitter(`brk') nodraw
+capture cert_tw twoway scatter mpg weight, jitter(1) jitter(`brk') nodraw
 local tw = _rc
 capture dash clear
 quietly log using "`logfile'", name(_ztplog) text replace
@@ -1818,6 +2051,7 @@ local n14f 40
 capture drop _t14f
 generate _t14f = _n
 quietly tsset _t14f
+cert_truth_ctx "TP-14f"
 forvalues k = 1/`n14f' {
     capture graph drop _all
     _ztp_run `"twoway `f`k'' nodraw"' "`logfile'"
@@ -1860,7 +2094,7 @@ forvalues k = 1/`n14f' {
 // never echoed, expanded or run, and nothing is registered.
 local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
 capture graph drop _all
-capture twoway scatter mpg weight, colorotherlabel(`"`macval(hv)'"') colorotherlabel(`"`macval(hv)'"') nodraw
+capture cert_tw twoway scatter mpg weight, colorotherlabel(`"`macval(hv)'"') colorotherlabel(`"`macval(hv)'"') nodraw
 local tw = _rc
 capture dash clear
 capture log close _ztplog
@@ -1928,7 +2162,7 @@ forvalues i = 1/250 {
 }
 timer clear 14
 timer on 14
-capture twoway bar mpg weight, `many' nodropbase nodropbase nodraw
+capture cert_tw twoway bar mpg weight, `many' nodropbase nodropbase nodraw
 local tw = _rc
 _ztp_run `"dash bar mpg weight, `many' nodropbase nodropbase name(zq14f)"' "`logfile'"
 local rc = r(rc)
@@ -1946,7 +2180,7 @@ forvalues i = 1/10000 {
 }
 timer clear 14
 timer on 14
-capture twoway lfit mpg weight, `many' nodraw
+capture cert_tw twoway lfit mpg weight, `many' nodraw
 local tw = _rc
 _ztp_run `"dash lfit mpg weight, name(zq14f) `many'"' "`logfile'"
 local rc = r(rc)
@@ -1993,18 +2227,31 @@ else display as text "TP-14 PASS: a repeated option draws what twoway draws -- t
 local bad15 = 0
 capture drop zb
 generate byte zb = mpg > 20
-// twoway's serset: the smooth of the plain lowess and of its logit.
+cert_truth_ctx "TP-15"
+// twoway's serset: the smooth of the plain lowess and of its logit (its
+// mean asked in a live run, read back otherwise: cert_truth.do).
 foreach k in plain lo {
-    capture graph drop _all
-    if "`k'" == "plain" quietly twoway lowess zb weight
-    else quietly twoway lowess zb weight, lo
-    preserve
-    quietly serset use, clear
-    quietly ds
-    local _sv : word 1 of `r(varlist)'
-    quietly summarize `_sv'
-    local m15_`k' = r(mean)
-    restore
+    if "`k'" == "plain" local _ct_q "twoway lowess zb weight"
+    else local _ct_q "twoway lowess zb weight, lo"
+    if `_ct_l' {
+        capture graph drop _all
+        if "`k'" == "plain" quietly twoway lowess zb weight
+        else quietly twoway lowess zb weight, lo
+        preserve
+        quietly serset use, clear
+        quietly ds
+        local _sv : word 1 of `r(varlist)'
+        quietly summarize `_sv'
+        local m15_`k' = r(mean)
+        restore
+        local _ct_v "`m15_`k''"
+        python: _dct.val_put("serset mean", "_ct_q", "_ct_v")
+    }
+    else {
+        python: _dct.val_get("serset mean", "_ct_q", "_ct_v")
+        if "`_ct_v'" == "" local _ct_v .
+        local m15_`k' `_ct_v'
+    }
 }
 if abs(`m15_plain' - `m15_lo') < 1e-6 {
     display as error "TP-15a FAIL: the twoway oracle draws lowess zb weight, lo as the plain curve"
@@ -2014,6 +2261,7 @@ if abs(`m15_plain' - `m15_lo') < 1e-6 {
 // words and serset asked here, dash's rc, words and spec held to them.
 local sp15 "lo log logi logit logg loggi logging nolo nolog nologi nologit nologg nologging LOG LOGIT Lo"
 local fm15 "c p a"
+cert_truth_ctx "TP-15a"
 foreach tt in lowess scatter line lfit {
     foreach s of local sp15 {
         foreach f of local fm15 {
@@ -2031,15 +2279,26 @@ foreach tt in lowess scatter line lfit {
             }
             local twlogit 0
             if !`tw' & "`tt'" == "lowess" {
-                capture graph drop _all
-                quietly twoway `cmd'
-                preserve
-                quietly serset use, clear
-                quietly ds
-                local _sv : word 1 of `r(varlist)'
-                quietly summarize `_sv'
-                local twlogit = abs(r(mean) - `m15_lo') < 1e-6
-                restore
+                // the serset's mean: asked in a live run, read back
+                // otherwise (cert_truth.do)
+                local _ct_q "twoway `cmd'"
+                if `_ct_l' {
+                    capture graph drop _all
+                    quietly twoway `cmd'
+                    preserve
+                    quietly serset use, clear
+                    quietly ds
+                    local _sv : word 1 of `r(varlist)'
+                    quietly summarize `_sv'
+                    local _ct_v = r(mean)
+                    restore
+                    python: _dct.val_put("serset mean", "_ct_q", "_ct_v")
+                }
+                else {
+                    python: _dct.val_get("serset mean", "_ct_q", "_ct_v")
+                    if "`_ct_v'" == "" local _ct_v .
+                }
+                local twlogit = abs(`_ct_v' - `m15_lo') < 1e-6
             }
             _ztp_run `"dash `cmd' name(zq15)"' "`logfile'"
             local rc = r(rc)
@@ -2064,7 +2323,7 @@ foreach tt in lowess scatter line lfit {
 // Both routes: the command drawn at once answers each lowess spelling as
 // the registered one does.
 foreach s of local sp15 {
-    capture twoway lowess zb weight, `s' nodraw
+    capture cert_tw twoway lowess zb weight, `s' nodraw
     local tw = _rc
     capture erase "`c(tmpdir)'dash_tp15_imm.html"
     _ztp_run `"dash lowess zb weight, `s' saving("`c(tmpdir)'dash_tp15_imm.html", replace)"' "`logfile'"
@@ -2085,6 +2344,7 @@ capture erase "`c(tmpdir)'dash_tp15_imm.html"
 // words g<k> (asked in the run); dash must answer the same and register
 // nothing, or draw it where twoway does.
 local k = 0
+cert_truth_ctx "TP-15b"
 foreach r in ///
     `"(lfit mpg weight), atobs~198~option atobs not allowed"' ///
     `"(lfit mpg weight), ato~198~option ato not allowed"' ///
@@ -2245,6 +2505,7 @@ if !`_k_ok' {
 }
 // lowess's logit given as lo and as its off form is one option given
 // twice, as twoway reads it.
+cert_truth_ctx "TP-15 lowess"
 foreach r in "lo nolo|nolo" "nologit lo|nologit" "logit logi|logi" {
     gettoken o15 w15 : r, parse("|")
     local w15 = substr("`w15'", 2, .)
@@ -2269,6 +2530,7 @@ foreach r in "lo nolo|nolo" "nologit lo|nologit" "logit logi|logi" {
 // does not take after the comma, or in comma mode, then the word that
 // refuses them, are answered as twoway answers them, quickly.
 local hv = "{bf:B} " + char(36) + "S_ADO " + char(96) + "c(pwd)" + char(39) + " _dup(3) " + char(96) + char(34) + "INJ" + char(34) + char(39)
+cert_truth_ctx "TP-15e"
 foreach form in u a k {
     if "`form'" == "u" {
         local pre "scatter mpg weight, MCOLOR("
@@ -2286,7 +2548,7 @@ foreach form in u a k {
         local want "kernel(): old syntax may not be combined with new syntax"
     }
     capture graph drop _all
-    capture twoway `pre'`"`macval(hv)'"'`post' nodraw
+    capture cert_tw twoway `pre'`"`macval(hv)'"'`post' nodraw
     local tw = _rc
     capture dash clear
     capture log close _ztplog
@@ -2314,7 +2576,7 @@ foreach form in a c {
     else local cmd15 "lfit mpg weight,`many' ATOBS"
     timer clear 15
     timer on 15
-    capture twoway `cmd15' nodraw
+    capture cert_tw twoway `cmd15' nodraw
     local tw = _rc
     _ztp_run `"dash `cmd15' name(zq15)"' "`logfile'"
     local rc = r(rc)
@@ -2360,6 +2622,7 @@ program define _ztp_sersum, rclass
     restore
     return scalar s = `s'
 end
+cert_truth_ctx "TP-16"
 foreach t16 in lpoly lpolyci kdensity {
     local v16 "mpg weight"
     if "`t16'" == "kdensity" local v16 "mpg"
@@ -2370,17 +2633,42 @@ foreach t16 in lpoly lpolyci kdensity {
         tri|triangle triangle|triangle {
         gettoken f16 k16 : r, parse("|")
         local k16 = substr("`k16'", 2, .)
-        capture graph drop _all
-        quietly twoway `t16' `v16', kernel(`k16')
-        _ztp_sersum
-        local ref16 = r(s)
-        capture graph drop _all
-        capture quietly twoway `t16' `v16', `f16'
-        local tw = _rc
+        // twoway's serset of kernel(<name>), and its rc and serset for the
+        // flag: asked in a live run, read back otherwise (cert_truth.do).
+        local _ct_q "twoway `t16' `v16', kernel(`k16')"
+        if `_ct_l' {
+            capture graph drop _all
+            quietly twoway `t16' `v16', kernel(`k16')
+            _ztp_sersum
+            local ref16 = r(s)
+            python: _dct.val_put("serset sum", "_ct_q", "ref16")
+        }
+        else {
+            python: _dct.val_get("serset sum", "_ct_q", "ref16")
+            if "`ref16'" == "" local ref16 .
+        }
+        local _ct_q "twoway `t16' `v16', `f16'"
+        if `_ct_l' {
+            capture graph drop _all
+            capture quietly twoway `t16' `v16', `f16'
+            local tw = _rc
+            local s16 .
+            if !`tw' {
+                _ztp_sersum
+                local s16 = r(s)
+            }
+            local _ct_a "`tw' `s16'"
+            python: _dct.val_put("rc and serset sum", "_ct_q", "_ct_a")
+        }
+        else {
+            python: _dct.val_get("rc and serset sum", "_ct_q", "_ct_a")
+            if "`_ct_a'" == "" local _ct_a "9 ."
+            local tw  : word 1 of `_ct_a'
+            local s16 : word 2 of `_ct_a'
+        }
         local same16 0
         if !`tw' {
-            _ztp_sersum
-            local same16 = reldif(r(s), `ref16') < 1e-9
+            local same16 = reldif(`s16', `ref16') < 1e-9
         }
         if `tw' | !`same16' {
             display as error "TP-16 FAIL: twoway `t16' `v16', `f16' gave r(`tw'), the serset of kernel(`k16') `same16', not as measured"
@@ -2403,7 +2691,7 @@ foreach c16 in "(lpoly mpg weight, gau) (kdensity mpg, par), name(zq16)" ///
     "lpolyci mpg weight, tri || lpoly price weight, cos name(zq16)" {
     capture graph drop _all
     local tc16 : subinstr local c16 "name(zq16)" "nodraw"
-    capture quietly twoway `tc16'
+    capture quietly cert_tw twoway `tc16'
     local tw = _rc
     _ztp_run `"dash `c16'"' "`logfile'"
     local rc = r(rc)
@@ -2426,7 +2714,7 @@ foreach c16 in "lpoly mpg weight, ga" "kdensity mpg, co" "lpolyci mpg weight, e"
     "lpoly mpg weight, b" "scatter mpg weight, gaussian" "lowess mpg weight, gau" ///
     "lfit mpg weight, epan2" "line mpg weight, tri" {
     capture graph drop _all
-    capture quietly twoway `c16' nodraw
+    capture quietly cert_tw twoway `c16' nodraw
     local tw = _rc
     _ztp_run `"dash `c16' name(zq16)"' "`logfile'"
     local rc = r(rc)
@@ -2532,16 +2820,28 @@ string scalar _zax_first_line(string scalar path)
 end
 
 // twoway under its own quiet log: r(rc), and r(err) its first error line.
+// twoway's answer -- its rc and the words its log holds -- is asked here
+// in a live run and read back otherwise (cert_truth.do), the same words in
+// the same log either way.
 capture program drop _zax_tw
 program define _zax_tw, rclass
     args cmdtext logpath
     capture log close _zaxlog
     capture erase "`logpath'"
     capture graph drop _all
-    quietly log using "`logpath'", name(_zaxlog) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    quietly log close _zaxlog
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        quietly log using "`logpath'", name(_zaxlog) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        quietly log close _zaxlog
+        python: _dct.log_put("cmdtext", "rc", "logpath")
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logpath", "rc")
+        if "`rc'" == "" local rc 9
+    }
     capture graph drop _all
     mata: st_local("err", _zax_first_line(st_local("logpath")))
     return local err `"`macval(err)'"'
@@ -2655,6 +2955,7 @@ else display as text "AX-02 PASS: the axis number is a whole number within twowa
 // ---- AX-03 (refusal parity): twoway r(198), dash r(198), same message -
 local bad03 = 0
 local n = 0
+cert_truth_ctx "AX-03"
 foreach c in ///
     `"scatter mpg weight, ylabel(20 30, axis(2))"' ///
     `"scatter mpg weight, yscale(log axis(2))"' ///
@@ -2716,6 +3017,7 @@ else display as text "AX-03 PASS: every form twoway refuses for axis(#) dash ref
 // ---- AX-04 (order): the first refusal is twoway's ---------------------
 local bad04 = 0
 local n = 0
+cert_truth_ctx "AX-04"
 foreach c in ///
     `"`B', ylabel(1, axis(3)) xscale(log axis(3))"' ///
     `"`B', yline(1, axis(3)) ylabel(1, axis(4))"' ///
@@ -2750,6 +3052,7 @@ else display as text "AX-04 PASS: dash names the refusal twoway names first: sid
 
 // ---- AX-05 (double comma) ---------------------------------------------
 local bad05 = 0
+cert_truth_ctx "AX-05"
 foreach c in ///
     `"`B', yscale(log, axis(2))"' ///
     `"`B', ytitle(TT, size(small), axis(2))"' ///
@@ -2795,6 +3098,7 @@ else display as text "AX-05 PASS: a second comma is refused as twoway refuses it
 
 // ---- AX-06 (accepted parity) ------------------------------------------
 local bad06 = 0
+cert_truth_ctx "AX-06"
 foreach c in ///
     `"`B', ylabel(5000, ax(2))"' ///
     `"`B', ylabel(5000, axi(2))"' ///
@@ -2873,6 +3177,7 @@ else display as text "AX-07 PASS: each axis keeps its own copy through the repea
 
 // ---- AX-08 (exhaustion) ------------------------------------------------
 local bad08 = 0
+cert_truth_ctx "AX-08"
 local many ""
 forvalues i = 1/10000 {
     local many "`many' ylabel(1, axis(2))"
@@ -2901,9 +3206,2036 @@ else display as text "AX-08 PASS: 10,000 copies of an axis(2) option end r(1003)
 capture erase "`twlog'"
 set linesize `saved_ls'
 
+// ---- BG-07..BG-09: barwidth() on rcap and rcapsym (WP-30 P1.17a) -------
+// twoway refuses barwidth() on rcap and rcapsym, "option barwidth() not
+// allowed", r(198), naming the spelling typed (measured 03oct2026,
+// test/fixtures/bar_geometry_truth.json); dash refuses it alike.
+// twoway is asked live here (nodraw, no export): these questions are not
+// in the replayed fixture of _ztp_run.
+capture program drop _zbg_tw
+program define _zbg_tw, rclass
+    args cmdtext logpath
+    capture log close _zbglog
+    capture erase "`logpath'"
+    log using "`logpath'", name(_zbglog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _zbglog
+    return scalar rc = `rc'
+end
+preserve
+clear
+quietly input x1 lo hi y
+1 1 4 3
+2 2 5 4
+3 1 3 2
+4 3 6 5
+5 0 2 1
+end
+local bad07 = 0
+foreach t in rcap rcapsym {
+    foreach form in comma group bars {
+        if "`form'" == "comma" {
+            local tw "twoway `t' lo hi x1, barwidth(.5) nodraw"
+            local dc "dash `t' lo hi x1, barwidth(.5) name(zbg7)"
+        }
+        else if "`form'" == "group" {
+            local tw "twoway (`t' lo hi x1, barwidth(.5)), nodraw"
+            local dc "dash (`t' lo hi x1, barwidth(.5)), name(zbg7)"
+        }
+        else {
+            local tw "twoway scatter hi x1 || `t' lo hi x1, barwidth(.5) nodraw"
+            local dc "dash scatter hi x1 || `t' lo hi x1, barwidth(.5) name(zbg7)"
+        }
+        capture graph drop _all
+        _zbg_tw `"`tw'"' "`logfile'"
+        local rtw = r(rc)
+        _ztp_logged "`logfile'" "option barwidth() not allowed"
+        local twsaid = r(found)
+        _ztp_run `"`dc'"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "option barwidth() not allowed"
+        if `rtw' != 198 | !`twsaid' | `rc' != 198 | !r(found) {
+            display as error "BG-07 FAIL `t' (`form'): twoway r(`rtw') said `twsaid', dash r(`rc') said `r(found)'"
+            local bad07 = 1
+        }
+        capture dash clear
+    }
+}
+if `bad07' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' BG-07"
+}
+else display as text "BG-07 PASS: barwidth() on rcap and rcapsym is refused r(198) in twoway's words, in comma mode, a plot group and after ||"
+
+local bad08 = 0
+foreach w in barw barwi barwidth {
+    capture graph drop _all
+    _zbg_tw `"twoway rcap lo hi x1, `w'(.5) nodraw"' "`logfile'"
+    local rtw = r(rc)
+    _ztp_logged "`logfile'" "option `w'() not allowed"
+    local twsaid = r(found)
+    _ztp_run `"dash rcap lo hi x1, `w'(.5) name(zbg8)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "option `w'() not allowed"
+    if `rtw' != 198 | !`twsaid' | `rc' != 198 | !r(found) {
+        display as error "BG-08 FAIL `w'(): twoway r(`rtw') said `twsaid', dash r(`rc') said `r(found)'"
+        local bad08 = 1
+    }
+    capture dash clear
+}
+if `bad08' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' BG-08"
+}
+else display as text "BG-08 PASS: barw(), barwi() and barwidth() on rcap are refused naming the spelling typed, as twoway names it"
+
+local bad09 = 0
+foreach c in "bar y x1, barwidth(.5)" "rbar lo hi x1, barwidth(.5)" "spike y x1, barwidth(.5)" `"rcap lo hi x1, legend(label(1 "barwidth(2)"))"' {
+    capture noisily dash `c' name(zbg9)
+    if _rc {
+        display as error `"BG-09 FAIL dash `c': r(`=_rc')"'
+        local bad09 = 1
+    }
+    capture dash clear
+}
+_ztp_run `"dash rcap lo hi x1, bw(.5) name(zbg9)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "bw"
+if `rc' != 0 | !r(found) {
+    display as error "BG-09 FAIL dash rcap bw(.5): r(`rc'), its note found `r(found)'"
+    local bad09 = 1
+}
+capture dash clear
+if `bad09' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' BG-09"
+}
+else display as text "BG-09 PASS: bar, rbar and spike take barwidth(), quoted text is not read, and rcap bw() keeps its note"
+restore
+
+// ----------------------------------------------------------------
+// NP-20..NP-25 (WP-30 P1.14a): the named styles at the spec and the folds.
+// p() is one name whose first copy wins and, given, drops every style
+// option twoway discards under it (the label style included), keeping
+// mlabel(); the outline styles are named on area and rarea, the marker
+// styles on the pc arrows; clstyle() leaves the types with no connecting
+// line; a style a type does not draw is silent (M6).
+// ----------------------------------------------------------------
+capture program drop _znp_spec
+program define _znp_spec, rclass
+    // r(found) 1 when graph g's spec holds the text "key":"val" (val ""
+    // matches any value of key), read by value.
+    args g key val
+    mata: _znp_s = st_global("dash_json_" + st_local("g"))
+    mata: _znp_k = char(34) + st_local("key") + char(34) + ":" + (st_local("val") == "" ? "" : char(34) + st_local("val") + char(34))
+    mata: st_local("_zf", strofreal(strpos(_znp_s, _znp_k) > 0))
+    return scalar found = `_zf'
+end
+local bad = 0
+_ztp_run `"dash scatter mpg weight, p(p3) p(p4) name(np20a)"' "`logfile'"
+local rc = r(rc)
+_znp_spec np20a p p3
+local f1 = r(found)
+_znp_spec np20a p p4
+if `rc' != 0 | !`f1' | r(found) local bad = 1
+_ztp_run `"dash scatter mpg weight, mlabel(make) p(p3) mcolor(red) lcolor(red) mlabcolor(red) name(np20b)"' "`logfile'"
+foreach k in mcolor lcolor mlabcolor {
+    _znp_spec np20b `k' ""
+    if r(found) local bad = 1
+}
+_znp_spec np20b mlabel make
+if !r(found) local bad = 1
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-20"
+    display as error "NP-20 FAIL: ${dash_json_np20a} :: ${dash_json_np20b}"
+}
+else display as text "NP-20 PASS: p(p3) p(p4) writes p3; under p() the style options go and mlabel() stays"
+
+_ztp_run `"dash scatter mpg weight, pstyle(p4) p(p3) name(np21)"' "`logfile'"
+_znp_spec np21 pstyle ""
+local f1 = r(found)
+_znp_spec np21 p p3
+if `f1' | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-21"
+    display as error "NP-21 FAIL: ${dash_json_np21}"
+}
+else display as text "NP-21 PASS: pstyle(p4) p(p3) writes p only"
+
+local bad = 0
+foreach t in area rarea {
+    local v = cond("`t'" == "area", "mpg weight", "mpg turn weight")
+    _ztp_run `"dash `t' `v', sort lstyle(p3) alstyle(p3) blstyle(p3) astyle(p3) name(np22)"' "`logfile'"
+    if r(rc) != 0 | !r(note) local bad = 1
+    foreach nm in lstyle() alstyle() blstyle() {
+        _ztp_logged "`logfile'" "`nm'"
+        if !r(found) local bad = 1
+    }
+    _ztp_logged "`logfile'" " astyle()"
+    if r(found) local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-22"
+    display as error "NP-22 FAIL: area/rarea outline styles"
+}
+else display as text "NP-22 PASS: on area and rarea lstyle() alstyle() blstyle() are named, astyle() is not"
+
+local bad = 0
+_ztp_run `"dash pcarrow mpg weight turn length, mstyle(p3) mlstyle(p3) name(np23)"' "`logfile'"
+if r(rc) != 0 | !r(note) local bad = 1
+foreach nm in mstyle() mlstyle() {
+    _ztp_logged "`logfile'" "`nm'"
+    if !r(found) local bad = 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-23"
+    display as error "NP-23 FAIL: pcarrow marker styles"
+}
+else display as text "NP-23 PASS: on pcarrow mstyle() and mlstyle() are named"
+
+_ztp_run `"dash spike mpg weight, clstyle(p3) name(np24)"' "`logfile'"
+local rc = r(rc)
+_znp_spec np24 clstyle ""
+if `rc' != 0 | r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-24"
+    display as error "NP-24 FAIL: ${dash_json_np24}"
+}
+else display as text "NP-24 PASS: spike, clstyle(p3) writes no clstyle"
+
+_ztp_run `"dash scatter mpg weight, astyle(p3) name(np25)"' "`logfile'"
+if r(rc) != 0 | r(note) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' NP-25"
+    display as error "NP-25 FAIL: rc `r(rc)', note `r(note)'"
+}
+else display as text "NP-25 PASS: scatter, astyle(p3) is silent, rc 0"
+capture dash clear
+
+// ----------------------------------------------------------------
+// MV: mlabvposition(), read as twoway reads it (WP-30 P1.24)
+// ----------------------------------------------------------------
+// twoway appends the variable to the layer's varlist, so the types that
+// count their variables refuse it, in its words; a second copy, two names,
+// an expression and a missing variable are refused as twoway refuses
+// them.  Each case: twoway's rc and first error line, dash's rc, and
+// twoway's line in dash's log.
+local mv_ls = c(linesize)
+set linesize 255
+capture drop p9
+capture drop q9
+capture drop sp9
+generate double p9 = 9
+generate double q9 = 9
+generate str4 sp9 = "9"
+quietly tsset t
+local mvlog "`c(tmpdir)'dash_mv_twoway.log"
+capture program drop _zmv_pair
+program define _zmv_pair, rclass
+    args c twlog logfile
+    _zax_tw `"twoway `c'"' "`twlog'"
+    local tw = r(rc)
+    local err `"`r(err)'"'
+    // twoway's {p 0 8} message leaves its paragraph open; closed here, so
+    // dash's log is not run into it.
+    display as text "{p_end}"
+    _ztp_run `"dash `c' name(zmv)"' "`logfile'"
+    local rc = r(rc)
+    local note = r(note)
+    display as text "{p_end}"
+    // twoway's fit types print their line through {p}: the tags are not
+    // words.  lowess, lpoly, lpolyci and kdensity print theirs where the
+    // quiet log does not keep it; their words (measured, E9) stand in.
+    mata: st_local("err", strtrim(ustrregexra(st_local("err"), "[{][^}]*[}]", "")))
+    if `tw' == 103 & `"`macval(err)'"' == "" local err "too many variables specified"
+    local hit 1
+    if `tw' {
+        local hit 0
+        if `"`macval(err)'"' != "" {
+            cert_log_has "`logfile'", needle(`"`macval(err)'"')
+            local hit = r(found)
+        }
+    }
+    return scalar tw = `tw'
+    return scalar rc = `rc'
+    return scalar hit = `hit'
+    return scalar note = `note'
+    return local err `"`macval(err)'"'
+end
+// Each case group: the commands, the rc twoway and dash must both give.
+cert_truth_ctx "MV-01"
+local mv_cases ""
+foreach tt in rarea rbar rcap rcapsym rconnected rline rscatter rspike {
+    local mv_cases `"`mv_cases' `"`tt' lo hi weight, mlabvposition(p9)"'"'
+}
+local mv_cases `"`mv_cases' `"tsrline lo hi, mlabvposition(p9)"'"'
+foreach tt in lfit qfit fpfit lfitci qfitci fpfitci mspline mband lowess lpoly lpolyci {
+    local mv_cases `"`mv_cases' `"`tt' mpg weight, mlabvposition(p9)"'"'
+}
+local mv_cases `"`mv_cases' `"kdensity mpg, mlabvposition(p9)"'"'
+local mv_want_01 103
+local mv_02 `"`"rscatter mp tu wei, mlabel(ma) mlabvposition(q)"' `"lfit mp wei, mlabel(ma) mlabvposition(q)"' `"mspline mp wei, mlabel(ma) mlabvposition(q)"' `"lowess mp wei, mlabel(ma) mlabvposition(q)"'"'
+local mv_03 `"`"rscatter lo hi weight, mlabvposition(sp9)"' `"lfit mpg weight, mlabvposition(sp9)"'"'
+local mv_04 `"`"rscatter lo hi weight, mlabvposition(nosuch)"' `"lfit mpg weight, mlabvposition(nosuch)"' `"line mpg weight, mlabvposition(nosuch)"'"'
+local mv_05 `"`"scatter mpg weight, mlabel(make) mlabvposition(p9) mlabvposition(pos)"' `"scatter mpg weight, mlabel(make) mlabv(p9) mlabvposition(pos)"'"'
+local mv_06 `"`"scatter mpg weight, mlabel(make) mlabvposition(p9 pos)"'"'
+local mv_07 `"`"scatter mpg weight, mlabel(make) mlabvposition(p9*1)"'"'
+local mv_11b `"`"rscatter lo hi weight, mlabel(. make) mlabvposition(p9)"'"'
+foreach id in 01 02 03 04 05 06 07 11b {
+    local want 103
+    if "`id'" == "04" local want 111
+    if inlist("`id'", "05", "07") local want 198
+    local list : copy local mv_`id'
+    if "`id'" == "01" local list : copy local mv_cases
+    if "`id'" != "01" cert_truth_ctx "MV-`id'"
+    local bad 0
+    foreach c of local list {
+        _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+        if r(tw) != `want' | r(rc) != `want' | r(hit) != 1 {
+            display as error `"MV-`id' FAIL `c': twoway r(`r(tw)') dash r(`r(rc)'), twoway's line in dash's log `r(hit)': `r(err)'"'
+            local bad 1
+        }
+    }
+    if `bad' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' MV-`id'"
+    }
+    else if "`id'" == "01" display as text "MV-01 PASS: refused r(103) on the 21 counting types, in twoway's words"
+    else if "`id'" == "02" display as text "MV-02 PASS: abbreviated variables and mlabel() named in full, as twoway names them"
+    else if "`id'" == "03" display as text "MV-03 PASS: a string variable counts as a variable, r(103)"
+    else if "`id'" == "04" display as text "MV-04 PASS: a variable that does not exist is r(111)"
+    else if "`id'" == "05" display as text "MV-05 PASS: a second copy is r(198), option mlabvposition() not allowed"
+    else if "`id'" == "06" display as text "MV-06 PASS: two names are r(103), too many names specified"
+    else if "`id'" == "07" display as text "MV-07 PASS: an expression is r(198), invalid name"
+    else if "`id'" == "11b" display as text "MV-11b PASS: mlabel(. make) counts make, r(103) as twoway"
+}
+// MV-08: the empty option and the abbreviations are taken, the variable
+// unabbreviated, and the layer's other options kept (s() survives).
+cert_truth_ctx "MV-08"
+local bad 0
+foreach c in `"scatter mpg weight, mlabel(make) mlabvposition() mcolor(red)"' `"scatter mpg weight, mlabel(make) mlabv(po) mcolor(red)"' `"scatter mpg weight, mlabel(make) mlabvp(pos) mcolor(red)"' `"scatter mpg weight, mlabel(make) mlabvposi(pos) mcolor(red)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    local note = r(note)
+    mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabvposition", "pos")))
+    mata: st_local("m", strofreal(_ztp_hasval("zmv", "mlabel", "make") & _ztp_hasval("zmv", "mcolor", "red")))
+    if strpos(`"`c'"', "mlabvposition()") local v = !`v'
+    if `tw' | `rc' | `note' | !`v' | !`m' {
+        display as error `"MV-08 FAIL `c': twoway r(`tw') dash r(`rc'), note `note', mlabvposition pos `v', mlabel and mcolor kept `m'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-08"
+}
+else display as text "MV-08 PASS: mlabvposition() and its abbreviations taken, the name unabbreviated, the other options kept"
+// MV-09: never read on histogram, function, scatteri, pci, pcarrowi.
+cert_truth_ctx "MV-09"
+local bad 0
+foreach c in `"histogram mpg, mlabvposition(nosuch)"' `"function y = x, mlabvposition(nosuch)"' `"scatteri 1 1 2 2, mlabvposition(nosuch)"' `"pci 1 1 2 2, mlabvposition(nosuch)"' `"pcarrowi 1 1 2 2, mlabvposition(nosuch)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    _ztp_has zmv mlabvposition
+    if `tw' | `rc' | r(found) {
+        display as error `"MV-09 FAIL `c': twoway r(`tw') dash r(`rc'), the key in the spec `r(found)'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-09"
+}
+else display as text "MV-09 PASS: not read where twoway never reads it"
+// MV-10: checked, taken and silent where twoway draws no label.
+cert_truth_ctx "MV-10"
+local bad 0
+foreach c in `"line mpg weight, mlabvposition(p9)"' `"spike mpg weight, mlabvposition(p9)"' `"area mpg weight, mlabvposition(p9)"' `"pcspike mpg weight turn length, mlabvposition(p9)"' `"tsline mpg, mlabvposition(p9)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    local note = r(note)
+    mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabvposition", "p9")))
+    if `tw' | `rc' | `note' | !`v' {
+        display as error `"MV-10 FAIL `c': twoway r(`tw') dash r(`rc'), note `note', key `v'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-10"
+}
+else display as text "MV-10 PASS: taken in silence where twoway draws no label"
+// MV-11: twoway's count quirks -- a name already in the list adds nothing.
+cert_truth_ctx "MV-11"
+local bad 0
+foreach c in `"rscatter lo hi weight, mlabvposition(lo)"' `"lfit mpg weight, mlabvposition(weight)"' `"rscatter lo hi weight, mlabel(lo) mlabvposition(p9)"' `"rscatter lo hi weight, mlabel(make) mlabvposition(make)"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    if r(tw) | r(rc) {
+        display as error `"MV-11 FAIL `c': twoway r(`r(tw)') dash r(`r(rc)')"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-11"
+}
+else display as text "MV-11 PASS: twoway's count quirks are accepted as twoway accepts them"
+// MV-12 (part 2): mlabtextstyle() is taken everywhere twoway takes it,
+// silently, the rightmost copy kept and the abbreviation read.
+cert_truth_ctx "MV-12"
+local bad 0
+foreach c in `"line mpg weight, mlabtextstyle(heading)"' `"lfit mpg weight, mlabtextstyle(heading)"' `"rscatter lo hi weight, mlabtextstyle(heading)"' `"scatter mpg weight, mlabel(make) mlabtextstyle(heading) mlabtextstyle(body)"' `"scatter mpg weight, mlabel(make) mlabt(heading)"' `"scatter mpg weight, mlabel(make) mlabtextstyle()"' {
+    _zmv_pair `"`c'"' "`mvlog'" "`logfile'"
+    local tw = r(tw)
+    local rc = r(rc)
+    local note = r(note)
+    local want "heading"
+    if strpos(`"`c'"', "(body)") local want "body"
+    mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabtextstyle", st_local("want"))))
+    if strpos(`"`c'"', "mlabtextstyle()") local v = 1
+    if `tw' | `rc' | `note' | !`v' {
+        display as error `"MV-12 FAIL `c': twoway r(`tw') dash r(`rc'), note `note', mlabtextstyle `want' `v'"'
+        local bad 1
+    }
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-12"
+}
+else display as text "MV-12 PASS: mlabtextstyle() taken in silence, the rightmost copy kept"
+// MV-13 (part 2): a style list, one element per y; a bad list as twoway.
+cert_truth_ctx "MV-13"
+local bad 0
+_zmv_pair `"scatter mpg turn weight, mlabel(make make) mlabtextstyle(heading body)"' "`mvlog'" "`logfile'"
+local tw = r(tw)
+local rc = r(rc)
+mata: st_local("v", strofreal(_ztp_hasval("zmv", "mlabtextstyle", "heading") & _ztp_hasval("zmv", "mlabtextstyle", "body")))
+if `tw' | `rc' | !`v' {
+    display as error "MV-13 FAIL heading body: twoway r(`tw') dash r(`rc'), both styles kept `v'"
+    local bad 1
+}
+_zmv_pair `"scatter mpg turn weight, mlabel(make make) mlabtextstyle(.. heading)"' "`mvlog'" "`logfile'"
+if r(tw) != r(rc) {
+    display as error "MV-13 FAIL .. heading: twoway r(`r(tw)') dash r(`r(rc)')"
+    local bad 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' MV-13"
+}
+else display as text "MV-13 PASS: mlabtextstyle() is a style list, one element per y"
+capture dash clear
+capture erase "`mvlog'"
+set linesize `mv_ls'
+// RS: plotregion()/graphregion() sub-options, read as twoway reads them (WP-30 P1.20a)
+// ----------------------------------------------------------------
+// twoway's answers here are the region fixture's (test/fixtures/
+// region_truth.json, scripts/extract_region_truth.do): its R probes'
+// return codes and first error lines, its S probes' spellings.  Each row
+// is written by Python to a tab file and read back by -file read-, so no
+// typed region text is expanded as a macro inside Python.
+local rsrows "`c(tmpdir)'dash_rs_rows.txt"
+global ZRS_ROWS "`rsrows'"
+python:
+import json as _zrs_json
+from sfi import Macro as _zrs_M
+with open("fixtures/region_truth.json", encoding="utf-8") as _zrs_fh:
+    _zrs_p = _zrs_json.load(_zrs_fh)["probes"]
+# Each row's shortest spelling twoway takes (its minimum).
+_zrs_min = {}
+for _zrs_k, _zrs_r in _zrs_p.items():
+    if _zrs_k.startswith("S|") and _zrs_r["rc"] == 0:
+        _zrs_f, _zrs_t = _zrs_k.split("|")[1:]
+        _zrs_min[_zrs_f] = min(_zrs_min.get(_zrs_f, 99), len(_zrs_t))
+with open(_zrs_M.getGlobal("ZRS_ROWS"), "w", encoding="utf-8") as _zrs_out:
+    for _zrs_k in sorted(_zrs_p):
+        _zrs_r = _zrs_p[_zrs_k]
+        _zrs_kind = _zrs_k
+        if _zrs_k.startswith("S|"):
+            # The minimum, the full name, one letter short and the capitals.
+            _zrs_f, _zrs_t = _zrs_k.split("|")[1:]
+            _zrs_kind = "S"
+            if _zrs_t == _zrs_t.lower() and len(_zrs_t) not in (
+                    _zrs_min[_zrs_f], _zrs_min[_zrs_f] - 1, len(_zrs_f)):
+                continue
+        elif not _zrs_k.startswith("R"):
+            continue
+        _zrs_opts = _zrs_r["cmd"].split(",", 1)[1].strip()
+        _zrs_out.write("\t".join((_zrs_kind, str(_zrs_r["rc"]), _zrs_r["err"],
+                                  _zrs_opts)) + "\n")
+end
+local b01 = 0
+local b02 = 0
+local b03 = 0
+local b04 = 0
+local n03 = 0
+tempname rsfh
+file open `rsfh' using "`rsrows'", read text
+file read `rsfh' line
+while r(eof) == 0 {
+    mata: _zrs_f = tokens(st_local("line"), char(9)); _zrs_f = select(_zrs_f, _zrs_f :!= char(9))
+    mata: st_local("rid", _zrs_f[1]); st_local("trc", _zrs_f[2])
+    mata: st_local("terr", cols(_zrs_f) == 4 ? _zrs_f[3] : ""); st_local("ropts", _zrs_f[cols(_zrs_f)])
+    _ztp_run `"dash scatter mpg weight, `ropts' name(zrs)"' "`logfile'"
+    local drc = r(rc)
+    local ok = (`drc' == `trc')
+    if `ok' & `trc' & `"`terr'"' != "" {
+        _ztp_logged "`logfile'" `"`terr'"'
+        local ok = r(found)
+    }
+    local grp "04"
+    if "`rid'" == "S" {
+        local grp "03"
+        local ++n03
+    }
+    else if inlist("`rid'", "R14", "R15", "R16", "R17") local grp "02"
+    else if `trc' local grp "01"
+    if !`ok' {
+        display as error `"RS-`grp' FAIL `rid' `ropts': twoway r(`trc') `terr', dash r(`drc')"'
+        local b`grp' = 1
+    }
+    file read `rsfh' line
+}
+file close `rsfh'
+capture erase "`rsrows'"
+macro drop ZRS_ROWS
+capture dash clear
+foreach g in 01 02 03 04 {
+    if `b`g'' {
+        local nfail = `nfail' + 1
+        local faillist "`faillist' RS-`g'"
+    }
+}
+if !`b01' display as text "RS-01 PASS: the region refusals twoway gives (unknown, capitalised, short, repeated, a comma) are dash's, rc and words"
+if !`b02' display as text "RS-02 PASS: graphregion() is checked before plotregion(), both before legend() and the axis options"
+if !`b03' display as text "RS-03 PASS: `n03' spellings: each sub-option from its minimum to its full name, and one letter short and the capitals refused, as twoway"
+if !`b04' display as text "RS-04 PASS: a trailing comma, lalign(bogus), lpattern(bogus), margin(bogus), lcolor(notacolour) and lwidth(abc) are rc 0, as twoway"
+
+// RS-10 and RS-12: copies merged by _dash_rep_merge as twoway applies them.
+local b10 = 0
+foreach row in ///
+    "RS-10|plotregion|color(red)|c(blue)|color(blue)" ///
+    "RS-10|plotregion|color(red)|lcolor(blue)|fcolor(red) lcolor(blue)" ///
+    "RS-10|plotregion|lcolor(blue)|color(red)|color(red)" ///
+    "RS-10|plotregion|fcolor(red)|style(none)|style(none)" ///
+    "RS-10|plotregion|margin(zero)|margin(l+10)|margin(zero) margin(l+10)" ///
+    "RS-10|graphregion|color(red)|margin(zero)|color(red) margin(zero)" ///
+    "RS-12|plotregion|color(red)|lcolor(blue)|fcolor(red) lcolor(blue)" ///
+    "RS-12|plotregion|lcolor(blue)|color(red)|color(red)" ///
+    "RS-12|plotregion|color(red)|c(blue)|color(blue)" ///
+    "RS-12|plotregion|fcolor(red)|style(none)|style(none)" ///
+    "RS-12|plotregion|lcolor(red)|lstyle(none)|lstyle(none)" ///
+    "RS-12|plotregion|fcolor(blue)|color(red)|color(red)" ///
+    "RS-12|plotregion|color(red)|fcolor(blue)|lcolor(red) fcolor(blue)" ///
+    "RS-12|plotregion|style(none)|fcolor(red)|style(none) fcolor(red)" ///
+    "RS-12|graphregion|color(red)|lcolor(blue)|fcolor(red) lcolor(blue)" {
+    mata: _zrs_f = tokens(st_local("row"), "|"); _zrs_f = select(_zrs_f, _zrs_f :!= "|")
+    mata: st_local("mid", _zrs_f[1]); st_local("mgot", _dash_rep_merge(_zrs_f[2], _zrs_f[3], _zrs_f[4])); st_local("mwant", _zrs_f[5])
+    if `"`mgot'"' != `"`mwant'"' {
+        display as error `"`mid' FAIL `row': got `mgot'"'
+        if "`mid'" == "RS-10" local b10 = 1
+        else local b12 = 1
+    }
+}
+if `b10' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RS-10"
+}
+else display as text "RS-10 PASS: repeated region copies merge as twoway applies them, every margin() kept"
+if 0`b12' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RS-12"
+}
+else display as text "RS-12 PASS: the nine measured copy pairs (region_truth.json M01-M09) merge to the strings test_region_truth.py draws"
+
+// RS-11: the spec of two abbreviated copies holds the merged full names.
+_ztp_run `"dash scatter mpg weight, plotregion(c(red)) plotregion(lc(blue)) name(zrs11)"' "`logfile'"
+local rc = r(rc)
+mata: st_local("hv", strofreal(_ztp_hasval("zrs11", "plotregion", "fcolor(red) lcolor(blue)")))
+capture dash clear
+if `rc' | !`hv' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RS-11"
+    display as error "RS-11 FAIL: r(`rc'), plotregion fcolor(red) lcolor(blue) `hv'"
+}
+else display as text "RS-11 PASS: plotregion(c(red)) plotregion(lc(blue)) is written fcolor(red) lcolor(blue)"
+capture mata: mata drop _zrs_f
+
+// ----------------------------------------------------------------
+// CM: connect() and cmissing(), read as twoway reads them (WP-30 P1.8a)
+// twoway's answers are test/fixtures/connect_truth.json's probes, from
+// scripts/extract_connect_truth.do (StataNow 19.5): the words below are
+// its log lines, cited by probe id.  dash runs here.
+// ----------------------------------------------------------------
+capture program drop _zcm_spec
+program define _zcm_spec, rclass
+    args needle
+    mata: st_local("_zf", strofreal(strpos(st_global("dash_json_zqtp"), st_local("needle")) > 0))
+    return scalar found = `_zf'
+end
+local cmq = char(34)
+quietly tsset t
+
+// CM-01: R-01, R-01s -- a misplaced .. is "connect(l .. J):  invalid syntax".
+local bad 0
+foreach tt in line scatter {
+    _ztp_run `"dash `tt' mpg weight, c(l .. J) name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "connect(l .. J):  invalid syntax"
+    if `rc' != 198 | !r(found) local bad 1
+}
+if `bad' {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-01"
+    display as error "CM-01 FAIL: c(l .. J) is not r(198) connect(l .. J):  invalid syntax"
+}
+else display as text "CM-01 PASS: c(l .. J) refused r(198) in twoway's words"
+
+// CM-02: R-02 -- "cmissings(n .. y):  invalid syntax", r(198).
+_ztp_run `"dash line mpg turn weight, cmissing(n .. y) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "cmissings(n .. y):  invalid syntax"
+if `rc' != 198 | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-02"
+    display as error "CM-02 FAIL: cmissing(n .. y) r(`rc')"
+}
+else display as text "CM-02 PASS: cmissing(n .. y) refused r(198) as cmissings(n .. y)"
+
+// CM-03: R-03, R-10, R-11, R-12 and the matrix's cmissing(x) rc 101 rows --
+// two notes, then " not allowed", r(101), on every type twoway refuses it.
+local bad ""
+foreach tt in line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci rline rconnected tsrline {
+    local v `v_`tt''
+    local sep ","
+    if strpos("`v'", ",") local sep ""
+    foreach o in "cmissing(x)" "cmissing(N)" {
+        _ztp_run `"dash `tt' `v'`sep' `o' name(zqtp)"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "not found in class yesno, default attributes used)"
+        local n1 = r(found)
+        _ztp_logged "`logfile'" "(note:  yesno not found in scheme, default attributes used)"
+        if `rc' != 101 | !`n1' | !r(found) local bad "`bad' `tt'/`o'"
+    }
+}
+_ztp_run `"dash line mpg turn weight, cmissing(n x) name(zqtp)"' "`logfile'"
+if r(rc) != 101 local bad "`bad' line/cmissing(n x)"
+// R_EXTRA: an element past the last y is not read.
+_ztp_run `"dash line mpg weight, cmissing(n x) name(zqtp)"' "`logfile'"
+if r(rc) != 0 local bad "`bad' R_EXTRA"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-03"
+    display as error "CM-03 FAIL:`bad'"
+}
+else display as text "CM-03 PASS: an unknown cmissing() is r(101) after twoway's two notes on the 19 types"
+
+// CM-04: the matrix's cmissing(x) rc 0 rows: bar, area take it with notes.
+local bad ""
+foreach tt in bar area {
+    _ztp_run `"dash `tt' mpg weight, cmissing(x) name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "(note:  yesno not found in scheme, default attributes used)"
+    if `rc' != 0 | !r(found) local bad "`bad' `tt'"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-04"
+    display as error "CM-04 FAIL:`bad'"
+}
+else display as text "CM-04 PASS: cmissing(x) on bar and area: rc 0, twoway's notes"
+
+// CM-05: P07, S-c-Direct -- an unknown name is noted and drawn direct.
+local bad ""
+foreach tt in scatter line bar {
+    foreach o in bogus Direct {
+        _ztp_run `"dash `tt' mpg weight, c(`o') name(zqtp)"' "`logfile'"
+        local rc = r(rc)
+        _ztp_logged "`logfile'" "(note:  named style `o' not found in class connectstyle"
+        local nf = r(found)
+        _zcm_spec `"`cmq'connect`cmq':`cmq'direct`cmq'"'
+        if `rc' != 0 | !`nf' | !r(found) local bad "`bad' `tt'/`o'"
+    }
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-05"
+    display as error "CM-05 FAIL:`bad'"
+}
+else display as text "CM-05 PASS: c(bogus), c(Direct): twoway's note, drawn direct"
+
+// CM-06: R-07, R-08, P28 -- a scatter given connect() takes the cl options.
+local bad ""
+foreach o in l i {
+    _ztp_run `"dash scatter mpg weight, c(`o') clwidth(-1) name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "gm_linewidth must be between 0.000 and  1.0e+04"
+    if `rc' != 198 | !r(found) local bad "`bad' c(`o')"
+}
+_ztp_run `"dash scatter mpg weight, c(l) clcolor(red) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'clcolor`cmq':`cmq'red`cmq'"'
+if !r(found) local bad "`bad' clcolor"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-06"
+    display as error "CM-06 FAIL:`bad'"
+}
+else display as text "CM-06 PASS: clwidth(-1) r(198) under c(l) and c(i); clcolor() kept"
+
+// CM-07: P26, P27 -- sort and sort(varlist) are honoured, not named.
+local bad ""
+_ztp_run `"dash scatter mpg weight, c(l) sort name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' sort"
+_ztp_run `"dash scatter mpg turn weight, c(l) sort(turn) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'sortvars`cmq':`cmq'turn`cmq'"'
+if !r(found) local bad "`bad' sort(turn)"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-07"
+    display as error "CM-07 FAIL:`bad'"
+}
+else display as text "CM-07 PASS: sort and sort(varlist) on a scatter given c(l), not named"
+
+// CM-08: R-05, R-06 and the S block -- spellings read as twoway reads them.
+local bad ""
+foreach o in "cmissings(n)" "cmiss(n)" {
+    _ztp_run `"dash line mpg weight, `o' name(zqtp)"' "`logfile'"
+    _zcm_spec `"`cmq'cmissing`cmq':`cmq'n`cmq'"'
+    if !r(found) local bad "`bad' `o'"
+}
+foreach p in "stair stairstep" "u stepstair" "a ascending" "L ascending" "l direct" "i none" {
+    gettoken o c : p
+    local c = strtrim("`c'")
+    _ztp_run `"dash line mpg weight, c(`o') name(zqtp)"' "`logfile'"
+    _zcm_spec `"`cmq'connect`cmq':`cmq'`c'`cmq'"'
+    if !r(found) local bad "`bad' c(`o')"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-08"
+    display as error "CM-08 FAIL:`bad'"
+}
+else display as text "CM-08 PASS: cmissings(), cmiss() and the connect spellings read as twoway reads them"
+
+// CM-09: P25, R-09 -- the rightmost copy counts.
+local bad ""
+_ztp_run `"dash line mpg weight, c(l) c(J) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'connect`cmq':`cmq'stairstep`cmq'"'
+if !r(found) local bad "`bad' connect"
+_ztp_run `"dash line mpg weight, cmissing(n) cmissing(y) name(zqtp)"' "`logfile'"
+_zcm_spec `"`cmq'cmissing`cmq':`cmq'y`cmq'"'
+if !r(found) local bad "`bad' cmissing"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-09"
+    display as error "CM-09 FAIL:`bad'"
+}
+else display as text "CM-09 PASS: of two copies the rightmost counts"
+
+// CM-10: the matrix's same_as_base rows -- silent where twoway draws the
+// same picture.
+local bad ""
+foreach tt in bar spike dot histogram pcspike {
+    local v `v_`tt''
+    foreach o in "c(J)" "cmissing(n)" {
+        _ztp_run `"dash `tt' `v', `o' name(zqtp)"' "`logfile'"
+        if r(rc) | r(note) local bad "`bad' `tt'/`o'"
+    }
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-10"
+    display as error "CM-10 FAIL:`bad'"
+}
+else display as text "CM-10 PASS: c(J) and cmissing(n) are taken in silence where twoway draws the same picture"
+
+// CM-11: named, not drawn (P2.42, P2.43).
+local bad ""
+foreach c in "area mpg weight, cmissing(n)|cmissing()" "rarea lo hi weight, c(J)|connect()" "lowess mpg weight, cmissing(n)|cmissing()" {
+    gettoken cmd nm : c, parse("|")
+    local nm = substr("`nm'", 2, .)
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _ztp_logged "`logfile'" "`nm'"
+    if `rc' | !r(found) local bad "`bad' `cmd'"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-11"
+    display as error "CM-11 FAIL:`bad'"
+}
+else display as text "CM-11 PASS: cmissing(n) on area and lowess, c(J) on rarea are named"
+
+// CM-12: P20, P23 -- per y: a scatter y given an element is connected.
+local bad ""
+_ztp_run `"dash scatter mpg turn weight, c(l) name(zqtp)"' "`logfile'"
+_zcm_spec `"{`cmq'type`cmq':`cmq'connected`cmq',`cmq'yvar`cmq':`cmq'mpg`cmq',`cmq'xvar`cmq':`cmq'weight`cmq',`cmq'options`cmq':{`cmq'connect`cmq':`cmq'direct`cmq'"'
+if !r(found) local bad "`bad' P20-1"
+_zcm_spec `"{`cmq'type`cmq':`cmq'scatter`cmq',`cmq'yvar`cmq':`cmq'turn`cmq',`cmq'xvar`cmq':`cmq'weight`cmq',`cmq'options`cmq':{}"'
+if !r(found) local bad "`bad' P20-2"
+_ztp_run `"dash scatter mpg turn length weight, c(J =) name(zqtp)"' "`logfile'"
+foreach y in mpg turn {
+    _zcm_spec `"{`cmq'type`cmq':`cmq'connected`cmq',`cmq'yvar`cmq':`cmq'`y'`cmq',`cmq'xvar`cmq':`cmq'weight`cmq',`cmq'options`cmq':{`cmq'connect`cmq':`cmq'stairstep`cmq'"'
+    if !r(found) local bad "`bad' P23-`y'"
+}
+_zcm_spec `"{`cmq'type`cmq':`cmq'scatter`cmq',`cmq'yvar`cmq':`cmq'length`cmq'"'
+if !r(found) local bad "`bad' P23-length"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' CM-12"
+    display as error "CM-12 FAIL:`bad'"
+}
+else display as text "CM-12 PASS: each y given a connect() element is connected, the others scatter"
+capture program drop _zcm_spec
+quietly tsset, clear
+
+// ----------------------------------------------------------------
+// RC: recast(), read as twoway reads it (WP-30 P1.8b)
+// twoway's answers are test/fixtures/recast_truth.json's probes, from
+// scripts/extract_recast_truth.do (StataNow 19.5): the words below are
+// its log lines.  dash runs here.
+// ----------------------------------------------------------------
+capture program drop _zrc_spec
+program define _zrc_spec, rclass
+    args needle
+    mata: st_local("_zf", strofreal(strpos(st_global("dash_json_zqtp"), st_local("needle")) > 0))
+    return scalar found = `_zf'
+end
+local q = char(34)
+local nyn "(note:  yxtype not found in scheme, default attributes used)"
+
+// RC-01: the ci fits refuse recast(), recastas() and type(), r(198).
+local bad ""
+foreach tt in lfitci qfitci lpolyci fpfitci {
+    foreach o in recast recastas type {
+        _ztp_run `"dash `tt' mpg weight, `o'(line) name(zqtp)"' "`logfile'"
+        local rc = r(rc)
+        local w "recastas"
+        if "`o'" == "type" local w "type"
+        _ztp_logged "`logfile'" "`w'() option not allowed"
+        if `rc' != 198 | !r(found) local bad "`bad' `tt'/`o'"
+    }
+}
+if "`bad'" != "" local faillist "`faillist' RC-01"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-01 FAIL:`bad'"
+else display as text "RC-01 PASS: recast(), recastas() and type() on the ci fits are r(198) in twoway's words"
+
+// RC-02: rec() is "option rec() not allowed", r(198).
+_ztp_run `"dash scatter mpg weight, rec(line) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "option rec() not allowed"
+if `rc' != 198 | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-02"
+    display as error "RC-02 FAIL: rec(line) r(`rc')"
+}
+else display as text "RC-02 PASS: rec() refused r(198) as twoway refuses it"
+
+// RC-03: a scatter recast as line is a line, the typed type kept.
+local bad ""
+_ztp_run `"dash scatter mpg weight, recast(line) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' rc/note"
+_zrc_spec `"{`q'type`q':`q'line`q',`q'recast_from`q':`q'scatter`q',`q'yvar`q':`q'mpg`q'"'
+if !r(found) local bad "`bad' spec"
+_zrc_spec `"`q'recast`q':"'
+if r(found) local bad "`bad' recast-key"
+if "`bad'" != "" local faillist "`faillist' RC-03"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-03 FAIL:`bad'"
+else display as text "RC-03 PASS: scatter, recast(line) is written as a line"
+
+// RC-04: fallbacks with twoway's two notes (probes FB-*).
+local bad ""
+foreach row in "line mpg weight, recast(rline)|scatter|rline|yxtype" ///
+               "rline lo hi weight, recast(pcspike)|rspike|pcspike|y2xtype" ///
+               "pcspike mpg weight turn length, recast(line)|pcspike|line|yxyxtype" ///
+               "function y=x, range(1 5) recast(rline)|function|rline|functiontype" {
+    gettoken cmd row : row, parse("|")
+    gettoken _p row : row, parse("|")
+    gettoken want row : row, parse("|")
+    gettoken _p row : row, parse("|")
+    gettoken nm row : row, parse("|")
+    gettoken _p cls : row, parse("|")
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) local bad "`bad' `cmd'/rc"
+    _ztp_logged "`logfile'" "(note:  named style `nm' not found in class `cls', default attributes used)"
+    if !r(found) local bad "`bad' `cmd'/note1"
+    _ztp_logged "`logfile'" "(note:  `cls' not found in scheme, default attributes used)"
+    if !r(found) local bad "`bad' `cmd'/note2"
+    _zrc_spec `"{`q'type`q':`q'`want'`q'"'
+    if !r(found) local bad "`bad' `cmd'/type"
+}
+if "`bad'" != "" local faillist "`faillist' RC-04"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-04 FAIL:`bad'"
+else display as text "RC-04 PASS: out-of-class names fall back with twoway's two notes"
+
+// RC-05: precedence -- recast()/recastas() over type(), rightmost of each.
+local bad ""
+foreach row in "recast(line) type(bar)|line" "type(bar) recast(line)|line" ///
+               "recastas(bar) recast(line)|line" "recast(line) recast(bar)|bar" ///
+               "type(line) type(bar)|bar" "recasta(line)|line" "ty(line)|line" {
+    gettoken o row : row, parse("|")
+    local want = substr("`row'", 2, .)
+    _ztp_run `"dash scatter mpg weight, `o' name(zqtp)"' "`logfile'"
+    local rc = r(rc)
+    _zrc_spec `"{`q'type`q':`q'`want'`q',`q'recast_from`q'"'
+    if `rc' | !r(found) local bad "`bad' `o'"
+}
+if "`bad'" != "" local faillist "`faillist' RC-05"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-05 FAIL:`bad'"
+else display as text "RC-05 PASS: recast() and recastas() beat type(), the rightmost copy wins"
+
+// RC-06: spellings and case (probes SP-*).
+local bad ""
+foreach row in "scatter mpg weight, recast(li)|line|" "line mpg weight, recast(sc)|scatter|" ///
+               "scatter mpg weight, recast(co)|connected|" "scatter mpg weight, recast(b)|bar|" ///
+               "rline lo hi weight, recast(rsc)|rscatter|" "scatter mpg weight, recast(rsc)|scatter|rsc" ///
+               "rline lo hi weight, recast(rbarm)|rbar|" ///
+               "pcspike mpg weight turn length, recast(pcbar)|pcbarrow|" ///
+               "pcspike mpg weight turn length, recast(pccaps)|pccapsym|" ///
+               "pcspike mpg weight turn length, recast(pcl)|pcspike|pcline" ///
+               "scatter mpg weight, recast(LINE)|scatter|LINE" "line mpg weight, recast(l)|scatter|l" {
+    gettoken cmd row : row, parse("|")
+    gettoken _p row : row, parse("|")
+    gettoken want row : row, parse("|")
+    local nm = substr("`row'", 2, .)
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) local bad "`bad' `cmd'/rc"
+    _zrc_spec `"{`q'type`q':`q'`want'`q'"'
+    if !r(found) local bad "`bad' `cmd'/type"
+    _ztp_logged "`logfile'" "(note:  named style `nm' not found in class"
+    if "`nm'" != "" & !r(found) local bad "`bad' `cmd'/note"
+    if "`nm'" == "" {
+        _ztp_logged "`logfile'" "(note:  named style"
+        if r(found) local bad "`bad' `cmd'/a-note"
+    }
+}
+if "`bad'" != "" local faillist "`faillist' RC-06"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-06 FAIL:`bad'"
+else display as text "RC-06 PASS: twoway's spellings by class, case-sensitive"
+
+// RC-07: dot is silent; pci and histogram's range targets are named.
+local bad ""
+_ztp_run `"dash dot mpg weight, recast(line) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' dot"
+_zrc_spec `"{`q'type`q':`q'dot`q'"'
+if !r(found) local bad "`bad' dot/type"
+foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)" "histogram mpg, recast(rline)" {
+    _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
+    if r(rc) | !r(note) local bad "`bad' `cmd'"
+    _ztp_logged "`logfile'" "recast()"
+    if !r(found) local bad "`bad' `cmd'/named"
+}
+if "`bad'" != "" local faillist "`faillist' RC-07"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-07 FAIL:`bad'"
+else display as text "RC-07 PASS: dot ignores recast() silently; pci and histogram's range targets are named"
+
+// RC-08: one value for every y; a two-name value is an unknown name.
+local bad ""
+_ztp_run `"dash scatter mpg turn weight, recast(line line) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_zrc_spec `"{`q'type`q':`q'line`q',`q'recast_from`q':`q'scatter`q',`q'yvar`q':`q'turn`q'"'
+if `rc' | !r(found) local bad "`bad' line-line"
+_ztp_run `"dash scatter mpg turn weight, recast(line scatter) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_ztp_logged "`logfile'" "`nyn'"
+if `rc' | !r(found) local bad "`bad' line-scatter/note"
+_zrc_spec `"{`q'type`q':`q'line`q'"'
+if r(found) local bad "`bad' line-scatter/type"
+if "`bad'" != "" local faillist "`faillist' RC-08"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-08 FAIL:`bad'"
+else display as text "RC-08 PASS: recast() is one value for every y"
+
+// RC-09: tsline recast joins in time order.
+quietly tsset t
+_ztp_run `"dash tsline mpg, recast(connected) name(zqtp)"' "`logfile'"
+_zrc_spec `"{`q'type`q':`q'connected`q',`q'recast_from`q':`q'tsline`q'"'
+local f1 = r(found)
+_zrc_spec `"`q'sortvars`q':`q't`q'"'
+if !`f1' | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-09"
+    display as error "RC-09 FAIL: tsline, recast(connected)"
+}
+else display as text "RC-09 PASS: tsline, recast(connected) is connected in time order"
+quietly tsset, clear
+
+// RC-10: a range type cast to a yx name draws its first bound.
+_ztp_run `"dash rline lo hi weight, recast(line) name(zqtp)"' "`logfile'"
+_zrc_spec `"{`q'type`q':`q'line`q',`q'recast_from`q':`q'rline`q',`q'yvar`q':`q'lo`q',`q'xvar`q':`q'weight`q'"'
+local f1 = r(found)
+_zrc_spec `"`q'yvar2`q'"'
+if !`f1' | r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-10"
+    display as error "RC-10 FAIL: rline, recast(line)"
+}
+else display as text "RC-10 PASS: rline, recast(line) is a line of the first bound"
+
+// RC-11: a derived layer keeps its type and records the target.
+local bad ""
+_ztp_run `"dash lfit mpg weight, recast(scatter) name(zqtp)"' "`logfile'"
+_zrc_spec `"{`q'type`q':`q'lfit`q',`q'yvar`q'"'
+if !r(found) local bad "`bad' type"
+_zrc_spec `"`q'recast`q':`q'scatter`q'"'
+if !r(found) local bad "`bad' target"
+_ztp_run `"dash lfit mpg weight, recast(rline) name(zqtp)"' "`logfile'"
+_ztp_logged "`logfile'" "`nyn'"
+if !r(found) local bad "`bad' rline/note"
+_zrc_spec `"`q'recast`q':`q'scatter`q'"'
+if !r(found) local bad "`bad' rline/target"
+if "`bad'" != "" local faillist "`faillist' RC-11"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-11 FAIL:`bad'"
+else display as text "RC-11 PASS: lfit, recast(scatter) keeps lfit and is drawn as scatter"
+
+// RC-12: connect() judges the drawn type (twoway's yxview order).
+_ztp_run `"dash line mpg weight, recast(scatter) c(l) name(zqtp)"' "`logfile'"
+local rc = r(rc)
+_zrc_spec `"{`q'type`q':`q'connected`q',`q'recast_from`q':`q'line`q'"'
+if `rc' | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RC-12"
+    display as error "RC-12 FAIL: line, recast(scatter) c(l)"
+}
+else display as text "RC-12 PASS: line, recast(scatter) c(l) is connected"
+
+// RC-13: each later step judges the right type.
+local bad ""
+_ztp_run `"dash lfit mpg weight, recast(scatter) msymbol(O) name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' lfit/msymbol"
+_ztp_run `"dash scatter mpg weight, recast(line) sort name(zqtp)"' "`logfile'"
+if r(rc) | r(note) local bad "`bad' scatter/sort"
+if "`bad'" != "" local faillist "`faillist' RC-13"
+if "`bad'" != "" local nfail = `nfail' + 1
+if "`bad'" != "" display as error "RC-13 FAIL:`bad'"
+else display as text "RC-13 PASS: a recast layer's options are judged on the drawn type"
+capture program drop _zrc_spec
+
+// ----------------------------------------------------------------
+// RM: plot-region margins and inner box (WP-30 P1.20b)
+// ----------------------------------------------------------------
+// Live twoway and dash, rc and notes from the logs.
+local rm_ls = c(linesize)
+set linesize 255
+local rmpg "`c(tmpdir)'dash_rm_page.html"
+// The data in memory are kept: the cases before and after read lo/hi.
+// RM-01: an unknown margin is twoway's note, word for word.
+local bad ""
+_ztp_run `"twoway scatter mpg weight, plotregion(margin(bogus))"' "`logfile'"
+local trc = r(rc)
+_ztp_logged "`logfile'" "named style bogus not found in class margin, default attributes used"
+local tf = r(found)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, plotregion(margin(bogus)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "named style bogus not found in class margin, default attributes used"
+if `trc' | `drc' | !`tf' | !r(found) local bad " rc `trc'/`drc', notes `tf'/`=r(found)'"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-01"
+    display as error "RM-01 FAIL:`bad'"
+}
+else display as text "RM-01 PASS: plotregion(margin(bogus)) is rc 0 with twoway's note in both"
+// RM-02: the documented forms are rc 0 and draw with no note.
+local bad ""
+foreach m in "margin(zero)" "margin(l+10)" "mar(t-5)" "m(1 2 3 4)" "margin(10-pt)" {
+    _ztp_run `"twoway scatter mpg weight, plotregion(`m')"' "`logfile'"
+    local trc = r(rc)
+    quietly graph drop _all
+    _ztp_run `"dash scatter mpg weight, plotregion(`m') saving("`rmpg'", replace)"' "`logfile'"
+    local drc = r(rc)
+    _ztp_logged "`logfile'" "class margin"
+    local f1 = r(found)
+    _ztp_logged "`logfile'" "plotregion() sub-option"
+    if `trc' | `drc' | `f1' | r(found) local bad "`bad' `m': rc `trc'/`drc'"
+}
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-02"
+    display as error "RM-02 FAIL:`bad'"
+}
+else display as text "RM-02 PASS: zero, l+10, mar(t-5), m(1 2 3 4) and 10-pt are rc 0 in both, with no dash note"
+// RM-03: two margin() in one copy is refused as twoway refuses it.
+_ztp_run `"twoway scatter mpg weight, plotregion(margin(zero) margin(l+10))"' "`logfile'"
+local trc = r(rc)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, plotregion(margin(zero) margin(l+10)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "option margin() not allowed"
+if `trc' != 198 | `drc' != 198 | !r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-03"
+    display as error "RM-03 FAIL: rc `trc'/`drc'"
+}
+else display as text "RM-03 PASS: margin() twice in one plotregion() is r(198) in both"
+// RM-04: graphregion's margin and inner options are named, not drawn.
+local bad ""
+_ztp_run `"twoway scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue))"' "`logfile'"
+local trc = r(rc)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, graphregion(margin(l+10) ifcolor(red) ilc(blue)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "graphregion() sub-option(s) not implemented and ignored: margin(l+10) ifcolor(red) ilc(blue)"
+local f1 = r(found)
+_ztp_logged "`logfile'" "plotregion() sub-option"
+if `trc' | `drc' | !`f1' | r(found) local bad " rc `trc'/`drc', named `f1'"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-04"
+    display as error "RM-04 FAIL:`bad'"
+}
+else display as text "RM-04 PASS: graphregion(margin() ifcolor() ilc()) is rc 0 and named as typed, no plotregion note"
+// RM-05: plotregion's ilalign() is still named; ifcolor() is drawn.
+_ztp_run `"twoway scatter mpg weight, plotregion(ifcolor(red) ilalign(inside))"' "`logfile'"
+local trc = r(rc)
+quietly graph drop _all
+_ztp_run `"dash scatter mpg weight, plotregion(ifcolor(red) ilalign(inside)) saving("`rmpg'", replace)"' "`logfile'"
+local drc = r(rc)
+_ztp_logged "`logfile'" "plotregion() sub-option(s) not implemented and ignored: ilalign(inside)"
+local f1 = r(found)
+_ztp_logged "`logfile'" "ignored: ilalign(inside) ifcolor"
+local f2 = r(found)
+_ztp_logged "`logfile'" "ignored: ifcolor"
+if `trc' | `drc' | !`f1' | `f2' | r(found) {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' RM-05"
+    display as error "RM-05 FAIL: rc `trc'/`drc', named `f1'/`f2'"
+}
+else display as text "RM-05 PASS: plotregion(ifcolor() ilalign()) is rc 0 and names ilalign() only"
+capture dash clear
+capture erase "`rmpg'"
+set linesize `rm_ls'
+
+// ----------------------------------------------------------------
+// TA: the t-options, read as twoway reads them (WP-30 P1.6)
+// ----------------------------------------------------------------
+// tlabel() ttick() tmlabel() tmtick() ttitle() tscale() tline() fold onto
+// x axis 1 after the x options, each date literal in the unit of the
+// axis's label format (test/fixtures/taxis_truth.json holds the same
+// probes; scripts/extract_taxis_truth.do).  Each case asks twoway (rc and
+// the first line of its log) and dash (rc, first line, the registered
+// spec of graph zta).  The data are the extractor's 60 months, put in
+// memory here and the script's own restored after the block.
+cert_truth_ctx "TA"
+local ta_ls = c(linesize)
+set linesize 255
+global zta_log "`c(tmpdir)'dash_zta.log"
+capture mata: mata drop _zta_line()
+capture mata: mata drop _zta_same()
+mata:
+// The first line of a probe's log that is no header, rule, note or
+// registration message: the error twoway or dash printed, or "".
+string scalar _zta_line(string scalar path)
+{
+    string colvector L
+    string scalar    s
+    real scalar      i
+
+    L = cat(path)
+    for (i = 1; i <= rows(L); i++) {
+        s = strtrim(subinstr(L[i], char(160), " "))
+        if (s == "" | substr(s, 1, 1) == "-" | substr(s, 1, 1) == "(") continue
+        if (substr(s, 1, 5) == "name:" | substr(s, 1, 4) == "log:" |
+            substr(s, 1, 9) == "log type:" | substr(s, 1, 10) == "opened on:" |
+            substr(s, 1, 10) == "closed on:" | substr(s, 1, 6) == "dash: ") continue
+        return(s)
+    }
+    return("")
+}
+real scalar _zta_same(string scalar a, string scalar b)
+{
+    return(st_local(a) == st_local(b))
+}
+end
+capture program drop _zta_data
+program define _zta_data
+    clear
+    quietly set obs 60
+    quietly generate t = tm(2000m1) + _n - 1
+    format t %tm
+    quietly tsset t
+    quietly generate y = 100 + _n
+    quietly generate y2 = y + 5
+    quietly generate n = _n
+    quietly generate d = dofm(t)
+    format d %td
+    quietly generate w = wofd(d)
+    format w %tw
+    quietly generate q = qofd(d)
+    format q %tq
+    quietly generate h = hofd(d)
+    format h %th
+    quietly generate yr = yofd(d) + _n
+    format yr %ty
+    quietly generate double tc = cofd(d)
+    format tc %tc
+    quietly generate tmon = t
+    format tmon %tmMon_CCYY
+    quietly generate t2 = t
+    format t2 %-tm
+end
+// _zta_cmp `"<twoway arguments, ending in options>"': twoway (with nodraw)
+// and dash (with name(zta)) on it.  Sets the caller's _zta_trc/_zta_drc
+// (rcs), _zta_tl/_zta_dl (first lines) and _zta_note (dash's ignoring
+// note present); the dash spec is $dash_json_zta.
+capture program drop _zta_cmp
+program define _zta_cmp
+    args a
+    _ztp_run `"twoway `a' nodraw"' "$zta_log"
+    local trc = r(rc)
+    mata: st_local("tl", _zta_line(st_global("zta_log")))
+    _ztp_run `"dash `a' name(zta)"' "$zta_log"
+    local drc = r(rc)
+    local note = r(note)
+    mata: st_local("dl", _zta_line(st_global("zta_log")))
+    c_local _zta_trc `trc'
+    c_local _zta_drc `drc'
+    c_local _zta_note `note'
+    c_local _zta_tl : copy local tl
+    c_local _zta_dl : copy local dl
+end
+// _zta_val `"<arguments>"' key `"<value>"': twoway and dash rc 0, and the
+// spec's key holds value (JSON-escaped); _zta_bad says what differed.
+capture program drop _zta_val
+program define _zta_val
+    args a key val
+    _zta_cmp `"`a'"'
+    local bad ""
+    if `_zta_trc' | `_zta_drc' local bad " [`a': rc `_zta_trc'/`_zta_drc' `_zta_dl']"
+    else {
+        mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("key"), st_local("val"))))
+        if !`ok' {
+            mata: st_local("js", st_global("dash_json_zta"))
+            local bad " [`a': `key' not `val' in `js']"
+        }
+    }
+    c_local _zta_bad : copy local bad
+    c_local _zta_trc `_zta_trc'
+    c_local _zta_drc `_zta_drc'
+end
+// _zta_err `"<arguments>"': dash's rc and first line are twoway's.
+capture program drop _zta_err
+program define _zta_err
+    args a
+    _zta_cmp `"`a'"'
+    local bad ""
+    mata: st_local("same", strofreal(_zta_same("_zta_tl", "_zta_dl")))
+    if `_zta_trc' != `_zta_drc' | !`same' {
+        local bad " [`a': twoway `_zta_trc' `_zta_tl' | dash `_zta_drc' `_zta_dl']"
+    }
+    c_local _zta_bad : copy local bad
+    c_local _zta_trc `_zta_trc'
+    c_local _zta_drc `_zta_drc'
+end
+preserve
+_zta_data
+
+// TA-01: the Overview's command folds every option onto its x key, with
+// the date literals as twoway reads them on a %tm axis, and no note
+// names them.
+local bad ""
+_zta_cmp `"tsline y, tlabel(2000m1(12)2004m1) ttitle("Month") tline(2002m1) tscale(range(1999m1 2006m1)) ttick(2000m7(12)2004m7)"'
+if `_zta_trc' | `_zta_drc' | `_zta_note' local bad " rc `_zta_trc'/`_zta_drc' note `_zta_note'"
+foreach kv in "xlabel|480 492 504 516 528" "xtick|486 498 510 522 534" "xline|504" "xscale|range(468 552)" {
+    gettoken k v : kv, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("k"), st_local("v"))))
+    if !`ok' local bad "`bad' `k'"
+}
+mata: st_local("ok", strofreal(_ztp_hasval("zta", "xtitle", char(92) + char(34) + "Month" + char(92) + char(34))))
+if !`ok' local bad "`bad' xtitle"
+mata: st_local("ok", strofreal(strpos(st_global("dash_json_zta"), char(34) + "t") > 0 & (strpos(st_global("dash_json_zta"), char(34) + "tlabel") | strpos(st_global("dash_json_zta"), char(34) + "tline")) > 0))
+if `ok' local bad "`bad' t-key"
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-01"
+    mata: st_local("js", st_global("dash_json_zta"))
+    display as error `"TA-01 FAIL:`bad' (`js')"'
+}
+else display as text "TA-01 PASS: the five options fold onto xlabel xtick xtitle xline xscale in twoway's numbers"
+
+// TA-02: the T copy after every X copy, a later copy replacing or merging
+// as twoway's does, lines accumulating, in a plot group and after ||,
+// and tlabel(2001m1, add) stored as xlabel "492, add" (S52 draws it).
+local bad ""
+foreach c in ///
+    `"tsline y, xlabel(480(12)528) tlabel(2001m1 2003m1)!xlabel!492 516"' ///
+    `"tsline y, tlabel(2001m1 2003m1) xlabel(480(12)528)!xlabel!492 516"' ///
+    `"tsline y, tlabel(2001m1) tlabel(2003m1)!xlabel!516"' ///
+    `"tsline y, xtitle("X") ttitle("T")!xtitle!\"T\""' ///
+    `"tsline y, ttitle("T") xtitle("X")!xtitle!\"T\""' ///
+    `"tsline y, tline(2002m1) xline(490)!xline!490, 504"' ///
+    `"tsline y, tline(2002m1) tline(2003m1)!xline!504, 516"' ///
+    `"tsline y, tscale(range(1999m1)) tscale(range(2006m1))!xscale!range(468 552)"' ///
+    `"(tsline y, tlabel(2001m1 2003m1)) (line y2 t),!xlabel!492 516"' ///
+    `"tsline y || line y2 t, tlabel(2001m1 2003m1)!xlabel!492 516"' ///
+    `"tsline y, tlabel(2001m1, add)!xlabel!492, add"' {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-02"
+    display as error `"TA-02 FAIL:`bad'"'
+}
+else display as text "TA-02 PASS: T after X, the last copy or the union, lines added, in groups and after ||, and add kept"
+
+// TA-03: twoway's abbreviations (its minimums; the plurals are routed
+// with axis(), TA-11), t() still t1title(), tm() and ts() refused.
+local bad ""
+foreach c in "tl(2001m1 2003m1)|xlabel|492 516" "tlab(2001m1 2003m1)|xlabel|492 516" ///
+    "tt(M)|xtitle|M" "tti(M)|xtitle|M" "ttit(M)|xtitle|M" ///
+    "tli(2002m1)|xline|504" "tlin(2002m1)|xline|504" ///
+    "ttic(2001m1 2003m1)|xtick|492 516" "ttick(2001m1 2003m1)|xtick|492 516" ///
+    "tsc(range(1999m1))|xscale|range(468)" "tsca(range(1999m1))|xscale|range(468)" ///
+    "tml(2001m1)|xmlabel|492" "tmt(2001m1)|xmtick|492" {
+    gettoken a rest : c, parse("|")
+    gettoken k v : rest, parse("|")
+    gettoken k v : v, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"tsline y, `a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "tm(2001m1)" "ts(range(1999m1))" {
+    _zta_err `"tsline y, `a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if `_zta_drc' != 198 local bad `"`bad' [`a' rc `_zta_drc']"'
+}
+_zta_cmp `"tsline y, t("x")"'
+_ztp_logged "$zta_log" "t1title()"
+if `_zta_trc' | `_zta_drc' | !r(found) local bad `"`bad' [t(): rc `_zta_trc'/`_zta_drc' named `=r(found)']"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-03"
+    display as error `"TA-03 FAIL:`bad'"'
+}
+else display as text "TA-03 PASS: tl tlab tt tti ttit tli tlin ttic ttick tsc tsca tml tmt read as twoway's; t() is t1title(); tm() ts() r(198)"
+
+// TA-04: the unit is the axis's label format: d w m q h y; %tc, an
+// unformatted x and a numeric first plot take numbers only; %tmMon_CCYY
+// reads m(); an operated x keeps its variable's unit; tscale(log) on a
+// date axis gives xscale(log)'s note at build.
+local bad ""
+foreach c in ///
+    "line y d, tlabel(01jan2000 01apr2000 01jul2000)|xlabel|14610 14701 14792" ///
+    "line y w, tline(2000w20)|xline|2099" ///
+    "line y t, tline(2002m1)|xline|504" ///
+    "line y q, tline(2001q1)|xline|164" ///
+    "line y h, tline(2002h1)|xline|84" ///
+    "line y yr, tline(2020)|xline|2020" ///
+    "line y tc, tline(1300000000000)|xline|1300000000000" ///
+    "line y tmon, tlabel(2001m1 2003m1)|xlabel|492 516" ///
+    "line y L.t, tlabel(2001m1 2003m1)|xlabel|492 516" ///
+    "line y D.t, tlabel(2001m1)|xlabel|492" ///
+    "pcspike y t y2 d, tline(2002m1)|xline|504" {
+    gettoken a rest : c, parse("|")
+    gettoken k v : rest, parse("|")
+    gettoken k v : v, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "line y tc, tlabel(2000m1)" "line y n, tlabel(2000m1)" ///
+    "line y n, tline(2002m1)" "line y d, tline(2000m3)" ///
+    "(line y d) (line y t), tline(2002m1)" "pcspike y d y2 t, tline(2002m1)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+local tapg "`c(tmpdir)'dash_zta_page.html"
+foreach o in tscale xscale {
+    capture dash clear
+    quietly graph drop _all
+    capture log close _ztalog
+    quietly log using "$zta_log", name(_ztalog) text replace
+    capture noisily dash tsline y, `o'(log) name(zl)
+    capture noisily dash build, saving("`tapg'", replace)
+    local rc_`o' = _rc
+    quietly log close _ztalog
+    cert_log_has "$zta_log", needle("xscale(log) is meaningless for the date variable")
+    local n_`o' = r(found)
+}
+if `rc_tscale' | `rc_xscale' | !`n_tscale' | !`n_xscale' local bad `"`bad' [log: rc `rc_tscale'/`rc_xscale' note `n_tscale'/`n_xscale']"'
+capture erase "`tapg'"
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-04"
+    display as error `"TA-04 FAIL:`bad'"'
+}
+else display as text "TA-04 PASS: d w m q h y units, numbers on %tc and numeric axes, the first plot's unit, operators, and tscale(log)'s note"
+
+// TA-05: twoway's refusals of the t-options, rc and words.
+local bad ""
+foreach a in "tlabel(foo)" "tline(foo)" "tscale(range(foo))" "tlabel(2000m13)" ///
+    "tline(2000m13)" "tline(2002m1 foo)" `"tlabel(2000m1(12)2004m1 "x")"' ///
+    "tline(2000m6.5)" "tlabel(2000.5m1)" "tlabel(2000m1;2001m1)" ///
+    "tlabel(2000m1,2001m1)" "tline(2000m1(1)2400m1)" `"tlabel("a" 2000m1)"' {
+    _zta_err `"tsline y, `a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-05"
+    display as error `"TA-05 FAIL:`bad'"'
+}
+else display as text "TA-05 PASS: every t-option refusal is twoway's rc and words"
+
+// TA-06: the first plot decides: a date literal is refused after the
+// eleven numeric-x types and read after every other (40 types).
+local bad ""
+local m6 `"scatter "scatter y t" line "line y t" connected "connected y t" scatteri "scatteri 100 480" area "area y t" bar "bar y t" spike "spike y t" dropline "dropline y t" dot "dot y t" rarea "rarea y y2 t" rbar "rbar y y2 t" rspike "rspike y y2 t" rcap "rcap y y2 t" rcapsym "rcapsym y y2 t" rscatter "rscatter y y2 t" rline "rline y y2 t" rconnected "rconnected y y2 t" pcspike "pcspike y t y2 t" pccapsym "pccapsym y t y2 t" pcarrow "pcarrow y t y2 t" pcbarrow "pcbarrow y t y2 t" pcscatter "pcscatter y t y2 t" pci "pci 100 480 110 490" pcarrowi "pcarrowi 100 480 110 490" tsline "tsline y" tsrline "tsrline y y2" mband "mband y t" mspline "mspline y t" lowess "lowess y t" lfit "lfit y t" qfit "qfit y t" fpfit "fpfit y t" lfitci "lfitci y t" qfitci "qfitci y t" fpfitci "fpfitci y t" lpoly "lpoly y t" lpolyci "lpolyci y t" kdensity "kdensity y" histogram "histogram t" function "function y = x, range(480 539)""'
+local i 0
+foreach w of local m6 {
+    local ++i
+    if mod(`i', 2) continue
+    foreach o in "tline(2002m1)" "tlabel(2001m1 2003m1)" {
+        _zta_err `"(`w') (tsline y), `o'"'
+        local bad `"`bad'`_zta_bad'"'
+    }
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-06"
+    display as error `"TA-06 FAIL:`bad'"'
+}
+else display as text "TA-06 PASS: over 40 first plots, tline() and tlabel() literals are refused or read as twoway's"
+
+// TA-07: on any twoway graph, not only tsline (sysuse auto).
+local bad ""
+_zta_val `"line y t, tlabel(2000m1(12)2004m1)"' xlabel "480 492 504 516 528"
+local bad `"`bad'`_zta_bad'"'
+quietly sysuse auto, clear
+foreach c in "tlabel(2000 3000 4000)|xlabel|2000 3000 4000" "tline(3000)|xline|3000" ///
+    "tscale(range(0 6000))|xscale|range(0 6000)" `"ttitle("W")|xtitle|\"W\""' {
+    gettoken a rest : c, parse("|")
+    gettoken k v : rest, parse("|")
+    gettoken k v : v, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"scatter mpg weight, `a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+_zta_err `"scatter mpg weight, tlabel(2000m1)"'
+local bad `"`bad'`_zta_bad'"'
+_zta_data
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-07"
+    display as error `"TA-07 FAIL:`bad'"'
+}
+else display as text "TA-07 PASS: line and scatter take the t-options as twoway does"
+
+// TA-08: twoway's lenient literals, its refused ones, and numbers first.
+local bad ""
+foreach c in m:2000x1 m:2000/1 m:2000-1 m:2000+1 m:2000*1 m:2000@1 m:2000=1 ///
+    m:2000M1 m:2000m13 m:2000m0 m:99m1 m:2000m1x m:-2000m1 m:10000m1 ///
+    m:2000.5m1 d:1+jan+2000 d:1january2000 d:01JAN2000 d:2000-01-01 ///
+    w:2000w20 w:2000w53 q:2001q1 q:2001q5 h:2002h1 h:2002h3 {
+    gettoken u tok : c, parse(":")
+    local tok = substr("`tok'", 2, .)
+    capture scalar zta_s = `u'(`tok')
+    local trc = _rc
+    local tv = cond(`trc', ., scalar(zta_s))
+    mata: zta_v = .
+    mata: st_local("dk", strofreal(_dash_tdate_value(st_local("tok"), st_local("u"), zta_v)))
+    mata: st_local("dv", strofreal(zta_v, "%21.0g"))
+    if (`trc' == 0 & (`dk' != 1 | `dv' != `tv')) | (`trc' != 0 & `dk' == 1) {
+        local bad "`bad' `u'(`tok'): twoway `trc' `tv', dash `dk' `dv'"
+    }
+}
+capture scalar drop zta_s
+_zta_val `"line y d, tlabel(15000 01012001)"' xlabel "15000 1012001"
+local bad `"`bad'`_zta_bad'"'
+_zta_val `"line y d, tline(01012001 01jul2001)"' xline "1012001 15157"
+local bad `"`bad'`_zta_bad'"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-08"
+    display as error `"TA-08 FAIL:`bad'"'
+}
+else display as text "TA-08 PASS: lenient and refused literals as twoway's pseudo-functions read them; numbers first"
+
+// TA-09: a date token is never run as Stata code: a backtick, $ and a
+// quote are refused as twoway's words say, the global is untouched and
+// nothing is registered; 10,000 positions convert in under 2 s.
+local bad ""
+global zta_g "keep"
+foreach a in "tlabel(2000m1 \`x')" "tline(\$zta_g)" "tlabel(2000m1 \$zta_g)" {
+    mata: st_local("cmd", st_local("a"))
+    capture dash clear
+    capture noisily dash tsline y, `macval(cmd)' name(zt9)
+    local rc = _rc
+    if !`rc' local bad "`bad' [rc 0]"
+    if `"$zta_g"' != "keep" local bad "`bad' [global changed]"
+    if `"$dash_json_zt9"' != "" local bad "`bad' [registered]"
+}
+mata: st_local("_td_in", invtokens(J(1, 10000, "2001m1")))
+timer clear 61
+timer on 61
+mata: _dash_tdate_ticks("tlabel", "m")
+timer off 61
+quietly timer list 61
+if r(t61) >= 2 | `_td_rc' local bad "`bad' [10,000 positions: `=r(t61)' s, rc `_td_rc']"
+mata: st_local("ok", strofreal(st_local("_td_out") == invtokens(J(1, 10000, "492"))))
+if !`ok' local bad "`bad' [10,000 positions converted wrong]"
+global zta_g
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-09"
+    display as error `"TA-09 FAIL:`bad'"'
+}
+else display as text "TA-09 PASS: hostile tokens refused without evaluation; 10,000 positions in under 2 s"
+
+// TA-10: tmlabel() and tmtick() are stored on xmlabel/xmtick and named
+// until minor ticks are drawn.
+local bad ""
+foreach c in "tmlabel|xmlabel" "tmtick|xmtick" {
+    gettoken o k : c, parse("|")
+    local k = substr("`k'", 2, .)
+    _zta_val `"tsline y, `o'(2000m7(12)2004m7)"' `k' "486 498 510 522 534"
+    local bad `"`bad'`_zta_bad'"'
+    _ztp_logged "$zta_log" "`o'()"
+    if !r(found) local bad `"`bad' [`o' not named]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-10"
+    display as error `"TA-10 FAIL:`bad'"'
+}
+else display as text "TA-10 PASS: tmlabel() and tmtick() stored on xmlabel/xmtick and named"
+
+// TA-15: a date literal in an x-option is refused as twoway refuses it,
+// on axis 1 and axis 2.
+local bad ""
+foreach a in "tsline y, xlabel(2000m1)" "tsline y, xtick(2000m1)" ///
+    "tsline y, xmlabel(2000m1)" "tsline y, xmtick(2000m1)" ///
+    "tsline y, xline(2002m1)" "tsline y, xscale(range(1999m1 2006m1))" ///
+    "tsline y, xlabel(2000m1(12)2004m1)" ///
+    "(tsline y) (line y2 t, xaxis(2)), xlabel(2000m1, axis(2))" ///
+    "(tsline y) (line y2 t, xaxis(2)), xtick(2000m1, axis(2))" ///
+    "(tsline y) (line y2 t, xaxis(2)), xline(2002m1, axis(2))" ///
+    "(tsline y) (line y2 t, xaxis(2)), xscale(range(1999m1) axis(2))" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-15"
+    display as error `"TA-15 FAIL:`bad'"'
+}
+else display as text "TA-15 PASS: date literals in the x-options are refused in twoway's rc and words"
+
+// TA-16: the unit is read at registration; a later format change of the
+// axis variable is noted once at build, and the registered value drawn.
+local bad ""
+capture dash clear
+quietly graph drop _all
+capture log close _ztalog
+quietly log using "$zta_log", name(_ztalog) text replace
+capture noisily dash tsline y, tline(2002m1) name(zt16)
+local rc1 = _rc
+format t %td
+capture noisily dash build, saving("`tapg'", replace)
+local rc2 = _rc
+quietly log close _ztalog
+format t %tm
+cert_log_has "$zta_log", needle("the t-options' dates were read as m() dates when it was registered")
+if `rc1' | `rc2' | r(count) != 1 local bad " rc `rc1'/`rc2', note `=r(count)'"
+mata: st_local("ok", strofreal(_ztp_hasval("zt16", "xline", "504")))
+if !`ok' local bad "`bad' xline"
+capture erase "`tapg'"
+capture dash clear
+if "`bad'" != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-16"
+    display as error "TA-16 FAIL:`bad'"
+}
+else display as text "TA-16 PASS: a format change after registration is noted once, and the line stays at 504"
+
+// TA-11: axis(2) and the t...2() spellings reach the second x axis, in
+// its own unit (a %td axis 2 beside the %tm axis 1); the plurals are
+// read; an axis no layer uses is refused in twoway's words, X then T
+// then Y; a second comma as twoway.  ttitle(, axis(2)) is routed as
+// xtitle(, axis(2)) is (twoway's own r(133) there is not followed).
+local bad ""
+local two "(tsline y) (line y2 d, xaxis(2)),"
+foreach c in ///
+    "`two' tline(2002m1)!xline!504" ///
+    "`two' tline(01jan2002, axis(2))!xline2!15341" ///
+    "`two' tlabel(01jan2001 01jan2003, axis(2))!xlabel2!14976 15706" ///
+    "`two' ttick(01jan2001, axis(2))!xtick2!14976" ///
+    "`two' tscale(range(01jan1999) axis(2))!xscale2!range(14245)" ///
+    "tsline y, tlabels(2001m1 2003m1)!xlabel!492 516" ///
+    "tsline y, tlines(2002m1)!xline!504" ///
+    "tsline y, tticks(2001m1 2003m1)!xtick!492 516" ///
+    "tsline y, tlabel(2001m1 2003m1, axis(1))!xlabel!492 516" {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "`two' tline(2002m1, axis(2))" "tsline y, tlabel(2001m1, axis(3))" ///
+    "tsline y, tline(2002m1, axis(2))" ///
+    "tsline y, xlabel(2001m1, axis(3)) tlabel(2001m1, axis(3))" ///
+    "tsline y, tlabel(2001m1, axis(3)) ylabel(100, axis(3))" ///
+    "tsline y, tlabel(2001m1, , foo)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+foreach c in "tline2(01jan2002)!xline2!15341" `"ttitle("A", axis(2))!xtitle2!\"A\""' {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _ztp_run `"dash `two' `a' name(zta)"' "$zta_log"
+    local drc = r(rc)
+    mata: st_local("ok", strofreal(_ztp_hasval("zta", st_local("k"), st_local("v"))))
+    if `drc' | !`ok' local bad `"`bad' [`a': rc `drc', `k' `ok']"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-11"
+    display as error `"TA-11 FAIL:`bad'"'
+}
+else display as text "TA-11 PASS: axis(2), t...2(), plurals, and twoway's axis refusals in X, T, Y order"
+
+// TA-12: format() decides the unit as twoway's ticksets do: an x
+// label's format() serves the t-options read after it; an option's own
+// format() applies after its own positions; lines read the first time
+// format among the major, minor, major-tick and minor-tick formats.
+local bad ""
+foreach c in "line y n, xlabel(, format(%tm)) tline(2002m1)!xline!504" ///
+    "line y n, xlabel(, format(%tm)) tlabel(2001m1 2003m1)!xlabel!492 516, format(%tm)" ///
+    "line y n, tlabel(, format(%tm)) tline(2002m1)!xline!504" ///
+    "line y n, xmlabel(, format(%tm)) tline(2002m1)!xline!504" {
+    gettoken a rest : c, parse("!")
+    gettoken k v : rest, parse("!")
+    gettoken k v : v, parse("!")
+    local v = substr(`"`v'"', 2, .)
+    _zta_val `"`a'"' `k' `"`v'"'
+    local bad `"`bad'`_zta_bad'"'
+}
+foreach a in "line y n, tlabel(2001m1 2003m1, format(%tm))" ///
+    "tsline y, xlabel(, format(%td)) tline(2002m1)" ///
+    "tsline y, xlabel(, format(%td)) tlabel(2002m1)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-12"
+    display as error `"TA-12 FAIL:`bad'"'
+}
+else display as text "TA-12 PASS: format() overrides read in twoway's tickset order"
+
+// TA-13: on a %-tm axis labels and ticks read m() literals; lines and
+// scale ranges do not (twoway's get_time_format tests only %t and %d).
+local bad ""
+_zta_val `"line y t2, tlabel(2001m1 2003m1)"' xlabel "492 516"
+local bad `"`bad'`_zta_bad'"'
+foreach a in "line y t2, tline(2002m1)" "line y t2, tscale(range(2006m1))" ///
+    "line y t2, ttick(2001m1) tline(2002m1)" {
+    _zta_err `"`a'"'
+    local bad `"`bad'`_zta_bad'"'
+    if !`_zta_drc' local bad `"`bad' [`a' rc 0]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TA-13"
+    display as error `"TA-13 FAIL:`bad'"'
+}
+else display as text "TA-13 PASS: %-tm reads dates in labels and ticks, numbers only in lines and ranges"
+
+restore
+set linesize `ta_ls'
+
+// ----------------------------------------------------------------
+// AT: text() read and refused as twoway reads and refuses it (WP-30
+// P1.10).  twoway's answer for each probe -- its rc, its last line and
+// its notes -- is test/fixtures/added_text_truth.json's
+// (scripts/extract_added_text_truth.do, StataNow 19.5); dash runs here on
+// the same command.  _zat_run <probe> sets _zat_trc/_zat_drc (rcs),
+// _zat_tl/_zat_dl (twoway's and dash's first error lines), _zat_tn
+// (twoway's first note) and _zat_named (dash's ignoring note present);
+// the spec is $dash_json_zat.
+// ----------------------------------------------------------------
+python:
+def _zat_get(pid):
+    import json
+    from sfi import Macro
+    with open("fixtures/added_text_truth.json", encoding="utf-8") as fh:
+        p = json.load(fh)["probes"][pid]
+    cmd = p["cmd"]
+    if cmd.startswith("twoway "):
+        cmd = cmd[len("twoway "):]
+    Macro.setLocal("zat_cmd", cmd)
+    Macro.setLocal("zat_ds", p["dataset"])
+    Macro.setLocal("zat_trc", str(p["rc"]))
+    Macro.setLocal("zat_tl", p["error"].strip())
+    Macro.setLocal("zat_tn", (p["notes"] or [""])[0])
+import sys as _zat_sys
+_zat_sys.modules["_dash_zat"] = type(_zat_sys)("_dash_zat")
+_zat_sys.modules["_dash_zat"].get = _zat_get
+end
+capture program drop _zat_run
+program define _zat_run
+    args pid
+    python: __import__("sys").modules["_dash_zat"].get("`pid'")
+    if "`zat_ds'" == "auto" {
+        sysuse auto, clear
+    }
+    else if "`zat_ds'" == "daily" {
+        clear
+        quietly set obs 100
+        quietly generate d = td(01jan2001) + 5 * (_n - 1)
+        format d %td
+        quietly generate double y = 5 + mod(_n, 9)
+    }
+    else {
+        clear
+        quietly set obs 120
+        quietly generate t = tm(1995m1) + _n - 1
+        format t %tm
+        quietly generate tn = t
+        quietly generate double y = 10 + mod(_n, 7)
+        quietly tsset t
+    }
+    capture log close _zatlog
+    capture erase "$zta_log"
+    capture dash clear
+    quietly graph drop _all
+    log using "$zta_log", name(_zatlog) text replace
+    capture noisily dash `zat_cmd' name(zat)
+    local drc = _rc
+    log close _zatlog
+    mata: st_local("dl", _zta_line(st_global("zta_log")))
+    cert_log_has "$zta_log", needle("ignoring unsupported")
+    c_local _zat_named = r(found)
+    local noted 0
+    if `"`zat_tn'"' != "" {
+        cert_log_has "$zta_log", needle(`"`zat_tn'"')
+        local noted = r(found)
+    }
+    c_local _zat_noted `noted'
+    c_local _zat_trc `zat_trc'
+    c_local _zat_drc `drc'
+    c_local _zat_tl : copy local zat_tl
+    c_local _zat_dl : copy local dl
+    c_local _zat_tn : copy local zat_tn
+end
+// _zat_same <probe>...: each probe's rc and first line are twoway's, and
+// no ignoring note names text(); _zat_bad says what differed.
+capture program drop _zat_same
+program define _zat_same
+    local bad ""
+    foreach pid of local 0 {
+        _zat_run `pid'
+        mata: st_local("same", strofreal(st_local("_zat_tl") == st_local("_zat_dl")))
+        if `_zat_trc' != `_zat_drc' | (`_zat_trc' & !`same') | `_zat_named' {
+            local bad `"`bad' [`pid': twoway `_zat_trc' `_zat_tl' | dash `_zat_drc' `_zat_dl' named `_zat_named']"'
+        }
+    }
+    c_local _zat_bad : copy local bad
+end
+// _zat_records <graph>: the added_text records of $dash_json_<graph> as
+// "lines|opts" pairs, in order, into _zat_recs (and their count, _zat_nr).
+capture program drop _zat_records
+program define _zat_records
+    args g
+    mata: _zat_recs(st_global("dash_json_" + st_local("g")))
+    c_local _zat_recs : copy local _zat_recs
+    c_local _zat_nr `_zat_nr'
+end
+capture mata: mata drop _zat_recs()
+capture mata: mata drop _zat_x()
+mata:
+void _zat_recs(string scalar js)
+{
+    string scalar out, q, rest, lines, opts
+    real scalar   n, p, e
+
+    q = char(34)
+    out = ""
+    n = 0
+    rest = js
+    while ((p = strpos(rest, q + "at_lines" + q + ":")) > 0) {
+        rest = substr(rest, p + 11, .)
+        e = strpos(rest, "]")
+        lines = substr(rest, 1, e)
+        p = strpos(rest, q + "at_opts" + q + ":" + q)
+        rest = substr(rest, p + 11, .)
+        e = strpos(rest, q + "}")
+        opts = substr(rest, 1, e - 1)
+        out = out + (n ? " ; " : "") + subinstr(lines, q, "~") + "|" + opts
+        n++
+    }
+    st_local("_zat_recs", out)
+    st_local("_zat_nr", strofreal(n))
+}
+// The first record's at_x, as written, or "".
+string scalar _zat_x(string scalar js)
+{
+    string scalar q, rest
+    real scalar   p
+
+    q = char(34)
+    p = strpos(js, q + "at_x" + q + ":")
+    if (!p) return("")
+    rest = substr(js, p + 7, .)
+    return(substr(rest, 1, strpos(rest, ",") - 1))
+}
+end
+preserve
+local at_ls = c(linesize)
+set linesize 200
+
+// AT-01: a malformed point is refused in twoway's words, r(198), and one
+// bad copy refuses the graph; 3e3 is a number.
+_zat_same r_onept r_missy r_alpha r_expr r_big r_onebad r_e3
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-01"
+    display as error `"AT-01 FAIL:`_zat_bad'"'
+}
+else display as text "AT-01 PASS: invalid point, <x> <y>, as twoway refuses it"
+
+// AT-02: a bare word or a trailing y is the next point's, as twoway reads
+// it: invalid point with an empty x, the double space kept.
+_zat_same r_trail1 r_bare
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-02"
+    display as error `"AT-02 FAIL:`_zat_bad'"'
+}
+else display as text "AT-02 PASS: a bare word or a lone y is an invalid point"
+
+// AT-03: an axis pair the graph lacks is refused, even for a copy with no
+// point; the pair a second-axis layer draws is accepted.
+_zat_same r_y2 r_x2 r_nopt_y2 r_y2ok
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-03"
+    display as error `"AT-03 FAIL:`_zat_bad'"'
+}
+else display as text "AT-03 PASS: specified axis pair (Y X) not in graph, as twoway refuses it"
+
+// AT-04: repeated copies keep their own sub-options, in one option list,
+// in a plot group, in a || segment and after the comma; a line naming a
+// key is text, so the substring readers find dash's own count only.
+// _zat_records writes a record's lines with ~ for each double quote.
+local bad ""
+foreach c in "two![~AAA~]|size(large) color(red) ; [~BBB~]|" ///
+    "level_pg![~PG~]| ; [~GL~]|" "level_seg![~S1~]| ; [~S2~]|" {
+    gettoken pid want : c, parse("!")
+    local want = substr(`"`want'"', 2, .)
+    _zat_run `pid'
+    _zat_records zat
+    if `_zat_drc' | `"`_zat_recs'"' != `"`want'"' {
+        local bad `"`bad' [`pid': rc `_zat_drc' `_zat_recs']"'
+    }
+}
+sysuse auto, clear
+capture dash clear
+capture noisily dash scatter mpg weight, text(30 3000 `""width":"1" "added_text_n":"0""') text(20 4000 "B", width(5)) name(zat4)
+local drc = _rc
+mata: st_local("hw", strofreal(_dash_json_has_value(st_global("dash_json_zat4"), "width")))
+mata: st_local("fn", strofreal(_dash_json_first_num(st_global("dash_json_zat4"), "added_text_n")))
+if `drc' | `hw' | `fn' != 2 local bad `"`bad' [readers: rc `drc' width `hw' added_text_n `fn']"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-04"
+    display as error `"AT-04 FAIL:`bad'"'
+}
+else display as text "AT-04 PASS: each copy a record with its own sub-options; no key read from text"
+
+// AT-04b: 100,000 one-point copies, joined as _dash_rep_merge joins them,
+// are read in linear time: under one second.
+mata: _zat_big = ("1 1 " + char(34) + "a" + char(34) + char(30)) * 100000
+timer clear 56
+timer on 56
+local _at_n ""
+capture mata: st_local("_zat_rc", strofreal(_dash_at_parse(_zat_big, 0)))
+local prc = _rc
+timer off 56
+quietly timer list 56
+local secs = r(t56)
+mata: mata drop _zat_big
+if `prc' | "`_at_n'" != "100000" | `secs' >= 1 {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-04b"
+    display as error "AT-04b FAIL: `_at_n' records in `secs' s"
+}
+else display as text "AT-04b PASS: 100,000 copies read in `secs' s"
+
+// AT-05: a sub-option twoway does not take is refused in its words; its
+// abbreviations are accepted; an unknown placement() is noted as twoway
+// notes it.  (tex(), which twoway refuses as it refuses any option it
+// lacks, is named in dash's ignoring note as every unknown option is:
+// help dash##differences.)
+_zat_same r_nosuch r_ori abbr pl_40
+local bad `"`_zat_bad'"'
+_zat_run pl_40
+if !`_zat_noted' | `"`_zat_tn'"' == "" local bad `"`bad' [place(zz) note: `_zat_tn']"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-05"
+    display as error `"AT-05 FAIL:`bad'"'
+}
+else display as text "AT-05 PASS: option nosuch() not allowed; c() si() orient() read; place(zz) noted"
+
+// AT-06: sub-options twoway takes and dash does not draw are named once.
+_zat_same noted
+local bad `"`_zat_bad'"'
+cert_log_has "$zta_log", needle("text() draws no width() tstyle() linegap();")
+if !r(found) local bad `"`bad' [no note naming width() tstyle() linegap()]"'
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-06"
+    display as error `"AT-06 FAIL:`bad'"'
+}
+else display as text "AT-06 PASS: width() linegap() tstyle() named once"
+
+// AT-07: an empty string, no string or no point draws nothing, rc 0.
+_zat_same empty nostr none
+local bad `"`_zat_bad'"'
+foreach pid in empty nostr none {
+    _zat_run `pid'
+    _zat_records zat
+    if `_zat_nr' local bad `"`bad' [`pid': `_zat_nr' records]"'
+}
+if `"`bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-07"
+    display as error `"AT-07 FAIL:`bad'"'
+}
+else display as text `"AT-07 PASS: text(30 3000 ""), text(30 3000) and text() draw nothing"'
+
+// AT-08: text() is never named as unsupported (every _zat_same case above
+// checked the note; here the plain one).
+_zat_same aaa
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-08"
+    display as error `"AT-08 FAIL:`_zat_bad'"'
+}
+else display as text "AT-08 PASS: text() is not named in the ignoring note"
+
+// AT-30: ttext() refuses what twoway refuses: text() takes no date, a
+// function form is no point, and a literal the axis's format cannot read
+// -- 2001m13, a month on a numeric or daily axis, a missing value, a
+// month where the first plot's x is unformatted -- is "<x> is not a
+// number"; y is a number.
+_zat_same tt_text tt_fn tt_m13 tt_auto tt_dot tt_dm tt_two1 tt_rev
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-30"
+    display as error `"AT-30 FAIL:`_zat_bad'"'
+}
+else display as text "AT-30 PASS: ttext()'s date refusals are twoway's"
+
+// AT-31..AT-36: each drawn ttext() at twoway's x in the axis's unit (the
+// fixture's measured point, rounded): a month and a quoted month, a
+// quarter on a %tm axis, a day on a %td axis, the first plot's format
+// deciding (twoway (line y t) (line y tn)), an xlabel() format() on an
+// unformatted x and a number format on a %tm x, and a number as text()
+// reads it.  _zat_draw "<probe> <x> ...": _zat_bad says what differed.
+capture program drop _zat_draw
+program define _zat_draw
+    local c `"`0'"'
+    local bad ""
+    while `"`c'"' != "" {
+        gettoken pid c : c
+        gettoken want c : c
+        _zat_run `pid'
+        mata: st_local("x", _zat_x(st_global("dash_json_zat")))
+        if `_zat_drc' | `_zat_trc' | "`x'" != "`want'" | `_zat_named' {
+            local bad `"`bad' [`pid': rc `_zat_drc' (twoway `_zat_trc'), at_x `x' not `want', named `_zat_named']"'
+        }
+    }
+    c_local _zat_bad : copy local bad
+end
+_zat_draw tt_m 492 tt_mq 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-31"
+    display as error `"AT-31 FAIL:`_zat_bad'"'
+}
+else display as text "AT-31 PASS: ttext(12 2001m1) and its quoted form at 492"
+_zat_draw tt_q 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-32"
+    display as error `"AT-32 FAIL:`_zat_bad'"'
+}
+else display as text "AT-32 PASS: a quarter on a %tm axis at its first month"
+_zat_draw tt_d 15127
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-33"
+    display as error `"AT-33 FAIL:`_zat_bad'"'
+}
+else display as text "AT-33 PASS: a day on a %td axis"
+_zat_draw tt_two2 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-34"
+    display as error `"AT-34 FAIL:`_zat_bad'"'
+}
+else display as text "AT-34 PASS: the first plot's x format decides"
+_zat_draw tt_xl 492 tt_xl9 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-35"
+    display as error `"AT-35 FAIL:`_zat_bad'"'
+}
+else display as text "AT-35 PASS: xlabel()'s format() read as twoway reads the time format"
+_zat_draw tt_num 3000
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-36"
+    display as error `"AT-36 FAIL:`_zat_bad'"'
+}
+else display as text "AT-36 PASS: a number is a number"
+
+restore
+capture erase "$zta_log"
+capture dash clear
+set linesize `at_ls'
+global zta_log
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
+// twoway's answers: a question the fixture could not answer, or (with
+// DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
+cert_truth_close
+if r(problems) > 0 {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' TRUTH"
+}
 capture dash clear
 capture erase "`logfile'"
 display as text ""

@@ -26,7 +26,6 @@ with exactly one warning that names the option, and the two modes raise the
 same list -- the served app copies ``GlyphMapper`` and ``OptionTranslator``
 by source, so the note helper must travel with them.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -45,7 +44,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_abbreviations import _program_body, _syntax_options  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
@@ -61,14 +60,21 @@ _END = "// END option-validation table (WP-15)"
 # axislist since WP-28 S14 (GAPS2 B1): the axis-label and tick options,
 # expanded by Stata's numlist and never refused.
 KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
-         "varlist", "byvarlist", "format", "scheme", "axislist"}
+         "varlist", "byvarlist", "format", "scheme", "axislist",
+         # WP-30 P1.5 (S17's P1.23b): zlabel()'s format() is judged as the
+         # axis-label options' is.
+         "keyformat",
+         # 14 -> 15: WP-30 P1.13a the colour kind (a comma-written plot
+         # colour is refused in twoway's words).
+         "colour"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
 #: more, and the structural checks below apply to all of it.
+# WP-30 P1.12b: the line-width rules read Stata units (,u)
 CONTRACT_PLOT_RULES = """
 msize=style  mlabsize=style  mlabgap=style
-lwidth=style,0,10000  mlwidth=style,0,10000
+lwidth=style,0,10000,u  mlwidth=style,0,10000,u
 msangle=style,-360,360  mlabposition=style  fintensity=style
 jitter=num,0,100  jitterseed=int,0  jseed=int,0
 yaxis=int,1,2  xaxis=int,1,2
@@ -100,6 +106,9 @@ _TOKEN = re.compile(
     r"(?<![\w`'\"])([a-z][a-z0-9]*)="
     r"([a-z]+)"
     r"((?:,[^\s\"'`@]*)?)((?:@[a-z0-9|]+)?)(?![\w])")
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _ado():
@@ -263,6 +272,10 @@ class TestTheTableIsWellFormed:
             for p in ps:
                 assert p == "" or _is_number(p), rule
         elif kind in ("style", "istyle"):
+            # WP-30 P1.12b: the line-width rules read Stata units (,u)
+            if kind == "style" and len(ps) == 3:
+                assert ps[2] == "u", rule
+                ps = ps[:2]
             assert len(ps) in (0, 2), rule
             for p in ps:
                 assert _is_number(p), rule
@@ -386,6 +399,9 @@ class TestTheNewProgramsKeepTheirConstraints:
     _MATA_ALLOWED = frozenset({
         "_dash_say", "_dash_text_args", "st_local", "st_global",
         "st_strscalar", "strofreal", "strtrim", "strpos", "char",
+        # WP-30 P1.5: _dash_axis_fmts reads format() words by value and
+        # tests their characters; _dash_imm_echo cuts an echo at 80.
+        "_dash_axis_fmts", "_dash_imm_echo",
     })
 
     @staticmethod
@@ -466,8 +482,13 @@ class TestTheNewProgramsKeepTheirConstraints:
 
     def test_validate_opts_follows_fold_bw(self):
         src = _ado()
-        i = src.index('_dash_fold_bw "`ptype\'"')
-        j = src.index('_dash_validate_opts "`ptype\'"')
+        # WP-30 P1.8a: both read the type connect() makes (_cn_ptype).
+        # Flipped (WP-30 P1.8b): both read _rc_own, which is _cn_ptype but
+        # a derived layer's own type under recast() (a recast lfit's
+        # options are still lfit's), where _cn_ptype was wrong because the
+        # recast target would judge them (recast_truth.json).
+        i = src.index('_dash_fold_bw "`_rc_own\'"')
+        j = src.index('_dash_validate_opts "`_rc_own\'"')
         assert i < j, "_dash_validate_opts must run after _dash_fold_bw"
 
     def test_the_old_level_text_is_gone_from_the_plot_parser(self):
@@ -560,7 +581,7 @@ def _both(plots, go=None, kpis=None):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     std_w = sorted(str(w.message) for w in caught)
 
     tag, sp, dp = _write(spec)
@@ -570,9 +591,7 @@ def _both(plots, go=None, kpis=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_optval_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_optval_{tag}")
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -606,7 +625,10 @@ STYLE_CASES = [
     ("scatter", {"msymbol": "nonsense"}, "msymbol"),
     ("scatter", {"marker": "nonsense"}, "marker"),
     ("scatter", {"msize": "abc"}, "msize"),
-    ("scatter", {"msize": "*2"}, "msize"),
+    # WP-30 P1.12a (E5): twoway reads msize(*2) as a relative size, so it
+    # draws without a note; msize(Large) is still unknown (names are
+    # case-sensitive in twoway).  The row was {"msize": "*2"}.
+    ("scatter", {"msize": "Large"}, "msize"),
     ("scatter", {"mlabel": "make", "mlabsize": "abc"}, "mlabsize"),
     ("scatter", {"mlabel": "make", "mlabgap": "abc"}, "mlabgap"),
     ("scatter", {"lwidth": "abc"}, "lwidth"),
@@ -660,11 +682,12 @@ class TestTheDefaultIsWhatTheSchemeGives:
         assert float(fig.renderers[0].glyph.size) == float(
             r.mapper.scheme.default_marker_size(0))
 
-    def test_a_bad_mcolor_draws_the_schemes_colour(self):
+    def test_a_bad_mcolor_draws_black(self):
+        """Flipped (WP-30 P1.13a): twoway draws mcolor(bogus) black with a
+        note (colour_grammar_truth.json opt_87); this drew p1."""
         r, _, _, _ = _both([plot_for("scatter", {"mcolor": "notacolour"})])
         fig = list(r.figures.values())[0]
-        assert fig.renderers[0].glyph.fill_color == \
-            r.mapper.scheme.default_color(0, "scatter")
+        assert fig.renderers[0].glyph.fill_color == "#000000"
 
     def test_a_bad_clock_position_labels_at_twelve_oclock(self):
         """Where twoway draws it: measured (test_help_claims_5.cscript
@@ -676,7 +699,10 @@ class TestTheDefaultIsWhatTheSchemeGives:
         fig = list(r.figures.values())[0]
         ls = [x for x in fig.center if isinstance(x, LabelSet)]
         assert len(ls) == 1
-        assert (ls[0].x_offset, ls[0].y_offset) == (0, 4)
+        # WP-30 P1.12a: twoway's mlabgap default is 1.4 % of the 4-inch
+        # reference, 5.6 px (it was 4); approx absorbs the 4e-6 px the
+        # point-to-pixel constant carries.
+        assert (ls[0].x_offset, ls[0].y_offset) == (0, pytest.approx(5.6, abs=1e-4))
         assert (ls[0].text_align, ls[0].text_baseline) == ("center",
                                                            "bottom")
 
@@ -850,18 +876,21 @@ class TestTheNoteHelper:
         dr._dash_reset_notes()
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
+            # Flipped (WP-30 P1.13a): an unknown colour is black, its own
+            # opacity kept, as twoway draws mcolor(bogus%50); it was
+            # (None, None) and the caller's scheme colour.
             assert dr.OptionTranslator.parse_color_alpha("notacolour") == \
-                (None, None)
+                ("#000000", None)
             assert dr.OptionTranslator.parse_color_alpha("navy%40") == \
                 ("#1a476f", 0.4)
         assert not caught
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             assert dr.OptionTranslator.parse_color_alpha(
-                "notacolour%40", "fcolor") == (None, 0.4)
+                "notacolour%40", "fcolor") == ("#000000", 0.4)
         assert [str(w.message) for w in caught] == [
             "dash: fcolor(notacolour%40) is not a recognised colour; using "
-            "the scheme's default."]
+            "black."]
 
     def test_the_translators_still_raise(self):
         """test_options.py pins these; the notes are raised by the callers."""
@@ -1056,7 +1085,10 @@ class TestTheRemainingSilentSites:
         line = _the_one(std_w, srv_w, "color")
         assert line.startswith("dash: color(notacolour) is not a recognised colour")
         std, srv = _figures(r, doc)
-        assert std.renderers[0].glyph.fill_color == r.mapper.scheme.default_color(0, "area")
+        # Flipped (WP-30 P1.13b): the scheme's #486c8c was wrong because
+        # twoway draws an unknown area colour black at the area's
+        # intensity, #333333 (bare_intensity_truth.json U02).
+        assert std.renderers[0].glyph.fill_color == "#333333"
 
     @pytest.mark.parametrize("ptype", ["bar", "histogram"])
     def test_bar_color_beside_blcolor(self, ptype):
@@ -1067,19 +1099,28 @@ class TestTheRemainingSilentSites:
         line = _the_one(std_w, srv_w, "color")
         assert line.startswith("dash: color(notacolour) is not a recognised colour")
 
-    @pytest.mark.parametrize("go,text", [
-        ({"bgcolor": "notacolour"}, "bgcolor(notacolour)"),
-        ({"plotbgcolor": "notacolour"}, "plotbgcolor(notacolour)"),
-        ({"plotregion": "color(notacolour)"}, "plotregion(color(notacolour))"),
-        ({"plotregion": "lcolor(notacolour)"}, "plotregion(lcolor(notacolour))"),
-        ({"graphregion": "color(notacolour)"}, "graphregion(color(notacolour))"),
-    ], ids=lambda v: v if isinstance(v, str) else "")
-    def test_a_graph_level_colour(self, go, text):
+    @pytest.mark.parametrize("go,text,prop", [
+        # Flipped (WP-30 P1.20a): bgcolor() on the border was wrong because
+        # twoway paints bgcolor() under the graph region (region_truth.json D26-D29); graphregion(color(none)) shows it.
+        ({"bgcolor": "notacolour", "graphregion": "color(none)"},
+         "bgcolor(notacolour)", "border_fill_color"),
+        ({"plotbgcolor": "notacolour"}, "plotbgcolor(notacolour)",
+         "background_fill_color"),
+        ({"plotregion": "color(notacolour)"}, "plotregion(color(notacolour))",
+         "background_fill_color"),
+        ({"plotregion": "lcolor(notacolour)"}, "plotregion(lcolor(notacolour))",
+         "outline_line_color"),
+        ({"graphregion": "color(notacolour)"}, "graphregion(color(notacolour))",
+         "border_fill_color"),
+    ], ids=lambda v: v if isinstance(v, str) and "(" in v else "")
+    def test_a_graph_level_colour(self, go, text, prop):
         r, doc, std_w, srv_w = _both([plot_for("scatter")], go)
         line = _the_one_reading(std_w, srv_w, text)
-        assert line == f"dash: {text} is not a recognised colour; using the scheme's default.", line
+        # Flipped (WP-30 P1.13a): twoway draws graphregion(color(bogus))
+        # black (colour_grammar_truth.json site_08); dash kept the scheme's.
+        assert line == f"dash: {text} is not a recognised colour; using black.", line
         std, srv = _figures(r, doc)
-        # The scheme's chrome is kept, identically.
+        assert getattr(std, prop) == getattr(srv, prop) == "#000000", prop
         assert std.background_fill_color == srv.background_fill_color
         assert std.border_fill_color == srv.border_fill_color
         assert std.outline_line_color == srv.outline_line_color
@@ -1091,15 +1132,23 @@ class TestTheRemainingSilentSites:
         assert std_w == srv_w
         assert not [w for w in std_w if "recognised colour" in w], std_w
         std, srv = _figures(r, doc)
-        # graphregion(color()) is applied after bgcolor(), so it wins.
+        # Flipped (WP-30 P1.20a): "graphregion(color()) is applied after
+        # bgcolor(), so it wins" was wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29):
+        # the graph region is drawn over the canvas.
         assert std.border_fill_color == srv.border_fill_color == \
             dr.OptionTranslator.translate_mcolor("gs14")
+        r2, doc2, _, _ = _both([plot_for("scatter")], {"bgcolor": "ltblue"})
+        std2, srv2 = _figures(r2, doc2)
+        assert std2.border_fill_color == srv2.border_fill_color == \
+            dr.SchemeParser("s2color").background_color
         assert std.outline_line_color == srv.outline_line_color == "#1a476f"
 
     @pytest.mark.parametrize("sub,what,using", [
         ("lpattern(bogus)", "line pattern", "the default"),
         ("lwidth(abc)", "line width", "the default"),
-        ("lcolor(notacolour)", "colour", "the default"),
+        # Flipped (WP-30 P1.13a): twoway draws yline(25, lcolor(bogus))
+        # black; dash kept the scheme's xyline colour.
+        ("lcolor(notacolour)", "colour", "black"),
     ], ids=["lpattern", "lwidth", "lcolor"])
     def test_a_reference_line_sub_option(self, sub, what, using):
         r, doc, std_w, srv_w = _both([plot_for("scatter")],
@@ -1111,13 +1160,17 @@ class TestTheRemainingSilentSites:
         for fig in (std, srv):
             spans = [x for x in fig.center if isinstance(x, Span)]
             assert len(spans) == 1 and spans[0].location == 3000.0
+            if sub.startswith("lcolor"):
+                assert spans[0].line_color == "#000000"
 
     def test_legend_size(self):
         _, _, std_w, srv_w = _both([plot_for("scatter"), plot_for("lfit")],
                                    {"legend": "size(abc)"})
         line = _the_one_reading(std_w, srv_w, "legend(size(abc))")
+        # WP-30 P1.12a: twoway draws an unknown size as medium (11 pt), so
+        # the note says "using medium." (it said "the scheme's default").
         assert line == ("dash: legend(size(abc)) is not a recognised size; "
-                        "using the scheme's default."), line
+                        "using medium."), line
 
     @staticmethod
     def _kpi_texts(r, doc):
@@ -1296,6 +1349,18 @@ _DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
 # the name -- its own rule, documented in "Option values" and in "Stata
 # scheme support" (a dashboard is a file you look at later).
 _DELIBERATE = {"jitterseed", "xaxis", "scheme"}
+# Options whose twoway probe is measured live beside dash's rule rather than
+# in the oracle fixture: zlabel()'s format() (WP-30 P1.5, S17's P1.23b),
+# twoway's "invalid format, bogus" r(198) next to dash's in
+# test_option_validation.cscript AF-18 and the section-17 measurement.
+_PROBED_LIVE = {"zlabel",
+                # WP-30 P1.13a: the colour kind's twoway refusal (invalid
+                # '<word>', r(198)) is measured in
+                # fixtures/colour_grammar_truth.json (comma_*) and asked of
+                # twoway again by test_colour_grammar.py::TestStataTruth.
+                "mcolor", "mfcolor", "mlcolor", "mlabcolor", "lcolor",
+                "fcolor", "color", "acolor", "alcolor", "bfcolor",
+                "blcolor", "clcolor"}
 
 
 def _fixture():
@@ -1322,7 +1387,7 @@ class TestTheOracleFixtureIsInStep:
         cannot be added with nothing behind it."""
         probed = {p["option"] for p in _fixture()["twoway"]}
         for opt, _kind, _ps, _ts in _parse_rules(_BLOCK):
-            if opt not in _DASH_ONLY:
+            if opt not in _DASH_ONLY | _PROBED_LIVE:
                 assert opt in probed, f"{opt}: no twoway probe behind its rule"
 
     @_needs_table
@@ -1353,7 +1418,8 @@ class TestTheOracleFixtureIsInStep:
         test_option_validation.cscript."""
         fx = _fixture()
         for opt, kind, _ps, _ts in _parse_rules(_BLOCK):
-            if kind in ("style", "istyle") or opt in _DASH_ONLY | _DELIBERATE:
+            if (kind in ("style", "istyle")
+                    or opt in _DASH_ONLY | _DELIBERATE | _PROBED_LIVE):
                 continue
             rejected = [p for p in fx["twoway"]
                         if p["option"] == opt and p["rc"] != 0]

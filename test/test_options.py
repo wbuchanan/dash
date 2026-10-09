@@ -156,9 +156,11 @@ class TestTranslateMsize:
             )
 
     def test_numeric_string_passthrough(self):
-        """Numeric strings are converted to float pixels."""
+        """Numeric strings are Stata relative units, converted to pixels."""
         result = OptionTranslator.translate_msize("12")
-        assert result == 12.0
+        # WP-30 P1.12a: twoway reads msize(12) as 12 Stata units, 3.84px
+        # each on dash's one unit (was 12 px).
+        assert result == pytest.approx(12 * 3.84)
 
 
 # ================================================================
@@ -188,8 +190,10 @@ class TestTranslateLwidth:
             )
 
     def test_numeric_string_passthrough(self):
+        """A number is Stata units, 3.84 px each (WP-30 P1.12b; it was
+        passed through as pixels).  The name is kept."""
         result = OptionTranslator.translate_lwidth("2.5")
-        assert result == 2.5
+        assert result == pytest.approx(9.6)
 
 
 # ================================================================
@@ -241,11 +245,22 @@ class TestTranslateLpattern:
 class TestColorEdgeCases:
     """Edge cases for color translation."""
 
-    def test_case_insensitive_color(self):
-        """Color names should be matched case-insensitively."""
-        result_lower = OptionTranslator.translate_mcolor("red")
-        result_upper = OptionTranslator.translate_mcolor("RED")
-        assert result_lower == result_upper
+    def test_colour_names_are_case_sensitive(self):
+        """Stata's colour names are case-sensitive: twoway notes mcolor(Red)
+        ("named style Red not found") and draws it black.
+
+        Flipped (WP-30 P1.13a): RED was read as red."""
+        import warnings
+        import dash_render as dr
+        with pytest.raises(ValueError):
+            OptionTranslator.translate_mcolor("RED")
+        dr._dash_reset_notes()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = OptionTranslator.parse_color_alpha("RED", "mcolor")
+        assert got == ("#000000", None)
+        assert [str(c.message) for c in caught] == [
+            "dash: mcolor(RED) is not a recognised colour; using black."]
 
     def test_lcolor_delegates_to_mcolor_map(self):
         """translate_lcolor should produce same hex as translate_mcolor."""
@@ -282,7 +297,10 @@ class TestColorEdgeCases:
         assert OptionTranslator.translate_mcolor("255 0 0") == "#ff0000"
 
     def test_an_out_of_range_rgb_draws_the_default_with_a_note(self):
-        """Stata's "default attributes used", and dash's note saying so."""
+        """Stata's "named style 300 0 0 not found", and dash's note saying
+        so.  Flipped (WP-30 P1.13a): twoway draws it black (measured,
+        colour_grammar_truth.json opt_90), where this drew the scheme's
+        default colour."""
         import warnings
         import dash_render as dr
         from bokeh.models import ColumnDataSource
@@ -294,6 +312,6 @@ class TestColorEdgeCases:
             warnings.simplefilter("always")
             r = gm.map_scatter(figure(), src, "y", "x", {"mcolor": "300 0 0"})
         glyph = (r[0] if isinstance(r, list) else r).glyph
-        assert glyph.fill_color == gm.scheme.default_color(0, "scatter")
-        assert "dash: mcolor(300 0 0) is not a recognised colour; using the " \
-               "scheme's default." in [str(c.message) for c in caught]
+        assert glyph.fill_color == "#000000"
+        assert "dash: mcolor(300 0 0) is not a recognised colour; using " \
+               "black." in [str(c.message) for c in caught]

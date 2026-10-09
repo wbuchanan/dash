@@ -1,0 +1,428 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "c8807c230913319a9851f8f05c9d3b114fa894f6",
+  "extracted": " 8 Oct 2026 00:39:21",
+  "source": "scripts/extract_default_base_truth.do",
+  "stata_version": "19.5"
+ },
+ "auto": {
+  "area": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "bar": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "dropline": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "spike": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  }
+ },
+ "auto3": {
+  "area": {
+   "curmax": 22.0,
+   "curmin": 17.0,
+   "drawn_base": 17.0,
+   "ticks": [
+    17.0,
+    1.0,
+    22.0
+   ]
+  },
+  "bar": {
+   "curmax": 22.0,
+   "curmin": 17.0,
+   "drawn_base": 17.0,
+   "ticks": [
+    17.0,
+    1.0,
+    22.0
+   ]
+  },
+  "dropline": {
+   "curmax": 22.0,
+   "curmin": 17.0,
+   "drawn_base": 17.0,
+   "ticks": [
+    17.0,
+    1.0,
+    22.0
+   ]
+  },
+  "spike": {
+   "curmax": 22.0,
+   "curmin": 17.0,
+   "drawn_base": 17.0,
+   "ticks": [
+    17.0,
+    1.0,
+    22.0
+   ]
+  }
+ },
+ "bases": {
+  "area_base5": {
+   "curmax": 41.0,
+   "curmin": 5.0,
+   "drawn_base": 5.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "area_log": {
+   "curmax": 14.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "area_y12": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "auto_explicit0": {
+   "curmax": 41.0,
+   "curmin": 0.0,
+   "drawn_base": 0.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "bar_base20": {
+   "curmax": 20.0,
+   "curmin": 10.0,
+   "drawn_base": 20.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "bar_base5": {
+   "curmax": 14.0,
+   "curmin": 5.0,
+   "drawn_base": 5.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "bar_by": {
+   "panels": [
+    {
+     "curmax": 41.0,
+     "curmin": 10.0,
+     "drawn_base": 10.0,
+     "ticks": [
+      10.0,
+      10.0,
+      40.0
+     ]
+    },
+    {
+     "curmax": 41.0,
+     "curmin": 10.0,
+     "drawn_base": 10.0,
+     "ticks": [
+      10.0,
+      10.0,
+      40.0
+     ]
+    }
+   ]
+  },
+  "bar_by_y2": {
+   "panels": [
+    {
+     "curmax": 14.0,
+     "curmin": 10.0,
+     "drawn_base": 10.0,
+     "ticks": [
+      10.0,
+      1.0,
+      14.0
+     ]
+    },
+    {
+     "curmax": 14.0,
+     "curmin": 10.0,
+     "drawn_base": 10.0,
+     "ticks": [
+      10.0,
+      1.0,
+      14.0
+     ]
+    }
+   ]
+  },
+  "bar_by_yrescale": {
+   "panels": [
+    {
+     "curmax": 25.0,
+     "curmin": 10.0,
+     "drawn_base": 10.0,
+     "ticks": [
+      10.0,
+      5.0,
+      25.0
+     ]
+    },
+    {
+     "curmax": 41.0,
+     "curmin": 18.0,
+     "drawn_base": 18.0,
+     "ticks": [
+      20.0,
+      5.0,
+      40.0
+     ]
+    }
+   ]
+  },
+  "bar_if": {
+   "curmax": 14.0,
+   "curmin": 12.0,
+   "drawn_base": 12.0,
+   "ticks": [
+    12.0,
+    0.5,
+    14.0
+   ]
+  },
+  "bar_log": {
+   "curmax": 14.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "bar_range0": {
+   "curmax": 14.0,
+   "curmin": 0.0,
+   "drawn_base": 0.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "bar_reverse": {
+   "curmax": 14.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "bar_scatter": {
+   "curmax": 41.0,
+   "curmin": 0.0,
+   "drawn_base": 0.0,
+   "ticks": [
+    0.0,
+    10.0,
+    40.0
+   ]
+  },
+  "bar_td": {
+   "curmax": 15028.0,
+   "curmin": 14997.0,
+   "drawn_base": 14997.0,
+   "ticks": [
+    14997.0,
+    0.0,
+    15025.0
+   ]
+  },
+  "bar_y12": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "bar_y2": {
+   "curmax": 14.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ],
+   "y": {
+    "curmax": 41.0,
+    "curmin": 10.0,
+    "drawn_base": null,
+    "ticks": [
+     10.0,
+     10.0,
+     40.0
+    ]
+   }
+  },
+  "bar_ydown": {
+   "curmax": 14.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "bar_ydown_if": {
+   "curmax": 14.0,
+   "curmin": 12.0,
+   "drawn_base": 12.0,
+   "ticks": [
+    12.0,
+    0.5,
+    14.0
+   ]
+  },
+  "bar_ylabel5": {
+   "curmax": 15.0,
+   "curmin": 5.0,
+   "drawn_base": 5.0,
+   "ticks": [
+    5.0,
+    5.0,
+    15.0
+   ]
+  },
+  "bar_ymix": {
+   "curmax": 10.0,
+   "curmin": -5.0,
+   "drawn_base": 0.0,
+   "ticks": [
+    -5.0,
+    5.0,
+    10.0
+   ]
+  },
+  "bar_yneg": {
+   "curmax": -10.0,
+   "curmin": -14.0,
+   "drawn_base": -10.0,
+   "ticks": [
+    -14.0,
+    1.0,
+    -10.0
+   ]
+  },
+  "bar_ypos": {
+   "curmax": 14.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "dropline_td": {
+   "curmax": 15028.0,
+   "curmin": 14997.0,
+   "drawn_base": 14997.0,
+   "ticks": [
+    14997.0,
+    0.0,
+    15025.0
+   ]
+  },
+  "dropline_y12": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "spike_base5": {
+   "curmax": 14.0,
+   "curmin": 5.0,
+   "drawn_base": 5.0,
+   "ticks": [
+    10.0,
+    1.0,
+    14.0
+   ]
+  },
+  "spike_y12": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "two_bars": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "drawn_base": 10.0,
+   "drawn_base2": 30.0,
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  }
+ }
+}

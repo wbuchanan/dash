@@ -28,7 +28,7 @@ binds tighter than any other operator, so ``!foreign == 1`` is
 ``(!foreign) == 1``; and ``!`` on a string is a type mismatch, r(109).
 
 The oracle for every case is Stata itself, measured 24sep2026 with
-``arch -arm64 /usr/local/bin/stata-mp -b do`` on the twelve observations of
+the console binary, ``stata-mp -b do``, on the twelve observations of
 ``_LG_ROWS`` (entered with ``input``): each case's rows are Stata's
 ``levelsof id if <qualifier>``, and a refused case's return code is
 ``capture count if <qualifier>``'s.  The x the scatter draws is ``id``, so
@@ -57,6 +57,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import exec_app  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # The data: (id, g, x, r, s, m), exactly as Stata was given it with `input'
@@ -365,7 +366,7 @@ def _served(tmp_path, spec, df=None):
     ns = {"__name__": "_lg_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_lg_app.py", "exec"), ns)
+        exec_app(src.replace(attach, "pass"), "_lg_app.py", ns)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -391,8 +392,7 @@ def served_app(tmp_path_factory):
     ns = {"__name__": "_lg_app_ns"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_lg_app_ns.py", "exec"),
-             ns)
+        exec_app(src.replace(attach, "pass"), "_lg_app_ns.py", ns)
     # The app's own function, not the renderer's.
     assert ns["_dash_qualified_frame"].__module__ == "_lg_app_ns"
     return ns

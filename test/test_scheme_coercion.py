@@ -111,12 +111,15 @@ class TestColor:
         assert "stc99" in msg, f"the warning does not name the token: {msg}"
         assert "color p1" in msg, f"the warning does not name the key: {msg}"
 
-    def test_the_warning_says_the_output_will_not_match_stata(self, sp):
+    def test_the_warning_says_black_as_twoway(self, sp):
+        """Flipped (WP-30 P1.13a): the warning said the output would not
+        match Stata's; dash now draws black, what twoway draws."""
         _set(sp, **{"color p1": "notacolour"})
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            sp._color("color p1")
-        assert any("match Stata" in str(w.message) for w in caught)
+            assert sp._color("color p1") == "#000000"
+        assert any("using black, as twoway does" in str(w.message)
+                   for w in caught)
 
 
 # ======================================================================
@@ -227,13 +230,14 @@ class TestLineWidth:
     def test_a_numeric_value_is_a_stata_linewidth_unit(self, sp):
         """A bare number in a linewidth directive is Stata's unit, the one
         the keywords are defined in (style/linewidth-medium.style sets
-        .30).  dash anchors medium at 1.5 px, so a number is 5 px per unit:
-        economist's ``linewidth p 1.2`` is 6.0 px, four medium widths, not
-        the 1.2 px this test used to pin.  WP-16 (GAPS G5)."""
+        .30).  One unit is 2.88 pt = 3.84 px (WP-30 P1.12b; it was 5 px on
+        dash's private ladder, medium 1.5 px): economist's ``linewidth p
+        1.2`` is 4.608 px, four medium widths, not the 1.2 px this test
+        used to pin.  WP-16 (GAPS G5)."""
         _set(sp, **{"linewidth p1": "3.5"})
-        assert sp._lwidth("linewidth p1") == pytest.approx(17.5)
+        assert sp._lwidth("linewidth p1") == pytest.approx(13.44)
         _set(sp, **{"linewidth p1": "0.30"})
-        assert sp._lwidth("linewidth p1") == pytest.approx(1.5)
+        assert sp._lwidth("linewidth p1") == pytest.approx(1.152)
 
     def test_a_named_width_is_translated(self, sp):
         _set(sp, **{"linewidth p1": "thick"})
@@ -251,21 +255,25 @@ class TestLineWidth:
 
 
 class TestSymbol:
+    """SchemeParser._symbol_traits: (marker, hollow, small factor); it
+    replaced _symbol, which kept the marker alone (WP-30 P1.4a)."""
 
     def test_absent_returns_the_default(self, sp):
-        assert sp._symbol("symbol p1", default="square") == "square"
+        assert sp._symbol_traits("symbol p1", default="square") == \
+            ("square", False, 1.0)
 
     def test_a_known_symbol_is_translated(self, sp):
         _set(sp, **{"symbol p1": "diamond"})
-        assert sp._symbol("symbol p1") == "diamond"
+        assert sp._symbol_traits("symbol p1") == ("diamond", False, 1.0)
 
     def test_a_stata_abbreviation_is_translated(self, sp):
         _set(sp, **{"symbol p1": "Dh"})
-        assert sp._symbol("symbol p1") == "diamond"
+        assert sp._symbol_traits("symbol p1") == ("diamond", True, 1.0)
 
     def test_an_unknown_symbol_returns_the_default(self, sp):
         _set(sp, **{"symbol p1": "octagon"})
-        assert sp._symbol("symbol p1", default="circle") == "circle"
+        assert sp._symbol_traits("symbol p1", default="circle") == \
+            ("circle", False, 1.0)
 
 
 # ======================================================================

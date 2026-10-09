@@ -149,6 +149,19 @@ class TestEachFailureFails:
         assert not ok
         assert any("printed: " + printed.strip() in l for l in lines), lines
 
+    #: WP-30 P1.26a: a note in twoway's form holds none of the older
+    #: needles; the gate still fails the example that prints one.
+    @pytest.mark.parametrize("printed", [
+        "dash: graph 'g' plot 2 (lfit): (note:  regress could not fit model)",
+        "(note:  dash: aspectratio(2) is drawn as the plot's shape.)",
+    ])
+    def test_an_example_that_prints_a_note(self, printed):
+        f = EXAMPLES[0]
+        ok, lines = _judge(_gate_log(), logs={
+            "/w/logs/example_%s.log" % f: CLEAN_LOG + printed + "\n"})
+        assert not ok
+        assert any("printed: " + printed.strip() in l for l in lines), lines
+
     def test_a_scheme_page_that_falls_back(self):
         s = SCHEMES[0]
         ok, lines = _judge(_gate_log(), logs={
@@ -212,13 +225,18 @@ class TestTheGateIsWiredUp:
         with open(os.path.join(ROOT, "Makefile"), encoding="utf-8") as fh:
             mk = fh.read()
         assert re.search(r"^gate:\n\t.*scripts/run_release_gate\.sh", mk, re.M)
-        assert re.search(r"^release: check gate$", mk, re.M)
+        # The batch tier and the release tier run between check and the
+        # gate: everything a whole-suite run leaves out is run before release.
+        assert re.search(r"^release: check test-batch test-release gate$", mk,
+                         re.M)
 
     def test_the_runner_uses_the_console_binary_in_batch(self):
         with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
                   encoding="utf-8") as fh:
             sh = fh.read()
-        assert 'arch -arm64 "$STATA" -b do' in sh
+        # WP-30 P1.34: both Stata starts go through the wrapper.
+        assert sh.count('sh "$REPO/scripts/stata_batch.sh" -b do') == 2
+        assert '"$STATA"' not in sh
         assert 'STATATMP="$dir/tmp/"' in sh
         assert "StataMP.app" not in sh and "open -a" not in sh
         assert "scripts/release_verdict.py" in sh
@@ -344,6 +362,19 @@ class TestTheVenvSessions:
         use = do[do.index('if "`phase\'" == "venvuse" {'):]
         assert use.index("python set exec") < use.index("python:")
 
+    def test_the_use_phase_reports_its_python(self):
+        """WP-30 P1.33: the venv-linked session says which Python ran, so
+        the floor matrix's Stata leg (scripts/floor_stata_leg.do) shows
+        the interpreter it measured."""
+        with open(os.path.join(ROOT, "scripts", "release_gate_venv.do"),
+                  encoding="utf-8") as fh:
+            do = fh.read()
+        use = do[do.index('if "`phase\'" == "venvuse" {'):]
+        use = use[:use.index("\n}\n")]
+        assert "GATE venv-python" in use
+        assert use.index('display "GATE venv-link rc=') < use.index(
+            "GATE venv-python")
+
     def test_the_runner_runs_both_phases_offline(self):
         with open(os.path.join(ROOT, "scripts", "run_release_gate.sh"),
                   encoding="utf-8") as fh:
@@ -351,7 +382,8 @@ class TestTheVenvSessions:
         assert "for phase in venvmake venvuse" in sh
         assert "PIP_NO_INDEX=1" in sh
         assert "release_gate_venv.do" in sh
-        assert 'arch -arm64 "$STATA" -b do' in sh
+        assert ('PIP_NO_INDEX=1 STATATMP="$dir/tmp/" sh '
+                '"$REPO/scripts/stata_batch.sh" -b do') in sh
         assert '"$dir/work/venvmake.log" "$dir/work/venvuse.log"' in sh
 
     def test_the_runner_reads_the_log_stata_names_for_each_phase(self):

@@ -123,13 +123,13 @@ Not implemented, by family:
 
 - **S06 (3):** `horizontal` `sort` `vertical`
   — note `sort` is reported "unsupported" although dash sorts by default; if
-  that is a no-op it should say so, not imply the plot is wrong. [WP-29 P0.1, commit b0d170d: partly closed; open: `horizontal`, `vertical`]
+  that is a no-op it should say so, not imply the plot is wrong. [WP-29 P0.1, commit b0d170d: partly closed; open: `horizontal`, `vertical`] [WP-30 P1.9b, commit a5e3757: closed (with P1.9a, commit 7229a0c): horizontal and vertical drawn and refused as twoway does]
 - **S07 (13):** `adjust` `area` `atobs` `ciplot` `discrete` `estcmd` `estopts`
   `fitplot` `logit` `mean` `nofit` `noweight` `predopts`
 - **S09 axes/text (26):** `b1title` `b2title` `droplines` `l1title` `l2title`
   `r1title` `r2title` `t1title` `t2title` `text` `tlabel` `tline` `tmlabel`
   `tmtick` `tscale` `ttext` `ttick` `ttitle` `xmlabel` `xmtick` `xvarformat`
-  `xvarlabel` `ymlabel` `ymtick` `yvarformat` `yvarlabel`
+  `xvarlabel` `ymlabel` `ymtick` `yvarformat` `yvarlabel` [WP-30 P1.6, commit c565897: partly closed; open: the edge titles and the other options of the list] [WP-30 P1.10, commit 56b3597: text and ttext drawn] [WP-30 P1.5, commit 34832ad: xvarformat read]
 - **S09 style (47):** `acolor` `alalign` `alpattern` `alstyle` `alwidth`
   `astyle` `barbsize` `baroffset` `bstyle` `clegend` `colorend`
   `colorfillonly` `colorformissing` `colorkeysrange` `colorlevels`
@@ -137,7 +137,7 @@ Not implemented, by family:
   `dlalign` `dlcolor` `dlstyle` `dlwidth` `dotextend` `dsize` `dstyle`
   `dsymbol` `gap` `headlabel` `lalign` `lstyle` `mangle` `mlabangle`
   `mlabformat` `mlabstyle` `mlabtextstyle` `mlabvposition` `mlalign`
-  `mlstyle` `mstyle` `mwidth` `ndots` `nodropbase` `pcycle` `plegend`
+  `mlstyle` `mstyle` `mwidth` `ndots` `nodropbase` `pcycle` `plegend` [WP-30 P1.14b, commit 38bbb05: partly closed (with P1.14a, commit f4216a8): lstyle, mstyle, mlstyle, astyle, bstyle drawn; dstyle, dlstyle, bmlinestyle named (P2.9, P2.8)] [WP-30 P1.24, commit 390d964: mlabvposition and mlabtextstyle drawn]
 - **S10 (3):** `fxsize` `fysize` `scale`
 
 The 11 `t*`/`pcarrow` options were re-probed on `tsset` monthly data and
@@ -163,10 +163,10 @@ Measured at HEAD:
 
 | required | actual |
 |---|---|
-| error naming the set | `warnings.warn(...)` then `_raw_name = ""` → **`s2color`** (`dash_render.py:7970-7982`) |
-| validated in Stata | `dash.ado` has **no** scheme-name validation |
-| `.scheme` file path retired | `SchemeParser._resolve_path` still resolves `name.endswith(".scheme")` from the CWD (`:1691-1714`); `_resolve_scheme_name` explicitly exempts it (`not _raw_name.endswith(".scheme")`) |
-| help matches code | `dash.sthlp:1084` still tells users to "put its Stata-format `.scheme` file in the working directory" |
+| error naming the set | `warnings.warn(...)` then `_raw_name = ""` → **`s2color`** (`dash_render.py:7970-7982`) [WP-30 P1.25b, commit 15c4f7b: closed] |
+| validated in Stata | `dash.ado` has **no** scheme-name validation [WP-30 P1.25b, commit 15c4f7b: closed: dash.ado refuses an unknown scheme] |
+| `.scheme` file path retired | `SchemeParser._resolve_path` still resolves `name.endswith(".scheme")` from the CWD (`:1691-1714`); `_resolve_scheme_name` explicitly exempts it (`not _raw_name.endswith(".scheme")`) [WP-30 P1.25b, commit 15c4f7b: answered by M7: files found along the ado-path under name, containment, regular-file and size guards] |
+| help matches code | `dash.sthlp:1084` still tells users to "put its Stata-format `.scheme` file in the working directory" [WP-30 P1.25b, commit 15c4f7b: closed] |
 
 So a typo in `scheme()` silently produces the wrong aesthetic, and the
 path-traversal surface the plan wanted closed is still reachable.
@@ -302,12 +302,12 @@ Sources: ① measured this session; ② deep-audit agent; ③ CHANGELOG (self-re
 | 03 | Scheme translation | 5 | 3 done, 2 partial ② | `color foreground`; all 14 inert once installed ① |
 | 04 | Abbreviations | 5 | 4 done, 1 partial ② | narrow |
 | 05 | Option surface | 6 | **05-04 not done** ① | 92 options declared nowhere |
-| 06 | Varlist / plot-spec | 7 | 2 done, 5 partial ② | `horizontal` `sort` `vertical` ①; positional plot-options across an expanded varlist; **no S06 entry in CHANGELOG** ② [WP-29 P0.1, commit b0d170d: partly closed; open: `horizontal`, `vertical`, positional plot-options across an expanded varlist, no S06 entry in CHANGELOG] |
+| 06 | Varlist / plot-spec | 7 | 2 done, 5 partial ② | `horizontal` `sort` `vertical` ①; positional plot-options across an expanded varlist; **no S06 entry in CHANGELOG** ② [WP-29 P0.1, commit b0d170d: partly closed; open: `horizontal`, `vertical`, positional plot-options across an expanded varlist, no S06 entry in CHANGELOG] [WP-30 P1.9b, commit a5e3757: horizontal and vertical closed (P1.9a, commit 7229a0c)] [WP-30 P1.1b, commit 8bd6b5a: positional plot-options across an expanded varlist closed (P1.1a, commit e8953d4)] |
 | 07 | Statistical defaults | 6 | done ③, 13 options open ① | see §2 |
 | 08 | Formats, dates, labels | 6 | 2 done, 4 partial ② | `xvarformat` `yvarformat` `xvarlabel` `yvarlabel` ①; `test_formats.cscript` absent ② |
-| 09 | Axes, legend, titles | 7 | 1 done, 6 partial ②, **73 options open** ① | see §2 — largest single family; none of S09 reached `ServerAppBuilder` |
+| 09 | Axes, legend, titles | 7 | 1 done, 6 partial ②, **73 options open** ① | see §2 — largest single family; none of S09 reached `ServerAppBuilder` [WP-30 P1.6, commit c565897: partly closed; open: the 73-option row's other options (P2 rows)] |
 | 10 | Geometry | 4 | 2 done, 2 partial ② | `fxsize` `fysize` `scale` ① |
-| 11 | Scheme consumption | 6 | **11-05 not done** ①, 6 partial ② | error not warning; Stata-side validation; retire `.scheme` path; help; scheme-driven **text sizing** (title, note, subtitle, mlabel) still ignored ② |
+| 11 | Scheme consumption | 6 | **11-05 not done** ①, 6 partial ② | error not warning; Stata-side validation; retire `.scheme` path; help; scheme-driven **text sizing** (title, note, subtitle, mlabel) still ignored ② [WP-30 P1.4b, commit c0518a7: partly closed; open: title, note and subtitle sizing] [WP-30 P1.25b, commit 15c4f7b: the error names the set, help matches code; the .scheme path answered by M7] |
 | 12 | Layout, tabs, facets | 5 | 5 partial ② | `by()` group cap ①; `layout(s1:1,1 s2:1,1)` still drops a graph silently outside Bootstrap ② |
 | 13 | Linking, filters, KPI | 6 | 3 done, 3 partial ② | dropdown option cap ① |
 | 14 | Server root fix | 5 | 2 done, 3 partial ② | `_MAX_IPS` structure ①; no `_rc` check after the six shell browser launches ② |
@@ -393,7 +393,7 @@ All to PARTIAL; 10 small, 5 medium, 1 large, 1 cosmetic.
 | 08-03 | out-of-range period values raise instead of coercing to `NaT` |
 | 09-06 | `missing()` misses Stata's *string* missing; a missing bound in a range is mishandled |
 | 10-01 | the KPI-span test the section's own stub named is absent |
-| 10-03 | facet ratios never thread into `_auto_bs_layout` |
+| 10-03 | facet ratios never thread into `_auto_bs_layout` [WP-30 P1.15b, commit 1326b97: closed] |
 | 13-04 | the brush callback does not carry `dash_pctl`, so percentile KPIs are wrong under brushing |
 | 14-01 | both server-fixture `__enter__` paths can leak a process on failure |
 
@@ -444,7 +444,7 @@ state 05-04 exists to end.
   `fitplot` `logit` `mean` `nofit` `noweight` `predopts`
 - **S09 axes/text (13):** `droplines` `tlabel` `tline` `tmlabel` `tmtick`
   `tscale` `ttext` `ttick` `ttitle` `xvarformat` `xvarlabel` `yvarformat`
-  `yvarlabel`
+  `yvarlabel` [WP-30 P1.6, commit c565897: partly closed; open: droplines, xvarlabel, yvarlabel] [WP-30 P1.10, commit 56b3597: ttext drawn] [WP-30 P1.5, commit 34832ad: xvarformat and yvarformat read]
 - **S09 style (43):** `acolor` `alalign` `alpattern` `alstyle` `alwidth`
   `astyle` `barbsize` `baroffset` `bstyle` `clegend` `colorend`
   `colorfillonly` `colorformissing` `colorkeysrange` `colorlevels` `colorrule`
@@ -452,7 +452,7 @@ state 05-04 exists to end.
   `dlstyle` `dlwidth` `dotextend` `dsize` `dstyle` `dsymbol` `gap`
   `headlabel` `lalign` `mangle` `mlabangle` `mlabformat` `mlabstyle`
   `mlabtextstyle` `mlabvposition` `mlalign` `mwidth` `ndots` `nodropbase`
-  `pcycle` `plegend`
+  `pcycle` `plegend` [WP-30 P1.14b, commit 38bbb05: partly closed (with P1.14a, commit f4216a8): the named styles drawn; dstyle, dlstyle named (P2.9)] [WP-30 P1.24, commit 390d964: mlabvposition and mlabtextstyle drawn]
 
 Each needs its S04 minimum abbreviation, a serializer entry, and a
 `_dash_pending` line so it stays reported until its section lands.
@@ -826,7 +826,7 @@ halves of the tuple are the same raw string.
   `_dash_plot_opts_to_json`).     *Where:* `dash.ado:_dash_parse_graph_opts
   (syntax block, :281), dash.ado:_dash_parse_plot_opts (syntax block, :475),
   dash.ado:_dash_plot_opts_to_json (:854), dash.ado:_dash_plot (gopts_json
-  loop, :1462), dash.ado:_dash_process_seg`
+  loop, :1462), dash.ado:_dash_process_seg` [WP-30 P1.34, commit 44f8ab0: corrected -- the generator is retired and refuses to run]
 - **[deli · dash.ado · M]** Measure the minimum abbreviation for the 69
   undeclared options and add them to test/fixtures/abbrev_truth.json. None of
   the 69 has an entry today, so there is no S04 truth to declare them against
@@ -885,7 +885,7 @@ halves of the tuple are the same raw string.
   from test/fixtures/rejected_options.json so it cannot go stale.     *Where:*
   `test/test_option_surface.cscript (new O2-08 check),
   test/test_unsupported_report_is_true.py:PLOT_VALUES,
-  test/fixtures/rejected_options.json`
+  test/fixtures/rejected_options.json` [WP-30 P1.24, commit 390d964: closed: TestDeclaredOptionsReachTheSpec is the test]
 - **[deli · dash.ado · S]** Correct REMAINING.md section 2. It states "92
   options the plan said to implement are only accepted and reported, so their
   values never reach the spec". Measured, that is wrong for 23 of them:
@@ -1185,7 +1185,7 @@ halves of the tuple are the same raw string.
   format would still not format.     *Where:* `dash_render.py:9910 (`if not
   raw_ax and not raw_tick: continue` — the guard that skips the fallback);
   dash_render.py:9159-9171 (the fallback itself, inside `_apply_axis_spec`);
-  dash_render.py:395 `_stata_numeric_pattern``
+  dash_render.py:395 `_stata_numeric_pattern`` [WP-30 P1.5, commit 34832ad: closed]
 - **[func · both · S]** Compute xlabel(minmax) from the graph's active view
   rather than the whole frame — the same defect 09-07 fixed for
   `_compute_secondary_range`, still present here.     *Where:*
@@ -1294,7 +1294,7 @@ halves of the tuple are the same raw string.
   standalone/server parity split.     *Where:* `dash_render.py:3350
   (GlyphMapper._apply_mlabel_opts, `text_font_size="10px"`); server literals
   at dash_render.py:14452, 14482, 14500, 14530, 14550, 14583, 14653
-  (`_r_mlab_kw`, `text_font_size='9px'`) and 14906 (`_mlab_kw`
+  (`_r_mlab_kw`, `text_font_size='9px'`) and 14906 (`_mlab_kw` [WP-30 P1.4b, commit c0518a7: closed]
 - **[func · both · S]** Route scheme.title_color and scheme.heading_font_size
   onto the figure Title (and the alignment the task names). Today the Title
   model is only touched when the user passes title() sub-options; with no
@@ -1302,7 +1302,7 @@ halves of the tuple are the same raw string.
   all.     *Where:* `dash_render.py:9588-9596 (DashRenderer figure build, the
   `_t_text, _t_opts = _parse_textbox_opt(...)` block — apply the scheme before
   it so explicit sub-options still win); server: no `fig.title.*` assignment
-  exists afte`
+  exists afte` [WP-30 P1.2a, commit 6a777a3: closed]
 - **[func · both · S]** Make scheme.note_font_size the default size for the
   note() annotation. It currently has ZERO consumers anywhere in the file —
   the note Label uses a hardcoded 11.0px default in both renderers.
@@ -1394,7 +1394,7 @@ halves of the tuple are the same raw string.
   *Where:* `dash_render.py:4947-4950 (`GlyphMapper.map_rarea`,
   `fill_alpha=0.5`); dash_render.py:15157 and 15258 (emitted
   `_fac_fig.quad(... fill_alpha=0.6 ...)` and `_tot_fig.quad(...
-  fill_alpha=0.6 ...)`)`
+  fill_alpha=0.6 ...)`)` [WP-30 P1.4a, commit 638970a: closed: rarea takes the scheme's opacity]
 - **[deli · standalone · S]** Decide and record what the continuous colorvar()
   ramp should be. The task names Viridis256 as ignoring the scheme but
   prescribes a replacement only for the discrete case, and no Stata scheme
@@ -1631,7 +1631,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   the script traceback-ing.     *Where:*
   `/Users/billy/Desktop/Programs/StataPrograms/d/dash/scripts/regen_option_surface.py:17
   (REPO), :299 (json.dump path), splice steps 2 and 4,
-  /Users/billy/Desktop/Programs/StataPrograms/d/dash/dash.ado:5`
+  /Users/billy/Desktop/Programs/StataPrograms/d/dash/dash.ado:5` [WP-30 P1.34, commit 44f8ab0: corrected -- the generator is retired and refuses to run]
 - **[func · both · S]** `bw()` is hijacked: a legal twoway abbreviation of
   `bwidth()` is routed to `barwidth` and silently discarded, so
   kdensity/lowess/lpoly draw at the DEFAULT bandwidth with no note.
@@ -1976,7 +1976,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   `y1var`/`x1var`/`y2var`/`x2var` and get no datetime axis on either axis.
   *Where:* `dash_render.py:9268-9298 (`DashRenderer._figure_date_kind`); its
   two call sites dash_render.py:9559-9560 in `_make_figure_body`;
-  dash_render.py:10415-10421 (`_add_glyph`, where the histogram/kdensity ` [WP-29 P0.8, commit cd210ea: partly closed; open: (b) the range types' yvar1/yvar2 and (c) the pc types' coordinates get no date axis (REM-08-04-C3b, C3c; DROPIN P1.23)]
+  dash_render.py:10415-10421 (`_add_glyph`, where the histogram/kdensity ` [WP-29 P0.8, commit cd210ea: partly closed; open: (b) the range types' yvar1/yvar2 and (c) the pc types' coordinates get no date axis (REM-08-04-C3b, C3c; DROPIN P1.23)] [WP-30 P1.23a, commit 7aa8875: closed for (b) and (c); (a) closed by WP-29 P0.8]
 - **[func · standalone · S]** Partition plots by their `options.yaxis` /
   `options.xaxis` before `_figure_date_kind` demands agreement. Today a single
   secondary-axis layer POISONS the primary axis: a graph whose primary y is a
@@ -1987,7 +1987,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   before the second layer was added.     *Where:* `dash_render.py:9286-9297
   (`_figure_date_kind`'s loop and its `if len(kinds) > 1 or None in kinds:
   return None` bail); dash_render.py:9559-9560 (the two calls, which pass the
-  unpartitioned `plots` list`
+  unpartitioned `plots` list` [WP-30 P1.23a, commit 7aa8875: closed]
 - **[func · standalone · S]** Convert `xline()` / `yline()` reference-line
   values to the datetime axis's millisecond scale. `_make_figure_body` drops
   each user value straight into `Span(location=float(v))`, so
@@ -2011,7 +2011,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   `dash_render.py:9159-9170 (`_apply_axis_spec`, the
   `fmt`/`NumeralTickFormatter` block and its suppressed warning branch);
   dash_render.py:9598-9603 (`_make_figure_body`, where
-  `_datetime_formatter_for` `
+  `_datetime_formatter_for` ` [WP-30 P1.5, commit 34832ad: closed]
 - **[func · standalone · S]** Convert `scatteri` / `pci` literal coordinates
   to the datetime axis's millisecond scale when the figure they are overlaid
   on has a date axis. The values arrive from `dash.ado` as a JSON array of raw
@@ -2019,7 +2019,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   written with a date coordinate lands at 1970-01-01.     *Where:*
   `dash_render.py `map_scatteri` / `_add_pc_glyph` (dash_render.py:10423
   onward) and the `values` consumption path; the date kind is available on the
-  figure via `_figure_date_kind` at dash_render.py:9559`
+  figure via `_figure_date_kind` at dash_render.py:9559` [WP-30 P1.23a, commit 7aa8875: closed]
 - **[func · standalone · S]** Stop `_stata_dates_to_datetime` raising on
   out-of-range period values. `_from_parts` calls `pd.to_datetime` on a
   year/month frame; for `%tm`/`%tq`/`%tw` values past pandas' Timestamp range
@@ -2205,7 +2205,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   The same branch shows raw floats for a `%12.0fc` colorvar key.     *Where:*
   `dash_render.py:2995 `GlyphMapper._apply_colorvar`; the numeric probe at
   :3095-3100; the stringifying write at :3180 `source.data[varname] = [str(v)
-  for v in raw_col]`; the value-label branch at :3160-`
+  for v in raw_col]`; the value-label branch at :3160-` [WP-30 P1.23b, commit cc3c900: closed]
 - **[func · standalone · S]** Carry the Stata numeric display format onto
   filter slider/range ENDPOINTS. `build_slider` and `build_range` already take
   `date_kind` and set `format=DatetimeTickFormatter()` for clock series, but a
@@ -2238,7 +2238,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   user-visible the moment that is fixed.     *Where:*
   `dash_render.py:10262-10305 (the `_fb_fields` fallback inside
   `DashRenderer._make_figure`), to mirror `_hover_row` at :10215-10234;
-  `_tooltip_precision` at :174`
+  `_tooltip_precision` at :174` [WP-30 P1.23b, commit cc3c900: closed]
 - **[func · both · M]** Render the calendar-period formats with Stata's own
   period picture. `_format_date_value_standalone` collapses `%tm`/`%tq`/`%th`
   to `"%b %Y"` and sends `%tw` to the day branch, so a quarterly variable
@@ -2453,7 +2453,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   satisfy. `off` is a two-line implementation (`axis_obj.visible = False`).
   *Where:* `dash_render.py:805 `_report_unhandled_scale_opts` (extend the
   token list); dash_render.py:9747-9773 (apply `off`); server side has neither
-  (see the auditor's server range item)` [WP-29 P0.5, commit 3208b2b: partly closed; open: `off`, `noline`, `titlegap()`, `lcolor()`/`lwidth()`/`lpattern()` still pass through (DROPIN P1.18)]
+  (see the auditor's server range item)` [WP-29 P0.5, commit 3208b2b: partly closed; open: `off`, `noline`, `titlegap()`, `lcolor()`/`lwidth()`/`lpattern()` still pass through (DROPIN P1.18)] [WP-30 P1.18a, commit ebde0e9: closed]
 - **[func · both · S]** axis_label sub-options outside the implemented five
   are silently dropped, and `axis(#)` is actively misrouted: `xlabel(1000
   2000, axis(2))` applies the ticks to the PRIMARY x axis instead of the
@@ -2463,7 +2463,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   `notick`, `add`, `custom` and `angle(stacked)` vanish with no report.
   *Where:* `dash_render.py:9305 `_parse_axis_spec` (the sub-option strip
   regex, ~:9344-9350); dash_render.py:904 `_parse_axis_angle`; route `axis(2)`
-  to the secondary-axis code at dash_render.py:9699/:9734 or rep` [WP-29 P0.5, commit 3208b2b: partly closed; open: `valuelabel`, `alternate`, `notick`, `add`, `custom` and `angle(stacked)` (DROPIN P1.18, P2.20)]
+  to the secondary-axis code at dash_render.py:9699/:9734 or rep` [WP-29 P0.5, commit 3208b2b: partly closed; open: `valuelabel`, `alternate`, `notick`, `add`, `custom` and `angle(stacked)` (DROPIN P1.18, P2.20)] [WP-30 P1.18b, commit a34192b: partly closed (with P1.18a, commit ebde0e9; P1.19, commit ecb8aec); open: alternate, custom (P2.20)]
 - **[func · standalone · S]** The `grid` sub-option paints a hardcoded
   `#e5e5e5` instead of the scheme's gridline colour, which the renderer
   already computes as `self.grid_color` and applies everywhere else
@@ -2779,7 +2779,7 @@ accounts for the largest share, and almost all of it is downstream of 15-03.
   text_font_size/title_color, in the same place the ColorBar is built.
   *Where:* `dash_render.py:3266-3272 (`GlyphMapper._apply_colorvar`,
   `fig.add_layout(ColorBar(color_mapper=mapper, label_standoff=8, width=12,
-  location=(0,0), title=html.escape(var_display)), "right")`)`
+  location=(0,0), title=html.escape(var_display)), "right")`)` [WP-30 P1.4b, commit c0518a7: partly closed; open: the key's title orientation and one-sided axis line (P2.10)]
 - **[func · server · S]** In server mode a by()-faceted figure's legend never
   receives the scheme chrome: `_dash_style_legend` is called only from the
   main (unfaceted) plot loop, while the facet loop builds its figure and its

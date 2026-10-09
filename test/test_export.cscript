@@ -20,8 +20,22 @@
 *!
 *! No server is started: _dash_serve_spec is everything `dash serve' does
 *! except the launch.
+*!
+*! It also certifies what dash returns -- r(filename), the absolute path of
+*! the file a command wrote, and nothing else -- and the note that graph
+*! export writes Stata's graph, not the dashboard (GE-01..GE-14, WP-30
+*! P1.28a).
 
 cscript "dash export: the csv option" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // cscript drops every global, the runner's $dash_nobrowser with it.
 global dash_nobrowser 1
@@ -126,6 +140,249 @@ assert _rc == 198
 capture confirm file "`f7'"
 assert _rc != 0
 display "EXP-06 PASS: csv(1) is refused"
+
+// ===============================================================
+// GE-01..GE-14 (WP-30 P1.28a) -- what dash leaves in r(), and the note
+// about graph export.  Every case writes in its own folder under
+// c(tmpdir); r() is read by _ge_r straight after the dash call, because
+// cert_log_has, cd and graph dir replace it.  Graphs are drawn here, after
+// cscript (which runs discard and empties graph memory).
+// ===============================================================
+capture program drop _ge_r
+program define _ge_r
+    // Not rclass: r() is read as the dash call left it.
+    mata: st_local("m", invtokens(sort(st_dir("r()", "macro", "*"), 1)'))
+    mata: st_local("n", strofreal(rows(st_dir("r()", "numscalar", "*")) + rows(st_dir("r()", "strscalar", "*")) + rows(st_dir("r()", "matrix", "*"))))
+    mata: st_local("f", st_global("r(filename)"))
+    c_local ge_mac `"`m'"'
+    c_local ge_nsc `n'
+    c_local ge_rf `"`f'"'
+end
+capture program drop _ge_notes
+program define _ge_notes
+    // _ge_notes <log> <needle>: c_local ge_n, the lines holding it.
+    cert_log_has "`1'", needle(`"`2'"')
+    c_local ge_n = r(count)
+end
+local ge_needle "graph export writes the graph in Stata's Graph window, not this dashboard; graphs in memory: "
+local ge_pwd "`c(pwd)'"
+local ge_dir "`c(tmpdir)'dash_ge_cases"
+capture mkdir "`ge_dir'"
+quietly cd "`ge_dir'"
+local ge_here "`c(pwd)'"
+quietly cd "`ge_pwd'"
+graph drop _all
+dash clear
+
+// GE-01 -- the one-line form stores the absolute path of its page, and
+// only it: the helpers' r(fn) (dash.ado's path) and summarize's r() are gone.
+capture noisily {
+    quietly cd "`ge_here'"
+    quietly summarize price
+    dash scatter mpg weight, saving(ge01.html, replace)
+    _ge_r
+}
+local rc = _rc
+quietly cd "`ge_pwd'"
+assert `rc' == 0
+assert `"`ge_rf'"' == "`ge_here'/ge01.html"
+assert "`ge_mac'" == "filename" & `ge_nsc' == 0
+confirm file "`ge_rf'"
+display "GE-01 PASS: r(filename) is the page's absolute path, and r() holds nothing else"
+
+// GE-08 (guard) -- a refused command straight after stores nothing.
+capture dash scatter mpg, saving("`ge_here'/ge08.html", replace)
+local rc = _rc
+_ge_r
+assert `rc' == 102
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+display "GE-08 PASS: a refused command leaves r() empty"
+
+// GE-02 -- without saving(), the temporary preview page.
+capture log close ge
+quietly log using "`ge_here'/ge02.log", text replace name(ge)
+dash scatter mpg weight
+_ge_r
+quietly log close ge
+assert strpos(`"`ge_rf'"', "`c(tmpdir)'") == 1
+assert strpos(`"`ge_rf'"', "/previews/dash-preview-") > 0
+assert substr(`"`ge_rf'"', -5, 5) == ".html"
+confirm file "`ge_rf'"
+_ge_notes "`ge_here'/ge02.log" "dash: dashboard saved to `ge_rf'"
+assert `ge_n' == 1
+display "GE-02 PASS: r(filename) names the preview page the saved-to line shows"
+
+// GE-03 -- dash build stores its page, and its server app; no r(open) or
+// r(flag) from the browser decision.
+dash scatter mpg weight, name(ge03)
+_ge_r
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+dash build, saving("`ge_here'/ge03.html") replace
+_ge_r
+assert `"`ge_rf'"' == "`ge_here'/ge03.html" & "`ge_mac'" == "filename" & `ge_nsc' == 0
+confirm file "`ge_rf'"
+dash build, saving("`ge_here'/ge03.py") replace server
+_ge_r
+assert `"`ge_rf'"' == "`ge_here'/ge03.py" & "`ge_mac'" == "filename" & `ge_nsc' == 0
+cert_file_has "`ge_here'/ge03.py", needle("def make_document")
+assert r(found) == 1
+dash clear
+display "GE-03 PASS: dash build stores its page and its server app, and nothing else"
+
+// GE-05 -- the twoway-prefixed route stores its page; a registration right
+// after stores nothing (no stale path), saving() or not.
+dash twoway scatter mpg weight, saving("`ge_here'/ge05.html", replace)
+_ge_r
+assert `"`ge_rf'"' == "`ge_here'/ge05.html"
+dash scatter mpg weight, name(ge05)
+_ge_r
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+dash scatter mpg weight, name(ge05b) saving("`ge_here'/ge05b.html")
+_ge_r
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+dash clear
+display "GE-05 PASS: the prefixed route stores its page; a registration after it stores nothing"
+
+// GE-06 -- dash kpi and dash clear store nothing.
+quietly summarize price
+dash kpi mean(mpg), name(ge06) title("Mean mpg")
+_ge_r
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+dash build, saving("`ge_here'/ge06.html") replace
+dash clear
+_ge_r
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+display "GE-06 PASS: dash kpi and dash clear store nothing"
+
+// GE-09 -- _dash_result returns the path by value and empties the global;
+// with no path it returns nothing and prints no note, graph or not.
+global b "ZZ"
+mata: st_global("dash__rfile", "/x/a" + char(36) + "b.html")
+_dash_result
+mata: st_local("ge9", strofreal(st_global("r(filename)") == "/x/a" + char(36) + "b.html"))
+assert `ge9' == 1
+assert "$dash__rfile" == ""
+macro drop b
+quietly twoway scatter price weight
+capture log close ge
+quietly log using "`ge_here'/ge09.log", text replace name(ge)
+_dash_result
+_ge_r
+quietly log close ge
+graph drop _all
+assert "`ge_mac'" == "" & `ge_nsc' == 0
+_ge_notes "`ge_here'/ge09.log" "`ge_needle'"
+assert `ge_n' == 0
+display "GE-09 PASS: the path is returned as written, and no path posts nothing"
+
+// GE-10 -- a relative path with .. is joined, not resolved, and still
+// names the file after a cd.
+capture mkdir "`ge_here'/sub"
+capture noisily {
+    quietly cd "`ge_here'/sub"
+    dash scatter mpg weight, saving(../ge10.html, replace)
+    _ge_r
+    assert `"`ge_rf'"' == "`ge_here'/sub/../ge10.html"
+}
+local rc = _rc
+quietly cd "`ge_pwd'"
+assert `rc' == 0
+confirm file "`ge_rf'"
+display "GE-10 PASS: r(filename) is the working folder joined to the path as typed"
+
+// GE-11 -- _dash_abs_path, every branch.
+mata:
+bs = char(92)
+ge = (("x.html", "/w", "MacOSX", "/w/x.html") \
+      ("/a/x.html", "/w", "MacOSX", "/a/x.html") \
+      ("~/x.html", "/w", "Unix", "~/x.html") \
+      ("a" + bs + "b.html", "/w", "MacOSX", "/w/a" + bs + "b.html") \
+      ("../x.html", "/w/d", "Unix", "/w/d/../x.html") \
+      ("x", "/", "Unix", "/x") \
+      ("", "/w", "MacOSX", "") \
+      ("C:" + bs + "d" + bs + "x.html", "C:" + bs + "w", "Windows", "C:" + bs + "d" + bs + "x.html") \
+      (bs + bs + "srv" + bs + "x.html", "C:" + bs + "w", "Windows", bs + bs + "srv" + bs + "x.html") \
+      ("/x.html", "C:" + bs + "w", "Windows", "/x.html") \
+      ("x.html", "C:" + bs + "w", "Windows", "C:" + bs + "w" + bs + "x.html") \
+      ("x.html", "C:" + bs, "Windows", "C:" + bs + "x.html"))
+bad = 0
+for (i = 1; i <= rows(ge); i++) {
+    if (_dash_abs_path(ge[i, 1], ge[i, 2], ge[i, 3]) != ge[i, 4]) {
+        printf("GE-11 row %f: got %s\n", i, _dash_abs_path(ge[i, 1], ge[i, 2], ge[i, 3]))
+        bad++
+    }
+}
+st_local("ge11", strofreal(bad))
+end
+assert `ge11' == 0
+display "GE-11 PASS: _dash_abs_path keeps an absolute path and joins a relative one, on every OS"
+
+// GE-12 -- with a Stata graph in memory the one-line form notes it once,
+// quietly too, and leaves graph memory as it was.
+quietly twoway scatter price weight
+quietly graph dir, memory
+local ge_before "`r(list)'"
+set linesize 255
+capture log close ge
+quietly log using "`ge_here'/ge12.log", text replace name(ge)
+dash scatter mpg weight, saving("`ge_here'/ge12.html", replace)
+quietly dash scatter mpg weight, saving("`ge_here'/ge12b.html", replace)
+quietly log close ge
+quietly graph dir, memory
+assert "`r(list)'" == "`ge_before'" & strtrim("`ge_before'") == "Graph"
+_ge_notes "`ge_here'/ge12.log" "(note:  dash: `ge_needle'Graph)"
+assert `ge_n' == 2
+display "GE-12 PASS: one note per command names the graph in memory, which is left alone"
+
+// GE-13 (guard) -- no graph, no note; and a registration, dash kpi and
+// dash clear print none even with a graph.
+capture log close ge
+quietly log using "`ge_here'/ge13.log", text replace name(ge)
+dash scatter mpg weight, name(ge13)
+dash kpi mean(mpg), name(ge13k) title("Mean mpg")
+dash clear
+graph drop _all
+dash scatter mpg weight, saving("`ge_here'/ge13.html", replace)
+dash scatter mpg weight, name(ge13)
+dash build, saving("`ge_here'/ge13b.html") replace
+dash build, saving("`ge_here'/ge13.py") replace server
+quietly log close ge
+_ge_notes "`ge_here'/ge13.log" "`ge_needle'"
+assert `ge_n' == 0
+dash clear
+display "GE-13 PASS: only a file-writing command notes, and only with a graph in memory"
+
+// GE-14 -- the note names the graphs graph dir, memory lists, on dash
+// build's server branch too, and at most five of them.
+quietly twoway scatter price weight
+quietly twoway scatter mpg weight, name(g2)
+dash scatter mpg weight, name(ge14)
+capture log close ge
+quietly log using "`ge_here'/ge14.log", text replace name(ge)
+dash build, saving("`ge_here'/ge14.py") replace server
+quietly log close ge
+graph drop _all
+_ge_notes "`ge_here'/ge14.log" "`ge_needle'Graph g2)"
+assert `ge_n' == 1
+mata: st_local("ge14", _dash_graph_names("Graph g2 g3 g4 g5 g6 g7", 5))
+assert "`ge14'" == "Graph g2 g3 g4 g5 and 2 more"
+mata: st_local("ge14", _dash_graph_names("", 5))
+assert "`ge14'" == ""
+dash clear
+display "GE-14 PASS: the note lists up to five graphs in memory, then how many more"
+
+local fl : dir "`ge_here'/sub" files "*"
+foreach f of local fl {
+    capture erase "`ge_here'/sub/`f'"
+}
+capture rmdir "`ge_here'/sub"
+local fl : dir "`ge_here'" files "*"
+foreach f of local fl {
+    capture erase "`ge_here'/`f'"
+}
+capture rmdir "`ge_here'"
+capture program drop _ge_r _ge_notes
+
 
 dash clear
 display ""

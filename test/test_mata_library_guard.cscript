@@ -49,6 +49,15 @@
 *! Version: 1.0  24sep2026
 
 cscript "the Mata library guard refuses a library missing any function dash calls" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // `cscript' drops every global macro, the runner's $dash_nobrowser with them.
 // Nothing here builds a dashboard; it is set so nothing ever could open one.

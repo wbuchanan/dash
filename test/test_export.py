@@ -30,6 +30,9 @@ sys.path.insert(0, _HERE)
 import dash_render as dr  # noqa: E402
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _node():
     node = shutil.which("node")
     if node is None:
@@ -275,7 +278,7 @@ from bokeh.document import Document  # noqa: E402
 from bokeh.events import ButtonClick  # noqa: E402
 from bokeh.models import ColumnDataSource, RangeSlider, Select  # noqa: E402
 
-from conftest import make_data_json, make_spec  # noqa: E402
+from conftest import make_data_json, make_spec, exec_app  # noqa: E402
 
 _NAN = float("nan")
 # Days since 1960 for 2020-01-16 .. 2020-01-21 (%td).
@@ -322,7 +325,7 @@ def _saved(tmp_path, spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r
 
 
@@ -339,7 +342,7 @@ def _served(tmp_path, spec):
             src = fh.read()
         assert _ATTACH in src
         ns = {"__name__": "export_app"}
-        exec(compile(src.replace(_ATTACH, "pass"), op, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), op, ns)
         doc = Document()
         ns["make_document"](doc)
     return doc

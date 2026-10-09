@@ -16,6 +16,15 @@
 *! Version: 1.0.0  25mar2026
 
 cscript "dash adversarial security" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Setup — check dependencies
@@ -209,12 +218,29 @@ assert r(count) == 1
 display "P2-79 PASS: injection chars in varname rejected (rc=`p279_rc')"
 
 // ================================================================
-// P2-80 — Path traversal in saving() → rc == 198
+// P2-80 — a `..' segment in saving() is written where it points
 // ================================================================
+// WP-30 P1.27 (M11): twoway's saving() writes ../up.gph, so dash writes
+// ../p280.html too -- from a fresh scratch subfolder into its parent,
+// never outside c(tmpdir).
 qui sysuse auto, clear
-capture dash scatter mpg weight, saving("../../../tmp/evil.html")
-assert _rc == 198
-display "P2-80 PASS: path traversal in saving() returns rc=198"
+tempfile p280b
+local p280d "`p280b'_p280"
+mkdir "`p280d'"
+mkdir "`p280d'/sub"
+local p280pwd "`c(pwd)'"
+capture noisily {
+    cd "`p280d'/sub"
+    dash scatter mpg weight, saving("../p280.html")
+}
+local p280rc = _rc
+quietly cd "`p280pwd'"
+assert `p280rc' == 0
+confirm file "`p280d'/p280.html"
+capture erase "`p280d'/p280.html"
+capture rmdir "`p280d'/sub"
+capture rmdir "`p280d'"
+display "P2-80 PASS: a '..' segment in saving() is written into the parent folder"
 
 // ================================================================
 // P2-81 — Python injection in option value → treated as literal
@@ -471,10 +497,12 @@ mata: st_local("_bad36", strofreal(_dash_path_badchar("evil" + char(36) + "HOME.
 assert `_bad36' == 36
 display "P2-85b PASS: dollar sign in saving() path is rejected by the scan"
 
+// WP-30 P1.27 (M11): | is accepted, as twoway accepts it; the opener
+// single-quotes the path.
 local bad_pipe = "evil|cmd.html"
 capture _dash_validate_path "`bad_pipe'"
-assert _rc == 198
-display "P2-85c PASS: pipe in saving() path → rc=198"
+assert _rc == 0
+display "P2-85c PASS: pipe in saving() path is accepted, as twoway accepts it"
 
 // ================================================================
 // P8-86..89 — malformed UTF-8 and control bytes through every text input
@@ -1462,10 +1490,13 @@ display "P20-07 PASS: the saving() path in the success message is shown as the f
 // refusal and the server-mode success lines all repeat the path.
 dash scatter mpg weight, name(p2008)
 local p2008e "`c(tmpdir)'p2008{bf:INJMARKEXT}.htm"
+// WP-30 P1.27: dash build appends .html, as the one-line form does.
+capture erase "`p2008e'.html"
 _adv_p19_run `"dash build, saving("`p2008e'") replace nobrowser"'
-assert r(rc) == 198
-cert_file_has "`r(log)'", needle("p2008{bf:INJMARKEXT}.htm)")
+assert r(rc) == 0
+cert_file_has "`r(log)'", needle("saved to `p2008e'.html")
 assert r(found) == 1
+capture erase "`p2008e'.html"
 local p2008x "`c(tmpdir)'p2008{bf:INJMARKEX}.html"
 capture erase "`p2008x'"
 _adv_p19_run `"dash build, saving("`p2008x'") nobrowser"'
@@ -1483,7 +1514,8 @@ local p20lg "`r(log)'"
 assert r(rc) == 0
 cert_file_has "`p20lg'", needle("server app written to `p2008y'")
 assert r(found) == 1
-cert_file_has "`p20lg'", needle(`"To launch: python "`p2008y'""')
+// WP-30 P1.27: the launch line is single-quoted on a Mac and Unix.
+cert_file_has "`p20lg'", needle(`"To launch: python '`p2008y''"')
 assert r(found) == 1
 capture erase "`p2008x'"
 capture erase "`p2008y'"
@@ -1575,17 +1607,35 @@ display "P20-15 PASS: an overlong-encoded <script> in title() or note() is refus
 // which is not an alias of saving() at all and so cannot carry a path:
 // SAVING() is no option, and twoway refuses it, "option SAVING() not
 // allowed", r(198), as dash does (test_twoway_option_parity.cscript TP-15).
-capture erase "../p2016c.html"
-capture dash scatter mpg weight, sav("../p2016a.html")
-assert _rc == 198
-capture dash scatter mpg weight, saving( ///
-    "../p2016b.html")
-assert _rc == 198
-capture noisily dash scatter mpg weight, SAVING("../p2016c.html")
-assert _rc == 198
-capture confirm file "../p2016c.html"
+// WP-30 P1.27 (M11): a `..' segment is written now, so sav() and the ///
+// form run from a fresh scratch subfolder and write into its parent;
+// SAVING() is still no option.
+tempfile p2016b
+local p2016d "`p2016b'_p2016"
+mkdir "`p2016d'"
+mkdir "`p2016d'/sub"
+local p2016pwd "`c(pwd)'"
+capture noisily {
+    cd "`p2016d'/sub"
+    dash scatter mpg weight, sav("../p2016a.html")
+    dash scatter mpg weight, saving( ///
+        "../p2016b.html")
+    capture noisily dash scatter mpg weight, SAVING("../p2016c.html")
+    assert _rc == 198
+}
+local p2016rc = _rc
+quietly cd "`p2016pwd'"
+assert `p2016rc' == 0
+confirm file "`p2016d'/p2016a.html"
+confirm file "`p2016d'/p2016b.html"
+capture confirm file "`p2016d'/p2016c.html"
 assert _rc != 0
-display "P20-16 PASS: sav(), a /// continuation and SAVING() cannot carry a traversal"
+foreach f in p2016a.html p2016b.html {
+    capture erase "`p2016d'/`f'"
+}
+capture rmdir "`p2016d'/sub"
+capture rmdir "`p2016d'"
+display "P20-16 PASS: sav() and a /// continuation write a '..' segment where it points; SAVING() is still refused"
 
 // P20-17 — layout() was the one build option written into the spec raw.
 // Its check read only the start of the value (bs..., or name:r,c...), so
@@ -2228,8 +2278,20 @@ def _p2033_title(objs, fig):
     t = _p2033_ref(objs, fig.get("attributes", {}).get("title"))
     return t.get("attributes", {}).get("text") if isinstance(t, dict) else None
 
+def _p2033_key(objs, fig):
+    # WP-30 P1.15a: a by() panel keeps the graph's title and draws its
+    # label as a row of its own (a Title named dash_by_label), so a panel
+    # is keyed "title \u2014 label", as its title used to read.
+    t = str(_p2033_title(objs, fig))
+    a = fig.get("attributes", {})
+    for m in (a.get("above") or []) + (a.get("below") or []):
+        m = _p2033_ref(objs, m)
+        if isinstance(m, dict) and m.get("attributes", {}).get("name") == "dash_by_label":
+            return t + " \u2014 " + str(m["attributes"].get("text"))
+    return t
+
 def _p2033_under(objs, node):
-    # The titles of every figure in node's subtree, sorted.
+    # The keys (_p2033_key) of every figure in node's subtree, sorted.
     out = []
     stack = [_p2033_ref(objs, node)]
     while stack:
@@ -2237,7 +2299,7 @@ def _p2033_under(objs, node):
         if not isinstance(n, dict):
             continue
         if n.get("name") == "Figure":
-            out.append(str(_p2033_title(objs, n)))
+            out.append(_p2033_key(objs, n))
         stack.extend(_p2033_kids(objs, n))
     return sorted(out)
 
@@ -2898,7 +2960,7 @@ end
 
 capture program drop _sv_case
 program define _sv_case, rclass
-    version 16.0
+    version 19
     args sv ptype pos vars
     local logfile "`c(tmpdir)'dash_sv.log"
     local ls = c(linesize)
@@ -3560,7 +3622,7 @@ restore
 // Another account that can write c(tmpdir) could plant c(tmpdir)dash-<uid>
 // as a link to a folder of its own.  dash never uses or follows it (the
 // anti-hijack guard): it keeps its copies in a dash-<uid>-<8 chars> folder
-// it makes itself (0700), names both in one `dash: note:' line, and the
+// it makes itself (0700), names both in one `(note:  dash: ...)' line, and the
 // command ends rc 0 -- no privacy condition is refused (section 08 R-8).
 // The real dash-<uid> is moved aside to a name that is not a fallback's
 // (the -pf09-<pid> suffix is not 8 characters of [a-z0-9_]) and put back,
@@ -3594,7 +3656,7 @@ local pf09log "`r(log)'"
 python:
 _pf9_bad = []
 _pf9_txt = open(_pf9_M.getLocal("pf09log"), encoding="utf-8", errors="replace").read().replace(chr(10) + "> ", "")
-_pf9_notes = [x for x in _pf9_txt.split(chr(10)) if x.startswith("dash: note:")]
+_pf9_notes = [x for x in _pf9_txt.split(chr(10)) if x.startswith("(note:  dash: ")]
 if len(_pf9_notes) != 1:
     _pf9_bad.append("%d note lines" % len(_pf9_notes))
 elif _pf9_root not in _pf9_notes[0] or "is not yours to use (it is a link)" not in _pf9_notes[0]:
@@ -3660,7 +3722,7 @@ display ""
 display "All adversarial security tests PASSED."
 display "  P2-78: XSS in title → HTML-escaped in output"
 display "  P2-79: Injection chars in varname → Mata rejects"
-display "  P2-80: Path traversal in saving() → rc=198"
+display "  P2-80: a '..' segment in saving() is written where it points"
 display "  P2-81: Python injection in option value → literal, no OS call"
 display "  P2-82: Resource exhaustion (100 bogus vars) → graceful error"
 display "  P2-83: Stack overflow (50-level nested parens) → graceful error"

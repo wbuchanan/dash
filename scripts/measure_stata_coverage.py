@@ -65,8 +65,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADO_FILES = ("dash.ado", "dash_setup.ado")
 MATA_FILES = ("dash_parse.mata",)
 
-#: The console binary (CLAUDE.md: never the GUI application).
-STATA = ["arch", "-arm64", "/usr/local/bin/stata-mp", "-b", "do"]
+#: The console binary, through scripts/stata_batch.sh (never the GUI
+#: application; the wrapper picks the binary and its slice, WP-30 P1.34).
+STATA = ["sh", os.path.join(REPO, "scripts", "stata_batch.sh"), "-b", "do"]
 
 _PROGRAM = re.compile(r"^\s*program\s+(?:define\s+)?([A-Za-z_]\w*)")
 _NOT_A_DEFINITION = {"drop", "dir", "list"}
@@ -377,19 +378,22 @@ def runner_do(work, tree, runner_src):
     recorder on the ado-path, marking each script and flushing after it.
 
     The runner puts one directory on the ado-path, dash's own.  (It also
-    put jsonio's there until dash stopped using jsonio, 24sep2026.)"""
+    put jsonio's there until dash stopped using jsonio, 24sep2026.)  It
+    reads that directory from DASH_REPO (WP-30 P1.34), which _stata sets to
+    *tree*, so no path is written into it; a runner whose root is a literal
+    would test that tree instead, and is refused."""
     lib = os.path.join(work, "lib")
     src = runner_src
     dash_line = re.compile(r'^adopath \+\+ "([^"]*)"\s*$', re.M)
     dirs = dash_line.findall(src)
     if len(dirs) != 1:
         raise ValueError("runner: expected one adopath line, dash's")
-    src = src.replace('adopath ++ "%s"' % dirs[0],
-                      'adopath ++ "%s/"' % tree.rstrip("/"))
-    src, n = re.subn(r'^local dashdir "[^"]*"\s*$',
-                     'local dashdir "%s"' % tree.rstrip("/"), src, flags=re.M)
-    if n != 1:
-        raise ValueError("runner: expected one `local dashdir' line")
+    if dirs[0] != "`dashdir'/" or not re.search(
+            r"^local dashdir : environment DASH_REPO\s*$", src, re.M):
+        raise ValueError("runner: its root must come from DASH_REPO")
+    if not _stata_path_ok(tree):
+        raise ValueError("runner: the tree path may not hold a quote, "
+                         "backtick, dollar or line break")
     setup = ('adopath ++ "%s/"\nmata: mata mlib index\n'
              'mata: _pc_mark("(runner setup)")\n' % lib)
     src = src.replace('cd "`dashdir\'"\n', 'cd "`dashdir\'"\n' + setup, 1)
@@ -459,8 +463,11 @@ def prepare(work, repo=REPO, scripts=None):
 
 
 def _stata(work, dofile):
+    """Run *dofile* in batch from *work*; the runner tests WORK/tree, which
+    it is handed through DASH_REPO."""
     env = dict(os.environ)
     env["STATATMP"] = os.path.join(work, "stata_tmp") + "/"
+    env["DASH_REPO"] = os.path.join(work, "tree")
     subprocess.run(STATA + [dofile], cwd=work, env=env, check=False)
     log = os.path.splitext(os.path.join(work, os.path.basename(dofile)))[0] + ".log"
     return log

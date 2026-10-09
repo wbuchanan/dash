@@ -30,12 +30,21 @@
 *! run and runs nothing -- so Windows's command, which runs only where Stata
 *! reports Windows, is checked here on any machine (SB-13..20).
 *!
-*! Tests: SB-01 through SB-20
+*! Tests: SB-01 through SB-38
 *!
 *! Usage:  do test/test_serve_browser.cscript
 *! Version: 1.1  24sep2026
 
 cscript "dash serve honours the browser settings" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Setup
@@ -61,33 +70,36 @@ capture macro drop dash_nobrowser
 // r(open) is 1 unless the command's own nobrowser option was given,
 // $dash_nobrowser is set, or a registered graph carries nodraw; r(flag) is
 // what `dash serve' hands the launcher.
+//
+// WP-30 P1.27: the suite runs in batch, where no window opens now, so each
+// of SB-01..05 passes display(on) to keep testing its own reason.
 dash clear
 dash scatter mpg weight, name(sb1)
 
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 1
 assert "`r(flag)'" == ""
 display "SB-01 PASS: with nothing said, the window opens and no flag is passed"
 
-_dash_dashboard_browser, nobrowser
+_dash_dashboard_browser, nobrowser display(on)
 assert r(open) == 0
 assert "`r(flag)'" == "--no-browser"
 display "SB-02 PASS: the nobrowser option keeps it shut"
 
 global dash_nobrowser 1
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 0
 assert "`r(flag)'" == "--no-browser"
 display "SB-03 PASS: \$dash_nobrowser keeps it shut"
 
 // An empty global is an unset global, as it is for `dash build'.
 global dash_nobrowser ""
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 1
 display "SB-04 PASS: an empty \$dash_nobrowser does not"
 
 dash scatter mpg weight, name(sb2) nodraw
-_dash_dashboard_browser
+_dash_dashboard_browser, display(on)
 assert r(open) == 0
 assert "`r(flag)'" == "--no-browser"
 display "SB-05 PASS: a registered graph's nodraw keeps it shut"
@@ -129,6 +141,11 @@ capture noisily {
     _dash_find_render
     assert strpos(`"`r(fn)'"', "_serve_stub") > 0
     display "SB-06 PASS: dash serve resolves the stub renderer, not the real one"
+    // WP-30 P1.27: in batch dash serve always passes --no-browser now; the
+    // undocumented test seam lets SB-07..11 test each reason against the
+    // stub renderer, which can open nothing.  Dropped below (SB-36, and
+    // the restore after the block).
+    global dash__display on
 
     // SB-07 -- THE DEFECT: the global set, no option.
     dash clear
@@ -177,8 +194,21 @@ capture noisily {
     cert_file_has "`argvf'", needle(`""--timeout", "1""')
     assert r(found) == 1
     display "SB-11 PASS: port() and timeout() reach the launch unchanged"
+
+    // SB-36 -- WP-30 P1.27: the seam dropped, in real batch, dash serve
+    // hands --no-browser to the launcher with nothing said.
+    capture macro drop dash__display
+    macro drop dash_nobrowser
+    dash clear
+    dash scatter mpg weight, name(sv4)
+    _sb_serve "`argvf'"
+    assert r(rc) == 0 & r(launched) == 1
+    cert_file_has "`argvf'", needle("--no-browser")
+    assert r(found) == 1
+    display "SB-36 PASS: in batch dash serve starts without a browser"
 }
 local rc_sb = _rc
+capture macro drop dash__display
 
 // Restore, whatever happened above: the stub off the ado-path and off the
 // disk, and the suite's setting back.
@@ -249,6 +279,58 @@ string scalar _sb_whole(string scalar fn)
     if (!_cert_read(fn, t)) return("(none)")
     return(t)
 }
+// WP-30 P1.29: "" when _dash_cmd_metachar() names each byte Windows'
+// command shell reads in a quoted path -- % ! ^ & | < > ; -- and passes
+// paths that hold none, else what it got wrong.
+string scalar _sb_metachar_bad()
+{
+    real rowvector mc
+    real scalar    i
+    string scalar  bs, bad
+    string rowvector ok
+    bs  = char(92)
+    mc  = (37, 33, 94, 38, 124, 60, 62, 59)
+    bad = ""
+    for (i = 1; i <= cols(mc); i++) {
+        if (_dash_cmd_metachar("C:" + bs + "a" + char(mc[i]) + "b.html") != mc[i]) bad = bad + " " + char(mc[i])
+    }
+    ok = ("C:" + bs + "Users" + bs + "o" + char(39) + "brien" + bs + "my dash (v1, v2)=#~" + bs + "page.html",
+          "",
+          "C:" + bs + "Users" + bs + "Zo" + char(195) + char(171) + bs + "p.html")
+    for (i = 1; i <= cols(ok); i++) {
+        if (_dash_cmd_metachar(ok[i]) != 0) bad = bad + " [" + ok[i] + "]"
+    }
+    return(bad)
+}
+// WP-30 P1.29: "" when dash.sthlp's {marker saving_chars} paragraph names
+// every byte _dash_cmd_metachar() flags and every printable byte
+// _dash_path_badchar() refuses, a .. segment, control characters and a
+// leading -, else the names it lacks.
+string scalar _sb_help_bad(string scalar fn)
+{
+    string scalar t, par, miss, nm
+    real scalar   k, e, b
+    if (!_cert_read(fn, t)) return("(no help file)")
+    k = strpos(t, "{marker saving_chars}")
+    if (!k) return("(no {marker saving_chars})")
+    par = substr(t, k + 1, .)
+    e = strpos(par, "{marker ")
+    if (e) par = substr(par, 1, e - 1)
+    // A line break in a help paragraph is a space.
+    par = "{" + subinstr(subinstr(par, char(13), ""), char(10), " ")
+    miss = ""
+    for (b = 32; b <= 126; b++) {
+        if (_dash_cmd_metachar(char(b)) != b & _dash_path_badchar(char(b)) != b) continue
+        // S12's help (WP-30 P1.27) names $ in words, as it names " and `.
+        nm = (b == 34 ? "double quote" : (b == 96 ? "backquote" :
+             (b == 36 ? "dollar sign" : "{cmd:" + char(b) + "}")))
+        if (!strpos(par, nm)) miss = miss + " " + nm
+    }
+    if (!strpos(par, "{cmd:..}")) miss = miss + " {cmd:..}"
+    if (!strpos(par, "control character")) miss = miss + " control character"
+    if (!strpos(par, "{cmd:-}")) miss = miss + " {cmd:-}"
+    return(miss)
+}
 end
 
 mata:
@@ -258,6 +340,10 @@ _sb_bs = char(92)
 _sb_nl = char(10)
 // P: an ordinary path.  H: the hostile one.  W: a hostile Windows path
 // (an apostrophe, spaces, a semicolon, an ampersand; no double quote).
+// Flipped (WP-30 P1.29): W holds ; and &, which cmd.exe reads, so the
+// sixth call is now declined: no command (want ""), nothing run (log
+// "(none)"), r(opened) 0.  SB-24 keeps start's quoting of a hostile path
+// without them.
 _sb_P = "/dash_sb_nowhere/page.html"
 _sb_H = "/dash_sb_nowhere/it" + _sb_q + "s a " + _sb_dq + "dash" + _sb_dq + "; open SB_INJECTED; echo " + _sb_q + "x & y.html"
 _sb_W = "C:" + _sb_bs + "Users" + _sb_bs + "o" + _sb_q + "brien" + _sb_bs + "my dash; v1 & v2" + _sb_bs + "page.html"
@@ -266,14 +352,14 @@ _sb_W = "C:" + _sb_bs + "Users" + _sb_bs + "o" + _sb_q + "brien" + _sb_bs + "my 
 _sb_Pq = _sb_q + _sb_P + _sb_q
 _sb_Hq = _sb_q + "/dash_sb_nowhere/it" + _sb_q + _sb_bs + _sb_q + _sb_q + "s a " + _sb_dq + "dash" + _sb_dq + "; open SB_INJECTED; echo " + _sb_q + _sb_bs + _sb_q + _sb_q + "x & y.html" + _sb_q
 _sb_want = ("open " + _sb_Pq, "xdg-open " + _sb_Pq, "start " + _sb_dq + _sb_dq + " " + _sb_dq + _sb_P + _sb_dq,
-            "open " + _sb_Hq, "xdg-open " + _sb_Hq, "start " + _sb_dq + _sb_dq + " " + _sb_dq + _sb_W + _sb_dq)
+            "open " + _sb_Hq, "xdg-open " + _sb_Hq, "")
 // What each stub writes when that command reaches the shell.
 _sb_log = ("CALL open" + _sb_nl + "ARG[" + _sb_P + "]" + _sb_nl,
            "CALL xdg-open" + _sb_nl + "ARG[" + _sb_P + "]" + _sb_nl,
            "CALL start" + _sb_nl + "ARG[]" + _sb_nl + "ARG[" + _sb_P + "]" + _sb_nl,
            "CALL open" + _sb_nl + "ARG[" + _sb_H + "]" + _sb_nl,
            "CALL xdg-open" + _sb_nl + "ARG[" + _sb_H + "]" + _sb_nl,
-           "CALL start" + _sb_nl + "ARG[]" + _sb_nl + "ARG[" + _sb_W + "]" + _sb_nl)
+           "(none)")
 st_local("sb_P", _sb_P)
 st_local("sb_H", _sb_H)
 st_local("sb_W", _sb_W)
@@ -281,6 +367,10 @@ end
 // The six calls, as (platform, path) pairs, in _sb_want's order.
 local sb_os   "MacOSX Unix Windows MacOSX Unix Windows"
 local sb_path "sb_P sb_P sb_P sb_H sb_H sb_W"
+
+// SB-21..30 (WP-30 P1.29) record each failure here and are judged
+// together after SB-30, so every one of them reports.
+local sb_fail ""
 
 local sb_stubs = ("`c(os)'" != "Windows")
 local sbo "`c(tmpdir)'dash_sb_opener"
@@ -346,7 +436,7 @@ capture noisily {
             display "SB-14 PASS: an ordinary path is one quoted argument to open on a Mac, to xdg-open on Unix, and to start after its empty title on Windows"
         }
     }
-    display "SB-15 PASS: a path holding quotes, spaces, semicolons and an ampersand is one quoted argument on each platform"
+    display "SB-15 PASS: a path holding quotes, spaces, semicolons and an ampersand is one quoted argument on a Mac and Unix; on Windows its ; and & make the opener decline it (SB-22)"
 
     // ---- SB-16 -- what cannot be one argument is refused ----
     // Each refusal is made dry and, where the stubs are on, wet as well:
@@ -408,7 +498,7 @@ capture noisily {
             local pl : word `i' of `sb_path'
             capture erase "`sbo'/opened.log"
             _dash_open_page, path(`"``pl''"') os(`o')
-            assert r(opened) == 1
+            assert r(opened) == (`i' != 6)
             mata: st_local("sb_same", strofreal(_sb_whole(st_local("sbo") + "/opened.log") == _sb_log[`i']))
             if `sb_same' != 1 {
                 mata: printf("{err}call %s on %s: the stubs recorded <%s>, expected <%s>\n", st_local("i"), st_local("o"), _sb_whole(st_local("sbo") + "/opened.log"), _sb_log[`i'])
@@ -440,6 +530,155 @@ capture noisily {
     else {
         display "SB-18..20 SKIP: start is a cmd builtin on Windows and cannot be stubbed"
     }
+
+    // ================================================================
+    // SB-21..28 (WP-30 P1.29) -- a Windows path cmd.exe would rewrite
+    // ================================================================
+    // start runs inside cmd.exe, which expands %NAME% even inside double
+    // quotes, ! under delayed expansion, and reads ^ & | < > ; as its
+    // escape and separators: start could open another file than the one
+    // written.  The opener now builds no command for such a path on
+    // Windows: the page is written, its path printed, r(opened) 0 and
+    // r(why) "metachar", rc 0.  Mac and Unix single-quote the path, inside
+    // which none of them is special, and are unchanged.
+    mata: st_local("sb_m", "C:" + _sb_bs + "Users" + _sb_bs + "me" + _sb_bs + "pct%PATH%x.html")
+
+    // ---- SB-21 -- the scanner ----
+    capture noisily {
+        mata: st_local("sb_bad", _sb_metachar_bad())
+        if `"`sb_bad'"' != "" {
+            display as error `"_dash_cmd_metachar() got these wrong:`sb_bad'"'
+        }
+        assert `"`sb_bad'"' == ""
+        display "SB-21 PASS: _dash_cmd_metachar() names each of % ! ^ & | < > ; and passes a path holding none"
+    }
+    if _rc local sb_fail `sb_fail' SB-21
+
+    // ---- SB-22 -- declined dry, for each of the eight ----
+    capture noisily {
+        foreach b in 37 33 94 38 124 60 62 59 {
+            mata: st_local("sb_x", "C:" + _sb_bs + "Users" + _sb_bs + "me" + _sb_bs + "a" + char(`b') + "b.html")
+            capture noisily _dash_open_page, path(`"`sb_x'"') os(Windows) dryrun
+            assert _rc == 0
+            mata: st_local("sb_none", strofreal(st_global("r(cmd)") == ""))
+            if `sb_none' != 1 {
+                mata: printf("{err}byte %s: r(cmd) is <%s>, expected none\n", st_local("b"), st_global("r(cmd)"))
+            }
+            assert `sb_none' == 1
+            assert r(opened) == 0
+            assert "`r(why)'" == "metachar"
+            assert "`r(os)'" == "Windows"
+        }
+        display "SB-22 PASS: on Windows a path holding % ! ^ & | < > or ; gets no command: r(opened) 0, r(why) metachar, rc 0"
+    }
+    if _rc local sb_fail `sb_fail' SB-22
+
+    // ---- SB-23 -- declined wet: nothing runs, the path is printed ----
+    if `sb_stubs' {
+        capture noisily {
+            capture erase "`sbo'/opened.log"
+            capture erase "`sbo'/sb23.log"
+            quietly log using "`sbo'/sb23.log", text replace name(_sb23)
+            capture noisily _dash_open_page, path(`"`sb_m'"') os(Windows)
+            local sb_rc = _rc
+            local sb_op = r(opened)
+            quietly log close _sb23
+            assert `sb_rc' == 0
+            assert `sb_op' == 0
+            capture confirm file "`sbo'/opened.log"
+            if _rc == 0 {
+                mata: printf("{err}the stubs recorded: %s\n", _sb_whole(st_local("sbo") + "/opened.log"))
+            }
+            assert _rc != 0
+            cert_log_has "`sbo'/sb23.log", needle("dash: not opened")
+            assert r(found) == 1
+            cert_log_has "`sbo'/sb23.log", needle(`"`sb_m'"')
+            assert r(found) == 1
+            display "SB-23 PASS: without dryrun nothing reaches the shell, and the path is printed as typed"
+        }
+        if _rc local sb_fail `sb_fail' SB-23
+        capture log close _sb23
+        capture erase "`sbo'/sb23.log"
+    }
+    else {
+        display "SB-23 SKIP: start is a cmd builtin on Windows and cannot be stubbed"
+    }
+
+    // ---- SB-24 -- a hostile Windows path with none of them is opened ----
+    // The quoting coverage SB-15/19 had, for a path SB-22 now declines.
+    capture noisily {
+        mata: st_local("sb_x", "C:" + _sb_bs + "Users" + _sb_bs + "o" + _sb_q + "brien" + _sb_bs + "my dash (v1, v2)" + _sb_bs + "page.html")
+        _dash_open_page, path(`"`sb_x'"') os(Windows) dryrun
+        mata: st_local("sb_same", strofreal(st_global("r(cmd)") == "start " + _sb_dq + _sb_dq + " " + _sb_dq + st_local("sb_x") + _sb_dq))
+        assert `sb_same' == 1
+        assert "`r(why)'" == ""
+        if `sb_stubs' {
+            capture erase "`sbo'/opened.log"
+            _dash_open_page, path(`"`sb_x'"') os(Windows)
+            assert r(opened) == 1
+            mata: st_local("sb_same", strofreal(_sb_whole(st_local("sbo") + "/opened.log") == "CALL start" + _sb_nl + "ARG[]" + _sb_nl + "ARG[" + st_local("sb_x") + "]" + _sb_nl))
+            assert `sb_same' == 1
+        }
+        display "SB-24 PASS: a Windows path holding an apostrophe, spaces, parentheses and a comma is still one quoted argument to start"
+    }
+    if _rc local sb_fail `sb_fail' SB-24
+
+    // ---- SB-25 -- Mac and Unix are unchanged ----
+    capture noisily {
+        mata: st_local("sb_x", "/dash_sb_nowhere/a%b!c^d&e|f<g>h;i.html")
+        foreach o in MacOSX Unix {
+            local prog = cond("`o'" == "MacOSX", "open", "xdg-open")
+            _dash_open_page, path(`"`sb_x'"') os(`o') dryrun
+            mata: st_local("sb_same", strofreal(st_global("r(cmd)") == st_local("prog") + " " + _sb_q + st_local("sb_x") + _sb_q))
+            assert `sb_same' == 1
+            assert "`r(why)'" == ""
+            if `sb_stubs' {
+                capture erase "`sbo'/opened.log"
+                _dash_open_page, path(`"`sb_x'"') os(`o')
+                assert r(opened) == 1
+                mata: st_local("sb_same", strofreal(_sb_whole(st_local("sbo") + "/opened.log") == "CALL " + st_local("prog") + _sb_nl + "ARG[" + st_local("sb_x") + "]" + _sb_nl))
+                assert `sb_same' == 1
+            }
+        }
+        display "SB-25 PASS: on a Mac and Unix a path holding all eight is single-quoted and opened whole"
+    }
+    if _rc local sb_fail `sb_fail' SB-25
+
+    // ---- SB-26 -- the same under $dash_nobrowser ----
+    capture noisily {
+        global dash_nobrowser 1
+        capture noisily _dash_open_page, path(`"`sb_m'"') os(Windows)
+        local sb_rc = _rc
+        mata: st_local("sb_none", strofreal(st_global("r(cmd)") == ""))
+        local sb_why "`r(why)'"
+        macro drop dash_nobrowser
+        assert `sb_rc' == 0
+        assert `sb_none' == 1
+        assert "`sb_why'" == "metachar"
+        display "SB-26 PASS: with \$dash_nobrowser set the Windows decline is the same"
+    }
+    if _rc local sb_fail `sb_fail' SB-26
+    macro drop dash_nobrowser
+
+    // ---- SB-27 -- the double-quote refusal still comes first ----
+    capture noisily {
+        mata: st_local("sb_x", "C:" + _sb_bs + "a" + _sb_dq + "b%PATH%c.html")
+        capture _dash_open_page, path(`"`sb_x'"') os(Windows) dryrun
+        assert _rc == 198
+        display "SB-27 PASS: a Windows path holding a double quote and a % is still refused, r(198)"
+    }
+    if _rc local sb_fail `sb_fail' SB-27
+
+    // ---- SB-28 -- the help states the rule ----
+    capture noisily {
+        mata: st_local("sb_bad", _sb_help_bad("../dash.sthlp"))
+        if `"`sb_bad'"' != "" {
+            mata: printf("{err}dash.sthlp's saving() paragraph lacks:%s\n", _dash_smcl_text(st_local("sb_bad")))
+        }
+        assert `"`sb_bad'"' == ""
+        display "SB-28 PASS: dash.sthlp's saving() paragraph names every character the opener declines and the validator refuses"
+    }
+    if _rc local sb_fail `sb_fail' SB-28
 }
 local rc_op = _rc
 
@@ -452,12 +691,169 @@ if `sb_stubs' {
     }
     capture rmdir "`sbo'"
 }
-capture mata: mata drop _sb_line1() _sb_whole()
+capture mata: mata drop _sb_line1() _sb_whole() _sb_metachar_bad() _sb_help_bad()
 capture mata: mata drop _sb_q _sb_dq _sb_bs _sb_nl _sb_P _sb_H _sb_W _sb_Pq _sb_Hq _sb_want _sb_log
 if `rc_op' {
     display as error "test_serve_browser: an opener check above failed (rc=`rc_op')"
     exit `rc_op'
 }
+
+// ================================================================
+// SB-29..30 (WP-30 P1.29) -- the pages dash writes from Stata
+// ================================================================
+// The saved page names its scripts by hash, never 'unsafe-inline'; the
+// served app sets a fresh nonce on every document.
+local sb29 "`c(tmpdir)'dash_sb29.html"
+capture noisily {
+    capture erase "`sb29'"
+    dash scatter mpg weight, saving("`sb29'", replace)
+    cert_file_has "`sb29'", needle("script-src 'sha256-")
+    assert r(found) == 1
+    cert_file_has "`sb29'", needle("script-src 'unsafe-inline'")
+    assert r(found) == 0
+    display "SB-29 PASS: the saved page's script-src names its scripts by hash, not 'unsafe-inline'"
+}
+if _rc local sb_fail `sb_fail' SB-29
+capture erase "`sb29'"
+
+local sb30 "`c(tmpdir)'dash_sb30.py"
+capture noisily {
+    capture erase "`sb30'"
+    dash clear
+    dash scatter mpg weight, name(sb30)
+    dash build, saving("`sb30'") server replace
+    cert_file_has "`sb30'", needle("doc.template = _dash_served_template(_dash_new_nonce())")
+    assert r(found) == 1
+    display "SB-30 PASS: the served app gives every document its own nonce"
+}
+if _rc local sb_fail `sb_fail' SB-30
+capture erase "`sb30'"
+capture dash clear
+
+if "`sb_fail'" != "" {
+    display as error "test_serve_browser: these WP-30 P1.29 cases failed:`sb_fail'"
+}
+assert "`sb_fail'" == ""
+
+// ================================================================
+// SB-31..35, SB-37, SB-38 -- WP-30 P1.27: no window in batch or after set
+// graphics off; the To launch: line quoted for the shell
+// ================================================================
+// SB-31 -- _dash_display_on, a pure function of its four arguments.
+_dash_display_on "" "interactive" "on" ""
+assert r(on) == 1
+_dash_display_on "" "batch" "on" ""
+assert r(on) == 0
+_dash_display_on "" "interactive" "off" ""
+assert r(on) == 0
+_dash_display_on "" "batch" "off" ""
+assert r(on) == 0
+_dash_display_on "on" "batch" "off" ""
+assert r(on) == 1
+_dash_display_on "off" "interactive" "on" ""
+assert r(on) == 0
+_dash_display_on "" "batch" "on" "on"
+assert r(on) == 1
+_dash_display_on "" "interactive" "on" "off"
+assert r(on) == 0
+_dash_display_on "" "batch" "on" "yes"
+assert r(on) == 0
+capture _dash_display_on "bogus" "batch" "on" ""
+assert _rc == 198
+display "SB-31 PASS: _dash_display_on decides by display(), the seam, batch and graphics"
+
+// SB-32 -- the seam unset, in real batch: the dashboard opens nothing.
+capture macro drop dash__display
+global dash_nobrowser ""
+dash clear
+dash scatter mpg weight, name(sb32)
+_dash_dashboard_browser
+local _o = r(open)
+local _f `"`r(flag)'"'
+assert c(mode) == "batch"
+assert `_o' == 0
+assert `"`_f'"' == "--no-browser"
+display "SB-32 PASS: in batch dash build and dash serve open no window"
+
+// SB-33 -- and the one-line form wants none.
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"')
+assert r(open) == 0
+display "SB-33 PASS: in batch the one-line form opens no window"
+
+// SB-34 -- set graphics off, read from c(graphics).
+set graphics off
+_dash_display_on "" "interactive" "`c(graphics)'" ""
+local _o = r(on)
+set graphics on
+assert `_o' == 0
+_dash_display_on "" "interactive" "`c(graphics)'" ""
+assert r(on) == 1
+assert c(graphics) == "on"
+display "SB-34 PASS: set graphics off keeps the window shut"
+
+// SB-35 -- display() on both deciders; nodraw read before display().
+_dash_dashboard_browser, display(on)
+assert r(open) == 1
+_dash_dashboard_browser, display(off)
+assert r(open) == 0
+capture _dash_dashboard_browser, display(bogus)
+assert _rc == 198
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(on)
+assert r(open) == 1
+_dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(off)
+assert r(open) == 0
+capture _dash_browser_wanted, spec(`"{"plots":[],"graph_options":{}}"') display(bogus)
+assert _rc == 198
+dash scatter mpg weight, name(sb35) nodraw
+_dash_dashboard_browser, display(on)
+assert r(open) == 0
+assert "`r(flag)'" == "--no-browser"
+dash clear
+global dash_nobrowser 1
+display "SB-35 PASS: display() decides on both deciders, and nodraw still keeps it shut"
+
+// SB-37 -- the To launch: line's quoting.
+mata: st_local("_q", _dash_launch_quote("/tmp/a b;c&d|e<f>g!h" + char(39) + "i.py", "Unix"))
+mata: st_local("_qx", char(39) + "/tmp/a b;c&d|e<f>g!h" + char(39) + char(92) + char(39) + char(39) + "i.py" + char(39))
+mata: assert(st_local("_q") == st_local("_qx"))
+mata: assert(_dash_launch_quote("/tmp/x.py", "MacOSX") == char(39) + "/tmp/x.py" + char(39))
+mata: assert(_dash_launch_quote("C:\x.py", "Windows") == char(34) + "C:\x.py" + char(34))
+mata: assert(strpos(_dash_launch_warn("C:\50%.py", "Windows"), "cmd.exe") > 0)
+mata: assert(strpos(_dash_launch_warn("C:\a!b.py", "Windows"), "cmd.exe") > 0)
+mata: assert(_dash_launch_warn("C:\ab.py", "Windows") == "")
+mata: assert(_dash_launch_warn("/tmp/a!b.py", "Unix") == "")
+display "SB-37 PASS: the launch line is single-quoted on Mac and Unix, and Windows names % and !"
+
+// SB-38 (G9) -- the Unix line, pasted into /bin/sh, names the path whole.
+tempfile sb38b
+local sb38d "`sb38b'_sb38"
+mkdir "`sb38d'"
+local _sb38ok = 0
+capture noisily {
+    mata: st_local("_p", st_local("sb38d") + "/a;touch PWNED;b" + char(39) + "c&d|e<f>g!h.py")
+    mata: st_local("_ql", _dash_launch_quote(st_local("_p"), "Unix"))
+    tempname sh
+    file open `sh' using "`sb38d'/run.sh", write text replace
+    mata: st_local("_line", "printf '%s\n' " + st_local("_ql"))
+    file write `sh' `"`macval(_line)'"' _n
+    file close `sh'
+    shell cd "`sb38d'" && /bin/sh "`sb38d'/run.sh" > "`sb38d'/out.txt"
+    tempname fo
+    file open `fo' using "`sb38d'/out.txt", read text
+    file read `fo' _got
+    file close `fo'
+    mata: assert(st_local("_got") == st_local("_p"))
+    capture confirm file "`sb38d'/PWNED"
+    assert _rc != 0
+    capture confirm file "PWNED"
+    assert _rc != 0
+    local _sb38ok = 1
+}
+capture erase "`sb38d'/run.sh"
+capture erase "`sb38d'/out.txt"
+capture rmdir "`sb38d'"
+assert `_sb38ok' == 1
+display "SB-38 PASS: a hostile path pasted into sh is one argument and runs nothing"
 
 display ""
 display "All serve-browser tests PASSED."

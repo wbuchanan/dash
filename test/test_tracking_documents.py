@@ -43,6 +43,16 @@ file holds, mechanically:
    "(WP-29, <id>)", and a closed entry's Resolution holds "(WP-29, <id>)".
    WP-29's closeout left WP29_OPEN empty; test_no_wp29_entry_remains_open
    keeps every P0 entry closed with no marker left.
+9. WP-30's P1 entries (.ultraplan/wp30/index.md A144) are open in BUGS.md
+   in the form "Not fixed because WP-30 section NN has not landed. Graded
+   S1|S2|S3 (WP-30): ...", NN being the section WP30_SECTION names, and
+   listed in WP30_OPEN, which alone (with WP29_OPEN) exempts them from the
+   release guard, with a "<!-- WP-30 <id> -->" marker in each CHANGELOG
+   list WP30_LISTS names, until their section lands; then the key is gone,
+   no marker is left, each of those lists holds a line ending
+   "(WP-30, <id>)", and a closed entry's Resolution holds "(WP-30, <id>)".
+   WP-30's closeout left WP30_OPEN empty; test_no_wp30_entry_remains_open
+   keeps every P1 entry closed with no marker left.
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -511,9 +521,11 @@ class TestNoOpenEntryBlocksARelease:
 
     def test_no_open_entry_is_s1_or_s2(self, bugs):
         entries, _p = bugs
-        # WP-29's P0 entries stay open, S1 or S2, until their sections land
-        # (WP29_OPEN); TestWp29Tracking holds each one to its WP-29 form.
-        allowed = set(WP29_OPEN.values())
+        # WP-29's P0 entries stayed open, S1 or S2, until their sections
+        # landed (WP29_OPEN, empty since its closeout); WP-30's P1 entries
+        # do the same until theirs land (WP30_OPEN), and TestWp30Tracking
+        # holds each one to its WP-30 form.
+        allowed = set(WP29_OPEN.values()) | set(WP30_OPEN.values())
         bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
                for e in entries if not e["closed"]
                and e["title"] not in allowed
@@ -1522,4 +1534,389 @@ class TestWp29Tracking:
         bad += ["%r is open in the WP-29 form" % e["title"]
                 for e in entries if not e["closed"]
                 and _WP29_OPEN_FORM.match(e["fields"].get("Resolution", ""))]
+        assert not bad, "\n".join(bad)
+
+
+# ===========================================================================
+# WP-30's P1 entries (item 9 of the module docstring)
+# ===========================================================================
+
+#: WP-30 (.ultraplan/wp30/index.md, decision A144): the BUGS.md entries the
+#: tracking foundation (S01) opened, one per P1 entry, while they were open.
+#: Each fix section closed its entry in place and deleted its key here; the
+#: closeout (S58.1) left the allowance empty, and
+#: TestWp30Tracking::test_no_wp30_entry_remains_open keeps it so.
+WP30_OPEN = {}
+
+#: Every WP-30 entry, permanently, and the CHANGELOG.md lists of the current
+#: release its line belongs in (index.md "P1 coverage").  S01 put one
+#: ``<!-- WP-30 <id> -->`` marker in each; the closing commit replaces each
+#: marker in place with a line ending ``(WP-30, <id>)``.  A section that
+#: needs another list edits its own row and its own markers in the same
+#: commit (index.md R4).
+WP30_LISTS = {
+    "P1.1a": ("Results that change", "Changed behaviour"),
+    "P1.1b": ("Results that change", "Changed behaviour", "Fixed in WP-30"),
+    "P1.2a": ("Results that change",),
+    "P1.2b": ("Results that change",),
+    "P1.3a": ("Results that change",),
+    "P1.3b": ("Results that change",),
+    "P1.4a": ("Results that change",),
+    "P1.4b": ("Results that change",),
+    "P1.5": ("Results that change", "Changed behaviour"),
+    "P1.6": ("New", "Changed behaviour"),
+    "P1.7": ("New", "Changed behaviour"),
+    "P1.8a": ("Results that change", "Changed behaviour"),
+    "P1.8b": ("Results that change", "Changed behaviour"),
+    "P1.9a": ("Results that change", "Changed behaviour"),
+    "P1.9b": ("Fixed in WP-30",),
+    "P1.10": ("New", "Changed behaviour"),
+    "P1.11a": ("Security", "Results that change"),
+    "P1.11b": ("Results that change",),
+    "P1.12a": ("Results that change", "Changed behaviour"),
+    "P1.12b": ("Results that change", "Changed behaviour"),
+    "P1.13a": ("Results that change", "Changed behaviour"),
+    "P1.13b": ("Results that change",),
+    "P1.14a": ("Results that change",),
+    "P1.14b": ("Results that change",),
+    "P1.15a": ("Results that change",),
+    "P1.15b": ("Results that change", "Changed behaviour"),
+    "P1.15c": ("Results that change",),
+    "P1.16": ("Results that change",),
+    "P1.17a": ("Results that change", "Changed behaviour"),
+    "P1.17b": ("Results that change",),
+    "P1.18a": ("Results that change", "Changed behaviour"),
+    "P1.18b": ("Results that change",),
+    "P1.19": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.20a": ("Results that change", "Changed behaviour"),
+    "P1.20b": ("Results that change",),
+    "P1.21a": ("Results that change", "Changed behaviour"),
+    "P1.21b": ("Results that change",),
+    "P1.22": ("Fixed in WP-30",),
+    "P1.23a": ("Results that change",),
+    "P1.23b": ("Results that change",),
+    "P1.24": ("Fixed in WP-30", "Changed behaviour"),
+    "P1.25a": ("New",),
+    "P1.25b": ("Results that change", "Security", "Changed behaviour"),
+    "P1.26a": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.26b": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.27": ("Changed behaviour", "Fixed in WP-30"),
+    "P1.28a": ("New", "Changed behaviour"),
+    "P1.28b": ("New",),
+    "P1.29": ("Security",),
+    "P1.30": ("Requirements", "Security"),
+    "P1.31a": ("New", "Security"),
+    "P1.31b": ("Fixed in WP-30",),
+    "P1.32": ("Requirements",),
+    "P1.33": ("Requirements",),
+    "P1.34": ("Fixed in WP-30",),
+    "P1.35": ("Requirements", "Changed behaviour"),
+}
+
+#: The section that closes each entry (index.md "Section manifest"); an open
+#: entry's Resolution names it.  Permanent.
+WP30_SECTION = {
+    "P1.1a": 11,
+    "P1.1b": 20,
+    "P1.2a": 15,
+    "P1.2b": 16,
+    "P1.3a": 21,
+    "P1.3b": 44,
+    "P1.4a": 24,
+    "P1.4b": 33,
+    "P1.5": 18,
+    "P1.6": 51,
+    "P1.7": 42,
+    "P1.8a": 40,
+    "P1.8b": 45,
+    "P1.9a": 49,
+    "P1.9b": 55,
+    "P1.10": 56,
+    "P1.11a": 9,
+    "P1.11b": 29,
+    "P1.12a": 8,
+    "P1.12b": 13,
+    "P1.13a": 30,
+    "P1.13b": 43,
+    "P1.14a": 32,
+    "P1.14b": 36,
+    "P1.15a": 28,
+    "P1.15b": 48,
+    "P1.15c": 53,
+    "P1.16": 19,
+    "P1.17a": 14,
+    "P1.17b": 27,
+    "P1.18a": 31,
+    "P1.18b": 52,
+    "P1.19": 10,
+    "P1.20a": 38,
+    "P1.20b": 47,
+    "P1.21a": 39,
+    "P1.21b": 50,
+    "P1.22": 26,
+    "P1.23a": 35,
+    "P1.23b": 17,
+    "P1.24": 37,
+    "P1.25a": 7,
+    "P1.25b": 34,
+    "P1.26a": 6,
+    "P1.26b": 23,
+    "P1.27": 12,
+    "P1.28a": 22,
+    "P1.28b": 54,
+    "P1.29": 4,
+    "P1.30": 41,
+    "P1.31a": 46,
+    "P1.31b": 57,
+    "P1.32": 25,
+    "P1.33": 5,
+    "P1.34": 2,
+    "P1.35": 3,
+}
+
+#: The 56 ids, in entry order.
+WP30_ALL = tuple(WP30_LISTS)
+
+_WP30_MARKER = re.compile(r"<!-- WP-30 (P1\.\d{1,2}[abc]?) -->")
+_WP30_OPEN_FORM = re.compile(
+    r"^  - Resolution: Not fixed because WP-30 section (\d{2}) has not landed\."
+    r" Graded S[1-3] \(WP-30\): \S")
+
+
+def _wp30_markers(text):
+    """The ids of every ``<!-- WP-30 <id> -->`` marker in *text*, in order,
+    repeats kept."""
+    return _WP30_MARKER.findall(text)
+
+
+def _wp30_open_problems(open_map, entries):
+    """What is wrong with the allowance *open_map* ({id: title}) against the
+    BUGS.md *entries*: an id WP-30 lacks, a title with a double quote or
+    shared by two ids, a title no entry or two entries carry, an entry that
+    is closed (the allowance is stale), one not in the WP-30 open form, or
+    one whose Resolution names another section than WP30_SECTION's."""
+    bad = []
+    unknown = sorted(set(open_map) - set(WP30_ALL))
+    if unknown:
+        bad.append("ids WP-30 does not have: %s" % unknown)
+    titles = list(open_map.values())
+    if len(set(titles)) != len(titles):
+        bad.append("two ids share one title")
+    for pid, title in open_map.items():
+        if '"' in title:
+            bad.append("%s: the title holds a double quote" % pid)
+        match = [e for e in entries if e["title"] == title]
+        if len(match) != 1:
+            bad.append("%s: %d BUGS.md entries are titled %r"
+                       % (pid, len(match), title))
+            continue
+        e = match[0]
+        if e["closed"]:
+            bad.append("%s: %r is closed; delete its WP30_OPEN key"
+                       % (pid, title))
+            continue
+        form = _WP30_OPEN_FORM.match(e["fields"].get("Resolution", ""))
+        if not form:
+            bad.append("%s: %r's Resolution is not 'Not fixed because WP-30 "
+                       "section NN has not landed. Graded S1|S2|S3 (WP-30): "
+                       "...'" % (pid, title))
+        elif int(form.group(1)) != WP30_SECTION.get(pid):
+            bad.append("%s: its Resolution names section %s, not %s"
+                       % (pid, form.group(1), WP30_SECTION.get(pid)))
+    return bad
+
+
+def _wp30_marker_problems(open_ids, markers):
+    """A marker naming no WP-30 id, and an open id with no marker left."""
+    bad = ["a marker names %s, which WP-30 does not have" % m
+           for m in sorted(set(markers) - set(WP30_ALL))]
+    bad += ["%s is open and CHANGELOG.md holds no marker for it" % pid
+            for pid in WP30_ALL if pid in open_ids and pid not in markers]
+    return bad
+
+
+def _wp30_closure_problems(open_ids, markers, entries):
+    """A closed id (in WP30_ALL, not open) whose marker is still in the
+    CHANGELOG, or whose (WP-30, <id>) no closed entry's Resolution holds."""
+    bad = []
+    for pid in WP30_ALL:
+        if pid in open_ids:
+            continue
+        if pid in markers:
+            bad.append("%s is closed and CHANGELOG.md still holds its "
+                       "marker" % pid)
+        tag = "(WP-30, %s)" % pid
+        if not [e for e in entries if e["closed"]
+                and tag in e["fields"].get("Resolution", "")]:
+            bad.append("%s is closed and no closed BUGS.md entry's "
+                       "Resolution holds %s" % (pid, tag))
+    return bad
+
+
+def _wp30_list_problems(lists_map, changelog):
+    """Each id's marker or its (WP-30, <id>) line must sit in every list
+    *lists_map* names for it, and neither its marker nor such a line
+    anywhere else (a section that needs another list widens its own row
+    first, index.md R4)."""
+    lists = _changelog_lists(changelog)
+    bad = []
+    names = sorted({n for ls in lists_map.values() for n in ls})
+    bodies = {n: _changelog_list(lists, n) for n in names}
+    for n in names:
+        if bodies[n] is None:
+            bad.append("CHANGELOG.md has no single '### %s' list" % n)
+    for pid, wanted in lists_map.items():
+        mark, line = "<!-- WP-30 %s -->" % pid, "(WP-30, %s)" % pid
+        for n in wanted:
+            body = bodies.get(n)
+            if body is not None and mark not in body and line not in body:
+                bad.append("%s: '### %s' holds neither its marker nor a line "
+                           "ending %s" % (pid, n, line))
+        for h, body in lists.items():
+            if any(h == n or h.startswith(n + " (") for n in wanted):
+                continue
+            if mark in body:
+                bad.append("%s: its marker sits under '### %s'" % (pid, h))
+            if line in body:
+                bad.append("%s: a line ending %s sits under '### %s'"
+                           % (pid, line, h))
+    return bad
+
+
+class TestWp30Tracking:
+    """WP-30's 56 P1 entries (index.md A144): open in BUGS.md, naming their
+    section, with a marker in each CHANGELOG list they belong to until their
+    section lands, then closed with no marker left and a Resolution naming
+    (WP-30, <id>)."""
+
+    def test_every_allowed_title_is_an_open_entry(self, bugs):
+        entries, _p = bugs
+        bad = _wp30_open_problems(WP30_OPEN, entries)
+        assert not bad, "\n".join(bad)
+
+    def test_an_open_p1_keeps_its_marker(self):
+        bad = _wp30_marker_problems(
+            set(WP30_OPEN), _wp30_markers(_read("CHANGELOG.md")))
+        assert not bad, "\n".join(bad)
+
+    def test_a_closed_p1_has_no_marker_and_a_resolution(self, bugs):
+        entries, _p = bugs
+        bad = _wp30_closure_problems(
+            set(WP30_OPEN), set(_wp30_markers(_read("CHANGELOG.md"))),
+            entries)
+        assert not bad, "\n".join(bad)
+
+    def test_each_p1_sits_in_its_changelog_lists(self):
+        assert WP30_ALL == tuple(WP30_LISTS) and len(WP30_ALL) == 56
+        assert tuple(WP30_SECTION) == WP30_ALL
+        assert sorted(WP30_SECTION.values()) == list(range(2, 58))
+        bad = _wp30_list_problems(WP30_LISTS, _read("CHANGELOG.md"))
+        assert not bad, "\n".join(bad)
+
+    def test_the_marker_reader(self):
+        text = ("# Changelog\n\n## 1.0, 01jan2027\n\nintro\n\n"
+                "### Results that change\n\n- a line. (WP-30, P1.2a)\n"
+                "<!-- WP-30 P1.1a -->\n\n"
+                "### Changed behaviour (may need your do-files changed)\n\n"
+                "<!-- WP-30 P1.1a -->\n<!-- WP-30 P1.15c -->\n\n"
+                "### Fixed in WP-30\n\n<!-- WP-30 P1.19 -->\n\n"
+                "## 0.9, 01jan2026\n\n### Results that change\n\n"
+                "<!-- WP-30 P1.99 -->\n")
+        assert _wp30_markers(text) == ["P1.1a", "P1.1a", "P1.15c", "P1.19",
+                                       "P1.99"]
+        assert _wp30_markers("<!-- WP-29 P0.1 --> <!-- WP-30 P1.1a-->"
+                             " <!-- WP-30 P1.1d -->") == []
+        lists = _changelog_lists(text)
+        assert list(lists) == [
+            "Results that change",
+            "Changed behaviour (may need your do-files changed)",
+            "Fixed in WP-30"]
+        assert "P1.99" not in "".join(lists.values())
+        assert _changelog_list(lists, "Changed behaviour").startswith(
+            "\n\n<!-- WP-30 P1.1a -->")
+        assert _changelog_list(lists, "Security") is None
+
+    def test_the_wp30_problem_readers(self):
+        def entry(title, closed, res):
+            return {"title": title, "closed": closed,
+                    "fields": {"Resolution": "  - Resolution: " + res}}
+        open_form = ("Not fixed because WP-30 section 11 has not landed. "
+                     "Graded S2 (WP-30): wrong style.")
+        good = [entry("T1", False, open_form),
+                entry("T2", True, "Fixed 01nov2026 (WP-30, P1.2a). Done.")]
+        assert _wp30_open_problems({"P1.1a": "T1"}, good) == []
+        for open_map, entries, says in (
+                ({"P1.1a": "T2"}, good, "is closed"),
+                ({"P1.1a": "T9"}, good, "0 BUGS.md entries"),
+                ({"P1.1a": "T1"}, good + [entry("T1", False, open_form)],
+                 "2 BUGS.md entries"),
+                ({"P1.1a": "T1"},
+                 [entry("T1", False, "Not fixed because x. Graded S3 "
+                        "(WP-27): y.")], "not 'Not fixed because WP-30"),
+                ({"P1.1a": "T1"},
+                 [entry("T1", False, open_form.replace("11", "12"))],
+                 "names section 12, not 11"),
+                ({"P1.99": "T1"}, good, "does not have"),
+                ({"P1.1a": 'a "q"'}, [entry('a "q"', False, open_form)],
+                 "double quote"),
+                ({"P1.1a": "T1", "P1.1b": "T1"}, good, "share one title")):
+            bad = _wp30_open_problems(open_map, entries)
+            assert any(says in b for b in bad), (says, bad)
+
+        assert _wp30_marker_problems({"P1.1a"}, ["P1.1a"]) == []
+        assert _wp30_marker_problems({"P1.1a"}, []) == [
+            "P1.1a is open and CHANGELOG.md holds no marker for it"]
+        assert _wp30_marker_problems(set(), ["P1.1"]) == [
+            "a marker names P1.1, which WP-30 does not have"]
+
+        others = set(WP30_ALL) - {"P1.2a"}
+        assert _wp30_closure_problems(others, others, good) == []
+        assert _wp30_closure_problems(others, others | {"P1.2a"}, good) == [
+            "P1.2a is closed and CHANGELOG.md still holds its marker"]
+        assert _wp30_closure_problems(others, others, good[:1]) == [
+            "P1.2a is closed and no closed BUGS.md entry's Resolution "
+            "holds (WP-30, P1.2a)"]
+        # (WP-30, P1.1a) is not read inside (WP-30, P1.11a) or (WP-30, P1.1b)
+        near = [entry("T3", True, "Fixed (WP-30, P1.11a). (WP-30, P1.1b).")]
+        assert _wp30_closure_problems(set(WP30_ALL) - {"P1.1a"}, set(),
+                                      near) == [
+            "P1.1a is closed and no closed BUGS.md entry's Resolution "
+            "holds (WP-30, P1.1a)"]
+
+        log = ("## 1.0\n\n### Results that change\n\n<!-- WP-30 P1.1a -->\n"
+               "### Changed behaviour (may need your do-files changed)\n\n"
+               "- a line. (WP-30, P1.1a)\n### Security\n\n"
+               "<!-- WP-30 P1.29 -->\n")
+        rules = {"P1.1a": ("Results that change", "Changed behaviour"),
+                 "P1.29": ("Security",)}
+        assert _wp30_list_problems(rules, log) == []
+        assert _wp30_list_problems(
+            {"P1.1a": ("Results that change", "Changed behaviour"),
+             "P1.29": ("Results that change",)}, log) == [
+            "P1.29: '### Results that change' holds neither its marker nor "
+            "a line ending (WP-30, P1.29)",
+            "P1.29: its marker sits under '### Security'"]
+        # a closing line in a list its row does not name (R4 not followed)
+        assert _wp30_list_problems(rules, log + "- x. (WP-30, P1.1a)\n") == [
+            "P1.1a: a line ending (WP-30, P1.1a) sits under '### Security'"]
+        assert _wp30_list_problems({"P1.19": ("Fixed in WP-30",)}, log) == [
+            "CHANGELOG.md has no single '### Fixed in WP-30' list"]
+
+    def test_no_wp30_entry_remains_open(self, bugs):
+        # WP-30's closeout (S58.1): every P1 entry is closed, the allowance
+        # is empty and no marker is left, so the release guard exempts
+        # nothing and each id's (WP-30, <id>) sits in a closed entry.
+        # Reopening an entry, putting a key back or re-adding a marker
+        # fails here.
+        entries, _p = bugs
+        assert WP30_OPEN == {}, (
+            "WP30_OPEN is {} after WP-30's closeout; it holds %s"
+            % sorted(WP30_OPEN))
+        markers = _wp30_markers(_read("CHANGELOG.md"))
+        assert not markers, (
+            "markers left in CHANGELOG.md: %s" % markers)
+        bad = _wp30_closure_problems(set(), set(markers), entries)
+        bad += ["%r is open in the WP-30 form" % e["title"]
+                for e in entries if not e["closed"]
+                and _WP30_OPEN_FORM.match(e["fields"].get("Resolution", ""))]
         assert not bad, "\n".join(bad)

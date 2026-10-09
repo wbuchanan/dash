@@ -65,6 +65,9 @@ _MEASURED = {
 }
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _figure(scheme):
     df = pd.DataFrame({"mpg": np.linspace(12.0, 41.0, 12),
                        "weight": np.linspace(1760.0, 4840.0, 12)})
@@ -79,7 +82,7 @@ def _figure(scheme):
     with open(dp, "w") as f:
         json.dump(make_data_json(df), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)

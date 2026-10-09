@@ -1,11 +1,13 @@
 {smcl}
-{* *! version 0.1.0  02oct2026}{...}
+{* *! version 0.1.0  09oct2026}{...}
 {viewerjumpto "Syntax"            "dash##syntax"}{...}
 {viewerjumpto "Description"       "dash##description"}{...}
 {viewerjumpto "Plot types"        "dash##plottypes"}{...}
 {viewerjumpto "Differences from twoway" "dash##differences"}{...}
 {viewerjumpto "Subcommands"       "dash##subcommands"}{...}
 {viewerjumpto "Dashboard Options" "dash##dashboard_options"}{...}
+{viewerjumpto "Exporting"         "dash##export"}{...}
+{viewerjumpto "Stored results"    "dash##results"}{...}
 {viewerjumpto "Layout"            "dash##layout"}{...}
 {viewerjumpto "Linking and Brushing" "dash##linking"}{...}
 {viewerjumpto "The toolbar"       "dash##toolbar"}{...}
@@ -48,7 +50,7 @@
 
 {p 8 17 2}
 {cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
-{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:, replace}]{cmd:)}
+{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:,} {cmd:replace} {cmd:asis}]{cmd:)}
 {cmd:replace}]
 
 {pstd}{ul:Named graph (accumulate for multi-graph dashboard)}{p_end}
@@ -73,7 +75,7 @@
 
 {p 8 17 2}
 {cmd:dash build} {cmd:,}
-{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}
+{cmdab:sav:ing}{cmd:(}{it:filepath} [{cmd:,} {cmd:replace} {cmd:asis}]{cmd:)}
 [{cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}
 {cmdab:sub:title}{cmd:(}{it:string}{cmd:)}
 {cmdab:lay:out}{cmd:(}{it:layout_spec}{cmd:)}
@@ -91,7 +93,7 @@
 
 {p 8 17 2}
 {cmd:dash build} {cmd:,}
-{cmdab:sav:ing}{cmd:(}{it:filepath.py}{cmd:)}
+{cmdab:sav:ing}{cmd:(}{it:filepath.py} [{cmd:,} {cmd:replace}]{cmd:)}
 {cmd:server}
 [{it:other_build_options}]
 
@@ -103,6 +105,8 @@
 {cmd:port(}{it:#}{cmd:)}
 {cmd:nobrowser}
 {cmd:timeout(}{it:#}{cmd:)}
+{cmd:maxsessions(}{it:#}{cmd:)}
+{cmd:idletimeout(}{it:#}{cmd:)}
 [{it:other_build_options}]]
 
 {pstd}{ul:Clear registry}{p_end}
@@ -123,10 +127,28 @@ listed in {help dash##plottypes:Plot types}.  An {it:if} or {it:in} written
 outside the parentheses of the {it:plot_specs} -- after them, or before a
 {cmd:||} -- applies to every plot, on top of a plot's own, as in
 {cmd:twoway}; in the {cmd:||} form without parentheses a qualifier belongs
-to the plot it is written in.  A {it:weight} belongs to a plot, too:
+to the plot it is written in.  A {cmd:||} piece that holds no plot --
+{cmd:|| , title("T")} at the end, or {cmd:|| if foreign==1} -- gives its
+{it:if}, {it:in} and options to the graph, as in {cmd:twoway}; its options
+are graph options only, and a plot option there is refused, r(198).  A
+{it:weight} belongs to a plot, too:
 {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=}{it:varname}{cmd:]} or
 {cmd:[pweight=}{it:varname}{cmd:]}, one variable rather than an expression
 on the layers that honour it; see {help dash##weights:Weights}.
+
+{pstd}
+As in {cmd:twoway}, the {it:plot_specs} may be preceded by {cmd:twoway},
+{cmd:tw} or {cmd:two}, or by {cmd:graph twoway} ({cmd:gr} for {cmd:graph},
+and {cmd:tw} to {cmd:twoway} after it), so a command copied from a do-file
+runs as it is: {cmd:dash twoway (scatter mpg weight) (lfit mpg weight)}
+draws what {cmd:dash (scatter mpg weight) (lfit mpg weight)} draws, saved
+or served.  One is read: a second, as in
+{cmd:dash twoway twoway scatter mpg weight}, is refused as {cmd:twoway}
+refuses it, "twoway is not a twoway plot type", {cmd:r(198)};
+{cmd:twow}, {cmd:twowa}, {cmd:gra} and {cmd:grap} are refused with
+{cmd:r(199)}, "command twow is unrecognized", as Stata refuses them.
+{cmd:dash twoway} with nothing after it is refused; {cmd:twoway} draws an
+empty graph.
 
 
 {marker description}
@@ -137,6 +159,12 @@ on the layers that honour it; see {help dash##weights:Weights}.
 interactive HTML file instead of a static Stata graph window.
 The HTML file works offline in any modern browser -- no server, internet
 connection, or special software is required.
+
+{pstd}
+A dashboard is not a Stata graph: {cmd:graph export}, {cmd:graph save},
+{cmd:putdocx} and {cmd:dyndoc} do not see it.  {cmd:dash} stores the path of
+the file it wrote in {cmd:r(filename)}; see {help dash##export:Exporting} and
+{help dash##results:Stored results}.
 
 {pstd}
 For plot types, marker/line/axis options, and {it:if}/{it:in} qualifiers,
@@ -272,6 +300,58 @@ is missing everywhere -- {cmd:dash} draws in silence too, and
 one-variable plot of a type that takes a {it:y} and an {it:x} is "too few
 variables specified", r(102).
 
+{phang}{ul:Orientation.}  {opt horizontal} draws a plot on its side, as
+{cmd:twoway} draws it, on {cmd:area}, {cmd:bar}, {cmd:spike},
+{cmd:dropline}, {cmd:dot}, {cmd:histogram}, {cmd:kdensity}, the eight
+range types, the five paired-coordinate types, {cmd:pci},
+{cmd:pcarrowi}, {cmd:function} and {cmd:tsrline}: the {it:x} values run
+up the y axis, the {it:y} values across, and the default axis titles and
+date labels follow them ({cmd:histogram} {it:var}{cmd:, horizontal}
+titles y with the variable and x "Density").  {opt vertical}, the
+default, is taken on the same types except {cmd:kdensity} and
+{cmd:function}.  {cmd:yaxis(2)} and {cmd:xaxis(2)} stay where they are
+(a sideways layer's {it:x} values on {cmd:yaxis(2)} are on the right),
+and marker labels keep their clock positions.  Either flag on a type
+that does not take it is refused, "option horizontal not allowed",
+r(198), judged after {cmd:recast()}; the two together are "may not
+combine options horizontal and vertical", r(198).
+
+{pstd}
+{ul:Time-series operators.}  A plot variable may carry {cmd:L.}, {cmd:F.},
+{cmd:D.} and {cmd:S.}, their combinations and {cmd:L(1/2).}, wherever
+{cmd:twoway} takes them: {cmd:scatter}, {cmd:line}, {cmd:connected},
+{cmd:area}, {cmd:bar}, {cmd:spike}, {cmd:dropline}, {cmd:dot}, {cmd:lfit},
+{cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}, {cmd:mspline}, {cmd:mband}, the
+eight range types, the five paired-coordinate types, {cmd:tsline} and
+{cmd:tsrline}.  {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess}, {cmd:lpoly},
+{cmd:lpolyci}, {cmd:histogram} and {cmd:kdensity} refuse them as
+{cmd:twoway} does, "factor-variable and time-series operators not
+allowed", r(101).  Each series is computed by Stata when the graph is
+drawn or the dashboard built, under the {help tsset} then in force and
+over every observation, so an {it:if}, an {it:in} and a filter select rows
+of it and never recompute it.  It is stored as {cmd:tsrevar} stores it,
+with the variable's display format and value labels: a {cmd:D.} of a date
+is drawn as a date, as {cmd:twoway} draws it.  Titles, keys and tooltips
+read {cmd:twoway}'s text: the variable's label, a comma and the operators
+("Closing price, D"), or the expression when the variable has no label.
+Without {cmd:tsset} an operator is refused "time variable not set",
+r(111); on a string variable "may not use time-series operators on string
+variables", r(109); a factor variable is "factor-variable operators not
+allowed", r(101); and data not sorted by the time variable are "not
+sorted", r(5).  {cmd:by()} with an operated plot variable in any layer is
+"not sorted", r(5), as in {cmd:twoway}, and {cmd:dash} adds how to
+generate the variable first.  A bare {cmd:sort} with an operated {it:x} is
+"factor-variable and time-series operators not allowed" and "option
+sort() incorrectly specified", r(198), on the types that sort on {it:x}:
+{cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar},
+{cmd:spike}, {cmd:dropline}, {cmd:dot}, {cmd:mspline}, {cmd:mband} and the
+eight range types.  The column of the CSV download is headed by the
+expression, {cmd:D.close}.
+
+{phang2}{cmd:. sysuse sp500, clear}{p_end}
+{phang2}{cmd:. tsset date}{p_end}
+{phang2}{cmd:. dash line D.close date}{p_end}
+
 {pstd}
 {ul:Join order.}  {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline},
 {cmd:rarea} and {cmd:rconnected} join their points in the order of the
@@ -295,6 +375,41 @@ found" and "option sort() incorrectly specified", r(198), in {cmd:twoway}'s
 words, and so are more than ten names.  The {cmd:sort()} variables are
 never written to the dashboard: their order travels as a rank column,
 {cmd:__dashs}{it:#}, that no tooltip, filter or download shows.
+
+{pstd}
+{ul:Connecting and missing values.}  {cmd:connect()} and {cmd:cmissing()}
+are drawn as {cmd:twoway} draws them, on {cmd:line}, {cmd:connected},
+{cmd:tsline}, {cmd:rline}, {cmd:rconnected}, {cmd:tsrline},
+{cmd:scatteri}, the fits and smooths and the fit line of the four
+{cmd:ci} types, in the saved page and the served app, before and after
+a filter move.  A {cmd:scatter} given {cmd:connect()} is {cmd:twoway}'s
+{cmd:connected} plot: its line is drawn, and {cmd:clcolor()},
+{cmd:clpattern()}, {cmd:clwidth()} and {cmd:sort} are honoured on it.
+{cmd:l} (or {cmd:direct}) joins the points in order; {cmd:L} (or
+{cmd:ascending}) also breaks the line wherever {it:x} drops (a tie
+joins); {cmd:J} (or {cmd:stairstep}) steps across, then up or down;
+{cmd:stepstair} steps up or down, then across; and {cmd:i} (or
+{cmd:none}) draws no line and keeps the key.  The spellings are
+{cmd:twoway}'s, case and all ({cmd:L} is not {cmd:l}); a name
+{cmd:twoway} does not know is drawn direct, after {cmd:twoway}'s note.
+Every point keeps its tooltip on a stepped line, and a hidden line has
+none.  {cmd:cmissing(n)} breaks the line at each observation missing
+{it:x} or {it:y} (each bound of a range plot at its own), and
+{cmd:cmissing(y)}, the default, joins across it; {cmd:function} joins
+across a region where its expression is missing, as {cmd:twoway} does,
+and breaks there under {cmd:cmissing(n)}.  Across several {it:y} both
+are style lists ({cmd:c(l J)}, {cmd:c(. l)}, {cmd:cmissing(n ..)}),
+{cmd:cmissings()} is a copy of {cmd:cmissing()}, and of several copies
+the last counts.  A misplaced {cmd:..} is refused, r(198), and a
+{cmd:cmissing()} value that is neither yes nor no is refused, r(101),
+where {cmd:twoway} draws a connecting line, in {cmd:twoway}'s words.
+{cmd:cmissing(n)} on {cmd:area} and {cmd:rarea}, and on {cmd:lowess},
+{cmd:lpoly}, {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci}
+and {cmd:qfitci}, and {cmd:connect()} other than direct on {cmd:rarea},
+are named in the note and not drawn.
+
+{phang2}{opt cmissings(y|n ...)} is {cmd:twoway}'s other spelling of
+{cmd:cmissing()}, and is read as it.
 
 {pstd}
 With {cmd:by()} {cmd:twoway} answers panel by panel, and so does
@@ -347,6 +462,27 @@ on its left:
 {ul:pccapsym.}  {cmd:pccapsym} draws each spike with the same marker at
 both ends: the line options style the spike, the marker options the
 markers, and {cmd:mlabel()} labels the first point.
+
+{pstd}
+{ul:Bars and range caps.}  {cmd:bar} and {cmd:rbar} draw each bar one unit
+of {it:x} wide whatever the spacing of {it:x}, as {cmd:twoway} does, and
+{cmd:barwidth(}{it:#}{cmd:)} sets another width in the same units.  On a
+date axis the unit is the variable's own: a day for {cmd:%td}, a
+millisecond for {cmd:%tc} and {cmd:%tC}, and a week, month, quarter,
+half-year or year for {cmd:%tw} to {cmd:%ty}; so monthly data held as
+{cmd:%td} dates draws bars a day wide, as in {cmd:twoway}, and
+{cmd:barwidth(30)} widens them.  Widths do not change when a filter moves.
+{cmd:rcap} draws its caps as long as a marker of its {cmd:msize()} is wide,
+the scheme's symbol size by default, in screen units.  {cmd:rcapsym} draws
+no caps, only its spike and a marker at each end, at the scheme's symbol
+size unless {cmd:msize()} says otherwise.  {cmd:barwidth()} on {cmd:rcap}
+or {cmd:rcapsym} is refused, r(198), as {cmd:twoway} refuses it.
+
+{pstd}
+{ul:Where bars stand.}  {cmd:bar}, {cmd:spike}, {cmd:dropline} and
+{cmd:area} stand where {cmd:twoway} stands them: on 0 when the axis holds
+it, otherwise on the end of the axis nearest 0; see {opt base(#)} under
+Statistical Layer Options.
 
 {pstd}
 {ul:Immediate values.}  {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi} read
@@ -410,12 +546,18 @@ saved or served.  Evaluating has {cmd:twoway}'s side effects:
 and data holding at least {cmd:n()} observations are marked changed
 ({cmd:c(changed)}).  Under {cmd:by()}, {cmd:dash} evaluates the expression
 once and draws it in every panel, where {cmd:twoway} evaluates it once per
-panel; only random draws differ.  A dashboard spec written by hand without
-the points is drawn by {cmd:dash} itself, with the same operators and
-missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
+panel; only random draws differ.  A dashboard spec written by hand, which
+carries no points, is drawn by {cmd:dash} itself, with the same operators
+and missing values, {cmd:x}, {cmd:_pi} and ten functions -- {cmd:sin},
 {cmd:cos}, {cmd:tan}, {cmd:exp}, {cmd:log}, {cmd:log10}, {cmd:sqrt},
-{cmd:abs}, {cmd:floor} and {cmd:ceil}; anything else draws that layer
-empty, and a note names it.
+{cmd:abs}, {cmd:floor} and {cmd:ceil}.  Any other function, name or form
+draws that layer empty, saved or served, with one note: the layer needs
+the points Stata computes when {cmd:dash} registers the graph, and the
+note names the first function or name it uses that {cmd:dash} cannot
+evaluate ({cmd:normalden()}, {cmd:pi}), or says that the expression
+cannot be read.  Stored points that cannot be read get the same note.
+Registering the graph with {cmd:dash} computes its points in Stata, or
+refuses the expression as {cmd:twoway} does.
 
 {pstd}
 {ul:Graphs that need no data.}  A graph whose plots are all
@@ -438,6 +580,51 @@ use instead: {cmd:twoway} itself, {cmd:dash scatter} {it:y x}{cmd:,}
 that is not a plot type is refused too, and the message lists the plot
 types above.  A plot type cannot be handled as an unknown option is --
 named in a note and drawn around -- because it is what would be drawn.
+
+{marker added_text}{...}
+{pstd}
+{ul:Added text.}  {opt text(# # "string" ...)} draws text at data
+points, as {cmd:twoway} draws it, in the saved page and the served app and
+after every filter move.  Each copy -- after the comma, in a plot group or
+in a {cmd:||} segment -- is drawn with its own sub-options, and each point
+{it:y x} with at least one line that is not empty is one text, its quoted
+strings stacked as lines.  The text is placed in the units of its axes:
+on a date axis a number is a date in the variable's units, {opt yaxis(2)},
+{opt xaxis(2)} or {opt axes(# #)} draw it on a second axis, and on a log
+or reversed axis it is at the transformed point.  A text never widens an
+axis, and one whose point is outside the plot region is still drawn.
+Under {cmd:by()} each text is drawn in every panel at the panel's text
+size.  Drawn: {opt placement()} (every compass name and clock position
+{cmd:twoway} takes; an unknown name is noted and drawn east, as
+{cmd:twoway} does), {opt justification()}, {opt orientation()}
+({cmd:horizontal}, {cmd:vertical}, {cmd:rvertical}, {cmd:rhorizontal}),
+{opt size()}, {opt color()}, {opt box} and {opt nobox}, {opt fcolor()}
+and {opt bfcolor()}, {opt lcolor()} and {opt blcolor()}, {opt bcolor()},
+{opt lwidth()} and {opt blwidth()} and {opt margin()}; the scheme's
+{cmd:text_option} box otherwise.  Every other textbox sub-option
+{cmd:twoway} takes ({opt width()}, {opt height()}, {opt linegap()},
+{opt tstyle()}, {opt angle()}, {opt alignment()} ...) is named once in a
+note and not drawn.  Refused with {cmd:r(198)} in {cmd:twoway}'s words:
+a point that is not two numbers ({cmd:invalid point, BAD 30}), an axis
+pair no plot draws ({cmd:text() option invalid, specified axis pair (2 1)}
+{cmd:not in graph}) and a sub-option {cmd:twoway} does not take
+({cmd:option nosuch() not allowed}).  The number of texts times the
+{cmd:by()} panels is held to {cmd:$dash_max_added_text}
+(see {help dash##limits:Resource limits}).  A text is drawn as typed:
+its {help dash##graph_text:graph-text markup} is read, and nothing in it
+is run.
+
+{phang}{opt ttext(# # "string" ...)} is {opt text()} whose {it:x} may
+also be a date literal, quoted or not, read in the x axis's time format as
+{cmd:twoway} reads it: the first {cmd:%t} or {cmd:%d} format among the
+axis's label, minor label, tick and minor tick formats, each the first
+plot's {it:x} variable's format unless that option's {opt format()}
+replaces it.  {cmd:tsline y, ttext(12 2001m1 "event")} draws the text at
+2001m1 on a monthly axis.  A literal that format cannot read -- a month
+on a daily or numeric axis, {cmd:2001m13}, a missing value -- is refused
+as {cmd:twoway} refuses it, {cmd:2001m13 is not a number},
+{cmd:r(198)}, and a date function, which {cmd:twoway} does not read
+there, is an invalid point.  The literal is read as data and never run.
 
 
 {marker differences}
@@ -468,6 +655,14 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:twoway} refuses it, on the one-line form and {cmd:dash build}
     alike.  {cmd:replace} with no {cmd:saving()}, or on a named graph,
     has nothing to replace and is named in the note.
+    {cmd:saving()}'s sub-options are {cmd:twoway}'s, {cmd:replace} and
+    {cmd:asis}, in full, in lower case and once each, on the one-line form
+    and {cmd:dash build} alike; {cmd:asis} is accepted and changes nothing,
+    since a saved page is always fixed.  Any other word is refused as
+    {cmd:twoway} refuses it, "option bogus not allowed", {cmd:r(198)}, and
+    so is a name holding a blank that is not in quotes: write
+    {cmd:saving("my file.html")}.  A comma inside the quotes belongs to the
+    name, and {cmd:saving(, replace)} writes {cmd:Graph.html}.
 
 {phang2}    {ul:Graphs and KPI cards share one namespace.}  A name holds one
     item, whichever kind it is, so {cmd:dash kpi} cannot quietly take a name
@@ -552,7 +747,13 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:xline()}/{cmd:yline()} merge their copies:
     {cmd:title(A) title(, color(red))} is A in red,
     {cmd:xlabel(1 2) xlabel(3, add)} labels 1, 2 and 3, and each copy of
-    {cmd:yline()} keeps its own style.  An option {cmd:twoway} takes once --
+    {cmd:yline()} keeps its own style.  Copies merge sub-option by
+    sub-option under {cmd:twoway}'s full name, the last copy winning, so
+    {cmd:legend(c(1)) legend(cols(2))} is two columns and
+    {cmd:legend(lab(1 "A")) legend(lab(2 "B"))} keeps both labels;
+    {cmd:rows()} beats {cmd:cols()} in and across copies, and within one
+    copy a word beats its {cmd:no} form ({cmd:legend(on off)} draws the
+    legend).  An option {cmd:twoway} takes once --
     {cmd:name()}, {cmd:saving()}, {cmd:scheme()}, {cmd:xsize()},
     {cmd:ysize()}, {cmd:aspectratio()}, a bare {cmd:sort},
     {cmd:horizontal}, {cmd:yaxis()}, {cmd:bwidth()} on {cmd:kdensity} --
@@ -595,8 +796,24 @@ named in a note and drawn around -- because it is what would be drawn.
     cannot honour is named once per command, in a single note:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, play(x) text(20 3000 "hi")}{p_end}
-{p 12 12 2}{cmd:dash: ignoring unsupported option(s): play() text()}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, play(x)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): play())}{p_end}
+
+{phang2}
+    {ul:How a note is printed.}  Every note {cmd:dash} prints -- this one,
+    and those about a value it draws differently or a layer that drew
+    nothing -- is printed as {cmd:twoway} prints its notes: one line,
+    {cmd:(note: dash:} ...{cmd:)}, in text colour, shown under
+    {cmd:quietly} and {cmd:set output error} and hidden by {cmd:capture}.
+    A note is printed once per command however often it arises, never
+    names a file or a line of {cmd:dash}'s own code, and is neither hidden
+    nor made an error by a Python {cmd:warnings} filter or by
+    {cmd:PYTHONWARNINGS}; other packages' Python warnings still follow
+    those filters.  The two notes {cmd:dash} gives in {cmd:twoway}'s own
+    words, {cmd:(note: regress could not fit model)} (or {cmd:fracpoly}'s)
+    and {cmd:(note: scheme} {it:name} {cmd:not found, using s2color)},
+    are printed as {cmd:twoway} prints them, as plain text that
+    {cmd:quietly} hides.
 
 {phang2}
     The note names option {it:names}, never the values supplied.  Because
@@ -617,24 +834,53 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:xtitle()}/{cmd:ytitle()}, {cmd:title()}, {cmd:subtitle()},
     {cmd:note()}, {cmd:caption()}, {cmd:xline()}/{cmd:yline()} or
     {cmd:filter()} that {cmd:dash} does not implement is named in a
-    warning, as {cmd:by()}'s are:
-    {cmd:dash: legend() sub-option(s) not implemented and ignored: span stack}.
+    note, as {cmd:by()}'s are:
+    {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: span stack)}.
+    A sub-option of {cmd:legend()}, of the axis labels and ticks
+    ({cmd:xlabel()}, {cmd:ylabel()}, {cmd:xtick()}, {cmd:ytick()},
+    {cmd:xmlabel()}, {cmd:ymlabel()}, {cmd:xmtick()}, {cmd:ymtick()},
+    {cmd:zlabel()}), of {cmd:xline()}/{cmd:yline()} and of a textbox is
+    read as {cmd:twoway}'s own parsers read it: in lower case only, from
+    its minimum abbreviation to its full name, in the order
+    {cmd:twoway} tries them, so {cmd:legend(c(2) r(1) lab(1 "A") posi(6) s(small))},
+    {cmd:ylabel(, labs(small) ang(0) for(%9.1f) nog)} and
+    {cmd:xline(5, lc(red) lp(dash) lw(thick))} draw as their full names,
+    and a second {cmd:c()} after {cmd:cols()} is {cmd:color()}.  Quoted
+    label text is never read as a sub-option.  In {cmd:legend()}, the
+    axis labels and ticks and the titles, what {cmd:twoway} refuses is
+    refused with its return code and words: a sub-option in capitals
+    ({cmd:legend(OFF)}: {cmd:option OFF not allowed}, r(198)), a spelling
+    {cmd:twoway} does not accept ({cmd:ylabel(, a(45))}), one given twice
+    in one option ({cmd:legend(c(2) cols(1))}), the wrong form
+    ({cmd:ylabel(, labs)}: {cmd:option labs incorrectly specified}), a
+    bad {cmd:cols()}, {cmd:rows()} or {cmd:holes()}
+    ({cmd:legend(c(red))}: {cmd:cols() invalid -- invalid number},
+    r(121)), a {cmd:label()} key that is no positive integer, and
+    {cmd:ytitle("Y", prefix suffix)}.  {cmd:legend(position(13))}, a
+    non-numeric {cmd:ring()} and a non-integer {cmd:order()} word draw the
+    default with {cmd:twoway}'s note.  {cmd:rows()} wins over
+    {cmd:cols()}, and in one copy a word wins over its {cmd:no} form
+    ({cmd:on} over {cmd:off}, {cmd:grid} over {cmd:nogrid}).  Repeated
+    copies merge sub-option by sub-option under the full name, the last
+    copy winning, so {cmd:legend(lab(1 "A")) legend(lab(2 "B"))} keeps
+    both labels.
     A textbox sub-option -- of {cmd:title()}, {cmd:subtitle()},
     {cmd:note()}, {cmd:caption()}, {cmd:xtitle()}/{cmd:ytitle()} and
     {cmd:xtitle2()}/{cmd:ytitle2()} -- is read under any of Stata's
     spellings, from its minimum abbreviation to its full name:
-    {cmd:c(red)} is {cmd:color(red)} and {cmd:si(large)} is
-    {cmd:size(large)}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
+    {cmd:c(red)} is {cmd:color(red)}, {cmd:s(large)} is
+    {cmd:size(large)}, {cmd:a()} is {cmd:alignment()}, {cmd:lst()} is
+    {cmd:lstyle()}, {cmd:b} is {cmd:box} and {cmd:nob} is {cmd:nobox}.  {cmd:size()}, {cmd:color()}, {cmd:prefix},
     {cmd:suffix} and, on an axis title, {cmd:axis(1)}/{cmd:axis(2)}
-    (minimum {cmd:ax()}, in lower case) are applied; every other sub-option, and any word that is not a textbox
-    sub-option ({cmd:colour()}, {cmd:style()}), is named, never drawn as
-    text.  A lone {cmd:suffix} on an axis title adds its lines after the
+    (minimum {cmd:ax()}, in lower case) are applied; every other
+    sub-option is named, never drawn as text.  A lone {cmd:suffix} on an axis title adds its lines after the
     default title, {cmd:prefix} before it.
     An axis title given with empty text -- {cmd:xtitle("")},
     {cmd:ytitle("")}, {cmd:ytitle("", axis(2))} or {cmd:ytitle2("")} --
     removes that title, as in {cmd:twoway}; an option not given at all
-    keeps the default (the variable's label, {cmd:Density},
-    {cmd:kdensity} {it:var}).
+    keeps the default title (see
+    {it:Legend keys and default axis titles} under Statistical Layer
+    Options).
     An axis title given only sub-options -- {cmd:xtitle(, size(large))},
     {cmd:ytitle(, color(red))}, {cmd:ytitle(, axis(2) size(large))},
     {cmd:ztitle(, size(large))} -- keeps the default title and applies
@@ -658,10 +904,13 @@ named in a note and drawn around -- because it is what would be drawn.
 {phang2}    {ul:Option values.}  A value is refused where {cmd:twoway}
     refuses it, and a word is refused where a number-only option was given
     one that {cmd:twoway} would have swallowed in silence.  A style name
-    that {cmd:dash} does not recognise (a colour, a marker symbol, a size,
-    a line width, a line pattern, an angle, a clock position or a fill
-    intensity) is reported once per render and the scheme's default drawn,
-    as {cmd:twoway} does with its own "named style not found" note.  A
+    that {cmd:dash} does not recognise (a marker symbol, a size, a line
+    width, a line pattern, an angle, a clock position or a fill
+    intensity) is reported once per render and the scheme's default drawn
+    (for a fill intensity, full intensity), as {cmd:twoway} does with its
+    own "named style not found" note.  An unknown or wrong-case colour is
+    reported the same way and drawn black, as {cmd:twoway} draws it (see
+    {help dash##colours:Colours}).  A
     refusal is one line naming the option and the value, printed before
     any Python runs, with r(198), or r(111) for a variable that does not
     exist:
@@ -689,8 +938,15 @@ named in a note and drawn around -- because it is what would be drawn.
     {cmd:yaxis(+2)} or {cmd:n(1E3)} reaches the renderer as 2, 2, 2 and
     1000.  A name or a number: {cmd:msize()}, {cmd:mlabsize()},
     {cmd:mlabgap()}, {cmd:mlabposition()} and {cmd:fintensity()} any
-    number; {cmd:lwidth()} and {cmd:mlwidth()} 0 to 10000;
-    {cmd:alwidth()} 0 to 10000 on the plot types where {cmd:twoway}
+    number, and {cmd:msize()}, {cmd:mlabsize()} and {cmd:mlabgap()} also a
+    number with a unit ({cmd:4pt}, {cmd:.1in}) or a {cmd:*}{it:#}
+    multiplier; {cmd:lwidth()}, {cmd:mlwidth()} and {cmd:clwidth()} 0 to
+    10000 Stata units, as a number, {it:#}{cmd:rs}, a non-negative
+    {it:#}{cmd:pt}, {it:#}{cmd:in} or {it:#}{cmd:cm}, or {cmd:*}{it:#},
+    refused with {cmd:twoway}'s message
+    {cmd:gm_linewidth must be between 0.000 and 1.0e+04}, followed by
+    {cmd:dash}'s line naming the option;
+    {cmd:alwidth()} the same, 0 to 10000 on the plot types where {cmd:twoway}
     refuses it outside that range (every type but {cmd:line},
     {cmd:connected}, the fits and smooths without a band, {cmd:kdensity},
     {cmd:function}, {cmd:tsline}, {cmd:scatter}, {cmd:dot},
@@ -702,13 +958,15 @@ named in a note and drawn around -- because it is what would be drawn.
     from a list, matched without regard to case: {cmd:kernel()},
     {cmd:colpalette()} and {cmd:theme()}.  A scheme name:
     {cmd:scheme()} must be a shipped scheme, a {cmd:theme()} name or a
-    {cmd:.scheme} file in the working directory, given by bare name or
-    with the extension, wherever it is written (see
+    scheme Stata finds along the ado-path,
+    {cmd:scheme-}{it:name}{cmd:.scheme} or {it:name}{cmd:.scheme},
+    wherever it is written (see
     {help dash##scheme:Stata scheme support}).  A list of numbers,
     written as any Stata
     {it:numlist}: {cmd:colorcuts()} one or more, {cmd:range()} exactly
     two; {cmd:colorcuts(1(1)5)} reaches the renderer as 1 2 3 4 5.
-    Variables: {cmd:mlabel()} and {cmd:colorvar()} name one, {cmd:hover()}
+    Variables: {cmd:colorvar()} names one, {cmd:mlabel()} one per y (see
+    {help dash##stylelists:Style lists}), {cmd:hover()}
     one or more, and {cmd:by()} one or more before its comma; each is
     expanded as {cmd:twoway} expands it, so {cmd:by(for)} means
     {cmd:by(foreign)}; a variable that does not exist is r(111) ({cmd:dash build}
@@ -738,8 +996,8 @@ named in a note and drawn around -- because it is what would be drawn.
     ({cmd:bands must be between 1 and 200}).
 
 {phang2}    {cmd:dash} also refuses some forms {cmd:twoway} reads:
-    {cmd:mlabel()} with more than one variable ({cmd:twoway} labels the
-    markers with the first); {cmd:range(}{it:varname}{cmd:)} on
+    an element of {cmd:mlabel()} that names several variables, such as
+    {cmd:t*} ({cmd:twoway} draws no labels for that y); {cmd:range(}{it:varname}{cmd:)} on
     {cmd:function} and {cmd:kdensity}, and a {cmd:.} for the data's own
     end in {cmd:range()} on {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} and
     {cmd:qfitci} ({cmd:dash} takes two numbers); a number too large for
@@ -747,7 +1005,8 @@ named in a note and drawn around -- because it is what would be drawn.
     width or an angle outside its bounds on a plot type that does not
     draw what it styles.  {cmd:twoway} checks {cmd:lwidth()} only where
     it draws a line or an outline, and {cmd:mlwidth()} and
-    {cmd:msangle()} only where it draws markers; {cmd:dash} checks them
+    {cmd:msangle()} only where it draws markers; {cmd:dash} checks them,
+    their unit and multiplier forms included,
     on every plot type, so {cmd:scatter mpg weight, lwidth(-1)}, which
     {cmd:twoway} draws, is refused.
 
@@ -778,15 +1037,74 @@ named in a note and drawn around -- because it is what would be drawn.
 {phang3}{cmd:. dash (scatter mpg weight, discrete)}{p_end}
 {phang3}{cmd:option discrete not allowed}{p_end}
 
-{phang2}    Colours, {cmd:msymbol()}, {cmd:lpattern()} and the sub-options of
-    the structured options are not checked in Stata.  An unknown style
+{phang2}    Colours (but for a comma), {cmd:msymbol()}, {cmd:lpattern()} and
+    the sub-options of the structured options are not checked in Stata.  An unknown style
     inside one ({cmd:title(T, size(bogus))}) gets a note and the default
-    in {cmd:twoway} and in {cmd:dash} alike; an unknown sub-option word,
-    which {cmd:twoway} refuses ({cmd:legend(garbage)},
-    {cmd:xscale(bogus)}: r(198)), {cmd:dash} names in its sub-option note
-    and draws without.  A colour written with commas,
-    {cmd:mcolor(255,0,0)}, which {cmd:twoway} refuses, {cmd:dash} reads as
-    the triplet {cmd:255 0 0}.
+    in {cmd:twoway} and in {cmd:dash} alike.  An unknown sub-option word
+    of {cmd:legend()} is refused as {cmd:twoway} refuses it
+    ({cmd:legend(garbage)}: {cmd:option garbage not allowed}, r(198)),
+    and so is one of {cmd:xscale()} or {cmd:yscale()}
+    ({cmd:xscale(bogus)}, {cmd:yscale(OFF)}: {cmd:option bogus not allowed}).  A colour written with commas in a plot colour option,
+    {cmd:mcolor(255,0,0)}, is refused as {cmd:twoway} refuses it,
+    {cmd:invalid '0'}, r(198); a triplet is written with blanks and quoted,
+    {cmd:mcolor("255 0 0")}, as in {cmd:twoway} (see
+    {help dash##stylelists:Style lists}).  Inside a structured option's
+    sub-option ({cmd:title(T, color("255,0,0"))}) such a colour is drawn
+    black with a note, where {cmd:twoway} refuses it.
+
+{phang2}    {marker stylelists}{ul:Style lists.}  A style option given a
+    list styles the y variables of an expanded varlist in turn, as
+    {cmd:twoway}'s {help stylelists:stylelists} do:
+    {cmd:scatter mpg turn weight, mcolor(red blue) msymbol(O T)} draws
+    {cmd:mpg} in red circles and {cmd:turn} in blue triangles.  {cmd:.}
+    leaves that y at its default, {cmd:=} repeats the element before it
+    ({cmd:.} when it comes first), and {cmd:..} or {cmd:...}, written alone
+    or at the end of an element, repeats the element before it to the last
+    y.  A list shorter than the y variables is padded with {cmd:.}, so a
+    lone value styles only the first y
+    ({cmd:line mpg turn weight, lwidth(thick)} thickens {cmd:mpg}'s line
+    alone), and elements past the last y are ignored, values and all.  A
+    plot type that draws one y uses the first element.  A quoted element is
+    one element: an RGB colour is quoted, {cmd:mcolor("255 0 0")}, because
+    {cmd:mcolor(255 0 0)} is a list of three colours, as in {cmd:twoway}. 
+    {cmd:..} or {cmd:...} anywhere but at the end is refused as {cmd:twoway}
+    refuses it, {cmd:mcolor(red .. blue):  invalid syntax}, r(198), and an
+    element that a y uses is held to the option's bounds as a single value
+    is.  An empty quoted element, {cmd:""}, is a {cmd:.}, as in
+    {cmd:twoway}.  A quoted element of blanks, {cmd:" "}, is refused when a
+    y uses it: {cmd:scatter mpg turn weight, mcolor(" " blue)} stops with
+    {cmd:dash: mcolor() element 1 is blank; use . for the default (got: " " blue)},
+    r(198); write {cmd:.} for the default.  {cmd:twoway} also refuses a used
+    blank element, with a different message; an element past the last y is
+    not checked.  The options read this way are {cmd:mcolor()},
+    {cmd:msymbol()}, {cmd:msize()}, {cmd:msangle()}, {cmd:mfcolor()},
+    {cmd:mlcolor()}, {cmd:mlwidth()}, {cmd:mlabcolor()}, {cmd:mlabsize()},
+    {cmd:mlabposition()}, {cmd:mlabgap()}, {cmd:mlabangle()},
+    {cmd:mlabformat()}, {cmd:lcolor()}, {cmd:lwidth()}, {cmd:lpattern()},
+    {cmd:clcolor()}, {cmd:clpattern()}, {cmd:clwidth()}, {cmd:color()},
+    {cmd:fcolor()}, {cmd:fintensity()}, {cmd:bfcolor()}, {cmd:blcolor()},
+    {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and {cmd:alpattern()};
+    {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()} and {cmd:jseed()}, which
+    {cmd:twoway} does not have, apply one value to every y.
+    {cmd:mlabel()}, {cmd:jitter()}, {cmd:base()} and {cmd:barwidth()} are
+    read the same way, one element per y:
+    {cmd:scatter mpg turn weight, mlabel(make rep78)} labels {cmd:mpg}'s
+    markers with {cmd:make} and {cmd:turn}'s with {cmd:rep78}, and
+    {cmd:bar y1 y2 x, base(10 20) barwidth(0.4 0.8)} draws each series from
+    its own base at its own width.  A lone value applies to the first y, so
+    {cmd:mlabel(make)} labels the first y alone.  In {cmd:mlabel()},
+    {cmd:.} leaves that y unlabelled, and {cmd:twoway}'s refusals are kept,
+    in its words: {cmd:..} or {cmd:...} anywhere
+    ({cmd:.. not allowed in option mlabel()}, r(198)), {cmd:=}
+    ({cmd:=exp not allowed}, r(101)), a list of {cmd:.} alone
+    ({cmd:too few variables specified}, r(102)), and a variable that does
+    not exist, even past the last y, r(111).  A list in {cmd:barwidth()} on
+    {cmd:rbar}, {cmd:histogram}, {cmd:rcap} or {cmd:rspike}, or in
+    {cmd:base()} on {cmd:rbar} or {cmd:histogram}, is refused as
+    {cmd:twoway} refuses it ({cmd:option barwidth() not allowed}, r(198)).
+    Each {cmd:jitter()} or {cmd:barwidth()} element a y uses is held to 0
+    to 100 or to positive, which {cmd:twoway} does not check; elements past
+    the last y are not checked.
 
 {phang2}6.  {ul:Variable and value labels used automatically.}
     {cmd:dash} reads variable labels (they title the axes, key the legend,
@@ -808,7 +1126,8 @@ named in a note and drawn around -- because it is what would be drawn.
     name.
     A {cmd:histogram} layer is keyed {cmd:Density}, {cmd:Percent},
     {cmd:Frequency} or {cmd:Fraction}, and a {cmd:kdensity} layer
-    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.
+    {cmd:kdensity} {it:varname}, as in {cmd:twoway}.  Every other layer
+    is keyed as {cmd:twoway} keys it (see Statistical Layer Options).
 
 
 {marker subcommands}
@@ -835,7 +1154,7 @@ See {help dash##kpi:KPI Cards} for details.
 Assembles all registered graphs and KPI cards into a dashboard.
 With no {cmd:server} option, writes a self-contained standalone HTML file.
 With {cmd:server}, writes a Bokeh Server {cmd:.py} application file instead
-(requires {cmd:.py} extension on {cmd:saving()}).
+({cmd:.py} is appended to a {cmd:saving()} name that does not end in it).
 See {help dash##dashboard_options:Dashboard Options}.
 
 {dlgtab:dash serve}
@@ -872,6 +1191,13 @@ link holding a key made for each launch; see
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:timeout(}{it:#}{cmd:)}}stop the server after {it:#} minutes,
     at most nine digits; 0 means run until Break (default){p_end}
+{synopt:{cmd:maxsessions(}{it:#}{cmd:)}}sessions open at once, an integer
+    from 1 to 1,000,000 in digits only (default 20); a page asked for
+    beyond it gets HTTP 503; see
+    {help dash##limits:Resource limits}{p_end}
+{synopt:{cmd:idletimeout(}{it:#}{cmd:)}}close a session after {it:#}
+    minutes with no filter, brush or download, 0 to 525600 in digits only;
+    0 means never (default 60){p_end}
 {synoptline}
 
 {pstd}
@@ -921,9 +1247,14 @@ The following options are available on {cmd:dash build}.
 {synoptset 24 tabbed}
 {synopthdr}
 {synoptline}
-{synopt:{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}}required; path to
-    the output HTML file (must end in {cmd:.html}; no {cmd:..}
-    traversal allowed){p_end}
+{synopt:{cmdab:sav:ing}{cmd:(}{it:filepath}{cmd:)}}required; the file to
+    write: {cmd:.html} is appended to a name that does not end in it and a
+    {cmd:.gph} suffix is replaced, as on the one-line form, and so is a
+    suffix {cmd:graph export} writes ({cmd:.png}, {cmd:.svg}, {cmd:.pdf},
+    {cmd:.eps}, {cmd:.ps}, {cmd:.jpg}, {cmd:.jpeg}, {cmd:.tif}, {cmd:.gif},
+    {cmd:.emf}, {cmd:.wmf}), with a note;
+    {cmd:saving(}{it:filepath}{cmd:, replace)} overwrites and {cmd:asis} is
+    accepted; see {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:ti:tle}{cmd:(}{it:string}{cmd:)}}dashboard page title{p_end}
 {synopt:{cmdab:sub:title}{cmd:(}{it:string}{cmd:)}}dashboard subtitle{p_end}
 {synopt:{cmdab:lay:out}{cmd:(}{it:spec}{cmd:)}}grid layout; see
@@ -945,17 +1276,40 @@ The following options are available on {cmd:dash build}.
     ({cmd:default}, {cmd:clean}, {cmd:mono}, {cmd:dark}, {cmd:economist},
     {cmd:sj}); {cmd:scheme()} wins if both are given{p_end}
 {synopt:{cmd:server}}write a self-contained Bokeh Server {cmd:.py} app
-    instead of a standalone HTML file; saving() path must end in
-    {cmd:.py}; does not block or open a browser{p_end}
+    instead of a standalone HTML file; {cmd:.py} is appended to a
+    {cmd:saving()} name that does not end in it; does not block or open a browser; see
+    {help dash##saving_chars:Characters in saving()}{p_end}
 {synopt:{cmdab:nobr:owser}}write the dashboard but do not open it in a
     browser.  Stata's own {cmd:nodraw} on the graph has the same effect, and
     setting the global {cmd:$dash_nobrowser} to any non-empty value suppresses
     the window for a whole session -- for {cmd:dash build}, the one-line
-    form and {cmd:dash serve} alike -- useful in batch, where one window per
-    {cmd:dash build} is rarely wanted; see
+    form and {cmd:dash serve} alike; in batch and after
+    {cmd:set graphics off} no window opens anyway; see
     {help dash##nobrowser_global:The global dash_nobrowser}{p_end}
 {synopt:{cmd:replace}}overwrite output file if it already exists{p_end}
 {synoptline}
+
+{marker saving_chars}
+{pstd}
+{ul:Characters in saving().}  A {cmd:saving()} path may hold what a file
+name on your system may hold, as {cmd:twoway}'s {cmd:saving()} may: a
+{cmd:..} segment, and {cmd:;} {cmd:&} {cmd:|} {cmd:<} {cmd:>} among the
+rest.  Five things are refused, {cmd:r(198)}: a double quote, a backquote
+and a dollar sign, which Stata reads as macro text; a control character,
+such as a tab or a line break; and a file name starting with {cmd:-}, which
+a command would read as an option.  Other characters, {cmd:%}, {cmd:!}
+and {cmd:^} among them, are written as typed, as {cmd:twoway}'s
+{cmd:saving()} writes them.  On a Mac and on Unix the page is opened with
+its path in single quotes, where nothing in it is special, and the
+{cmd:To launch:} line of {cmd:dash build, server} quotes it the same way.
+On Windows, dash does not open a page whose
+path holds {cmd:%}, {cmd:!}, {cmd:^}, {cmd:&}, {cmd:|}, {cmd:<}, {cmd:>} or
+{cmd:;}, because Windows' command shell, through which the page would be
+opened, reads them as instructions: the page is written, dash prints its
+path, and you open it yourself.  This includes the one-line form's preview
+page when the name of your user folder holds such a character.  On
+Windows the {cmd:To launch:} line keeps double quotes and says so when the
+path holds {cmd:%} or {cmd:!}, which cmd.exe expands in a pasted line.
 
 {marker nobrowser_global}
 {pstd}
@@ -972,9 +1326,17 @@ without opening a browser.  Only whether it holds a value counts, so
 leaves it set; {cmd:macro drop dash_nobrowser} lets windows open again.
 The one-line form has no {cmd:nobrowser} option: written there, it is named
 in the note and the window opens; the global, the graph's {cmd:nodraw} or
-{cmd:saving()} keeps that window shut.  The global is meant for do-files
-run in batch and for test suites, where one window per dashboard is rarely
-wanted.
+{cmd:saving()} keeps that window shut.  The global is meant for
+interactive sessions and test suites that should open no window.
+
+{pstd}
+{ul:Batch and set graphics off.}  As {cmd:twoway} displays no graph in
+batch ({cmd:c(mode)} is {cmd:batch}) or after {cmd:set graphics off},
+{cmd:dash} opens no window there, whatever is set: {cmd:dash build} and the
+one-line form write the page and print where it is, a one-line preview
+says it is temporary, and {cmd:dash serve} starts its server without a
+browser.  Interactive Stata, the console included, opens the window as
+before.
 
 
 {marker export}
@@ -984,6 +1346,43 @@ wanted.
 Every dashboard can save its figures as a PNG image, with the save button
 on the toolbar (see {help dash##toolbar:The toolbar}).  With {cmd:csv} it
 can also give you its data.
+
+{pstd}
+{ul:graph export.}  A dashboard is drawn in the browser, not in a Stata
+Graph window, so {cmd:graph export} cannot write it: {cmd:graph export}
+writes the graph displayed in a Graph window, and with none it stops with
+"no Graph window open", {cmd:r(601)}.  If Stata holds an earlier graph,
+{cmd:graph export} after {cmd:dash} writes that graph.  So that this is never
+silent, a {cmd:dash} command that writes a file -- the one-line form and
+{cmd:dash build} -- prints one note when Stata holds a graph in memory (the
+graphs {cmd:graph dir, memory} lists), naming up to five of them:
+{cmd:(note: dash: graph export writes the graph in Stata's Graph window,}
+{cmd:not this dashboard; graphs in memory: Graph)}.
+{cmd:dash} never draws, drops or changes a Stata graph.  In batch, a graph
+removed with {cmd:graph drop} can still be the one {cmd:graph export} writes;
+it is no longer in memory, and no note is printed.
+
+{pstd}
+{ul:Images.}  The toolbar's save button writes the figures as a PNG image at
+the screen's resolution.  Its Save as SVG button writes them as a vector
+SVG file.  A do-file cannot write an image of a dashboard:
+that needs a web browser driven from Stata, which {cmd:dash} does not ship.
+A do-file finds the page in {cmd:r(filename)} (see
+{help dash##results:Stored results}).  {cmd:saving()} always writes HTML
+({cmd:.py} with {cmd:server}): a name ending in a suffix {cmd:graph export}
+writes -- {cmd:.png}, {cmd:.svg}, {cmd:.pdf}, {cmd:.eps}, {cmd:.ps},
+{cmd:.jpg}, {cmd:.jpeg}, {cmd:.tif}, {cmd:.gif}, {cmd:.emf} or {cmd:.wmf}, in
+any case -- has that suffix replaced, with a note, on the one-line form and
+{cmd:dash build}: {cmd:saving(fig.png)} writes {cmd:fig.html}.
+({cmd:twoway}'s {cmd:saving(fig.png)} writes a {cmd:.gph} file named
+{cmd:fig.png}.)  The figures are drawn on an HTML canvas; {cmd:dash} has no
+SVG drawing mode, because a figure drawn as SVG cannot be saved by the
+toolbar's button.
+
+{pstd}
+{ul:Printing.}  Printing the page from the browser prints what the screen
+shows: with {cmd:tabs()}, the tab that is showing and none of the others.
+Print each tab in turn.
 
 {pstd}
 With {cmd:csv}, the dashboard carries a {bf:Download CSV} button beside its
@@ -1029,6 +1428,34 @@ browser only what it draws.  When served, each click is computed on the server f
 same filters, and a session may download twice at once and then once every
 five seconds.  {cmd:dash serve} inherits {cmd:csv} from the preceding
 {cmd:dash build}, as it inherits every dashboard option.
+
+
+{marker results}{...}
+{title:Stored results}
+
+{pstd}
+{cmd:dash} stores the following in {cmd:r()}:
+
+{p2colset 5 20 24 2}{...}
+{p2col 5 20 24 2: Macros}{p_end}
+{p2col:{cmd:r(filename)}}the file the command wrote, as an absolute path{p_end}
+{p2colreset}{...}
+
+{pstd}
+{cmd:r(filename)} is stored by the commands that write a file: the one-line
+form with {cmd:saving()} (the page), the one-line form without it (the
+preview page in {cmd:c(tmpdir)}{cmd:dash-}{it:uid}{cmd:/previews/}),
+{cmd:dash build} (the page), and {cmd:dash build} with {cmd:server} (the
+{cmd:.py} app).
+It is the path the "saved to" line shows, joined to the working directory
+when it is relative, so it still names the file after a {cmd:cd}.  A preview
+is temporary: the newest five of a session are kept, and {cmd:dash clear}
+removes the session's previews (see {help dash##tempfiles:Temporary files and privacy});
+use {cmd:saving()} to keep a page.  Registering a graph or a KPI card,
+{cmd:dash clear} and {cmd:dash serve} store nothing; {cmd:dash serve} writes
+no file of yours, and the key in its address is never stored.  A command
+that stops with an error stores nothing.  As after {cmd:twoway}, every
+{cmd:dash} command replaces the {cmd:r()} results of the command before it.
 
 
 {marker layout}
@@ -1155,12 +1582,13 @@ box-select or lasso-select) selects them in that source, and every linked
 graph highlights them where it draws them as markers: in its
 {cmd:scatter}, {cmd:connected} and {cmd:dot} layers, and on {cmd:rspike}
 and the markers of {cmd:rconnected}, which draw the group's rows in both
-modes.  The other layers -- lines (the line of {cmd:connected} and of
+modes.  Observations that are not selected keep their markers' size,
+symbol, colours and outline and are drawn faint,
+never more opaque than they are drawn unselected.  The other layers -- lines (the line of {cmd:connected} and of
 {cmd:rconnected} too), areas, bars, droplines, fits and their bands,
 smoothers, densities, histograms, and the other range and paired-coordinate
 plots -- are drawn from data of their own and do not show a selection.  An
-{cmd:rbar} shows it in neither mode: its bars are drawn from its own rows,
-their width from those rows' spacing.
+{cmd:rbar} shows it in neither mode: its bars are drawn from its own rows.
 
 {pstd}
 {cmd:link(}{it:name1} {it:name2} [{it:name3} ...]{cmd:)} -- link the
@@ -1201,9 +1629,11 @@ Every figure carries the same tools, in both render modes:
 {synopt:Undo}step back through your pans, zooms and box and lasso
     selections.{p_end}
 {synopt:Redo}step forward again.{p_end}
-{synopt:Reset}return to the view the page opened with, and clear the
+{synopt:Reset}return to the extent the last filter move gave the axes, and clear the
     selection and what Undo would step back through.{p_end}
 {synopt:Save}write the figures to a PNG image; see below.{p_end}
+{synopt:Save as SVG}write the same figures as a vector SVG file; see
+    below.{p_end}
 {synoptline}
 
 {pstd}
@@ -1227,7 +1657,10 @@ serves as one PNG file.  A grid -- the dashboard's, a tab's, or a
 {cmd:by()} graph's panels -- is saved as {cmd:dashboard.png}.  A graph that
 {cmd:layout(bs)} places on its own, with its {cmd:by()} panels if it has
 any, is saved under its name: {cmd:g1.png} for the graph registered as
-{cmd:g1}.  Your browser decides where the file goes.  The image holds only
+{cmd:g1}.  Save as SVG writes the same figures as a vector image,
+{cmd:dashboard.svg} or {cmd:g1.svg}, drawn from what is on screen, after
+any filter you moved; a figure with more than 10,000 points makes a large
+file.  Your browser decides where the file goes.  The image holds only
 the figures: a KPI card in a grid is left blank, and the title, the filters
 and the tab strip, which sit outside every grid, are not in it.
 
@@ -1503,6 +1936,7 @@ it.  The saved page and the served app differ as follows:
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
+{col 5}Toolbar, save as SVG{col 38}Yes{col 59}Yes
 {col 5}{cmd:scheme()}, {cmd:theme()}{col 38}Yes{col 59}Yes
 {col 5}{cmd:layout()}, {cmd:tabs()} and{col 38}Yes{col 59}Yes
 {col 7}{cmd:filterposition()}
@@ -1516,8 +1950,7 @@ it.  The saved page and the served app differ as follows:
 {ul:What a filter move redraws.}  The saved page draws every layer that
 plots observations -- scatter, line, area, bar, spike, dropline, the range
 and paired-coordinate plots, and their marker labels -- from the rows that
-pass the filter, each from its own rows among them, a line still in its join order
-and a bar's or cap's width taken from the spacing of the rows kept.  It
+pass the filter, each from its own rows among them, a line still in its join order.  It
 recounts a histogram's
 bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
@@ -1538,7 +1971,7 @@ weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})
 marks nothing, and a graph {cmd:exclude()} protects is never marked.  The
 served app draws every layer again from
 the rows that pass the filter -- each layer from its own rows among them --
-bins, grid, fitted line and bar widths included.  A plot's own {cmd:if} or {cmd:in}
+bins, grid and fitted line included.  A plot's own {cmd:if} or {cmd:in}
 inside a linked {cmd:by()} panel, or inside a linked graph with its own
 {cmd:if} or {cmd:in}, keeps to that panel's or graph's observations after
 every move, in both.  In both, a filter move clears a
@@ -1546,7 +1979,8 @@ selection brushed on a graph it redraws, and a card that follows the brush
 ({cmd:update(brush)} or {cmd:update(both)}) then counts the rows that graph
 shows.  In both, a layer that a filter, a {cmd:by()} panel or its own
 {cmd:if} or {cmd:in} leaves with no observations keeps its colour, width and
-legend key, as twoway draws it.
+legend key, as twoway draws it, and in silence: neither mode prints a note
+for it, as {cmd:twoway} prints none.
 
 {pstd}
 {ul:What "reflow" means.}  A {cmd:layout(bs)} grid rearranges itself as the
@@ -1581,12 +2015,29 @@ once, and keeps serving.  The key is then in Results and in any log you have
 open, so treat that log like the link.  Open the file, or copy the link from
 it, to reach the dashboard again while the server runs; it is removed when
 the server stops.  On a disk that keeps no file permissions the file is
-written anyway, and a line beginning {cmd:dash: note:} names it.
+written anyway, and a note, {cmd:(note: dash:} ...{cmd:)}, names it.
 
 {pstd}
 If no server starts -- the port is in use, or the app
 stops before it answers -- {cmd:dash serve} says why and returns r(198)
 instead of blocking.
+
+{pstd}
+{ul:Notes.}  {cmd:dash build, server} prints the notes {cmd:dash build}
+prints for a saved page -- an option it draws differently, a fit
+{cmd:twoway} could not fit, a {cmd:by()} sub-option it ignores -- in the
+same {cmd:(note: dash:} ...{cmd:)} form, once each: after writing the app it
+draws the dashboard once, as a session of the app would, and names what
+that drawing noted.  This costs one more drawing of the dashboard.  If that
+drawing fails, a note says so, and the app is still written.
+{cmd:dash serve} prints its build's notes at once and, while it serves,
+the app's own notes, error lines and Python tracebacks: each note once,
+never one its build already printed, at most 100 notes and 200 other lines,
+with the link's key and every query string removed.  The app's notes
+appear when the first session draws the dashboard.  Run as
+{cmd:python app.py} or under {cmd:bokeh serve}, the app prints each note
+once per process on its standard error, as {cmd:(note: dash:} ...{cmd:)},
+whatever Python's warnings filters or {cmd:PYTHONWARNINGS} say.
 
 {pstd}
 {ul:Running the generated .py file independently.}
@@ -1607,8 +2058,10 @@ It accepts {cmd:--port} {it:N}, {cmd:--address} {it:iface},
 {cmd:--timeout} {it:minutes}, {cmd:--show}, {cmd:--trust-forwarded-for}, and
 the rate limits {cmd:--sessions-per-client} {it:N},
 {cmd:--new-clients-per-minute} {it:N} and {cmd:--sessions-per-minute}
-{it:N} described below.  No browser window opens unless {cmd:--show} is
-given, so the app is usable from a script or a batch job.
+{it:N} described below, and {cmd:--max-sessions} {it:N} and
+{cmd:--idle-timeout} {it:minutes} (see
+{help dash##limits:Resource limits}).  No browser window opens unless
+{cmd:--show} is given, so the app is usable from a script or a batch job.
 
 {pstd}
 The app never runs without a key, and only a link holding it opens the
@@ -1618,8 +2071,8 @@ choose the key, each start makes a new one, writes that link to a file named
 and prints the file's path on a line of its own before the server starts;
 the key itself is never printed.  Open the file, or copy the link from it;
 the folder is removed when the app stops.  On a disk that keeps no file
-permissions the file is written anyway, and a line beginning
-{cmd:dash: note:} names it; set {cmd:TMPDIR} to a folder on a disk that
+permissions the file is written anyway, and a note,
+{cmd:(note: dash:} ...{cmd:)}, names it; set {cmd:TMPDIR} to a folder on a disk that
 keeps them.  If no such file can be written at all, the app
 prints a warning line and then the link itself, once, and keeps serving; the
 key is then in that output and in any log of it.  To choose the key, set the
@@ -1639,6 +2092,11 @@ own application, and so without what the app's own server adds: there is no
 {cmd:/health}, none of the headers below is sent, the session limits below
 do not apply ({cmd:bokeh serve} runs the script afresh for each session, so
 every session starts a new count), and the app's flags above are not read.
+The session cap, the idle close, the data decoded once and the memo of the
+slow fits do apply there, per process under {cmd:--num-procs}, set by the
+environment variables {cmd:DASH_MAX_SESSIONS} and {cmd:DASH_IDLE_TIMEOUT}
+(digits only; any other value stops the app); a session past the cap shows
+the busy text as its page, sent with status 200.
 {cmd:bokeh serve} takes its own {cmd:--port}, {cmd:--address} and
 {cmd:--allow-websocket-origin}, and listens on every interface unless it is
 given {cmd:--address}.
@@ -1690,8 +2148,15 @@ label: {cmd:localhost.example.com} is not {cmd:localhost}.  Bokeh before 3.9
 matched only the first labels, so a page from any name that begins with an
 allowed host was admitted; the app checks origins itself whatever Bokeh it
 runs under, and says so when it starts under such a Bokeh.
-{cmd:bokeh serve app.py} uses Bokeh's own check, so run it under Bokeh 3.9
-or later.
+{cmd:bokeh serve app.py} makes Bokeh's check exact in the same way for
+every session, and {cmd:dash} notes any bokeh newer than it was verified on.
+
+{pstd}
+If a bokeh release changes what this protection relies on -- the page
+template's blocks, the origin matcher, the key check's hook or its token
+layout -- the app refuses to start ({cmd:python app.py}) or refuses each
+session ({cmd:bokeh serve}) with a message naming it, and a saved page is
+not written; {helpb dash_setup} installs a verified bokeh.
 
 {pstd}
 Bokeh's environment variable {cmd:BOKEH_ALLOW_WS_ORIGIN}, when it is set,
@@ -1723,16 +2188,36 @@ Within the file, data values are base64-encoded so that no data content can
 affect the Python source's syntax, and every user-supplied string reaches
 the page as a Bokeh model property or as escaped text inside the markup dash
 writes, never as markup of its own.
+Text drawn on a graph -- a title, subtitle, note, caption, axis title,
+tick label, legend key, {cmd:by()} panel title or colour key -- is never
+handed to a TeX engine: {cmd:$$}, {cmd:\(} and {cmd:\[} in it are drawn
+as typed, as {cmd:twoway} draws them, in a saved page and a served one.
 
 {pstd}
-The page carries a Content-Security-Policy in both modes.  A saved dashboard
-may run only the scripts and styles written into it and may load nothing
-from anywhere; a served one may also load from, and connect to, the server
-it came from, and nothing else.  {cmd:python app.py} also sends the policy as
-a header on every response, {cmd:/health} included, adding
-{cmd:frame-ancestors 'none'} so that no other site can frame the dashboard,
-and sends {cmd:X-Content-Type-Options: nosniff},
-{cmd:X-Frame-Options: DENY} and {cmd:Referrer-Policy: no-referrer} with it.
+The page carries a Content-Security-Policy in both modes, and the policy
+decides which scripts the browser runs.  A saved dashboard runs only the
+scripts dash wrote into it, each named in its policy by its SHA-256 hash,
+and loads nothing from anywhere; dash refuses to write a saved page holding
+an inline script it did not name.  A served page runs only the scripts that
+carry that page's nonce, a random value the server makes for each page it
+sends, and may also load from, and connect to, the server it came from, and
+nothing else.  So a script or an event handler that reached a page some
+other way -- through a fault in escaping, say -- does not run.  Two
+allowances remain, because BokehJS needs them: {cmd:'unsafe-eval'}, since
+Bokeh compiles each filter callback, tick formatter and tooltip formatter
+with {cmd:new Function}, and inline styles, since BokehJS writes its styles
+as it draws.  The policy is no substitute for escaping, which dash does for
+every string you give it, and a browser that supports only the first version
+of the standard (CSP level 1) shows a blank page.  The page that forwards
+your browser to a served dashboard, and the page written when a dashboard
+has nothing to show, carry {cmd:default-src 'none'}: they run no script at
+all.  {cmd:python app.py} also sends a policy as a header on every response,
+{cmd:/health} included, adding {cmd:frame-ancestors 'none'} so that no other
+site can frame the dashboard, and sends
+{cmd:X-Content-Type-Options: nosniff}, {cmd:X-Frame-Options: DENY} and
+{cmd:Referrer-Policy: no-referrer} with it.  That header cannot know each
+page's nonce, so it keeps {cmd:'unsafe-inline'}; a browser applies both
+policies, and the page's own refuses an injected script.
 {cmd:bokeh serve app.py} sends none of these headers, so its page carries
 the policy but can be framed.
 
@@ -1776,8 +2261,14 @@ In each browser session, each filter widget and each brushed data source
 then recomputes at most 10 times in a burst and twice a second after that;
 changes that arrive faster are folded into one recomputation with the
 latest values.  A script that moves a widget in a loop is therefore held to
-that rate, and the server -- one process, one event loop -- runs one
-recomputation at a time for every session together.
+that rate.  Recomputations run on one worker thread per server process,
+one at a time and in the order sessions asked; meanwhile the page shows
+"Updating..." and keeps its drawing, and other sessions and {cmd:/health}
+keep answering.  A newer move replaces a session's waiting one, and a
+result a newer move overtook is discarded.  The longest wait is about the
+session limit times one recomputation: about 3 minutes with 20 sessions
+for {cmd:lowess} at 100,000 observations.  Opening a session still pauses
+the server while its page is built.
 
 {pstd}
 {ul:What still differs.}  The two pages are laid out alike: both declare a
@@ -1836,13 +2327,13 @@ write to it and it has no sticky bit, as a {cmd:STATATMP} folder made under
 umask 002 has, or it belongs to another account), if a {cmd:dash-}{it:uid}
 there is a link, not a folder or another account's, or if your disk will not
 keep a folder private, dash goes on: it writes each file readable only by
-you wherever the disk allows and prints one note per command, beginning
-{cmd:dash: note:}, that names the location and the remedy -- {cmd:chmod go-w}
+you wherever the disk allows and prints one note per command,
+{cmd:(note: dash:} ...{cmd:)}, that names the location and the remedy -- {cmd:chmod go-w}
 on the folder, or starting Stata with {cmd:STATATMP} set to a folder only you
 can write.  A {cmd:dash-}{it:uid} dash cannot use is left alone: dash keeps
 its copies in a folder {cmd:dash-}{it:uid}{cmd:-}{it:xxxxxxxx} beside it that
-only you can open, and the note names both.  Under {cmd:quietly} the note is
-not shown, like dash's other notes.  Only {cmd:c(tmpdir)} itself is checked,
+only you can open, and the note names both.  Like {cmd:dash}'s other notes,
+it is shown under {cmd:quietly} and hidden by {cmd:capture}.  Only {cmd:c(tmpdir)} itself is checked,
 not the folders above it.  In a {cmd:c(tmpdir)} others can write without a
 sticky bit, another account could move dash's folders, though not read the
 files in them.  It cannot change what {cmd:dash serve} runs: dash does not
@@ -1937,6 +2428,15 @@ that moves it for the rest of the session:
     drawn.{p_end}
 {synopt:{cmd:$dash_max_filters}}filter widgets; default 20, at most 200.
     The first are built.{p_end}
+{synopt:{cmd:$dash_max_reflines}}reference lines over the dashboard: the
+    positions of every {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
+    {cmd:yline2()} times the graph's {cmd:by()} panels, counted over every
+    observation; default 10,000, at most 100,000.  Refused with
+    {cmd:r(134)}.{p_end}
+{synopt:{cmd:$dash_max_added_text}}added texts: the points of every
+    {cmd:text()} times the graph's {cmd:by()} panels, in one graph and over
+    the dashboard; default 1,000, at most 100,000.  Refused with
+    {cmd:r(134)}.{p_end}
 {synoptline}
 
 {pstd}
@@ -1998,6 +2498,28 @@ counts every observation.
 {ul:A served dashboard} has rate limits of its own; see
 {help dash##server_mode:Server Mode}.
 
+{pstd}
+{ul:Sessions open at once.}  A served app holds at most
+{cmd:maxsessions()} sessions open at once ({cmd:--max-sessions},
+{cmd:DASH_MAX_SESSIONS}; default 20).  A page asked for beyond it, by a
+client that holds the key, gets HTTP 503 with {cmd:Retry-After: 30} and a
+fixed text that names the setting, with no script and no refresh; a client
+without the key still gets 403.  A closed tab frees its place within about
+20 seconds.  A session with no filter move, brush or CSV download for
+{cmd:idletimeout()} minutes ({cmd:--idle-timeout}, {cmd:DASH_IDLE_TIMEOUT};
+default 60, 0 never) is closed: its page says so and frees its place, so a
+tab that was only being looked at can need a reload.  The data is decoded
+once per app process and shared, read-only, by every session, and the
+lowess, fpfit and lpoly fits are kept for reuse within 64 MB per process.
+Each session adds at most about 80 MB at 200,000 rows by 3 layers (measured
+by the test suite, not checked at run time); at the default cap of 20 that
+is up to about 1.9 GB with the server's own 221 MB and the 64 MB of fits, so
+set {cmd:maxsessions()} to fit the machine.  Before it listens the app
+prints {cmd:preparing the dashboard (}{it:N} {cmd:rows, }...{cmd:)} and
+draws the dashboard once, so a long start is not a failure and no reader
+pays for the first drawing.  Opening a session still runs on the server's
+one event loop.
+
 
 {marker examples}
 {title:Examples}
@@ -2058,17 +2580,34 @@ counts every observation.
 {cmd:dash} supports Stata's {opt by(varlist)} option for faceted graphs.
 Each value of {it:varlist} -- each combination of values, with several
 variables -- produces a separate panel of the observations in that group.
-Observations with a missing {cmd:by()} value are left out unless
-{cmd:missing} is given.
+Observations with a missing {cmd:by()} value -- a string variable's {cmd:""}
+included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
 
 {synoptset 30}{...}
 {synopt:{opt by(varlist)}}facet graph by the values of {it:varlist}{p_end}
 {synopt:{opt by(varlist, cols(#))}}arrange facet panels in {it:#}
     columns{p_end}
+{synopt:{opt by(varlist, rows(#))}}arrange facet panels in {it:#}
+    rows; abbreviation {cmd:r()}{p_end}
+{synopt:{opt by(varlist, holes(numlist))}}leave the cells numbered in
+    {it:numlist} empty; abbreviation {cmd:hol()}{p_end}
+{synopt:{opt by(varlist, colfirst)}}fill the cells down the columns;
+    abbreviation {cmd:colf}{p_end}
+{synopt:{opt by(varlist, compact)}}no space between the panels;
+    {cmd:style(compact)} too{p_end}
+{synopt:{opt by(varlist, iscale([*]#))}}size the panels' text, markers and
+    lines; {cmd:*}{it:#} multiplies the default{p_end}
+{synopt:{opt by(varlist, imargin(marginstyle))}}the space around each
+    panel; abbreviation {cmd:im()}{p_end}
 {synopt:{opt by(varlist, total)}}add a "Total" panel of every group's
     observations{p_end}
-{synopt:{opt by(varlist, missing)}}include a panel, titled "Missing", of
-    the observations with a missing value{p_end}
+{synopt:{opt by(varlist, missing)}}include a panel, titled "(missing)", of
+    the observations with a missing value (a string variable's ""
+    included){p_end}
+{synopt:{opt by(varlist, title() subtitle() note() caption())}}drawn once
+    over the panels; abbreviations {cmd:ti}, {cmd:sub}, {cmd:note},
+    {cmd:cap}{p_end}
+{synopt:{opt by(varlist, note(""))}}remove the "Graphs by" note{p_end}
 {synopt:{opt by(varlist, yrescale|xrescale|rescale)}}draw each panel on its
     own y scale, x scale or both; abbreviations {cmd:yr}, {cmd:xr} and
     {cmd:r}, and {cmd:noyrescale}, {cmd:noxrescale} and {cmd:norescale}
@@ -2076,51 +2615,122 @@ Observations with a missing {cmd:by()} value are left out unless
     given, the rescale wins, as in {cmd:twoway}{p_end}
 {synopt:{opt by(varlist, style(rescale))}}and style(combine): only
     their separate scales are drawn, with a note{p_end}
+{synopt:{opt by(varlist, iyaxes ixaxes)}}draw every panel's y or x axis;
+    {cmd:iylabels}, {cmd:iyticks}, {cmd:iytitles} and their x and
+    {cmd:no} forms, {cmd:individual}{p_end}
+{synopt:{opt by(varlist, noedgelabel)}}draw x axes on the bottom row and y
+    axes on the left column only; {cmd:edgelabel}{p_end}
+{synopt:{opt by(varlist, noytitles noxtitles)}}leave out the axis titles
+    drawn beside and below the panels{p_end}
+{synopt:{opt by(varlist, legend())}}place the one legend:
+    {cmd:position()}, {cmd:at()}, {cmd:on}, {cmd:off}{p_end}
+{synopt:{opt by(varlist, ilegends)}}a legend on each panel instead{p_end}
+{synopt:{opt by(varlist, clegend(on))}}one colour key, the first
+    panel's; {cmd:position()}, {cmd:at()}{p_end}
 {synoptline}
 
 {pstd}
 As in {cmd:twoway}, a {cmd:by()} graph's panels share one scale per axis --
 y, x and a second axis -- spanning every panel's data, the Total panel's
 too, and they keep sharing it after a filter move.  Panning or zooming one
-panel moves the others, and, as in any Bokeh plot, stops that axis
-following later filter moves.  With {cmd:yrescale}, {cmd:xrescale} or
+panel moves the others; a filter move spans the axes again over the rows kept.  With {cmd:yrescale}, {cmd:xrescale} or
 {cmd:rescale} each panel is drawn and ticked ({cmd:#}{it:N}) over its own
 data on that axis; there {cmd:yscale(range())} and {cmd:xscale(range())},
 those of the second axis included, are not applied, as in {cmd:twoway},
 and a note says so; labels and ticks still widen each panel, and reverse
-and log are kept.  {cmd:twoway} draws only the outer axes of shared panels,
-where {cmd:dash} draws every panel's.
+and log are kept.
+
+{pstd}
+The panels share their axes and keys as {cmd:twoway}'s do, in both modes and
+after every filter move.  A y axis is drawn on the leftmost panel of each
+row, an x axis under the lowest panel of each column (a panel above an
+empty cell keeps its own), and a second y axis on the rightmost panel; with
+{cmd:noedgelabel} or {cmd:compact} only the panels on the outer edge of the
+grid draw them.  {cmd:iyaxes} and {cmd:ixaxes} draw every panel's axis, as
+a rescaled axis is drawn, {cmd:noiylabels} and {cmd:noiyticks} (and their x
+forms) take the labels or ticks off every axis, {cmd:individual} draws
+none, and a word and its {cmd:no} form given together read as the word, as
+in {cmd:twoway}.  The y and x axis titles are drawn once, beside and below
+the panels, from the first panel, unless {cmd:noytitles} or
+{cmd:noxtitles}; {cmd:iytitles} and {cmd:ixtitles} keep them on each
+drawn axis too; no panel draws a second axis's title.  One legend, of the
+first panel's keys as {cmd:legend()} orders and labels them, is drawn when
+the first panel has more than one key or with {cmd:by(, legend(on))}, and
+not with {cmd:by(, legend(off))}; it is placed by
+{cmd:by(, legend(position()))}, in the cell {cmd:at(}{it:#}{cmd:)} names
+(which counts as a cell of the grid, as in {cmd:twoway}), or else where the
+scheme puts it (s2color below, stcolor right, economist above).
+{cmd:ilegends} draws each panel's legend instead; {cmd:legend(on)} outside
+{cmd:by()} draws both, and {cmd:legend(off)} outside {cmd:by()} changes
+nothing, as {cmd:twoway} ignores it.  {cmd:by(, legend(ring(0)))} is drawn
+beside the panels and a note says so.  The overall legend is not clickable.
+Under {cmd:colorvar()} no colour key is drawn unless
+{cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
+{cmd:clegend(position() at())} else the scheme's position.  On a narrow
+screen, where the panels stack into one column, every panel shows its axes
+and titles again, and {cmd:twoway}'s layout returns when the page widens.
 
 {pstd}
 The Total panel draws the observations of every group, as {cmd:twoway}'s
-does: those with a missing {cmd:by()} value only with {cmd:missing}.
-{cmd:twoway} titles the missing panel "(missing)".
+does: those with a missing {cmd:by()} value only with {cmd:missing}, a
+string variable's {cmd:""} counted as missing in the groups and in Total.
+The missing panel is titled "(missing)", as in {cmd:twoway}.
 
 {pstd}
 The panels are arranged the same way wherever the graph is drawn -- in the
 dashboard's grid, in a tab, or in a {cmd:layout(bs)} cell -- and in both
-{cmd:dash build} and {cmd:dash serve}: in {it:#} columns with
-{cmd:cols(}{it:#}{cmd:)}, and otherwise in as many columns as the square
-root of the number of panels, rounded up.  A {cmd:cols()} of more columns
-than there are panels puts them all in one row.
+{cmd:dash build} and {cmd:dash serve}: in the cells {cmd:twoway} places
+them in, with {cmd:cols(}{it:#}{cmd:)} or {cmd:rows(}{it:#}{cmd:)}, and
+otherwise in as many columns as the square root of the panels and
+{cmd:holes()} rounded up, filled along the rows ({cmd:colfirst}: down the
+columns), a hole's cell skipped.  As in {cmd:twoway}, a row or column that
+holds no panel is not drawn, so {cmd:cols()} of more columns than there
+are panels puts them all in one row.  Panel text, markers and lines are
+drawn at {cmd:twoway}'s {cmd:by()} size -- 0.85 of the plain graph's for
+2 to 4 panels, 0.6 for 10 to 16 -- or at {cmd:iscale()}; the overall
+title, subtitle, note and caption are not scaled.  The space between the
+panels is the scheme's {cmd:by()} margin, none with {cmd:compact}, or
+{cmd:imargin()}.  {cmd:by()} arguments {cmd:twoway} refuses are refused
+in its words and order: {cmd:rows()} with {cmd:cols()}, a {cmd:rows()},
+{cmd:cols()} or {cmd:holes()} that is not positive integers, a repeated
+or capitalised sub-option, an unknown one, and {cmd:iscale()} below 0 or
+above 10,000.
 
 {pstd}
-A panel is titled with its value's label, when the value has one, and
+A panel is labelled with its value's label, when the value has one, and
 otherwise with the value as {cmd:twoway} writes it -- {cmd:3}, {cmd:.25} --
-whatever its display format; a string variable's panels are titled with
+whatever its display format; a string variable's panels are labelled with
 their text, and a date variable's with their dates in its display format
 ({cmd:01jan2000}, {cmd:2000m1}), where {cmd:twoway} writes the number
-({cmd:14610}).  Several {cmd:by()} variables produce
-composite titles, "Domestic / 3", which {cmd:twoway} writes "Domestic, 3".
-A graph's own {cmd:title()} leads each of its panels' titles.
+({cmd:14610}).  Several {cmd:by()} variables produce composite labels,
+"Domestic, 3", as in {cmd:twoway}.  The label is drawn as its own centred
+row under the graph's {cmd:title()}, which every panel keeps.  A graph's
+{cmd:subtitle()} replaces the label, leads it with {cmd:prefix}, follows
+it with {cmd:suffix}, and {cmd:subtitle("")} removes it.  A value label
+holding double quotes stays one line, where {cmd:twoway} splits it.
+As in {cmd:twoway}, the label is drawn in the scheme's filled box across
+the top of the panel's plot region (s2color bluish gray, stcolor light gray,
+s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s
+{cmd:fcolor()}, {cmd:lcolor()} and {cmd:nobox} do not restyle it in
+{cmd:dash} and are named in a note.
+{cmd:by()}'s own {cmd:title()}, {cmd:subtitle()}, {cmd:note()} and
+{cmd:caption()} are drawn once over the panels, and under them the note
+"Graphs by" names the variables as {cmd:twoway} does: their labels,
+"A and B" for two, and for three or more the first by its name
+("Graphs by foreign, Repair record 1978, and Headroom (in.)").
 One graph draws at most 100 groups by default, a panel each, and its Total
 panel one more: over that, the first 100 groups in sort order are drawn and
 a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
-{cmd:cols()}, {cmd:total}, {cmd:missing} and the rescale forms above are
-the {cmd:by()} sub-options {cmd:dash} implements.  Any other sub-option of Stata's {cmd:by()} -- for
-example {cmd:rows()}, {cmd:holes()} or {cmd:compact} -- is accepted, named
-in a warning, and ignored.
+{cmd:cols()}, {cmd:rows()}, {cmd:holes()}, {cmd:colfirst},
+{cmd:compact}, {cmd:style(compact)}, {cmd:iscale()}, {cmd:imargin()},
+{cmd:total}, {cmd:missing}, the rescale forms above, {cmd:title()},
+{cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the axis and title
+words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
+{cmd:legend()} and {cmd:clegend()} are the {cmd:by()} sub-options
+{cmd:dash} implements.  Any other sub-option of Stata's
+{cmd:by()} -- for example {cmd:subtitleformat()} or {cmd:shrink} -- is
+accepted, named in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
 draws its panels as views over the group's one shared data source, so a
 box-select in any panel highlights the matching observations in every other
@@ -2146,22 +2756,47 @@ the per-plot specification (not to {cmd:dash build} options).
 {synoptset 28}{...}
 {synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with
     the value of {it:varname}, on the plot types listed below{p_end}
-{synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text{p_end}
-{synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}size keyword or number; e.g.
-    {cmd:small}, {cmd:medium}, {cmd:large}{p_end}
+{synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text;
+    by default the scheme's marker-label colour -- {cmd:color p}{it:#}{cmd:label},
+    else {cmd:color plabel}, else the plot's own colour, with its opacity,
+    as {cmd:twoway} draws it; {cmd:mcolor()} and {cmd:color label} do not
+    change it{p_end}
+{synopt:{cmdab:mlabs:ize(}{it:size}{cmd:)}}a text size in Stata's units:
+    a {cmd:gsize} keyword ({cmd:small}, {cmd:medium}, {cmd:large}), a
+    number, a number with a unit or a {cmd:*}{it:#} multiplier; by default
+    the scheme's {cmd:gsize p}{it:#}{cmd:label}, else {cmd:gsize plabel}
+    ({cmd:small} in every shipped scheme), and {cmd:*}{it:#} multiplies
+    that size{p_end}
 {synopt:{cmdab:mlabp:osition(}{it:#}{cmd:)}}clock position of the label
     around the point, a whole number from 0 to 12, placed as {cmd:twoway}
     places it: 3 = right (the default), 12 = above, 6 = below, 9 = left,
     the hours between at the corners, and 0 centred on the point.  Anything
     else -- {cmd:13}, {cmd:2.5}, {cmd:03} or a name -- is reported and the
     label drawn at 12, where {cmd:twoway}, noting it, draws it{p_end}
-{synopt:{cmdab:mlabg:ap(}{it:#}{cmd:)}}space between the point and the
-    label, in pixels, added to {cmd:dash}'s own offset of about 4 pixels in
-    the direction of the clock position.  A negative gap moves the label
-    toward the point, a size keyword ({cmd:small}, {cmd:large}, ...) is
-    the pixels {cmd:mlabsize()} reads it as, and at
-    {cmd:mlabposition(0)} the gap does nothing, as in {cmd:twoway}, whose
-    gap is a percentage of the graph's size.  {cmd:dash} also takes
+{synopt:{cmdab:mlabv:position(}{it:varname}{cmd:)}}the clock position of
+    each observation's label, read row by row: a whole number from 0 to 12
+    is that position; a missing value, and every row of a string variable,
+    takes {cmd:mlabposition()} (3 by default), without a note; any other
+    number is drawn at 12 and the values are reported once, as {cmd:twoway}
+    notes them.  One variable serves every {it:y} of the layer, and
+    {cmd:mlabgap()} moves each label along its own row's direction{p_end}
+{synopt:{cmdab:mlabt:extstyle(}{it:textstyle}{cmd:)}}one of Stata's text
+    box styles -- {cmd:heading}, {cmd:subheading}, {cmd:body},
+    {cmd:small_body}, {cmd:label}, {cmd:tick_label}, {cmd:p1} to
+    {cmd:p15}, ... -- in the graph's scheme, as {cmd:twoway} draws it.  A
+    style list, one element per {it:y}; see
+    {help dash##stylelists:Style lists}.  {cmd:mlabsize()} and
+    {cmd:mlabcolor()} override it whatever their order.  An unknown name,
+    or a textboxstyle file of your own, is reported and the labels drawn
+    in {cmd:body}, as {cmd:twoway} draws them{p_end}
+{synopt:{cmdab:mlabg:ap(}{it:size}{cmd:)}}space between the marker's
+    edge and the label, in the direction of the clock position: a
+    {cmd:gsize} in Stata's units, {cmd:half_tiny} (2 point) by default, as
+    in {cmd:twoway}.  It is measured from half the layer's marker size
+    ({cmd:msize()} when given), on {cmd:bar}, {cmd:pcarrow} and
+    {cmd:pcbarrow} too, where no marker is drawn.  A negative gap moves the
+    label toward the point, and at {cmd:mlabposition(0)} the label is
+    centred on its point.  {cmd:dash} also takes
     a synonym, {cmd:mlg()}, which {cmd:twoway} does not accept{p_end}
 {synopt:{cmdab:mlabang:le(}{it:anglestyle}{cmd:)}}angle of the label text,
     counter-clockwise: one of Stata's anglestyles ({cmd:horizontal},
@@ -2214,6 +2849,20 @@ r(111), as {cmd:twoway} refuses it, except on {cmd:histogram} and
 many variables specified", r(103) -- and so does {cmd:dash}.
 
 {pstd}
+{cmd:mlabvposition()} places the labels of {cmd:scatter}, {cmd:connected},
+{cmd:bar}, {cmd:dot}, {cmd:dropline}, {cmd:pcscatter}, {cmd:pccapsym},
+{cmd:pcarrow} and {cmd:pcbarrow}.  On {cmd:line}, {cmd:spike},
+{cmd:area}, {cmd:pcspike} and {cmd:tsline} it is checked and draws
+nothing; {cmd:histogram}, {cmd:function}, {cmd:scatteri}, {cmd:pci} and
+{cmd:pcarrowi} never read it.  As in {cmd:twoway}, the variable counts as
+one more plotted variable, so the range types, {cmd:tsrline}, the fits,
+{cmd:mspline}, {cmd:mband}, the smooths and {cmd:kdensity} refuse it,
+r(103), in {cmd:twoway}'s words ("rscatter requires 3 variables: ...",
+"too many variables specified: ..."); a second copy is refused r(198),
+two names r(103), an expression r(198), and a variable that does not
+exist r(111).
+
+{pstd}
 {ul:What a label says.}  A string variable is drawn as it is.  A numeric
 variable with value labels is labelled with its value labels, whatever the
 display format or {cmd:mlabformat()} says, and a value with no label with
@@ -2253,6 +2902,50 @@ honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
 r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
+{phang}{ul:Recast.}  {opt recast(plottype)}, and its synonyms
+{opt recastas(plottype)} and {opt type(plottype)}, are read as
+{cmd:twoway} reads them: {cmd:recast()} and {cmd:recastas()} win over
+{cmd:type()} in either order, the rightmost copy wins, and one name
+serves every y variable.  A {cmd:scatter},
+{cmd:line}, {cmd:connected}, {cmd:area}, {cmd:bar}, {cmd:spike},
+{cmd:dropline}, range, {cmd:pc} or time-series layer is drawn as the
+type named, as {cmd:twoway} draws it; a range type named as a yx type
+draws its first bound, and {cmd:tsline} and {cmd:tsrline} still join in
+time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
+{cmd:histogram} and {cmd:scatteri} keep their computed points and draw
+them as {cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area},
+{cmd:bar} (one x unit wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},
+keyed as the layer is keyed without it; on the saved page a recast fit
+or density is marked after a filter move, as the fits are.  The
+spellings are {cmd:twoway}'s, case and all; a name outside the source's
+class prints {cmd:twoway}'s two notes and falls back -- a yx type to
+{cmd:scatter}, a range type to {cmd:rspike}, a {cmd:pc} type to
+{cmd:pcspike}, {cmd:function} to its own line.  {cmd:dot} ignores
+{cmd:recast()}.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
+{cmd:fpfitci} the three are refused, r(198), as {cmd:twoway} refuses
+them, and so is a spelling of {cmd:recast()} shorter than its name.
+
+{pstd}
+{it:Legend keys and default axis titles.}  Each layer is keyed as
+{cmd:twoway} keys it: a data layer by its y variable's label, or its
+name when it has none; a range or {cmd:pc} layer by both variables,
+{it:label1}{cmd:/}{it:label2}, one label when the two are the same;
+{cmd:scatteri} {cmd:y}; {cmd:pci} and {cmd:pcarrowi} {cmd:y/yb};
+{cmd:lfit} and {cmd:qfit} {cmd:Fitted values}; {cmd:fpfit}
+{cmd:Predicted} {it:yvar}; {cmd:lowess} {cmd:lowess} {it:yvar xvar};
+{cmd:lpoly} {cmd:lpoly smooth:} {it:ylabel}; {cmd:mband}
+{cmd:Median bands}; {cmd:mspline} {cmd:Median spline}; {cmd:function}
+by the name before its {cmd:=}, or {cmd:y}; {cmd:histogram}
+{cmd:Density} (or its scale); {cmd:kdensity} {cmd:kdensity} {it:varname}.
+A {cmd:ci} fit has two keys, its band {it:#}{cmd:% CI} and then its line.
+Each axis is titled by default with the label of the first series
+drawn on it when the last series drawn on it has the same label, and
+is untitled otherwise, as {cmd:twoway} titles it; a {cmd:ci} fit is
+two series, band then line.  The rule holds for each axis on its own,
+{cmd:yaxis(2)} and {cmd:xaxis(2)} included, and on every {cmd:by()}
+panel.  Keys {cmd:twoway} merges into one and the legend it leaves off
+a graph of histograms alone are still drawn by {cmd:dash}.
+
 {synoptset 20}{...}
 {synopt:{opt bwidth(#)}}the bandwidth of {cmd:lpoly}, {cmd:lpolyci},
     {cmd:kdensity} and {cmd:lowess}.  On the first three it is the
@@ -2279,7 +2972,8 @@ options -- see below.
     rule of thumb under {it:Default bandwidth}, even when {cmd:bwidth()}
     is given, as Stata's {cmd:r(pwidth)}.  A positive number; anything
     else is refused in {cmd:twoway}'s words, r(198).  {cmd:pw()} is its
-    shortest spelling ({cmd:p()} is {cmd:pstyle()}, as in {cmd:twoway}).
+    shortest spelling ({cmd:p()} is {cmd:twoway}'s own {cmd:p()} option,
+    the whole plot's style; see {help dash##namedstyles:Named styles}).
     {cmd:pwidth(+800)} is read as 800, where {cmd:twoway} says
     {cmd:expression invalid}, r(3000){p_end}
 {synopt:{opt var(#)}}{cmd:lpolyci}: a constant residual variance for the
@@ -2357,9 +3051,15 @@ options -- see below.
     {cmd:histogram}, {cmd:scatter} and {cmd:line}{p_end}
 {synopt:{opt base(#)}}{cmd:bar}, {cmd:spike}, {cmd:dropline} and
     {cmd:area}: the value the bars, spikes, drops and area are drawn from;
-    any number, default 0.  With no {cmd:base()}, when 0 lies outside the
-    range of y, {cmd:twoway} draws them from the edge of the plot region
-    and its axis does not reach 0; {cmd:dash} draws them from 0.
+    any number.  The axis reaches it, but no tick is placed for it, as in
+    {cmd:twoway}.  With no {cmd:base()} they are drawn from 0 when the y
+    axis's scale holds 0, and otherwise from the end of the scale nearest
+    0, so the axis does not reach 0: {cmd:dash bar mpg weight}, like
+    {cmd:twoway bar mpg weight}, draws its bars up from 10.  On a log axis
+    that is the scale's lower end, and on a date axis 0 is 01jan1960.
+    Under {cmd:by()} the panels share one base unless {cmd:yrescale} gives
+    each its own scale, and a {cmd:yaxis(2)} layer takes its base from
+    that axis.  The base follows the axis when a filter moves.
     {cmd:twoway} also takes {cmd:base()} on {cmd:dot}, where it matters
     only with {cmd:dotextend(no)}, and on {cmd:function}, as the base of
     {cmd:droplines()} -- neither of which {cmd:dash} draws -- and refuses
@@ -2581,7 +3281,8 @@ band takes {cmd:twoway}'s fitarea options:{p_end}
     {cmd:acolor()}{p_end}
 {p2col:{cmdab:lc:olor(}{it:color}{cmd:)}}the outline and the line{p_end}
 {p2col:{cmdab:fi:ntensity(}{it:#}{cmd:)}}the fill's intensity, drawn as
-    {cmd:twoway} draws it, the colour blended towards white{p_end}
+    {cmd:twoway} draws it: the colour blended towards white below 100,
+    darker above it, and towards black under {cmd:s1rcolor}{p_end}
 {p2col:{cmdab:alw:idth(}{it:lw}{cmd:)}}the outline's width; wins over
     {cmd:lwidth()}, which sets the line's too; 0 to 10000, refused
     outside, r(198), as {cmd:twoway} refuses it; a bare number is read as
@@ -2594,10 +3295,12 @@ band takes {cmd:twoway}'s fitarea options:{p_end}
 A colour's {cmd:%}{it:#} is its opacity, and a colour without one keeps
 the style's; {cmd:none} draws no fill or no outline.  {cmd:clcolor()},
 {cmd:clwidth()} and {cmd:clpattern()} style the line alone.  On the other
-plot types {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()},
-{cmd:alpattern()} and {cmd:pstyle()} are named in the note (see
-{help dash##unsupported:Unsupported Stata twoway options}).
-{cmd:astyle()} and {cmd:alstyle()} are not honoured, and are named.
+plot types {cmd:acolor()}, {cmd:alcolor()}, {cmd:alwidth()} and
+{cmd:alpattern()} are named in the note (see
+{help dash##unsupported:Unsupported Stata twoway options});
+{cmd:pstyle()} is not.  {cmd:astyle()}, {cmd:alstyle()}, {cmd:bstyle()},
+{cmd:blstyle()} and {cmd:lstyle()} style the band in {cmd:twoway}'s order
+(see {help dash##namedstyles:Named styles}).
 
 {pstd}
 {it:Example:}
@@ -2688,37 +3391,99 @@ exported.
 {title:Region Styling Options}
 
 {pstd}
-{cmd:dash} reads the {helpb twoway} region options that color the inner
-plot area and the outer graph region, in the saved dashboard and the served
-app alike.
+{cmd:dash} reads {cmd:plotregion()} and {cmd:graphregion()} as
+{helpb twoway} reads them, in the saved dashboard and the served app
+alike, before and after a filter move.  Each sub-option is read under
+every spelling {cmd:twoway} takes, from the underlined minimum to the
+full name, in lower case.
 
 {synoptset 35}{...}
-{synopt:{cmd:plotregion(color(}{it:color}{cmd:))}}background color of the
-    inner plot canvas; Bokeh {cmd:background_fill_color}.
-    {cmd:plotregion(fcolor())} is read the same way{p_end}
-{synopt:{cmd:plotregion(lcolor(}{it:color}{cmd:))}}border line color
-    of the inner plot area; Bokeh {cmd:outline_line_color}{p_end}
-{synopt:{cmd:plotregion(lwidth(}{it:#}{cmd:))}}border line width
-    of the inner plot area, a number or a width name such as {cmd:thick};
-    Bokeh {cmd:outline_line_width}{p_end}
-{synopt:{cmd:graphregion(color(}{it:color}{cmd:))}}background color of the
-    outer margin area; Bokeh {cmd:border_fill_color}{p_end}
-{synopt:{cmd:graphregion(fcolor(}{it:color}{cmd:))}}fill color alias for
-    {cmd:graphregion(color())}{p_end}
-{synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}read as
-    {cmd:graphregion(color())}{p_end}
-{synopt:{opt plotbgcolor(color)}}{cmd:dash}'s own shorthand for
-    {cmd:plotregion(color())}; {cmd:twoway} refuses {cmd:plotbgcolor()}.
-    Synonym: {cmd:pbgc()}{p_end}
+{synopt:{cmd:plotregion(color(}{it:color}{cmd:))}}the fill and the
+    outline; shortest {cmd:c()}; every sub-option reads the same in
+    {cmd:graphregion()}{p_end}
+{synopt:{cmd:plotregion(fcolor(}{it:color}{cmd:))}}the fill; shortest
+    {cmd:fc()}{p_end}
+{synopt:{cmd:plotregion(lcolor(}{it:color}{cmd:))}}the outline's color;
+    shortest {cmd:lc()}{p_end}
+{synopt:{cmd:plotregion(lwidth(}{it:lw}{cmd:))}}the outline's width, on
+    Stata's line-width ladder, {cmd:*}{it:#} multiplying the region's;
+    shortest {cmd:lw()}{p_end}
+{synopt:{cmd:plotregion(lpattern(}{it:lp}{cmd:))}}the outline's pattern;
+    shortest {cmd:lp()}{p_end}
+{synopt:{cmd:plotregion(style(}{it:name}{cmd:))}}a named area style as
+    the starting point, such as {cmd:none}; shortest {cmd:sty()}{p_end}
+{synopt:{cmd:plotregion(lstyle(}{it:name}{cmd:))}}a named line style for
+    the outline; shortest {cmd:ls()}{p_end}
+{synopt:{cmd:plotregion(margin(}{it:marginstyle}{cmd:))}}the space
+    between the plot region's edge and its scale, per side; shortest
+    {cmd:m()}{p_end}
+{synopt:{cmd:plotregion(ifcolor(}{it:color}{cmd:))}}the inner box's
+    fill; with {cmd:icolor()}, {cmd:istyle()}, {cmd:ilcolor()},
+    {cmd:ilstyle()}, {cmd:ilwidth()} and {cmd:ilpattern()}, read as their
+    outer forms are; shortest {cmd:ifc()}{p_end}
+{synopt:{cmd:graphregion(color(}{it:color}{cmd:))}}the graph region's
+    fill and outline; the sub-options above, as in {cmd:plotregion()}{p_end}
+{synopt:{cmdab:bgc:olor(}{it:color}{cmd:)}}the canvas under the graph
+    region{p_end}
+{synopt:{opt plotbgcolor(color)}}{cmd:dash}'s own: the plot region's
+    fill, before {cmd:plotregion()}; {cmd:twoway} refuses
+    {cmd:plotbgcolor()}.  Synonym: {cmd:pbgc()}{p_end}
 {synoptline}
 
 {pstd}
-Each of these takes a Stata named color ({cmd:navy}, {cmd:maroon},
-{cmd:forest_green}, etc.), an RGB triplet in quotes ({cmd:"255 0 0"}), or a
-hex string ({cmd:#1a476f}).  An unknown color is named in a note and the
-scheme's color is kept.  {cmd:twoway}'s own {cmd:bgcolor()} paints the
-canvas under the graph region, which shows only where the graph region has
-no color of its own; {cmd:dash} colors the graph region itself.
+Within one copy the outline is {cmd:color()} over {cmd:lcolor()} over
+{cmd:lstyle()}, and the fill {cmd:fcolor()} over {cmd:color()} over
+{cmd:style()}, whatever the typed order, as {cmd:twoway} applies them.
+Colors take Stata's grammar (see {help dash##colours:Colours}):
+{cmd:none} draws nothing and shows what lies beneath,
+{it:color}{cmd:%}{it:#} draws at that opacity over it, and an unknown
+color is named in a note and drawn black.  {cmd:lstyle(none)} removes
+the outline until a color gives it back.  The graph region's outline is
+drawn when an outline sub-option is given.  Repeated copies combine as
+{cmd:twoway} combines them, each copy editing the last:
+{cmd:plotregion(color(red))} {cmd:plotregion(c(blue))} is blue.
+
+{pstd}
+{cmd:bgcolor()} is {cmd:twoway}'s canvas under the graph region.  It
+shows only where the graph region (or, through it, the plot region) is
+{cmd:none} or translucent, so {cmd:bgcolor(red)} alone changes nothing
+you can see and {cmd:bgcolor(red) graphregion(color(none))} shows red.
+{cmd:bgcolor(none)} is the color {cmd:none}, black.
+
+{pstd}
+{cmd:dash} refuses, with {cmd:twoway}'s words and r(198), what
+{cmd:twoway} refuses: an unknown or capitalised sub-option, one shorter
+than its minimum, one given twice in a copy, and a word after a comma
+inside the region; {cmd:graphregion()} is checked before
+{cmd:plotregion()}, and both before {cmd:legend()} and the axis options.
+{cmd:lalign()}, {cmd:ilalign()}, {cmd:ishadestyle()},
+{cmd:iintensity()}, {cmd:shadestyle()}, {cmd:intensity()} and
+{cmd:marginonly} are accepted and named in a note, once per region, and
+so are {cmd:graphregion()}'s {cmd:margin()} and inner-box options, which
+are not drawn.
+
+{pstd}
+{ul:Plot-region margin.}  {cmd:plotregion(margin())} takes {cmd:twoway}'s
+{it:marginstyle}: one of its 28 names ({cmd:zero}, {cmd:small},
+{cmd:medium}, {cmd:sides}, {cmd:10-pt}, ...), four numbers for the left,
+right, bottom and top, or terms such as {cmd:l+10}, {cmd:b-2} and
+{cmd:t=0}, each side a percentage of the graph's smaller side, applied
+in order over the scheme's margin and over earlier copies, so
+{cmd:margin(zero)} then {cmd:margin(l+10)} leaves 10% on the left and
+none elsewhere.  {cmd:margin(zero)} puts the data and ticks on the plot
+region's edge.  Under {cmd:by()} the margin shrinks with the panels, as
+the default does.  An unknown margin, such as {cmd:L+10} or {cmd:l5}, is
+named in {cmd:twoway}'s note and drawn as zero.  A side is held within
+45% of the plot region.  {it:Difference from twoway:} the margin is a
+share of the graph's whole width or height, fixed when the page is
+built, so a wide margin is a little narrower on the page than in
+{cmd:twoway}, whose plot region is narrower than its graph.
+
+{pstd}
+{ul:Inner box.}  The {cmd:plotregion()} inner-box options draw one box at
+the plot region's scale, inside the margin, over the data and ticks; it
+follows the axes after every filter move and under {cmd:by()}.  Without
+an inner-box option no box is drawn.
 
 {pstd}
 {it:Example:}
@@ -2750,10 +3515,11 @@ the plot specification).
 {synopt:{cmdab:xsc:ale(log)}}display the x axis on a log scale{p_end}
 {synopt:{cmdab:ysc:ale(log)}}display the y axis on a log scale{p_end}
 {synopt:{cmdab:zti:tle(}{it:string}{cmd:)}}title of the colour key; see {cmd:colorvar()}{p_end}
-{synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...]{cmd:)}}colour-bar tick positions; see {cmd:colorvar()}{p_end}
+{synopt:{cmdab:zlab:el(}{it:#}[{it:#} ...][{cmd:, format(}{it:%fmt}{cmd:)}]{cmd:)}}colour-key ticks and number format; see {cmd:colorvar()}{p_end}
 {synopt:{cmdab:zsc:ale(}{it:range() log reverse}{cmd:)}}colour-bar range, scale and direction; see {cmd:colorvar()}{p_end}
-{synopt:{cmdab:xli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw vertical reference lines at x = {it:#}{p_end}
-{synopt:{cmdab:yli:ne(}{it:#}[{it:#} ...]{cmd:)}}draw horizontal reference lines at y = {it:#}{p_end}
+{synopt:{cmdab:xli:ne(}{it:linearg}{cmd:)}}vertical reference lines; see
+    {it:Reference lines} below{p_end}
+{synopt:{cmdab:yli:ne(}{it:linearg}{cmd:)}}horizontal reference lines{p_end}
 {synopt:{cmd:note(}{it:string}{cmd:)}}footnote text below the figure{p_end}
 {synopt:{cmdab:cap:tion(}{it:string}{cmd:)}}caption text below the figure{p_end}
 {synopt:{cmdab:asp:ectratio(}{it:#}{cmd:)}}HEIGHT divided by WIDTH, as in
@@ -2836,7 +3602,40 @@ Any of those may be followed by a comma and the sub-options
 {cmd:format(}{it:fmt}{cmd:)}, {cmd:labsize(}{it:size}{cmd:)},
 {cmd:angle(}{it:#}{cmd:)}, {cmd:grid} or {cmd:nogrid}, and
 {cmd:valuelabel} (the axis variable's value labels at the ticks), and
-{cmd:norescale}.  As in {cmd:twoway}, label and tick positions widen the
+{cmd:norescale}, under {cmd:twoway}'s spellings in lower case
+({cmd:ylabel(, for(%9.1f) labs(large) ang(0) nog)}, {cmd:ylabel(, g)},
+{cmd:xlabel(0 1, val)}; {cmd:ylabel(, grid nogrid)} draws the grid, as {cmd:twoway} does).
+{cmd:nolabels} and {cmd:labels} hide and show the labels, {cmd:noticks}
+and {cmd:ticks} the ticks (the positive word wins within one option),
+{cmd:labcolor(}{it:colorstyle}{cmd:)} colours the labels ({cmd:%}{it:#}
+sets their opacity), {cmd:tlength(}{it:size}{cmd:)} sets the tick length
+in Stata's size units ({cmd:*}{it:#} multiplies the scheme's) and
+{cmd:tposition(outside}|{cmd:inside}|{cmd:crossing)} the side, each word
+from its first letter.  {cmd:angle()} takes a number from -360 to 360,
+every anglestyle name ({cmd:horizontal}, {cmd:vertical}, {cmd:forty_five},
+{cmd:rvertical} ...) and {cmd:twoway}'s {cmd:h}, {cmd:v}, {cmd:rh} and
+{cmd:rv}; another name ({cmd:Vertical}, {cmd:stacked}) gets a note and
+level labels, as in {cmd:twoway}, and a number outside -360 to 360 is
+refused, {cmd:r(198)}, with {cmd:twoway}'s
+{cmd:textangle must be between -360.000 and 360.000}.
+{cmd:xtick()} and {cmd:ytick()} take their own {cmd:noticks},
+{cmd:tlength()} and {cmd:tposition()}; the label option's tick look never
+reaches their positions.
+{cmd:add} adds the listed values to the axis's default ticks, dates
+included ({cmd:ylabel(25, add)} draws 10 20 25 30 40 on {cmd:mpg}), in
+both modes and after every filter move; after a rule
+({cmd:ylabel(15(10)35, add)}, {cmd:#}{it:#}, {cmd:minmax}, {cmd:none}) it
+has no effect, and repeated copies merge as {cmd:twoway}'s do
+({cmd:ylabel(25, add) ylabel(35, add)} keeps both and the default ticks).
+Without {cmd:angle()} the labels take the scheme's
+{cmd:anglestyle horizontal_tick} and {cmd:anglestyle vertical_tick}: the y labels are
+vertical under {cmd:s2color}, {cmd:s2mono}, {cmd:s2gcolor}, {cmd:s1color},
+{cmd:s1mono}, {cmd:s1rcolor}, {cmd:sj}, {cmd:s2manual}, {cmd:s1manual},
+{cmd:s2gmanual} and {cmd:s2color8}, and {cmd:angle(0)} or
+{cmd:angle(horizontal)} keeps them level.  A spelling
+{cmd:twoway} refuses is refused, and quoted label text is text, never a
+sub-option ({cmd:ylabel(10 "labsize(large)" 20)} labels 10 with that
+text).  As in {cmd:twoway}, label and tick positions widen the
 axis to include them, unless {cmd:norescale} is given, which draws them
 without widening it; {cmd:twoway} drops {cmd:norescale} from a lone
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c} rule and widens that axis anyway, and so
@@ -2846,15 +3645,39 @@ value listed, in any order; they never narrow it or hide data.  One value
 is one value to include ({cmd:yscale(range(0))} reaches 0 and keeps the
 data's top), a missing value is ignored, {cmd:r()} is the abbreviation
 and {cmd:rev} that of {cmd:reverse}; a value that is not a number is named
-and ignored.  The axis then runs over the hull of its data, positions and
-{cmd:range()} values with a margin of 5% of that span at each end (in log
-units on a log axis; {cmd:twoway}'s margin is a fixed part of the graph
-instead), and holds across filter moves.
+and ignored.  {cmd:xscale()} and {cmd:yscale()} also draw {cmd:off} (the
+line, ticks, labels and title go; the grid stays), {cmd:noline} and
+{cmd:line}, the axis line's {cmd:lcolor()} (which draws the line beside
+{cmd:noline}, as in {cmd:twoway}), {cmd:lwidth()} and {cmd:lpattern()},
+{cmd:alt} (the axis on the other side) and {cmd:titlegap(}{it:size}{cmd:)};
+an {cmd:lwidth()} outside 0 to 10000 is refused, {cmd:r(198)}, with
+{cmd:twoway}'s {cmd:gm_linewidth} message, and a word {cmd:twoway} refuses
+({cmd:xscale(bogus)}, {cmd:yscale(OFF)}, {cmd:yscale(alt alt)}) is refused
+as it refuses it.  Under {cmd:by()}, {cmd:off}, {cmd:nolabels},
+{cmd:noticks} and {cmd:titlegap()} are drawn as if absent, with no note, as
+{cmd:twoway} draws them; the rest of the look is drawn on every panel.
+The axis then runs, as {cmd:twoway}'s scale does, over the
+hull of every layer it draws (fits, confidence bands, {cmd:scatteri} and
+{cmd:function} included; reference lines, text, marker labels and the default
+base of a {cmd:bar}, {cmd:area}, {cmd:spike} or {cmd:dropline} not), its
+ticks, label and tick positions and {cmd:range()} values, plus
+{cmd:twoway}'s plot-region margin: 2.2% of the graph's smaller side at each
+end (0.6% under {cmd:economist}; a {cmd:by()} panel's scaled as {cmd:twoway}
+scales it), in log units on a log axis.  The margin is fixed when the page
+is built, so it is placed within about 0.8% of the figure's width of
+{cmd:twoway}'s.  After a filter move a default or {cmd:#}{it:N} axis, a second
+axis included, is ticked and spanned again over the rows kept, in the saved
+page and the served app alike, and an axis with explicit positions keeps them
+and spans its data again; {cmd:xtick(#}{it:N}{cmd:)}/{cmd:ytick(#}{it:N}{cmd:)}
+marks and {cmd:minmax} positions keep their places.  On the saved page a fit,
+histogram or grid that
+the page does not recompute after a move, marked "(unfiltered)", stays inside
+the axis as drawn.
 
 {pstd}
 {cmd:#}{it:N} puts the ticks where {cmd:twoway} does: at 1, 2 or 5 times a
 power of ten, chosen over the smallest and largest values the axis's layers
-draw, and the axis reaches its outermost tick; so {cmd:ylabel(#5)} on
+draw, and the axis spans its outermost ticks; so {cmd:ylabel(#5)} on
 {cmd:auto}'s {cmd:mpg} labels 10 20 30 40.  {cmd:#1} labels the smallest and
 largest values.  {cmd:twoway}'s rule is compiled into Stata, so {cmd:dash}
 reproduces it from Stata's own answers: it agrees with 261 of 264 axes
@@ -2871,16 +3694,69 @@ rule over Stata's milliseconds.  A {cmd:%td}, {cmd:%tw}, {cmd:%tm},
 of it fitted to 12,000 of Stata's answers, which agrees exactly with 98% of
 {cmd:%ty} ranges and with 52% to 66% of the others, and where it differs
 it picks another calendar step or end tick.  A {cmd:by()} graph's panels
-are ticked on one scale, over all the panels' data, as {cmd:twoway} ticks
-them; with {cmd:by(, yrescale)} each panel is ticked over its own data,
-as {cmd:twoway} ticks it.
+are ticked on one scale, over all the panels' data and every layer, fits
+included, as {cmd:twoway} ticks them; with {cmd:by(, yrescale)} each panel is
+ticked over its own data, as {cmd:twoway} ticks it.
 
 {pstd}
-A date axis's ticks are written in the axis variable's display format, as
-{cmd:twoway} writes them: a {cmd:%tm} axis reads {cmd:2001m1 2001m4}, a
-{cmd:%td} axis {cmd:02jan2001}, a custom picture as written.  An explicit
-{cmd:format()} of any numeric display format ({cmd:%f}, {cmd:%g},
-{cmd:%e}) writes the ticks as Stata's {cmd:display} does.
+With no {cmd:xlabel()} or {cmd:ylabel()} rule, a numeric, log or {cmd:%tc}
+axis, and a second axis with no {cmd:ylabel2()} or {cmd:xlabel2()}, is ticked
+as {cmd:#5} (the scheme's tick count; a {cmd:by()} graph's panels take one
+fewer on y, as {cmd:twoway} draws them), with no minor ticks, so
+{cmd:scatter mpg weight} labels 10 20 30 40 and 2,000 3,000 4,000 5,000.  A
+zoom or pan ticks the visible range by the same rule, and Reset returns to
+the current extent.
+
+{pstd}
+A {cmd:%td}, {cmd:%tw}, {cmd:%tm}, {cmd:%tq}, {cmd:%th} or {cmd:%ty} axis
+with no rule, and a second date axis with none, is ticked as {cmd:#5} (the
+scheme's tick count) by {cmd:twoway}'s calendar rule as {cmd:dash} models
+it, with no minor ticks: {cmd:line close date} on {cmd:sp500} labels
+01jan2001 01apr2001 01jul2001 01oct2001 01jan2002, as {cmd:twoway} does.
+The model agrees with Stata on about 52-66% of daily to half-yearly ranges
+and 98% of yearly ones; otherwise it chooses another calendar step or end
+tick.  A date that shares an axis with a plain number is ticked on the
+date's calendar in its Stata values, by default and under {cmd:#}{it:N}
+alike ({cmd:01jan1960 01jan1970} ... {cmd:01jan2000}).  The axis
+re-ticks after a filter move and on zoom, in the saved page and the
+served app alike.
+
+{pstd}
+A numeric axis's ticks are written in the display format {cmd:twoway}
+labels that axis with: the format of the variable its first layer draws
+there, so a scatter of {cmd:mpg} on {cmd:weight} in {cmd:auto} labels
+{cmd:weight}, whose format is {cmd:%8.0gc}, {cmd:2,000 3,000 4,000 5,000}.
+A range plot's axis takes its first y variable's format and a
+paired-coordinate plot's its first pair's; a layer's {cmd:xvarformat()}
+or {cmd:yvarformat()} replaces its variable's.  {cmd:scatteri},
+{cmd:pci}, {cmd:pcarrowi}, {cmd:function}, {cmd:kdensity} and the fits
+({cmd:lfit}, {cmd:qfit}, {cmd:lpoly} and their {cmd:ci} forms) are
+written in {cmd:%9.0g}, a histogram's heights in {cmd:%6.4g}
+({cmd:1.0e-04}), and {cmd:lowess} and {cmd:fpfit} in their x variable's
+format and {cmd:%9.0g} on y.  With several layers each axis takes the
+first layer drawn on it, and the x axis the first layer of the y axis
+whose first layer comes last, as {cmd:twoway} does.  A date axis's ticks
+are written in the axis variable's display format: a {cmd:%tm} axis
+reads {cmd:2001m1 2001m4}, a {cmd:%td} axis {cmd:02jan2001}, a custom
+picture as written.
+
+{pstd}
+{cmd:format()} writes the axis's stored value in any display format, as
+{cmd:twoway} does: on {cmd:sp500}'s {cmd:%td} axis {cmd:format(%9.0fc)}
+writes the day numbers {cmd:14,976 15,066}, {cmd:format(%tdDD/NN/CCYY)}
+writes {cmd:01/01/2001}, and {cmd:format(%td)} on a numeric axis writes
+its numbers as dates.  Ticks beside text labels are written in the same
+format.  A format {cmd:twoway} refuses, here or in the colour key's
+{cmd:zlabel()}, is refused in its words, {cmd:invalid format, bogus},
+r(198).  A string, hexadecimal or byte-dump
+format ({cmd:%12s}, {cmd:%21x}, {cmd:%16H}), which {cmd:twoway} accepts,
+is written in {cmd:%9.0g} with a note, since {cmd:twoway}'s text can
+differ.
+
+{phang}{opt xvarformat(fmt)} and {opt yvarformat(fmt)}, inside a plot,
+replace that layer's x or y variable's display format for the axis it
+labels, as {cmd:twoway} reads them; written after the plot groups' comma
+they are refused, {cmd:option xvarformat() not allowed}, r(198).
 
 {pstd}
 On a date axis a number is a date in the variable's own units, as
@@ -2911,13 +3787,17 @@ values, as {cmd:twoway} draws it.  A bar or point computed outside
 So {cmd:dash kdensity date} has a date axis where {cmd:twoway kdensity date} shows 15000 to 15400, and a {cmd:range()} that reaches before 01jan0100 loses those points, with a note, where twoway draws them.
 
 {pstd}
+{ul:Dates on every axis.}  A date is placed in its variable's own units on every axis, as {cmd:twoway} places it, in the saved page and the served app, before and after any filter move. The bounds of the range plots ({cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap}, {cmd:rline}, {cmd:rconnected}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:tsrline}) and the coordinates of the paired plots ({cmd:pcspike}, {cmd:pccapsym}, {cmd:pcarrow}, {cmd:pcbarrow}, {cmd:pcscatter}) count toward the axis they are drawn on, so an {cmd:rarea} whose bounds are {cmd:date} and {cmd:d2} has a date y axis. Each axis is decided by its own layers: a {opt yaxis(2)} or {opt xaxis(2)} layer of a plain number leaves the first axis's dates alone, and a second axis whose layers are dates of one kind is a date axis whose {cmd:axis(2)} labels, ticks, lines and {cmd:range()} read dates, as on the first axis. On a date axis the coordinates of {cmd:scatteri}, {cmd:pci} and {cmd:pcarrowi}, the points of {cmd:function} and an explicit {cmd:base()} of {cmd:bar}, {cmd:spike}, {cmd:dropline} and {cmd:area} are dates too: {cmd:scatteri 1300 15400} on a {cmd:%td} axis is drawn at 01mar2002. A date that shares an axis with a plain number is drawn at its Stata values, the axis labelled in the first layer's date format when that layer draws the date itself (a scatter of {cmd:close} against {cmd:date} beside one against {cmd:obs} reads 01jan1960 at 0), and {cmd:xlabel(minmax)} there ticks those values. A literal coordinate, a {cmd:function} point or a {cmd:base()} outside 01jan0100 to 31dec9999 is drawn where its number falls on the date axis, as {cmd:twoway} draws it ({cmd:scatteri 1300 99999999} reaches 1.00e+08), and a tick there is labelled with its number, as {cmd:display} writes it. {it:Difference from twoway:} a value past the dates a browser can draw (years -271821 to 275760) is not drawn, and a note says so; the ticks of an axis that reaches past Stata's dates are {cmd:dash}'s natscale ticks over its numbers (0 2.00e+07 ... 1.00e+08 where {cmd:twoway} draws 2.50e+07 ... 1.00e+08). Where the first layer is {cmd:scatteri}, {cmd:pci}, {cmd:pcarrowi} or {cmd:function}, which {cmd:twoway} labels with numbers, {cmd:dash} keeps the date axis, as for the fits above.
+
+{pstd}
 {ul:Ticks without labels.}  {cmd:xtick()} and {cmd:ytick()} add ticks
 without labels beside whatever labels the axis has, its default ones or
 those {cmd:xlabel()} and {cmd:ylabel()} ask for.  They take a numlist or
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, {cmd:#}{it:N} or {cmd:minmax}, and the
 sub-option {cmd:grid}, which draws gridlines at the ticks; another
 sub-option is named in a warning.  Bokeh labels one set of ticks per axis,
-so these are drawn as its minor ticks, at the major ticks' length; Bokeh's
+so these are drawn as its minor ticks, at the major ticks' length, colour
+and width, which are the scheme's; Bokeh's
 own minor ticks, which Stata does not draw, are not drawn on that axis.
 With {cmd:axis(2)} the ticks are on the second axis's scale, and they
 widen that axis, as a label does, unless {cmd:norescale} is given; a line,
@@ -2960,7 +3840,8 @@ second comma ({cmd:ylabel(5000, angle(0), axis(2))}) are refused, r(198),
 with {cmd:twoway}'s message, in the order {cmd:twoway} checks them.
 {cmd:ymlabel()} and {cmd:ymtick()} are checked the same way but are drawn
 on neither axis (named in a warning).  {cmd:add} on a label routed to the
-second axis ({cmd:ylabel(5000, axis(2) add)}) is named, not applied.  The
+second axis ({cmd:ylabel(5000, axis(2) add)}) adds to that axis's default
+ticks.  The
 second axes also take the options below, which are {cmd:dash}'s own
 spellings of the {cmd:axis(2)} forms, as are their synonyms:
 {cmd:twoway} refuses all sixteen, r(198).  Given on a graph with no layer
@@ -3003,14 +3884,124 @@ one x axis is drawn at the bottom, styled the same way by the x forms.
     abbreviation.{p_end}
 {synoptline}
 
+{marker taxis}{...}
+{pstd}
+{it:Time-axis options.}  {opt tlabel()} ({cmd:tl}), {opt ttick()}
+({cmd:ttic}), {opt tmlabel()} ({cmd:tml}), {opt tmtick()} ({cmd:tmt}),
+{opt ttitle()} ({cmd:tt}), {opt tscale()} ({cmd:tsc}) and {opt tline()}
+({cmd:tli}) are {cmd:twoway}'s time-axis spellings of {cmd:xlabel()},
+{cmd:xtick()}, {cmd:xmlabel()}, {cmd:xmtick()}, {cmd:xtitle()},
+{cmd:xscale()} and {cmd:xline()}.  As in {cmd:twoway}, they act on the
+first x axis of any twoway graph, not only {cmd:tsline}, and are read
+after the x options whatever the order they are typed in: a later copy
+replaces or joins the x one as a second x copy would, and lines add up.
+A date literal is read in the unit of the x axis's label format, the
+format of the first plot's x variable ({cmd:2002m1} is 504 on a
+{cmd:%tm} axis, {cmd:15feb2000} 14655 on a {cmd:%td} one), as
+{cmd:twoway}'s {cmd:d()}, {cmd:w()}, {cmd:m()}, {cmd:q()} and {cmd:h()}
+read it; a number is a number first ({cmd:01012001} is 1012001).  The
+axis takes numbers only when its format is {cmd:%tc}, {cmd:%tC},
+{cmd:%tb} or numeric, or when the first plot is {cmd:lfit}, {cmd:qfit},
+{cmd:lfitci}, {cmd:qfitci}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:kdensity},
+{cmd:function}, {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi}; the
+paired-coordinate types read their first x variable, and an operated x
+({cmd:L.t}) its variable.  {opt tmlabel()} and {opt tmtick()} are stored
+on {cmd:xmlabel()} and {cmd:xmtick()} and named in a warning until minor
+ticks are drawn; {cmd:tscale(log)} on a date axis is noted as
+{cmd:xscale(log)} is.  What {cmd:twoway} refuses is refused in its words:
+a date literal in {cmd:xlabel()}, {cmd:xtick()}, {cmd:xmlabel()},
+{cmd:xmtick()} or {cmd:xline()} (r(198)) or in {cmd:xscale(range())}
+(r(121)); a literal on an axis that takes numbers only, or one no
+date function reads ({cmd:tline(2000m13)}); more than 2,500 lines in a
+copy (r(123)); and {cmd:tm()} and {cmd:ts()}, which are no option of
+{cmd:twoway}'s (r(198)).  The dates are read when the graph is
+registered; if the axis variable's date format changes before
+{cmd:dash build}, a note says so and the registered values are drawn.
+
+{pstd}
+As with the x options, {cmd:axis(2)} puts a time-axis option on the second
+x axis, whose dates are read in that axis's own unit (its first plot's
+format), and {cmd:dash}'s own spellings {opt tlabel2()}, {opt ttick2()},
+{opt tline2()}, {opt tscale2()} and {opt ttitle2()} do the same, as
+{cmd:xlabel2()} does; {cmd:twoway}'s plurals ({cmd:tlabels()},
+{cmd:tticks()}, {cmd:tlines()}) are read.  An {cmd:axis()} no layer uses is
+refused in {cmd:twoway}'s words, the x options' first, then the time
+axis's, then the y options' ({cmd:tlabels(2001m1, axis(3)) not allowed,}
+{cmd:xaxis3 does not exist}).  A {cmd:format()} decides the unit as
+{cmd:twoway}'s tick sets do: {cmd:line y n, xlabel(, format(%tm))}
+{cmd:tline(2002m1)} reads a month on an unformatted {cmd:n}; an option's
+own {cmd:format()} applies only after its own positions, so
+{cmd:tlabel(2001m1, format(%tm))} on {cmd:n} is refused; and lines and
+{cmd:range()} take the first {cmd:%t} or {cmd:%d} format among the label,
+minor label, tick and minor tick formats.  A left-aligned {cmd:%-tm} axis
+reads dates in labels and ticks, but its lines and {cmd:range()} take
+numbers only, as in {cmd:twoway}.
+
+{synoptset 38}{...}
+{synopt:{cmdab:tl:abel(}{it:rule_or_values}{cmd:)}}{cmd:xlabel()} with date
+    literals{p_end}
+{synopt:{cmdab:ttic:k(}{it:rule_or_values}{cmd:)}}{cmd:xtick()} with date
+    literals{p_end}
+{synopt:{cmdab:tml:abel(}{it:rule_or_values}{cmd:)}}{cmd:xmlabel()}; stored,
+    not drawn{p_end}
+{synopt:{cmdab:tmt:ick(}{it:rule_or_values}{cmd:)}}{cmd:xmtick()}; stored,
+    not drawn{p_end}
+{synopt:{cmdab:tt:itle(}{it:tinfo}{cmd:)}}{cmd:xtitle()}{p_end}
+{synopt:{cmdab:tsc:ale(}{it:axis_suboptions}{cmd:)}}{cmd:xscale()}, its
+    {cmd:range()} read as dates{p_end}
+{synopt:{cmdab:tli:ne(}{it:linearg}{cmd:)}}{cmd:xline()} with date
+    literals{p_end}
+{synopt:{opt tlabel2(rule_or_values)}}{cmd:tlabel()} on the second x
+    axis; no abbreviation{p_end}
+{synopt:{opt ttick2(rule_or_values)}}{cmd:ttick()} on the second x
+    axis{p_end}
+{synopt:{opt tline2(linearg)}}{cmd:tline()} on the second x axis{p_end}
+{synopt:{opt tscale2(axis_suboptions)}}{cmd:tscale()} on the second x
+    axis{p_end}
+{synopt:{opt ttitle2(tinfo)}}{cmd:ttitle()} on the second x axis{p_end}
+{synoptline}
+
+{pstd}
+{it:Reference lines.}  {cmd:xline()}, {cmd:yline()}, {cmd:xline2()} and
+{cmd:yline2()} take a {it:linearg}, {it:numlist} [{cmd:,} {it:suboptions}],
+as {cmd:twoway} does: the positions are expanded by Stata's own
+{cmd:numlist} ({cmd:2000(500)3000}, {cmd:2000/2002},
+{cmd:2000 2500 to 3500}), each value once within a copy and at most 2,500
+in a copy.  Each copy of a repeated option keeps its own style.  The
+sub-options are {cmd:lcolor()} ({cmd:lc()}), {cmd:lwidth()} ({cmd:lw()}),
+{cmd:lpattern()} ({cmd:lp()}), {cmd:lstyle()} ({cmd:lst()}), which takes
+any line style name ({cmd:p1}, {cmd:refline}, {cmd:foreground},
+{cmd:grid}, {cmd:none}, ...) with {cmd:lcolor()}, {cmd:lwidth()} and
+{cmd:lpattern()} drawn over it, and {cmd:lalign()} ({cmd:la()}), accepted
+as {cmd:twoway} accepts it, with no visible change.  What
+{cmd:twoway} refuses is refused in its words and order:
+{cmd:something required}, {cmd:r(100)}, for an empty list with a comma;
+{cmd:option }{it:name}{cmd: not allowed}, {cmd:r(198)}, for an unknown,
+short, capitalised or repeated sub-option; and
+{cmd:invalid line argument}, {cmd:r(198)}, for positions {cmd:numlist}
+refuses.  The lines are drawn above the grid and below the data, and
+never widen an axis.  See {cmd:$dash_max_reflines} under
+{it:Resource limits}.
+
+{pstd}
+{cmd:noextend} ({cmd:noex}), {cmd:extend} ({cmd:ex}) and
+{cmd:style(default}|{cmd:extended}|{cmd:unextended)} ({cmd:st()}) are
+drawn as {cmd:twoway} reads them: the scheme's
+{cmd:yesno xyline_extend_low} and {cmd:yesno xyline_extend_high} (yes in
+every shipped scheme) set where a line ends, then {cmd:style()}, then
+{cmd:noextend}, then {cmd:extend}, whatever order they are typed in.  An
+end that is not extended stops at the axis's scale, inset from the frame
+by the plot-region margin (none under {cmd:plotregion(margin(zero))}),
+and follows the axis after every filter move; another {cmd:style()} name
+is drawn as the default with {cmd:twoway}'s note.
+
 {pstd}
 {cmd:ytitle2()} and {cmd:xtitle2()} are read the same way every other
 text option is: each quoted string is its own line, {cmd:size()} and
 {cmd:color()} are applied, and any other sub-option is named once.  An
 empty string ({cmd:ytitle2("")}) removes the title; without one, the
-second axis is titled as {cmd:twoway} titles it -- by the label (or
-name) of its first layer's variable, {cmd:Density} or {cmd:kdensity}
-{it:varname} for those layers -- in the scheme's axis style, and
+second axis is titled as {cmd:twoway} titles it -- by the rule of the
+first axis, over its own layers' series -- in the scheme's axis style, and
 sub-options alone style that title; under {cmd:by()} it has no default
 title, as in {cmd:twoway}.
 
@@ -3018,19 +4009,78 @@ title, as in {cmd:twoway}.
 {cmd:ylabel2()} and {cmd:xlabel2()} read their rule and sub-options with
 the parser {cmd:ylabel()} uses: a numlist, {cmd:#}{it:N},
 {it:a}{cmd:(}{it:b}{cmd:)}{it:c}, {cmd:minmax}, {cmd:none}, value-label
-pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()} and {cmd:grid}, which
-draws gridlines at the second axis's ticks; any other sub-option is named
+pairs, {cmd:format()}, {cmd:labsize()}, {cmd:angle()}, {cmd:grid} (which
+draws gridlines at the second axis's ticks) and the label and tick look of
+{cmd:ylabel()}, under the same spellings; any other sub-option is named
 in a warning.  {cmd:yscale2()} and {cmd:xscale2()} take {cmd:log},
 {cmd:reverse} ({cmd:rev}) and {cmd:range(}{it:numlist}{cmd:)} ({cmd:r()}),
-which widens the second axis only, as {cmd:yscale(range())} does, and
-name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
-the second axis unless {cmd:norescale} is given.
+which widens the second axis only, as {cmd:yscale(range())} does, and the
+look of {cmd:yscale()}, where {cmd:alt} puts the second axis on the first
+axis's side, outside it; they name anything else; {cmd:ylabel2()} and {cmd:xlabel2()} positions widen
+the second axis unless {cmd:norescale} is given.  With or without them, a
+second axis's ticks are written in the format of the first layer on it,
+as {cmd:twoway} writes them.
 
 {pstd}
 {it:Example:}
 
 {phang2}{cmd:. sysuse sp500, clear}{p_end}
 {phang2}{cmd:. dash (line close date) (line volume date, yaxis(2)), ytitle2(Volume (thousands))}{p_end}
+
+{marker graph_text}{...}
+{pstd}
+{ul:Text in graphs.}  Text {cmd:dash} draws on a graph -- a title,
+subtitle, note or caption, an axis title, a tick label, a legend key or
+title, a {cmd:by()} panel title, the colour key and a marker label,
+typed in an option or taken from a variable label, a value label or a
+string variable -- reads Stata's graph-text markup as {cmd:twoway} does
+(see {help graph_text}): {cmd:{c -(}bf:}{it:text}{cmd:{c )-}},
+{cmd:{c -(}it:}{it:text}{cmd:{c )-}}, {cmd:{c -(}sup:}{it:text}{cmd:{c )-}},
+{cmd:{c -(}sub:}{it:text}{cmd:{c )-}}, the font tags
+{cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:}, {cmd:{c -(}stMono:},
+{cmd:{c -(}stSymbol:} and {cmd:{c -(}fontface "}{it:name}{cmd:":}, each
+also as {cmd:{c -(}bf{c )-}}, which holds to the end of the line, the
+symbols {cmd:{c -(}&}{it:name}{cmd:{c )-}} ({cmd:{c -(}&alpha{c )-}} is
+the Greek letter alpha) and the characters {cmd:{c -(}c }{it:#}{cmd:{c )-}},
+{cmd:{c -(}c 0x}{it:#}{cmd:{c )-}} and {cmd:{c -(}c }{it:name}{cmd:{c )-}}.
+The characters are drawn in Unicode.  A text drawn on a graph has one
+style, one font and one baseline, so markup that covers the whole text
+makes it bold, italic or in that font, and a raised or lowered run uses
+Unicode's superscript or subscript characters when each of its
+characters has one (digits, {cmd:+ - = ( )} and, raised, {cmd:n} and
+{cmd:i}).  Markup on part of a text, or a raised run without such
+characters, is drawn in the text's own style and on the line, and
+{cmd:dash} says so in one note for each graph and kind of text.  Tick
+labels and legend keys take a style only when every one of them has it.
+{cmd:{c -(}stSans:}, {cmd:{c -(}stSerif:} and {cmd:{c -(}stMono:} draw
+in the reader's sans-serif, serif and monospace fonts (Helvetica, Times
+and Courier where installed; a {cmd:graph set} font is not read), and
+{cmd:{c -(}fontface{c )-}} needs that font on the reader's computer.
+As in {cmd:twoway}, a text is cut off at {cmd:{c -(}c 0{c )-}}: the rest
+of the run it sits in is not drawn, and text after that run's closing
+brace, and the text's other lines, are drawn.  The control codes
+({cmd:{c -(}c 1{c )-}} to {cmd:{c -(}c 31{c )-}},
+{cmd:{c -(}c 127{c )-}}, 129, 141, 143, 144 and 157) are kept as those
+characters; the page carries them as escaped text, never as markup or
+script.  One small difference is kept: a symbol inside
+{cmd:{c -(}stSymbol:} is drawn as itself.  Other SMCL
+({cmd:{c -(}hline{c )-}}, {cmd:{c -(}space{c )-}},
+{cmd:{c -(}dup{c )-}}, {cmd:{c -(}cmd:{c )-}}, {cmd:{c -(}hi:{c )-}},
+{cmd:{c -(}ccl{c )-}}, {cmd:{c -(}center:{c )-}} and links) and an
+unknown tag are drawn as typed, as are {cmd:$$} and {cmd:\(} pairs.
+
+{pstd}
+Around the graphs, a filter's title, a dropdown's options taken from
+value labels and a tooltip's row names show the characters, without the
+style and font tags.  KPI titles, the dashboard's title and subtitle,
+{cmd:tabs()} titles, string values in tooltips and dropdowns, and the
+{cmd:csv} download keep the text as it is stored.
+
+{pstd}
+{it:Example:}
+
+{phang2}{cmd:. sysuse auto, clear}{p_end}
+{phang2}{cmd:. dash scatter mpg weight, title("{c -(}&alpha{c )-} = R{c -(}sup:2{c )-}") subtitle("{c -(}bf:Fuel economy{c )-}")}{p_end}
 
 {pstd}
 {ul:Tooltips.}  Each layer's tooltip names the variables that layer
@@ -3055,8 +4105,11 @@ observations -- {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
 {cmd:function} -- and an immediate layer's ({cmd:scatteri}, {cmd:pci},
 {cmd:pcarrowi}) are typed in the command, so {cmd:hover()} cannot reach
 them: their tooltips, where they have one, show only what the layer draws,
-x and y or a histogram's bin and count, and {cmd:dash} names each such
-layer in a note, once.  A variable's value is written in its display
+x and y, a {cmd:kdensity}'s x and {cmd:Density}, or a histogram's bin and
+its height, named as its y axis is titled ({cmd:Density},
+{cmd:Frequency}, {cmd:Fraction} or {cmd:Percent}), and {cmd:dash} names each such
+layer in a note, once.  A variable's value -- a computed layer's bins and
+points too -- is written in its display
 format, as Stata's {cmd:display} writes it -- {cmd:4,099} under
 {cmd:%8.0gc}, {cmd:12345.67} under {cmd:%10.0g}, a date in its picture,
 a {cmd:%tc} or {cmd:%tC} date with its time -- in both render modes.
@@ -3123,7 +4176,14 @@ are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
 {cmd:colorend()} and {cmd:colorformissing()}, are named in the note.  How the colours are drawn
 is {cmd:dash}'s: an unbinned numeric {it:varname} is mapped continuously
 through the palette and a colour bar is drawn beside the figure, where
-{cmd:twoway} bins it at its z axis's ticks.  {cmd:colordiscrete},
+{cmd:twoway} bins it at its z axis's ticks.  The colour bar sits on the
+graph region with no box of its own: its tick labels take the scheme's
+{cmd:tick_label} size and colour, its title the {cmd:axis_title} size and
+colour, upright, and its ticks the scheme's tick colour, width and length,
+as in {cmd:twoway}'s colour key.  {cmd:twoway} turns the title to run up
+the key's right-hand side and draws an axis line on the side of its
+labels; {cmd:dash} draws the title above the bar and no axis line.
+{cmd:colordiscrete},
 {cmd:colorcuts()} and {cmd:colornlevels()} bin it, and a discrete key
 entry is drawn per bin, in the scheme's series colours unless
 {cmd:colpalette()} names a palette.  {cmd:twoway} wants a numeric
@@ -3142,10 +4202,9 @@ observation whose y or x is missing counts too.  So in {cmd:sysuse auto}, a
 scatter of {cmd:mpg} on {cmd:weight} with its own {cmd:if foreign==1} and
 {cmd:colorvar(price)}, drawn beside a scatter of the domestic cars, spans
 3,748 to 12,990, the prices of the foreign cars.  Under {cmd:by()}
-each panel colours its own observations, as {cmd:twoway} does; {cmd:dash}
-draws each panel's key, where {cmd:twoway} draws none unless
-{cmd:by(, clegend(on))} asks for the first panel's, and its note names
-{cmd:clegend()}.  A filter move keeps the colours and the key chosen when
+each panel colours its own observations, as {cmd:twoway} does, and, as in
+{cmd:twoway}, no panel draws a key: {cmd:by(, clegend(on))} draws one,
+the first panel's.  A filter move keeps the colours and the key chosen when
 the dashboard was built, in both the saved page and the served app.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
@@ -3157,7 +4216,21 @@ The colour key's own axis options, {cmd:ztitle()}, {cmd:zlabel()} and
 {cmd:zscale()}, are taken as graph options and drawn on the key: the title on
 either key; ticks, {cmd:#}{it:N}, {cmd:none} and {cmd:minmax}, and
 {cmd:range()} (widening only), {cmd:log} and {cmd:reverse}, on the colour bar.
-On a discrete key {cmd:zlabel()} and {cmd:zscale()} are named in the note.
+{cmd:zlabel(, labsize())} is drawn on the colour bar's labels.
+The key's numbers are {it:varname}'s values in its own units, written as
+{cmd:twoway} writes its colour key: in {cmd:%8.0gc} whatever {it:varname}'s
+display format ({cmd:5,000} for a {cmd:%9.0g} {cmd:price}), or in
+{cmd:zlabel(, format())}'s format -- on the colour bar, in a binned key's
+bounds and in a discrete key's levels.  The colour bar is ticked where
+{cmd:twoway} ticks its key, by the rule of {cmd:#5} over the plotted values,
+and {cmd:#}{it:N}, {cmd:minmax}, a list of values, {cmd:colorcuts()},
+{cmd:colorlevels()} and {cmd:range()} are read in the same units.  So a date
+variable keys {cmd:15,000} ... {cmd:15,400} and {cmd:colorcuts(15100 15200)}
+cuts at those days, as in {cmd:twoway}; {cmd:zlabel(, format(%td))} writes
+the dates.  A format {cmd:twoway} accepts that {cmd:dash} cannot write
+({cmd:%12s}, {cmd:%21x}) is drawn as {cmd:%9.0g} and named in the note.
+On a discrete key {cmd:zlabel()}'s ticks and {cmd:zscale()} are named in the
+note.
 {cmd:ztitle()} given only sub-options styles the key's default title, the
 colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 
@@ -3171,8 +4244,20 @@ colour variable's label; {cmd:suffix} and {cmd:prefix} add lines to it.
 {ul:When a legend appears.}  As in {helpb twoway}, a legend is drawn only
 when the graph has two or more keys: a lone {cmd:scatter} gets none, a
 {cmd:scatter} with an {cmd:lfit} over it gets one.  {cmd:legend(on)} forces
-one onto a single-key graph and {cmd:legend(off)} removes it from any graph.
+one onto a single-key graph and {cmd:legend(off)} removes it from any graph;
+in one {cmd:legend()}, {cmd:on} wins over {cmd:off}.
 A {cmd:colorvar()} key is not the legend: it stays.
+{cmd:legend()}'s sub-options are read under {cmd:twoway}'s spellings in
+lower case: {cmd:legend(c(2) r(1) lab(1 "A") posi(6) s(small) lastlab(2 "Z"))}
+draws as its full names, and in {cmd:legend(cols(1) c(red))} the second
+spelling is {cmd:color(red)}.  What {cmd:twoway}
+refuses is refused with its return code and words -- {cmd:legend(OFF)},
+{cmd:legend(po(9))}, {cmd:legend(c(2) cols(1))}, {cmd:legend(c(red))}
+(r(121)), {cmd:legend(label(0 "A"))} -- and where {cmd:twoway} draws the
+default with a note, so does {cmd:dash}, once: a {cmd:position()} outside
+0-12, a non-numeric {cmd:ring()}, an {cmd:order()} holding a word that is
+no integer (the whole {cmd:order()} is ignored).  {cmd:rows()} wins over
+{cmd:cols()}.
 
 
 {marker geometry}
@@ -3199,6 +4284,11 @@ The precedence, highest first:
 {phang2}3. The active scheme's {cmd:graphsize x} and {cmd:graphsize y}, so a
     {cmd:dash} dashboard has the proportions of your other graphs without
     your asking.{p_end}
+
+{pstd}
+Under {cmd:by()}, as in {helpb twoway}, {cmd:xsize()} and {cmd:ysize()}
+size the whole array of panels, not each panel; {cmd:layout(bs)} places a
+faceted graph by that ratio.
 
 {pstd}
 The ratio is honoured within a height band.  Outside it the ratio yields, so
@@ -3228,6 +4318,31 @@ does not collapse to an unreadable sliver on a phone.
 {title:Marker and Transparency Options}
 
 {pstd}
+{marker colours}{ul:Colours.}  Every colour option reads Stata's colour
+grammar, in the saved dashboard and the served app alike: a colour name,
+case-sensitive ({cmd:navy}; {cmd:Navy} is not a name, nor are {cmd:grey}
+and the other British spellings); an RGB triplet {cmd:"R G B"}; CMYK
+{cmd:"C M Y K"} (proportions from 0 to 1, or whole numbers from 0 to 255);
+HSV {cmd:"hsv H S V"}; a hex code {cmd:#rrggbb}; and {cmd:bg}, {cmd:fg},
+{cmd:background} and {cmd:foreground}, the scheme's background and
+foreground colours, when the scheme names them.  {it:colour}{cmd:*}{it:#}
+sets the intensity, lighter below 1 and darker above it (multiplied under
+a scheme's {cmd:system naturally_white 0}), and {it:colour}{cmd:%}{it:#}
+the opacity, from 0 to 100; the two may be given in either order.  An
+unknown colour, or a number out of range, is drawn black with a note (a
+bar at its intensity), as {cmd:twoway} draws it; a malformed hex code,
+multiplier or opacity keeps the default in silence; a colour written with
+commas is refused (see {help dash##validation:Option values}).  A bare
+{cmd:*}{it:#}, {cmd:%}{it:#} or both, with no colour of its own, adjusts
+the colour the element would draw without the option, as {cmd:twoway}
+does, at every colour option: {cmd:mcolor(*.5)} lightens the marker's
+own colour (a named style's included), {cmd:fcolor(*.7)} on a bar
+lightens the bar's colour before the bar's intensity is applied, and
+{cmd:title("T", color(*.5))} lightens the scheme's title colour.  A
+{cmd:%}{it:#} sets that element's opacity wherever it is written; without
+one, the scheme's own opacity is kept.
+
+{pstd}
 These plot-level options are honoured on the plot types named, in the
 saved dashboard and the served app alike, and {cmd:dash}'s note does not
 name them there.
@@ -3235,7 +4350,8 @@ name them there.
 {synoptset 28}{...}
 {synopt:{cmdab:jit:ter(}{it:#}{cmd:)}}move each marker by uniform noise
     spanning {it:#}% of the data's range on each axis; {it:#} must be a
-    number from 0 to 100.  Drawn on the markers of {cmd:scatter},
+    number from 0 to 100, or a list of them, one per y (see
+    {help dash##stylelists:Style lists}).  Drawn on the markers of {cmd:scatter},
     {cmd:connected}, {cmd:rconnected}, {cmd:dot}, {cmd:dropline} and
     {cmd:scatteri}, never on a connecting line, as in {cmd:twoway}.
     {cmd:dash} accepts {it:jit} for it, where {cmd:twoway} wants the full
@@ -3273,6 +4389,24 @@ too, so {cmd:mcolor(red%50)} and {cmd:mcolor(red) malpha(50)} are the same
 thing.
 
 {pstd}
+Markers are drawn opaque, as {cmd:twoway} draws them, unless a colour's
+{cmd:%}{it:NN}, a scheme's declared opacity ({cmd:sttrans}'s {cmd:%20}) or
+{cmd:malpha()} asks for one.  A {cmd:bar}, {cmd:rbar}, {cmd:area} or
+{cmd:rarea} fill is its colour at the layer's intensity (the scheme's
+{cmd:intensity p}{it:#}{cmd:bar} or {cmd:intensity p}{it:#}{cmd:area},
+{cmd:inten80} in the shipped schemes), opaque, so {cmd:s2color}'s bar is
+#486C8C and {cmd:fcolor(yellow)} fills #FFFF33.  {cmd:fintensity()}
+replaces that intensity and is drawn as {cmd:twoway} draws it: blended
+towards white below 100 and darker above it ({cmd:fintensity(150)} divides
+each channel by 1.5); towards black under {cmd:s1rcolor}, whose scheme is
+not naturally white; 0 and negative values draw white (almost black under
+{cmd:s1rcolor}); {cmd:fintensity(.)} draws the layer's own intensity.
+{cmd:inten0} to {cmd:inten100}, {cmd:inten200}, {cmd:full} and {cmd:max}
+are the names; any other name draws full intensity with a note, and no
+value is refused.  A histogram is filled at full intensity.  A brushed-away
+fill is dimmed in its own colour.
+
+{pstd}
 The line options {cmd:lcolor()}, {cmd:lwidth()} and {cmd:lalpha()} style a
 layer's lines -- a connecting line, a drop, a spike -- and never its
 markers, as in {cmd:twoway}: a marker's outline is {cmd:mlcolor()} and
@@ -3281,10 +4415,93 @@ alike.  An unknown {cmd:lcolor()} or {cmd:lwidth()} name is still reported
 on a plot with no line, as {cmd:twoway} notes it there.
 
 {pstd}
+{ul:Line widths.}  A line width is drawn in Stata's units, on Stata's own
+ladder: {cmd:none}, {cmd:vvvthin}, {cmd:vvthin}, {cmd:vthin}, {cmd:thin},
+{cmd:medthin}, {cmd:medium}, {cmd:medthick}, {cmd:thick}, {cmd:vthick},
+{cmd:vvthick} and {cmd:vvvthick}, from 0 to 4.2 units, {cmd:medium} being
+0.30.  One unit is 2.88 points at the four-inch reference, as for every
+other size, so {cmd:lwidth(thick)} draws 8/3 as wide as {cmd:medium}.  A
+number and {it:#}{cmd:rs} are Stata units; {it:#}{cmd:pt}, {it:#}{cmd:in}
+and {it:#}{cmd:cm} are absolute, at the graph's reference length;
+{cmd:*}{it:#} multiplies the width the site would draw otherwise.  A
+width under 0.3 point is drawn at 0.3 point, as {cmd:twoway} draws it,
+and {cmd:none}, {cmd:0} and {cmd:*0} draw nothing.  A name is matched in
+its case, so {cmd:lwidth(THICK)} is noted and drawn at the scheme's width,
+as in {cmd:twoway}.  This holds for {cmd:lwidth()}, {cmd:mlwidth()},
+{cmd:clwidth()}, {cmd:alwidth()}, {cmd:plotregion(lwidth())} and the
+{cmd:lwidth()} of {cmd:xline()} and {cmd:yline()}, and for a scheme's
+{cmd:linewidth} keys.  A {cmd:*}{it:#} or an absolute width whose value
+passes 10000 units only once drawn, such as {cmd:lwidth(*40000)}, is
+noted and drawn at the default, where {cmd:twoway} refuses it.
+
+{pstd}
 {it:Example:}
 
 {phang2}{cmd:. sysuse auto, clear}{p_end}
 {phang2}{cmd:. dash scatter mpg weight, jitter(5) jitterseed(12345) malpha(60)}{p_end}
+
+{marker namedstyles}{...}
+{pstd}
+{bf:Named styles.}  These options draw the plot styles {cmd:p1} to
+{cmd:p15} of the scheme as {cmd:twoway} draws them:{p_end}
+
+{synoptset 24}{...}
+{synopt:{cmdab:psty:le(}{it:p#}{cmd:)}}the whole plot{p_end}
+{synopt:{cmd:p(}{it:p#}{cmd:)}}the whole plot, applied last (see below){p_end}
+{synopt:{cmdab:mst:yle(}{it:p#}{cmd:)}}the markers{p_end}
+{synopt:{cmdab:mls:tyle(}{it:p#}{cmd:)}}the markers' outlines{p_end}
+{synopt:{cmdab:ls:tyle(}{it:p#}{cmd:)}}the lines{p_end}
+{synopt:{cmdab:cls:tyle(}{it:p#}{cmd:)}}the connecting line of {cmd:line},
+    {cmd:connected}, {cmd:tsline}, the fits and the smoothers{p_end}
+{synopt:{cmdab:ast:yle(}{it:p#}{cmd:)}}a fill and its outline{p_end}
+{synopt:{cmdab:al:style(}{it:p#}{cmd:)}}an outline{p_end}
+{synopt:{cmdab:bst:yle(}{it:p#}{cmd:)}}a bar's fill and outline{p_end}
+{synopt:{cmdab:bl:style(}{it:p#}{cmd:)}}a bar's outline{p_end}
+
+{pstd}
+The connecting line of the line types takes {cmd:pstyle()},
+{cmd:lstyle()} and {cmd:clstyle()}; the lines of {cmd:spike}, the range
+types, the paired-coordinate types and the outlines of {cmd:bar},
+{cmd:rbar} and {cmd:histogram} take {cmd:pstyle()}, {cmd:lstyle()},
+{cmd:astyle()}, {cmd:alstyle()}, {cmd:bstyle()} and {cmd:blstyle()}.  A
+style option that a plot type does not draw is silent, as in
+{cmd:twoway}.
+
+{pstd}
+A named style and your own options combine in {cmd:twoway}'s order: an
+option wins over a style that comes before it in that order and loses to
+one that comes after it, whatever order you type them in.  So
+{cmd:mcolor(red) pstyle(p3)} draws red markers, {cmd:color(red) mstyle(p4)}
+draws {cmd:p4}'s markers, and {cmd:lwidth(thick) lstyle(p3)} draws
+{cmd:p3}'s line at {cmd:thick}.  {cmd:p()} is applied last: it restyles
+the whole plot, the marker labels included, and discards every other
+style option; the label text, {cmd:connect()} and {cmd:cmissing()} are
+kept.  Its value is one name, and given twice the first copy wins.
+
+{pstd}
+Across a varlist of several y, {cmd:scatter y1 y2 x, pstyle(p3 p4)}
+styles each y with its own element, as other style lists do;
+{cmd:p()} is not split.  {cmd:pstyle(p}{it:#}{cmd:)} and
+{cmd:p(p}{it:#}{cmd:)} also draw the layer as plot {it:#} for everything
+the plot number colours (its marker labels and the immediate types
+included); the layers after it keep their numbers.
+
+{pstd}
+Stata's other style names are drawn too, as {cmd:twoway} draws them under
+the scheme: every line style ({cmd:lstyle(refline)}, {cmd:lstyle(grid)},
+{cmd:lstyle(xyline)}, {cmd:lstyle(none)} ...), and {cmd:ci}, {cmd:ci2},
+{cmd:histogram}, {cmd:none} and the {cmd:p}{it:#}{cmd:line},
+{cmd:p}{it:#}{cmd:bar}, {cmd:p}{it:#}{cmd:area}, {cmd:p}{it:#}{cmd:box},
+{cmd:p}{it:#}{cmd:dot} and {cmd:p}{it:#}{cmd:arrow} forms (see
+{help dash##scheme:Stata scheme support}).  A name {cmd:twoway} does not
+know draws its default attributes, with its note.
+
+{pstd}
+Not drawn yet: the outline half of a named style
+on {cmd:area} and {cmd:rarea} ({cmd:lstyle()}, {cmd:alstyle()} and
+{cmd:blstyle()} are named there); and the arrowheads of {cmd:pcarrow},
+{cmd:pcbarrow} and {cmd:pcarrowi} ({cmd:mstyle()} and {cmd:mlstyle()} are
+named there).
 
 
 {marker scheme}
@@ -3292,12 +4509,16 @@ on a plot with no line, as {cmd:twoway} notes it there.
 
 {pstd}
 {cmd:scheme()} applies a named Stata graph scheme to the whole dashboard.
+A {cmd:scheme()} written on one graph draws that graph in it, in the
+saved page and the served app alike; the page and the KPI cards take the
+dashboard's scheme ({cmd:dash build}'s {cmd:scheme()}, then
+{cmd:theme()}, then the first graph's, then {cmd:c(scheme)}).
 With no {cmd:scheme()} and no {cmd:theme()}, {cmd:dash} follows the session's
 own {cmd:c(scheme)}, so a dashboard has the look of every other graph you
 draw without your asking.
 
 {pstd}
-{cmd:dash} ships faithful translations of twenty StataCorp schemes:
+{cmd:dash} ships faithful translations of twenty-six StataCorp schemes:
 
 {synoptset 16}{...}
 {synopt:{cmd:stcolor}}Stata's default as of Stata 18{p_end}
@@ -3329,6 +4550,20 @@ draw without your asking.
 {synopt:{cmd:s1rcolor}}light on a dark background{p_end}
 {synopt:{cmd:economist}}{p_end}
 {synopt:{cmd:sj}}{p_end}
+{synopt:{cmd:meta}}{cmd:s2color} with smaller text (8-point tick labels
+    where {cmd:s2color} has 10), thinner plot lines, a one-column legend at
+    4 o'clock, and grids on both axes{p_end}
+{synopt:{cmd:stcolor_meta}}{cmd:stcolor} with a solid cranberry
+    {cmd:xline()}/{cmd:yline()}{p_end}
+{synopt:{cmd:stcolor_mv}}{cmd:stcolor_alt} with solid reference lines{p_end}
+{synopt:{cmd:stcoloralias}}{cmd:stcolor} with
+    {cmd:zyx2rule colorvar hue}, a directive {cmd:dash} does not read: it
+    is drawn as {cmd:stcolor}, which is also what {cmd:twoway} draws for a
+    {cmd:colorvar()} scatter under it{p_end}
+{synopt:{cmd:stgcolor_meta}}{cmd:stcolor_meta} at 3.987 by 2.392
+    inches{p_end}
+{synopt:{cmd:stgcolor_mv}}{cmd:stgcolor_alt} with solid reference
+    lines{p_end}
 {synoptline}
 
 {pstd}
@@ -3350,7 +4585,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     in the scheme's {cmd:color xyline}, {cmd:linepattern xyline} and
     {cmd:linewidth xyline}, as {cmd:twoway} draws them: cranberry and solid
     under {cmd:s2color}, black and dashed under {cmd:stcolor}.  Their
-    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win.
+    {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} still win, under
+    {cmd:twoway}'s spellings too: {cmd:xline(5, lc(red) lp(dash) lw(thick))}.
     A line given the sub-option axis(2) is drawn at that value of the
     second axis; no line widens an axis.{p_end}
 
@@ -3361,21 +4597,70 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     where a scheme declares them; {cmd:mlwidth()} still wins), a bar's
     and an area's outline width ({cmd:linewidth pbar} and
     {cmd:linewidth parea}), the
-    marker colour where a scheme
-    declares a {cmd:color p}{it:#}{cmd:mark} apart from {cmd:p}{it:#}, the
+    marker fill and outline colours ({cmd:color p}{it:#}{cmd:markfill}
+    and {cmd:color p}{it:#}{cmd:markline}, each falling back to
+    {cmd:p}{it:#} as Stata's chain does; {cmd:color p}{it:#}{cmd:mark} is
+    not read, as {cmd:twoway} does not read it), the
     marker size ({cmd:symbolsize p}, and {cmd:symbolsize p}{it:#} per
     plot), the fill intensities, and a colour
     opacity the scheme declares ({cmd:sttrans}'s {cmd:%20}), which is
-    carried into the scatter, connected, line, bar, area and histogram
-    layers in both modes and wins over the alpha {cmd:dash} otherwise
-    derives from the intensities; the range, spike, fit, band, density,
-    function and immediate layers take the colour but not yet its opacity;
-    your own {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()}
-    still wins over both.  Plots are numbered as {cmd:twoway} numbers
+    carried into every layer's lines, markers and fills in both modes, as
+    Stata draws it, except the confidence band, which {cmd:twoway} draws
+    in {cmd:color ci_area} with no opacity; a colour you give without its
+    own {cmd:%}{it:NN} keeps the scheme's opacity, and
+    {cmd:mcolor(}{it:x}{cmd:%}{it:NN}{cmd:)} or {cmd:malpha()} still win.
+    A symbol in the cycle, or one you give with {cmd:msymbol()}, is drawn
+    with its own traits: a hollow symbol ({cmd:circle_hollow} and the
+    rest) as an outline, whatever a fill colour or {cmd:malpha()} say,
+    and a small one ({cmd:smcircle}, {cmd:smdiamond}, {cmd:smsquare},
+    {cmd:smplus} and their hollow forms) at 0.71 of the full symbol's
+    size, {cmd:smtriangle} at 0.75, after {cmd:msize()}, as Stata 19.5
+    draws them; {cmd:smx} and {cmd:smv} are drawn as {cmd:x} and {cmd:v}.
+    The cycle reaches every marker: {cmd:scatter}, {cmd:connected},
+    {cmd:dot}, {cmd:rconnected}, {cmd:scatteri}, {cmd:rscatter},
+    {cmd:pcscatter}, {cmd:pccapsym} and the markers of {cmd:dropline} and
+    {cmd:rcapsym}.  A histogram is drawn in the scheme's histogram style,
+    {cmd:color histogram} at {cmd:intensity histogram} outlined in
+    {cmd:color histogram_line} at {cmd:linewidth histogram}, the same for
+    every histogram layer, as {cmd:twoway} draws it; {cmd:color()},
+    {cmd:lcolor()} and the fill colour and intensity options still win.
+    Plots are numbered as {cmd:twoway} numbers
     them: a {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} or {cmd:fpfitci}
     draws two plots, its band and its line, so
     {cmd:lfitci} || {cmd:lfitci} || {cmd:lfit} draws its lines in
     {cmd:p1}, {cmd:p3} and {cmd:p5}, as {cmd:twoway} does.{p_end}
+
+{phang2}{ul:Named styles.}  {cmd:pstyle()} and {cmd:p()} take
+    {cmd:ci}, {cmd:ci2}, {cmd:histogram} and the {cmd:p}{it:#}{cmd:line},
+    {cmd:p}{it:#}{cmd:bar}, {cmd:p}{it:#}{cmd:area},
+    {cmd:p}{it:#}{cmd:box}, {cmd:p}{it:#}{cmd:dot} and
+    {cmd:p}{it:#}{cmd:arrow} series styles; {cmd:mstyle()} takes
+    {cmd:ci}, {cmd:ci2}, {cmd:histogram}, {cmd:none},
+    {cmd:p}{it:#}{cmd:box}, {cmd:p}{it:#}{cmd:dot} and
+    {cmd:p}{it:#}{cmd:arrow}; {cmd:astyle()} and {cmd:bstyle()} take
+    {cmd:background}, {cmd:foreground}, {cmd:ci}, {cmd:ci2},
+    {cmd:histogram}, {cmd:none}, {cmd:p}{it:#}{cmd:area},
+    {cmd:p}{it:#}{cmd:bar} and {cmd:p}{it:#}{cmd:box}; and
+    {cmd:lstyle()}, {cmd:clstyle()}, {cmd:mlstyle()}, {cmd:alstyle()} and
+    {cmd:blstyle()} take every one of Stata's 76 line styles
+    ({cmd:refline}, {cmd:grid}, {cmd:major_grid}, {cmd:foreground},
+    {cmd:xyline}, {cmd:none}, {cmd:p}{it:#}{cmd:line} and the rest).
+    Each is drawn as {cmd:twoway} draws it, through the scheme's own keys
+    along Stata's {cmd:p}{it:#}{it:stub} chain, so a scheme of your own
+    that includes a shipped one and sets, say, {cmd:color refline} reaches
+    {cmd:lstyle(refline)}; a key your scheme does not reach at all is
+    drawn at {cmd:s2color}'s value with the note
+    {cmd:(note: dash: color refline not found in scheme, default attributes used -- s2color's value)}.
+    A name {cmd:twoway} does not know draws {cmd:twoway}'s default
+    attributes -- {cmd:p1} for a series or marker style, the scheme's
+    foreground line for a line style and its background area for an area
+    style -- with
+    {cmd:(note: dash: named style} {it:name} {cmd:not found in class} {it:class}{cmd:, default attributes used)}
+    once.  A name Stata knows that {cmd:dash} does not draw ({cmd:fpall},
+    {cmd:dendrogram}, {cmd:sunflower}, {cmd:star}, {cmd:plotregion},
+    {cmd:outline}, {cmd:legend} and the rest of Stata's style files
+    outside these lists) draws the same defaults, with
+    {cmd:(note: dash: named style} {it:name} {cmd:of class} {it:class} {cmd:is not drawn by dash; default attributes used)}.
 
 {phang2}{ul:Grids.}  A major grid is drawn on an axis only where the
     scheme says so ({cmd:yesno draw_major_hgrid} for the x axis,
@@ -3385,10 +4670,21 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     shipped scheme does.  So {cmd:s1color}, {cmd:s1mono}, {cmd:s1rcolor}
     and {cmd:stmono1} draw no grid at all, as in Stata.  A grid that
     {cmd:xlabel(, grid)} or {cmd:ylabel(, grid)} turns on is drawn in the
-    scheme's grid colour.  Tick geometry is not the scheme's (see below):
-    an axis whose labels Bokeh places, as it does by default, also carries
-    Bokeh's minor ticks, which Stata draws only when {cmd:xmtick()},
-    {cmd:xmlabel()} or their {it:y} twins ask for them.{p_end}
+    scheme's grid colour and in its {cmd:linepattern major_grid}
+    ({cmd:linepattern minor_grid} for a minor grid): the {cmd:st*} schemes
+    that dash their grid ({cmd:stcolor} among them) draw it dashed, and
+    {cmd:xlabel(, grid)} keeps the dashes.  Ticks are the scheme's:
+    {cmd:gsize tick} long in Stata units ({cmd:tiny}, about 5 pixels at
+    the 4-inch reference, in whole pixels), on the side
+    {cmd:tickposition axis_tick} gives, in {cmd:color tick} at
+    {cmd:linewidth tick}.  An axis whose {cmd:axisstyle} draws no line or
+    no ticks draws none, and {cmd:yesno alt_yaxes} puts the y axis on the
+    right: under {cmd:economist} the y axis is on the right with neither
+    line nor ticks, its x ticks point inward, and a {cmd:yaxis(2)} axis
+    is on the left with its line and ticks.  An axis with its default
+    labels draws no minor ticks, as Stata draws them only when
+    {cmd:xmtick()}, {cmd:xmlabel()} or their {it:y} twins ask for them,
+    a date axis's default labels included.{p_end}
 
 {phang2}{ul:Text.}  Each piece of text takes the size and colour of the
     Stata textbox style that draws it: {cmd:title()} is {cmd:heading},
@@ -3399,10 +4695,29 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     filled with {cmd:color reverse_big} (Stata's note textbox does not use
     {cmd:gsize note}, and neither does {cmd:dash}), axis titles are
     {cmd:axis_title}, tick labels {cmd:tick_label} and legend entries
-    {cmd:key_label}.  The dashboard's own title and subtitle use
+    {cmd:key_label}.  Marker labels take {cmd:color p}{it:#}{cmd:label}
+    and {cmd:gsize p}{it:#}{cmd:label} (else {cmd:plabel}, else the plot's
+    colour) -- not {cmd:color label} or {cmd:gsize label}, which
+    {cmd:twoway}'s marker labels do not read -- and the colour bar's labels
+    and title take {cmd:tick_label} and {cmd:axis_title}.  The dashboard's
+    own title and subtitle use
     {cmd:heading} and {cmd:subheading}.  Under {cmd:s1rcolor} every one of
     them is white on black; under {cmd:economist} the title is drawn
-    larger than the subtitle, as its {cmd:gsize heading 6.0} asks.{p_end}
+    larger than the subtitle, as its {cmd:gsize heading 6.0} asks.  No
+    title is bold and axis titles are upright.  The title, subtitle, note
+    and caption are placed by the scheme's {cmd:clockdir title_position},
+    {cmd:subtitle_position}, {cmd:note_position} and
+    {cmd:caption_position} and the justification of their boxes
+    ({cmd:horizontal heading}, {cmd:subheading}, {cmd:small_body} and
+    {cmd:body}): under {cmd:s2color} the title and subtitle are centred
+    above the plot and the note and caption at the left below it, the note
+    nearer the plot; under {cmd:economist} the title, subtitle and caption
+    are at the left and the note sits in its box in the title's band, at
+    the top right.  Clock positions 2 to 4 and 8 to 10, which only a scheme
+    of your own can ask for, are drawn on the nearer of the top and
+    bottom.  The files also carry {cmd:system naturally_white} and the
+    {cmd:intensity p}{it:#}{cmd:bar}/{cmd:p}{it:#}{cmd:area} chains as
+    Stata resolves them.{p_end}
 
 {phang2}{ul:Legend.}  Its background and border ({cmd:color legend},
     {cmd:color legend_line}), its text ({cmd:key_label}) and, when the
@@ -3412,7 +4727,8 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     {cmd:numstyle legend_cols}: below the plot in two columns under
     {cmd:s2color}, to the right in one under {cmd:stcolor}, above in three
     under {cmd:economist}.  {cmd:legend(cols())} and {cmd:legend(rows())}
-    still win.{p_end}
+    still win, and {cmd:legend(rows())} wins over
+    {cmd:legend(cols())}.{p_end}
 
 {phang2}{ul:KPI cards.}  A card is drawn as the scheme's legend box: its
     background is {cmd:color legend}, its border {cmd:color legend_line}
@@ -3428,7 +4744,19 @@ of the graph, and is drawn as it would be on Stata's four-inch reference
 graph: {cmd:medium} text is 3.8194, which is 11 point, so one unit is 2.88
 point, and {cmd:economist}'s {cmd:gsize heading 6.0} is 17.28 point.
 Marker sizes follow Stata's {cmd:symbolsize} ladder, which is not the text
-ladder: a {cmd:large} marker is 7 point against {cmd:medium}'s 4.4.  A
+ladder: a {cmd:large} marker is 7 point against {cmd:medium}'s 4.4.
+Every marker, text and gap size dash reads, from an option or from the
+scheme, is on one unit for every class: 2.88 point, 3.84 pixels, so the
+default marker is 5.87 pixels under {cmd:s2color}.  An option reads a
+number, the {cmd:symbolsize} and {cmd:gsize} keywords (case-sensitive,
+{cmd:vhuge} and {cmd:ehuge} included for markers), {it:#}{cmd:rs},
+{cmd:*}{it:#} (times the size drawn there otherwise) and
+{it:#}{cmd:pt}, {it:#}{cmd:in} and {it:#}{cmd:cm}, which are converted at
+the scheme's smaller {cmd:graphsize} side ({cmd:xsize()} and {cmd:ysize()}
+do not change it).  An unknown or wrong-case name draws the class's
+{cmd:medium} with a note, as in {cmd:twoway}; a marker draws the scheme's
+own default size ({cmd:large} under {cmd:economist}).  A negative size
+draws nothing.  A
 {cmd:linewidth} number is Stata's own unit, {cmd:medium} being 0.30, so
 {cmd:economist}'s {cmd:linewidth p 1.2} draws four times as wide as
 {cmd:s2color}'s lines.
@@ -3448,38 +4776,50 @@ compatibility: {cmd:default} is {cmd:s2color}, {cmd:clean} is {cmd:s1color},
 are given.
 
 {pstd}
-{ul:A scheme of your own.}  To use a scheme {cmd:dash} does not ship, put
-its {cmd:.scheme} file in the working directory and name it either by its
-base name, {cmd:scheme(mytheme)}, or by its file name,
-{cmd:scheme(mytheme.scheme)}.  Both work on every entry point -- a plot
-drawn at once with {cmd:dash} {it:plottype}, a {cmd:scheme()} written on
-a registered graph or inside a layer's parentheses, {cmd:dash build} and
-{cmd:dash serve} -- and the page and every figure take the same file.  A
-file in the working directory wins over a shipped scheme of the same
-name.  A shipped name may be given with the extension too,
-{cmd:scheme(s2color.scheme)}, on every entry point and with no file in
-the working directory.  A scheme another package installed into
-{cmd:PLUS} is not read from there, deliberately: the letter directories
-are shared, so
-{cmd:dash} reads only its own translations and the working directory.
-Copy the file into the working directory instead.  The file is read the
+{ul:A scheme of your own.}  A scheme {cmd:dash} does not ship is found
+along the ado-path as {cmd:twoway} finds it:
+{cmd:scheme-}{it:name}{cmd:.scheme}, then
+{it:name}{cmd:.scheme}, in each directory of the ado-path in turn
+({cmd:BASE}, {cmd:SITE}, the working directory, {cmd:PERSONAL},
+{cmd:PLUS}, {cmd:OLDPLACE}, directories added with {cmd:adopath}), each
+with its first-letter subdirectory, as {cmd:findfile} looks.  So
+{cmd:scheme(mytheme)} reads {cmd:scheme-mytheme.scheme} or
+{cmd:mytheme.scheme} in the working directory, a third-party scheme
+installed into {cmd:PLUS/s/} is read from there, and
+{cmd:scheme(mytheme.scheme)} names the file itself.  This holds on every
+entry point -- a plot drawn at once with {cmd:dash} {it:plottype}, a
+{cmd:scheme()} written on a registered graph or inside a layer's
+parentheses, {cmd:dash build}, {cmd:dash serve} and the session's
+{cmd:c(scheme)}.  The twenty-six shipped names come first, as Stata's own
+are in {cmd:BASE}, so a working-directory {cmd:s2color.scheme} or
+{cmd:scheme-s2color.scheme} replaces nothing.  A shipped name may be given
+with the extension too, {cmd:scheme(s2color.scheme)}.  A {cmd:theme()}
+name given to {cmd:scheme()} is a file of that name when Stata finds one,
+and the theme otherwise.  Four things differ from {cmd:twoway}, for
+safety: a scheme is a name, never a path (a name holding a blank, a
+quote, a slash or backslash, a colon or {cmd:..} is refused, where
+{cmd:twoway} follows a relative path); a file is read only when it is a
+regular file of at most 1,048,576 bytes inside the directory it was found
+in, so a link out of that directory is not followed; a
+{cmd:dash-}{it:name} is read only from the working directory; and a file
+is read as data, never run.  A file refused this way is named in a note
+and {cmd:s2color} is drawn.  The file is read the
 way Stata reads it: each line is {cmd:styletype element style}, with the
 style the third word, quoted when it holds blanks, as in
 {cmd:color background "255 0 0"} or {cmd:color p1 "26 71 111 %20"}.  A
 line that cannot be read that way is named once, with its line number,
-and skipped.  A name carrying a
-directory separator or {cmd:..} is refused.
+and skipped.
 
 {pstd}
 {ul:A name that resolves to nothing is refused.}  A {cmd:scheme()} that
-is neither a shipped scheme, one of the {cmd:theme()} aliases nor a
-{cmd:.scheme} file in the working directory is refused before any Python
+is neither a shipped scheme, a {cmd:theme()} name nor a scheme Stata
+finds is refused before any Python
 runs, on every entry point, with r(198):
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
 {phang3}{cmd:. dash scatter mpg weight, name(s1)}{p_end}
 {phang3}{cmd:. dash build, saving(d.html) scheme(nosuchthing) replace}{p_end}
-{phang3}{cmd:dash build: scheme() must be a shipped scheme, a theme, or a .scheme file in the working directory (got: nosuchthing)}{p_end}
+{phang3}{cmd:dash build: scheme() must be one of economist, meta, s1color, s1manual, s1mono, s1rcolor, s2color, s2color8, s2gcolor, s2gmanual, s2manual, s2mono, sj, stcolor, stcolor_alt, stcolor_meta, stcolor_mv, stcoloralias, stgcolor, stgcolor_alt, stgcolor_meta, stgcolor_mv, stmono1, stmono2, stsj, sttrans; a theme (clean, dark, default, economist, mono, sj); or a scheme Stata finds along the ado-path as scheme-NAME.scheme or NAME.scheme (got: nosuchthing)}{p_end}
 
 {pstd}
 and a {cmd:theme()} likewise, naming its six values:
@@ -3488,28 +4828,29 @@ That is stricter than {cmd:twoway}, which draws {cmd:s2color} with a note
 when a scheme is not found, and the same as {cmd:set scheme}, which is
 r(111): a dashboard is a file you look at later, so {cmd:dash} will not
 save one in a scheme you did not ask for.  The session's own
-{cmd:c(scheme)}, inherited when you name none, is the one exception.
-When {cmd:dash} cannot translate it -- a third-party scheme, or one of
-StataCorp's internal ones such as {cmd:stcolor_meta} -- it says so once,
-{cmd:dash: 'X' is not a known theme or scheme; it was inherited from the session (c(scheme)) because no scheme() or theme() was given ...; using s2color},
-and draws {cmd:s2color}; never an error, so a session set to a scheme
-{cmd:dash} does not know still builds.
+{cmd:c(scheme)}, inherited when you name none, is looked up the same
+way, so a scheme {cmd:set scheme} accepted is drawn; it is never refused,
+and when {cmd:dash} cannot read it -- a file the rules above refuse -- a
+note says why and {cmd:s2color} is drawn.
 
 {pstd}
-{ul:What a scheme file of yours may include.}  StataCorp's schemes are
+{ul:What a scheme file of yours may include.}  A colour in your file
+follows the grammar of {help dash##colours:Colours}, with {cmd:twoway}'s
+scheme-file rules: commas separate the numbers, a malformed number is
+drawn white, an unknown name is drawn black with a note, and
+{cmd:system naturally_white 0} makes {it:colour}{cmd:*}{it:#} multiply.
+StataCorp's schemes are
 written as edits on top of an {cmd:#include}d parent, and {cmd:dash}
-resolves that chain once, when it extracts its twenty translations, so
+resolves that chain once, when it extracts its twenty-six translations, so
 each shipped file already carries every directive it needs with every
 colour written as hex.  A file of yours is read the same way: an
-{cmd:#include} is resolved as {cmd:scheme()} itself is -- a {cmd:.scheme}
-file of that name in the working directory first, then one of the twenty
-translations {cmd:dash} ships -- never Stata's own
-{cmd:scheme-}{it:name}{cmd:.scheme}.  As in Stata, an {cmd:#include}
+{cmd:#include} is resolved as {cmd:scheme()} itself is -- one of the
+twenty-six translations, or {cmd:scheme-}{it:name}{cmd:.scheme} then
+{it:name}{cmd:.scheme} along the ado-path.  As in Stata, an {cmd:#include}
 takes effect where it stands: the lines after it override the included
 scheme, and the included scheme overrides the lines before it.  An
-{cmd:#include} that resolves to neither (one of StataCorp's internal
-schemes, such as {cmd:stcolor_meta}, a third-party scheme, or a path
-outside the working directory) is read as {cmd:#include s2color}, as
+{cmd:#include} that resolves to neither (a scheme nowhere on the
+ado-path, or a path) is read as {cmd:#include s2color}, as
 Stata reads a scheme it cannot find, and {cmd:dash} says so in Stata's
 words, {cmd:(note: scheme} {it:name} {cmd:not found, using s2color)}.
 A {cmd:color p}{it:#} or {cmd:linepattern p}{it:#} of yours reaches the
@@ -3529,36 +4870,48 @@ area outline, {cmd:arrowline} for {cmd:pcarrow}; a bar's outline stops at
 never reaches it, as in Stata; a marker's outline takes the stub
 {cmd:mark}.  Only {cmd:graphsize x} and {cmd:graphsize y} size a graph; a bare
 {cmd:graphsize} {it:#} sizes nothing, as in Stata.
+A directive {cmd:dash} does not draw yet -- such as {cmd:clockdir p}
+(where marker labels sit) or the {cmd:textboxstyle} of a title -- is read
+and kept with the scheme, without a note, so a later {cmd:dash} that draws
+it takes it from your file.
 Colours may be Stata colour names or {cmd:#rrggbb}.
 
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 80 to 140 directives (more for the monochrome schemes, whose
-chains declare connecting-line and line-plot keys and a symbol cycle) where Stata's
+scheme: 290 to 360 directives (more for the monochrome schemes, whose
+chains declare connecting-line and line-plot keys, a symbol cycle and
+{cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
 has 2060, the {cmd:#include} chain flattened into the file, every colour
 resolved to {cmd:#rrggbb} ({cmd:sttrans}'s with the {cmd:%20} opacity
 Stata declares kept as {cmd:#rrggbb%20}, and {cmd:economist}'s plot-region
-border written as Stata's {cmd:none}), and a {cmd:* provenance:}
+border, and the {cmd:pieline} and {cmd:fpspacer} line colours, written as
+Stata's {cmd:none}), and a {cmd:* provenance:}
 comment for every
 directive saying whether it was transcribed from Stata's file, and from
-which directive, or inferred by {cmd:dash} -- the area intensity, which
-Stata resolves through a fallback and {cmd:dash} writes out resolved.  The
+which directive, or inferred by {cmd:dash} where Stata resolves the key
+through a fallback and {cmd:dash} writes it out resolved.  The
 {cmd:p}{it:#}{cmd:line}, {cmd:p}{it:#}{cmd:bar},
-{cmd:p}{it:#}{cmd:mark} and {cmd:p}{it:#}{cmd:lineplot} colours, the
+{cmd:p}{it:#}{cmd:markfill}, {cmd:p}{it:#}{cmd:markline} and
+{cmd:p}{it:#}{cmd:lineplot} colours, the
 line patterns, the marker symbols and the marker sizes are not written
 out: each file carries only the keys
 Stata's own chain declares, and {cmd:dash} follows the
 {cmd:p}{it:#}{it:stub} fallback itself, as Stata does.  Most of the
 directives {cmd:dash} does not carry govern what it does not draw: the styling of {cmd:graph bar}, {cmd:box}, {cmd:pie},
-{cmd:dot} and {cmd:matrix} charts, margins and tick geometry.  Some govern
+{cmd:dot} and {cmd:matrix} charts, and margins (the line styles of those
+names, such as {cmd:tick} and {cmd:pie}, are carried for {cmd:lstyle()}).
+Some govern
 what it draws in its own way, so those can look different from Stata's.
 A confidence band's keys are carried -- {cmd:color ci_area},
 {cmd:ci_arealine} and {cmd:ci_line}, {cmd:intensity ci_area},
 {cmd:linewidth ci_area} and {cmd:ci}, {cmd:linepattern ci_area} and
 {cmd:ci}, and {cmd:ci2}'s colours and width -- and drawn as Stata draws
-them (see {help dash##ciband:The band's look}).  {cmd:graph} never reads
+them (see {help dash##ciband:The band's look}), and so are a histogram's:
+{cmd:color histogram} and {cmd:histogram_line}, {cmd:intensity histogram}
+and {cmd:linewidth histogram}; and so are the keys Stata's style files
+read for the named styles, {cmd:color refline} among them.  {cmd:graph} never reads
 these files (see below).
 
 {pstd}
@@ -3570,17 +4923,18 @@ these files (see below).
 
 {pstd}
 {ul:Where the shipped schemes live after an install.}  {cmd:dash} ships
-its twenty schemes as {cmd:dash-}{it:name}{cmd:.scheme} files beside
+its twenty-six schemes as {cmd:dash-}{it:name}{cmd:.scheme} files beside
 {cmd:dash.ado}, and {cmd:net install} files each by its first letter, so
-all twenty land in {cmd:PLUS/d/} -- {cmd:PLUS/d/dash-s2color.scheme},
+all twenty-six land in {cmd:PLUS/d/} -- {cmd:PLUS/d/dash-s2color.scheme},
 {cmd:PLUS/d/dash-economist.scheme} and so on -- while
 {cmd:dash_render.py} goes to {cmd:PLUS/py/}.  {cmd:dash} looks there for
-its own twenty names and for nothing else, so {cmd:scheme()} works the
-same from an installed copy as from a source checkout, and any other
-package's file in the same directory stays unread.  You still name them
-as before: {cmd:scheme(s2color)} or {cmd:scheme(s2color.scheme)}.  A
-{cmd:.scheme} file you put in the working directory still wins over the
-shipped one of the same name.
+its own twenty-six names; a name it does not ship is looked for along the
+ado-path as Stata looks for it, so another package's file in the same
+directory is read only when you name it.  So {cmd:scheme()} works the
+same from an installed copy as from a source checkout.  You still name
+them as before: {cmd:scheme(s2color)} or {cmd:scheme(s2color.scheme)}.  A
+{cmd:.scheme} file in the working directory no longer wins over the
+shipped one of the same name, as it never does in {cmd:twoway}.
 
 {pstd}
 {ul:Why they are named {cmd:dash-}{it:name}{cmd:.scheme}.}  The
@@ -3588,8 +4942,9 @@ shipped one of the same name.
 {cmd:scheme-}{it:name}{cmd:.scheme} files or with another package's
 {it:name}{cmd:.scheme}, so {cmd:set scheme} {it:name} still finds Stata's
 own copy and {cmd:dash}'s translations never change how {cmd:graph} draws
-by default.  They are {cmd:dash}'s alone: {cmd:set scheme} looks only
-for {cmd:scheme-}{it:name}{cmd:.scheme}, so it never reads them, and in
+by default.  They are {cmd:dash}'s alone: {cmd:set scheme} {it:name}
+finds Stata's own {cmd:scheme-}{it:name}{cmd:.scheme} in {cmd:BASE}
+first, so it never reads them, and in
 {cmd:dash} you name each by Stata's own name, {cmd:scheme(s2color)},
 never by its file name.  In {cmd:dash},
 {cmd:scheme(dash-}{it:name}{cmd:)} is not another spelling of a shipped
@@ -3608,8 +4963,8 @@ command copy-pasted from a do-file always runs -- and every one that is
 supplied is named in that command's note, so nothing is dropped in silence:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, pstyle(p3) t1title("hi")}{p_end}
-{p 12 12 2}{cmd:dash: ignoring unsupported option(s): pstyle() t1title()}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) t1title("hi")}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() t1title())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado}, and this list is
@@ -3628,7 +4983,8 @@ disagree in either direction.
 
 {phang2}{ul:Minor ticks and minor labels.}
     {opt xmtick(numlist)}, {opt ymtick(numlist)}, {opt xmlabel(numlist)},
-    {opt ymlabel(numlist)} -- {cmd:dash} does not draw them.  {cmd:xtick()}
+    {opt ymlabel(numlist)}, and {opt tmlabel()} and {opt tmtick()}, their
+    time-axis spellings -- {cmd:dash} does not draw them.  {cmd:xtick()}
     and {cmd:ytick()} are honoured: each adds tick marks without labels
     beside the labels of {cmd:xlabel()} or {cmd:ylabel()}, or the default
     ones, as {cmd:twoway} draws them, and a mark outside the data's range
@@ -3644,16 +5000,6 @@ disagree in either direction.
     {cmd:xsize()}, {cmd:ysize()} or {cmd:aspectratio()} to set its
     proportions, and {cmd:layout()} to place it.
 
-{phang2}{ul:Named styles.}
-    {opt pstyle(name)}, {opt lstyle(name)}, {opt mstyle(name)},
-    {opt mlstyle(name)} -- each names a bundle of settings in a
-    {cmd:.scheme} file.  {cmd:dash} reads the scheme's own {cmd:p}{it:#}
-    cycles directly; set the properties you want with {cmd:mcolor()},
-    {cmd:msymbol()}, {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()}.
-    {cmd:pstyle()} is honoured on {cmd:lfitci}, {cmd:qfitci},
-    {cmd:lpolyci} and {cmd:fpfitci}, and not named there (see
-    {help dash##ciband:The band's look}).
-
 {phang2}{ul:A confidence band's outline, on other plots.}
     {opt acolor(color)}, {opt alcolor(color)}, {opt alwidth(linewidth)},
     {opt alpattern(linepattern)} -- {cmd:twoway}'s fitarea options.
@@ -3661,6 +5007,13 @@ disagree in either direction.
     {cmd:lpolyci} and {cmd:fpfitci}, and does not name them there;
     {cmd:twoway} accepts them on every plot type, and on the others
     {cmd:dash} names them.
+
+{phang2}{ul:Dot and marker back-line styles.}
+    {opt dstyle(markerstyle)}, {opt dlstyle(linestyle)} and
+    {opt bmlinestyle(linestyle)} -- the dots of a {cmd:dot} plot and a
+    marker's back line; {cmd:dash} keeps them, for each y, and names
+    them, but does not draw dot rows or marker back lines.  A name
+    {cmd:twoway} does not know is noted as {cmd:twoway} notes it.
 
 {phang2}{ul:A marker's outline pattern, and a label width.}
     {opt mlpattern(linepatternstyle)} -- the pattern of a marker's outline,
@@ -3684,10 +5037,7 @@ disagree in either direction.
     not read their contents; the confidence band, the density line and the
     fitted line keep their default styling.
 
-{phang2}{ul:Orientation, bar labels and positions.}
-    {opt horizontal}, {opt vertical} -- {cmd:twoway} draws a bar, spike,
-    dropline or range bar sideways with {cmd:horizontal}; {cmd:dash}
-    draws every plot upright, bars at the {it:x} variable's values.
+{phang2}{ul:Bar labels and positions.}
     {opt blabel(...)} is {cmd:graph bar}'s and {opt at(varname)} no
     {cmd:twoway} plot's: {cmd:twoway} refuses both, r(198).
 
@@ -3695,18 +5045,11 @@ disagree in either direction.
     {opt sort} and {opt sort(varlist)} on every plot type other than
     {cmd:line}, {cmd:connected}, {cmd:area}, {cmd:rline}, {cmd:rarea},
     {cmd:rconnected}, {cmd:tsline} and {cmd:tsrline} -- {cmd:dash} joins no
-    points there, and names them in the note.  On the first six they are
-    honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
+    points there, and names them in the note.  On the first six, and on a
+    {cmd:scatter} given {cmd:connect()}, they are honoured, and {cmd:tsline} and {cmd:tsrline} join in time order, as
     {cmd:twoway} does, so none of the eight names them (see
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
     refused on every type, as {cmd:twoway} refuses it.
-
-{phang2}{ul:Marker-label placement and text style.}
-    {opt mlabvposition(varname)} -- a layer's labels all sit at the one
-    clock position {cmd:mlabposition()} gives; a position per observation
-    is not read.  {opt mlabtextstyle(textstyle)} -- a named text style in
-    a {cmd:.scheme} file; set the size and colour with {cmd:mlabsize()} and
-    {cmd:mlabcolor()}.
 
 {phang2}{ul:Room for long end labels.}
     {opt xoverhangs}, {opt yoverhangs} -- {cmd:twoway} widens the graph
@@ -3726,14 +5069,15 @@ disagree in either direction.
     {cmd:nobrowser}.
 
 {phang2}{ul:Not drawn.}
-    {opt connect(list)} -- use the {cmd:connected} plot type.
-    {opt cmissing(y|n)} -- missing observations are dropped before
-    rendering, so a line joins the points either side of a gap, which is
-    {cmd:twoway}'s default, {cmd:cmissing(y)}; {cmd:cmissing(n)}'s break is
-    not drawn.
-    {opt recast(plottype)} -- name the plot type you want directly.
+    {opt cmissing(n)} on {cmd:area} and {cmd:rarea}, and on the fits that
+    make missing points of their own ({cmd:lowess}, {cmd:lpoly},
+    {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci},
+    {cmd:qfitci}), and {opt connect()} other than direct on {cmd:rarea}
+    -- see {ul:Connecting and missing values} under the plot types.
+    {cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}, and a range type or
+    an unknown name on {cmd:histogram} -- see {ul:Recast} under
+    Statistical Layer Options.
     {opt play(recordingname)} -- there is no graph editor to replay.
-    {opt text(# # "string")} -- use {cmd:note()} or {cmd:caption()}.
 
 {pstd}
 Not in this list, because {cmd:dash} honours them: {cmd:twoway}'s
@@ -3741,7 +5085,8 @@ connecting-line options {cmd:clcolor()}, {cmd:clpattern()} and
 {cmd:clwidth()} (abbreviated {cmd:clc()}, {cmd:clp()} and {cmd:clw()}),
 which style the line of {cmd:line}, {cmd:connected}, {cmd:lfit},
 {cmd:qfit}, {cmd:fpfit}, {cmd:lpoly}, {cmd:lowess}, {cmd:mspline},
-{cmd:mband}, {cmd:kdensity}, {cmd:function} and {cmd:tsline}, and the fit
+{cmd:mband}, {cmd:kdensity}, {cmd:function} and {cmd:tsline}, of a
+{cmd:scatter} given {cmd:connect()}, and the fit
 line of {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and {cmd:fpfitci}, in
 place of {cmd:lcolor()}, {cmd:lpattern()} and {cmd:lwidth()} -- and of
 {cmd:color()} -- whatever the order they are typed in, never touching the
@@ -3756,8 +5101,8 @@ Some names that reach the note are not {cmd:twoway} options where they were
 written, and {cmd:twoway} itself refuses them with {cmd:r(198)}: it spells
 {cmd:xreverse} and {cmd:yreverse} as {cmd:xscale(reverse)} and
 {cmd:yscale(reverse)}, which {cmd:dash} honours, and {cmd:xalternate} and
-{cmd:yalternate} as {cmd:xscale(alt)} and {cmd:yscale(alt)}, whose
-{cmd:alt} {cmd:dash} names as a sub-option it does not implement;
+{cmd:yalternate} as {cmd:xscale(alt)} and {cmd:yscale(alt)}, which
+{cmd:dash} draws;
 {cmd:xcommon} and {cmd:ycommon} are options of {cmd:graph combine};
 {cmd:margin()} is a sub-option of {cmd:plotregion()}, {cmd:graphregion()}
 and the title options, {cmd:region()} of {cmd:legend()}, and {cmd:altaxis}
@@ -3784,10 +5129,24 @@ Run {helpb dash_setup} once before using {cmd:dash}.  It checks everything
 below and installs what it can -- the Python packages; a Python you install
 and link yourself:
 
-{phang2}{ul:Python 3.13+} -- linked to Stata; see {helpb python}.
+{phang2}{ul:Stata} -- Stata 19 or later; tested on StataNow 19.5 (MP), macOS
+    arm64.  Measured on MP only: Stata 19.0, Stata/BE and Stata/SE are
+    admitted but have not been run.  On an older Stata, {cmd:dash} and
+    {helpb dash_setup} stop before doing anything else with "dash requires
+    Stata 19 or later; this is Stata {it:#}", r(9).  The floor is the Stata
+    you run, not the version a do-file sets: a do-file that begins
+    {cmd:version 16} still runs {cmd:dash} on Stata 19.
 
-{phang2}{ul:Python packages, required} -- bokeh>=3.8, numpy>=2.3,
-    pandas>=2.3.
+{phang2}{ul:Python 3.11+} -- linked to Stata; see {helpb python}.  Both
+    test suites pass under Python 3.11, and a Stata session linked to 3.11
+    or 3.12 builds and serves dashboards (measured 07oct2026); numpy 2.3 needs
+    Python 3.11, so nothing older is supported.
+
+{phang2}{ul:Python packages, required} -- bokeh>=3.8,<3.10, numpy>=2.3,
+    pandas>=2.3.  {cmd:dash} was verified on bokeh 3.8 and 3.9 (any patch
+    release of either); under a newer bokeh it draws and prints a note, and
+    under one older than 3.8 it stops and names {helpb dash_setup}.  Only
+    bokeh has a ceiling.
 
 {phang2}{ul:Python packages, optional} -- none.  Every statistical
     layer is computed with numpy: {cmd:lfitci} and {cmd:mspline} no
@@ -3805,6 +5164,20 @@ and link yourself:
     label; {cmd:unicode translate} converts such text first.  A binary strL
     is refused, r(198), naming the variable.  {helpb dash_setup} neither
     checks nor installs it.
+
+{pstd}
+Before it starts, every {cmd:dash} command but {cmd:dash clear} checks that
+the linked Python starts (a first call that fails is tried once more), that
+it is Python 3.11 or later, and that numpy, pandas and bokeh are installed
+and import.  If not, it stops with r(198) and one message naming what is
+missing, the Python it looked in ({cmd:c(python_exec)}) and
+{helpb dash_setup}, and writes nothing; a registration such as
+{cmd:dash scatter mpg weight, name(g1)} is refused the same way.  numpy or
+pandas older than {helpb dash_setup}'s minimum is named in a note and the
+command goes on.  {cmd:dash clear} clears the registry with no Python and
+prunes {cmd:dash}'s temporary files with the packages missing.  A dashboard
+app run by hand ({cmd:python app.py}, {cmd:bokeh serve}) checks the same and
+stops with the same one line.
 
 {pstd}
 On a Python that the operating system manages (PEP 668: Homebrew's, and

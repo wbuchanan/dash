@@ -223,7 +223,7 @@ def _sv_case_program():
     return "\n".join([
         "capture program drop _sv_case",
         "program define _sv_case, rclass",
-        "    version 16.0",
+        "    version 19",
         "    args sv ptype pos vars",
         '    local logfile "`c(tmpdir)\'dash_sv.log"',
         "    local ls = c(linesize)",

@@ -12,6 +12,13 @@
 *! than written down.  The renderer's half of each claim is
 *! test/test_help_claims_6.py, in both render modes.
 *!
+*! twoway's answers are measured once and replayed (WP-30 test performance,
+*! B2; cert_truth.do): a certification run reads them from
+*! test/fixtures/help_claims_6_truth.json, which
+*! scripts/extract_twoway_oracle_truth.do writes by running this script
+*! with twoway asked; DASH_CERT_REMEASURE=1 asks twoway in the run again and
+*! fails on any answer that is no longer the fixture's (the release run).
+*!
 *! MEASURED STATUS WHEN THIS FILE WAS WRITTEN (4ede074's dash.ado, 23sep2026,
 *! StataNow 19.5): every twoway case passed; the dash.ado cases of three
 *! defects failed --
@@ -57,6 +64,15 @@
 cscript "dash help claims 6: statistical options and weights" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 set graphics off
 
@@ -64,6 +80,14 @@ do "cert_helpers.do"
 quietly do "cert_svg.do"
 qui do "../dash_parse.mata"
 qui do "../dash.ado"
+
+// twoway's answers (WP-30 test performance, B2): every question below is
+// asked of twoway in a run with DASH_CERT_REMEASURE set, and read from
+// fixtures/help_claims_6_truth.json otherwise (cert_truth.do).  The
+// questions of each case are keyed by the case before it (_hc6_tally).
+do "cert_truth.do"
+cert_truth_init help_claims_6
+python: _dct = __import__("sys").modules["_dash_cert_truth"]
 
 global dash_nobrowser 1
 
@@ -116,6 +140,7 @@ capture program drop _hc6_tally
 program define _hc6_tally
     version 16.0
     args id bad what
+    cert_truth_ctx "after `id'"
     if `bad' {
         global hc6_nfail    = ${hc6_nfail} + 1
         global hc6_faillist "${hc6_faillist} `id'"
@@ -163,12 +188,23 @@ program define _hc6_tw, rclass
     capture erase "`lg'"
     if strpos(`"`cmdtext'"', ",") local twcmd `"twoway `cmdtext' nodraw"'
     else                          local twcmd `"twoway `cmdtext', nodraw"'
-    quietly log using "`lg'", name(_hc6log) text replace
-    preserve
-    capture noisily `twcmd'
-    local rc = _rc
-    restore
-    quietly log close _hc6log
+    // twoway's answer: asked here in a live run, read back otherwise
+    // (cert_truth.do), the same words in the same log either way.
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        quietly log using "`lg'", name(_hc6log) text replace
+        preserve
+        capture noisily `twcmd'
+        local rc = _rc
+        restore
+        quietly log close _hc6log
+        python: _dct.log_put("twcmd", "rc", "lg")
+    }
+    else {
+        python: _dct.log_get("twcmd", "lg", "rc")
+        if "`rc'" == "" local rc 9
+    }
     return scalar rc = `rc'
 end
 
@@ -188,23 +224,51 @@ program define _hc6_ss, rclass
     local d "`c(tmpdir)'hc6_`key'.dta"
     capture erase "`p'"
     capture erase "`d'"
-    preserve
-    capture twoway `0' || , nodraw saving("`p'", replace)
-    local rc = _rc
-    restore
+    // twoway's answer -- its rc and the serset's columns -- asked here in a
+    // live run and read back otherwise (cert_truth.do): the question is the
+    // serset's number and the plot, the saved .dta the same either way
+    // (every column a double when read back).
+    local _ct_q `"serset `set': twoway `0'"'
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        preserve
+        capture twoway `0' || , nodraw saving("`p'", replace)
+        local rc = _rc
+        restore
+        python: _dct.rc_put("_ct_q", "rc")
+    }
+    else {
+        python: _dct.rc_get("_ct_q", "rc")
+        if "`rc'" == "" local rc 9
+    }
     return scalar rc = `rc'
     if `rc' exit
     preserve
-    capture graph drop _all
-    capture serset drop _all
-    quietly graph use "`p'"
-    quietly serset set `set'
-    quietly serset use, clear
-    quietly ds
-    local i = 0
-    foreach v in `r(varlist)' {
-        local ++i
-        rename `v' c`i'
+    if `_ct_l' {
+        capture graph drop _all
+        capture serset drop _all
+        quietly graph use "`p'"
+        quietly serset set `set'
+        quietly serset use, clear
+        quietly ds
+        local i = 0
+        foreach v in `r(varlist)' {
+            local ++i
+            rename `v' c`i'
+        }
+        python: _dct.data_put("_ct_q")
+    }
+    else {
+        clear
+        python: _dct.data_get("_ct_q", "_ct_ok")
+        if "`_ct_ok'" != "1" {
+            restore
+            return scalar rc = 9
+            exit
+        }
+        quietly ds
+        local i : word count `r(varlist)'
     }
     quietly count
     return scalar N = r(N)
@@ -668,11 +732,18 @@ foreach c in "histogram mpg, base(0.01)" "kdensity mpg, base(0.01)" "rbar mpg pr
     _hc6_tw "`c'"
     if r(rc) != 198 local bad = 1
 }
-// what twoway keeps on the dropline view it draws
-preserve
-quietly twoway dropline mpg weight in 1/3, base(10) nodraw
-local vb "`.Graph.plotregion1.plot1.base'"
-restore
+// what twoway keeps on the dropline view it draws (asked in a live run,
+// read back otherwise: cert_truth.do)
+local _ct_q "twoway dropline mpg weight in 1/3, base(10) nodraw"
+python: _dct.flag("_ct_l")
+if `_ct_l' {
+    preserve
+    quietly twoway dropline mpg weight in 1/3, base(10) nodraw
+    local vb "`.Graph.plotregion1.plot1.base'"
+    restore
+    python: _dct.val_put("plot1.base", "_ct_q", "vb")
+}
+else python: _dct.val_get("plot1.base", "_ct_q", "vb")
 if "`vb'" != "10" local bad = 1
 foreach t in bar spike dropline area {
     _hc6_dash "dash `t' mpg weight, base(10) name(hc6)"
@@ -685,20 +756,68 @@ _hc6_tally HC6-23 `bad' "base(): twoway takes it on bar spike dropline area dot 
 // With no base(), when 0 lies outside y's range (mpg 17 to 22 on the first
 // three cars), twoway's y axis stops at 17 and the bars, spikes, drops and
 // area are drawn from the plot region's edge -- read off its SVG export
-// too -- where base(0) takes the axis to 0.  dash draws them from 0.
+// too -- where base(0) takes the axis to 0.  dash draws them from the same
+// place, in both modes (WP-30 P1.17b): its saved renderer's default base
+// is read from the tagged base column and must equal twoway's 17.
+python:
+def _hc6_dash_base(sp, dp, local):
+    import sys, os, warnings
+    sys.path.insert(0, os.path.abspath(".."))
+    import dash_render as dr
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    out = []
+    for f in r.figures.values():
+        for rd in f.renderers:
+            bs = dr._dash_base_spec(rd)
+            if bs and bs["auto"]:
+                v = getattr(rd.glyph, bs["prop"])
+                fld = v if isinstance(v, str) else getattr(v, "field", None)
+                out += sorted({"%g" % float(x) for x in rd.data_source.data[fld]})
+    __import__("sfi").Macro.setLocal(local, " ".join(out))
+__import__("__main__")._hc6_dash_base = _hc6_dash_base
+end
 local bad = 0
+python: _dct.flag("_ct_l")
 foreach t in bar spike dropline area {
-    quietly twoway `t' mpg weight in 1/3, name(hc6b, replace)
-    local m0 "`.hc6b.plotregion1.yscale.curmin'"
-    quietly twoway `t' mpg weight in 1/3, base(0) name(hc6b, replace)
-    local m1 "`.hc6b.plotregion1.yscale.curmin'"
+    // twoway's y axis minimum (asked in a live run, read back otherwise)
+    local _ct_q0 "twoway `t' mpg weight in 1/3"
+    local _ct_q1 "twoway `t' mpg weight in 1/3, base(0)"
+    if `_ct_l' {
+        quietly twoway `t' mpg weight in 1/3, name(hc6b, replace)
+        local m0 "`.hc6b.plotregion1.yscale.curmin'"
+        quietly twoway `t' mpg weight in 1/3, base(0) name(hc6b, replace)
+        local m1 "`.hc6b.plotregion1.yscale.curmin'"
+        python: _dct.val_put("yscale.curmin", "_ct_q0", "m0")
+        python: _dct.val_put("yscale.curmin", "_ct_q1", "m1")
+    }
+    else {
+        python: _dct.val_get("yscale.curmin", "_ct_q0", "m0")
+        python: _dct.val_get("yscale.curmin", "_ct_q1", "m1")
+    }
     if "`m0'" != "17" | "`m1'" != "0" {
         display as error "HC6-23b FAIL: twoway `t': y axis from `m0' by default, `m1' with base(0)"
         local bad = 1
     }
+    capture graph drop hc6b
+    capture dash clear
+    quietly dash `t' mpg weight in 1/3, name(hc6b)
+    local _db_s "`c(tmpdir)'hc6b_spec.json"
+    local _db_d "`c(tmpdir)'hc6b_data.json"
+    quietly _dash_serve_spec, specpath("`_db_s'") datapath("`_db_d'")
+    python: __import__("__main__")._hc6_dash_base(r"`_db_s'", r"`_db_d'", "_db_b")
+    capture erase "`_db_s'"
+    capture erase "`_db_d'"
+    capture dash clear
+    if "`_db_b'" != "`m0'" {
+        display as error "HC6-23b FAIL: dash `t': drawn from `_db_b', twoway from `m0'"
+        local bad = 1
+    }
 }
 capture graph drop hc6b
-_hc6_tally HC6-23b `bad' "twoway's default base: the axis stops at the data (17), not 0, on bar spike dropline area"
+_hc6_tally HC6-23b `bad' "twoway's default base: the axis stops at the data (17), not 0, on bar spike dropline area, and dash draws from 17"
 
 // ================================================================
 // HC6-24, 25 -- level()
@@ -1027,13 +1146,28 @@ real scalar _hc6_first_r(string scalar fn)
 end
 local sv1 "`c(tmpdir)'hc6_sw.svg"
 local sv0 "`c(tmpdir)'hc6_s0.svg"
-quietly twoway scatter mpg weight [aw=price] in 1/3, name(hc6s, replace)
-cert_svg_export, name(hc6s) file("`sv1'")
-quietly twoway scatter mpg weight in 1/3, name(hc6s, replace)
-cert_svg_export, name(hc6s) file("`sv0'")
-capture graph drop hc6s
-mata: st_local("r1", strofreal(_hc6_first_r(st_local("sv1"))))
-mata: st_local("r0", strofreal(_hc6_first_r(st_local("sv0"))))
+// The first marker's radius in twoway's SVG (asked in a live run, read
+// back otherwise: cert_truth.do).
+local _ct_q1 "twoway scatter mpg weight [aw=price] in 1/3"
+local _ct_q0 "twoway scatter mpg weight in 1/3"
+python: _dct.flag("_ct_l")
+if `_ct_l' {
+    quietly twoway scatter mpg weight [aw=price] in 1/3, name(hc6s, replace)
+    cert_svg_export, name(hc6s) file("`sv1'")
+    quietly twoway scatter mpg weight in 1/3, name(hc6s, replace)
+    cert_svg_export, name(hc6s) file("`sv0'")
+    capture graph drop hc6s
+    mata: st_local("r1", strofreal(_hc6_first_r(st_local("sv1"))))
+    mata: st_local("r0", strofreal(_hc6_first_r(st_local("sv0"))))
+    python: _dct.val_put("svg first radius", "_ct_q1", "r1")
+    python: _dct.val_put("svg first radius", "_ct_q0", "r0")
+}
+else {
+    python: _dct.val_get("svg first radius", "_ct_q1", "r1")
+    python: _dct.val_get("svg first radius", "_ct_q0", "r0")
+    if "`r1'" == "" local r1 .
+    if "`r0'" == "" local r0 .
+}
 local bad = (missing(`r1') | missing(`r0') | `r1' <= `r0')
 if `bad' display as error "HC6-53 FAIL: marker radius `r1' with [aw=price], `r0' without"
 _hc6_tally HC6-53 `bad' "twoway scatter sizes its markers by an aweight (radius `r1' against `r0')"
@@ -1239,6 +1373,13 @@ _hc6_tally HC6-52 `bad' "twoway refuses two band types, may not combine stdf std
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
+// twoway's answers: a question the fixture could not answer, or (with
+// DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
+cert_truth_close
+if r(problems) {
+    global hc6_nfail = ${hc6_nfail} + 1
+    global hc6_faillist "${hc6_faillist} TRUTH"
+}
 capture dash clear
 capture erase "`c(tmpdir)'hc6_run.log"
 local nfail = ${hc6_nfail}

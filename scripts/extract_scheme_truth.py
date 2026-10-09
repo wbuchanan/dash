@@ -121,6 +121,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import math
 import os
 import re
 import sys
@@ -301,20 +302,89 @@ def _round_half_up(x: float) -> int:
     return int(Decimal(repr(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def _apply_intensity(rgb: tuple[int, int, int], f: float) -> tuple[int, int, int]:
-    """Stata's ``colorstyle*#`` intensity adjustment.
+def _apply_intensity(rgb: tuple[int, int, int], f: float,
+                     naturally_white: bool = True) -> tuple[int, int, int]:
+    """Stata's ``colorstyle*#`` intensity, as twoway draws it (WP-30
+    P1.13a; plan section 30 Evidence E3, StataNow 19.5 SVG export).
 
-    Empirically verified against Stata 19.5 SVG output (see module docstring):
-    f <= 1 blends towards white, f > 1 scales towards black.
+    Each channel, rounded half up: under ``naturally_white 1`` f <= 1
+    gives ``255 - (255 - c) * f`` and f > 1 ``c / f``; under
+    ``naturally_white 0`` ``c * f``, held to 255.  Then Stata's clamp: when
+    a channel that was non-zero came out 0, every channel is ``c / m``, m
+    the smallest non-zero channel.  The same rule as dash_render's
+    ``GlyphMapper._blend_intensity`` (the extractor stays standalone);
+    navy*52 (twoway #010304, this rule #010102) is UNCLEAR.
     """
-    out = []
-    for c in rgb:
-        if f <= 1.0:
-            v = 255.0 - (255.0 - c) * f
-        else:
-            v = c / f
-        out.append(max(0, min(255, _round_half_up(v))))
+    f = max(0.0, float(f))
+    if not naturally_white:
+        raw = [c * f for c in rgb]
+    elif f <= 1.0:
+        raw = [255.0 - (255.0 - c) * f for c in rgb]
+    else:
+        raw = [c / f for c in rgb]
+    out = [max(0, min(255, _round_half_up(v))) for v in raw]
+    if any(c > 0 and o == 0 for c, o in zip(rgb, out)):
+        m = min(c for c in rgb if c > 0)
+        out = [max(0, min(255, _round_half_up(c / m))) for c in rgb]
     return tuple(out)  # type: ignore[return-value]
+
+
+_NUMBER = re.compile(r"[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eEdD][-+]?[0-9]+)?")
+_HEX6 = re.compile(r"#[0-9A-Fa-f]{6}")
+_STYLE_NAME = re.compile(r"[a-z0-9_]+")
+
+
+def _number(text: str):
+    """Stata's spelling of a finite number, or None (64 characters at most)."""
+    t = text.strip()
+    if not t or len(t) > 64 or not _NUMBER.fullmatch(t):
+        return None
+    v = float(t.replace("d", "e").replace("D", "e"))
+    return v if v == v and abs(v) != float("inf") else None
+
+
+def _cmyk_hex(nums):
+    """RGB of CMYK *nums* (proportions when all lie in [0, 1], else whole
+    numbers 0-255), each channel ``max(0, 255 - (C + K))``; None out of
+    range.  A private copy of dash_render's ``OptionTranslator._colour_cmyk``."""
+    if len(nums) != 4:
+        return None
+    if all(0.0 <= x <= 1.0 for x in nums):
+        v = [int(math.floor(x * 255 + 1e-9)) for x in nums]
+    elif all(x == int(x) and 0 <= x <= 255 for x in nums):
+        v = [int(x) for x in nums]
+    else:
+        return None
+    c, m, y, k = v
+    return tuple(max(0, 255 - (q + k)) for q in (c, m, y))
+
+
+def _hsv_hex(h, s, v):
+    """RGB of HSV (hue mod 360, S and V in [0, 1], ``floor(x*255)``); None
+    out of range.  A private copy of ``OptionTranslator._colour_hsv``."""
+    if not (0.0 <= s <= 1.0 and 0.0 <= v <= 1.0):
+        return None
+    h = h % 360.0
+    k = int(h / 60.0) % 6
+    f = h / 60.0 - int(h / 60.0)
+    p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    rgb = ((v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v),
+           (v, p, q))[k]
+    return tuple(int(math.floor(x * 255 + 1e-9)) for x in rgb)
+
+
+def _colour_parts(text: str):
+    """(base, multiplier, opacity) text, ``*`` and ``%`` in either order."""
+    cut = [k for k in (text.find("*"), text.find("%")) if k >= 0]
+    if not cut:
+        return text.strip(), None, None
+    i = min(cut)
+    base, rest = text[:i].strip(), text[i:]
+    other = "%" if rest[0] == "*" else "*"
+    j = rest.find(other, 1)
+    one = rest[1:j] if j >= 0 else rest[1:]
+    two = rest[j + 1:] if j >= 0 else None
+    return (base, one, two) if rest[0] == "*" else (base, two, one)
 
 
 class ColorResolver:
@@ -349,67 +419,81 @@ class ColorResolver:
         if not tok or _depth > 8:
             return None, None
 
-        # Opacity suffix (%NN): Stata's 0-100 opacity, kept beside the hex.
-        opacity: float | None = None
-        if "%" in tok:
-            tok, _, op = tok.partition("%")
-            try:
-                opacity = float(op.strip())
-            except ValueError:
+        # Stata's colour grammar (WP-30 P1.13a, plan section 30 E3): *# and
+        # %# in either order; malformed and unknown tokens are REPORTED in
+        # `unresolved' and give (None, None) -- the extractor reports, it
+        # does not guess (Stata's shipped files contain neither).
+        base, m, op = _colour_parts(tok)
+        mult = opacity = None
+        if m is not None and m.strip():
+            mult = _number(m)
+            if mult is None or mult < 0:
                 self.unresolved.append(
-                    f"unparseable opacity suffix in colour token {token!r}"
-                )
-                opacity = None
-
-        # Intensity multiplier (*N).
-        mult = None
-        if "*" in tok:
-            base, _, m = tok.partition("*")
-            tok = base
-            try:
-                mult = float(m)
-            except ValueError:
+                    f"unparseable intensity multiplier in colour token {token!r}")
+                return None, None
+        if op is not None and op.strip():
+            opacity = _number(op)
+            if opacity is None or not 0 <= opacity <= 100:
                 self.unresolved.append(
-                    f"unparseable intensity multiplier in colour token {token!r}"
-                )
-                mult = None
+                    f"unparseable opacity suffix in colour token {token!r}")
+                return None, None
 
-        tok = tok.strip()
-        low = tok.lower()
-
-        if low == "none":
+        if base == "none":
             # color-none.style carries "0 0 0" but its own comment says the
             # values should not matter: 'none' means "do not draw".
             return None, None
 
-        rgb: tuple[int, int, int] | None = None
-
-        if _RGB_LITERAL.match(tok):
-            parts = [int(p) for p in tok.split()]
-            rgb = (parts[0], parts[1], parts[2])
-        elif low in ("background", "bg"):
-            h, inner = self.resolve_with_opacity(
-                self.r.get("color", "background"), _depth + 1)
-            return h, opacity if opacity is not None else inner
-        elif low in ("foreground", "fg"):
-            h, inner = self.resolve_with_opacity(
-                self.r.get("color", "foreground"), _depth + 1)
-            return h, opacity if opacity is not None else inner
-        else:
-            st = self.r.style("color", low)
+        rgb = None
+        nums = None
+        if base in ("background", "bg", "foreground", "fg"):
+            # A named-style lookup of the scheme's own text: a style name
+            # (exact lower case) or a hex code resolves; RGB, HSV, CMYK,
+            # *# or %# text does not (twoway: black with a note).
+            key = "background" if base[0] == "b" else "foreground"
+            raw = (self.r.get("color", key) or "").strip().strip('"').strip()
+            if _STYLE_NAME.fullmatch(raw) or _HEX6.fullmatch(raw):
+                h, inner = self.resolve_with_opacity(raw, _depth + 1)
+                if h is not None:
+                    rgb = tuple(int(h[k:k + 2], 16) for k in (1, 3, 5))
+                    if opacity is None:
+                        opacity = inner
+        elif base.startswith("#"):
+            if _HEX6.fullmatch(base):
+                rgb = tuple(int(base[k:k + 2], 16) for k in (1, 3, 5))
+        elif "," in base:
+            nums = [_number(x) for x in base.split(",")]
+        elif base.split() and base.split()[0].lower() == "hsv":
+            hv = [_number(x) for x in base.split()[1:]]
+            if len(hv) == 3 and all(x is not None for x in hv):
+                rgb = _hsv_hex(*hv)
+        elif len(base.split()) in (3, 4):
+            nums = [_number(x) for x in base.split()]
+        elif _STYLE_NAME.fullmatch(base):
+            # Names are case-sensitive: Stata's 92 color-*.style files are
+            # all lower case, and a case-folding file system would find
+            # color-navy.style for Navy (twoway: not found).
+            st = self.r.style("color", base)
             if st and "rgb" in st:
                 parts = st["rgb"].split()
                 if len(parts) == 3:
                     rgb = (int(parts[0]), int(parts[1]), int(parts[2]))
+        if nums is not None and all(x is not None for x in nums):
+            if len(nums) == 3 and all(x == int(x) and 0 <= x <= 255
+                                      for x in nums):
+                rgb = tuple(int(x) for x in nums)
+            elif len(nums) == 4:
+                rgb = _cmyk_hex(nums)
 
         if rgb is None:
             self.unresolved.append(f"unknown colour token {token!r}")
             return None, None
 
         if mult is not None:
-            rgb = _apply_intensity(rgb, mult)
+            nw = self.r.get("system", "naturally_white")
+            rgb = _apply_intensity(
+                rgb, mult, naturally_white=str(nw).strip() != "0")
 
-        return "#%02x%02x%02x" % rgb, opacity
+        return "#%02x%02x%02x" % tuple(rgb), opacity
 
 
 # --------------------------------------------------------------------------- #
@@ -482,6 +566,44 @@ def resolve_sized(r: SchemeResolver, cls: str, token: str | None):
     }
 
 
+#: WP-30 P1.20b: the gsize keys of Stata's margin ladder
+#: (scheme-s2color.scheme:195-205), which style/margin-*.style name.
+MARGIN_LADDER = ("sidemargin", "medmargin", "medsmmargin", "medlgmargin",
+                 "largemargin", "vlargemargin", "smallmargin",
+                 "vsmallmargin", "tinymargin", "emargin", "esubmargin")
+
+
+def resolve_margin_rs(r: SchemeResolver, token: str | None):
+    """WP-30 P1.3a (D-21a): a marginstyle name -> its one relative size.
+
+    ``style/margin-<name>.style`` sets gleft/gright/gtop/gbottom to
+    ``scheme <gsize key>`` (or a literal); each resolves through the
+    scheme's ``gsize`` keys to ``relativeNpM`` (N.M).  All four sides must
+    be equal -- twoway's plot-region margin is the same on every side in
+    every shipped scheme -- else this raises."""
+    if token is None:
+        return None
+    st = r.style("margin", token.strip().strip('"').lower())
+    if not st:
+        return None
+    vals = []
+    for side in ("gleft", "gright", "gtop", "gbottom"):
+        raw = (st.get(side) or "").strip()
+        if raw.startswith("scheme "):
+            raw = (r.get("gsize", raw[len("scheme "):].strip(),
+                         class_default=False) or "").strip()
+        m = re.fullmatch(r"relative(\d+)(?:p(\d+))?", raw)
+        if m:
+            v = float(m.group(1) + ("." + m.group(2) if m.group(2) else ""))
+        else:
+            v = _as_number(raw)
+        vals.append(None if v is None else float(v))
+    if any(v is None for v in vals) or len(set(vals)) != 1:
+        raise ValueError(f"margin {token}: sides differ or do not resolve: "
+                         f"{vals}")
+    return vals[0]
+
+
 def resolve_linewidth(r: SchemeResolver, token: str | None):
     """Resolve a linewidth token to {name, value, pt_at_4in} (same unit)."""
     if token is None:
@@ -540,6 +662,11 @@ def unit_ladders(r: SchemeResolver) -> dict:
 # style/axisstyle-<name>.style then names the `yesno' key that is read --
 # `set draw_major_grid scheme draw_major_hgrid' -- or gives a literal yes/no.
 AXIS_ROLES = {"x": "horizontal_default", "y": "vertical_default"}
+# A second axis (yaxis(2), xaxis(2)) is built with the _nogrid roles
+# (t/twowaygraph_g.class adds axis 2 in the nogrid style): economist's
+# measured y2 has a line and ticks (WP-30 P1.2a, E8), which `vertical_nogrid'
+# gives and `vertical_default' (no line under economist) would not.
+AXIS2_ROLES = {"x": "horizontal_nogrid", "y": "vertical_nogrid"}
 
 
 def axis_grid_switches(r: SchemeResolver, axis: str) -> dict:
@@ -596,9 +723,257 @@ def resolve_linepattern(r: SchemeResolver, token: str | None):
     return {"name": tok, "dash": dash}
 
 
+def resolve_anglestyle(r: SchemeResolver, token: str | None):
+    """anglestyle token -> {name, degrees}.
+
+    A name is read from ``style/anglestyle-<name>.style``'s ``set val``
+    (anglestyle-vertical.style: ``set val 90``); a bare number is degrees.
+    """
+    if token is None:
+        return None
+    tok = token.strip().strip('"')
+    lit = _as_number(tok)
+    if lit is not None:
+        return {"name": tok, "degrees": float(lit)}
+    st = r.style("anglestyle", tok.lower()) or {}
+    v = _as_number(st.get("val", ""))
+    return {"name": tok, "degrees": float(v) if v is not None else None}
+
+
+def axis_style_flags(r: SchemeResolver, role_key: str) -> dict:
+    """Whether the axisstyle *role_key* resolves to draws its line and ticks.
+
+    ``axisstyle <role_key>`` names a style; ``style/axisstyle-<name>.style``
+    gives ``set linestyle`` (``none``: no line) and ``set majorstyle scheme
+    <tickset>``.  ``ticksetstyle <tickset>`` names
+    ``style/ticksetstyle-<name>.style``, whose ``set tickstyle scheme <ts>``
+    goes through ``tickstyle <ts>`` to ``style/tickstyle-<name>.style``'s
+    ``set show_ticks`` (axisstyle-vertical_nolinetick.style ->
+    ticksetstyle-major_vert_notickbig.style -> tickstyle-major_notickbig
+    .style: ``show_ticks no``).
+    """
+    tok = r.get("axisstyle", role_key, class_default=False)
+    name = (tok if tok is not None else role_key).strip().strip('"')
+    st = r.style("axisstyle", name.lower()) or {}
+    line = (st.get("linestyle") or "").strip().lower() != "none"
+    ticks = True
+    major = (st.get("majorstyle") or "").split()
+    if len(major) == 2 and major[0] == "scheme":
+        tset = r.get("ticksetstyle", major[1], class_default=False)
+        tset = (tset if tset is not None else major[1]).strip().strip('"')
+        tst = r.style("ticksetstyle", tset.lower()) or {}
+        tsref = (tst.get("tickstyle") or "").split()
+        if len(tsref) == 2 and tsref[0] == "scheme":
+            ts = r.get("tickstyle", tsref[1], class_default=False)
+            ts = (ts if ts is not None else tsref[1]).strip().strip('"')
+            tick = r.style("tickstyle", ts.lower()) or {}
+            ticks = (tick.get("show_ticks") or "yes").strip().lower() != "no"
+    return {"role": role_key, "axisstyle": name, "declared": tok is not None,
+            "line": line, "ticks": ticks,
+            "style_file": f"style/axisstyle-{name.lower()}.style"}
+
+
 # --------------------------------------------------------------------------- #
 # Per-scheme extraction
 # --------------------------------------------------------------------------- #
+
+# --------------------------------------------------------------------------- #
+# Named styles (WP-30 P1.14b, section 36): the style table and the keys it
+# reads along scheme.class's chain
+# --------------------------------------------------------------------------- #
+
+#: The option classes and the attrs of each style file S36 transcribes; a
+#: value is the class the attr's name is read in (a style class: a hop) or
+#: the scheme class its key is read in (a leaf).  label, dots, connect,
+#: align, angle, back* and fill are not transcribed (D-36f).
+NAMED_STYLE_CLASSES = {
+    "seriesstyle": {"marker": "markerstyle", "line": "linestyle",
+                    "area": "areastyle"},
+    "markerstyle": {"symbol": "symbol", "size": "symbolsize",
+                    "fillcolor": "color", "linestyle": "linestyle"},
+    "areastyle": {"linestyle": "linestyle", "shadestyle": "shadestyle"},
+    "shadestyle": {"color": "color", "intensity": "intensity"},
+    "linestyle": {"width": "linewidth", "color": "color",
+                  "pattern": "linepattern"},
+}
+#: The curated names per class (StataNow 19.5 style files, plan E7);
+#: linestyle is every file but S32's p#.  shadestyle is the hops the
+#: curated areastyles reach.
+NAMED_STYLE_CURATED = {
+    "seriesstyle": ("ci", "ci2", "histogram", "p#line", "p#bar", "p#area",
+                    "p#box", "p#dot", "p#arrow"),
+    "markerstyle": ("ci", "ci2", "histogram", "none", "p#box", "p#dot",
+                    "p#arrow"),
+    "areastyle": ("background", "ci", "ci2", "foreground", "histogram",
+                  "none", "p#area", "p#bar", "p#box"),
+    "shadestyle": ("background", "ci", "ci2", "foreground", "histogram",
+                   "none", "p#area", "p#bar", "p#box"),
+    "linestyle": None,
+}
+_STYLE_LEAVES = frozenset({"color", "linewidth", "linepattern", "symbol",
+                           "symbolsize", "intensity"})
+
+
+def _style_files(r: SchemeResolver, cls: str) -> list:
+    """The file names of style/<cls>-*.style, sorted."""
+    pre = cls + "-"
+    return sorted(f[len(pre):-len(".style")] for f in os.listdir(r.style_dir)
+                  if f.startswith(pre) and f.endswith(".style"))
+
+
+def style_table(r: SchemeResolver) -> dict:
+    """``{class: {file: [[attr, "scheme"|"literal", value], ...]}}`` for the
+    names S36 resolves, transcribed from the style files."""
+    out: dict = {}
+    for cls, attrs in NAMED_STYLE_CLASSES.items():
+        names = NAMED_STYLE_CURATED[cls]
+        if names is None:
+            names = [n for n in _style_files(r, cls) if n != "p#"]
+        out[cls] = {}
+        for n in names:
+            path = os.path.join(r.style_dir, f"{cls}-{n}.style")
+            rows = []
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                for raw in fh:
+                    bits = raw.split()
+                    if len(bits) < 3 or bits[0] != "set" or bits[1] not in attrs:
+                        continue
+                    if bits[2] == "scheme":
+                        rows.append([bits[1], "scheme",
+                                     bits[3] if len(bits) > 3 else ""])
+                    else:
+                        rows.append([bits[1], "literal", bits[2]])
+            out[cls][n] = rows
+    return out
+
+
+def style_known(r: SchemeResolver) -> dict:
+    """``{class: sorted file names}`` for the four option classes."""
+    return {cls: _style_files(r, cls) for cls in
+            ("seriesstyle", "markerstyle", "areastyle", "linestyle")}
+
+
+def _scheme_chain(key: str) -> list:
+    """scheme.class's lookup steps for *key* (E8): a key starting ``p`` walks
+    p<num><stub>, p<stub>, p<num>, p, then the key itself; any other key is
+    exact."""
+    if not key.startswith("p"):
+        return [key]
+    m = re.match(r"p(\d*)(.*)", key)
+    num, stub = m.group(1), m.group(2)
+    out = []
+    for s in (f"p{num}{stub}", f"p{stub}", f"p{num}", "p", key):
+        if s not in out:
+            out.append(s)
+    return out
+
+
+def _style_file_of(name: str) -> "tuple[str, str]":
+    """``(file name, number)`` of a style name: ``p3bar`` -> ``("p#bar",
+    "3")``; a plain name is itself with no number."""
+    m = re.fullmatch(r"p([1-9]|1[0-5])([a-z_]*)", name)
+    if m:
+        return "p#" + m.group(2), m.group(1)
+    return name, ""
+
+
+def named_style_directives(r: SchemeResolver, provenance: dict,
+                           sources: dict) -> "tuple[dict, dict, list]":
+    """The leaf keys the scheme DECLARES along each table name's chain,
+    ``{"<class> <key>": value}``, the hops it declares, and the keys no step
+    resolves.
+
+    A scheme.class-faithful walk (E8), not ``linked()``'s class default: a
+    leaf key walks the p#stub chain (or is exact) and a key no step declares
+    is unresolvable; a hop (a style-name attr) takes the declared value of
+    the first step that has one, else the first step that names a style of
+    its class (D-36h).  A colour is spelled ``#rrggbb[%NN]``, Stata's ``none``
+    as ``none``; any other value is Stata's own token.
+    """
+    c = ColorResolver(r)
+    table = style_table(r)
+    found: dict = {}
+    hops: dict = {}
+    bad: list = []
+    known = {cls: set(_style_files(r, cls)) for cls in
+             ("seriesstyle", "markerstyle", "areastyle", "linestyle",
+              "shadestyle")}
+
+    def names_style(hcls, step):
+        f, _n = _style_file_of(step)
+        return f in known[hcls]
+
+    def walk(cls, name, depth=0):
+        if depth > 6 or name == "none":
+            return
+        file, num = _style_file_of(name)
+        if file == "p#" or file not in table.get(cls, {}):
+            return
+        for attr, kind, val in table[cls][file]:
+            sub = NAMED_STYLE_CLASSES[cls][attr]
+            if kind == "literal":
+                if sub not in _STYLE_LEAVES:
+                    walk(sub, val, depth + 1)
+                continue
+            key = val.replace("#", num)
+            if sub in _STYLE_LEAVES:
+                hit = None
+                for step in _scheme_chain(key):
+                    if (sub, step) in r.settings:
+                        hit = step
+                        break
+                if hit is None and key == "" and (sub, "") in r.settings:
+                    hit = ""
+                if hit is None:
+                    msg = (f"named style {cls} {name}: {sub} {key} is not "
+                           "declared at any step of scheme.class's chain")
+                    if msg not in bad:
+                        bad.append(msg)
+                    continue
+                found[(sub, hit)] = r.settings[(sub, hit)]
+                continue
+            target = None
+            for step in _scheme_chain(key):
+                if (sub, step) in r.settings:
+                    target = r.settings[(sub, step)].strip().strip('"')
+                    hops[f"{sub} {step}"] = target
+                    break
+                if names_style(sub, step):
+                    target = step
+                    break
+            if target is not None:
+                walk(sub, target, depth + 1)
+
+    for cls in ("seriesstyle", "markerstyle", "areastyle", "linestyle"):
+        for file in table[cls]:
+            nums = range(1, N_PLOTS + 1) if "#" in file else [None]
+            for n in nums:
+                walk(cls, file.replace("#", str(n)) if n else file)
+
+    out: dict = {}
+    for (cls, key) in sorted(found):
+        tok = found[(cls, key)].strip().strip('"').strip()
+        if cls == "color":
+            if tok.split("%")[0].split("*")[0].strip() == "none":
+                val = "none"
+            else:
+                hexval, pct = c.resolve_with_opacity(tok)
+                val = _color_token(hexval, pct)
+                if val is None:
+                    bad.append(f"color {key}: {tok!r} is not a colour")
+                    continue
+        else:
+            val = tok
+        k = f"{cls} {key}" if key else cls
+        out[k] = val
+        o = r.origins.get((cls, key))
+        sources[f"named_style_directives.{k}"] = k
+        provenance[f"named_style_directives.{k}"] = {
+            "kind": "transcribed", "directive": k, "value": tok,
+            "file": f"scheme-{o[0]}.scheme" if o else None,
+            "line": o[1] if o else None}
+    return out, hops, bad
+
 
 def extract(stata_base: str, scheme: str) -> dict:
     r = SchemeResolver(stata_base)
@@ -690,6 +1065,26 @@ def extract(stata_base: str, scheme: str) -> dict:
         provenance[out_key] = prov
         return c.resolve(tok)
 
+    def color_alpha_of(out_key: str, keys: list[str], required: bool = True):
+        """As ``color_of``, with Stata's %NN opacity (or None) recorded in
+        ``<out_key>_opacity``."""
+        tok, src_s, prov = getsrc("color", keys, class_default=False,
+                                  chain_name="Stata's generic colour fallback")
+        if tok is None:
+            if required:
+                unresolvable.append(
+                    f"{out_key}: none of [" + ", ".join("color " + k for k in keys)
+                    + "] is set anywhere in the #include chain")
+            sources[out_key] = None
+            provenance[out_key] = None
+            opacities[f"{out_key}_opacity"] = None
+            return None
+        sources[out_key] = src_s
+        provenance[out_key] = prov
+        hexval, pct = c.resolve_with_opacity(tok)
+        opacities[f"{out_key}_opacity"] = pct
+        return hexval
+
     # --- the p1..p15 cycle, with Stata's p#stub -> pstub -> p# -> p chain --- #
     P_CHAIN = "p#stub -> pstub -> p# -> p"
 
@@ -733,7 +1128,18 @@ def extract(stata_base: str, scheme: str) -> dict:
     p_colors = p_color_series("p_colors", "")
     p_line_colors = p_color_series("p_line_colors", "line")
     p_bar_colors = p_color_series("p_bar_colors", "bar")
-    p_mark_colors = p_color_series("p_mark_colors", "mark")
+    # A marker's fill and outline (WP-30 P1.4a): style/markerstyle-p#
+    # .style reads `set fillcolor scheme p#markfill' and `set linestyle
+    # scheme p#mark', whose linestyle-p#mark.style reads `set color scheme
+    # p#markline'.  `color p#mark' is never a marker colour.
+    p_mark_colors = p_color_series("p_mark_colors", "markfill")
+    p_markline_colors = p_color_series("p_markline_colors", "markline")
+    # A marker label's colour and size (WP-30 P1.4b): style/textboxstyle-
+    # p#.style reads `set color scheme p#label' and `set size scheme
+    # p#label', so the chains are p#label -> plabel -> p# -> p.
+    p_label_colors = p_color_series("p_label_colors", "label")
+    p_label_sizes = p_series("p_label_sizes", "gsize", "label",
+                             lambda t: resolve_sized(r, "gsize", t))
     p_symbols = p_series("p_symbols", "symbol", "", lambda t: t)
     # The marker size, per plot: style/markerstyle-p#.style says `set size
     # scheme p#', so `symbolsize p#' -> `symbolsize p'.  Only s1manual's
@@ -1072,6 +1478,197 @@ def extract(stata_base: str, scheme: str) -> dict:
             "note_box_fill_color": fill,
         }
 
+    # The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the tick's
+    # colour, width, length and side, each axis role's line and tick flags,
+    # the alt_xaxes/alt_yaxes switches, the text boxes' justification and
+    # clock positions, `system naturally_white', and the p#bar/p#area
+    # intensity chains.  Each key is the scheme key Stata's style file names
+    # (style/tickstyle-major.style: `set length scheme tick', `set position
+    # scheme axis_tick', `set linestyle scheme tick'; style/ticksetstyle-
+    # major_vert_default.style: `set tickangle scheme vertical_tick';
+    # style/gridstyle-major.style: `set linestyle scheme major_grid').
+    def chrome_one(out_key, cls, key, conv, default=None, rule=None):
+        tok, s_, prov = getsrc(cls, [key], class_default=False)
+        if tok is None and default is not None:
+            tok = default
+            s_ = None
+            prov = {"kind": "inferred", "directive": f"{cls} {key}",
+                    "value": default, "file": None, "line": None,
+                    "rule": rule or (f"`{cls} {key}' is not set anywhere in "
+                                     f"the #include chain; Stata's default "
+                                     f"`{default}'")}
+        sources[out_key] = s_
+        provenance[out_key] = prov
+        return conv(tok) if tok is not None else None
+
+    def by_chrome_truth():
+        """WP-30 P1.15c: the keys twoway's by() reads for its shared axes,
+        legend and colour key (bygraph_g.class parse_settings, SetLegend,
+        SetClegend; bygraphstyle-default.style) and for the panel label's
+        box (bygraphstyle-default.style draws the label as
+        ``subtitle(, astextbox box blcolor(scheme bylabel_outline))``).
+        A key the #include chain does not set is left unset."""
+        res = {}
+        tok_name = lambda t: t.strip().strip('"')
+        for k in ("by_legend_position", "zyx2legend_position"):
+            res[k] = scalar(k, "clockdir", [k],
+                            lambda t: _as_number(t.strip()),
+                            class_default=False, required=False)
+        for k in ("by_legend_ring", "zyx2legend_ring"):
+            res[k] = scalar(k, "gridringstyle", [k],
+                            lambda t: _as_number(t.strip()),
+                            class_default=False, required=False)
+        for k in BY_YESNO_KEYS:
+            res[k] = scalar(k, "yesno", [k],
+                            lambda t: tok_name(t).lower() == "yes",
+                            class_default=False, required=False)
+        res["by_indiv_margin"] = scalar(
+            "by_indiv_margin", "margin", ["by_indiv"], tok_name,
+            class_default=False, required=False)
+        res["margin_subheading"] = scalar(
+            "margin_subheading", "margin", ["subheading"], tok_name,
+            class_default=False, required=False)
+        res["bylabel_outline_color"] = color_of(
+            "bylabel_outline_color", ["bylabel_outline"], required=False)
+        # The label box's fill: the scheme's `textboxstyle subtitle' names a
+        # style file whose `set fillcolor scheme <key>' names the colour
+        # (textboxstyle-subheading.style: textbox; -subheading_gs.style:
+        # bylabel_outline).
+        res["by_label_fill"] = None
+        sty = r.get("textboxstyle", "subtitle", class_default=False)
+        sty = tok_name(sty) if sty else None
+        fill = (r.style("textboxstyle", sty) or {}).get("fillcolor", "") \
+            if sty else ""
+        if fill.startswith("scheme "):
+            ck = fill[len("scheme "):].strip()
+            tok = r.get("color", ck, class_default=False)
+            if tok is not None:
+                res["by_label_fill"] = c.resolve(tok)
+                sources["by_label_fill"] = f"color {ck}"
+                provenance["by_label_fill"] = prov_entry(
+                    "inferred", "color", ck, rule=(
+                        f"dash's derived key: `textboxstyle subtitle {sty}', "
+                        f"style/textboxstyle-{sty}.style `set fillcolor "
+                        f"scheme {ck}', then `{spelled('color', ck)}'"))
+        return res
+
+    def text_option_truth():
+        """WP-30 P1.10: the keys `textboxstyle text_option' reads for
+        text() and ttext() that no other group resolves -- its box's fill,
+        the compass direction it is placed in from its point, whether it
+        is boxed, its margin, its justification and its vertical
+        alignment (scheme-s2color.scheme `color text_option_fill',
+        `compass2dir text_option', `yesno text_option', `margin
+        text_option', `horizontal text_option', `vertical_text
+        text_option').  A key the #include chain does not set is left
+        unset."""
+        tok_name = lambda t: t.strip().strip('"')
+        return {
+            "text_option_fill": color_of(
+                "text_option_fill", ["text_option_fill"], required=False),
+            "text_option_placement": scalar(
+                "text_option_placement", "compass2dir", ["text_option"],
+                tok_name, class_default=False, required=False),
+            "text_option_box": scalar(
+                "text_option_box", "yesno", ["text_option"],
+                lambda t: tok_name(t).lower() == "yes",
+                class_default=False, required=False),
+            "text_option_margin": scalar(
+                "text_option_margin", "margin", ["text_option"], tok_name,
+                class_default=False, required=False),
+            "text_option_justification": scalar(
+                "text_option_justification", "horizontal", ["text_option"],
+                tok_name, class_default=False, required=False),
+            "text_option_vertical": scalar(
+                "text_option_vertical", "vertical_text", ["text_option"],
+                tok_name, class_default=False, required=False),
+        }
+
+    def chrome_truth():
+        tok_name = lambda t: t.strip().strip('"')
+        res = {
+            "tick_angle_x": chrome_one("tick_angle_x", "anglestyle",
+                                       "horizontal_tick",
+                                       lambda t: resolve_anglestyle(r, t),
+                                       "horizontal"),
+            "tick_angle_y": chrome_one("tick_angle_y", "anglestyle",
+                                       "vertical_tick",
+                                       lambda t: resolve_anglestyle(r, t),
+                                       "horizontal"),
+            "major_grid_pattern": chrome_one(
+                "major_grid_pattern", "linepattern", "major_grid",
+                lambda t: resolve_linepattern(r, t), "solid"),
+            "minor_grid_pattern": chrome_one(
+                "minor_grid_pattern", "linepattern", "minor_grid",
+                lambda t: resolve_linepattern(r, t), "solid"),
+            "tick_color": chrome_one(
+                "tick_color", "color", "tick",
+                lambda t: None if tok_name(t).lower() == "none"
+                else c.resolve(t)),
+            "minortick_color": chrome_one(
+                "minortick_color", "color", "minortick",
+                lambda t: None if tok_name(t).lower() == "none"
+                else c.resolve(t)),
+            "tick_line_width": chrome_one("tick_line_width", "linewidth",
+                                          "tick",
+                                          lambda t: resolve_linewidth(r, t)),
+            "tick_length": chrome_one("tick_length", "gsize", "tick",
+                                      lambda t: resolve_sized(r, "gsize", t)),
+            "tick_position": chrome_one("tick_position", "tickposition",
+                                        "axis_tick", tok_name, "outside"),
+        }
+        styles = {}
+        for which, roles in (("", AXIS_ROLES), ("2", AXIS2_ROLES)):
+            for axis, role in roles.items():
+                f = axis_style_flags(r, role)
+                key = f"axis_style_{axis}{which}"
+                tok, s_, prov = getsrc("axisstyle", [role], class_default=False)
+                if tok is None:
+                    prov = {"kind": "inferred",
+                            "directive": f"axisstyle {role}", "value": role,
+                            "file": None, "line": None,
+                            "rule": f"`axisstyle {role}' is not set; the "
+                                    f"style of the same name"}
+                sources[key] = s_
+                provenance[key] = prov
+                styles[axis + which] = f
+        res["axis_styles"] = styles
+        res["alt_axes"] = {
+            a: chrome_one(f"alt_{a}axes", "yesno", f"alt_{a}axes",
+                          lambda t: tok_name(t).lower() == "yes", "no")
+            for a in ("x", "y")}
+        res["justification"] = {
+            k: chrome_one(f"justification_{k}", "horizontal", k, tok_name,
+                          "center")
+            for k in ("heading", "subheading", "body", "small_body")}
+        res["text_positions"] = {
+            k: chrome_one(f"text_position_{k}", "clockdir", f"{k}_position",
+                          lambda t: int(_as_number(tok_name(t)) or 0), d)
+            for k, d in (("title", "12"), ("subtitle", "12"),
+                         ("note", "7"), ("caption", "7"))}
+        res["naturally_white"] = chrome_one(
+            "naturally_white", "system", "naturally_white",
+            lambda t: int(_as_number(tok_name(t)) or 0), "1")
+        for stub in ("bar", "area"):
+            vals, srcs, provs = [], [], []
+            for i in range(1, N_PLOTS + 1):
+                tok, s_, prov = p_chain("intensity", i, stub)
+                vals.append(resolve_intensity(r, tok))
+                srcs.append(s_)
+                provs.append(prov)
+            sources[f"p_{stub}_intensity"] = srcs
+            provenance[f"p_{stub}_intensity"] = provs
+            res[f"p_{stub}_intensity"] = vals
+        # The bare `symbolsize' class default: twoway's size for an msize()
+        # name it does not know (S08; large in economist, medium in s2color).
+        res["symbolsize_default"] = scalar(
+            "symbolsize_default", "symbolsize", [""],
+            lambda t: resolve_sized(r, "symbolsize", t), class_default=True,
+            required=False)
+        if sources.get("symbolsize_default"):
+            sources["symbolsize_default"] = "symbolsize"
+        return res
+
     out = {
         # Stata's own `label "..."' for the scheme.
         "label": r.label,
@@ -1082,6 +1679,9 @@ def extract(stata_base: str, scheme: str) -> dict:
         "p_line_colors": p_line_colors,
         "p_bar_colors": p_bar_colors,
         "p_mark_colors": p_mark_colors,
+        "p_markline_colors": p_markline_colors,
+        "p_label_colors": p_label_colors,
+        "p_label_sizes": p_label_sizes,
         "p_symbols": p_symbols,
         "p_symbolsizes": p_symbolsizes,
         "p_line_patterns": p_line_patterns,
@@ -1133,6 +1733,16 @@ def extract(stata_base: str, scheme: str) -> dict:
         "draw_minor_grid": scalar("draw_minor_grid", "yesno",
                                   ["draw_minor_grid"], lambda t: t.strip(),
                                   class_default=False),
+        # WP-30 P1.21b: gridlinestyle-default's `set extend_low scheme
+        # xyline_extend_low' (and _high): whether a reference line reaches
+        # the frame at its low and high end.
+        "xyline_extend_low": scalar("xyline_extend_low", "yesno",
+                                    ["xyline_extend_low"],
+                                    lambda t: t.strip(), class_default=False),
+        "xyline_extend_high": scalar("xyline_extend_high", "yesno",
+                                     ["xyline_extend_high"],
+                                     lambda t: t.strip(),
+                                     class_default=False),
         "grid_axes": grid_axes,
 
         "title_color": color_of("title_color", ["heading"]),
@@ -1220,6 +1830,19 @@ def extract(stata_base: str, scheme: str) -> dict:
         "ci_pattern": scalar(
             "ci_pattern", "linepattern", ["ci"],
             lambda t: t.strip().strip('"')),
+        # The histogram's style (WP-30 P1.4a): shadestyle-histogram.style
+        # (`set color scheme histogram', `set intensity scheme histogram')
+        # and linestyle-histogram.style (`set color scheme histogram_line',
+        # `set width scheme histogram').
+        "histogram_color": color_alpha_of("histogram_color", ["histogram"]),
+        "histogram_line_color": color_alpha_of("histogram_line_color",
+                                               ["histogram_line"]),
+        "histogram_intensity": scalar(
+            "histogram_intensity", "intensity", ["histogram"],
+            lambda t: resolve_intensity(r, t)),
+        "histogram_line_width": scalar(
+            "histogram_line_width", "linewidth", ["histogram"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
         # A ci band under pstyle(p#) is areastyle p# (areastyle-p#.style:
         # linestyle and shadestyle p#other), whose outline width is
         # `linewidth p#other' -> `pother' -> p# -> p.  Only economist sets
@@ -1257,11 +1880,36 @@ def extract(stata_base: str, scheme: str) -> dict:
                                   lambda t: resolve_sized(r, "gsize", t)),
         "key_label_size": scalar("key_label_size", "gsize", ["key_label"],
                                  lambda t: resolve_sized(r, "gsize", t)),
+        # WP-30 P1.24: the size and colour keys of the remaining text box
+        # styles (style/textboxstyle-*.style), read by mlabtextstyle().  A
+        # key the scheme's #include chain does not set is left unset.
+        **{f"textbox_{k}_size": scalar(
+            f"textbox_{k}_size", "gsize", [k],
+            lambda t: resolve_sized(r, "gsize", t), class_default=False,
+            required=False) for k in TEXTBOX_KEYS},
+        **{f"textbox_{k}_color": color_of(f"textbox_{k}_color", [k],
+                                          required=False)
+           for k in TEXTBOX_KEYS},
 
         "graphsize_x": graphsize("x"),
         "graphsize_y": graphsize("y"),
+        # WP-30 P1.3a: twoway's default tick count and plot-region margin.
+        "numticks_horizontal_major": scalar(
+            "numticks_horizontal_major", "numticks_g", ["horizontal_major"],
+            lambda t: _as_number(t.strip()), class_default=False),
+        "numticks_vertical_major": scalar(
+            "numticks_vertical_major", "numticks_g", ["vertical_major"],
+            lambda t: _as_number(t.strip()), class_default=False),
+        "margin_twoway": scalar("margin_twoway", "margin", ["twoway"],
+                                lambda t: t.strip().strip('"'),
+                                class_default=False),
         "symbolsize": scalar("symbolsize", "symbolsize", ["p"],
                              lambda t: resolve_sized(r, "symbolsize", t)),
+        # WP-30 P1.20b: Stata's margin ladder (`gsize <x>margin'), the
+        # sizes the marginstyles of plotregion(margin()) name.
+        **{f"margin_ladder_{k}": scalar(
+            f"margin_ladder_{k}", "gsize", [k], lambda t: t.strip(),
+            class_default=False, required=False) for k in MARGIN_LADDER},
 
         "legend_position": scalar("legend_position", "clockdir",
                                   ["legend_position"],
@@ -1274,10 +1922,19 @@ def extract(stata_base: str, scheme: str) -> dict:
                               lambda t: _as_number(t.strip()),
                               class_default=False),
     }
+    out["margin_twoway_rs"] = resolve_margin_rs(r, out.get("margin_twoway"))
+    out.update(by_chrome_truth())
     out.update(xyline_truth())
     out.update(plotregion_line_truth())
     out.update(note_truth())
+    out.update(chrome_truth())
+    out.update(text_option_truth())
     out.update(opacities)
+    # WP-30 P1.14b: the keys the named styles read (scheme.class chain).
+    _nsd, _hops, _bad = named_style_directives(r, provenance, sources)
+    out["named_style_directives"] = _nsd
+    out["style_hops"] = _hops
+    unresolvable.extend(_bad)
 
     out["sources"] = sources
     out["provenance"] = provenance
@@ -1464,7 +2121,9 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     group(["Per-plot colour cycle p# (Stata: color p#)."],
           color_cycle("", "p_colors"))
     for stub, key in (("line", "p_line_colors"), ("bar", "p_bar_colors"),
-                      ("mark", "p_mark_colors"),
+                      ("markfill", "p_mark_colors"),
+                      ("markline", "p_markline_colors"),
+                      ("label", "p_label_colors"),
                       ("lineplot", "p_lineplot_colors")):
         group(chain_comment("color", stub),
               declared_cycle("color", stub, key, True))
@@ -1496,8 +2155,6 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     ])
     group(["Fill intensities."], [
         scalar("intensity", "p", "fill_alpha", use_name=True),
-        scalar("intensity", "bar", "bar_alpha", use_name=True),
-        scalar("intensity", "area", "area_alpha", use_name=True),
     ])
     group(["A ci fit's band: areastyle ci (style/areastyle-ci.style) fills",
            "it in `color ci_area' at `intensity ci_area' and outlines it in",
@@ -1521,6 +2178,22 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("linewidth", "ci2_area", "ci2_area_line_width",
                use_name=True),
     ])
+    group(["A histogram's style: shadestyle-histogram.style fills it in",
+           "`color histogram' at `intensity histogram', and",
+           "linestyle-histogram.style outlines it in `color histogram_line'",
+           "at `linewidth histogram'.  twoway draws every histogram layer in",
+           "it."], [
+        scalar("color", "histogram", "histogram_color",
+               value=_color_token(e.get("histogram_color"),
+                                  e.get("histogram_color_opacity"))),
+        scalar("color", "histogram_line", "histogram_line_color",
+               value=_color_token(e.get("histogram_line_color"),
+                                  e.get("histogram_line_color_opacity"))),
+        scalar("intensity", "histogram", "histogram_intensity",
+               use_name=True),
+        scalar("linewidth", "histogram", "histogram_line_width",
+               use_name=True),
+    ])
     group(["A ci band's outline under pstyle(p#) (Stata: linewidth pother),",
            "only where this scheme's #include chain declares it.",
            "SchemeParser resolves p#other -> pother -> p# -> p itself."], [
@@ -1537,6 +2210,14 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("graphsize", "x", "graphsize_x"),
         scalar("graphsize", "y", "graphsize_y"),
     ])
+    group(["twoway's default tick count and plot-region margin (WP-30 P1.3a)."], [
+        scalar("numticks_g", "horizontal_major", "numticks_horizontal_major"),
+        scalar("numticks_g", "vertical_major", "numticks_vertical_major"),
+        scalar("margin", "twoway", "margin_twoway"),
+    ])
+    group(["Stata's margin ladder, the sizes plotregion(margin()) names",
+           "(WP-30 P1.20b)."],
+          [scalar("gsize", k, f"margin_ladder_{k}") for k in MARGIN_LADDER])
     group(["Marker size and legend placement."], [
         scalar("symbolsize", "p", "symbolsize", use_name=True),
         scalar("clockdir", "legend_position", "legend_position"),
@@ -1552,6 +2233,11 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
            "p#'), as Stata's scheme.class does."],
           declared_cycle("symbolsize", "", "p_symbolsizes", False,
                          conv=name_of, numbered_only=True))
+    group(["Marker-label size gsize p#label: only the keys this scheme's",
+           "#include chain declares (style/textboxstyle-p#.style: set size",
+           "scheme p#label)."],
+          declared_cycle("gsize", "label", "p_label_sizes", False,
+                         conv=name_of))
     group(["Major grid switches (effective per-axis values; see the minor-grid note)."], [
         scalar("yesno", "draw_major_hgrid", "draw_major_hgrid"),
         scalar("yesno", "draw_major_vgrid", "draw_major_vgrid"),
@@ -1615,6 +2301,9 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("color", "xyline", "xyline_color", value=drawn_color("xyline")),
         scalar("linepattern", "xyline", "xyline_pattern"),
         scalar("linewidth", "xyline", "xyline_line_width", use_name=True),
+        # WP-30 P1.21b: gridlinestyle-default's two ends.
+        scalar("yesno", "xyline_extend_low", "xyline_extend_low"),
+        scalar("yesno", "xyline_extend_high", "xyline_extend_high"),
     ])
     group([
         "The plot region's border, EFFECTIVE: plotregionstyle twoway ->",
@@ -1643,9 +2332,147 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         "note()'s text box (Stata: textboxstyle note) and the keys that box",
         "reads for its size, text colour and, where it draws a box, fill.",
     ], note_items)
+    # WP-30 P1.24: the keys the remaining text box styles read, where the
+    # scheme's chain sets them and no group above writes them already.
+    have = {(c, k) for _cm, its, _op in groups for c, k, _v, _r in its}
+    tb_items = []
+    for k in TEXTBOX_KEYS:
+        for cls, sfx, use_name in (("gsize", "size", True),
+                                   ("color", "color", False)):
+            if (cls, k) not in have:
+                tb_items.append(scalar(cls, k, f"textbox_{k}_{sfx}",
+                                       use_name=use_name))
+    group([
+        "Text sizes and colours of the remaining text box styles, read by",
+        "mlabtextstyle() (WP-30 P1.24).",
+    ], tb_items)
+
+    # --- the chrome (WP-30 P1.2a) ------------------------------------------ #
+    # Effective values of the keys Stata's chrome styles read:
+    # style/ticksetstyle-major_*_default.style (`set tickangle scheme
+    # horizontal_tick|vertical_tick'), style/gridstyle-major|minor.style
+    # (`linestyle major_grid|minor_grid'), style/tickstyle-major.style
+    # (`set length scheme tick', `set position scheme axis_tick', `set
+    # linestyle scheme tick'), style/axisstyle-<name>.style (line and tick
+    # flags), style/textboxstyle-heading|subheading|body|small_body.style
+    # (`set horizontal scheme <name>'), and twoway's clockdir positions.
+    if e.get("tick_angle_x") is not None:
+        def nm(k):
+            return name_of(e.get(k))
+        cl = []
+        for k, fk in (("horizontal_tick", "tick_angle_x"),
+                      ("vertical_tick", "tick_angle_y")):
+            cl.append(("anglestyle", k, nm(fk), (fk, None)))
+        cl += [
+            ("linepattern", "major_grid", nm("major_grid_pattern"),
+             ("major_grid_pattern", None)),
+            ("linepattern", "minor_grid", nm("minor_grid_pattern"),
+             ("minor_grid_pattern", None)),
+            ("color", "tick", e.get("tick_color") or "none",
+             ("tick_color", None)),
+            ("color", "minortick", e.get("minortick_color") or "none",
+             ("minortick_color", None)),
+            ("linewidth", "tick", nm("tick_line_width"),
+             ("tick_line_width", None)),
+            ("gsize", "tick", nm("tick_length"), ("tick_length", None)),
+            ("tickposition", "axis_tick", e.get("tick_position"),
+             ("tick_position", None)),
+        ]
+        styles = e.get("axis_styles") or {}
+        for ax in ("x", "y", "x2", "y2"):
+            f = styles.get(ax)
+            if f:
+                cl.append(("axisstyle", f["role"], f["axisstyle"],
+                           (f"axis_style_{ax}", None)))
+        for a in ("x", "y"):
+            v = (e.get("alt_axes") or {}).get(a)
+            if v is not None:
+                cl.append(("yesno", f"alt_{a}axes", bool(v),
+                           (f"alt_{a}axes", None)))
+        for k in ("heading", "subheading", "body", "small_body"):
+            cl.append(("horizontal", k, (e.get("justification") or {}).get(k),
+                       (f"justification_{k}", None)))
+        for k in ("title", "subtitle", "note", "caption"):
+            cl.append(("clockdir", f"{k}_position",
+                       (e.get("text_positions") or {}).get(k),
+                       (f"text_position_{k}", None)))
+        cl.append(("system", "naturally_white", e.get("naturally_white"),
+                   ("naturally_white", None)))
+        # p#bar/pbar/p#area/parea only where Stata's chain declares them
+        # (none of the 26 does; each resolves to `intensity p').
+        for stub in ("bar", "area"):
+            provs = (e.get("provenance") or {}).get(f"p_{stub}_intensity") or []
+            vals = e.get(f"p_{stub}_intensity") or []
+            for i, (pv, v) in enumerate(zip(provs, vals), 1):
+                d = ((pv or {}).get("directive") or "").split()
+                if (len(d) == 2 and d[1] in (f"p{i}{stub}", f"p{stub}")
+                        and (pv or {}).get("kind") == "transcribed"):
+                    cl.append(("intensity", d[1], name_of(v),
+                               (f"p_{stub}_intensity", i)))
+        group(["The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the",
+               "tick's colour, width, length and side, each axis role's style,",
+               "the alt-axis switches, the text boxes' justification and clock",
+               "positions, and system naturally_white.  Effective values, read",
+               "through style/ticksetstyle-*, gridstyle-*, tickstyle-major,",
+               "axisstyle-* and textboxstyle-* as the plot-region group's are."],
+              cl)
+    group(["twoway's size for an msize() name it does not know: the bare",
+           "symbolsize class default.  Checked where a file carries it, never",
+           "appended."], [
+        ("symbolsize", "", name_of(e.get("symbolsize_default")),
+         ("symbolsize_default", None)),
+    ], optional=True)
+
+    # WP-30 P1.15c: by()'s shared axes, legend and colour key, and the
+    # panel label's box.
+    group(["by() axes and keys (WP-30 P1.15c): the legend's and colour key's",
+           "clock position and ring under by(), the outer- and individual-axis",
+           "switches, the space between panels, and the panel label's box:",
+           "`color by_label_fill' is dash's derived key, the fillcolor of the",
+           "style `textboxstyle subtitle' names, resolved."], [
+        scalar("clockdir", "by_legend_position", "by_legend_position"),
+        scalar("gridringstyle", "by_legend_ring", "by_legend_ring"),
+        scalar("clockdir", "zyx2legend_position", "zyx2legend_position"),
+        scalar("gridringstyle", "zyx2legend_ring", "zyx2legend_ring"),
+        *[scalar("yesno", k, k) for k in BY_YESNO_KEYS],
+        scalar("margin", "by_indiv", "by_indiv_margin"),
+        scalar("margin", "subheading", "margin_subheading"),
+        scalar("color", "bylabel_outline", "bylabel_outline_color"),
+        scalar("color", "by_label_fill", "by_label_fill"),
+    ])
+    # WP-30 P1.10: text() and ttext()'s text box (`textboxstyle
+    # text_option'); its size, colour, outline colour and line width are
+    # carried by the groups above.
+    group(["text() and ttext() (WP-30 P1.10): the text box's fill, its",
+           "compass direction from its point, whether it is boxed, its",
+           "margin, justification and vertical alignment."], [
+        scalar("color", "text_option_fill", "text_option_fill"),
+        scalar("compass2dir", "text_option", "text_option_placement"),
+        scalar("yesno", "text_option", "text_option_box"),
+        scalar("margin", "text_option", "text_option_margin"),
+        scalar("horizontal", "text_option", "text_option_justification"),
+        scalar("vertical_text", "text_option", "text_option_vertical"),
+    ])
+    # WP-30 P1.14b: the keys Stata's style files read for the named styles,
+    # as the scheme declares them along scheme.class's chain; last, so a key
+    # an earlier group carries is not carried twice.
+    _nsd = e.get("named_style_directives") or {}
+    group(["Named styles (WP-30 S36): the keys Stata's style files read for the",
+           "named styles dash draws"],
+          [(k.split(" ", 1)[0], k.split(" ", 1)[1], _nsd[k],
+            (f"named_style_directives.{k}", None))
+           for k in sorted(_nsd) if " " in k])
 
     # A directive an earlier group already carries is not carried twice
     # (note()'s small_body box is `gsize small_body' above).
+    # An optional group (checked where a file carries it, never appended)
+    # gives way to a later group that must carry the same key (WP-30
+    # P1.14b: the named styles read `color grid').
+    must = {(i[0], i[1].lower()) for _c, its, opt in groups if not opt
+            for i in its}
+    groups = [(c, [i for i in its if not opt
+                   or (i[0], i[1].lower()) not in must], opt)
+              for c, its, opt in groups]
     seen: set = set()
     out_groups = []
     for comment, items, optional in groups:
@@ -1661,6 +2488,10 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     return out_groups
 
 
+#: Classes whose bare two-token class default a translation carries.
+_BARE_CLASSES = frozenset({"symbolsize"})
+
+
 def _file_directives(lines: list[str]) -> dict:
     """``(class, key) -> (line index, value)`` for every directive line."""
     out = {}
@@ -1670,6 +2501,10 @@ def _file_directives(lines: list[str]) -> dict:
                 or line.startswith("label")):
             continue
         tokens = line.split()
+        if len(tokens) == 2 and tokens[0].lower() in _BARE_CLASSES:
+            # A bare class default (`symbolsize large').
+            out[(tokens[0].lower(), "")] = (i, tokens[1])
+            continue
         if len(tokens) < 3:
             continue
         out[(tokens[0].lower(), tokens[1].lower())] = (i, " ".join(tokens[2:]))
@@ -1801,12 +2636,13 @@ def provenance_block(name: str, e: dict, groups, present: dict) -> "list[str] | 
             # that key was transcribed, not inferred.
             if (isinstance(entry, dict) and entry.get("kind") == "inferred"
                     and (entry.get("directive") or "").lower()
-                    == f"{cls} {key}".lower()):
+                    == (f"{cls} {key}" if key else cls).lower()):
                 entry = dict(entry, kind="transcribed")
             text = _provenance_text(entry)
             if text is None:
                 continue
-            lines.append(f"* provenance: {cls} {key} -- {text}")
+            spelled = f"{cls} {key}" if key else cls
+            lines.append(f"* provenance: {spelled} -- {text}")
     if not lines:
         return None
     return [
@@ -1905,11 +2741,17 @@ def update_scheme_file(path: str, name: str, e: dict, stata_base: str,
 
 #: The resolved p#stub keys an older translation wrote out p1..p15.
 _STUB_KEY = {
-    "color": re.compile(r"p\d+(line|bar|mark|lineplot)"),
+    "color": re.compile(r"p\d+(line|bar|mark|markfill|markline|lineplot|label)"),
+    "gsize": re.compile(r"p\d+label"),
     "linepattern": re.compile(r"p\d+(line|lineplot)"),
     "symbol": re.compile(r"p\d+"),
     "symbolsize": re.compile(r"p\d+"),
 }
+
+#: Directives the files no longer carry: graph bar's `intensity bar' and
+#: `intensity area', which twoway's bar and area do not read (register
+#: P1.2.8; WP-30 P1.4a).
+_RETIRED_DIRECTIVES = {("intensity", "bar"), ("intensity", "area")}
 
 
 def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
@@ -1919,14 +2761,16 @@ def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
     -- the chain an older translation wrote out resolved -- and return
     them as ``"<class> <key>"``.  A paragraph (the lines between blank
     lines) left with no directive goes whole, its comment with it, since
-    the comment described the lines removed."""
+    the comment described the lines removed.  A directive in
+    ``_RETIRED_DIRECTIVES`` is removed and reported likewise."""
     expected = {(c, k.lower()) for _cm, items, _o in groups
                 for c, k, _v, _r in items}
     present = _file_directives(lines)
     drop = {}
     for (cls, key), (idx, _old) in present.items():
         pat = _STUB_KEY.get(cls)
-        if pat and pat.fullmatch(key) and (cls, key) not in expected:
+        if ((pat and pat.fullmatch(key) and (cls, key) not in expected)
+                or (cls, key) in _RETIRED_DIRECTIVES):
             drop[idx] = f"{cls} {key}"
     if not drop:
         return []
@@ -1949,18 +2793,46 @@ def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
 
 # --------------------------------------------------------------------------- #
 
-# The twenty user-selectable schemes StataCorp ships.  The internal ones
-# (meta, stcolor_meta, stgcolor_meta, stcolor_mv, stgcolor_mv, stcoloralias)
-# are deliberately not translated.  SchemeParser._BUILTIN_NAMES,
-# test_scheme_fidelity.EXPECTED_SCHEMES and dash.ado's _dash_shipped_schemes
-# must list exactly these; test_scheme_resolution.py checks all four agree.
+# The twenty-six schemes StataCorp ships in BASE/s, every one of them.
+# SchemeParser._BUILTIN_NAMES, test_scheme_fidelity.EXPECTED_SCHEMES and
+# dash.ado's _dash_shipped_schemes must list exactly these;
+# test_scheme_resolution.py checks all four agree.  The order is
+# append-only: scheme_truth.json's key order follows it.
+#: The scheme keys the shipped textboxstyle files read that no other
+#: directive group carries (WP-30 P1.24; test/fixtures/
+#: mlabtextstyle_truth.json's _meta.table).
+#: WP-30 P1.15c: the yesno keys twoway's by() reads for its axes and
+#: titles (scheme-s2color.scheme:2191-2210; bygraph_g.class).
+BY_YESNO_KEYS = (
+    "by_edgelabel", "by_outer_xaxes", "by_outer_yaxes", "by_outer_xtitles",
+    "by_outer_ytitles", "by_indiv_xaxes", "by_indiv_yaxes",
+    "by_indiv_xlabels", "by_indiv_ylabels", "by_indiv_xticks",
+    "by_indiv_yticks", "by_indiv_xtitles", "by_indiv_ytitles",
+    "by_indiv_as_whole")
+
+TEXTBOX_KEYS = (
+    "label", "small_label", "filled_text", "text_option", "reverse_big",
+    "reverse_big_text", "matrix_label", "matrix_marklbl", "minortick_label",
+    "tick_biglabel", "sts_risk_label", "sts_risk_title", "fpbody",
+    "fpcoltitle", "fpnulllefttext", "fpnullrighttext", "fpspacer",
+    "pbarlabel", "pboxlabel",
+)
+
 SCHEMES = [
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
     "economist", "sj",
     # WP-17: the six that were missing.
     "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
+    # WP-30 P1.25a: StataCorp's six internal schemes, measured in twoway
+    "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+    "stgcolor_mv",
 ]
+
+# A scheme name is a plain token.  --schemes names reach os.path.join as
+# "dash-<name>.scheme", so anything else (a "/" or "..") could write
+# outside --schemes-dir; Stata's 26 names all match.
+_SCHEME_TOKEN_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 
 
 def main(argv=None) -> int:
@@ -1975,6 +2847,12 @@ def main(argv=None) -> int:
     ap.add_argument("--no-scheme-files", action="store_true",
                     help="write the fixture only; leave dash-*.scheme alone")
     args = ap.parse_args(argv)
+    for name in args.schemes:
+        if not _SCHEME_TOKEN_RE.match(name):
+            sys.stderr.write(
+                "error: --schemes takes scheme names (a-z, 0-9, _; at most "
+                f"32), got: {repr(name)[:80]}\n")
+            return 2
 
     base = args.stata_base
     if not os.path.isdir(os.path.join(base, "s")):
@@ -2138,10 +3016,8 @@ def main(argv=None) -> int:
                 "linewidth": {
                     "unit": "relative size (help linewidthstyle)",
                     "dash_rule": (
-                        "a numeric linewidth is px = value * 5.0 (medium .30 "
-                        "anchored at dash's 1.5px); keywords still go through "
-                        "OptionTranslator._LWIDTH_MAP, whose ratios are not "
-                        "this ladder's -- recorded as a follow-up"),
+                        "a linewidth keyword or number is Stata units, "
+                        "px = max(units x 2.88, 0.3) x 4/3 (WP-30 P1.12b)"),
                     "ladder": ladders["linewidth"],
                 },
             },
@@ -2202,6 +3078,13 @@ def main(argv=None) -> int:
 
     for s in args.schemes:
         doc[s] = extract(base, s)
+    # WP-30 P1.14b: the style table, the known names and each scheme's
+    # declared hops (D-36h), for test_scheme_fidelity.py and SchemeParser.
+    _r = SchemeResolver(base)
+    doc["_meta"]["style_files"] = style_table(_r)
+    doc["_meta"]["style_known"] = style_known(_r)
+    doc["_meta"]["style_hops"] = {s: doc[s].pop("style_hops")
+                                  for s in args.schemes}
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:

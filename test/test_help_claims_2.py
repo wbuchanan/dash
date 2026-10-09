@@ -77,6 +77,7 @@ sys.path.insert(0, _ROOT)
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import exec_app  # noqa: E402
 from serve_token_probe import FakeStdin  # noqa: E402  (WP-29 P0.12a)
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
@@ -157,7 +158,7 @@ def _served(tmp_path, spec, df=_DF):
     ns = {"__name__": "help_claims_2_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_ATTACH, "pass"), op, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), op, ns)
     with warnings.catch_warnings(record=True) as made:
         warnings.simplefilter("always")
         doc = Document()
@@ -269,7 +270,8 @@ class TestTheHelpSaysWhatWasMeasured:
     def test_the_forms_dash_refuses_are_named(self):
         """HC2-18."""
         v = self._values()
-        for s in ("{cmd:mlabel()} with more than one variable",
+        # P1.1b: twoway labels with the first variable (HC2-18a)
+        for s in ("an element of {cmd:mlabel()} that names several variables",
                   "{cmd:range(}{it:varname}{cmd:)} on {cmd:function} and "
                   "{cmd:kdensity}",
                   "{cmd:scatter mpg weight, lwidth(-1)}, which {cmd:twoway} "
@@ -279,7 +281,7 @@ class TestTheHelpSaysWhatWasMeasured:
     def test_the_values_dash_accepts_are_all_named(self):
         """HC2-16, and TestAStyleOptionGivenEmptyParenthesesIsReported,
         TestAStringColorvarIsDrawnAColourPerValue,
-        TestAColourWrittenWithCommasIsReadAsTheTriplet."""
+        TestAColourWrittenWithCommasIsRefusedInStata."""
         v = self._values()
         assert "Two values {cmd:twoway} refuses" not in v
         for s in ("{cmd:kernel(GAUSSIAN)} is read as {cmd:kernel(gaussian)}",
@@ -300,8 +302,9 @@ class TestTheHelpSaysWhatWasMeasured:
         v = self._values()
         assert ("Colours, {cmd:msymbol()}, {cmd:lpattern()}, {cmd:scheme()} "
                 "and") not in v
-        assert ("Colours, {cmd:msymbol()}, {cmd:lpattern()} and the "
-                "sub-options") in v
+        # WP-30 P1.13a: a comma in a colour is checked in Stata.
+        assert ("Colours (but for a comma), {cmd:msymbol()}, "
+                "{cmd:lpattern()} and the sub-options") in v
 
     def test_the_labels_dash_reads_are_the_ones_it_uses(self):
         """TestLabelsUsedAutomatically."""
@@ -431,17 +434,23 @@ class TestAStringColorvarIsDrawnAColourPerValue:
         assert sw == vw
 
 
-class TestAColourWrittenWithCommasIsReadAsTheTriplet:
-    """dash.sthlp: "a colour written with commas, mcolor(255,0,0), which
-    twoway refuses, dash reads as the triplet 255 0 0" (HC2-16o/p)."""
+class TestAColourWrittenWithCommasIsRefusedInStata:
+    """dash.sthlp: a colour written with commas, mcolor(255,0,0), is refused
+    as twoway refuses it, invalid '0', r(198) (HC2-16o/p).  A hand-written
+    spec that still reaches the renderer reads it as an unknown colour.
 
-    def test_both_modes_draw_red_and_say_nothing(self, tmp_path):
+    Flipped (WP-30 P1.13a): it drew red in silence; twoway refuses it in
+    an option and draws an unknown colour black with a note."""
+
+    def test_a_hand_written_spec_is_noted_and_drawn_black(self, tmp_path):
         spec = _spec([plot_for("scatter", {"mcolor": "255,0,0"})])
         r, _, sw, doc, _, vw = _both(tmp_path, spec)
         for fig in (_saved_figure(r), _served_figure(doc)):
             g = fig.renderers[0].glyph
-            assert str(g.fill_color).lower() == "#ff0000", g.fill_color
-        assert sw == vw == []
+            assert str(g.fill_color).lower() == "#000000", g.fill_color
+        assert sw == vw
+        assert [w for w in sw if "mcolor(" in w] == [
+            "dash: mcolor(255,0,0) is not a recognised colour; using black."]
 
 
 #: An unknown style inside a structured option, and the property it would
@@ -473,8 +482,15 @@ class TestAnUnknownStyleInsideAStructuredOption:
     """dash.sthlp: "An unknown style inside one (title(T, size(bogus))) gets a
     note and the default in twoway and in dash alike" (twoway: HC2-21f)."""
 
-    def test_one_note_and_the_schemes_default_in_both_modes(
+    def test_one_note_and_twoways_default_in_both_modes(
             self, tmp_path, scheme, option, text, sub, prop):
+        """A bad colour draws black, as twoway draws title("T",
+        color(bogus)) (WP-30 P1.13a; it kept the scheme's colour, which
+        the flip corrects).  A bad size draws
+        twoway's medium, 11 pt, in both modes and both schemes (WP-30
+        P1.12a, P1.12.2): twoway falls back to medium for an unknown size,
+        not to the scheme's title size, so the size rows no longer compare
+        against the plain figure."""
         plain = _spec([plot_for("scatter")], {option: text},
                       {"scheme": scheme})
         bogus = _spec([plot_for("scatter")], {option: f"{text}, {sub}"},
@@ -483,10 +499,18 @@ class TestAnUnknownStyleInsideAStructuredOption:
         r1, _, sw, d1, _, vw = _both(_sub(tmp_path, "bogus"), bogus)
         assert sw == vw
         assert len([w for w in sw if sub in w]) == 1, sw
-        assert prop(_saved_figure(r1)) == prop(_saved_figure(r0)), \
-            "saved: the unknown style replaced the scheme's default"
-        assert prop(_served_figure(d1)) == prop(_served_figure(d0)), \
-            "served: the unknown style replaced the scheme's default"
+        if sub.startswith("size"):
+            # WP-30 P1.12a: twoway draws an unknown size as medium, 11 pt
+            # (it was the plain figure's size).
+            assert prop(_saved_figure(r1)) == "11pt"
+            assert prop(_served_figure(d1)) == "11pt"
+            return
+        # WP-30 P1.13a: twoway draws an unknown colour black (measured,
+        # colour_grammar_truth.json site_05).
+        assert prop(_saved_figure(r1)) == "#000000", \
+            "saved: an unknown colour is not drawn black"
+        assert prop(_served_figure(d1)) == "#000000", \
+            "served: an unknown colour is not drawn black"
 
     def test_a_known_style_is_still_honoured(self, tmp_path, scheme, option,
                                              text, sub, prop):
@@ -508,9 +532,10 @@ class TestAnUnknownStyleInsideAStructuredOption:
     ({"xscale": "bogus"}, "xscale", "bogus"),
 ])
 class TestAnUnknownSubOptionWordIsNamedAndDrawnWithout:
-    """dash.sthlp: "an unknown sub-option word, which twoway refuses
-    (legend(garbage), xscale(bogus): r(198)), dash names in its sub-option
-    note and draws without" (twoway: HC2-21h/k)."""
+    """An unknown sub-option word, which twoway refuses (legend(garbage),
+    xscale(bogus): r(198), HC2-21h/k), and which dash.ado now refuses too
+    (WP-30 P1.19, P1.18a), still reaches the renderer in a hand-written
+    spec: there it is named once and the graph is drawn without it."""
 
     def test_named_once_in_both_modes(self, tmp_path, go, option, word):
         spec = _spec([plot_for("scatter"), plot_for("lfit")], go)
@@ -554,8 +579,12 @@ class TestLabelsUsedAutomatically:
     def test_by_panels_are_titled_by_the_value_labels(self, tmp_path):
         spec = _spec([plot_for("scatter")], {"by": "foreign"})
         r, _, _, doc, _, _ = _both(tmp_path, spec)
-        saved = sorted(f.title.text for f in r.figures.values())
-        served = sorted(f.title.text for f in _figure_models(doc))
+        # Flipped (WP-30 P1.15a): the value labels title each panel as a
+        # row of its own, as twoway draws them, not as the figure's title.
+        from by_panel_probe import panel_label
+        saved = sorted(panel_label(f) for f in r.figures.values())
+        served = sorted(panel_label(f) for f in _figure_models(doc)
+                        if panel_label(f))
         assert saved == served == ["Domestic", "Foreign"], (saved, served)
 
     def test_marker_labels_of_a_labelled_variable_are_its_labels(self,
@@ -589,13 +618,21 @@ class TestLabelsUsedAutomatically:
             assert sorted(items) == ["Domestic", "Foreign"], items
 
     def test_an_axis_is_labelled_with_numbers(self, tmp_path):
+        """Flipped (WP-30 P1.5): BasicTickFormatter was wrong because
+        twoway writes the axis in the variable's display format; the
+        formatter is Stata's writer, and it writes 0 and 1."""
         spec = _spec([plot_for("scatter", xvar="foreign")])
         r, _, _, doc, _, _ = _both(tmp_path, spec)
         for fig in (_saved_figure(r), _served_figure(doc)):
             ax = fig.xaxis[0]
             assert not dict(ax.major_label_overrides), ax.major_label_overrides
-            assert type(ax.ticker).__name__ == "BasicTicker", ax.ticker
-            assert type(ax.formatter).__name__ == "BasicTickFormatter"
+            # WP-30 P1.3a: BasicTicker was wrong because a default axis is
+            # ticked by natscale (twoway's #5) on a FixedTicker.
+            assert type(ax.ticker).__name__ == "FixedTicker", ax.ticker
+            assert type(ax.formatter).__name__ == "CustomJSTickFormatter"
+            fmt = ax.formatter.args["fmt"]
+            assert "labels" not in ax.formatter.args
+            assert [dr._dash_fmt_text(v, fmt) for v in (0, 1)] == ["0", "1"]
 
     def test_a_hover_tooltip_shows_the_label(self, tmp_path):
         """GAPS2 G16 (WP-28 S14): a hover() variable with value labels shows

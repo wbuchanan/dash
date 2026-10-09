@@ -34,6 +34,9 @@ from conftest import make_spec  # noqa: E402
 from test_adversarial_matrix import _load_app  # noqa: E402
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _payload(varnames, values):
     return {"StataJSON": {
         "variableNames": list(varnames),
@@ -65,7 +68,7 @@ def _saved(tmp_path, spec, payload):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r, _dash_notes(caught)
 
 

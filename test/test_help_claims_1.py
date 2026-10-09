@@ -44,6 +44,7 @@ pins:
   stopped with SIGINT.
 """
 import html.parser
+import json
 import os
 import re
 import signal
@@ -66,16 +67,17 @@ import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_abbreviations import _program_body, _syntax_options  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
+from conftest import stata_base, stata_plus  # noqa: E402
 
 _HELP = os.path.join(_ROOT, "dash.sthlp")
 _ADO = os.path.join(_ROOT, "dash.ado")
 _MATA = os.path.join(_ROOT, "dash_parse.mata")
 
 #: Stata's own directories, where the help files a "see also" link names
-#: live: the base ado tree, one directory per first letter, and PLUS.
-_STATA_BASE = "/Applications/StataNow/ado/base"
-_STATA_PLUS = os.path.expanduser(
-    "~/Library/Application Support/Stata/ado/plus")
+#: live: the base ado tree, one directory per first letter, and PLUS
+#: (DASH_STATA_BASE and DASH_STATA_PLUS, WP-30 P1.34).
+_STATA_BASE = stata_base()
+_STATA_PLUS = stata_plus()
 _TWOWAY_CLASS = os.path.join(_STATA_BASE, "t", "twowaygraph_g.class")
 
 
@@ -253,8 +255,10 @@ class TestTheSyntaxDiagram:
         for head, tail in re.findall(r"\{cmdab:([a-z]+):([a-z]*)", block):
             shown.add(head + tail)
         shown |= set(re.findall(r"\{cmd:([a-z]+)[(}]", block))
+        # asis is saving()'s sub-option (saving(f, asis), WP-30 P1.27), not
+        # an option of dash build.
         shown -= {"dash", "build", "top", "left", "type", "exclude",
-                  "label", "_all"}
+                  "label", "_all", "asis"}
         assert declared - shown == set(), declared - shown
         assert shown - declared == set(), shown - declared
 
@@ -439,6 +443,47 @@ class TestThePlotTypesSection:
         assert "when none is given" not in sec
         assert "the time variable tsset set" in sec
 
+    def test_the_operator_paragraph_is_twoways_rule(self):
+        """WP-30 P1.7: the types the paragraph names as taking and refusing
+        operators are twoway's (fixtures/ts_operator_truth.json, A and R
+        probes), and so are the refusals' words."""
+        with open(os.path.join(_HERE, "fixtures", "ts_operator_truth.json"),
+                  encoding="utf-8") as fh:
+            probes = json.load(fh)["probes"]
+        sec = _prose(_plot_types())
+        para = sec[sec.index("Time-series operators."):]
+        para = para[:para.index("sysuse sp500")]
+        cut, lead = para.index("refuse them"), para.index("fpfit")
+        refused = {p["body"].split()[0] for k, p in probes.items()
+                   if k[0] == "R" and p["twoway"]["rc"] == 101}
+        taken = {p["body"].split()[0] for k, p in probes.items()
+                 if k[0] == "A" and p["twoway"]["rc"] == 0}
+        for t in refused:
+            assert re.search(r"\b%s\b" % t, para[lead:cut]), t
+        for t in taken - set(_RANGE_AND_PC):
+            assert re.search(r"\b%s\b" % t, para[:lead]), t
+        assert "eight range types, the five paired-coordinate types" in para
+        for k in ("E01", "E02", "E03", "E06", "R01", "B01"):
+            words = probes[k]["twoway"]["err"][0].replace("make:  ", "")
+            assert words in para, (k, words)
+        # The bare sort: both of twoway's lines, and the types it refuses
+        # it on (the O probes twoway answers r(198)).
+        for line in probes["O01"]["twoway"]["err"]:
+            assert line in para, line
+        tail = para[para.index("A bare sort"):]
+        for k, p in probes.items():
+            if k[0] == "O" and p["twoway"]["rc"] == 198:
+                t = p["body"].split()[0]
+                assert re.search(r"\b%s\b" % t, tail) or (
+                    t in _RANGE_AND_PC and "eight range types" in tail), t
+        assert "headed by the expression" in para
+
+
+#: The range and paired-coordinate types the operator paragraph counts.
+_RANGE_AND_PC = ("rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
+                 "rcapsym", "rscatter", "pcspike", "pcarrow", "pcbarrow",
+                 "pcscatter", "pccapsym")
+
 
 # ===========================================================================
 # 4. The Differences section
@@ -454,10 +499,14 @@ class TestTheDifferencesSection:
         assert "yaxis(3)" in diff and "Option values" in diff
 
     def test_scheme_is_not_claimed_fully_supported(self):
-        """The scheme section says the range, fit and immediate layers do
-        not yet take a scheme's opacity."""
-        scheme = _between(_help(), "{marker scheme}", "{marker ")
-        assert "not yet" in scheme
+        """The scheme section says where a scheme's opacity stops: at the
+        confidence band, which twoway draws in `color ci_area' with no
+        opacity.  Flipped (WP-30 P1.4a): it said the range, fit and
+        immediate layers did not yet take the opacity; they do."""
+        scheme = " ".join(_between(_help(), "{marker scheme}",
+                                   "{marker ").split())
+        assert "not yet its opacity" not in scheme
+        assert "except the confidence band" in scheme
         assert "fully supported" not in _prose(_differences())
 
     def test_the_registry_limit_is_the_limit_table(self):

@@ -173,8 +173,8 @@ class TestTheInstrumentation:
 
 _RUNNER = "\n".join([
     "clear all",
-    'adopath ++ "/somewhere/dash/"',
-    'local dashdir "/somewhere/dash"',
+    "local dashdir : environment DASH_REPO",
+    'adopath ++ "`dashdir\'/"',
     'local testdir "`dashdir\'/test"',
     'cd "`dashdir\'"',
     "local n_pass = 0",
@@ -208,13 +208,15 @@ class TestTheGeneratedRunner:
     def test_paths_marks_and_flushes(self, m):
         src, n = m.runner_do("/w", "/w/tree", _RUNNER)
         assert n == 2
-        assert 'adopath ++ "/w/tree/"' in src
+        # WP-30 P1.34: the runner reads its tree from DASH_REPO, which
+        # _stata sets; no tree path is written into it.
+        assert "local dashdir : environment DASH_REPO" in src
+        assert 'adopath ++ "`dashdir\'/"' in src
+        assert "/w/tree" not in src
         assert "StataJSON" not in src
-        assert 'local dashdir "/w/tree"' in src
         assert 'adopath ++ "/w/lib/"\nmata: mata mlib index' in src
         assert src.count('mata: _pc_mark("test_a.cscript")') == 1
         assert src.count("local rc = _rc\nmata: _pc_flush()") == 2
-        assert "/somewhere/dash/" not in src
 
     def test_a_malformed_runner_is_refused(self, m):
         with pytest.raises(ValueError):
@@ -224,6 +226,15 @@ class TestTheGeneratedRunner:
         with pytest.raises(ValueError, match="one adopath line"):
             m.runner_do("/w", "/w/tree", _RUNNER.replace(
                 "clear all", 'clear all\nadopath ++ "/somewhere/StataJSON/"'))
+        # A runner whose root is a literal would test that tree, not the
+        # scratch copy (WP-30 P1.34).
+        literal = _RUNNER.replace(
+            "local dashdir : environment DASH_REPO\n"
+            'adopath ++ "`dashdir\'/"',
+            'local dashdir "/somewhere/dash"\nadopath ++ "/somewhere/dash/"')
+        assert literal != _RUNNER
+        with pytest.raises(ValueError, match="DASH_REPO"):
+            m.runner_do("/w", "/w/tree", literal)
         broken = _RUNNER.replace("local rc = _rc\ncapture program drop",
                                  "capture program drop")
         with pytest.raises(ValueError, match="rc captures"):
@@ -388,8 +399,12 @@ def test_stata_runs_the_console_binary_with_its_own_tmp(m, monkeypatch,
         seen.update(argv=argv, cwd=cwd, env=env)
     monkeypatch.setattr(m.subprocess, "run", fake_run)
     log = m._stata(str(tmp_path), str(tmp_path / "x.do"))
-    assert seen["argv"] == ["arch", "-arm64", "/usr/local/bin/stata-mp",
+    # WP-30 P1.34: through the wrapper, which picks the binary and slice;
+    # the scratch tree is handed over in DASH_REPO.
+    assert seen["argv"] == ["sh", os.path.join(m.REPO, "scripts",
+                                               "stata_batch.sh"),
                             "-b", "do", str(tmp_path / "x.do")]
+    assert seen["env"]["DASH_REPO"] == str(tmp_path / "tree")
     assert seen["env"]["STATATMP"] == str(tmp_path / "stata_tmp") + "/"
     assert log == str(tmp_path / "x.log")
 

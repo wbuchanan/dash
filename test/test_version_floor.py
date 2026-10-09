@@ -14,6 +14,14 @@ baseline of ``test/conftest.py`` -- Python 3.13, bokeh 3.8, pandas 2.3,
 numpy 2.3 -- declared in every file that names a minimum, with pandas
 declared by dash itself because bokeh 3.9 dropped it as a required
 dependency.
+
+WP-30 P1.33: the Python floor is measured, not the stata baseline's Python.
+The floor matrix (scripts/floor_matrix.sh, make test-floor) runs both
+suites under older Pythons with the stata and the dev pins, and
+test/conftest.py keeps a baseline only for a stack they pass under; the
+declared floor, _dash_pymin, is the lowest of those Pythons.  The served
+app's child is started with ``-P``, which needs Python 3.11, so the floor
+can never go below it.
 """
 import ast
 import json
@@ -22,6 +30,8 @@ import re
 import sys
 import warnings
 
+import pytest
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_HERE, "..")
 sys.path.insert(0, _ROOT)
@@ -29,6 +39,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 from conftest import _BASELINES, make_data_json  # noqa: E402
+from test_program_coverage_map import _ado_programs, _logical_lines  # noqa: E402
 
 
 def _read(rel):
@@ -58,27 +69,39 @@ def _setup_ado_floor():
 
 class TestTheFloorIsTheTestedBaseline:
     def test_dash_setup_declares_the_stata_baseline(self):
-        py, bo, nu, pa = _setup_ado_floor()
-        want_py, want_bo, want_nu, want_pa = _stata_baseline()
-        assert py == want_py, (py, want_py)
+        _py, bo, nu, pa = _setup_ado_floor()
+        _want_py, want_bo, want_nu, want_pa = _stata_baseline()
         assert bo == want_bo, (bo, want_bo)
         assert nu == want_nu, (nu, want_nu)
         assert pa == want_pa, (pa, want_pa)
 
+    def test_the_python_floor_is_the_lowest_baseline_python(self):
+        """WP-30 P1.33: the floor is the lowest Python both suites pass
+        under, which test/conftest.py's baselines record."""
+        lowest = min((b["python"] for b in _BASELINES.values()),
+                     key=lambda v: tuple(map(int, v.split("."))))
+        assert _setup_ado_floor()[0] == lowest
+
     def test_every_declaration_agrees_with_dash_setup(self):
         py, bo, nu, pa = _setup_ado_floor()
+        # Flipped (WP-30 P1.30): bokeh has a ceiling, max_bokeh.
+        cb = re.search(r'local\s+max_bokeh\s+"([^"]+)"',
+                       _read("dash_setup.ado")).group(1)
 
         pkg = _read("dash.pkg")
-        assert ("Requires: Python %s+, bokeh>=%s, numpy>=%s, pandas>=%s."
-                % (py, bo, nu, pa)) in pkg, pkg
+        assert ("Requires: Python %s+, bokeh>=%s,<%s, numpy>=%s, pandas>=%s."
+                % (py, bo, cb, nu, pa)) in pkg, pkg
 
+        # Flipped (WP-30 P1.32): the literal "Python <FLOOR>+" in dash.ado
+        # was the one place dash.ado stated the floor; it is now the
+        # constant _dash_pyfloor, which the message reads.
         ado = _read("dash.ado")
-        assert ("Python %s+" % py) in ado, ado
+        assert ('return local pyfloor "%s"' % py) in ado, ado
 
         help_ = _flat(_read("dash.sthlp"))
         assert ("{ul:Python %s+}" % py) in help_, help_
-        assert ("bokeh>=%s, numpy>=%s, pandas>=%s"
-                % (bo, nu, pa)) in help_, help_
+        assert ("bokeh>=%s,<%s, numpy>=%s, pandas>=%s"
+                % (bo, cb, nu, pa)) in help_, help_
 
         shelp = _flat(_read("dash_setup.sthlp"))
         assert ("Python %s or later" % py) in shelp, shelp
@@ -112,6 +135,14 @@ class TestTheFloorIsTheTestedBaseline:
             text = _read(rel)
             for needle in ("Python 3.8", "bokeh>=3.0", "3.0 or later",
                           "1.23 or later", "2.0 or later"):
+                assert needle not in text, (rel, needle)
+        # WP-30 P1.33: the measured floor replaced 3.13.
+        assert 'return local pymin "3.13"' not in ado_setup
+        assert "will not install or import reliably" not in ado_setup
+        for rel in ("dash.ado", "dash.pkg", "dash.sthlp", "dash_setup.sthlp"):
+            text = _read(rel)
+            for needle in ("Python 3.13+", "{ul:Python 3.13+}",
+                           "Python 3.13 or later"):
                 assert needle not in text, (rel, needle)
 
     def test_the_upgrade_line_names_the_linked_interpreter(self, monkeypatch, capsys):
@@ -152,6 +183,286 @@ class TestTheFloorIsTheTestedBaseline:
         want = "'/opt/My Python/bin/python3' -m pip install 'bokeh>=3.8'"
         assert loc["pip_cmd"] == want
         assert "To upgrade: " + want in capsys.readouterr().out
+
+
+class TestTheFloorAdmitsTheServedLauncher:
+    """WP-30 P1.33: dash serve starts the app as ``sys.executable -P``
+    (_dash_launch_app), a flag Python 3.10 refuses ("Unknown option: -P",
+    rc 2), so the declared floor may never go below 3.11."""
+
+    def test_the_launch_flags_need_no_newer_python_than_the_floor(self):
+        import importlib.util
+        import inspect
+        spec = importlib.util.spec_from_file_location(
+            "dash_setup_lib_launch", os.path.join(_ROOT, "dash_setup_lib.py"))
+        lib = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(lib)
+        assert '"-P"' in inspect.getsource(dr._dash_launch_app)
+        floor = lib.version_tuple(_setup_ado_floor()[0])
+        assert floor >= (3, 11), floor
+        assert lib.safe_flags(floor) == ["-P"]
+
+
+class TestTheFloorInterpretersBehaveAlike:
+    """WP-30 P1.33, found by the floor matrix (the py311 and py312 legs):
+    dash serve's child registers the app's handed-over source in linecache
+    so a traceback shows the app's lines although the child never opens
+    app.py.  Before 3.13 the default sys.excepthook is the C printer, which
+    reads the line from disk and ignores linecache, so on 3.11 and 3.12 the
+    traceback named the file and line but not the text.  Below 3.13 the
+    bootstrap now prints uncaught exceptions with the traceback module (on
+    3.13 a replaced hook would turn an uncaught KeyboardInterrupt's -SIGINT
+    exit into 1, so 3.13 keeps its own).  The child is told it runs 3.12
+    by replacing sys.version_info before the bootstrap starts."""
+
+    def test_the_child_prints_tracebacks_from_the_handed_over_source(
+            self, tmp_path):
+        import subprocess
+        src = ("import sys, traceback\n"
+               "print(sys.excepthook is traceback.print_exception,"
+               " flush=True)\n"
+               "def f():\n"
+               "    raise ValueError('boom in the floor app')\n"
+               "f()\n")
+        app = os.path.join(str(tmp_path), "never", "app.py")
+        frame = dr._dash_app_frame(src.encode("utf-8"))
+        older = "import sys; sys.version_info = (3, 12, 12, 'final', 0)\n"
+        r = subprocess.run([sys.executable, "-P", "-c",
+                            older + dr._DASH_BOOT, app],
+                           input=frame, capture_output=True, timeout=60,
+                           cwd=str(tmp_path))
+        assert r.stdout.decode().split() == ["True"], r.stderr
+        err = r.stderr.decode()
+        assert r.returncode == 1
+        assert 'File "%s", line 4, in f' % app in err, err
+        assert "raise ValueError('boom in the floor app')" in err, err
+
+
+# ----------------------------------------------------------------------
+# WP-30 P1.35: the Stata floor.  Every program said `version 16.0', which
+# implied a Stata 16 support never stated, tested or enforced; only StataNow
+# 19.5 was ever run.  The floor is now 19: declared by every program's
+# `version' line, named once in dash_setup.ado (`_dash_statamin') and once
+# in dash.ado (`_dash_require_stata', since a program of one ado-file cannot
+# be called from another), enforced as the first statement of `dash' and
+# `dash_setup', and stated in dash.pkg, both help files and CHANGELOG.
+# ----------------------------------------------------------------------
+
+# The programs that must run on the Stata they refuse (version 13), and
+# the constants that declare no `version' at all.  The set is closed: a
+# later section that needs another exemption adds it here with its reason.
+_GUARDS = {"_dash_require_stata", "_dash_stata_ok", "_dash_setup_stata"}
+_CONSTANTS = {"_dash_statamin", "_dash_pymin"}
+_ENTRIES = {"dash", "dash_setup"}
+_ADOS = ("dash.ado", "dash_setup.ado")
+
+
+def _bodies_of(text):
+    """``{program: [logical code lines between its define and its end]}``;
+    a program defined twice keeps its last definition."""
+    lines = text.split("\n")
+    out = {}
+    for name, (first, last) in _ado_programs(text).items():
+        out[name] = [code for _, code in
+                     _logical_lines("\n".join(lines[first:last - 1]))]
+    return out
+
+
+def _bodies(rel):
+    return _bodies_of(_read(rel))
+
+
+def _statamin():
+    found = re.findall(r'return local statamin "([^"]+)"',
+                       _read("dash_setup.ado"))
+    assert len(found) == 1, found
+    return found[0]
+
+
+def _all_bodies():
+    out = {}
+    for rel in _ADOS:
+        out.update(_bodies(rel))
+    return out
+
+
+def _load_sv_generator():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "gen_string_varlists_cscript_floor",
+        os.path.join(_ROOT, "scripts", "gen_string_varlists_cscript.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestTheStataFloor:
+    def test_dash_setup_names_the_stata_floor_once(self):
+        bodies = _bodies("dash_setup.ado")
+        assert "_dash_statamin" in bodies, "no _dash_statamin in dash_setup.ado"
+        assert bodies["_dash_statamin"] == ['return local statamin "19"'], (
+            bodies["_dash_statamin"])
+        assert _statamin() == "19"
+
+    def test_dash_ado_holds_the_same_floor(self):
+        bodies = _bodies("dash.ado")
+        assert "_dash_require_stata" in bodies, (
+            "no _dash_require_stata in dash.ado")
+        want = "local floor %s" % _statamin()
+        assert want in bodies["_dash_require_stata"], (
+            want, bodies["_dash_require_stata"])
+
+    @pytest.mark.parametrize("rel", _ADOS)
+    def test_every_program_declares_version_19(self, rel):
+        bad = [(name, body[0] if body else None)
+               for name, body in sorted(_bodies(rel).items())
+               if name not in _GUARDS | _CONSTANTS | _ENTRIES
+               and (not body or body[0] != "version 19")]
+        assert not bad, "%s: %d programs do not open with version 19: %r" % (
+            rel, len(bad), bad)
+
+    def test_no_version_16_line_remains(self):
+        for rel in _ADOS + ("scripts/wire_option_reporting.py",
+                            "scripts/gen_string_varlists_cscript.py"):
+            m = re.search(r"version\s+16\.0", _read(rel))
+            assert m is None, (rel, _read(rel)[:m.start()].count("\n") + 1)
+
+    def test_the_guard_is_the_first_statement_of_dash_and_dash_setup(self):
+        dash = _bodies("dash.ado")["dash"]
+        assert dash[:2] == ["_dash_require_stata", "version 19"], dash[:3]
+        assert dash.index("_dash_require_mata") > 1, dash[:4]
+        setup = _bodies("dash_setup.ado")["dash_setup"]
+        assert setup[:2] == ["_dash_setup_stata", "version 19"], setup[:3]
+        first_syntax = next(i for i, ln in enumerate(setup)
+                            if ln.startswith("syntax"))
+        assert first_syntax > 1, setup[:4]
+
+    def test_the_guards_declare_no_version_above_13(self):
+        bodies = _all_bodies()
+        for name in sorted(_GUARDS):
+            assert name in bodies, "no program %s" % name
+            body = bodies[name]
+            m = re.fullmatch(r"version (\d+(?:\.\d+)?)", body[0] if body else "")
+            assert m and float(m.group(1)) <= 13, (name, body[:1])
+            others = [ln for ln in body[1:] if re.match(r"version\b", ln)]
+            assert not others, (name, others)
+        for name in sorted(_CONSTANTS):
+            assert name in bodies, "no program %s" % name
+            assert not [ln for ln in bodies[name]
+                        if re.match(r"version\b", ln)], (name, bodies[name])
+
+    def test_the_guards_need_nothing_newer_than_stata_13(self):
+        bodies = _all_bodies()
+        newer = re.compile(r"\bstrtrim\(|\bustr\w*\(|\bregexm\(|\bpython\b|"
+                           r"_dash_say|\bversion\s+(1[4-9]|[2-9]\d)")
+        for name in sorted(_GUARDS):
+            assert name in bodies, "no program %s" % name
+            body = bodies[name]
+            hits = [ln for ln in body if newer.search(ln)]
+            assert not hits, (name, hits)
+            calls = {m.group(0) for m in
+                     (re.match(r"_dash_\w+", ln) for ln in body) if m}
+            assert calls <= {"_dash_stata_ok", "_dash_statamin"}, (name, calls)
+
+    def test_the_refusal_is_r9_in_dashs_words(self):
+        bodies = _all_bodies()
+        said = ('display as error "dash requires Stata `floor\' or later; '
+                'this is Stata ')
+        for name in ("_dash_require_stata", "_dash_setup_stata"):
+            assert name in bodies, "no program %s" % name
+            body = bodies[name]
+            assert any(ln.startswith(said) for ln in body), (name, body)
+            assert "exit 9" in body, (name, body)
+
+    def test_every_stata_declaration_agrees(self):
+        n = _statamin()
+        tested = "Stata %s or later; tested on StataNow 19.5 (MP), macOS arm64" % n
+        pkg = _read("dash.pkg").split("\n")
+        assert "d Requires: %s." % tested in pkg, pkg
+        assert any("Measured on MP only" in ln for ln in pkg), pkg
+        help_ = _read("dash.sthlp")
+        deps = _flat(help_[help_.index("{marker dependencies}"):
+                           help_.index("{marker author}")])
+        assert tested in deps, deps
+        assert "Measured on MP only" in deps, deps
+        shelp = _flat(_read("dash_setup.sthlp"))
+        assert tested in shelp, shelp
+        assert "Measured on MP only" in shelp, shelp
+        changelog = _flat(_read("CHANGELOG.md"))
+        rq_start = changelog.index("### Requirements")
+        rq_end = changelog.index("### ", rq_start + 10)
+        assert ("Stata %s or later" % n) in changelog[rq_start:rq_end]
+        for rel in _ADOS:
+            bad = [(name, body[:1]) for name, body in
+                   sorted(_bodies(rel).items())
+                   if name not in _GUARDS | _CONSTANTS | _ENTRIES
+                   and body[:1] != ["version %s" % n]]
+            assert not bad, (rel, bad)
+        for name in _ENTRIES:
+            assert ("version %s" % n) == _all_bodies()[name][1], name
+
+    def test_dash_setup_reports_the_stata_line(self):
+        text = _read("dash_setup.ado")
+        line = ('display as text "  Stata .............. {res}OK{txt} '
+                '(version `c(stata_version)\')"')
+        hline = text.index('display as text "{hline 60}"')
+        python = text.index('python: import sys; from sfi import Macro; '
+                            'Macro.setLocal("pyver"')
+        assert line in text, "dash_setup reports no Stata line"
+        assert hline < text.index(line) < python
+
+    def test_the_generators_emit_version_19(self):
+        wire = _read("scripts/wire_option_reporting.py")
+        assert "program define _dash_report_ignored\n    version 19\n" in wire
+        mod = _load_sv_generator()
+        assert "    version 19" in mod._sv_case_program().split("\n")
+        assert "version 16.0" not in mod.render()
+
+    def test_the_restated_comparators_match_the_shipped_ones(self):
+        restated = _bodies("test/test_env_guards.cscript")
+        shipped = _bodies("dash.ado")
+        for name in ("_dash_stata_ok", "_dash_python_ok"):
+            assert name in shipped, "no %s in dash.ado" % name
+            assert name in restated, "no restated %s" % name
+            assert restated[name] == shipped[name], (
+                name, restated[name], shipped[name])
+
+
+class TestThePythonFloorIsOneNumber:
+    """WP-30 P1.32 (register P1.32.4, A123): _dash_pymin (dash_setup.ado),
+    _dash_pyfloor (dash.ado), _DASH_MIN_PYTHON (dash_render.py), both
+    future lines and the generated app's constant are one number."""
+
+    def test_dash_ado_names_the_floor_once(self):
+        got = re.findall(r'return local pyfloor "([^"]+)"', _read("dash.ado"))
+        assert got == [_setup_ado_floor()[0]], got
+
+    def test_the_renderer_and_the_app_hold_the_same_floor(self, tmp_path):
+        pymin = _setup_ado_floor()[0]
+        assert dr._DASH_MIN_PYTHON == tuple(int(p) for p in pymin.split("."))
+        want = ("from __future__ import annotations  # dash needs Python %s "
+                "or later: link a newer Python, then run dash_setup" % pymin)
+        assert want in _read("dash_render.py").split("\n")
+        app = TestTheGeneratedAppEvaluatesNoAnnotationAtImport()._built(tmp_path)
+        assert want in app.split("\n")
+        assert ("_DASH_MIN_PYTHON = (%s, %s)" % tuple(pymin.split("."))) in app
+
+    def test_the_package_minimums_agree_with_dash_setup(self):
+        _py, _bo, nu, pa = _setup_ado_floor()
+
+        def v(t):
+            return tuple(int(p) for p in t.split("."))
+        assert dict(dr._DASH_MIN_PACKAGES) == {"numpy": v(nu), "pandas": v(pa)}
+
+    def test_the_refusals_read_the_constant(self):
+        text = _read("dash.ado")
+        progs = _ado_programs(text)
+        for name in ("_dash_require_python", "_dash_require_deps"):
+            first, last = progs[name]
+            body = "\n".join(ln for n, ln in _logical_lines(text)
+                             if first < n < last)
+            assert "_dash_pyfloor" in body, name
+            assert not re.search(r"\b3\.\d+\b", body), (name, body)
 
 
 class TestTheGeneratedAppEvaluatesNoAnnotationAtImport:

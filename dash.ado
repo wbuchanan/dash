@@ -26,7 +26,7 @@
 *!     immediate values' records are written by dash_parse.mata.
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  02oct2026
+*! Version: 0.1.0  09oct2026
 
 // ================================================================
 // Load Mata library (dash_parse.mata)
@@ -81,8 +81,12 @@ if `"`_dash_matalib'"' != "" {
     capture run "`_dash_matalib'"
 }
 
-program define dash
-    version 16.0
+program define dash, rclass
+    // WP-30 P1.35: the Stata floor first, before `version', so an older
+    // Stata is refused in dash's words; then the Mata guard, the dependency
+    // guard, the prefix strip, the rclass dispatch (A154).
+    _dash_require_stata
+    version 19
 
     // Every subcommand parses through Mata, so this is the one place that
     // covers all of them.  Without it a broken or missing dash_parse.mata
@@ -90,6 +94,49 @@ program define dash
     // internal function and giving the user nothing to act on -- or, for a
     // partial compile, as rc 0 and "graph registered".
     _dash_require_mata
+
+    // WP-30 P1.32: the dependency guard after the Mata guard (A154), for
+    // every subcommand but clear: dash clear clears the registry with no
+    // Python and prunes through a standard-library path (register P1.32.3).
+    // The subcommand is read with the routing's own expression.
+    mata: st_local("_dd_sub", ustrregexm(st_local("0"), "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
+    if "`_dd_sub'" != "clear" {
+        _dash_require_deps
+    }
+
+    // WP-30 P1.27: twoway, tw, two or graph twoway (gr, and tw to twoway
+    // after it) may precede the plots, as in twoway, and is read off once;
+    // twow, twowa, gra, grap and a capitalised prefix word are refused
+    // r(199), as Stata refuses them, and a second prefix word r(198), in
+    // twoway's words.  Read by value in Mata; the rest goes to the plot
+    // route only, so `dash twoway build' is not a build (twoway refuses
+    // `twoway build' as a plot type too).
+    mata: _dash_strip_prefix()
+    if "`_pf_kind'" == "unrec" {
+        mata: _dash_say("err", "command ", st_local("_pf_word"), " is unrecognized")
+        exit 199
+    }
+    if "`_pf_kind'" == "twice" {
+        mata: _dash_say("err", "", st_local("_pf_word"), " is not a twoway plot type")
+        exit 198
+    }
+    if "`_pf_kind'" == "strip" {
+        global dash__uv = string(_caller())
+        _dash_plot `macval(0)'
+        _dash_result
+        return add
+        exit
+    }
+
+    // WP-30 P1.28a, M8: dash is rclass so that, as after twoway, a command
+    // leaves nothing in r() but what it means to return: r(filename), the
+    // absolute path of the file a command wrote, posted by _dash_result
+    // and return add at the end of each route that can write (the prefixed
+    // route above, build, and the plot route).  kpi, clear and serve post
+    // nothing, and a refused command posts nothing, because an rclass
+    // program that stops with an error leaves r() empty.  _dash_result
+    // runs last: an rclass program that errors after its own return keeps
+    // it (measured).
 
     // ----------------------------------------------------------------
     // Subcommand routing
@@ -123,6 +170,8 @@ program define dash
     }
     if "`_subcmd'" == "build" {
         _dash_build `macval(_args)'
+        _dash_result
+        return add
         exit
     }
     if "`_subcmd'" == "clear" {
@@ -143,6 +192,43 @@ program define dash
     // P0.6).  Read here, where _caller() is the user's.
     global dash__uv = string(_caller())
     _dash_plot `macval(0)'
+    _dash_result
+    return add
+end
+
+
+// ================================================================
+// _dash_result  -- dash's r() (WP-30 P1.28a)
+// ================================================================
+// r(filename) is the absolute path of the file the command wrote, which
+// _dash_render_immediate and _dash_build leave in the global dash__rfile
+// as their last statement (through _dash_abs_path); _dash_plot and
+// _dash_build drop it first.  The global is read with st_global() and
+// returned through macval(): `return local filename "$dash__rfile"'
+// expands a $ or a backquote in the path a second time (measured: a$b.html
+// came back aZZ.html).  When Stata holds a graph in memory, one note says
+// that graph export writes that graph, not the dashboard; it names the
+// graphs graph dir, memory lists, not graph describe's current graph,
+// which is not the one graph export writes after graph drop, graph close
+// or a nodraw draw (measured).  It never draws, drops, displays or
+// exports a graph.  It runs once per route, so the note prints at most
+// once per command; a graph dropped but still shown in the console's
+// Graph window is not in memory and gets no note.  The capture keeps a
+// written page from being reported as a failure because of the note.
+program define _dash_result, rclass
+    version 19
+    mata: st_local("_rf", st_global("dash__rfile"))
+    capture macro drop dash__rfile
+    if `: length local _rf' == 0 exit
+    local _gn ""
+    capture {
+        quietly graph dir, memory
+        mata: st_local("_gn", _dash_graph_names(st_global("r(list)"), 5))
+    }
+    if `: length local _gn' {
+        mata: _dash_note("dash: graph export writes the graph in Stata's Graph window, not this dashboard; graphs in memory: ", st_local("_gn"), "")
+    }
+    return local filename `"`macval(_rf)'"'
 end
 
 
@@ -187,7 +273,7 @@ end
 //   _dash_python_ok "<value of c(python_exec)>"   -> r(ok) 0 or 1
 // ================================================================
 program define _dash_python_ok, rclass
-    version 16.0
+    version 19
     args probe
     local probe = strtrim(`"`probe'"')
     return scalar ok = cond(`"`probe'"' == "", 0, 1)
@@ -204,13 +290,138 @@ end
 // message.
 // ================================================================
 program define _dash_require_python
-    version 16.0
+    version 19
     _dash_python_ok `"`c(python_exec)'"'
     if r(ok) != 1 {
+        _dash_pyfloor
+        local _dd_floor "`r(pyfloor)'"
         display as error "dash: Python is required but is not available to Stata."
         display as error "      Run {cmd:dash_setup} first, or link Stata to " ///
-            "Python 3.13+: {help python}"
+            "Python `_dd_floor'+: {help python}"
         exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_pyfloor  — the oldest Python dash runs under
+// ================================================================
+// dash_setup.ado's _dash_pymin and dash_render.py's _DASH_MIN_PYTHON hold
+// the same number (a program of one ado-file cannot be called from
+// another), pinned by test_version_floor.py::TestThePythonFloorIsOneNumber
+// (WP-30 P1.32, register P1.32.4, A123).
+//
+// Syntax:
+//   _dash_pyfloor   -> r(pyfloor) "<major>.<minor>"
+// ================================================================
+program define _dash_pyfloor, rclass
+    version 19
+    return local pyfloor "3.11"
+end
+
+
+// ================================================================
+// _dash_require_deps  — refuse a Python or a package dash cannot run with
+// ================================================================
+// WP-30 P1.32 (GAPS2 H6, ROADMAP BR-07.1).  _dash_require_python checks only
+// that a Python is configured; a missing numpy, pandas or bokeh then ended
+// in a bare ModuleNotFoundError, r(7102), and an old Python in a
+// SyntaxError, neither naming the remedy.  This starts the linked Python
+// (a first call that sets nothing is tried once more: the first python call
+// of a session can fail where Python works), reads its version and whether
+// each package is installed, and refuses r(198) in words naming
+// c(python_exec) and dash_setup.  It decides from the values the lines set,
+// never from _rc; text from the environment is shown only through
+// _dash_say.  A package that is installed but will not import is caught
+// where the renderer loads (_dash_xm_load), by value.
+// ================================================================
+program define _dash_require_deps
+    version 19
+    _dash_require_python
+    local _dd_v ""
+    capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    if "`_dd_v'" == "" {
+        // The first python call of a session can fail where Python works
+        // (test_cscript_hygiene.py's docstring): once more.
+        capture python: import sys; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_v", "%d.%d.%d" % tuple(sys.version_info[:3]))
+    }
+    if "`_dd_v'" == "" {
+        mata: _dash_say("err", "dash: the Python linked to Stata could not be started (", c("python_exec"), ").")
+        if strpos(c(machine_type), "Mac") {
+            mata: _dash_say("err", "      Stata reports this computer as ", c("machine_type"), "; on a Mac, Stata and Python must be built for the same processor, both arm64 (Apple Silicon) or both x86_64 (Intel).")
+        }
+        display as error "      Link Stata to a Python that starts here ({help python}), then run {cmd:dash_setup}."
+        exit 198
+    }
+    _dash_pyfloor
+    local _dd_floor "`r(pyfloor)'"
+    // The version is digits and dots only, built by %d.
+    local _dd_vw = subinstr("`_dd_v'", ".", " ", .)
+    local _dd_fw = subinstr("`_dd_floor'", ".", " ", .)
+    local _dd_vmaj : word 1 of `_dd_vw'
+    local _dd_vmin : word 2 of `_dd_vw'
+    local _dd_fmaj : word 1 of `_dd_fw'
+    local _dd_fmin : word 2 of `_dd_fw'
+    if (`_dd_vmaj' < `_dd_fmaj') | (`_dd_vmaj' == `_dd_fmaj' & `_dd_vmin' < `_dd_fmin') {
+        mata: _dash_say("err", "dash: Python " + st_local("_dd_v") + " is linked to Stata (", c("python_exec"), "); dash needs Python " + st_local("_dd_floor") + " or later.")
+        display as error "      Link a newer Python ({help python}), then run {cmd:dash_setup}."
+        exit 198
+    }
+    local _dd_miss ""
+    local _dd_chk ""
+    capture python: import sys, importlib.util; from sfi import Macro as _dash_M; _dash_M.setLocal("_dd_miss", " ".join(m for m in ("numpy", "pandas", "bokeh") if sys.modules.get(m) is None and importlib.util.find_spec(m) is None)); _dash_M.setLocal("_dd_chk", "1")
+    if "`_dd_chk'" == "1" & "`_dd_miss'" != "" {
+        local _dd_list = subinstr("`_dd_miss'", " ", ", ", .)
+        mata: _dash_say("err", "dash: " + st_local("_dd_list") + " not installed for the Python Stata uses (", c("python_exec"), ").")
+        display as error "      Run {cmd:dash_setup} to install what is missing."
+        exit 198
+    }
+end
+
+
+// ================================================================
+// _dash_stata_ok  — is a Stata release at or above a floor?
+// ================================================================
+// Pure, so that a certification script reaches the refusal on a Stata that
+// passes: test_env_guards.cscript drives it by value and stubs it.  Both
+// values are read by value in Mata (strtoreal), so text such as "19 | 1"
+// is never evaluated; anything unreadable answers 0.  It is written for the
+// Stata it refuses: `version 13' and nothing Stata 13 lacks
+// (test_version_floor.py::TestTheStataFloor).
+//
+// Syntax:
+//   _dash_stata_ok "<release>" "<floor>"   -> r(ok) 0 or 1, r(shown) "%9.1f"
+// ================================================================
+program define _dash_stata_ok, rclass
+    version 13
+    args have want
+    mata: st_local("h", strofreal(strtoreal(st_local("have"))))
+    mata: st_local("w", strofreal(strtoreal(st_local("want"))))
+    local shown : display %9.1f `h'
+    local shown `shown'
+    return local shown "`shown'"
+    return scalar ok = cond(missing(`h') | missing(`w'), 0, `h' >= `w')
+end
+
+
+// ================================================================
+// _dash_require_stata  — refuse a Stata below dash's floor, in dash's words
+// ================================================================
+// The first statement of `dash', before its `version 19': without it an
+// older Stata stops at that line with Stata's own "cannot run version 19.0
+// programs", naming neither dash nor what it needs.  r(9) is the code Stata
+// itself gives (test_wp30_truth.cscript SF-01).  dash_setup.ado's
+// _dash_statamin holds the same number, because a program defined in one
+// ado-file cannot be called from another; test_version_floor.py pins the
+// two equal, and equal to every program's `version' line (WP-30 P1.35).
+// ================================================================
+program define _dash_require_stata
+    version 13
+    local floor 19
+    _dash_stata_ok "`c(stata_version)'" "`floor'"
+    if r(ok) != 1 {
+        display as error "dash requires Stata `floor' or later; this is Stata `r(shown)'"
+        exit 9
     }
 end
 
@@ -227,7 +438,7 @@ end
 // WP-24, test_env_guards.cscript ENV-23, test_mata_library_guard.cscript.)
 // ================================================================
 program define _dash_require_mata
-    version 16.0
+    version 19
 
     // Every Mata function dash.ado calls, named once.  Checking a single
     // one would pass a library that compiled half way.  _dash_path_badchar
@@ -238,21 +449,34 @@ program define _dash_require_mata
         _dash_extract_filters _dash_extract_qual_vars _dash_extract_vars ///
         _dash_extract_hover_vars ///
         _dash_filter_refusal _dash_filter_setvars _dash_has_name_opt ///
-        _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args ///
-        _dash_kpi_pctile _json_escape _dash_path_badchar ///
+        _dash_seg_by _dash_is_digits _dash_item_globals _dash_json_get_str _dash_json_str_args _dash_scheme_dirs_json ///
+        _dash_kpi_pctile _json_escape _dash_path_badchar _dash_cmd_metachar ///
         _dash_layout_cells _dash_layout_refusal _dash_link_refusal ///
         _dash_option_names _dash_qual_expand _dash_qual_reset ///
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
-        _dash_immediate _dash_say _dash_spec_types_in _dash_split_segs ///
+        _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
+        _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
+        _dash_by_scan ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
-        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed ///
+        _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_at_records _dash_json_first_num ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
+        _dash_connect_canon ///
+        _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
+        _dash_hz_order ///
         _dash_foreign_scan _dash_kernel_clash _dash_kernel_flag _dash_lpolyci_opts ///
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
-        _dash_axis_pieces ///
-        _dash_axreq_clear _dash_axreq_add _dash_axreq_check
+        _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
+        _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
+        _dash_axreq_accept_line _dash_reflines_positions ///
+        _dash_axbound_list ///
+        _dash_taxis_unit _dash_taxis_fmt _dash_tdate_ticks _dash_tdate_lines ///
+        _dash_tdate_range _dash_xdate_find ///
+        _dash_subreq_check _dash_subreq_accept _dash_so_unsafe ///
+        _dash_strip_prefix _dash_seg_saving _dash_saving_parse _dash_launch_quote _dash_launch_warn ///
+        _dash_abs_path _dash_graph_names
 
     // Every one of them, not one.  The check asked for _dash_check_utf8
     // alone and took the library for whole when it was there, so a library
@@ -369,7 +593,7 @@ end
 //   -> r(fn), or rc 601 with a message naming what to do.
 // ================================================================
 program define _dash_find_render, rclass
-    version 16.0
+    version 19
 
     capture findfile dash_render.py
     if _rc == 0 {
@@ -400,7 +624,7 @@ end
 
 
 program define _dash_do_render
-    version 16.0
+    version 19
     syntax, SPEC(string) DATA(string) OUTPUT(string) RENDERPY(string) ///
             [MODE(string) PRIVate]
 
@@ -411,6 +635,7 @@ program define _dash_do_render
     // Before `python:', not after: a user with no linked Python used to get
     // a raw Stata Python error naming neither dash nor the remedy.
     _dash_require_python
+    _dash_require_deps
 
     if `"`mode'"' == "" local mode "standalone"
 
@@ -424,26 +649,34 @@ program define _dash_do_render
     _dash_json_str `"`mode'"'     _py_mode
     _dash_json_str `"`renderpy'"' _py_renderpy
 
+    // The module dash keeps loaded (_dash_xm_load) runs the renderer: its
+    // _dash_run_renderer is runpy.run_path(renderpy, run_name="__main__")
+    // that compiles the file once a session, while its bytes are unchanged,
+    // instead of on every build (0.22 s a build, measured 07oct2026; WP-30
+    // test performance B1).  Each build still runs in a new __main__.
+    _dash_xm_load
+
     // Single-line python: calls are used here instead of a python:...end block.
     // Reason: python:...end blocks inside program defines trigger an
     // IndentationError when the ado file is loaded from the adopath (Stata
     // prepends indentation to the stored block on ado-path loads).
     // Single-line python: statements do not have this issue.
-    python: import sys, runpy
+    python: import sys
     python: sys.argv = ["dash_render.py", "--spec", "`_py_spec'", "--data", "`_py_data'", "--output", "`_py_output'", "--mode", "`_py_mode'"]
     // private: the one-line form's preview page, written 0600 as a new
     // file and never through a link (WP-29 P0.14; main(private_output)).
     if "`private'" != "" {
         python: _dash_priv_argv = sys.argv.append("--private-output")
     }
+    python: _dash_xm = sys.modules["_dash_render_export"]
     // Assign the result.  A single-line `python:' ECHOES the value of the
-    // expression it evaluates, and run_path returns the executed module's
+    // expression it evaluates, and the run returns the executed module's
     // globals dict -- so this line printed the whole of dash_render.py's
     // namespace into the Stata log on EVERY render.  Measured:
     // `dash scatter mpg weight, saving(x.html)' produced a 48 KB, 653-line
     // log, of which the dump began at line 91.  Contrary to project rule 14,
     // and it buries any message dash actually displays.
-    python: _dash_render_ns = runpy.run_path("`_py_renderpy'", run_name="__main__")
+    python: _dash_render_ns = _dash_xm._dash_run_renderer("`_py_renderpy'")
 end
 
 
@@ -451,14 +684,15 @@ end
 // _dash_validate_path  — check saving() path is safe
 // ================================================================
 program define _dash_validate_path
-    version 16.0
+    version 19
     args fpath ext
 
     // The expected extension, so the server branch can share every other
     // check.  It used to hardcode .html, so server mode skipped the
     // validator entirely and tested only the suffix -- a .py saving() path
-    // therefore got no traversal check, no shell-metacharacter check and no
-    // quote check at all.
+    // therefore got no quote check at all.  The checks: the characters
+    // _dash_path_badchar refuses (a double quote, backquote, $ and every
+    // control character), a leading `-', the suffix (WP-30 P1.27, M11).
     if "`ext'" == "" local ext "html"
 
     // FIRST, before anything expands the path inside an expression.
@@ -473,7 +707,7 @@ program define _dash_validate_path
     // its contents are a value and cannot be parsed as code.
     mata: st_local("_pv_bad", strofreal(_dash_path_badchar(st_local("fpath"))))
     if `_pv_bad' != 0 {
-        display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+        display as error "dash: saving() path contains disallowed characters: a double quote, a backquote, $ or a control character."
         exit(198)
     }
 
@@ -495,14 +729,10 @@ program define _dash_validate_path
         local fpath `"`_home'/`=substr(`"`fpath'"', 3, .)'"'
     }
 
-    // Path traversal is a `..' SEGMENT, not the two characters appearing
-    // anywhere.  The old rule was `regexm("\.\.")', which rejected the
-    // perfectly ordinary my..report.html -- measured, r(198) -- while
-    // catching nothing the segment rule does not.
-    if regexm(`"`fpath'"', "(^|[/\\])\.\.($|[/\\])") {
-        display as error "dash: saving() path may not contain a '..' path segment (path traversal not allowed)."
-        exit(198)
-    }
+    // A `..' segment is accepted (WP-30 P1.27, M11): saving() is the user's
+    // own command, an absolute path was always accepted, and twoway's
+    // saving() writes ../up.gph (measured).  dash serve's private app path
+    // keeps its `..' check (dash_render.py's _validate_output_path).
 
     // A leading `-' on the file name makes the shell read the path as a
     // flag: `open -e.html' opens the argument in TextEdit rather than
@@ -520,28 +750,17 @@ program define _dash_validate_path
         mata: _dash_say("err", "dash: saving() path must end in .`ext' (got: ", st_local("fpath"), ")")
         exit(198)
     }
-    // Reject shell metacharacters to prevent command injection via shell open/start/xdg-open.
-    // Printable metacharacters checked via regexm character class.
-    // Chars that Stata would misinterpret during macro expansion (backtick=96, dollar=36)
-    // and control characters (tab=9, newline=10, CR=13) checked via strpos+char() to
-    // avoid the "too few quotes" crash that occurs when a compound-quoted macro value
-    // contains a backtick.
-    // Parentheses are NOT rejected: the one shell call site, _dash_open_page,
-    // quotes the path (in single quotes on a Mac and Unix, double on
-    // Windows), inside which ( and ) are literal, and rejecting them broke
-    // every Windows path under "Program Files (x86)".
-    // The characters that genuinely matter inside double quotes are handled
-    // below; the rest are kept as defence in depth since paths rarely contain
-    // them.
-    if regexm("`fpath'", `"[;&|<>]"') {
-        display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
-        exit(198)
-    }
+    // ; & | < > are accepted (WP-30 P1.27, M11), as twoway's saving()
+    // accepts them: the opener single-quotes the path on a Mac and Unix,
+    // inside which nothing is special, and declines cmd's metacharacters on
+    // Windows (_dash_open_page, _dash_cmd_metachar).  Parentheses were
+    // never refused (every Windows path under "Program Files (x86)").
+    // The quote and control loop below is defence in depth behind the scan.
     // 34 = double quote, which would terminate the quoted argument at the
     // shell call site; it was previously not checked at all.
     foreach _cnum of numlist 96 36 34 9 10 13 {
         if strpos("`fpath'", char(`_cnum')) > 0 {
-            display as error "dash: saving() path contains disallowed characters (shell metacharacters not permitted)."
+            display as error "dash: saving() path contains disallowed characters: a double quote, a backquote, $ or a control character."
             exit(198)
         }
     }
@@ -579,7 +798,7 @@ end
 // Usage:  _dash_saving_dir `"<path _dash_validate_path has passed>"'
 // ================================================================
 program define _dash_saving_dir
-    version 16.0
+    version 19
     args fpath
 
     mata: st_local("_sd_dir", ustrregexm(st_local("fpath"), ///
@@ -616,7 +835,7 @@ end
 // Usage:  _dash_saving_clobber `"<path>"' "<replace or empty>" "<cmd name>"
 // ================================================================
 program define _dash_saving_clobber
-    version 16.0
+    version 19
     args fpath replace cmdname
 
     mata: st_local("_sc_dir", strofreal(direxists(st_local("fpath"))))
@@ -641,7 +860,7 @@ end
 // After: local _escaped contains the JSON-safe string (no surrounding quotes)
 // ================================================================
 program define _dash_json_str
-    version 16.0
+    version 19
 
     // JSON forbids EVERY unescaped byte below 0x20 inside a string, not just
     // the three that have short forms.  This escaped backslash, quote, TAB,
@@ -680,7 +899,7 @@ end
 // After the call all parsed values are in s() macros.
 // ================================================================
 program define _dash_parse_graph_opts, sclass
-    version 16.0
+    version 19
     // Accept all standard graph-level options.
     // NOTE: this list and _dash_parse_plot_opts's were first written by
     // scripts/regen_option_surface.py from test/fixtures/abbrev_truth.json,
@@ -724,7 +943,7 @@ program define _dash_parse_graph_opts, sclass
         XLABEL2(string asis)      YSCALE2(string asis)      XSCALE2(string asis) ///
         XSIZe(string)             YSIZe(string)             FXSIZE(string) ///
         FYSIZE(string)            SCALE(string)             TEXT(string asis) ///
-        HOVer(string)             ///
+        HOVer(string)             TTEXT(string asis) ///
         XTICk(string asis)        YTICk(string asis)        XMTick(string asis) ///
         YMTick(string asis)       XMLabel(string asis)      YMLabel(string asis) ///
         T1title(string asis)      T2title(string asis)      B1title(string asis) ///
@@ -738,6 +957,11 @@ program define _dash_parse_graph_opts, sclass
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
+        TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
+        TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
+        TLIne(string asis) ///
+        TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
+        TSCALE2(string asis)      TTITLE2(string asis) ///
         * ///
     ]
 
@@ -804,10 +1028,13 @@ program define _dash_parse_graph_opts, sclass
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
-    if `: length local text' local _dash_pending `"`_dash_pending' text"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
+    // WP-30 P1.6: tmlabel() and tmtick() are stored on xmlabel/xmtick by
+    // _dash_taxis_fold and drawn when minor ticks are (P2.2).
+    if `: length local tmlabel' local _dash_pending `"`_dash_pending' tmlabel"'
+    if `: length local tmtick' local _dash_pending `"`_dash_pending' tmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
     if `: length local ymlabel' local _dash_pending `"`_dash_pending' ymlabel"'
@@ -857,12 +1084,25 @@ program define _dash_parse_graph_opts, sclass
     sreturn local scale        : copy local scale
     sreturn local hover        : copy local hover
     sreturn local text         : copy local text
+    sreturn local ttext        : copy local ttext
     sreturn local xtick        : copy local xtick
     sreturn local ytick        : copy local ytick
     sreturn local xmtick       : copy local xmtick
     sreturn local ymtick       : copy local ymtick
     sreturn local xmlabel      : copy local xmlabel
     sreturn local ymlabel      : copy local ymlabel
+    sreturn local tlabel       : copy local tlabel
+    sreturn local ttick        : copy local ttick
+    sreturn local tmlabel      : copy local tmlabel
+    sreturn local tmtick       : copy local tmtick
+    sreturn local tscale       : copy local tscale
+    sreturn local ttitle       : copy local ttitle
+    sreturn local tline        : copy local tline
+    sreturn local tlabel2      : copy local tlabel2
+    sreturn local ttick2       : copy local ttick2
+    sreturn local tline2       : copy local tline2
+    sreturn local tscale2      : copy local tscale2
+    sreturn local ttitle2      : copy local ttitle2
     sreturn local t1title      : copy local t1title
     sreturn local t2title      : copy local t2title
     sreturn local b1title      : copy local b1title
@@ -895,7 +1135,7 @@ end
 // After the call all parsed values are in s() macros.
 // ================================================================
 program define _dash_parse_plot_opts, sclass
-    version 16.0
+    version 19
     // NOTE: edited by hand, like _dash_parse_graph_opts's list; the NOTE
     // there says why scripts/regen_option_surface.py must not be run over
     // it, and how the capitalised minimums are chosen.
@@ -910,6 +1150,9 @@ program define _dash_parse_plot_opts, sclass
     // MLABVposition are twoway_yxview_parse.class's declarations, and
     // SORT SORT1() is the pair -syntax- (and that class file) uses for an
     // option written bare, sort, or with an argument, sort(varlist).
+    // XVARFormat() and YVARFormat() (WP-30 P1.5): twoway reads a layer's
+    // x/yvarformat(); the minimum is xvarf (measured 03oct2026: xvar() and
+    // xva() are refused, xvarf() and xvarfo() read).
     // XOVERHANGs and YOVERHANGs are advanced_options.sthlp's xoverhangs and
     // yoverhangs; twoway's measured minimum is xoverhang and yoverhang.
     // The text options are string asis, as in _dash_parse_graph_opts (see
@@ -922,23 +1165,24 @@ program define _dash_parse_plot_opts, sclass
     // there (BUGS.md, S1).
     mata: _dash_log_split("0", "_dash_logw")
     syntax [, ///
-        MColor(string)            Msymbol(string)           MSIze(string) ///
-        MSAngle(string)           MFColor(string)           MLColor(string) ///
-        MLabel(string)            MLABColor(string)         MLABSize(string) ///
-        MLABPosition(string)      MLABGap(string)           MLABWidth(string) ///
-        MALpha(string)            MARKER(string)            LColor(string) ///
-        LWidth(string)            LPattern(string)          LALpha(string) ///
-        FColor(string)            FIntensity(string)        FAlpha(string) ///
-        AColor(string)            ALColor(string)           ALWidth(string) ///
-        ALPattern(string) ///
-        BARWidth(string)          BASE(string)              BLColor(string) ///
-        BFColor(string)           JITter(string)            JSEed(string) ///
+        MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
+        MSAngle(string asis)      MFColor(string asis)      MLColor(string asis) ///
+        MLabel(string asis)       MLABColor(string asis)    MLABSize(string asis) ///
+        MLABPosition(string asis) MLABGap(string asis)      MLABWidth(string) ///
+        MALpha(string)            MARKER(string)            LColor(string asis) ///
+        LWidth(string asis)       LPattern(string asis)     LALpha(string) ///
+        FColor(string asis)       FIntensity(string asis)   FAlpha(string) ///
+        AColor(string asis)       ALColor(string asis)      ALWidth(string asis) ///
+        ALPattern(string asis) ///
+        BARWidth(string asis)     BASE(string asis)         BLColor(string asis) ///
+        BFColor(string asis)      JITter(string asis)       JSEed(string) ///
         YAXis(string)             XAXis(string)             COLORVar(string) ///
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
         COLORLEVels(string)       COLORVARMINMax ///
-        BWIDth(string)            DEGree(string)            PSTYle(string) ///
-        CMISSing(string)          RECAST(string)            Connect(string) ///
+        BWIDth(string)            DEGree(string)            PSTYle(string asis) ///
+        CMISSing(string asis)     RECAST(string)            Connect(string asis) ///
+        CMISSINGS(string asis)    RECASTAs(string)          TYpe(string) ///
         BIN(string)               BINS(string)              Width(string) ///
         START(string) ///
         DISCrete                  STDP                      STDF ///
@@ -948,14 +1192,17 @@ program define _dash_parse_plot_opts, sclass
         FRACtion                  Kernel(string)            N(string) ///
         LEvel(string)             BAnds(string)             AT(string asis) ///
         CIOPTS(string asis)       LINEOPTS(string asis)     FITOPTS(string asis) ///
-        COLor(string)             MLWidth(string)           MSTyle(string) ///
-        LStyle(string)            MLStyle(string)           MLPattern(string) ///
+        COLor(string asis)        MLWidth(string asis)      MSTyle(string asis) ///
+        LStyle(string asis)       MLStyle(string asis)      MLPattern(string) ///
+        ASTyle(string asis) ALstyle(string asis) BSTyle(string asis) BLstyle(string asis) CLStyle(string asis) P(string) ///
+        DSTyle(string asis)       DLstyle(string asis)      BMLinestyle(string asis) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
-        SORT1(string)             CLColor(string)           CLPattern(string) ///
-        CLWidth(string)           MLABANGle(string)         MLABFormat(string) ///
-        MLABTextstyle(string)     MLABVposition(string)     XOVERHANGs ///
+        SORT1(string)             CLColor(string asis)      CLPattern(string asis) ///
+        CLWidth(string asis)      MLABANGle(string asis)    MLABFormat(string asis) ///
+        MLABTextstyle(string asis) MLABVposition(string)    XOVERHANGs ///
         YOVERHANGs ///
+        XVARFormat(string)        YVARFormat(string) ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
         NOTE(string asis)         CAPtion(string asis)      NAMe(string) ///
         SAVing(string)            XTitle(string asis)       YTitle(string asis) ///
@@ -969,7 +1216,7 @@ program define _dash_parse_plot_opts, sclass
         XSCALE2(string asis)      XSIZe(string)             YSIZe(string) ///
         FXSIZE(string)            FYSIZE(string)            SCALE(string) ///
         TEXT(string asis)         XTICk(string asis)        YTICk(string asis) ///
-        HOVer(string)             ///
+        HOVer(string)             TTEXT(string asis) ///
         XMTick(string asis)       YMTick(string asis)       XMLabel(string asis) ///
         YMLabel(string asis)      T1title(string asis)      T2title(string asis) ///
         B1title(string asis)      B2title(string asis)      L1title(string asis) ///
@@ -983,8 +1230,27 @@ program define _dash_parse_plot_opts, sclass
         ytick2(string asis)       xtick2(string asis)       yline2(string asis) ///
         xline2(string asis) ///
         ZLABel(string asis)       ZTItle(string asis)       ZSCale(string asis) ///
+        TLabel(string asis)       TTICk(string asis)        TMLabel(string asis) ///
+        TMTick(string asis)       TSCale(string asis)       TTitle(string asis) ///
+        TLIne(string asis) ///
+        TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
+        TSCALE2(string asis)      TTITLE2(string asis) ///
         * ///
     ]
+    // The style options of _dash_stylelist_keys() are string asis so a
+    // stylelist keeps its quoted elements whole (WP-30 P1.1a): string took
+    // the quotes off, and mcolor("255 0 0" "0 0 255") became one colour.
+    // A value of only empty quotes, mcolor(""), is no value, as string made
+    // it; every emptiness test below, the folds, _dash_validate_opts and
+    // the JSON writer read the value normalised here.
+    mata: st_local("_dash_slk", _dash_stylelist_keys())
+    foreach _dash_slo of local _dash_slk {
+        mata: st_local(st_local("_dash_slo"), _dash_stylelist_norm(st_local(st_local("_dash_slo"))))
+    }
+    // cmissings() is twoway's own spelling of cmissing() (WP-30 P1.8a): a
+    // copy of it is a copy of cmissing(), the rightmost copy read
+    // (_dash_opts_repeats keys both as cmissing).
+    if `"`macval(cmissings)'"' != "" mata: st_local("cmissing", _dash_stylelist_norm(st_local("cmissings")))
     /* ---- plot-level ---- */
 
     // t(), b(), l() and r() need no fold: T1title() .. R1title() take them
@@ -1057,6 +1323,9 @@ program define _dash_parse_plot_opts, sclass
     if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
     if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
+    // cmissing and connect stay here, as sort does: _dash_connect_opt
+    // takes them off where dash draws them or twoway draws the same
+    // picture without them (WP-30 P1.8a).
     if `: length local cmissing' local _dash_pending `"`_dash_pending' cmissing"'
     if `: length local colorlist' local _dash_pending `"`_dash_pending' colorlist"'
     if `: length local coloruseplegend' local _dash_pending `"`_dash_pending' coloruseplegend"'
@@ -1066,27 +1335,24 @@ program define _dash_parse_plot_opts, sclass
     if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
     if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
     if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
-    if `: length local horizontal' local _dash_pending `"`_dash_pending' horizontal"'
     if `: length local l1title' local _dash_pending `"`_dash_pending' l1title"'
     if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
-    if `: length local lstyle' local _dash_pending `"`_dash_pending' lstyle"'
-    // WP-22: mlabtextstyle() names a text style in a .scheme file, and
-    // mlabvposition() a variable of clock positions, one per observation;
-    // dash draws a layer's labels at one position in the scheme's style.
-    if `: length local mlabtextstyle' local _dash_pending `"`_dash_pending' mlabtextstyle"'
-    if `: length local mlabvposition' local _dash_pending `"`_dash_pending' mlabvposition"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
-    if `: length local mlstyle' local _dash_pending `"`_dash_pending' mlstyle"'
-    if `: length local mstyle' local _dash_pending `"`_dash_pending' mstyle"'
+    // WP-30 P1.14b: dstyle() and dlstyle() style the dots of a dot plot
+    // (P2.9) and bmlinestyle() a marker's back line (P2.8); dash draws
+    // neither, so each is kept in the spec and named here.
+    if `: length local dstyle' local _dash_pending `"`_dash_pending' dstyle"'
+    if `: length local dlstyle' local _dash_pending `"`_dash_pending' dlstyle"'
+    if `: length local bmlinestyle' local _dash_pending `"`_dash_pending' bmlinestyle"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
-    if `: length local pstyle' local _dash_pending `"`_dash_pending' pstyle"'
     // fitarea_options, the look of a ci fit's band: twoway takes ac(),
     // alc(), alw() and alp() (measured 24sep2026; al() is alstyle()).
-    // Drawn on lfitci, qfitci, lpolyci and fpfitci -- and pstyle() with
-    // them -- where _dash_fold_typed takes them off this list once the
+    // Drawn on lfitci, qfitci, lpolyci and fpfitci (pstyle() and the other
+    // named styles are drawn on every type, WP-30 P1.14a) -- where
+    // _dash_fold_typed takes them off this list once the
     // type is known; twoway accepts them on every type (rc 0), so
     // elsewhere they are named here.
     if `: length local acolor' local _dash_pending `"`_dash_pending' acolor"'
@@ -1095,7 +1361,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local alpattern' local _dash_pending `"`_dash_pending' alpattern"'
     if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
     if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
-    if `: length local recast' local _dash_pending `"`_dash_pending' recast"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
     // sort(varlist) arrives in `sort1', -syntax-'s name for it, and is
     // returned in s(sort1); it is named here as sort().  _dash_sort_opt
@@ -1107,11 +1372,13 @@ program define _dash_parse_plot_opts, sclass
     if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
-    if `: length local text' local _dash_pending `"`_dash_pending' text"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
-    if `: length local vertical' local _dash_pending `"`_dash_pending' vertical"'
     if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
     if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
+    // WP-30 P1.6: tmlabel() and tmtick() are stored on xmlabel/xmtick by
+    // _dash_taxis_fold and drawn when minor ticks are (P2.2).
+    if `: length local tmlabel' local _dash_pending `"`_dash_pending' tmlabel"'
+    if `: length local tmtick' local _dash_pending `"`_dash_pending' tmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
     // region so an end tick label does not run off the edge.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
@@ -1180,7 +1447,15 @@ program define _dash_parse_plot_opts, sclass
     sreturn local degree           : copy local degree
     sreturn local pstyle           : copy local pstyle
     sreturn local cmissing         : copy local cmissing
+    // recast() and recastas() are one option to twoway: the rightmost
+    // wins; type() is their synonym, read by _dash_recast_opt (P1.8b).
+    if `: length local recastas' {
+        local _rca_last 1
+        if `: length local recast' mata: st_local("_rca_last", strofreal(max((strrpos(st_local("0"), "recasta("), strrpos(st_local("0"), "recastas("))) > strrpos(st_local("0"), "recast(")))
+        if `_rca_last' local recast : copy local recastas
+    }
     sreturn local recast           : copy local recast
+    sreturn local type             : copy local type
     sreturn local connect          : copy local connect
     sreturn local bin              : copy local bin
     sreturn local width            : copy local width
@@ -1202,6 +1477,18 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mstyle           : copy local mstyle
     sreturn local lstyle           : copy local lstyle
     sreturn local mlstyle          : copy local mlstyle
+    // WP-30 P1.14a: the named styles twoway reads (p1-p15 drawn), and p(),
+    // twoway's whole-plot style.
+    sreturn local astyle           : copy local astyle
+    sreturn local alstyle          : copy local alstyle
+    sreturn local bstyle           : copy local bstyle
+    sreturn local blstyle          : copy local blstyle
+    // WP-30 P1.14b: kept and named, not drawn (P2.9, P2.8).
+    sreturn local dstyle           : copy local dstyle
+    sreturn local dlstyle          : copy local dlstyle
+    sreturn local bmlinestyle      : copy local bmlinestyle
+    sreturn local clstyle          : copy local clstyle
+    sreturn local p                : copy local p
     sreturn local mlpattern        : copy local mlpattern
     sreturn local blabel           : copy local blabel
     sreturn local horizontal       : copy local horizontal
@@ -1218,6 +1505,13 @@ program define _dash_parse_plot_opts, sclass
     sreturn local clwidth          : copy local clwidth
     sreturn local mlabangle        : copy local mlabangle
     sreturn local mlabformat       : copy local mlabformat
+    // WP-30 P1.24: one variable of clock positions, read row by row
+    // (_dash_fold_mlabv checks it as twoway does).
+    sreturn local mlabvposition    : copy local mlabvposition
+    // WP-30 P1.24: a text box style per y, a style list (S11).
+    sreturn local mlabtextstyle    : copy local mlabtextstyle
+    sreturn local xvarformat       : copy local xvarformat
+    sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
     // minimum abbreviations (twoway_histogram_parse.class DISCrete;
     // twoway_lfitci_parse.class STDP STDF STDR, none abbreviable;
@@ -1276,12 +1570,25 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_scale        : copy local scale
     sreturn local g_hover        : copy local hover
     sreturn local g_text         : copy local text
+    sreturn local g_ttext        : copy local ttext
     sreturn local g_xtick        : copy local xtick
     sreturn local g_ytick        : copy local ytick
     sreturn local g_xmtick       : copy local xmtick
     sreturn local g_ymtick       : copy local ymtick
     sreturn local g_xmlabel      : copy local xmlabel
     sreturn local g_ymlabel      : copy local ymlabel
+    sreturn local g_tlabel       : copy local tlabel
+    sreturn local g_ttick        : copy local ttick
+    sreturn local g_tmlabel      : copy local tmlabel
+    sreturn local g_tmtick       : copy local tmtick
+    sreturn local g_tscale       : copy local tscale
+    sreturn local g_ttitle       : copy local ttitle
+    sreturn local g_tline        : copy local tline
+    sreturn local g_tlabel2      : copy local tlabel2
+    sreturn local g_ttick2       : copy local ttick2
+    sreturn local g_tline2       : copy local tline2
+    sreturn local g_tscale2      : copy local tscale2
+    sreturn local g_ttitle2      : copy local ttitle2
     sreturn local g_t1title      : copy local t1title
     sreturn local g_t2title      : copy local t2title
     sreturn local g_b1title      : copy local b1title
@@ -1308,7 +1615,7 @@ end
 // Sets s(varlist), s(if_clause), s(in_clause)
 // ================================================================
 program define _dash_parse_varpart_std, sclass
-    version 16.0
+    version 19
     // numeric (GAPS2 G2): twoway's own y/x parser declares `varlist(min=2
     // numeric ts default=none)' (twoway_yxview_parse.class); a string
     // variable here is refused by this line, before any other check runs,
@@ -1340,10 +1647,49 @@ program define _dash_parse_varpart_std, sclass
 end
 
 // ================================================================
+// _dash_parse_varpart_ts  — varlist [if] [in], time-series operators
+// allowed (WP-30 P1.7)
+//
+// _dash_parse_varpart_std with `ts': twoway's y/x parser declares
+// varlist(numeric ts), so scatter, line, connected, area, bar, spike,
+// dropline, dot, lfit, qfit, lfitci, qfitci, mspline, mband and tsline
+// draw L.close, D.close, L(1/2).close (measured on StataNow 19.5).  -syntax-
+// hands back twoway's normalised list (l.close -> L.close, L(1/2).x ->
+// L.x L2.x) and gives twoway's own refusals: "time variable not set"
+// r(111), "<var>:  may not use time-series operators on string variables"
+// r(109), "factor-variable operators not allowed" r(101), "<op>:  operator
+// invalid" r(198).  fpfit, fpfitci, lowess, lpoly and lpolyci keep
+// _dash_parse_varpart_std, refusing operators as twoway does, r(101).
+// A separate program, so _std's macro-safe handling stays as certified.
+// ================================================================
+program define _dash_parse_varpart_ts, sclass
+    version 19
+    // The refusals and the weight, if and in handling are _std's.
+    syntax varlist(numeric ts) [if] [in] [aweight fweight pweight iweight]
+    // The weight type and its expression are handed to _dash_process_segment,
+    // which honours, names or refuses them by plot type (WP-18).  syntax
+    // leaves the expression in `exp' WITH its leading `= ' (measured:
+    // `[aw=price]' gives exp `= price'); that is stripped here.
+    if `"`weight'"' != "" sreturn local _weight `"`weight'"'
+    // The expression is stripped in Mata, by value: in compound quotes inside
+    // regexr() a weight holding "' -- [aw=cond(make=="'x",1,2)] -- ended
+    // them (test_json_escaping.cscript JSE-47).  It and the qualifier go
+    // back by `: copy local': through compound quotes a macro in them was
+    // expanded again (JSE-66, JSE-69).
+    if `: length local exp' {
+        mata: st_local("_wx0", strtrim(regexr(st_local("exp"), "^[ ]*=[ ]*", "")))
+        sreturn local _wexp : copy local _wx0
+    }
+    sreturn local varlist    "`varlist'"
+    sreturn local if_clause  : copy local if
+    sreturn local in_clause  : copy local in
+end
+
+// ================================================================
 // _dash_parse_varpart_1v   — exactly 1 variable
 // ================================================================
 program define _dash_parse_varpart_1v, sclass
-    version 16.0
+    version 19
     // varname(numeric) (GAPS2 G2): twoway's own declaration for the
     // univariate family (histogram.ado, kdensity.ado); varname sets
     // `varlist' too (one word), so the sreturns below stand unchanged.
@@ -1380,12 +1726,14 @@ end
 // names the time variable (test_parser.cscript P1A-78).
 // ================================================================
 program define _dash_parse_varpart_3v, sclass
-    version 16.0
+    version 19
     // numeric (GAPS2 G2): see _dash_parse_varpart_std; the range family
     // (rarea, rbar, rspike, rcap, rline, rconnected, rcapsym, rscatter,
     // tsrline) refuses a string variable the same way, with the same
-    // measured words (test_adversarial.cscript SV-01..SV-87).
-    syntax varlist(numeric) [if] [in] [aweight fweight pweight iweight]
+    // measured words (test_adversarial.cscript SV-01..SV-87).  ts: twoway
+    // takes time-series operators here (L.low L.high t draws, WP-30 P1.7);
+    // -syntax- refuses them in twoway's words where no tsset is in force.
+    syntax varlist(numeric ts) [if] [in] [aweight fweight pweight iweight]
     // The weight type and its expression are handed to _dash_process_segment,
     // which honours, names or refuses them by plot type (WP-18).  syntax
     // leaves the expression in `exp' WITH its leading `= ' (measured:
@@ -1413,11 +1761,12 @@ end
 // variables specified" (test_parser.cscript P1A-78).
 // ================================================================
 program define _dash_parse_varpart_4v, sclass
-    version 16.0
+    version 19
     // numeric (GAPS2 G2): see _dash_parse_varpart_std; the pc family
     // (pcspike, pcarrow, pcbarrow, pcscatter, pccapsym) refuses a string
-    // variable the same way (test_adversarial.cscript SV-01..SV-87).
-    syntax varlist(numeric) [if] [in] [aweight fweight pweight iweight]
+    // variable the same way (test_adversarial.cscript SV-01..SV-87).  ts:
+    // twoway takes time-series operators here too (WP-30 P1.7).
+    syntax varlist(numeric ts) [if] [in] [aweight fweight pweight iweight]
     // The weight type and its expression are handed to _dash_process_segment,
     // which honours, names or refuses them by plot type (WP-18).  syntax
     // leaves the expression in `exp' WITH its leading `= ' (measured:
@@ -1442,7 +1791,7 @@ end
 // Used for scatteri (literal numbers), pci, function
 // ================================================================
 program define _dash_parse_varpart_any, sclass
-    version 16.0
+    version 19
     // equalok: twoway function's documented form is `function y = exp`.  Without
     // it Stata rejects the "=" with r(101) "=exp not allowed", which made the
     // `y=` stripper further down unreachable and the canonical form unusable.
@@ -1495,8 +1844,8 @@ end
 //         range, without their keywords, or "".
 //
 // The text is every qualifier piece _dash_split_segs found at the top
-// level of a parenthesised command -- after the last group, or before a
-// `||' -- joined with blanks.  -syntax- reads it as twoway reads it: one
+// level -- after a run of plot groups, or in a `||' piece with no plot,
+// `a || b || if foreign==1' -- joined with blanks.  -syntax- reads it as twoway reads it: one
 // `if' and one `in', in either order, and nothing else.  Measured against
 // twoway, 23sep2026: a second `if' is r(198) there ("multiple global if's
 // not allowed") and "invalid syntax" here; a plot group after the
@@ -1506,7 +1855,7 @@ end
 // blank after it.
 // ================================================================
 program define _dash_graph_qualifier
-    version 16.0
+    version 19
     syntax [if] [in]
     // The keyword comes off in Mata, by value, and the result goes back by
     // `: copy local'.  In compound quotes inside regexr() a qualifier
@@ -1543,7 +1892,7 @@ end
 // before the early exit for a segment with no bw().
 // ================================================================
 program define _dash_fold_bw, sclass
-    version 16.0
+    version 19
     args ptype
     _dash_fold_cl "`ptype'"
     _dash_fold_mlab "`ptype'"
@@ -1652,13 +2001,15 @@ end
 // clwidth()'s rule fires exactly where twoway evaluates the width.
 // ================================================================
 program define _dash_fold_cl, sclass
-    version 16.0
+    version 19
     args ptype
     local cl_types "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci"
     if `: list ptype in cl_types' exit
     sreturn local clcolor   ""
     sreturn local clpattern ""
     sreturn local clwidth   ""
+    // clstyle() styles the connecting line only (WP-30 P1.14a, D-32c).
+    sreturn local clstyle   ""
 end
 
 // ================================================================
@@ -1682,6 +2033,9 @@ end
 // among others (dash.sthlp, Marker Label Options).  The note does not
 // name mlabel() on those, because twoway draws nothing for it there
 // either.
+// WP-30 P1.1b: twoway checks the list first (measured 03oct2026): .. on
+// histogram and function and = on histogram are r(198) (S08, T01, T04);
+// on mspline and mband _dash_mlabel_list's checks precede r(103) (S06-T10).
 //
 // Called by _dash_fold_bw, after _dash_fold_cl and before
 // _dash_validate_opts.  The value is read from s() by value and only ever
@@ -1689,7 +2043,7 @@ end
 // in it cannot become a macro reference.
 // ================================================================
 program define _dash_fold_mlab, sclass
-    version 16.0
+    version 19
     args ptype
     // By value: read as `"`s(mlabel)'"', mlabel("\`x'") was expanded to
     // nothing, so on histogram it was not dropped and the value rules
@@ -1700,16 +2054,114 @@ program define _dash_fold_mlab, sclass
     local mlab_unread  "histogram function"
     local mlab_refused "mspline mband"
     if `: list ptype in mlab_unread' {
+        mata: _dash_stylelist_locals(st_local("v"), "_fm")
+        forvalues j = 1/`_fmn' {
+            if "`_fmq`j''" == "1" continue
+            mata: st_local("_c", (st_local("_fmt`j'") == ".." | st_local("_fmt`j'") == "..." | st_local("_fmt`j'") == "=") ? st_local("_fmt`j'") : "")
+            if "`_c'" == ".." | "`_c'" == "..." {
+                display as error "`_c' not allowed in option mlabel()"
+                exit 198
+            }
+            if "`_c'" == "=" & "`ptype'" == "histogram" {
+                display as error "invalid syntax"
+                exit 198
+            }
+        }
         sreturn local mlabel ""
         exit
     }
     if `: list ptype in mlab_refused' {
-        capture confirm variable `macval(v)'
-        if !_rc {
-            display as error "dash: mlabel() is not allowed on `ptype' (twoway: too many variables specified)"
-            exit 103
-        }
+        _dash_mlabel_list "dash" `"`macval(v)'"' "`ptype'" 1
+        display as error "dash: mlabel() is not allowed on `ptype' (twoway: too many variables specified)"
+        exit 103
     }
+end
+
+// ================================================================
+// _dash_mlabv_parse  -- twoway's own reading of mlabvposition().
+//
+// twoway_yxview_parse.class declares MLABVposition(name) and unabbreviates
+// it with unab, so its messages and codes are Stata's: two names
+// "option mlabvposition():  too many names specified" r(103), an
+// expression "<tok> invalid name" r(198), a missing variable "variable
+// <x> not found" r(111).  Not sclass, and never touches s(): the caller's
+// s() survives.  Returns the unabbreviated name in the caller's _mv_name.
+// ================================================================
+program define _dash_mlabv_parse
+    version 19
+    syntax [, MLABVposition(name)]
+    if "`mlabvposition'" != "" unab mlabvposition : `mlabvposition'
+    c_local _mv_name `mlabvposition'
+end
+
+// ================================================================
+// _dash_fold_mlabv  -- mlabvposition() where twoway refuses it, or never
+//                      reads it (WP-30 P1.24).
+//
+// Measured (StataNow 19.5; test/fixtures/mlabvpos_truth.json and the MV
+// cases of test_twoway_option_parity.cscript): twoway appends the
+// variable to the layer's varlist (twoway_yxview_parse.class:308-317), so
+// the types that count their variables refuse it -- the range types and
+// tsrline "<type> requires 3 variables: <varlist>", the fits, mspline and
+// mband "too many variables specified: <varlist>", lowess, lpoly, lpolyci
+// and kdensity "too many variables specified", each r(103).  The range
+// types and lfit-like fits subtract the label variables before counting
+// (twoway_y2xview_parse.class:36-44, twoway_lfit_parse.class:35-41);
+// mspline and mband do not (twoway_mspline_parse.class:25-26).  A name
+// already in the list adds nothing, so rscatter y y2 x, mlabvposition(y)
+// is accepted, as twoway accepts it.  histogram, function, scatteri, pci
+// and pcarrowi never read the option.  Called by _dash_process_segment
+// before _dash_fold_bw (so before _dash_fold_mlab); the value is read
+// from s() by value and reaches a command line only inside macval(),
+// where syntax's name type refuses anything but one name.
+// ================================================================
+program define _dash_fold_mlabv, sclass
+    version 19
+    args ptype pvars
+    mata: st_local("v", st_global("s(mlabvposition)"))
+    if !`: length local v' exit
+    local mv_unread "histogram function scatteri pci pcarrowi"
+    if `: list ptype in mv_unread' {
+        sreturn local mlabvposition ""
+        exit
+    }
+    capture noisily _dash_mlabv_parse , mlabvposition(`macval(v)')
+    if _rc exit _rc
+    sreturn local mlabvposition `"`_mv_name'"'
+    if "`_mv_name'" == "" exit
+    local mv_range "rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline"
+    local mv_fit   "lfit qfit fpfit lfitci qfitci fpfitci mspline mband"
+    local mv_smooth "lowess lpoly lpolyci kdensity"
+    local mv_all : list mv_range | mv_fit
+    local mv_all : list mv_all | mv_smooth
+    if !`: list ptype in mv_all' exit
+    // The label variables, without mlabel()'s "." placeholders.
+    mata: st_local("ml", invtokens(select(tokens(st_global("s(mlabel)")), tokens(st_global("s(mlabel)")) :!= ".")))
+    local labs ""
+    if `: length local ml' {
+        capture unab labs : `macval(ml)'
+        if _rc exit
+    }
+    local pvars : list retokenize pvars
+    local all : list pvars | labs
+    local all : list all | _mv_name
+    local mv_nosub "mspline mband"
+    if `: list ptype in mv_nosub' local counted : copy local all
+    else local counted : list all - labs
+    local limit 2
+    if `: list ptype in mv_range' local limit 3
+    if "`ptype'" == "kdensity" local limit 1
+    if `: word count `counted'' <= `limit' exit
+    if `: list ptype in mv_range' {
+        local shown "`ptype'"
+        if "`ptype'" == "tsrline" local shown "rline"
+        mata: _dash_say("err", st_local("shown") + " requires 3 variables: ", st_local("all"), "")
+    }
+    else if `: list ptype in mv_fit' {
+        mata: _dash_say("err", "too many variables specified: ", st_local("all"), "")
+    }
+    else display as error "too many variables specified"
+    exit 103
 end
 
 // ================================================================
@@ -1747,7 +2199,7 @@ end
 // _dash_report_ignored, and touches nothing else in s().
 // ================================================================
 program define _dash_fold_typed, sclass
-    version 16.0
+    version 19
     args ptype
     local named ""
     local cv_types "scatter connected rconnected dot"
@@ -1764,6 +2216,8 @@ program define _dash_fold_typed, sclass
         }
     }
     local jit_undrawn "rscatter rcapsym pcscatter pccapsym"
+    local area_types "area rarea"
+    local arrow_types "pcarrow pcbarrow pcarrowi"
     mata: st_local("_ft", strofreal(st_global("s(jitter)") != ""))
     if `: list ptype in jit_undrawn' & `_ft' {
         foreach o in jitter jitterseed jseed {
@@ -1783,8 +2237,8 @@ program define _dash_fold_typed, sclass
         mata: st_local("_ft", strofreal(strpos(" " + st_global("s(_pending)") + " ", " sort ") > 0))
         if !`_ft' local named "`named' sort"
     }
-    // pstyle() and the fitarea options acolor(), alcolor(), alwidth() and
-    // alpattern() are drawn on a ci fit -- its band in the style pstyle()
+    // The fitarea options acolor(), alcolor(), alwidth() and alpattern()
+    // are drawn on a ci fit -- its band in the style pstyle()
     // names, and in the scheme's ci style otherwise, as twoway draws it
     // (BUGS.md, S3, "A ci band is filled in its line's colour, where Stata
     // fills it in pstyle ci"; measured 24sep2026) -- so on lfitci, qfitci,
@@ -1792,12 +2246,176 @@ program define _dash_fold_typed, sclass
     // named them on.  The list holds option names only, never values.
     local ci_types "lfitci qfitci lpolyci fpfitci"
     if `: list ptype in ci_types' {
-        local ci_drawn "pstyle acolor alcolor alwidth alpattern"
+        local ci_drawn "acolor alcolor alwidth alpattern"
         mata: st_local("_ftp", st_global("s(_pending)"))
         local _ftk : list _ftp - ci_drawn
         if "`_ftk'" != "`_ftp'" sreturn local _pending `"`_ftk'"'
     }
+    // WP-30 P1.14a (P2.12): a named style's outline is not drawn on area
+    // and rarea (measured 03oct2026), so lstyle(), alstyle() and blstyle()
+    // are named there.
+    if `: list ptype in area_types' {
+        foreach o in lstyle alstyle blstyle {
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
+        }
+    }
+    // WP-30 P1.14a (P2.8): the pc arrowheads are not styled by a named
+    // style, so mstyle() and mlstyle() are named on the arrow types.
+    if `: list ptype in arrow_types' {
+        foreach o in mstyle mlstyle {
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
+        }
+    }
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
+end
+
+// ================================================================
+// _dash_hz_check <ptype> <target> <kind> <S>  -- horizontal and vertical
+// refused as twoway refuses them (WP-30 P1.9a)
+//
+// Called by _dash_process_segment right after _dash_recast_opt, so ptype
+// is the type drawn (a base, range, pc or time-series layer's recast
+// target) and target the canonical recast() target of a derived layer
+// (kind "derived").  Measured on StataNow 19.5
+// (test/fixtures/horizontal_truth.json, scripts/extract_horizontal_truth.do):
+//   * horizontal is taken by the 24 types of _hz_htypes, vertical by the
+//     22 of _hz_vtypes; any other type refuses the flag, "option
+//     horizontal not allowed", r(198);
+//   * a derived type (_hz_derived) is refused only when it and its recast
+//     target both refuse the flag;
+//   * a refusing type names the first refused flag in the order typed,
+//     as typed (Mata _dash_hz_order; "option vert not allowed"); then the
+//     two together are "may not combine
+//     options horizontal and vertical", r(198).
+// The lists equal dash_render.py's _DASH_HORIZONTAL_TYPES,
+// _DASH_VERTICAL_TYPES and _DASH_DERIVED_ORIENT_TYPES (test_horizontal.py).
+// S names a string scalar holding the plot's option text, read by value;
+// messages are constant text.  sclass:
+// it reads s(horizontal) and s(vertical) and changes nothing in s().
+// ================================================================
+program define _dash_hz_check, sclass
+    version 19
+    args ptype target kind S
+    local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline
+    local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline
+    local _hz_derived lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mband mspline kdensity function histogram
+    if `"`s(horizontal)'`s(vertical)'"' == "" exit
+    mata: st_local("_hz_order", _dash_hz_order(st_strscalar("`S'")))
+    if "`_hz_order'" == "" {
+        if `"`s(horizontal)'"' != "" local _hz_order horizontal
+        if `"`s(vertical)'"' != "" local _hz_order `_hz_order' vertical
+    }
+    foreach w of local _hz_order {
+        local f vertical
+        if substr("horizontal", 1, strlen("`w'")) == "`w'" local f horizontal
+        if `"`s(`f')'"' == "" continue
+        local _hz_ok 0
+        if "`f'" == "horizontal" {
+            if `: list ptype in _hz_htypes' local _hz_ok 1
+            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_htypes' local _hz_ok 1
+        }
+        else {
+            if `: list ptype in _hz_vtypes' local _hz_ok 1
+            if "`kind'" == "derived" & `: list ptype in _hz_derived' & `: list target in _hz_vtypes' local _hz_ok 1
+        }
+        if !`_hz_ok' {
+            display as error "option `w' not allowed"
+            exit 198
+        }
+    }
+    if `"`s(horizontal)'"' != "" & `"`s(vertical)'"' != "" {
+        display as error "may not combine options horizontal and vertical"
+        exit 198
+    }
+end
+
+// _dash_stylelist_check ptype nser -- a stylelist held to twoway's rules
+// before any options object is written (WP-30 P1.1a).  First a .. or ...
+// that is not the last element is refused in twoway's words,
+// "mcolor(red .. blue):  invalid syntax", r(198), the value echoed as
+// stored.  Then a quoted blank element a y uses, mcolor(" " blue), is
+// refused in dash's own words (Q-11.1, ratified 06oct2026); twoway
+// refuses it too, naming an internal class path.  Then each element a y
+// uses is held to the option's rule as a single value is; an element
+// past the last y is not checked, as twoway does not check it.  nser is
+// the number of y (1 on a single-y type).  Values are read by value.
+program define _dash_stylelist_check
+    version 19
+    args ptype nser
+    mata: st_local("_sl_keys", _dash_stylelist_keys())
+    // A value twoway's string cannot bind is refused first, as
+    // _dash_refuse_unbound refuses it on the other options: these keys are
+    // string asis, which binds msize(x"' _dup(3) "INJ" `") where twoway
+    // refuses it, "type mismatch", r(109) (test_adversarial P20-18b).  Only
+    // a value holding a double quote can fail to bind.  Read by value; the
+    // value reaches the probe's command line only through macval().
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_v", st_global("s(" + st_local("key") + ")"))
+        mata: st_local("_sl_q", strofreal(strpos(st_local("_sl_v"), char(34)) > 0))
+        if !`_sl_q' continue
+        capture _dash_stylelist_bind , v(`macval(_sl_v)')
+        if !_rc continue
+        if _rc == 1 exit 1
+        mata: st_local("_sl_rc", strpos(st_local("_sl_v"), char(34) + char(39)) ? "109" : "198")
+        local why = cond(`_sl_rc' == 109, "type mismatch", "parentheses do not balance")
+        mata: _dash_say("err", "dash: option ", st_local("key"), ///
+            "() has a value Stata cannot read, as twoway reads it: " + st_local("why") + ".")
+        exit `_sl_rc'
+    }
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_bad", strofreal(_dash_stylelist_bad(st_global("s(" + st_local("key") + ")"))))
+        if `_sl_bad' {
+            mata: _dash_say("err", st_local("key") + "(", st_global("s(" + st_local("key") + ")"), "):  invalid syntax")
+            exit 198
+        }
+    }
+    foreach key of local _sl_keys {
+        mata: st_local("_sl_j", strofreal(_dash_stylelist_blank(st_global("s(" + st_local("key") + ")"), `nser')))
+        if `_sl_j' {
+            mata: _dash_say("err", "dash: " + st_local("key") + "() element " + st_local("_sl_j") + " is blank; use . for the default (got: ", st_global("s(" + st_local("key") + ")"), ")")
+            exit 198
+        }
+    }
+    _dash_option_rules
+    local typed ""
+    foreach tok of local _dash_rules_plot {
+        local at = strpos("`tok'", "@")
+        if `at' {
+            local types = substr("`tok'", `at' + 1, .)
+            local types : subinstr local types "|" " ", all
+            local o = substr("`tok'", 1, strpos("`tok'", "=") - 1)
+            if `: list ptype in types' local typed "`typed' `o'"
+        }
+    }
+    foreach tok of local _dash_rules_plot {
+        local body "`tok'"
+        local at = strpos("`tok'", "@")
+        if `at' {
+            local body  = substr("`tok'", 1, `at' - 1)
+            local types = substr("`tok'", `at' + 1, .)
+            local types : subinstr local types "|" " ", all
+            if !`: list ptype in types' continue
+        }
+        local eq   = strpos("`body'", "=")
+        local o    = substr("`body'", 1, `eq' - 1)
+        local spec = substr("`body'", `eq' + 1, .)
+        if !`at' & `: list o in typed' continue
+        if !`: list o in _sl_keys' continue
+        forvalues i = 1/`nser' {
+            mata: st_local("e", _dash_stylelist_pick(st_global("s(" + st_local("o") + ")"), `i'))
+            if !`: length local e' continue
+            _dash_validate_value "dash" "`o'" "`spec'" `"`macval(e)'"' "`ptype'"
+        }
+    }
+end
+
+// _dash_stylelist_bind , v(<value>) -- rc 0 when -syntax-'s string binds
+// <value>, as twoway's declaration of a style option binds it.
+program define _dash_stylelist_bind
+    version 19
+    syntax , V(string)
 end
 
 // ================================================================
@@ -1812,7 +2430,7 @@ end
 // with the value by value; prints twoway's line itself.
 // ================================================================
 program define _dash_sort_names
-    version 16.0
+    version 19
     syntax [, SORT1(namelist)]
 end
 
@@ -1841,7 +2459,7 @@ end
 // s(sortvars) and s(_pending) and touches nothing else in s().
 // ================================================================
 program define _dash_sort_opt, sclass
-    version 16.0
+    version 19
     args ptype
     mata: st_local("_so_e", strofreal(strtrim(st_global("s(sort1)")) == ""))
     if `_so_e' exit
@@ -1896,6 +2514,326 @@ program define _dash_sort_opt, sclass
 end
 
 // ================================================================
+// _dash_recast_opt <ptype>  -- recast(), recastas() and type() as twoway
+// reads them (WP-30 P1.8b)
+//
+// Called by _dash_process_segment right after _dash_opts_repeats (which
+// kept the rightmost copy of each) and before _dash_connect_opt, as
+// twoway sets the view type before its connect override
+// (twoway_yxview_parse.class:320-324, :1080).  Measured on StataNow 19.5
+// (test/fixtures/recast_truth.json, scripts/extract_recast_truth.do):
+//   * recast() and recastas() (one option, minimum recast) beat type()
+//     in either order; rec(), reca() and recas() are "option rec() not
+//     allowed", r(198), naming the spelling typed;
+//   * lfitci, qfitci, lpolyci and fpfitci refuse them: "recastas() option
+//     not allowed" or "type() option not allowed", r(198);
+//   * dot ignores them in silence;
+//   * the value is one name for every y; one distinct word repeated is
+//     that word, any other multi-word value an unknown name;
+//   * the name is read by the source's class (Stata's style/
+//     *type-*.style): yxtype, y2xtype (the yx eight and the range types),
+//     yxyxtype (the pc types) and functiontype (the yx eight and
+//     function), each with twoway's spellings, case-sensitive; a name not
+//     in the class prints twoway's two notes and falls back -- yxtype to
+//     scatter, y2xtype to rspike, yxyxtype to pcspike, functiontype to
+//     function's own line.
+// Returns s(_recast_type) (the type drawn: the target for a base, range,
+// pc or time-series source, the typed type for a derived one),
+// s(_recast_target) (the canonical target, empty when there is none) and
+// s(_recast_kind): base, range2yx (a range source drawn as a yx type: its
+// first bound), ts, derived or empty.  pci and pcarrowi, and a range
+// target or the fallback on histogram, are named (s(_pending)) and drawn
+// as typed.  The value is read by value; echoes go through _dash_say and
+// _dash_note.
+// ================================================================
+program define _dash_recast_opt, sclass
+    version 19
+    args ptype
+    sreturn local _recast_type "`ptype'"
+    sreturn local _recast_target ""
+    sreturn local _recast_kind ""
+    sreturn local _recast_ts ""
+    mata: st_local("_rc_bad", ustrregexm(" " + st_global("s(_unknown)"), "[ ,](rec|reca|recas)\(") ? ustrregexs(1) : "")
+    if "`_rc_bad'" != "" {
+        mata: _dash_say("err", "option ", st_local("_rc_bad"), "() not allowed")
+        exit 198
+    }
+    mata: st_local("_rc_r", strtrim(st_global("s(recast)")))
+    mata: st_local("_rc_t", strtrim(st_global("s(type)")))
+    local _rc_word "recast"
+    if `: length local _rc_r' == 0 {
+        local _rc_r : copy local _rc_t
+        local _rc_word "type"
+    }
+    sreturn local recast ""
+    sreturn local type ""
+    if `: length local _rc_r' == 0 exit
+    local _rc_ci "lfitci qfitci lpolyci fpfitci"
+    if `: list ptype in _rc_ci' {
+        if "`_rc_word'" == "recast" display as error "recastas() option not allowed"
+        else display as error "type() option not allowed"
+        exit 198
+    }
+    if "`ptype'" == "dot" exit
+    local _rc_lit "pci pcarrowi"
+    if `: list ptype in _rc_lit' {
+        _dash_recast_named `_rc_word'
+        exit
+    }
+    // One value for every y: one distinct word, else an unknown name.
+    mata: st_local("_rc_v", length(uniqrows(tokens(st_local("_rc_r"))')) == 1 ? tokens(st_local("_rc_r"))[1] : st_local("_rc_r"))
+    local _yx      "scatter line connected area bar spike dropline dot"
+    local _rng     "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
+    local _pc      "pcspike pccapsym pcarrow pcbarrow pcscatter"
+    local _derived "lfit qfit lowess lpoly fpfit mspline mband kdensity function histogram scatteri"
+    if `: list ptype in _pc' local _rc_class yxyxtype
+    else if "`ptype'" == "function" local _rc_class functiontype
+    else if `: list ptype in _rng' | "`ptype'" == "histogram" local _rc_class y2xtype
+    else local _rc_class yxtype
+    // name:minimum length, by class (twoway's spellings, measured).
+    local _sp_yx "scatter:2 line:2 connected:2 bar:1 area:4 spike:5 dropline:8 dot:3"
+    local _sp_rng "rscatter:3 rline:3 rconnected:3 rarea:5 rbar:4 rcap:4 rcapsym:7 rspike:6"
+    local _sp_pc "pcarrow:4 pcbarrow:5 pcline:3 pcspike:4 pccapsym:6 pcscatter:4"
+    if "`_rc_class'" == "yxyxtype" local _sp "`_sp_pc'"
+    else if "`_rc_class'" == "y2xtype" local _sp "`_sp_yx' `_sp_rng'"
+    else if "`_rc_class'" == "functiontype" local _sp "`_sp_yx' function:8"
+    else local _sp "`_sp_yx'"
+    local _rc_name ""
+    mata: st_local("_rb", strofreal(st_local("_rc_v") == "rbarm"))
+    if `_rb' & "`_rc_class'" == "y2xtype" local _rc_name rbar
+    foreach _e of local _sp {
+        if "`_rc_name'" != "" continue, break
+        gettoken _n _m : _e, parse(":")
+        local _m = substr("`_m'", 2, .)
+        mata: st_local("_hit", strofreal(strlen(st_local("_rc_v")) >= `_m' & st_local("_rc_v") == substr("`_n'", 1, strlen(st_local("_rc_v")))))
+        if `_hit' local _rc_name "`_n'"
+    }
+    // pcline is a name of the class's spellings that is not in the class.
+    if "`_rc_name'" == "pcline" {
+        local _rc_v pcline
+        local _rc_name ""
+    }
+    if "`_rc_name'" == "" {
+        if "`ptype'" == "histogram" {
+            _dash_recast_named `_rc_word'
+            exit
+        }
+        mata: _dash_note("named style ", st_local("_rc_v"), " not found in class `_rc_class', default attributes used")
+        mata: _dash_note("`_rc_class' not found in scheme, default attributes used", "", "")
+        if "`_rc_class'" == "yxtype" local _rc_name scatter
+        else if "`_rc_class'" == "y2xtype" local _rc_name rspike
+        else if "`_rc_class'" == "yxyxtype" local _rc_name pcspike
+        else exit
+    }
+    if `: list ptype in _derived' {
+        if "`_rc_name'" == "function" exit
+        if !`: list _rc_name in _yx' {
+            // histogram drawn as a range type (P2.44).
+            _dash_recast_named `_rc_word'
+            exit
+        }
+        sreturn local _recast_target "`_rc_name'"
+        sreturn local _recast_kind derived
+        exit
+    }
+    if "`_rc_name'" == "`ptype'" exit
+    sreturn local _recast_target "`_rc_name'"
+    sreturn local _recast_type "`_rc_name'"
+    local _ts "tsline tsrline"
+    if `: list ptype in _ts' {
+        sreturn local _recast_kind ts
+    }
+    else sreturn local _recast_kind base
+    if `: list ptype in _rng' & `: list _rc_name in _yx' {
+        sreturn local _recast_kind range2yx
+        if "`ptype'" == "tsrline" sreturn local _recast_ts 1
+    }
+end
+
+// _dash_recast_s <key> <value>: sets s(<key>) for _dash_process_segment,
+// an rclass program (WP-30 P1.8b).  <key> is recast or sort1, <value> a
+// type or variable name dash wrote, never the user's text.
+program define _dash_recast_s, sclass
+    version 19
+    args key value
+    sreturn local `key' "`value'"
+end
+
+// _dash_recast_named <word>: recast() (or type()) named as an option dash
+// does not draw on this plot (WP-30 P1.8b): pci, pcarrowi, and histogram
+// drawn as a range type.
+program define _dash_recast_named, sclass
+    version 19
+    args word
+    mata: st_local("_rn_p", st_global("s(_pending)"))
+    sreturn local _pending `"`_rn_p' `word'"'
+end
+
+// ================================================================
+// _dash_connect_opt <ptype> <nser>  -- connect() and cmissing() as twoway
+// reads them (WP-30 P1.8a)
+//
+// Called by _dash_process_segment right after _dash_opts_repeats, which
+// has kept the rightmost copy of each (cmissings() is a copy of
+// cmissing()).  Measured on StataNow 19.5 (test/fixtures/
+// connect_truth.json, scripts/extract_connect_truth.do):
+//   * a .. or ... that is not the last element is refused,
+//     "connect(l .. J):  invalid syntax", "cmissings(n .. y):  invalid
+//     syntax", r(198) (probes R-01, R-02);
+//   * each element the y use is read by twoway's connectstyle and yesno
+//     names (_dash_connect_canon; S block); an element past the last y is
+//     not read (R_EXTRA);
+//   * an unknown connect() name prints "(note:  named style <e> not found
+//     in class connectstyle, default attributes used)" once per y and
+//     draws direct (P07, C_BOGUS2);
+//   * an unknown cmissing() element prints two notes, then on the types
+//     that draw a connecting line (cm_refuse, matrix cmissing(x) rc 101)
+//     " not allowed", r(101), and elsewhere draws the default.
+// It writes s(connect) and s(cmissing) back as blank-separated canonical
+// lists ("." for an empty element), so the per-y writer gives each y its
+// own value; on scatter s(_cn_types) holds connected for a y given a
+// connect() element, else scatter, and s(_cn_any) 1 when any is.  It takes
+// connect and cmissing off s(_pending) except where dash does not draw
+// them: connect() other than direct on rarea, cmissing(n) on area, rarea
+// and the fits whose own missing points twoway breaks at (cm_named, the
+// matrix's cmissing(n) rows that differ from the plain fit) -- named in
+// the note (P2.42, P2.43).  Values are read by value; echoes go through
+// _dash_say and _dash_note.
+// ================================================================
+program define _dash_connect_opt, sclass
+    version 19
+    args ptype nser
+    sreturn local _cn_types ""
+    sreturn local _cn_any ""
+    mata: st_local("_cn_c", st_global("s(connect)"))
+    mata: st_local("_cn_m", st_global("s(cmissing)"))
+    if !`: length local _cn_c' & !`: length local _cn_m' exit
+    local cm_refuse "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci rline rconnected tsrline"
+    local cm_named "area rarea fpfit fpfitci lfitci lowess lpoly lpolyci qfitci"
+    if "`nser'" == "" local nser 1
+    foreach kind in connect cmissing {
+        mata: st_local("_cn_bad", strofreal(_dash_stylelist_bad(st_global("s(`kind')"))))
+        if `_cn_bad' {
+            local _cn_w "`kind'"
+            if "`kind'" == "cmissing" local _cn_w "cmissings"
+            mata: _dash_say("err", "`_cn_w'(", st_global("s(`kind')"), "):  invalid syntax")
+            exit 198
+        }
+    }
+    local _cn_out ""
+    local _cn_types ""
+    local _cn_any 0
+    local _cn_nondirect 0
+    if `: length local _cn_c' {
+        forvalues i = 1/`nser' {
+            mata: st_local("e", _dash_stylelist_pick(st_global("s(connect)"), `i'))
+            mata: st_local("v", _dash_connect_canon("connect", st_local("e")))
+            if "`v'" == "?" {
+                mata: _dash_note("named style ", st_local("e"), " not found in class connectstyle, default attributes used")
+                local v direct
+            }
+            if "`v'" == "" {
+                local _cn_out "`_cn_out' ."
+                local _cn_types "`_cn_types' scatter"
+            }
+            else {
+                local _cn_out "`_cn_out' `v'"
+                local _cn_types "`_cn_types' connected"
+                local _cn_any 1
+                if "`v'" != "direct" local _cn_nondirect 1
+            }
+        }
+        sreturn local connect "`: list retokenize _cn_out'"
+    }
+    local _mn_out ""
+    local _cn_no 0
+    if `: length local _cn_m' {
+        forvalues i = 1/`nser' {
+            mata: st_local("e", _dash_stylelist_pick(st_global("s(cmissing)"), `i'))
+            mata: st_local("v", _dash_connect_canon("cmissing", st_local("e")))
+            if "`v'" == "?" {
+                mata: _dash_note("named style ", st_local("e"), " not found in class yesno, default attributes used")
+                mata: _dash_note("yesno not found in scheme, default attributes used", "", "")
+                if `: list ptype in cm_refuse' | ("`ptype'" == "scatter" & `_cn_any') {
+                    display as error " not allowed"
+                    exit 101
+                }
+                local v ""
+            }
+            if "`v'" == "" local v "."
+            if "`v'" == "n" local _cn_no 1
+            local _mn_out "`_mn_out' `v'"
+        }
+        sreturn local cmissing "`: list retokenize _mn_out'"
+    }
+    if "`ptype'" == "scatter" {
+        sreturn local _cn_types "`: list retokenize _cn_types'"
+        sreturn local _cn_any "`_cn_any'"
+    }
+    mata: st_local("_cn_p", st_global("s(_pending)"))
+    local _cn_rm ""
+    if !("`ptype'" == "rarea" & `_cn_nondirect') local _cn_rm "connect"
+    if !(`_cn_no' & `: list ptype in cm_named') local _cn_rm "`_cn_rm' cmissing"
+    local _cn_k : list _cn_p - _cn_rm
+    sreturn local _pending `"`_cn_k'"'
+end
+
+// ================================================================
+// _dash_subopt_check kind -- twoway's refusals of the sub-options of
+// legend() (kind legend), zlabel() (zlabel) and the titles (title), WP-30
+// P1.19.  Mata's _dash_subreq_check reads the recorded options with
+// twoway's own tables and refuses what twoway refuses, r(198), in its
+// words; a cols()/rows()/holes() value it hands back (-1) is put to
+// -numlist- as twoway's ParseLogOpts declares it -- integer >0, one
+// number (or at most 300 for holes()) -- and a failure is refused with
+// twoway's return code and words, "cols() invalid -- invalid number".  A
+// value holding a backtick, $, a quote, a backslash or a control byte is
+// never put to -numlist- (r(121)).  Each pass accepts one value, so the
+// loop ends.  Messages go through _dash_say, never through a macro.
+// ================================================================
+program define _dash_subopt_check
+    version 19
+    args kind
+    local _so_rc -1
+    while `_so_rc' == -1 {
+        mata: st_local("_so_rc", strofreal(_dash_subreq_check(st_local("kind"))))
+        if `_so_rc' != -1 continue, break
+        mata: st_local("_so_bad", strofreal(_dash_so_unsafe(st_local("_so_value"))))
+        local _nlrc 121
+        if !`_so_bad' {
+            if "`_so_kind'" == "N1" {
+                capture numlist `"`macval(_so_value)'"', integer range(>0) min(0) max(1)
+            }
+            else {
+                capture numlist `"`macval(_so_value)'"', integer range(>0) max(300)
+            }
+            local _nlrc = _rc
+        }
+        if `_nlrc' {
+            local _t "invalid numlist"
+            if "`_so_kind'" == "N1" {
+                if `_nlrc' == 121 local _t "invalid number"
+                if `_nlrc' == 123 local _t "single number required"
+                if `_nlrc' == 125 local _t "invalid number, outside of allowed range"
+                if `_nlrc' == 126 local _t "invalid number, noninteger value"
+                if `_nlrc' == 127 local _t "invalid number, missing not allowed"
+            }
+            else {
+                if `_nlrc' == 123 local _t "invalid numlist has too many elements"
+                if `_nlrc' == 125 local _t "invalid numlist has elements outside of allowed range"
+                if `_nlrc' == 126 local _t "invalid numlist has noninteger elements"
+                if `_nlrc' == 127 local _t "invalid numlist has missing values"
+            }
+            mata: _dash_say("err", st_local("_so_name"), "", "() invalid -- " + st_local("_t"))
+            mata: _dash_axreq_clear()
+            exit `_nlrc'
+        }
+        mata: _dash_subreq_accept()
+    }
+    if `_so_rc' exit `_so_rc'
+end
+
+// ================================================================
 // _dash_check_legend  -- legend(top), legend(bottom), legend(left) and
 //                        legend(right), refused as twoway refuses them.
 //
@@ -1920,7 +2858,7 @@ end
 // Not sclass: it is called from _dash_validate_opts and must not touch s().
 // ================================================================
 program define _dash_check_legend
-    version 16.0
+    version 19
     // The argument is read by value (_dash_text_args), and neither the text
     // nor a token is put inside quotes in a test: -args- and the tests cut
     // legend(label(1 "'90s") top) at its "', and the top beside it, which
@@ -1953,23 +2891,38 @@ end
 // ================================================================
 // The one list of what dash can draw by name.
 //
-// `_dash_schemes' are the twenty scheme translations the package ships as
+// `_dash_schemes' are the twenty-six scheme translations the package ships as
 // dash-<name>.scheme -- dash_render.py's SchemeParser._BUILTIN_NAMES is the same
 // list, and test/test_scheme_resolution.py holds the two together --
 // and `_dash_themes' are the theme() aliases the renderer maps onto them.
 // _dash_validate_value reads both for the `scheme' kind and
-// _dash_prepare_spec for theme(), so a name is accepted or refused by
-// this list and nowhere else.  Third-party schemes installed in PLUS/s
-// are deliberately not on it and not looked for (WP-05: the letter
-// directories are shared); the help says to copy such a file into the
-// working directory.
+// _dash_prepare_spec for theme().  Any other scheme -- PLUS/s, PERSONAL,
+// SITE, the working directory, a directory added with adopath -- is not
+// listed here: it is found along the ado-path as Stata finds it (WP-30
+// P1.25b; _dash_scheme_dirs below).
 // ================================================================
 program define _dash_shipped_schemes
-    version 16.0
-    c_local _dash_schemes "economist s1color s1manual s1mono s1rcolor s2color s2color8 s2gcolor s2gmanual s2manual s2mono sj stcolor stcolor_alt stgcolor stgcolor_alt stmono1 stmono2 stsj sttrans"
+    version 19
+    c_local _dash_schemes "economist s1color s1manual s1mono s1rcolor s2color s2color8 s2gcolor s2gmanual s2manual s2mono sj stcolor stcolor_alt stgcolor stgcolor_alt stmono1 stmono2 stsj sttrans meta stcolor_meta stcolor_mv stcoloralias stgcolor_meta stgcolor_mv"
     c_local _dash_themes  "default clean mono dark economist sj"
 end
 // END shipped schemes (WP-17)
+
+// ----------------------------------------------------------------
+// _dash_scheme_dirs -- the ado-path a scheme dash does not ship is looked
+// for along (WP-30 P1.25b, M7).  Stata's setscheme runs findfile
+// scheme-NAME.scheme and then findfile NAME.scheme (BASE/s/scheme.class:
+// 172-173); Mata's _dash_scheme_dirs_json() writes the directories findfile
+// walks as a JSON array into the caller's _dash_sdirs, for the spec's
+// build_options.scheme_dirs.  The text is passed by value and expanded
+// only through macval(), so no directory name is expanded again as a
+// macro.
+// ----------------------------------------------------------------
+program define _dash_scheme_dirs
+    version 19
+    mata: st_local("j", _dash_scheme_dirs_json())
+    c_local _dash_sdirs `"`macval(j)'"'
+end
 
 // BEGIN option-validation table (WP-15)
 // ================================================================
@@ -1979,8 +2932,9 @@ end
 // non-number where a number-only option got a word twoway would silently
 // ignore, and -- like twoway's own "(note: named style X not found in
 // class Y, default attributes used)" -- reports and falls back on the
-// scheme where a STYLE NAME (colour, symbol, size, line width, pattern,
-// angle, clock position, intensity) is unknown.  Every bound below was
+// scheme where a STYLE NAME (symbol, size, line width, pattern, angle,
+// clock position, intensity) is unknown; an unknown colour is drawn black
+// with the note, as twoway draws it (WP-30 P1.13a).  Every bound below was
 // measured against twoway (22sep2026, StataNow 19.5).  Five bounds are
 // dash's own rather than twoway's AND say so in a second sentence of the
 // refusal: yaxis/xaxis 1..2, degree 0..3, bin 1..1000, n 2..10000 (mspline's
@@ -1997,7 +2951,8 @@ end
 // p1/p2 bounds; pos: a number > 0, p1 an inclusive ceiling; style: a name
 // passes untouched, a number must lie in [p1,p2] where bounds are given
 // (mlabposition and fintensity have none: twoway accepts 13, 2.5, 150 and
-// -5 with a note or silently, and the renderer notes and defaults), and a
+// -5 with a note or silently, and the renderer notes 13 and draws 150 and
+// -5 as twoway draws them), and a
 // token that looks numeric but overflows real() (1e400) is refused, not
 // passed as a name; istyle: a name, or an integer in [p1,p2] (no token
 // uses it today); enum: one of the |-separated words, case-insensitive,
@@ -2009,11 +2964,13 @@ end
 // refused, since dash cannot draw one; varlist: one or more, likewise;
 // byvarlist: the text before the first top-level comma is a varlist, the
 // rest is kept verbatim; format: a numeric display format (the gate is
-// spelled out in _dash_validate_value); scheme (WP-17): a shipped scheme
-// or theme name from _dash_shipped_schemes, case-insensitive (a shipped
-// name may carry the .scheme extension), or a .scheme
-// file in the working directory named bare or with the extension -- no
-// `/', `\' or `..' -- passed through as written.  A number that passes a num, int
+// spelled out in _dash_validate_value); scheme (WP-17, WP-30 P1.25b): a
+// shipped scheme or theme name from _dash_shipped_schemes,
+// case-insensitive (a shipped name may carry the .scheme extension), or a
+// scheme Stata finds along the ado-path, scheme-NAME.scheme or
+// NAME.scheme -- named, never a path: no blank, control character, `/',
+// `\', `:', `..', quote, backtick or dollar sign -- passed through as
+// written.  A number that passes a num, int
 // or pos rule reaches the renderer in one canonical spelling: an int as
 // %21.0f (2.0, 02, +2 and 1E3 -> 2, 2, 2, 1000); a num or pos as written
 // when it is a plain decimal or e-notation Python parses, else as %21.0g
@@ -2021,13 +2978,18 @@ end
 //
 // test/test_option_validation.py reads this table out of dash.ado and
 // test/test_option_validation.cscript exercises every token against Stata.
+// `,u' reads the value in Stata's line-width units (WP-30 P1.12b).
+// colour (WP-30 P1.13a): the kind refuses only a comma-written colour,
+// as twoway does (invalid '<word>', r(198)); everything else in a colour
+// is the renderer's, which draws an unknown colour black with the note,
+// as twoway draws it.
 // ================================================================
 program define _dash_option_rules
-    version 16.0
+    version 19
     // Plot rules: validated once per segment, after _dash_fold_bw, from s().
     local plot ///
         msize=style  mlabsize=style  mlabgap=style ///
-        lwidth=style,0,10000  mlwidth=style,0,10000 ///
+        lwidth=style,0,10000,u  mlwidth=style,0,10000,u ///
         msangle=style,-360,360  mlabposition=style  fintensity=style ///
         jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
         yaxis=int,1,2  xaxis=int,1,2 ///
@@ -2040,9 +3002,10 @@ program define _dash_option_rules
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
-        clwidth=style,0,10000 ///
-        alwidth=style,0,10000@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
-        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri
+        clwidth=style,0,10000,u ///
+        alwidth=style,0,10000,u@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
+        mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri ///
+        mcolor=colour mfcolor=colour mlcolor=colour mlabcolor=colour lcolor=colour fcolor=colour color=colour acolor=colour alcolor=colour bfcolor=colour blcolor=colour clcolor=colour
     // alwidth(), the outline of a ci fit's band, has them too: measured
     // 24sep2026, `twoway lfitci mpg weight, alwidth(-1)' and alwidth(20000)
     // are "gm_linewidth must be between 0.000 and 1.0e+04", r(198), and
@@ -2086,7 +3049,8 @@ program define _dash_option_rules
         xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
         xtick=axislist  ytick=axislist  xtick2=axislist  ytick2=axislist ///
         xmtick=axislist  ymtick=axislist ///
-        xmlabel=axislist  ymlabel=axislist
+        xmlabel=axislist  ymlabel=axislist ///
+        zlabel=keyformat
     // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
     // written on a type outside its list is refused as twoway refuses it,
     // r(198) "option <flag> not allowed" (measured 23sep2026: scatter
@@ -2100,9 +3064,18 @@ program define _dash_option_rules
     local flags ///
         discrete@histogram  stdp|stdf|stdr@lfitci|qfitci|fpfitci ///
         mean|noweight|adjust|logit@lowess
+    // Value lists (WP-30 P1.1b): plot rules twoway reads one element per
+    // y of an expanded varlist, checked by _dash_value_list element by
+    // element, after the shorthands resolve.
+    local values "mlabel jitter base barwidth"
+    // Where twoway takes one value and refuses a list, "option barwidth()
+    // not allowed", r(198) (measured 03oct2026): option@type|type.
+    local onevalue "barwidth@rbar|histogram|rcap|rspike  base@rbar|histogram"
     c_local _dash_rules_plot  `"`plot'"'
     c_local _dash_rules_graph `"`graph'"'
     c_local _dash_rules_flags `"`flags'"'
+    c_local _dash_rules_values "`values'"
+    c_local _dash_rules_onevalue "`onevalue'"
 end
 
 // ----------------------------------------------------------------
@@ -2123,7 +3096,7 @@ end
 // options {}).
 // ----------------------------------------------------------------
 program define _dash_validate_value, rclass
-    version 16.0
+    version 19
     // The arguments are read by value (_dash_text_args): prefix, opt, spec
     // and ptype are dash's own words and the value the user's text, which
     // -args- cut at a "' in it -- by(foreign, title(`"'90s bc"')) stopped
@@ -2258,6 +3231,33 @@ program define _dash_validate_value, rclass
             else       local norm = strtrim(string(`R', "%21.0g"))
         }
     }
+    else if "`kind'" == "colour" {
+        // WP-30 P1.13a: twoway refuses a comma-written plot colour,
+        // mcolor("255,0,128"), with invalid '<word>', r(198): the first
+        // word after the first comma, words split at blanks and commas,
+        // unless the text after that comma starts with one (mcolor("1,,2")
+        // draws); `editcopy' when there is no word.  One enclosing pair of
+        // double quotes is stripped; a value holding any other " is left
+        // alone (twoway accepts mcolor("red",blue)).  Everything else in a
+        // colour is the renderer's to read.
+        tempname W
+        scalar `W' = scalar(`T')
+        if ustrlen(scalar(`W')) >= 2 & usubstr(scalar(`W'), 1, 1) == char(34) & usubstr(scalar(`W'), -1, 1) == char(34) {
+            scalar `W' = usubstr(scalar(`W'), 2, ustrlen(scalar(`W')) - 2)
+        }
+        local _cg_p = ustrpos(scalar(`W'), ",")
+        if `_cg_p' > 0 & ustrpos(scalar(`W'), char(34)) == 0 {
+            scalar `W' = usubstr(scalar(`W'), `_cg_p' + 1, .)
+            if usubstr(scalar(`W'), 1, 1) != "," {
+                scalar `W' = ustrtrim(usubinstr(scalar(`W'), ",", " ", .))
+                scalar `W' = usubstr(word(scalar(`W'), 1), 1, 80)
+                if scalar(`W') == "" scalar `W' = "editcopy"
+                mata: _dash_say("err", "invalid '", st_strscalar(st_local("W")), "' ")
+                exit 198
+            }
+        }
+        local bad ""
+    }
     else if "`kind'" == "style" {
         // A name is a style name and passes untouched: the renderer falls
         // back on the scheme, with a note, if it turns out to be unknown.
@@ -2265,7 +3265,39 @@ program define _dash_validate_value, rclass
         // A token made of digits and exponent letters whose real() is
         // missing (1e400, 1e308) is an overflow, not a name: refused, as
         // twoway's "invalid syntax", so the renderer never sees inf.
-        if "`p1'" != "" & "`p2'" != "" {
+        if "`p3'" == "u" & "`p1'" != "" & "`p2'" != "" {
+            // A line width (WP-30 P1.12b, M5).  twoway (measured
+            // 03oct2026) refuses a negative number, *# or #pt/#in/#cm/#rs
+            // and an rs value above 10000 with r(198) and its gm_linewidth
+            // line; a #pt/#in/#cm or *# that passes 10000 units only once
+            // the scheme and graph size are known is the renderer's to
+            // note (D-13b).  An overflow (*1e400) passes as a name, as
+            // twoway reads it.
+            local lwout 0
+            tempname LW
+            if regexm(scalar(`T'), "^\*([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?)$") {
+                scalar `LW' = real(regexs(1))
+                if scalar(`LW') < . & scalar(`LW') < 0 local lwout 1
+            }
+            else if regexm(scalar(`T'), "^([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?) *(pt|in|cm|rs)$") {
+                local lwunit = regexs(4)
+                scalar `LW' = real(regexs(1))
+                if scalar(`LW') < . {
+                    if scalar(`LW') < 0 local lwout 1
+                    else if "`lwunit'" == "rs" & scalar(`LW') > `p2' local lwout 1
+                }
+            }
+            else if `isnum' {
+                if `R' < `p1' | `R' > `p2' local lwout 1
+            }
+            else if `numlike' local bad "a name or a number between `p1' and `p2'"
+            if `lwout' {
+                mata: _dash_say("err", "gm_linewidth must be between 0.000 and  1.0e+04", "", "")
+                mata: _dash_say("err", "`prefix': `opt'() must be a line width from 0 to 10000 Stata units (got: ", st_local("value"), ")")
+                exit 198
+            }
+        }
+        else if "`p1'" != "" & "`p2'" != "" {
             if `isnum' {
                 if `R' < `p1' | `R' > `p2' local bad "a name or a number between `p1' and `p2'"
             }
@@ -2330,6 +3362,48 @@ program define _dash_validate_value, rclass
         // renderer names or bounds it.
         _dash_axis_expand `"`macval(value)'"'
         mata: st_local("norm", st_global("r(norm)"))
+        // A format() word twoway refuses is refused in its words (WP-30
+        // P1.5, M5; measured 03oct2026: xlabel(, format(bogus)) and every
+        // axis-label option, r(198) "invalid format, <the argument>").
+        // A word reaches confirm format only after Mata's gate.
+        mata: _dash_axis_fmts(st_local("value"))
+        forvalues _i = 1/`_af_n' {
+            local _af_bad = !`_af_ok`_i''
+            forvalues _j = 1/`_af_nw`_i'' {
+                if `_af_bad' continue, break
+                capture confirm format `_af_w`_i'_`_j''
+                if _rc local _af_bad 1
+            }
+            if `_af_bad' {
+                mata: _dash_say("err", "invalid format, ", _dash_imm_echo(st_local("_af_raw`_i'")), "")
+                exit 198
+            }
+        }
+    }
+    else if "`kind'" == "keyformat" {
+        // zlabel() (WP-30 P1.5, S17's P1.23b): the value goes on as
+        // written; only its format() is judged, as the axis-label options'
+        // is.  Measured (section 17 E2): zlabel(, format(bogus|%9.2x|
+        // %tdbogus)) r(198) "invalid format, <f>"; %12s, %21x, "%9.2f"
+        // and format() are accepted.
+        local norm `"`macval(value)'"'
+        // A format() word twoway refuses is refused in its words (WP-30
+        // P1.5, M5; measured 03oct2026: xlabel(, format(bogus)) and every
+        // axis-label option, r(198) "invalid format, <the argument>").
+        // A word reaches confirm format only after Mata's gate.
+        mata: _dash_axis_fmts(st_local("value"))
+        forvalues _i = 1/`_af_n' {
+            local _af_bad = !`_af_ok`_i''
+            forvalues _j = 1/`_af_nw`_i'' {
+                if `_af_bad' continue, break
+                capture confirm format `_af_w`_i'_`_j''
+                if _rc local _af_bad 1
+            }
+            if `_af_bad' {
+                mata: _dash_say("err", "invalid format, ", _dash_imm_echo(st_local("_af_raw`_i'")), "")
+                exit 198
+            }
+        }
     }
     else if inlist("`kind'", "var", "varlist", "byvarlist") {
         local head `"`macval(value)'"'
@@ -2411,6 +3485,13 @@ program define _dash_validate_value, rclass
             mata: _dash_say("err", "`prefix': `opt'() must name one variable (got: ", st_local("value"), ")")
             exit 198
         }
+        // by()'s sub-options, refused in twoway's stages, codes and words
+        // (WP-30 P1.15b); the tail is read by value from a string scalar.
+        if `hastail' {
+            tempname B
+            mata: st_strscalar(st_local("B"), st_local("tail"))
+            _dash_by_check `B'
+        }
         local norm `"`vv'"'
         // A block, not a one-line if, whose command Stata expands again,
         // macval() or not: by(foreign, title("b\$G \`=exp'")) was stored
@@ -2421,31 +3502,29 @@ program define _dash_validate_value, rclass
         }
     }
     else if "`kind'" == "scheme" {
-        // WP-17: a shipped translation or a theme alias, by name and
-        // case-insensitively (a shipped name with or without the .scheme
-        // extension), or a .scheme file in the working directory
-        // named bare (mytheme) or with the extension (mytheme.scheme) --
-        // the lookup dash_render.py's SchemeParser makes, so a name that
-        // passes here resolves there.  A name carrying a path separator
-        // or `..' is refused before any file is looked for; the renderer's
-        // containment stays the second line of defence.  The value goes
-        // through as written: the renderer lower-cases shipped names
-        // itself, and a file name is the user's own.  Nothing outside the
-        // working directory is looked for (third-party schemes in PLUS/s
-        // included: WP-05, the letter directories are shared).
+        // WP-17, WP-30 P1.25b: a shipped translation or a theme alias, by
+        // name and case-insensitively (a shipped name with or without the
+        // .scheme extension), or a scheme Stata finds as twoway finds it:
+        // findfile scheme-NAME.scheme, then findfile NAME.scheme, along the
+        // ado-path (BASE/s/scheme.class:172-173) -- the lookup
+        // dash_render.py's SchemeParser makes, so a name that passes here
+        // resolves there.  A scheme is named, never given as a path: a name
+        // holding a blank, a control character, a slash or backslash, a
+        // colon, `..', a quote, a backtick or a dollar sign, or longer than
+        // 87 characters, is refused before any file is looked for (M7,
+        // P1.25.4), read from the scalar T and never from a macro-expanded
+        // value; the renderer applies the same rule and its containment,
+        // regular-file and size guards again.  A dash- name is the user's
+        // own file in the working directory only.  The value goes through
+        // as written: the renderer lower-cases shipped names itself.
         _dash_shipped_schemes
         tempname L B
         scalar `L' = lower(scalar(`T'))
         // A shipped name written WITH the extension -- scheme(s2color.scheme),
-        // in any case -- is the shipped scheme: the renderer's _resolve_path
-        // reads that spelling from the package's dash-<name>.scheme, so no file
-        // in the working directory is needed.  Measured 22sep2026: the
-        // extension form was looked for as a working-directory file only,
-        // and scheme(s2color.scheme) was refused although the renderer
-        // would have drawn it.  The extension is dropped for the list test
-        // only: a theme is not a file and takes no extension, and a name
-        // that is not shipped still needs the file (below).  Read through
-        // the string scalars T, L (lower case) and B (without .scheme).
+        // in any case -- is the shipped scheme.  The extension is dropped
+        // for the list test only: a theme is not a file and takes no
+        // extension.  Read through the string scalars T, L (lower case) and
+        // B (without .scheme).
         scalar `B' = scalar(`L')
         if substr(scalar(`L'), -7, .) == ".scheme" {
             scalar `B' = substr(scalar(`L'), 1, strlen(scalar(`L')) - 7)
@@ -2457,24 +3536,48 @@ program define _dash_validate_value, rclass
         foreach c of local _dash_themes {
             if scalar(`L') == "`c'" local hit = 1
         }
+        local named = 1
         if !`hit' & scalar(`T') != "" {
-            // A double quote is refused with the separators: a file name
-            // put on confirm's command line must not end its quotes.
-            local unsafe = strpos(scalar(`T'), "/") | ///
-                           strpos(scalar(`T'), char(92)) | ///
-                           strpos(scalar(`T'), "..") | ///
-                           strpos(scalar(`T'), char(34))
-            if !`unsafe' {
-                if substr(scalar(`L'), -7, .) == ".scheme" {
-                    capture confirm file `"`macval(tv)'"'
+            local named = !ustrregexm(scalar(`T'), "[\s\p{Cc}]") & ///
+                          !strpos(scalar(`T'), "/") & ///
+                          !strpos(scalar(`T'), char(92)) & ///
+                          !strpos(scalar(`T'), ":") & ///
+                          !strpos(scalar(`T'), "..") & ///
+                          !strpos(scalar(`T'), char(34)) & ///
+                          !strpos(scalar(`T'), char(96)) & ///
+                          !strpos(scalar(`T'), char(36)) & ///
+                          ustrlen(scalar(`T')) <= 87
+            if `named' {
+                if substr(scalar(`L'), 1, 5) == "dash-" {
+                    if substr(scalar(`L'), -7, .) == ".scheme" {
+                        capture confirm file `"`macval(tv)'"'
+                    }
+                    else {
+                        capture confirm file `"`macval(tv)'.scheme"'
+                    }
+                }
+                else if substr(scalar(`L'), -7, .) == ".scheme" {
+                    capture findfile `"`macval(tv)'"'
                 }
                 else {
-                    capture confirm file `"`macval(tv)'.scheme"'
+                    capture findfile `"scheme-`macval(tv)'.scheme"'
+                    if _rc {
+                        capture findfile `"`macval(tv)'.scheme"'
+                    }
                 }
                 if !_rc local hit = 1
             }
         }
-        if !`hit' local bad "a shipped scheme, a theme, or a .scheme file in the working directory"
+        if !`hit' {
+            local _sn : list sort _dash_schemes
+            local _sn : subinstr local _sn " " ", ", all
+            local _tn : list sort _dash_themes
+            local _tn : subinstr local _tn " " ", ", all
+            local bad "one of `_sn'; a theme (`_tn'); or a scheme Stata finds along the ado-path as scheme-NAME.scheme or NAME.scheme"
+            if !`named' {
+                local extra ". A scheme is named, never given as a path: a name holding a blank, a quote, a slash or backslash, a colon or .. is not looked for"
+            }
+        }
     }
     else if "`kind'" == "format" {
         // 1. Character gate: one leading %, then only the characters a
@@ -2516,6 +3619,153 @@ program define _dash_validate_value, rclass
 end
 
 // ----------------------------------------------------------------
+// _dash_value_list  prefix opt spec value ptype nser
+//
+// A value list -- mlabel(), jitter(), base() or barwidth() -- read as
+// twoway reads it over an expanded varlist (WP-30 P1.1b): element k is
+// the k-th y's, with . = .. ... and padding (_dash_stylelist_pick).  Each
+// element a y uses is held to the single value's rule after the
+// shorthands resolve; one past the last y is not checked (register
+// P1.1.5; twoway draws jitter(2 200) on one y).  A list where twoway takes
+// one value is refused in its words (_dash_rules_onevalue; B14-B21).  A
+// misplaced .. or a value string cannot bind is left as typed for
+// _dash_stylelist_check.  Hands back the caller's _dash_vnorm: nser
+// elements, . for the default, "" when none.
+// ----------------------------------------------------------------
+program define _dash_value_list, rclass
+    version 19
+    mata: _dash_text_args(3, 2, 0)
+    local prefix `"`_dash_a1'"'
+    local opt    `"`_dash_a2'"'
+    local spec   `"`_dash_a3'"'
+    local ptype  `"`_dash_a4'"'
+    local nser   `"`_dash_a5'"'
+    local value : copy local _dash_txt
+    // A value twoway's string cannot bind, or a misplaced .., is left as
+    // typed: _dash_stylelist_check refuses it next in twoway's terms
+    // (P20-18b's r(109); "<opt>(<value>):  invalid syntax").
+    mata: st_local("_vlq", strofreal(strpos(st_local("value"), char(34)) > 0))
+    if `_vlq' {
+        capture _dash_stylelist_bind , v(`macval(value)')
+        if _rc == 1 exit 1
+        if _rc {
+            c_local _dash_vnorm : copy local value
+            exit
+        }
+    }
+    if "`opt'" == "mlabel" {
+        _dash_mlabel_list "`prefix'" `"`macval(value)'"' "`ptype'" `nser'
+        c_local _dash_vnorm `"`_dash_vnorm'"'
+        exit
+    }
+    _dash_option_rules
+    mata: _dash_stylelist_locals(st_local("value"), "_vl")
+    foreach tok of local _dash_rules_onevalue {
+        local at    = strpos("`tok'", "@")
+        local o     = substr("`tok'", 1, `at' - 1)
+        local types = substr("`tok'", `at' + 1, .)
+        local types : subinstr local types "|" " ", all
+        if "`o'" != "`opt'" | !`: list ptype in types' continue
+        if `_vln' > 1 | "`_vlq1'" == "1" {
+            display as error "option `opt'() not allowed"
+            exit 198
+        }
+        _dash_validate_value "`prefix'" "`opt'" "`spec'" `"`macval(value)'"' "`ptype'"
+        c_local _dash_vnorm `"`macval(_dash_vnorm)'"'
+        exit
+    }
+    mata: st_local("_vlbad", strofreal(_dash_stylelist_bad(st_local("value"))))
+    if `_vlbad' {
+        c_local _dash_vnorm : copy local value
+        exit
+    }
+    local out ""
+    local any 0
+    forvalues i = 1/`nser' {
+        mata: st_local("e", _dash_stylelist_pick(st_local("value"), `i'))
+        if !`: length local e' {
+            local out "`out' ."
+            continue
+        }
+        _dash_validate_value "`prefix'" "`opt'" "`spec'" `"`macval(e)'"' "`ptype'"
+        local out `"`out' `macval(_dash_vnorm)'"'
+        local any 1
+    }
+    if !`any' local out ""
+    c_local _dash_vnorm `"`macval(out)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_mlabel_list  prefix value ptype nser
+//
+// mlabel() read as twoway reads it (WP-30 P1.1b; register P1.1.6, P1.1.7),
+// in its order and words, measured 03oct2026: left to right, = is
+// "=exp not allowed" r(101) (M15, M16, M24) and a missing variable, past
+// the last y too, "variable nosuch not found" r(111) (M19-M23); then a
+// list naming no variable is "too few variables specified" r(102) (M17,
+// M18); then .. or ... anywhere is ".. not allowed in option mlabel()"
+// r(198) (M12-M14).  . and an empty quoted element leave that y
+// unlabelled.  Each name is checked once.  Hands back the caller's
+// _dash_vnorm: nser full names, . for none, "" when no y is labelled.
+// ----------------------------------------------------------------
+program define _dash_mlabel_list, rclass
+    version 19
+    mata: _dash_text_args(1, 2, 0)
+    local prefix `"`_dash_a1'"'
+    local ptype  `"`_dash_a2'"'
+    local nser   `"`_dash_a3'"'
+    local value : copy local _dash_txt
+    mata: _dash_stylelist_locals(st_local("value"), "_ml")
+    local seen ""
+    local seenres ""
+    local dots ""
+    local named 0
+    forvalues j = 1/`_mln' {
+        local _mlr`j' "."
+        mata: st_local("_c", st_local("_mlq`j'") == "1" ? (strtrim(st_local("_mlt`j'")) == "" ? "skip" : "name") : (st_local("_mlt`j'") == "=" ? "eq" : (st_local("_mlt`j'") == "." ? "skip" : ((st_local("_mlt`j'") == ".." | st_local("_mlt`j'") == "...") ? "dots" : "name"))))
+        if "`_c'" == "eq" {
+            display as error "=exp not allowed"
+            exit 101
+        }
+        if "`_c'" == "skip" continue
+        if "`_c'" == "dots" {
+            if "`dots'" == "" local dots "`_mlt`j''"
+            continue
+        }
+        local named 1
+        mata: st_local("_k", strofreal(max((0, selectindex(tokens(st_local("seen")) :== st_local("_mlt`j'"))))))
+        if `_k' {
+            local _mlr`j' : word `_k' of `seenres'
+            continue
+        }
+        local t : copy local _mlt`j'
+        _dash_validate_value "`prefix'" "mlabel" "var" `"`macval(t)'"' "`ptype'"
+        local _mlr`j' `"`_dash_vnorm'"'
+        local seen `"`seen' `macval(t)'"'
+        local seenres `"`seenres' `_dash_vnorm'"'
+    }
+    if !`named' {
+        display as error "too few variables specified"
+        exit 102
+    }
+    if "`dots'" != "" {
+        display as error "`dots' not allowed in option mlabel()"
+        exit 198
+    }
+    local out ""
+    local any 0
+    forvalues i = 1/`nser' {
+        if `i' > `_mln' local out "`out' ."
+        else {
+            local out "`out' `_mlr`i''"
+            if "`_mlr`i''" != "." local any 1
+        }
+    }
+    if !`any' local out ""
+    c_local _dash_vnorm "`out'"
+end
+
+// ----------------------------------------------------------------
 // _dash_axis_expand value
 //
 // WP-28 S14 (GAPS2 B1).  An axis-label option's value (xlabel(), ylabel(),
@@ -2524,18 +3774,27 @@ end
 // expansion -- 1(2)10 becomes 1 3 5 7 9, 10 20 to 40 becomes 10 20 30 40 --
 // while strings, sub-options and hostile runs (a backtick, $ or ') are kept
 // exactly as written (_dash_axis_pieces).  numlist is always given
-// max(2000), dash's own _MAX_AXIS_TICKS: measured 25sep2026, bare numlist
-// has NO element cap (numlist "1/1800" is rc 0) and would try to expand
-// 0(0.000001)1000000 whole, while max(2000) refuses it at once (r(123)).
+// max(2000), dash's own _MAX_AXIS_TICKS: a bare numlist is capped by Stata
+// (r(123) above its element limit on 19.5; numlist "1/1800" is rc 0), and
+// max(2000) holds it to dash's bound, refusing 0(0.000001)1000000 at once
+// (r(123)).
 // Never refuses: a run numlist cannot read -- a zero step, a bare word,
 // more than 2,000 values -- is left as written, because twoway does not
 // refuse those alike (xlabel(1(0)5) is rc 0, xlabel(2000 abc 4000) r(198))
 // and numlist's rc cannot tell them apart; the renderer names what it
 // cannot draw and bounds the rest.  Read by value (_dash_text_args).
+// WP-30 P1.18b: an expanded rule reads as a list, so the rule-versus-list
+// distinction twoway draws by is kept here: _dash_axis_pieces rates the
+// head (_ap_rule) and its T piece is the tail twoway reads.  After a
+// rule-led head (a(b)c, #N, minmax, none) add is spent -- twoway draws
+// ylabel(15(10)35, add) as 15 25 35 -- and after a lone a(b)c rule
+// norescale is dropped, as twoway draws ylabel(0(10)100, norescale)
+// (test/fixtures/axis_add_truth.json).  The tail is rebuilt in Mata from
+// its words, never by macro substitution of the user's text.
 // Returns r(norm).
 // ----------------------------------------------------------------
 program define _dash_axis_expand, rclass
-    version 16.0
+    version 19
     mata: _dash_text_args(0, 0, 0)
     local value : copy local _dash_txt
     mata: _dash_axis_pieces(st_local("value"))
@@ -2575,8 +3834,9 @@ end
 // clears s() can never again empty the segment's options in silence.
 // ----------------------------------------------------------------
 program define _dash_validate_opts, sclass
-    version 16.0
-    args ptype
+    version 19
+    args ptype nser
+    if "`nser'" == "" local nser 1
     _dash_option_rules
 
     // The snapshot, the values and the restore are read and written by
@@ -2689,7 +3949,12 @@ program define _dash_validate_opts, sclass
         // (test_json_escaping.cscript JSE-42).  The restore is a copy: a
         // one-line if expands its command again, macval() or not.
         if !`: length local v' continue
-        _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'"
+        if `: list o in _dash_rules_values' {
+            _dash_value_list "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'" `nser'
+        }
+        else {
+            _dash_validate_value "dash" "`o'" "`spec'" `"`macval(v)'"' "`ptype'"
+        }
         foreach _k of local _keys {
             if !`: length local _snap_`_k'' continue
             mata: st_local("_lost", strofreal(st_global("s(" + st_local("_k") + ")") == ""))
@@ -2698,6 +3963,7 @@ program define _dash_validate_opts, sclass
         mata: st_local("_chg", strofreal(st_local("_dash_vnorm") != st_local("v")))
         if `_chg' {
             sreturn local `o' `"`macval(_dash_vnorm)'"'
+            local _snap_`o' : copy local _dash_vnorm
         }
     }
 
@@ -2768,7 +4034,7 @@ end
 // filter_options, by_groups, tabs and filters.
 // ================================================================
 program define _dash_limit_table
-    version 16.0
+    version 19
     local rows ///
         cells=5000000,20000000 ///
         bytes=50000000,500000000 ///
@@ -2777,7 +4043,9 @@ program define _dash_limit_table
         filter_options=1000,100000 ///
         by_groups=100,1000 ///
         tabs=50,500 ///
-        filters=20,200
+        filters=20,200 ///
+        reflines=10000,100000 ///
+        added_text=1000,100000
     c_local _dash_limit_rows "`rows'"
 end
 
@@ -2790,7 +4058,7 @@ end
 // variables can reach that.
 // ----------------------------------------------------------------
 program define _dash_count_fmt
-    version 16.0
+    version 19
     gettoken out 0 : 0
     local s : display %30.0fc `0'
     local s = strtrim("`s'")
@@ -2820,7 +4088,7 @@ end
 // measured, regexm("12" + char(10), "^[0-9]+$") is 1.
 // ----------------------------------------------------------------
 program define _dash_limit, rclass
-    version 16.0
+    version 19
     syntax , NAME(string)
 
     _dash_limit_table
@@ -2904,7 +4172,7 @@ end
 // renderer keeps its own default for it.
 // ----------------------------------------------------------------
 program define _dash_limits_json, rclass
-    version 16.0
+    version 19
     _dash_limit_table
     local json ""
     local n = 0
@@ -2931,7 +4199,7 @@ end
 // (<already> 0).  A name already registered is a replace and never counts.
 // ----------------------------------------------------------------
 program define _dash_graph_cap
-    version 16.0
+    version 19
     args already
     _dash_limit, name(graphs)
     local lim  = r(value)
@@ -2961,7 +4229,7 @@ end
 // still to come.
 // ----------------------------------------------------------------
 program define _dash_plot_cap_refuse
-    version 16.0
+    version 19
     args lim ceil n
     _dash_count_fmt _lim_s  `lim'
     _dash_count_fmt _ceil_s `ceil'
@@ -3004,7 +4272,7 @@ end
 // before <extra> and <served> existed.
 // ----------------------------------------------------------------
 program define _dash_cell_cap
-    version 16.0
+    version 19
     args nvars nobs extra served
     if "`nobs'"  == "" local nobs  = _N
     if "`extra'" == "" local extra = 0
@@ -3063,7 +4331,7 @@ end
 // written, so a refusal leaves the data in memory as it was.
 // ----------------------------------------------------------------
 program define _dash_byte_cap
-    version 16.0
+    version 19
     _dash_limit, name(bytes)
     local lim  = r(value)
     local ceil = r(ceiling)
@@ -3129,11 +4397,39 @@ end
 // Sets c_local `out_macro' to the JSON string.
 // ================================================================
 program define _dash_plot_opts_to_json, rclass
-    version 16.0
-    args out_macro
+    version 19
+    args out_macro series
+    // series is the expanded y the object is for (1 when omitted): a key
+    // of _dash_stylelist_keys() writes that y's stylelist element
+    // (_dash_stylelist_pick, WP-30 P1.1a), every other key its value.
+    if "`series'" == "" local series 1
+    mata: st_local("_sl_keys", _dash_stylelist_keys())
 
     local parts ""
     local nparts = 0
+    // p() is twoway's whole-plot style, applied after every other style
+    // option: under it twoway discards each explicit style option, for any
+    // name, even an unknown one (WP-30 P1.14a, D-32a; measured 03oct2026).
+    // The keys it drops, by the measurement that shows each:
+    local _dash_p_drops "pstyle color mcolor msymbol marker msize msangle mfcolor"
+    // mcolor(red) msize(huge) p(p3): p3's fill and size; mfcolor() lost.
+    local _dash_p_drops "`_dash_p_drops' mlcolor mlwidth mlpattern mstyle mlstyle malpha"
+    // mlwidth(thick) p(p3): lost; mstyle/mlstyle come before p().
+    local _dash_p_drops "`_dash_p_drops' lcolor lwidth lpattern lalpha lstyle"
+    // line, lstyle(p4) p(p3): p3.
+    local _dash_p_drops "`_dash_p_drops' clcolor clwidth clpattern clstyle"
+    // the connecting line's options are lstyle's kin.
+    local _dash_p_drops "`_dash_p_drops' acolor alcolor alwidth alpattern astyle alstyle"
+    // area, fcolor(red) p(p3): p3's fill.
+    local _dash_p_drops "`_dash_p_drops' bstyle blstyle bfcolor blcolor fcolor fintensity falpha"
+    // p() sets the whole seriesstyle, dots and marker back line included
+    // (twoway_yxview_parse.class:631, 729, 740; WP-30 P1.14b).
+    local _dash_p_drops "`_dash_p_drops' dstyle dlstyle bmlinestyle"
+    // p(p3) mcolor(red%50): p3, opacity 100.
+    local _dash_p_drops "`_dash_p_drops' mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat mlabwidth"
+    // mlabcolor(red), mlabposition(9), mlabformat(), mlabgap(5) p(p3): each
+    // lost.  mlabel, connect, cmissing and sort are kept.
+    mata: st_local("_p_on", strofreal(strtrim(st_global("s(p)")) != ""))
 
     // Helper: append a k:v JSON pair if value non-empty.
     // weight and wexp (WP-18) are not options: _dash_process_segment puts
@@ -3149,10 +4445,13 @@ program define _dash_plot_opts_to_json, rclass
                    colorlevels colorvarminmax ///
                    bwidth degree pstyle cmissing recast connect bin width start ///
                    percent frequency density fraction kernel n level bands at ciopts ///
-                   lineopts fitopts color mlwidth mstyle lstyle mlstyle mlpattern ///
+                   lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
+                   clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
                    blabel horizontal vertical sort range colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
+                   mlabvposition mlabtextstyle ///
+                   xvarformat yvarformat ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
                    weight wexp {
@@ -3160,7 +4459,11 @@ program define _dash_plot_opts_to_json, rclass
         // copy through them expanded a macro in the value again --
         // mcolor("\$G") was stored as $G's value (measured 24sep2026;
         // test_json_escaping.cscript JSE-69).
-        mata: st_local("val", st_global("s(" + st_local("key") + ")"))
+        if `_p_on' & `: list key in _dash_p_drops' continue
+        if `: list key in _sl_keys' {
+            mata: st_local("val", _dash_stylelist_pick(st_global("s(" + st_local("key") + ")"), `series'))
+        }
+        else mata: st_local("val", st_global("s(" + st_local("key") + ")"))
         if `: length local val' {
             _dash_json_str `"`macval(val)'"' _jv
             if `nparts' > 0 local parts `"`parts',"'
@@ -3181,7 +4484,7 @@ end
 // the rest of s() survives the call as it survives _dash_fold_bw.
 // ================================================================
 program define _dash_seg_weight_s, sclass
-    version 16.0
+    version 19
     args wtype wvar
     sreturn local weight `"`wtype'"'
     sreturn local wexp   `"`wvar'"'
@@ -3210,7 +4513,7 @@ end
 //   _pt_ts       x from tsset when it is not given  tsline tsrline
 // ================================================================
 program define _dash_plottype_families
-    version 16.0
+    version 19
     c_local _pt_univar  "histogram kdensity"
     c_local _pt_range   "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     c_local _pt_pc      "pcspike pcarrow pcbarrow pcscatter pccapsym"
@@ -3237,7 +4540,7 @@ end
 // quotes or on a command line.
 // ================================================================
 program define _dash_by_parts
-    version 16.0
+    version 19
     args V
     local len = strlen(scalar(`V'))
     local depth = 0
@@ -3274,6 +4577,77 @@ program define _dash_by_parts
 end
 
 // ================================================================
+// _dash_by_check <string scalar>
+//
+// by()'s sub-options refused as twoway refuses them (WP-30 P1.15b).  The
+// tail after the by-variables is read from the string scalar by Mata's
+// _dash_by_scan, never expanded.  bygraph_g.class reads by() in three
+// stages (measured, test/fixtures/by_grid_truth.json): -syntax- takes the
+// first copy of each declared option and checks rows() then cols()
+// (r(121), r(123), r(125), r(126)); "may not specify both rows() and
+// cols()" (r(198)); holes() (parse_settings); every leftover -- a second
+// copy of a word read once, a capitalised or unknown word -- is refused in
+// typed order, "option NAME[()] not allowed" (r(198)); iscale() outside
+// [0, 10000] fails at draw, "gm_linewidth must be between 0.000 and
+// 1.0e+04" (r(198)).  The numbers go to -syntax- with twoway's own
+// declarations, and only when they hold numlist characters alone, so the
+// words are twoway's and no user text reaches a command line.  A text
+// iscale() or imargin() twoway cannot read gets its first note, once.
+// ================================================================
+program define _dash_by_check
+    version 19
+    args V
+    mata: _dash_by_scan(st_local("V"))
+    foreach o in rows cols {
+        if `"`_byg_`o''"' != "" {
+            if !`_byg_`o'_ok' {
+                mata: _dash_say("err", "", "`o'() invalid -- invalid number", "")
+                exit 121
+            }
+            local 0 `", `o'(`_byg_`o'')"'
+            capture noisily syntax [, Rows(numlist integer >0 min=0 max=1) Cols(numlist integer >0 min=0 max=1)]
+            if _rc {
+                exit _rc
+            }
+        }
+    }
+    if `"`_byg_rows'"' != "" & `"`_byg_cols'"' != "" {
+        mata: _dash_say("err", "", "may not specify both rows() and cols()", "")
+        exit 198
+    }
+    if `"`_byg_holes'"' != "" {
+        if !`_byg_holes_ok' {
+            mata: _dash_say("err", "", "holes() invalid -- invalid numlist", "")
+            exit 121
+        }
+        local 0 `", holes(`_byg_holes')"'
+        capture noisily syntax [, HOLes(numlist integer >0 max=300)]
+        if _rc {
+            exit _rc
+        }
+    }
+    if `"`_byg_left'"' != "" {
+        mata: _dash_say("err", "", st_local("_byg_left"), "")
+        exit 198
+    }
+    if inlist("`_byg_iscale_kind'", "num", "star") {
+        if `_byg_iscale_val' < 0 | `_byg_iscale_val' > 10000 {
+            mata: _dash_say("err", "", "gm_linewidth must be between 0.000 and  1.0e+04", "")
+            exit 198
+        }
+    }
+    if "`_byg_iscale_kind'" == "bad" {
+        mata: _dash_note("named style ", st_local("_byg_iscale"), " not found in class numstyle, default attributes used")
+    }
+    if `_byg_imargin_bad' {
+        mata: _dash_note("named style ", st_local("_byg_imargin"), " not found in class margin, default attributes used")
+    }
+    if `_byg_imargin_neg' {
+        mata: _dash_note("", "by(, imargin()) below 0 is drawn as 0", "")
+    }
+end
+
+// ================================================================
 // _dash_qual_mark <target> <value> <ifscalar> <inscalar> [varlist]
 //
 // replace target = value for the rows the if and the in select -- every
@@ -3289,7 +4663,7 @@ end
 // changed.
 // ================================================================
 program define _dash_qual_mark, sortpreserve
-    version 16.0
+    version 19
     gettoken target 0 : 0
     gettoken value 0 : 0
     gettoken sif 0 : 0
@@ -3338,7 +4712,7 @@ end
 // (_dash_qual_mark); the Total panel is drawn when tpanel() selects a row.
 // ================================================================
 program define _dash_by_panels, rclass sortpreserve
-    version 16.0
+    version 19
     syntax varlist(min=1), PANEL(varname) [MISSing TOTal CHECK(varlist) ///
         RULES(string) TPANEL(varname) TCHECK(varlist)]
     tempvar p tp anyp grp dec deck cnt first
@@ -3452,7 +4826,7 @@ end
 //   - Caller's g_* locals are updated if graph-level opts were found.
 // ================================================================
 program define _dash_process_segment, rclass
-    version 16.0
+    version 19
     // The segment is read by value (_dash_text_args in dash_parse.mata): its
     // text, less the quotes around it, then the two output names and the
     // optional count.  -args- read it inside the compound quotes it was
@@ -3493,7 +4867,8 @@ program define _dash_process_segment, rclass
         // a data model no dash plot has.  They were answered "unrecognised
         // plot type", as if twoway had no such type; they are named for
         // what they are now, with what to use instead (WP-22 TR-22.1).
-        // heatmap, rpcap and rpspike, twoway plot types in StataNow 19.5,
+        // heatmap, rpcap and rpspike, twoway plot types since Stata 19
+        // (whatsnew18to19), so the advice holds on every Stata dash runs on,
         // are refused the same way, each with its own reason (BR-22.1).
         // _pt_nodraw is one of those five names or "": never user text.
         mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
@@ -3677,10 +5052,15 @@ program define _dash_process_segment, rclass
             // (_dash_fn_points evaluates it after every plot is read; WP-29
             // P0.6).
             mata: st_local("_fn_raw", strtrim(st_global("s(vals)")))
-            // Remove optional "y=" prefix, in Mata: an expression holding "'
-            // -- strlen("'x") -- ended the compound quotes it was cut in
-            // (test_json_escaping.cscript JSE-47).
-            mata: st_local("vals", regexr(strtrim(st_global("s(vals)")), "^[a-zA-Z][a-zA-Z0-9_]*[ ]*=[ ]*", ""))
+            // The y name twoway keys and titles the layer by: the first
+            // token when it is a Stata name followed by `=' (twoway__function_gen's
+            // confirm name), any Unicode letter or `_' first, at most 32
+            // characters; "" otherwise, read in Mata by value.
+            mata: st_local("_fn_yname", (ustrregexm(strtrim(st_global("s(vals)")), "^([\p{L}_][\p{L}\p{N}_]{0,31})[ ]*=") ? ustrregexs(1) : ""))
+            // Remove that "name =" prefix, by the same pattern, in Mata: an
+            // expression holding "' -- strlen("'x") -- ended the compound
+            // quotes it was cut in (test_json_escaping.cscript JSE-47).
+            mata: st_local("vals", ustrregexra(strtrim(st_global("s(vals)")), "^[\p{L}_][\p{L}\p{N}_]{0,31}[ ]*=[ ]*", ""))
             local expr : copy local vals
             // No expression is refused in twoway's words: "expression
             // required", r(100), and after a `y =', "nothing found where
@@ -3764,17 +5144,17 @@ program define _dash_process_segment, rclass
                 exit 198
             }
             if "`_pci_stop'" == "empty" {
-                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end: " + st_local("_imm_empty"))
+                mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end: " + st_local("_imm_empty"))
             }
             else if `_pci_hasleft' {
-                mata: _dash_say("txt", "dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
+                mata: _dash_note("dash: `ptype' ignored '", st_local("_pci_left"), "' at the end, too little for another `_imm_unit' (`_imm_xy'), as twoway does.")
             }
             // twoway pci is an immediate pcspike: its serset carries the
             // labels and it draws none of them (measured from its SVG
             // export, with mlabcolor() and mlabposition() or without).
             // Neither does dash -- and it says so, where twoway is silent.
             if "`ptype'" == "pci" & `_pci_nlab' > 0 {
-                display as text "dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point."
+                mata: _dash_note("dash: pci draws no labels, as twoway pci draws none; a scatteri layer can label a point.", "", "")
             }
         }
     }
@@ -3794,7 +5174,19 @@ program define _dash_process_segment, rclass
         // smoothers and tsline likewise -- and the bare `dash scatter' was
         // refused as "no variables identified in plot specification",
         // r(198) (measured 24sep2026; test_parser.cscript P1A-69).
-        _dash_parse_varpart_std `macval(varpart)'
+        // Time-series operators where twoway takes them (WP-30 P1.7): the
+        // fractional-polynomial fits and the smoothers refuse them, as
+        // twoway does, r(101).
+        // Block form: the one-line `if exp command' form expanded the
+        // command a second time, so a qualifier holding `=filewrite()'
+        // ran (test_parser.cscript P1A-80, TSO-15).
+        local _pt_nots "fpfit fpfitci lowess lpoly lpolyci"
+        if `: list ptype in _pt_nots' {
+            _dash_parse_varpart_std `macval(varpart)'
+        }
+        else {
+            _dash_parse_varpart_ts `macval(varpart)'
+        }
         local vl = "`s(varlist)'"
         local nv : word count `vl'
         local yvar = word("`vl'", 1)
@@ -4071,6 +5463,8 @@ program define _dash_process_segment, rclass
 
     sreturn clear
     local _rp_gund_out ""
+    local _ptype_typed "`ptype'"
+    local _rc_kind ""
     local _fn_rtyped ""
     local _fn_rnorm ""
     local _fn_nval ""
@@ -4102,6 +5496,43 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // recast(), recastas() and type() as twoway reads them (WP-30
+        // P1.8b), before connect(), as twoway sets the view type first: a
+        // base, range, pc or time-series layer becomes the type it is
+        // drawn as (its typed type kept as recast_from), a derived layer
+        // keeps its type and is drawn as the target (options.recast).
+        _dash_recast_opt "`ptype'"
+        local _rc_kind   "`s(_recast_kind)'"
+        local _rc_target "`s(_recast_target)'"
+        local _rc_ts     "`s(_recast_ts)'"
+        if inlist("`_rc_kind'", "base", "range2yx", "ts") local ptype "`s(_recast_type)'"
+        if "`_rc_kind'" == "range2yx" local yvar "`yvar1'"
+        // horizontal and vertical refused where twoway refuses them,
+        // judged after recast() (WP-30 P1.9a): _dash_hz_check.
+        tempname _hz_s
+        mata: st_strscalar("`_hz_s'", st_local("opts_raw"))
+        _dash_hz_check "`ptype'" "`_rc_target'" "`_rc_kind'" `_hz_s'
+        // connect() and cmissing() as twoway reads them (WP-30 P1.8a): a
+        // scatter y given a connect() element is twoway's connected type,
+        // and the folds, checks and sort below read it as connected.  A
+        // derived layer's are judged on the type it is drawn as.
+        local _cn_judge "`ptype'"
+        if "`_rc_kind'" == "derived" local _cn_judge "`_rc_target'"
+        local _cn_n 1
+        if `"`yvarlist'"' != "" local _cn_n : word count `yvarlist'
+        _dash_connect_opt "`_cn_judge'" `_cn_n'
+        local _cn_types `"`s(_cn_types)'"'
+        local _cn_any   `"`s(_cn_any)'"'
+        local _cn_ptype "`_cn_judge'"
+        if "`_cn_judge'" == "scatter" & "`_cn_any'" == "1" local _cn_ptype connected
+        // The derived layer's own options are checked as its own type;
+        // the drawn type goes to the JSON as options.recast.
+        local _rc_own "`_cn_ptype'"
+        if "`_rc_kind'" == "derived" {
+            local _rc_own "`ptype'"
+            local _cn_types ""
+            _dash_recast_s recast "`_cn_ptype'"
+        }
         // function's range() as typed, before validation normalises it
         // through numlist, which keeps 13 digits (WP-29 P0.6, S4-D5).
         if "`ptype'" == "function" mata: st_local("_fn_rtyped", st_global("s(range)"))
@@ -4118,11 +5549,28 @@ program define _dash_process_segment, rclass
                 exit 198
             }
         }
-        _dash_fold_bw "`ptype'"
+        // barwidth() on rcap and rcapsym: refused naming the spelling as typed,
+        // as twoway refuses it -- "option barw() not allowed", r(198) (measured
+        // 03oct2026; WP-30 P1.17a).  bw() is left to _dash_fold_bw.
+        local _cap_types rcap rcapsym
+        if `: list ptype in _cap_types' {
+            mata: st_local("_bwt_typed", _dash_barwidth_typed(st_local("opts_raw")))
+            if `: length local _bwt_typed' {
+                mata: _dash_say("err", "option ", st_local("_bwt_typed"), "() not allowed")
+                exit 198
+            }
+        }
+        // mlabvposition() (WP-30 P1.24): checked and counted as twoway
+        // counts it, before mlabel()'s own rule (_dash_fold_mlab).
+        _dash_fold_mlabv "`ptype'" "`yvar1' `yvar2' `yvar' `xvar'"
+        _dash_fold_bw "`_rc_own'"
         if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
             _dash_seg_weight_s "`_seg_weight'" "`_seg_wexp'"
         }
-        _dash_validate_opts "`ptype'"
+        local _sl_n 1
+        if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
+        _dash_validate_opts "`_rc_own'" `_sl_n'
+        _dash_stylelist_check "`_cn_ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))
             mata: st_local("_fn_nval", st_global("s(n)"))
@@ -4131,10 +5579,16 @@ program define _dash_process_segment, rclass
         // does not draw them on: named in the note -- after the validation
         // above, so a bad value is refused first, as twoway refuses it
         // (WP-23).
-        _dash_fold_typed "`ptype'"
+        _dash_fold_typed "`_cn_ptype'"
         // sort(varlist): checked as twoway checks it, after the repeats
         // are reduced, and honoured on the six joining types (WP-29 P0.1).
-        _dash_sort_opt "`ptype'"
+        // A time-series source recast joins in time order, as tsline's
+        // sort(t) (twoway_tsline_parse.class:32; WP-30 P1.8b).
+        if "`_rc_kind'" == "ts" | "`_rc_ts'" == "1" {
+            local _so_six "line connected area rline rarea rconnected"
+            if `: list ptype in _so_six' _dash_recast_s sort1 "`xvar'"
+        }
+        _dash_sort_opt "`_cn_ptype'"
         // twoway__histogram_gen.ado:102-107: a start() above the variable's
         // minimum over the plot's sample is r(198), discrete or not.  dash
         // drew it, the observations below start() silently left out of
@@ -4187,6 +5641,28 @@ program define _dash_process_segment, rclass
     local _pt_lpfam "lpoly lpolyci"
     local _ss_types "histogram lpoly lpolyci lfit lfitci kdensity fpfit fpfitci mspline mband"
     mata: st_local("_ss_by", st_global("s(g_by)") + st_global("dash__g_by"))
+    // Time-series operators (WP-30 P1.7), as twoway refuses them: by()
+    // sorts the data on its variables, so an operated plot variable in any
+    // layer is "not sorted", r(5) (measured on StataNow 19.5); and a bare
+    // sort with an operated x is refused on the 18 types that sort on x,
+    // in twoway's two lines, r(198).  Before anything is registered.
+    local _ts_first ""
+    foreach _tv in `yvarlist' `yvar' `yvar1' `yvar2' `xvar' `y1var' `x1var' `y2var' `x2var' {
+        if strpos("`_tv'", ".") & "`_ts_first'" == "" local _ts_first `_tv'
+    }
+    if "`_ts_first'" != "" & `: length local _ss_by' {
+        display as error "not sorted"
+        mata: _dash_say("txt", "dash: twoway refuses by() with a time-series operator in a plot variable; generate the variable first, for example: generate double ", ///
+            usubstr(strlower(subinstr(st_local("_ts_first"), ".", "", .)), 1, 32) + " = " + st_local("_ts_first"), "")
+        exit 5
+    }
+    local _ts_sortx "scatter line connected area bar spike dropline dot mspline mband rarea rbar rspike rcap rline rconnected rcapsym rscatter"
+    mata: st_local("_ts_sort", strofreal(st_global("s(sort)") != ""))
+    if `_ts_sort' & strpos("`xvar'", ".") & `: list ptype in _ts_sortx' {
+        display as error "factor-variable and time-series operators not allowed"
+        display as error "option sort() incorrectly specified"
+        exit 198
+    }
     if `: list ptype in _ss_types' & !`: length local _ss_by' {
         local _ss_ifin ""
         if `: length local _ps_in' {
@@ -4264,6 +5740,20 @@ program define _dash_process_segment, rclass
     local _seg_xa = cond(real("`_seg_xa'") < ., real("`_seg_xa'"), 1)
     c_local _seg_yaxis_out `_seg_ya'
     c_local _seg_xaxis_out `_seg_xa'
+    // The variable this segment's x axis takes its label format from, for
+    // the t-options' date literals (WP-30 P1.6, _dash_taxis_fold): the x of
+    // the yx and range types (tsline and tsrline: the tsset variable), the
+    // variable of histogram and kdensity, x1 of the pc types; none for
+    // function, scatteri, pci and pcarrowi.  An operated x (L.t) keeps its
+    // variable's format, as twoway reads it: the name after the last dot.
+    if `: list ptype in _pt_univar' local _seg_xv `"`yvar'"'
+    else if `: list ptype in _pt_pc' local _seg_xv `"`x1var'"'
+    else if `: list ptype in _pt_literal' local _seg_xv ""
+    else local _seg_xv `"`xvar'"'
+    if strrpos(`"`_seg_xv'"', ".") local _seg_xv = substr(`"`_seg_xv'"', strrpos(`"`_seg_xv'"', ".") + 1, .)
+    capture confirm variable `_seg_xv', exact
+    if _rc local _seg_xv ""
+    c_local _seg_xvar_out `_seg_xv'
 
     // Hand the graph-level options found in this segment to _dash_plot as
     // _sg_* locals (they live in its frame, not here -- c_local propagates
@@ -4276,7 +5766,7 @@ program define _dash_process_segment, rclass
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+            scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 zlabel ztitle zscale nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
@@ -4308,7 +5798,8 @@ program define _dash_process_segment, rclass
     }
     else if "`ptype'" == "function" {
         _dash_json_str `"`macval(expr)'"' _jex
-        local vfields `""expr":"`_jex'""'
+        _dash_json_str "`_fn_yname'" _jyn
+        local vfields `""expr":"`_jex'","yname":"`_jyn'""'
     }
     else if `: list ptype in _pt_imm' {
         // scatteri, pci and pcarrowi: read and checked with the varlist
@@ -4327,7 +5818,11 @@ program define _dash_process_segment, rclass
     }
 
     // Options JSON
-    _dash_plot_opts_to_json _opts_json
+    // recast(): the typed type, when the layer is drawn as another
+    // (WP-30 P1.8b); the renderer keys nothing on it.
+    local _rcf ""
+    if "`ptype'" != "`_ptype_typed'" local _rcf `","recast_from":"`_ptype_typed'""'
+    _dash_plot_opts_to_json _opts_json 1
     // sort(varlist) on a joining type: the names unab gave
     // (_dash_sort_opt), which dash.ado ranks at export (_dash_sort_gen).
     // A plot without it writes nothing new.
@@ -4356,17 +5851,23 @@ program define _dash_process_segment, rclass
         local seg_json ""
         local _nyv : word count `yvarlist'
         forvalues _yi = 1/`_nyv' {
+            _dash_plot_opts_to_json _opts_json `_yi'
             local _thisy = word(`"`yvarlist'"', `_yi')
             _dash_json_str "`_thisy'" _jyv
             _dash_json_str "`xvar'"   _jxv
             local vfields `""yvar":"`_jyv'","xvar":"`_jxv'""'
             if `_yi' > 1 local seg_json `"`seg_json',"'
-            local seg_json `"`seg_json'{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
+            // A scatter y given a connect() element is connected (P1.8a).
+            local _yt "`ptype'"
+            if `"`_cn_types'"' != "" local _yt : word `_yi' of `_cn_types'
+            local seg_json `"`seg_json'{"type":"`_yt'"`_rcf',`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
         }
     }
     else {
         local _nyv = 1
-        local seg_json `"{"type":"`ptype'",`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
+        local _yt "`ptype'"
+        if `"`_cn_types'"' != "" local _yt : word 1 of `_cn_types'
+        local seg_json `"{"type":"`_yt'"`_rcf',`vfields',"options":`_opts_json',"if_expr":"`_jif'","in_expr":"`_jin'"`_jsvf'}"'
     }
 
     c_local `plottype_out' "`ptype'"
@@ -4437,7 +5938,7 @@ end
 // values only, so the formats still travel here.
 // ================================================================
 program define _dash_formats_json
-    version 16.0
+    version 19
     args varlist_in out_macro datevars_macro
 
     local parts ""
@@ -4499,7 +6000,7 @@ end
 // of the first variable in memory, which no layer read, and with no data
 // in memory was refused too (test_parser.cscript P1A-72).
 program define _dash_empty_data
-    version 16.0
+    version 19
     args path
     // Written from Python, 0600 and never through a link, a FIFO or another
     // account's file (WP-29 P0.12b): Stata's `file write' wrote it with the
@@ -4539,7 +6040,7 @@ end
 // once and kept, keyed by its path, size and time, so a second export in a
 // session costs nothing to load.
 program define _dash_write_data
-    version 16.0
+    version 19
     gettoken _dw_path _dw_vars : 0
     // As Stata stores them, once each -- what jsonio's varlist gave.
     unab _dw_vars : `_dw_vars'
@@ -4574,8 +6075,9 @@ end
 // by its realpath, size and time, so a second command costs nothing to
 // load.  The guard first: no python: line runs before it (A7, ENV-12).
 program define _dash_xm_load
-    version 16.0
+    version 19
     _dash_require_python
+    _dash_require_deps
     local _dw_py ""
     capture findfile dash.ado
     if _rc == 0 {
@@ -4603,9 +6105,37 @@ program define _dash_xm_load
     python: _dash_ok = _dash_xm is not None and getattr(_dash_xm, "_dash_export_key", None) == _dash_key
     python: _dash_xs = None if _dash_ok else importlib.util.spec_from_file_location("_dash_render_export", _dash_rp)
     python: _dash_xm = _dash_xm if _dash_ok else importlib.util.module_from_spec(_dash_xs)
-    python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
+    // WP-30 P1.32: the renderer's import guard puts its one line in
+    // _dd_err (_dash_dep_fail), so the load decides by that value.  A
+    // failure that is not a dependency runs again uncaptured, so its
+    // traceback shows as it did.  _dd_err, _dd_refuse and _dd_note hold
+    // text from the environment: tested by length, shown through Mata only.
+    local _dd_err ""
+    capture python: _dash_xr = _dash_ok or _dash_xs.loader.exec_module(_dash_xm)
+    if _rc {
+        local _dd_n : length local _dd_err
+        if `_dd_n' > 0 {
+            mata: _dash_say("err", "", st_local("_dd_err"), "")
+            exit 198
+        }
+        python: _dash_xr = _dash_xs.loader.exec_module(_dash_xm)
+    }
     python: _dash_xm._dash_export_key = _dash_key
     python: sys.modules["_dash_render_export"] = _dash_xm
+    // numpy or pandas below dash_setup's minimum: a note once per fresh
+    // load (A121); the refusal slot is bokeh's window (S41).
+    python: _dash_dv = _dash_xm._dash_dep_versions()
+    python: _dash_M.setLocal("_dd_refuse", _dash_dv[0])
+    python: _dash_M.setLocal("_dd_note", "" if _dash_ok else _dash_dv[1])
+    local _dd_n : length local _dd_refuse
+    if `_dd_n' > 0 {
+        mata: _dash_say("err", "", st_local("_dd_refuse"), "")
+        exit 198
+    }
+    local _dd_n : length local _dd_note
+    if `_dd_n' > 0 {
+        mata: _dash_note("", st_local("_dd_note"), "")
+    }
 end
 
 
@@ -4634,7 +6164,7 @@ end
 // _dash_tmp_open: opens the command's run folder; returns r(rundir),
 // r(spec), r(data), r(app), and r(noted) "1" when it printed the note.
 program define _dash_tmp_open, rclass
-    version 16.0
+    version 19
     _dash_require_python
     _dash_xm_load
     local _to_tmp `"`c(tmpdir)'"'
@@ -4651,7 +6181,7 @@ program define _dash_tmp_open, rclass
     local _to_noted ""
     // The privacy class (R-8): printed, never an error.
     if `: length local _to_note' {
-        mata: _dash_say("txt", "", st_local("_to_note"), "")
+        mata: _dash_note("", st_local("_to_note"), "")
         local _to_noted "1"
     }
     // The operating-system class, never a privacy refusal: the folder could
@@ -4673,7 +6203,7 @@ end
 // Its note is printed only when _dash_tmp_open printed none for this
 // command (noted() is not "1"): one note per command.
 program define _dash_tmp_preview, rclass
-    version 16.0
+    version 19
     syntax, OPENED(string) [NOTED(string)]
     _dash_require_python
     _dash_xm_load
@@ -4687,7 +6217,7 @@ program define _dash_tmp_preview, rclass
     python: _dash_M.setLocal("_tp_path", _dash_tp["path"])
     if "`noted'" != "1" {
         if `: length local _tp_note' {
-            mata: _dash_say("txt", "", st_local("_tp_note"), "")
+            mata: _dash_note("", st_local("_tp_note"), "")
         }
     }
     // The operating-system class, as in _dash_tmp_open.
@@ -4702,7 +6232,7 @@ end
 // path that is not one is named and left; it never changes the return
 // code.  A folder an error leaves behind is swept by the next command.
 program define _dash_tmp_close
-    version 16.0
+    version 19
     syntax, DIR(string)
     _dash_require_python
     _dash_xm_load
@@ -4713,7 +6243,7 @@ program define _dash_tmp_close
     python: _dash_tc = _dash_xm._dash_run_close(_dash_M.getLocal("dir"), _dash_M.getLocal("_tc_tmp"))
     python: _dash_M.setLocal("_tc_err", _dash_tc)
     if `: length local _tc_err' {
-        mata: _dash_say("txt", "", st_local("_tc_err"), "")
+        mata: _dash_note("", st_local("_tc_err"), "")
     }
 end
 
@@ -4722,16 +6252,46 @@ end
 // folders, in dash-<uid> and every fallback root.  With no dash* folder in
 // c(tmpdir), Mata says so and no Python runs (A15).
 program define _dash_tmp_clear
-    version 16.0
+    version 19
     _dash_require_python
     mata: st_local("_tcl_has", strofreal(rows(dir(c("tmpdir"), "dirs", "dash*")) > 0))
     if "`_tcl_has'" != "1" exit
-    _dash_xm_load
+    // WP-30 P1.32: the pruning code is compiled from dash_render.py's own
+    // text with the standard-library imports alone
+    // (dash_setup_lib.stdlib_entry), so the same code and the same checks
+    // run with numpy, pandas or bokeh missing.
+    local _tcl_dir ""
+    capture findfile dash.ado
+    if _rc == 0 {
+        mata: st_local("_tcl_dir", substr(st_global("r(fn)"), 1, strlen(st_global("r(fn)")) - strlen("dash.ado")))
+    }
+    local lib `"`_tcl_dir'dash_setup_lib.py"'
+    local _tcl_py `"`_tcl_dir'dash_render.py"'
+    capture confirm file `"`lib'"'
+    if _rc {
+        local lib ""
+        capture findfile dash_setup_lib.py
+        if _rc == 0 local lib `"`r(fn)'"'
+    }
+    capture confirm file `"`_tcl_py'"'
+    if _rc {
+        local _tcl_py ""
+        capture _dash_find_render
+        if _rc == 0 local _tcl_py `"`r(fn)'"'
+    }
+    if `"`lib'"' == "" | `"`_tcl_py'"' == "" exit
+    mata: st_local("lib", pathresolve(pwd(), st_local("lib")))
+    python: import sys, sfi; sfi.Macro.setLocal("_dwb", "1" if sys.dont_write_bytecode else "0"); sys.dont_write_bytecode = True
+    capture python: import importlib.util as _dsl_iu, sys, sfi; _dsl_p = sfi.Macro.getLocal("lib"); _dsl_m = sys.modules.get("_dash_setup_lib"); _dsl_new = _dsl_m is None or getattr(_dsl_m, "__file__", None) != _dsl_p; _dsl_s = _dsl_iu.spec_from_file_location("_dash_setup_lib", _dsl_p) if _dsl_new else None; _dsl_m = _dsl_iu.module_from_spec(_dsl_s) if _dsl_new else _dsl_m; (_dsl_s.loader.exec_module(_dsl_m) if _dsl_new else None); sys.modules["_dash_setup_lib"] = _dsl_m
+    local _lrc = _rc
+    python: import sys, sfi; sys.dont_write_bytecode = sfi.Macro.getLocal("_dwb") == "1"
+    if `_lrc' != 0 exit
     local _tcl_tmp `"`c(tmpdir)'"'
     python: import sys
     python: from sfi import Macro as _dash_M
-    python: _dash_xm = sys.modules["_dash_render_export"]
-    python: _dash_tcl = _dash_xm._dash_tmp_clear(_dash_M.getLocal("_tcl_tmp"))
+    python: _dash_sl = sys.modules.get("_dash_setup_lib")
+    python: _dash_xp = _dash_sl.stdlib_entry(_dash_M.getLocal("_tcl_py"), "_dash_tmp_clear") if _dash_sl is not None else None
+    python: _dash_tcl = _dash_xp(_dash_M.getLocal("_tcl_tmp")) if _dash_xp is not None else ""
 end
 
 
@@ -4771,13 +6331,13 @@ end
 // variables (_dash_qual_gen_by, below; _dash_qual_rewrite).
 // ================================================================
 program define _dash_qual_gen
-    version 16.0
+    version 19
     args cmdname
 
     capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }
@@ -4846,7 +6406,7 @@ end
 // in _dash_qual_gen, and each column is evaluated once.
 // ================================================================
 program define _dash_qual_gen_by, sortpreserve
-    version 16.0
+    version 19
     gettoken cmdname order : 0
     local order : list retokenize order
     local _dq_n = 0
@@ -4908,7 +6468,7 @@ end
 // _dash_sort_scan before it reaches the sort command.
 // ================================================================
 program define _dash_sort_gen, sortpreserve
-    version 16.0
+    version 19
     args cmdname
     local _ds_n = 0
     mata: _dash_sort_export()
@@ -4919,7 +6479,7 @@ program define _dash_sort_gen, sortpreserve
     capture unab _ds_clash : __dashs*
     if _rc == 0 {
         local _ds_first : word 1 of `_ds_clash'
-        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_ds_first' newname"
         exit 110
     }
@@ -4945,11 +6505,78 @@ program define _dash_sort_gen, sortpreserve
 end
 
 // ================================================================
+// _dash_tsop_gen <cmdname>  -- the time-series columns, made in Stata
+// (WP-30 P1.7)
+//
+// For each expression of the table (_dash_tsop_rewrite, _dash_tsop_export)
+// one column __dasht<k> is made with tsrevar, as twoway computes the
+// series it draws: over every observation, under the tsset in force now,
+// gaps and panels included -- twoway scatter D.close t if t>5 & t<9 holds
+// close[6]-close[5] at t = 6 (measured on StataNow 19.5).  The column
+// takes tsrevar's storage type (D. of a float is float, L. of an int is
+// int: a double would shift a float series off twoway's serset), and the
+// base's display format and value label, as twoway draws L.foreign with
+// foreign's labels and D.date in %td.  Each expression is held to the
+// canonical form again (_dash_tsop_canon): the registry is a set of
+// globals a do-file can edit since the rewrite read it.  Data not sorted
+// by the time variable are refused by tsrevar in twoway's words, "not
+// sorted", r(5).  Not sortpreserve: tsrevar reads the user's sort, which
+// _dash_qual_gen_by and _dash_sort_gen give back.  Any error drops what was
+// made; the names come back in the caller's local _dash_tsop_vars.  Run
+// after _dash_qual_gen, which has refused a variable named __dash*.
+// ================================================================
+program define _dash_tsop_gen
+    version 19
+    args cmdname
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    if `_dts_n' == 0 {
+        c_local _dash_tsop_vars ""
+        exit
+    }
+    if `"`: char _dta[_TStvar]'"' == "" {
+        display as error "time variable not set"
+        exit 111
+    }
+    capture unab _dt_clash : __dasht*
+    if _rc == 0 {
+        local _dt_first : word 1 of `_dt_clash'
+        display as error "`cmdname': variable `_dt_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "      Rename it first, for example: rename `_dt_first' newname"
+        exit 110
+    }
+    local made ""
+    forvalues k = 1/`_dts_n' {
+        mata: st_local("_dt_ok", strofreal(_dash_tsop_canon(st_local("_dts_e`k'"))))
+        if !`_dt_ok' {
+            if "`made'" != "" drop `made'
+            mata: _dash_say("err", "`cmdname': registry entry ", st_local("_dts_e`k'"), " holds a variable dash cannot read")
+            exit 198
+        }
+        capture noisily tsrevar `_dts_e`k''
+        if _rc {
+            local rc = _rc
+            if "`made'" != "" drop `made'
+            exit `rc'
+        }
+        local _dt_src `r(varlist)'
+        local _dt_ty : type `_dt_src'
+        quietly generate `_dt_ty' __dasht`k' = `_dt_src'
+        local made `made' __dasht`k'
+        local _dt_base = substr("`_dts_e`k''", strpos("`_dts_e`k''", ".") + 1, .)
+        mata: st_varformat("__dasht`k'", st_varformat(st_local("_dt_base")))
+        local _dt_vl : value label `_dt_base'
+        if "`_dt_vl'" != "" label values __dasht`k' `_dt_vl'
+    }
+    c_local _dash_tsop_vars "`made'"
+end
+
+// ================================================================
 // _dash_report_ignored  — one note per command naming every option
 //                         dash accepted but did not honour
 // ================================================================
 program define _dash_report_ignored
-    version 16.0
+    version 19
     // Read by value (_dash_text_args): the unmatched options are the user's
     // text, and -args- cut foo("'x") bar(1) at its "', so bar() went
     // unnamed (test_json_escaping.cscript JSE-46).
@@ -4992,14 +6619,19 @@ program define _dash_report_ignored
     if !`: length local out' exit
 
     // The names are the user's text: shown as written, never as SMCL.
-    mata: _dash_say("txt", "dash: ignoring unsupported option(s):", st_local("out"), "")
+    mata: _dash_note("dash: ignoring unsupported option(s):", st_local("out"), "")
 end
 
 // ================================================================
 // _dash_plot  — parse and route a plot definition (v2.0)
 // ================================================================
 program define _dash_plot
-    version 16.0
+    version 19
+    // WP-30 P1.28a: a path left by a command interrupted between its write
+    // and its result must never reach a later command's r().
+    capture macro drop dash__rfile
+    // WP-30 P1.6: no earlier command's t-option units reach this graph.
+    capture macro drop dash__tunit
 
     // ---- UTF-8 safety check ----
     // The command is read by value, here and at every command's gate: put
@@ -5034,8 +6666,9 @@ program define _dash_plot
     // walk past it and drop it, so the graph drew every observation with
     // rc 0.  It is the graph's own qualifier now, read here with -syntax-,
     // which refuses what twoway refuses -- two ifs, a word or a plot group
-    // after it -- before anything is parsed or reported.  Paren mode only:
-    // in the || form a qualifier is the plot's own, as in twoway.
+    // after it -- before anything is parsed or reported.  A qualifier in a
+    // bare plot of the || form is that plot's own, as in twoway; one in a
+    // || piece with no plot, `a || b || if foreign==1', is the graph's.
     local _gq_if ""
     local _gq_in ""
     if `: length local _graph_qual_raw' {
@@ -5061,6 +6694,9 @@ program define _dash_plot
     mata: _dash_axreq_clear()
     local _g_ys ""
     local _g_xs ""
+    local _tx_list ""
+    // The by() panels drawn, for the added_text count (WP-30 P1.10).
+    local _at_panels 1
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -5068,7 +6704,7 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+          scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
         local g_`gk' ""
@@ -5102,7 +6738,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
@@ -5197,12 +6833,13 @@ program define _dash_plot
         local _seg_axreq_raw   ""
         local _seg_yaxis_out   1
         local _seg_xaxis_out   1
+        local _seg_xvar_out    ""
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
@@ -5215,6 +6852,9 @@ program define _dash_plot
         local _g_ys : list uniq _g_ys
         local _g_xs `_g_xs' `_seg_xaxis_out'
         local _g_xs : list uniq _g_xs
+        // Each segment's type, x variable and x axis, for the t-options'
+        // units (WP-30 P1.6): "type:variable:axis", "." for no variable.
+        local _tx_list `"`_tx_list' `_pt_k':`=cond("`_seg_xvar_out'" == "", ".", "`_seg_xvar_out'")':`_seg_xaxis_out'"'
         // Kept for the by() answer below, by value.
         local _byq_pt_`k' `_pt_k'
         local _byq_if_`k' : copy local _seg_if_out
@@ -5274,7 +6914,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             if !`: length local _sg_`gk'' continue
@@ -5306,7 +6946,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
         if `: length local _gafter_`gk'' {
@@ -5321,8 +6961,48 @@ program define _dash_plot
     // segments before the options after the comma.  The options after the
     // comma are read last, as segment n_segs+1.
     mata: _dash_axreq_add(st_local("_gopts_axraw"), `n_segs' + 1)
+    // graphregion() then plotregion() before legend() and the axes, as
+    // twoway parses them (WP-30 P1.20a).
+    _dash_subopt_check region
+    _dash_subopt_check legend
     mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
-    if `_axrc' exit 198
+    // A line's positions go to Stata's own numlist, one copy at a time, in
+    // twoway's order (WP-30 P1.21a): -1 hands one back in _ln_text/_ln_row.
+    while `_axrc' == -1 {
+        _dash_line_check `_ln_row' `"`macval(_ln_text)'"'
+        mata: st_local("_axrc", strofreal(_dash_axreq_check(st_local("_g_ys"), st_local("_g_xs"))))
+    }
+    if `_axrc' exit `_axrc'
+    foreach _lx in g_xline g_yline g_xline2 g_yline2 {
+        if `"`macval(`_lx')'"' != "" _dash_line_expand `_lx' `"`macval(`_lx')'"'
+    }
+    _dash_subopt_check zlabel
+    _dash_subopt_check title
+
+    // ---- The t-options onto the x axis (WP-30 P1.6) ----
+    // twoway reads tlabel() .. tline() after every x option, each date
+    // literal in the unit of the x axis's label format, and refuses a date
+    // literal written in an x option (_dash_taxis_fold).  The values go
+    // over by value, in globals, and come back as the g_ locals; the spec
+    // never carries a t key.  tm() and ts() are no option of twoway's.
+    foreach _tk in name xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
+            xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ttitle ///
+            tline tlabel2 ttick2 tline2 tscale2 ttitle2 {
+        mata: st_global("dash__tf_`_tk'", st_local("g_`_tk'"))
+    }
+    mata: st_global("dash__tf_ign", st_local("_dash_ignored_acc"))
+    capture noisily _dash_taxis_fold `_tx_list'
+    local _tf_rc = _rc
+    if !`_tf_rc' {
+        foreach _tk in xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
+                xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ///
+                ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 {
+            mata: st_local("g_`_tk'", st_global("dash__tf_`_tk'"))
+        }
+        mata: st_local("_dash_ignored_acc", st_global("dash__tf_ign"))
+    }
+    capture macro drop dash__tf_*
+    if `_tf_rc' exit `_tf_rc'
 
     // ---- Validate the graph-level values (WP-15) ----
     // After the restore above, so the value checked is the one that will
@@ -5370,6 +7050,23 @@ program define _dash_plot
         if !`: length local _vval' continue
         _dash_validate_value "dash" "`_vopt'" "`_vspec'" `"`macval(_vval)'"' ""
         local g_`_vopt' : copy local _dash_vnorm
+    }
+    // WP-30 P1.18a: the bounds twoway checks when it draws, on the merged
+    // options, in its order (y1, x1, y2, x2; the scale's lwidth() before
+    // a label's or tick's angle()): an angle() outside -360..360 and a
+    // scale lwidth() outside 0..10000, r(198) in twoway's words.  dash
+    // always draws the page, so it checks under nodraw too.
+    mata: _dash_axbound_list()
+    forvalues _j = 1/`_axb_n' {
+        local _axv : copy local _axb_v`_j'
+        if "`_axb_k`_j''" == "l" {
+            _dash_validate_value "dash: `_axb_o`_j''()" "lwidth" "style,0,10000,u" `"`macval(_axv)'"' ""
+        }
+        else {
+            mata: _dash_say("err", "textangle must be between -360.000 and 360.000", "", "")
+            mata: _dash_say("err", "dash: `_axb_o`_j''(): angle() must be an anglestyle or a number from -360 to 360 (got: ", st_local("_axv"), ")")
+            exit 198
+        }
     }
     // legend()'s direction words, refused as twoway refuses them -- here for
     // the legend() written after the graph's comma, which no segment's
@@ -5512,6 +7209,7 @@ program define _dash_plot
         local _by_copt ""
         if `: length local _by_chk_s' local _by_copt "check(`_by_chk_s') rules(`_by_rules')"
         _dash_by_panels `_by_vars', panel(`_by_base_s') `_by_mopt' `_by_copt'
+        local _at_panels = max(r(kept), 1)
         if r(n) == 0 {
             display as error "nothing to graph"
             exit 198
@@ -5538,6 +7236,30 @@ program define _dash_plot
         }
     }
 
+    // ---- saving() as typed, and its grammar (WP-30 P1.27) ----
+    // The parsers' SAVing(string) drops every pair of quotes, so
+    // saving("n, replace") arrived as saving(n, replace) and wrote n.html
+    // with replace applied, and saving(n1, asis) wrote "n1, asis.html"
+    // (measured).  The text is read again as typed from the list that gave
+    // it -- the after-comma list first, else the one segment that gives it
+    // (_g_unique refuses a second) -- and put to the one grammar here, so a
+    // saving() twoway refuses is refused before anything is registered or
+    // written, on the named route too.
+    mata: st_local("_sv_typed", _dash_seg_saving("," + st_local("_gopts_axraw")))
+    if !`: length local _sv_typed' {
+        forvalues k = 1/`n_segs' {
+            if !`: length local _sv_typed' {
+                mata: st_local("_sv_typed", _dash_seg_saving(st_local("_seg_`k'")))
+            }
+        }
+    }
+    if `: length local _sv_typed' local g_saving : copy local _sv_typed
+    local _sv_replace ""
+    local _sv_comma ""
+    if `: length local g_saving' {
+        mata: _dash_saving_parse(st_local("g_saving"), "html")
+    }
+
     // ---- Report unsupported options, once, naming every one ----
     // dash accepts every twoway option so a pasted command never aborts; an
     // option it cannot honour is named here instead of vanishing.  One note
@@ -5559,8 +7281,11 @@ program define _dash_plot
     // value.
     if `: length local g_replace' {
         if `: length local g_saving' & !`: length local g_name' {
-            mata: st_local("g_saving", st_local("g_saving") + ///
-                (ustrregexm(st_local("g_saving"), ",[ \t]*replace[ \t]*$") ? "" : ", replace"))
+            // Read by the grammar above: replace already given adds
+            // nothing; else " replace" after a comma, ", replace" without.
+            mata: st_local("g_saving", st_local("g_saving") +             ///
+                (st_local("_sv_replace") != "" ? "" :                       ///
+                (st_local("_sv_comma") == "1" ? " replace" : ", replace")))
         }
         else {
             mata: st_local("_dash_ignored_acc", st_local("_dash_ignored_acc") + " replace")
@@ -5604,9 +7329,12 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel t1title ///
+          scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
+        // text() and ttext() are written as added_text records below
+        // (WP-30 P1.10), never as their raw values.
+        if inlist("`gk'", "text", "ttext") continue
         local gv : copy local g_`gk'
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv
@@ -5614,6 +7342,63 @@ program define _dash_plot
             local gopts_json `"`gopts_json'"`gk'":"`_gjv'""'
             local gfirst = 0
         }
+    }
+    // text() (WP-30 P1.10): each point a record, read by value and
+    // refused as twoway refuses it (_dash_added_text); the count of texts
+    // times by() panels first, so _dash_json_first_num finds dash's own
+    // key, then the records.  Both are appended in Mata, never expanded.
+    local _at_cnt 0
+    local _at_all ""
+    if `: length local g_text' {
+        _dash_added_text text "`_g_ys'" "`_g_xs'" "" "" `"`macval(g_text)'"'
+        local _at_all `"`_at_json'"'
+        local _at_cnt = `_at_total'
+    }
+    // ttext() (WP-30 P1.10): its x is a number or a date literal of the x
+    // axis's time format, read as twoway reads it (get_time_format): the
+    // first %t or %d among the axis's label, minor label, tick and minor
+    // tick formats, each the first plot's x variable's format on that axis
+    // unless its option's format() replaces it.  The literal is converted
+    // by S51's gated converter (_dash_tdate_value), never run.
+    if `: length local g_ttext' {
+        local _at_num "lfit qfit lfitci qfitci lpoly lpolyci kdensity function scatteri pci pcarrowi"
+        forvalues a = 1/2 {
+            local s2 = cond(`a' == 2, "2", "")
+            local _at_f ""
+            local _at_seen 0
+            foreach s of local _tx_list {
+                tokenize "`s'", parse(":")
+                if "`5'" != "`a'" | `_at_seen' continue
+                local _at_seen 1
+                if `: list 1 in _at_num' | "`3'" == "." continue
+                capture confirm variable `3', exact
+                if !_rc local _at_f : format `3'
+            }
+            local _at_tf ""
+            foreach ts in label mlabel tick mtick {
+                local _at_ff : copy local _at_f
+                if !(`a' == 2 & inlist("`ts'", "mlabel", "mtick")) {
+                    mata: st_local("_at_x", _dash_taxis_fmt(st_local("g_x`ts'`s2'")))
+                    if `: length local _at_x' local _at_ff : copy local _at_x
+                }
+                mata: st_local("_at_ok", strofreal(st_local("_at_tf") == "" & ///
+                    anyof(("%t", "%d"), substr(st_local("_at_ff"), 1, 2))))
+                if `_at_ok' local _at_tf : copy local _at_ff
+            }
+            mata: st_local("_at_u`a'", _dash_taxis_unit(st_local("_at_tf"), 1))
+        }
+        _dash_added_text ttext "`_g_ys'" "`_g_xs'" "`_at_u1'" "`_at_u2'" `"`macval(g_ttext)'"'
+        if `_at_total' {
+            mata: st_local("_at_all", st_local("_at_all") + (st_local("_at_all") != "" ? "," : "") + st_local("_at_json"))
+            local _at_cnt = `_at_cnt' + `_at_total'
+        }
+    }
+    if `_at_cnt' > 0 {
+        _dash_limit, name(by_groups)
+        local _at_cnt = `_at_cnt' * min(`_at_panels', r(value))
+        _dash_added_text_cap `_at_cnt' `"`macval(g_name)'"'
+        mata: st_local("gopts_json", st_local("gopts_json") + (`gfirst' ? "" : ",") + char(34) + "added_text_n" + char(34) + ":" + char(34) + "`_at_cnt'" + char(34) + "," + char(34) + "added_text" + char(34) + ":[" + st_local("_at_all") + "]")
+        local gfirst = 0
     }
     local gopts_json `"`gopts_json'}"'
 
@@ -5683,23 +7468,542 @@ program define _dash_plot
     }
 end
 
+// ================================================================
+// _dash_taxis_fold <type:variable:axis> ...  -- tlabel(), ttick(),
+// tmlabel(), tmtick(), ttitle(), tscale() and tline() onto the x axes, as
+// twoway reads them (WP-30 P1.6)
+//
+// Called by _dash_plot after the axis check, with each plot segment's
+// type, the variable its x axis takes its format from ("." for none) and
+// its x axis; the graph's x and t values come in the globals
+// dash__tf_<key> (and its name and ignored options in dash__tf_name and
+// dash__tf_ign) and go back the same way, so no value is ever put on a
+// command line.  Measured on StataNow 19.5 (test/fixtures/
+// taxis_truth.json, scripts/extract_taxis_truth.do):
+//   * tm() and ts() are no option of twoway's: "option tm() not allowed",
+//     r(198) (ab_tm, ab_ts);
+//   * an x option reads no date literal: xlabel(2000m1) is "invalid label
+//     specifier, :  2000m1:", r(198), xscale(range(1999m1)) r(121) (c11,
+//     c13, xl1-xsc2; xline() is refused by _dash_line_check already, c12);
+//   * the unit is the first plot's x variable's label format, and none
+//     (numbers only) after lfit, qfit, lfitci, qfitci, lpoly, lpolyci,
+//     kdensity, function, scatteri, pci or pcarrowi (m6_*), x1's for the pc
+//     types (pc1, pc2), an operated x's variable's (op1-op3);
+//   * each t-option is read after every x option, scale, label, mlabel,
+//     tick, mtick, title, line, and merges into its x twin as a second copy
+//     of it would (c14, c15, c34-c36, c46, c48);
+//   * a tline() list goes through numlist, whose cap gives twoway's r(123)
+//     "invalid numlist has too many elements" (m8);
+//   * axis(2) puts them on the second x axis, read in its own unit (f07,
+//     f08); _dash_route_axis2 writes those copies as tlabel2() .. ttitle2(),
+//     and _dash_axreq_check refuses an axis no layer uses, X then T then Y
+//     (f09, f10, f12, f13);
+//   * a format() decides the unit as twoway's ticksets do (k01-k07), and a
+//     %-t format reads dates in labels and ticks only (g01-g04).
+// The converter is Mata's (_dash_taxis_unit, _dash_taxis_fmt,
+// _dash_tdate_ticks, _dash_tdate_lines, _dash_tdate_range,
+// _dash_xdate_find): a date token is read by Mata's string date functions
+// only, and the one command line built here is numlist over the numbers
+// it wrote (_tf_nl).  The units read are kept in dash__tunit for
+// _dash_register_graph, and dash build notes a later change of a
+// variable's date format.
+// ================================================================
+program define _dash_taxis_fold
+    version 19
+    local _tf_segs `0'
+
+    // tm() and ts(), before anything is read.
+    mata: st_local("_tf_ign", st_global("dash__tf_ign"))
+    if `: length local _tf_ign' {
+        mata: _dash_option_names("_tf_ign", "_tf_names")
+        foreach tok of local _tf_names {
+            mata: st_local("tok", strtrim(st_local("tok")))
+            mata: st_local("tok", strtrim(substr(st_local("tok"), 1, ///
+                (strpos(st_local("tok"), "(") ? strpos(st_local("tok"), "(") - 1 : .))))
+            mata: st_local("_tf_x", strofreal(anyof(("tm", "ts"), st_local("tok"))))
+            if `_tf_x' {
+                display as error "option `tok'() not allowed"
+                exit 198
+            }
+        }
+    }
+
+    // A date literal in an x option.
+    foreach c in xlabel:1 xtick:1 xmlabel:1 xmtick:1 xlabel2:1 xtick2:1 xscale:3 xscale2:3 {
+        gettoken k f : c, parse(":")
+        local f = substr("`f'", 2, .)
+        mata: st_local("_tf_hit", strofreal(_dash_xdate_find(st_global("dash__tf_`k'"), `f')))
+        if `_tf_hit' {
+            if `f' == 3 {
+                display as error "range() invalid -- invalid numlist"
+                exit 121
+            }
+            mata: _dash_say("err", "invalid label specifier, :  ", st_local("_xd_tok"), ":")
+            exit 198
+        }
+    }
+
+    // Each x axis in turn (WP-30 P1.6 part 2): its base format, the first
+    // plot's on it; the four tickset formats -- major (xlabel), minor
+    // (xmlabel), major ticks (xtick), minor ticks (xmtick) -- each the
+    // base until the last format() of its merged x option replaces it
+    // (k01, k02, k07); then each family in twoway's order, the label and
+    // tick families read in their own tickset's format, which their own
+    // format() replaces only after their positions (k03, k04), and the
+    // scale and lines in the first of the four that is a %t or %d format
+    // (axis.class get_time_format; k05, %-tm g02-g04).  Axis 2 has its own
+    // base and takes tlabel2() .. ttitle2(), axis(2)'s routed forms.
+    local _tf_num "lfit qfit lfitci qfitci lpoly lpolyci kdensity function scatteri pci pcarrowi"
+    local _tf_unit ""
+    forvalues a = 1/2 {
+        local s2 = cond(`a' == 2, "2", "")
+        local _tf_fmt ""
+        local _tf_var ""
+        local _tf_seen 0
+        foreach s of local _tf_segs {
+            tokenize "`s'", parse(":")
+            if "`5'" != "`a'" | `_tf_seen' continue
+            local _tf_seen 1
+            if `: list 1 in _tf_num' | "`3'" == "." continue
+            capture confirm variable `3', exact
+            if _rc continue
+            local _tf_fmt : format `3'
+            local _tf_var `3'
+        }
+        foreach ts in label mlabel tick mtick {
+            local _tf_f_`ts' : copy local _tf_fmt
+            if `a' == 2 & inlist("`ts'", "mlabel", "mtick") continue
+            mata: st_local("_tf_x", _dash_taxis_fmt(st_global("dash__tf_x`ts'`s2'")))
+            if `: length local _tf_x' local _tf_f_`ts' : copy local _tf_x
+        }
+        local _tf_used 0
+        local _tf_fams "scale label mlabel tick mtick title line"
+        if `a' == 2 local _tf_fams "scale label tick title line"
+        foreach fam of local _tf_fams {
+            mata: st_local("_td_in", st_global("dash__tf_t`fam'`s2'"))
+            if !`: length local _td_in' continue
+            // get_time_format: the first time format of the four.
+            local _tf_tf ""
+            foreach ts in label mlabel tick mtick {
+                mata: st_local("_tf_ok", strofreal(st_local("_tf_tf") == "" & ///
+                    anyof(("%t", "%d"), substr(st_local("_tf_f_`ts'"), 1, 2))))
+                if `_tf_ok' local _tf_tf : copy local _tf_f_`ts'
+            }
+            mata: st_local("_tf_u2", _dash_taxis_unit(st_local("_tf_tf"), 2))
+            local _td_rc 0
+            if "`fam'" == "title" local _td_out : copy local _td_in
+            else if "`fam'" == "scale" {
+                mata: _dash_tdate_range(st_local("_tf_u2"))
+                local _tf_used 1
+            }
+            else if "`fam'" == "line" {
+                mata: _dash_tdate_lines(st_local("_tf_u2"))
+                if !`_td_rc' {
+                    local _td_out ""
+                    local _tf_sep ""
+                    forvalues i = 1/`_td_n' {
+                        if "`_td_k`i''" == "1" {
+                            local _tf_nl : copy local _td_s`i'
+                            if `: length local _tf_nl' {
+                                capture noisily numlist "`_tf_nl'", max(2500)
+                                if _rc exit _rc
+                                local _tf_out `r(numlist)'
+                                local _tf_out : list uniq _tf_out
+                            }
+                            else local _tf_out ""
+                            local _td_out `"`macval(_td_out)'`_tf_sep'`_tf_out'"'
+                        }
+                        else local _td_out `"`macval(_td_out)'`_tf_sep'`macval(_td_s`i')'"'
+                        local _tf_sep ", "
+                    }
+                }
+                local _tf_used 1
+            }
+            else {
+                mata: st_local("_tf_u1", _dash_taxis_unit(st_local("_tf_f_`fam'"), 1))
+                mata: _dash_tdate_ticks("t`fam'", st_local("_tf_u1"))
+                mata: st_local("_tf_x", _dash_taxis_fmt(st_local("_td_in")))
+                if `: length local _tf_x' local _tf_f_`fam' : copy local _tf_x
+                local _tf_used 1
+            }
+            if `_td_rc' {
+                mata: _dash_say("err", "", st_local("_td_msg"), "")
+                exit `_td_rc'
+            }
+            mata: st_local("_tf_x", st_global("dash__tf_x`fam'`s2'"))
+            mata: _dash_rep_merge_locals("x`fam'`s2'", "_tf_x", "_td_out", "_tf_x")
+            mata: st_global("dash__tf_x`fam'`s2'", st_local("_tf_x"))
+            global dash__tf_t`fam'`s2' ""
+        }
+        // The unit this axis's variable gave the dates, for the registry.
+        mata: st_local("_tf_u1", _dash_taxis_unit(st_local("_tf_fmt"), 1))
+        if `_tf_used' & "`_tf_var'" != "" & "`_tf_u1'" != "" {
+            local _tf_unit `_tf_unit' `a':`_tf_var':`_tf_u1'
+        }
+    }
+    if "`_tf_unit'" != "" global dash__tunit "`: list retokenize _tf_unit'"
+end
+
+// ----------------------------------------------------------------
+// _dash_line_check <row> <text>  -- one xline()/yline() copy's positions
+// through Stata's own numlist (WP-30 P1.21a)
+//
+// twoway's _gs_parse_and_log_lines (1.1.6) reads a line's positions with
+// numlist and refuses any failure as "invalid line argument, <text>",
+// r(198) (its 2,500 cap included: xline(1(1)2501)).  _dash_axreq_check
+// hands the text back only after _dash_so_unsafe passed, and it is only
+// ever expanded inside macval(); on success the row is marked read.
+// ----------------------------------------------------------------
+program define _dash_line_check
+    version 19
+    args row t
+    capture numlist `"`macval(t)'"'
+    if _rc {
+        mata: _dash_axreq_clear()
+        mata: _dash_say("err", "invalid line argument, ", st_local("t"), "")
+        exit 198
+    }
+    mata: _dash_axreq_accept_line(`row')
+end
+
+// ----------------------------------------------------------------
+// _dash_line_expand <local> <value>  -- each copy's positions as numlist
+// expands them, each value once (WP-30 P1.21a)
+//
+// value is one option's copies joined ", " (_dash_rep_merge); the result
+// is written to the caller's local.  A top-level-comma segment whose first non-blank byte
+// is a digit, +, -, . or ( starts a copy: it is replaced by its positions
+// as numlist writes them, duplicates dropped (twoway's list uniq); other
+// segments are kept as typed.  Every copy was already accepted by
+// _dash_line_check, so this never refuses.
+// ----------------------------------------------------------------
+program define _dash_line_expand
+    version 19
+    args L v
+    if `"`macval(v)'"' == "" exit
+    local rest : copy local v
+    local out ""
+    local sep ""
+    local any 0
+    while `"`macval(rest)'"' != "" {
+        mata: _dash_comma_pos(st_local("rest"), "cpos")
+        if `cpos' {
+            mata: st_local("seg", substr(st_local("rest"), 1, `cpos' - 1))
+            mata: st_local("rest", substr(st_local("rest"), `cpos' + 1, .))
+        }
+        else {
+            local seg : copy local rest
+            local rest ""
+        }
+        mata: st_local("seg", strtrim(st_local("seg")))
+        mata: st_local("_lx_c", strofreal(strpos("0123456789+-.(", substr(st_local("seg"), 1, 1)) > 0 & st_local("seg") != ""))
+        if `_lx_c' {
+            numlist `"`macval(seg)'"'
+            local nl `r(numlist)'
+            local nl : list uniq nl
+            local seg `nl'
+            local any 1
+        }
+        local out `"`macval(out)'`sep'`macval(seg)'"'
+        local sep ", "
+    }
+    if `any' c_local `L' `"`macval(out)'"'
+end
+
+// ----------------------------------------------------------------
+// _dash_reflines_of <gjson>  -- r(n): one graph's reference-line
+// positions times its by() panels (WP-30 P1.21a)
+//
+// Positions are counted in the JSON, already expanded
+// (_dash_reflines_positions); the panels over every observation
+// (_dash_refline_panels), an upper bound of what is drawn.
+// ----------------------------------------------------------------
+program define _dash_reflines_of, rclass
+    version 19
+    args gjson
+    mata: st_local("_rl_p", strofreal(_dash_reflines_positions(st_local("gjson"))))
+    local _rl_k 1
+    if `_rl_p' > 0 {
+        mata: _dash_json_get_str(st_local("gjson"), "by", "_rl_by")
+        if `"`macval(_rl_by)'"' != "" {
+            _dash_refline_panels `"`macval(_rl_by)'"'
+            local _rl_k = max(r(n), 1)
+        }
+    }
+    return scalar n = `_rl_p' * `_rl_k'
+end
+
+// ----------------------------------------------------------------
+// _dash_refline_panels <by>  -- r(n): the panels a by() value asks for,
+// counted over every observation (WP-30 P1.21a)
+//
+// The groups of the by() variables (missing keeps a group holding a
+// missing value), one more for total, capped at the by_groups limit.
+// The names were validated when the spec was built; the value is read
+// through _dash_by_parts from a string scalar.
+// ----------------------------------------------------------------
+program define _dash_refline_panels, rclass
+    version 19
+    args by
+    tempname V
+    mata: st_strscalar(st_local("V"), st_local("by"))
+    _dash_by_parts `V'
+    tempvar tag one
+    local n 0
+    capture confirm variable `_by_vars'
+    if !_rc {
+        quietly gen byte `one' = 1
+        if !`_by_miss' markout `one' `_by_vars', strok
+        quietly egen byte `tag' = tag(`_by_vars') if `one'
+        quietly count if `tag' == 1
+        local n = r(N) + `_by_total'
+    }
+    _dash_limit, name(by_groups)
+    return scalar n = min(`n', r(value))
+end
+
+// ----------------------------------------------------------------
+// _dash_reflines_cap <n>  -- refuse r(134) a dashboard whose reference
+// lines pass the reflines limit (WP-30 P1.21a, A68)
+// ----------------------------------------------------------------
+program define _dash_reflines_cap
+    version 19
+    args n
+    _dash_limit, name(reflines)
+    local lim = r(value)
+    local ceil = r(ceiling)
+    if `n' <= `lim' exit
+    _dash_count_fmt _n_s `n'
+    _dash_count_fmt _lim_s `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    display as error "dash: this dashboard asks for up to `_n_s' reference lines (positions times by() panels), more than the `_lim_s' one dashboard draws."
+    display as error "      Draw fewer lines, or set global dash_max_reflines to a higher value (at most `_ceil_s')."
+    exit 134
+end
+
+
+// ----------------------------------------------------------------
+// _dash_at_opts "<ys>" "<xs>" <state> `"<options>"'  -- one text() or
+// ttext() copy's sub-options, read as twoway reads them (WP-30 P1.10)
+//
+// twoway's _parse_log_1textbox (twowaygraph_g.class) reads AXes()
+// YAXis() XAXis() TSTYle() first and refuses an axis pair no plot region
+// has -- even for a copy with no point -- then, for a copy with a point,
+// hands the rest to the textbox chain (_fr_sztextbox_parse_and_log,
+// _fr_textbox_parse_and_log, _fr_tbstyle_parse_and_log), each level
+// passing its unknown words on and the last refusing them: one syntax
+// statement holding every level's options, with no catch-all, accepts and
+// refuses what the chain does.  <ys> and <xs> are the axes the graph's
+// layers use (dash's own digits); <state> is _dash_at_parse's for the
+// copy (0 no point, 1 valid, 2 its first point invalid: stop after the
+// axis pair, 3 a later one).  The options are read by value
+// (_dash_text_args) and reach syntax only through st_local("0"), never
+// a command line.  Returns by c_local only digits, option names and
+// _json_escape() output: _ao_y, _ao_x (the axis pair), _ao_canon (the
+// drawn sub-options, _dash_at_canon), _ao_noted (the names given that
+// dash does not draw).  An unknown placement() or orientation() is noted
+// here in twoway's words, so the name never crosses a program boundary.
+// ----------------------------------------------------------------
+program define _dash_at_opts
+    version 19
+    mata: _dash_text_args(3, 0, 0)
+    local _ys `_dash_a1'
+    local _xs `_dash_a2'
+    local _st `_dash_a3'
+    mata: st_local("0", ", " + st_local("_dash_txt"))
+    syntax [, AXes(string) YAXis(integer 1) XAXis(integer 1) TSTYle(string) *]
+    local _ay `yaxis'
+    local _ax `xaxis'
+    if `: length local axes' {
+        mata: st_local("_aw", strofreal(cols(tokens(st_local("axes")))))
+        if `_aw' != 2 {
+            mata: _dash_say("err", "invalid axes(", st_local("axes"), ")")
+            exit 198
+        }
+        mata: st_local("_ay", tokens(st_local("axes"))[1]); st_local("_ax", tokens(st_local("axes"))[2])
+        mata: st_local("_ay", st_local("_ay") == "." ? "1" : st_local("_ay")); st_local("_ax", st_local("_ax") == "." ? "1" : st_local("_ax"))
+    }
+    mata: st_local("_okp", strofreal(anyof(tokens(st_local("_ys")), st_local("_ay")) & anyof(tokens(st_local("_xs")), st_local("_ax"))))
+    if !`_okp' {
+        mata: _dash_say("err", "text() option invalid, specified axis pair (", st_local("_ay") + " " + st_local("_ax"), ") not in graph")
+        exit 198
+    }
+    c_local _ao_y `_ay'
+    c_local _ao_x `_ax'
+    c_local _ao_canon ""
+    c_local _ao_noted ""
+    if inlist(`_st', 0, 2) exit
+    mata: st_local("0", ", " + st_local("options"))
+    syntax [, WIDTH(string) HEIGHT(string) NOASTextbox NOBEXpand ///
+        ASTextbox BEXpand ORIENTation(string) DRAWVIEW(string) ///
+        XOFFSET(real -99999) YOFFSET(real -99999) ASCIRCLE ANGLE(string) ///
+        Size(string) Color(string) Justification(string) ///
+        Alignment(string) Margin(string) LINEGAP(string) NOBox Box ///
+        BMargin(string) PLACEment(string) BFColor(string) FColor(string) ///
+        BColor(string) BLSTyle(string) BLWidth(string) BLColor(string) ///
+        BLPattern(string) BLAlign(string) LSTyle(string) LWidth(string) ///
+        LColor(string) LPattern(string) LAlign(string)]
+    if `: length local placement' {
+        mata: st_local("_pl", _dash_at_place(st_local("placement")))
+        if "`_pl'" == "" {
+            mata: _dash_note("named style ", st_local("placement"), " not found in class compass2dir, default attributes used")
+        }
+    }
+    if `: length local orientation' {
+        mata: st_local("_or", _dash_at_orient(st_local("orientation")))
+        if "`_or'" == "" {
+            mata: _dash_note("named style ", st_local("orientation"), " not found in class tb_orientstyle, default attributes used")
+        }
+    }
+    local _nt ""
+    foreach _n in width height astextbox noastextbox bexpand nobexpand ///
+        drawview ascircle tstyle angle alignment linegap bmargin lpattern ///
+        lstyle lalign blpattern blstyle blalign {
+        if `: length local `_n'' local _nt `_nt' `_n'
+    }
+    if `xoffset' != -99999 local _nt `_nt' xoffset
+    if `yoffset' != -99999 local _nt `_nt' yoffset
+    mata: st_local("_cn", _dash_at_canon())
+    c_local _ao_canon `"`_cn'"'
+    c_local _ao_noted `_nt'
+end
+
+// ----------------------------------------------------------------
+// _dash_added_text <kind> "<ys>" "<xs>" "<u1>" "<u2>" `"<copies>"'  -- a
+// graph's text() or ttext() copies as added_text records (WP-30 P1.10)
+//
+// <kind> is text or ttext; <ys> and <xs> the axes the graph's layers use;
+// <u1> and <u2> the date units of x axes 1 and 2 (ttext(); "" for none,
+// _dash_taxis_unit), its literals converted by _dash_at_dates and refused
+// "<x> is not a number" as twoway refuses one the axis cannot read;
+// <copies> the option's value, its copies joined by char(30)
+// (_dash_rep_merge), read by value (_dash_text_args).  Mata reads every
+// copy's points and lines (_dash_at_parse); each copy's sub-options are
+// read as twoway reads them (_dash_at_opts), and the command is refused
+// r(198) in twoway's words on a malformed point, a missing axis pair or a
+// sub-option twoway does not take.  The sub-options dash does not draw are
+// named once in a note.  Returns by c_local _at_json, the records joined
+// by commas (_dash_at_json; JSON-escaped, safe inside compound quotes),
+// and _at_total, their number.
+// ----------------------------------------------------------------
+program define _dash_added_text
+    version 19
+    mata: _dash_text_args(5, 0, 0)
+    local _kind `_dash_a1'
+    local _ys `_dash_a2'
+    local _xs `_dash_a3'
+    local _u1 `_dash_a4'
+    local _u2 `_dash_a5'
+    mata: st_local("_at_rc", strofreal(_dash_at_parse(st_local("_dash_txt"), st_local("_kind") == "ttext")))
+    local _noted ""
+    forvalues k = 1/`_at_k' {
+        mata: _dash_at_copy(`k')
+        _dash_at_opts "`_ys'" "`_xs'" `_at_s' `"`macval(_at_o)'"'
+        if inlist(`_at_s', 2, 3) {
+            mata: _dash_say("err", "", st_local("_at_e"), "")
+            exit 198
+        }
+        local _at_ya`k' `_ao_y'
+        local _at_xa`k' `_ao_x'
+        local _at_cn`k' `"`_ao_canon'"'
+        local _noted : list _noted | _ao_noted
+    }
+    if "`_noted'" != "" {
+        local _nl ""
+        foreach _n of local _noted {
+            local _nl "`_nl' `_n'()"
+        }
+        mata: _dash_note("dash: `_kind'() draws no", st_local("_nl"), "; see help dash##added_text")
+    }
+    // ttext()'s date literals, in the unit of each record's x axis.
+    if "`_kind'" == "ttext" {
+        mata: st_local("_at_rc", strofreal(_dash_at_dates(st_local("_u1"), st_local("_u2"))))
+        if `_at_rc' {
+            mata: _dash_say("err", "", st_local("_at_err"), " is not a number")
+            exit 198
+        }
+    }
+    mata: _dash_at_records(st_local("_kind"))
+    c_local _at_json `"`_at_json'"'
+    c_local _at_total `_at_n'
+end
+
+// ----------------------------------------------------------------
+// _dash_added_text_cap <n> ["<graph>"]  -- refuse r(134) a graph, or with
+// no name a dashboard, whose added texts (text() and ttext() points times
+// by() panels) pass the added_text limit (WP-30 P1.10, A28)
+// ----------------------------------------------------------------
+program define _dash_added_text_cap
+    version 19
+    mata: _dash_text_args(1, 0, 0)
+    local n `_dash_a1'
+    _dash_limit, name(added_text)
+    local lim = r(value)
+    local ceil = r(ceiling)
+    if `n' <= `lim' exit
+    _dash_count_fmt _n_s `n'
+    _dash_count_fmt _lim_s `lim'
+    _dash_count_fmt _ceil_s `ceil'
+    if `: length local _dash_txt' {
+        mata: _dash_say("err", "dash: graph '", st_local("_dash_txt"), "' draws `_n_s' added texts (text() and ttext() points times by() panels), more than the `_lim_s' dash draws.")
+    }
+    else {
+        display as error "dash: this dashboard draws `_n_s' added texts (text() and ttext() points times by() panels), more than the `_lim_s' dash draws."
+    }
+    display as error "      Set global dash_max_added_text to draw more (at most `_ceil_s')."
+    exit 134
+end
+
+
+// ================================================================
+// _dash_display_on given mode graphics seam  -- may dash open a window?
+//
+// twoway builds its graph and displays nothing in batch (c(mode) batch)
+// and after `set graphics off' (measured, StataNow 19.5), so dash opens no
+// window there (WP-30 P1.27, A88); interactive Stata, the console
+// included, opens one (A89).  A pure function of its arguments, which are
+// compared by value in Mata: given is a display() option, "", on or off
+// (anything else r(198)), and decides when given; else seam, the value of
+// an undocumented test global, decides when it is exactly on or off; else
+// r(on) is 0 in batch or with graphics off, 1 otherwise.
+// ================================================================
+program define _dash_display_on, rclass
+    version 19
+    args given mode graphics seam
+    mata: st_local("_do_g", st_local("given"))
+    mata: st_local("_do_ok", strofreal(anyof(("", "on", "off"), st_local("given"))))
+    if "`_do_ok'" != "1" {
+        display as error "dash: display() is on or off."
+        exit 198
+    }
+    mata: st_local("_do_on", ///
+        st_local("given") != "" ? strofreal(st_local("given") == "on") : ///
+        (anyof(("on", "off"), st_local("seam")) ? strofreal(st_local("seam") == "on") : ///
+        strofreal(!(st_local("mode") == "batch" | st_local("graphics") == "off"))))
+    return scalar on = `_do_on'
+end
 
 // ================================================================
 // _dash_browser_wanted  — should this render open a browser window?
 //
 // r(open) is 1 only when no saving() was given, $dash_nobrowser is empty,
-// and the spec does not carry Stata's own nodraw.  nodraw means "build it
+// the spec does not carry Stata's own nodraw, and _dash_display_on allows a
+// window (not batch, graphics not off; WP-30 P1.27).  nodraw means "build it
 // but do not display it", and opening a window is displaying it; it is a
 // flag, so its serialised value is the word itself, and an unset flag
 // serialises as an empty string, which must NOT suppress.
 // ================================================================
 program define _dash_browser_wanted, rclass
-    version 16.0
-    syntax , SPEC(string asis) [SAVing(string)]
+    version 19
+    syntax , SPEC(string asis) [SAVing(string) DISPlay(string)]
     local open = 1
     if `"`saving'"' != "" local open = 0
     if "${dash_nobrowser}" != "" local open = 0
     if strpos(`"`spec'"', `""nodraw":"nodraw""') > 0 local open = 0
+    // No window in batch or with graphics off (WP-30 P1.27): _dash_display_on.
+    mata: st_local("_bw_seam", st_global("dash__display"))
+    _dash_display_on `"`display'"' "`c(mode)'" "`c(graphics)'" `"`macval(_bw_seam)'"'
+    if r(on) == 0 local open = 0
     return scalar open = `open'
 end
 
@@ -5711,7 +8015,7 @@ end
 // graph_options were never read for it.  r(nodraw) is 1 when one is.
 // ================================================================
 program define _dash_registry_nodraw, rclass
-    version 16.0
+    version 19
     local hit = 0
     foreach _rn in ${dash_graph_registry} {
         if strpos(`"${dash_json_`_rn'}"', `""nodraw":"nodraw""') > 0 local hit = 1
@@ -5725,8 +8029,9 @@ end
 //
 // The one rule `dash build' and `dash serve' decide by.  r(open) is 1
 // unless the command's own nobrowser option was given, $dash_nobrowser is
-// set (an empty global is an unset one), or a registered graph carries
-// Stata's nodraw.  r(flag) is what `dash serve' hands the launcher:
+// set (an empty global is an unset one), a registered graph carries
+// Stata's nodraw, or _dash_display_on refuses a window (batch, or graphics
+// off; WP-30 P1.27).  r(flag) is what `dash serve' hands the launcher:
 // "--no-browser" when r(open) is 0, else empty.
 //
 // `dash serve' used to decide from its nobrowser option alone, so the
@@ -5737,11 +8042,16 @@ end
 // build' shut, did not keep `dash serve' shut either.
 // ================================================================
 program define _dash_dashboard_browser, rclass
-    version 16.0
-    syntax [, NOBRowser]
+    version 19
+    syntax [, NOBRowser DISPlay(string)]
     _dash_registry_nodraw
+    // r(nodraw) is copied before _dash_display_on, an rclass call, runs.
+    local _db_nd = r(nodraw)
+    // No window in batch or with graphics off (WP-30 P1.27): _dash_display_on.
+    mata: st_local("_db_seam", st_global("dash__display"))
+    _dash_display_on `"`display'"' "`c(mode)'" "`c(graphics)'" `"`macval(_db_seam)'"'
     local open = ("`nobrowser'" == "" & "${dash_nobrowser}" == "" ///
-                  & r(nodraw) == 0)
+                  & `_db_nd' == 0 & r(on) == 1)
     return scalar open = `open'
     if `open' return local flag ""
     else      return local flag "--no-browser"
@@ -5758,6 +8068,8 @@ end
 // os() or, when that is omitted, this machine's.  r(opened) is 1 when the
 // command went to the shell.  dryrun builds and returns the command and
 // runs nothing, and so does a set $dash_nobrowser, whichever caller asks.
+// r(why) is "metachar" when a Windows path holds a character cmd.exe would
+// read, so no command was built and the path was printed instead.
 //
 // The two callers each carried their own three shell lines, and the
 // Windows line ran only where Stata reports Windows, so no test ran it;
@@ -5779,7 +8091,7 @@ end
 // cleared; these refusals hold the program to itself.
 // ================================================================
 program define _dash_open_page, rclass
-    version 16.0
+    version 19
     syntax , PATH(string) [OS(string) DRYrun]
 
     // A Mac is a Mac whichever binary runs.  The console binary reports
@@ -5811,6 +8123,24 @@ program define _dash_open_page, rclass
         if `_op_dq' {
             display as error "dash: a Windows path cannot hold a double quote; the page was not opened."
             exit 198
+        }
+        // WP-30 P1.29 (M11): start runs inside cmd.exe, which expands
+        // %NAME% even inside double quotes, ! under delayed expansion, and
+        // reads ^ & | < > ; as its escape and separators, so start could
+        // open another file than the one written.  For such a path no
+        // command is built and nothing runs -- with or without dryrun,
+        // under $dash_nobrowser too -- and the path is printed, through
+        // _dash_say, which never parses it; the page is already written,
+        // so the rc is 0.  twoway's saving() accepts % ! ^, so the
+        // validator does not refuse them.
+        mata: st_local("_op_meta", strofreal(_dash_cmd_metachar(st_local("path"))))
+        if `_op_meta' {
+            mata: _dash_say("txt", "dash: not opened, because Windows' command shell would read the " + char(`_op_meta') + " in ", st_local("path"), "; open the page yourself.")
+            return local os "`os'"
+            return local cmd ""
+            return local why "metachar"
+            return scalar opened = 0
+            exit
         }
         mata: st_local("cmd", "start " + char(34) + char(34) + " " + char(34) + st_local("path") + char(34))
     }
@@ -5850,7 +8180,7 @@ end
 // _dash_kpi_fields in dash_parse.mata.
 // ================================================================
 program define _dash_drop_item
-    version 16.0
+    version 19
     args name
 
     mata: _dash_item_globals("`name'", "_dash_item_kill")
@@ -5897,7 +8227,7 @@ end
 // both (test_caller_version.cscript CV-02).
 // ================================================================
 program define _dash_name_split
-    version 16.0
+    version 19
     args raw name_macro flag_macro
 
     local _nm = strtrim(`"`raw'"')
@@ -5927,7 +8257,7 @@ end
 // in twoway's words, before anything is registered or dropped.  The words
 // hold no user text.
 program define _dash_refuse_second_name
-    version 16.0
+    version 19
     display as error "option name() not allowed"
     display as error "      A graph takes one name(); this command gives it more than once, which twoway refuses as well."
     exit 198
@@ -5971,7 +8301,7 @@ end
 //     _dash_say so SMCL in it is shown, not obeyed, and ends with the
 //     generator's code.  Break (r(1)) ends the command at once, unechoed.
 program define _dash_fn_points
-    version 16.0
+    version 19
     args raw_sc lo hi n k obj_sc
     mata: st_local("_fx_raw", st_strscalar(st_local("raw_sc")))
     mata: st_local("_fx_echo", (ustrregexm(st_local("_fx_raw"), ///
@@ -6047,7 +8377,7 @@ end
 // macval(); the name is a Stata name (_dash_unbound_cands checks it), and
 // the message is printed through _dash_say.
 program define _dash_refuse_unbound
-    version 16.0
+    version 19
     mata: _dash_text_args(1, 0, 0)
     local parser : copy local _dash_a1
     local opts : copy local _dash_txt
@@ -6108,7 +8438,7 @@ end
 // and reaches a command line only through macval(); the refusal names an
 // option by a Stata name.
 program define _dash_opts_repeats
-    version 16.0
+    version 19
     mata: _dash_text_args(2, 0, 0)
     local parser : copy local _dash_a1
     local ptype : copy local _dash_a2
@@ -6140,6 +8470,22 @@ program define _dash_opts_repeats
         if _rc continue
         local _rp_sm : s(macros)
         mata: st_local("_rp_key`i'", _dash_rep_keyof(st_local("_rp_sm")))
+        // An empty style copy, mcolor(""), sets no s() and so had no key:
+        // mcolor(red) mcolor("") kept red and named the second unsupported,
+        // where twoway draws the default (measured p2_2, WP-30 P1.1a).
+        if !`: length local _rp_key`i'' & "`parser'" == "_dash_parse_plot_opts" {
+            mata: st_local("_rp_pr", _dash_stylelist_probe(st_local("_rp_tok`i'")))
+            if `: length local _rp_pr' {
+                sreturn clear
+                capture `parser' , `_rp_pr'
+                if !_rc {
+                    local _rp_sm : s(macros)
+                    mata: st_local("_rp_pk", _dash_rep_keyof(st_local("_rp_sm")))
+                    mata: st_local("_rp_slk", _dash_stylelist_keys())
+                    if `: list _rp_pk in _rp_slk' & `: word count `_rp_pk'' == 1 local _rp_key`i' : copy local _rp_pk
+                }
+            }
+        }
     }
     mata: st_local("_rp_out", _dash_rep_reduce(st_local("opts"), st_local("ptype")))
     if `: length local _rp_refuse' _dash_refuse_repeat `_rp_refuse'
@@ -6155,7 +8501,7 @@ end
 // typed, "()" after it when it took a value (_dash_rep_reduce,
 // _dash_rep_und_scan); it is echoed as text.
 program define _dash_refuse_repeat
-    version 16.0
+    version 19
     args nm
     mata: _dash_say("err", "option ", st_local("nm"), " not allowed")
     display as error "      twoway takes this option once; this command gives it more than once."
@@ -6167,7 +8513,7 @@ end
 // lpoly, lpolyci or kdensity (_dash_kernel_clash), refused in twoway's
 // words, which differ on kdensity, with its code, r(198).
 program define _dash_refuse_kernel
-    version 16.0
+    version 19
     args kind ptype
     if "`kind'" == "one" {
         display as error "only one kernel may be specified"
@@ -6209,7 +8555,7 @@ end
 // as before.  The option text is read by value (_dash_text_args); the
 // refusal names an option by a Stata name, echoed as text.
 program define _dash_refuse_foreign
-    version 16.0
+    version 19
     mata: _dash_text_args(2, 0, 0)
     local parser : copy local _dash_a1
     local ptype : copy local _dash_a2
@@ -6260,7 +8606,7 @@ end
 // stored as the one word x and the command cut at the quote (measured
 // 24sep2026; test_json_escaping.cscript JSE-45, JSE-47).
 program define _dash_register_graph
-    version 16.0
+    version 19
     args name_sc json_sc spec_sc fp_sc
     mata: st_local("name", st_strscalar(st_local("name_sc")))
     mata: st_local("json_spec", st_strscalar(st_local("json_sc")))
@@ -6411,6 +8757,16 @@ program define _dash_register_graph
     else {
         capture macro drop dash_fpts_`name'
     }
+    // The unit the t-options' dates were read in (WP-30 P1.6,
+    // _dash_taxis_fold), for dash build's note when it has changed.
+    // dash_tu_<name> is 8 + 22 characters, within a global's 32
+    // (dash_tunit_<name> was 33 at the longest name).
+    mata: st_local("_tu_reg", st_global("dash__tunit"))
+    if `: length local _tu_reg' {
+        mata: st_global("dash_tu_" + st_local("name"), st_global("dash__tunit"))
+    }
+    else capture macro drop dash_tu_`name'
+    capture macro drop dash__tunit
 
     // Update registry
     if `already' == 0 {
@@ -6430,7 +8786,7 @@ end
 // _dash_render_immediate  — single-graph render path
 // ================================================================
 program define _dash_render_immediate
-    version 16.0
+    version 19
     // The graph JSON alone; the command, handed over as well, was read by
     // nothing (see _dash_plot).  fp_sc is the string scalar holding the
     // graph's function points (WP-29 P0.6), "" when it has none.
@@ -6464,28 +8820,24 @@ program define _dash_render_immediate
         // it was expanded again here, so saving("\$D/x.html") wrote the page
         // where $D pointed (measured 24sep2026; test_json_escaping.cscript
         // JSE-68).
-        tempname P
-        local replace ""
-        mata: st_strscalar(st_local("P"), strtrim(st_local("saving_path")))
-        if regexm(scalar(`P'), "^(.+)[ \t]*,[ \t]*replace[ \t]*$") {
-            scalar `P' = strtrim(regexs(1))
-            local replace = "replace"
-        }
-        // The .gph note is shown only once the path is validated, and
-        // through _dash_say: it was displayed first, inside plain quotes,
-        // so a double quote in the name ended the string and what followed
-        // ran as display directives, and a brace drew SMCL.
-        local _gph = 0
-        if regexm(lower(scalar(`P')), "\.gph$") {
-            scalar `P' = substr(scalar(`P'), 1, strlen(scalar(`P')) - 4)
-            local _gph = 1
-        }
-        if !regexm(lower(scalar(`P')), "\.html$") scalar `P' = scalar(`P') + ".html"
-        mata: st_local("saving_path", st_strscalar(st_local("P")))
+        // WP-30 P1.27: one grammar, twoway's (_dash_saving_parse), shared
+        // with dash build.  Only a trailing ", replace" was read here, so
+        // saving(n1, asis) wrote "n1, asis.html" and saving(n4, bogus)
+        // "n4, bogus.html" (measured).  The text is the one _dash_plot read
+        // as typed, read by value.
+        local _sv_gph ""
+        mata: _dash_saving_parse(st_local("saving_path"), "html")
+        local replace : copy local _sv_replace
+        local saving_path : copy local _sv_file
+        local _gph = ("`_sv_gph'" == "1")
         _dash_validate_path `"`macval(saving_path)'"'
         local saving_path `"`_dash_vpath'"'   // `~/' expanded, if it was there
         if `_gph' {
-            mata: _dash_say("txt", "dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
+            mata: _dash_note("dash: saving() writes HTML, not a Stata .gph; using ", st_local("saving_path"), "")
+        }
+        // WP-30 P1.28a: a suffix graph export writes is replaced too.
+        if "`_sv_img'" != "" {
+            mata: _dash_note("dash: saving() writes HTML, not a ." + st_local("_sv_img") + " image; using ", st_local("saving_path"), "")
         }
         // A file that is there already is kept unless replace was given --
         // saving(name, replace), twoway's form, or replace after the comma,
@@ -6527,9 +8879,30 @@ program define _dash_render_immediate
         exit 198
     }
 
+    // ---- Time-series operators in plot variables (WP-30 P1.7) ----
+    // Each expression (L.close) becomes the column __dasht<k> Stata fills
+    // with tsrevar at export (_dash_tsop_gen); the spec names the column
+    // and carries the expression and twoway's text in "ts_cols".
+    local _dts_err ""
+    mata: _dash_tsop_reset()
+    mata: st_local("json_spec", _dash_tsop_rewrite(st_local("json_spec"), "_dts_err"))
+    if `: length local _dts_err' {
+        mata: _dash_say("err", "dash: ", st_local("_dts_err"), ".")
+        exit 198
+    }
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    local _dts_names ""
+    forvalues _dtk = 1/`_dts_n' {
+        local _dts_names `_dts_names' __dasht`_dtk'
+    }
+
     // ---- Determine variables needed ----
     local needed_vars ""
     mata: _dash_extract_vars(`"`json_spec'"', "needed_vars")
+    // The time-series columns do not exist until _dash_tsop_gen makes
+    // them; they reach the writer through _dash_tsop_vars.
+    local needed_vars : list needed_vars - _dts_names
 
     // ...including the ones named only in by().  A qualifier's variables
     // are not exported: its answer is (_dash_qual_gen), and the rewritten
@@ -6603,7 +8976,7 @@ program define _dash_render_immediate
     // draws it (measured 24sep2026; P1A-72).
     _dash_plottype_families
     local _varfree = 0
-    if "`needed_vars'" == "" {
+    if "`needed_vars'" == "" & `_dts_n' == 0 {
         mata: st_local("_varfree", strofreal(_dash_spec_types_in( ///
             st_local("json_spec"), st_local("_pt_literal"))))
         if !`_varfree' {
@@ -6687,13 +9060,24 @@ program define _dash_render_immediate
         _dash_cell_cap 0 "" `_ri_gc'
     }
     else {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n''
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n''
     }
+
+    // Reference lines: positions times by() panels (WP-30 P1.21a).
+    _dash_reflines_of `"`macval(json_spec)'"'
+    _dash_reflines_cap `r(n)'
     _dash_byte_cap `_cap_vars'
 
     // Collect display formats.  Each travels in the spec's formats map;
     // the data file carries every number as stored, whatever its format.
     _dash_formats_json "`needed_vars'" _dash_fmt_json _dash_date_vars
+    // The time-series columns: their bases' formats, and the spec's map
+    // from each column to its expression and twoway's text.
+    local _dts_json ""
+    if `_dts_n' > 0 {
+        mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
+        local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+    }
 
     // ---- The private run folder (WP-29 P0.12b) ----
     // After every refusal above, so a refused command makes no folder.  r()
@@ -6718,7 +9102,8 @@ program define _dash_render_immediate
         // spec (measured 24sep2026; test_qualifier_in_stata.cscript QS-15).
         local _dash_qual_vars ""
         local _dash_sort_vars ""
-        if `_dq_n' + `_ds_n' > 0 {
+        local _dash_tsop_vars ""
+        if `_dq_n' + `_ds_n' + `_dts_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
@@ -6731,6 +9116,15 @@ program define _dash_render_immediate
             if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
             exit `_ds_rc'
         }
+        // The time-series columns last, under the user's sort (WP-30
+        // P1.7); tsrevar's refusal drops what was made.
+        capture noisily _dash_tsop_gen "dash"
+        if _rc {
+            local _dt_rc = _rc
+            capture drop `_dash_qual_vars' `_dash_sort_vars'
+            _dash_tmp_close, dir(`"`_dash_run'"')
+            exit `_dt_rc'
+        }
         // Captured, so the qualifier columns are dropped when the export
         // fails too.  The writer reads each stored value whatever its
         // display format, so no format is touched (until 24sep2026 jsonio
@@ -6738,10 +9132,10 @@ program define _dash_render_immediate
         // export left it so: test_program_coverage.cscript PC-11).  Its
         // message is still shown and its code returned; no value is
         // expanded on the way (test_string_values.cscript).
-        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars'
+        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
-            capture drop `_dash_qual_vars' `_dash_sort_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
         }
     }
     if `_dash_jrc' {
@@ -6764,9 +9158,10 @@ program define _dash_render_immediate
     local _dash_lvl = c(level)
     local _dash_sess_scheme = c(scheme)
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    _dash_scheme_dirs
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'}"'
+    local master_json = `"{"graphs": [`json_spec'], "build_options": {"layout": "1 1", "theme": "", "session_scheme": "`_sess_scheme_esc'", "scheme_dirs": `macval(_dash_sdirs)', "level": "`_dash_lvl'", "formats": `_dash_fmt_json', "limits": `_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b):
     // Stata's `file write' wrote it with the umask (D4) and expanded a macro
@@ -6809,8 +9204,8 @@ program define _dash_render_immediate
 
     // ---- Open in browser if no explicit saving() ----
     // The same suppression as `dash build'.  This path sets open_browser
-    // only when no saving() was given, but a do-file run in batch still does
-    // not want a browser window.  The decision was made above, where the
+    // only when no saving() was given, and the decision also reads batch
+    // mode and set graphics off (_dash_display_on, WP-30 P1.27).  The decision was made above, where the
     // preview page was named, and is read again here, beside the opener
     // (_dash_browser_wanted is pure, so both reads agree), so the opener
     // never runs without a decision next to it (test_packaging.py).  The
@@ -6828,7 +9223,15 @@ program define _dash_render_immediate
     else {
         // Shown as written: braces are legal in a file name (P20-07).
         mata: _dash_say("txt", "dash: dashboard saved to ", st_local("saving_path"), "")
+        // A preview not opened (batch, graphics off, nodraw, the global) is
+        // pruned by later previews; say so (WP-30 P1.27).
+        if "`_dash_preview'" == "1" {
+            display as text "dash: this page is a temporary preview that later previews may remove; use saving() to keep it."
+        }
     }
+    // WP-30 P1.28a: the last statement -- the path written, absolute, for
+    // r(filename) (_dash_result).
+    mata: st_global("dash__rfile", _dash_abs_path(st_local("saving_path"), c("pwd"), c("os")))
 end
 
 
@@ -6836,7 +9239,7 @@ end
 // _dash_clear  — reset global registry
 // ================================================================
 program define _dash_clear
-    version 16.0
+    version 19
 
     // Sweep dash's whole global namespace, not an enumerated list.
     //
@@ -6873,6 +9276,7 @@ program define _dash_clear
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
     capture macro drop dash_fpts_*
+    capture macro drop dash_tu_*
 
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
@@ -6890,7 +9294,7 @@ end
 // _dash_kpi  — KPI subcommand
 // ================================================================
 program define _dash_kpi
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -7261,7 +9665,7 @@ end
 // agree, so they cannot drift again the way these two did.
 // ================================================================
 program define _dash_prepare_spec, rclass
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -7350,9 +9754,7 @@ program define _dash_prepare_spec, rclass
         if "`replace'" != ""  local _srv_na `"`_srv_na' replace"'
         if "`server'"  != ""  local _srv_na `"`_srv_na' server"'
         if `"`_srv_na'"' != "" {
-            display as text "dash serve: ignoring option(s) that only apply to dash build:" ///
-                as result `"`_srv_na'"'
-            display as text "  dash serve streams the dashboard; it writes no file."
+            mata: _dash_note("dash serve: ignoring option(s) that only apply to dash build:", st_local("_srv_na"), ". dash serve streams the dashboard and writes no file.")
         }
     }
 
@@ -7435,8 +9837,8 @@ program define _dash_prepare_spec, rclass
     // ---- validate theme() and scheme() (WP-17) ----
     // Before anything is written, through the program that gates a
     // graph-level scheme(): theme() is one of the six aliases, scheme() a
-    // shipped translation, a theme, or a .scheme file in the working
-    // directory.  Measured 22sep2026: scheme(nosuchthing) and
+    // shipped translation, a theme, or a scheme Stata finds along the
+    // ado-path (WP-30 P1.25b).  Measured 22sep2026: scheme(nosuchthing) and
     // theme(nosuchtheme) went through with rc 0 and a warning and were
     // drawn as s2color, and a hostile theme() reached the spec (escaped,
     // but reached it).  The session's c(scheme) is not validated -- it was
@@ -7529,6 +9931,10 @@ program define _dash_prepare_spec, rclass
     _dash_limit, name(by_groups)
     local _by_groups_lim = r(value)
     mata: _dash_qual_reset()
+    // The time-series table, one for the dashboard (WP-30 P1.7).
+    mata: _dash_tsop_reset()
+    local _rl_sum 0
+    local _at_sum 0
     local ntok_reg : word count `registry'
     forvalues k = 1/`ntok_reg' {
         local gname : word `k' of `registry'
@@ -7615,8 +10021,53 @@ program define _dash_prepare_spec, rclass
                     st_local("_dq_err") + ". Run dash clear and register it again.")
                 exit 198
             }
+            // Time-series operators (WP-30 P1.7): each expression becomes
+            // the column __dasht<k> _dash_tsop_gen fills at export.
+            local _dts_err ""
+            mata: st_local("_qg_`k'", _dash_tsop_rewrite(st_local("_qg_`k'"), "_dts_err"))
+            if `: length local _dts_err' {
+                mata: _dash_say("err", "`cmdname': ", st_local("_dts_err"), ". Run dash clear and register it again.")
+                exit 198
+            }
+            // Reference lines (WP-30 P1.21a): this graph's positions times
+            // its by() panels, summed for _dash_reflines_cap below.
+            mata: st_local("_rl_json", st_global("dash_json_" + st_local("gname")))
+            _dash_reflines_of `"`macval(_rl_json)'"'
+            local _rl_sum = `_rl_sum' + r(n)
+            // Added text (WP-30 P1.10): this graph's texts times panels,
+            // as registered, summed for _dash_added_text_cap below.
+            mata: st_local("_atn", strofreal(_dash_json_first_num(st_local("_rl_json"), "added_text_n")))
+            if `_atn' < . local _at_sum = `_at_sum' + `_atn'
+            local _rl_json ""
+            // The t-options' unit (WP-30 P1.6): read at registration; a
+            // date format of the axis variable changed since is noted
+            // once, and the registered values are drawn.
+            mata: st_local("_tu", st_global("dash_tu_" + st_local("gname")))
+            local _tu_said 0
+            foreach _tu_t of local _tu {
+                tokenize "`_tu_t'", parse(":")
+                local _tu_v `3'
+                local _tu_u `5'
+                local _tu_now "?"
+                capture confirm variable `_tu_v', exact
+                if !_rc {
+                    local _tu_f : format `_tu_v'
+                    mata: st_local("_tu_now", _dash_taxis_unit(st_local("_tu_f"), 1))
+                }
+                if "`_tu_now'" != "`_tu_u'" & !`_tu_said' {
+                    local _tu_said 1
+                    mata: _dash_note("dash: graph " + st_local("gname") + ": the t-options' dates were read as " + st_local("_tu_u") + "() dates when it was registered; " + st_local("_tu_v"), " now has another date format, and they are drawn at the registered values", "")
+                }
+            }
+
             local gvars ""
-            mata: _dash_extract_vars(`"${dash_json_`gname'}"', "gvars")
+            mata: _dash_extract_vars(st_local("_qg_`k'"), "gvars")
+            // Less the time-series columns, which _dash_tsop_gen makes.
+            local _gv_keep ""
+            foreach v of local gvars {
+                if substr("`v'", 1, 7) != "__dasht" local _gv_keep `_gv_keep' `v'
+            }
+            local gvars `_gv_keep'
             foreach v of local gvars {
                 if !`: list v in all_vars' local all_vars "`all_vars' `v'"
             }
@@ -7708,6 +10159,12 @@ program define _dash_prepare_spec, rclass
         }
     }
 
+    // Reference lines: positions times by() panels over every graph
+    // (WP-30 P1.21a), refused before any export.
+    _dash_reflines_cap `_rl_sum'
+    // Added text over every graph (WP-30 P1.10).
+    _dash_added_text_cap `_at_sum'
+
     // ---- also include filter variables in the serialization ----
     // Filter variables (e.g. foreign from filter(foreign, type(dropdown)))
     // may not appear in any graph or KPI spec.  Without explicit inclusion,
@@ -7767,7 +10224,9 @@ program define _dash_prepare_spec, rclass
     // any other type that names no variable -- one dash no longer
     // registers (P1A-69), but the registry is ordinary globals -- is still
     // refused (P1A-74).  A KPI always names its variable.
-    local _novars = ("`all_vars'" == "")
+    local _dts_n = 0
+    mata: _dash_tsop_export()
+    local _novars = ("`all_vars'" == "" & `_dts_n' == 0)
     if `_novars' {
         _dash_plottype_families
         forvalues k = 1/`ntok_reg' {
@@ -7846,7 +10305,7 @@ program define _dash_prepare_spec, rclass
     // observation of every variable and says so; the saved route counts
     // only what the page will hold.
     if "`server'" != "" | "`cmdname'" == "dash serve" {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n'' "" 0 1
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n'' "" 0 1
         _dash_byte_cap `all_vars'
     }
     else {
@@ -7856,6 +10315,12 @@ program define _dash_prepare_spec, rclass
 
     // Collect display formats, as on the immediate route.
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
+    // The time-series columns' formats and the spec's map (WP-30 P1.7).
+    local _dts_json ""
+    if `_dts_n' > 0 {
+        mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
+        local _dts_json `","ts_cols":`macval(_dts_obj)'"'
+    }
     local _dash_jrc = 0
     if `_novars' {
         _dash_empty_data "`datapath'"
@@ -7866,7 +10331,8 @@ program define _dash_prepare_spec, rclass
         // estimates in memory held meanwhile (QS-15).
         local _dash_qual_vars ""
         local _dash_sort_vars ""
-        if `_dq_n' + `_ds_n' > 0 {
+        local _dash_tsop_vars ""
+        if `_dq_n' + `_ds_n' + `_dts_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
@@ -7878,11 +10344,18 @@ program define _dash_prepare_spec, rclass
             if "`_dash_qual_vars'" != "" capture drop `_dash_qual_vars'
             exit `_ds_rc'
         }
-        // Captured for the same reason as on the immediate route.
-        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars'
-        local _dash_jrc = _rc
-        if "`_dash_qual_vars'`_dash_sort_vars'" != "" {
+        // The time-series columns, as on the immediate route.
+        capture noisily _dash_tsop_gen "`cmdname'"
+        if _rc {
+            local _dt_rc = _rc
             capture drop `_dash_qual_vars' `_dash_sort_vars'
+            exit `_dt_rc'
+        }
+        // Captured for the same reason as on the immediate route.
+        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
+        local _dash_jrc = _rc
+        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'
@@ -8004,6 +10477,7 @@ program define _dash_prepare_spec, rclass
     // is the user's text: through macval() as well (JSE-58).
     _dash_json_str `"`macval(scheme)'"'    _scheme_esc
     _dash_json_str `"`_dash_sess_scheme'"' _sess_scheme_esc
+    _dash_scheme_dirs
     // theme() was the one user string on the master-spec line that went in
     // raw while every other went through _dash_json_str.  Measured:
     // theme("C:\temp\x"), theme("a\q"), theme("a\") and a theme()
@@ -8046,7 +10520,7 @@ program define _dash_prepare_spec, rclass
     }
     // The final } is written by _dash_fn_spec_tail, after the function
     // points (WP-29 P0.6).
-    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'}"'
+    local master_json `"{"graphs":[`graphs_json'],"kpis":[`kpis_json'],"build_options":{"layout":"`_layout_esc'","link":"`_link_esc'","filter":"`filter_json'","theme":"`_theme_esc'","scheme":"`_scheme_esc'","session_scheme":"`_sess_scheme_esc'","scheme_dirs":`macval(_dash_sdirs)',"title":"`_title_esc'","subtitle":"`_subtitle_esc'","registry":"`registry'","tabs":"`_tabs_esc'","filter_position":"`_fpos_esc'","csv":"`_csv_flag'","level":"`_dash_lvl'","formats":`_dash_fmt_json',"limits":`_dash_lim_json'`_ds_json'`macval(_dts_json)'}"'
 
     // Written from Python, 0600 and never through a link (WP-29 P0.12b;
     // see _dash_render_immediate's spec writer).  Callers hand the path:
@@ -8070,7 +10544,10 @@ end
 
 
 program define _dash_build
-    version 16.0
+    version 19
+    // WP-30 P1.28a: a path left by a command interrupted between its write
+    // and its result must never reach a later command's r().
+    capture macro drop dash__rfile
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8096,7 +10573,7 @@ program define _dash_build
     local 0      : copy local _cmd_nofilter
 
     syntax [, ///
-        SAVing(string)          ///
+        SAVing(string asis)     ///
         TItle(string)           ///
         SUBtitle(string)        ///
         LAYout(string)          ///
@@ -8128,23 +10605,33 @@ program define _dash_build
         display as error "dash build: saving() is required."
         exit(198)
     }
-    if "`server'" != "" {
-        // The same validator, asked for .py.  This branch used to check the
-        // extension and nothing else, so a server-mode path skipped the
-        // traversal, metacharacter and quote checks entirely.  It also kept
-        // the old traversal rule, a '..' anywhere, in front of it: so
-        // saving("my..report.py") server was refused, r(198), where
-        // saving("my..report.html") builds.  The validator's rule, a '..'
-        // path segment, is the one rule now (PV-20; ROADMAP AC-08.4).
-        // The path goes to the validator as written, through macval(): a
-        // saving(\$m/x.html) was read again for macros and written wherever
-        // $m pointed, where the validator refuses a $ (JSE-58).
-        _dash_validate_path `"`macval(saving)'"' "py"
-        local saving `"`_dash_vpath'"'
+    // WP-30 P1.27: one grammar, twoway's, shared with the one-line form
+    // (_dash_saving_parse), read from the text as typed (SAVing(string
+    // asis): syntax's string form drops every pair of quotes).  The whole
+    // text, ", replace" and all, was validated as the path, so
+    // saving(b1.html, replace) was refused "must end in .html (got:
+    // b1.html, replace)" and saving(b2) was refused where the one-line form
+    // writes b2.html (measured).  .html (.py with server) is appended and a
+    // .gph suffix replaced, as on the one-line form; asis is accepted and
+    // has no effect.
+    local _sv_ext = cond("`server'" != "", "py", "html")
+    mata: _dash_saving_parse(st_local("saving"), st_local("_sv_ext"))
+    if "`_sv_replace'" != "" local replace "replace"
+    local saving : copy local _sv_file
+    // The one validator for both branches; the server branch used to check
+    // the extension and nothing else (PV-20; ROADMAP AC-08.4).  The path
+    // goes to it as written, through macval(): a saving(\$m/x.html) was
+    // read again for macros and written wherever $m pointed, where the
+    // validator refuses a $ (JSE-58).
+    _dash_validate_path `"`macval(saving)'"' "`_sv_ext'"
+    local saving `"`_dash_vpath'"'
+    if "`_sv_gph'" == "1" {
+        local _sv_what = cond("`server'" != "", "a server app", "HTML")
+        mata: _dash_say("txt", "dash build: saving() writes " + st_local("_sv_what") + ", not a Stata .gph; using ", st_local("saving"), "")
     }
-    else {
-        _dash_validate_path `"`macval(saving)'"' "html"
-        local saving `"`_dash_vpath'"'
+    // WP-30 P1.28a: a suffix graph export writes is replaced too.
+    if "`_sv_img'" != "" {
+        mata: _dash_note("dash build: saving() writes " + (st_local("server") != "" ? "a server app" : "HTML") + ", not a ." + st_local("_sv_img") + " image; using ", st_local("saving"), "")
     }
     // Before the file is looked for: a directory that does not exist is
     // not a file that "already exists" (JSE-52).
@@ -8233,11 +10720,17 @@ program define _dash_build
         // the /health endpoint project rule 17 asks for exists only when the
         // app serves itself.  Running it directly also honours --port and
         // the websocket origins, and opens no browser unless asked.
-        mata: _dash_say("txt", "  To launch: python " + char(34), st_local("saving"), char(34))
+        // Single-quoted on a Mac and Unix, so a pasted line runs the file it
+        // names (double quotes left ! to history expansion); on Windows the
+        // line says when cmd.exe would expand % or ! (WP-30 P1.27).
+        local _lh_os = cond("`c(os)'" == "Windows", "Windows", "Unix")
+        mata: _dash_say("txt", "  To launch: python ", _dash_launch_quote(st_local("saving"), st_local("_lh_os")), "")
+        mata: st_local("_lh_w", _dash_launch_warn(st_local("saving"), st_local("_lh_os")))
+        if `: length local _lh_w' mata: _dash_say("txt", "", st_local("_lh_w"), "")
         // WP-29 P0.12a: the served dashboard opens only through its key.
         display as text `"  Access:    the app makes a new key for each launch unless DASH_SERVE_TOKEN gives one, writes the link that holds it to a file only you can read, and prints that file's path; only that link opens the dashboard"'
         display as text `"  Options:   --port N  --show  --timeout MINUTES  (--help lists them all)"'
-        display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N"'
+        display as text `"  Limits:    --sessions-per-client N  --new-clients-per-minute N  --sessions-per-minute N  --max-sessions N  --idle-timeout MINUTES"'
     }
     else {
         mata: _dash_say("txt", "dash: dashboard saved to ", st_local("saving"), "")
@@ -8254,6 +10747,9 @@ program define _dash_build
             _dash_open_page, path(`"`saving'"')
         }
     }
+    // WP-30 P1.28a: the last statement -- the path written, absolute, for
+    // r(filename) (_dash_result).
+    mata: st_global("dash__rfile", _dash_abs_path(st_local("saving"), c("pwd"), c("os")))
 end
 
 
@@ -8270,7 +10766,7 @@ end
 // be built from them.
 // ================================================================
 program define _dash_serve_spec, rclass
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8297,6 +10793,8 @@ program define _dash_serve_spec, rclass
         PORT(string)        ///
         NOBRowser           ///
         TIMEOUT(string)     ///
+        MAXSESSIONS(string) ///
+        IDLETIMEOUT(string) ///
         *                   ///
     ]
 
@@ -8336,6 +10834,32 @@ program define _dash_serve_spec, rclass
     // Written as a plain integer: 007 goes to the launcher as 7.
     local timeout = strofreal(real("`timeout'"), "%12.0f")
 
+    // WP-30 P1.31a: the open-session cap and the idle close, by the same
+    // byte-level rules as port() and timeout(): digits only, bounded
+    // length, never a regular expression or an expression; empty when
+    // not given, so the app keeps its own defaults (20 and 60).
+    // Threat: memory exhaustion of the served app by open sessions.
+    if `: length local maxsessions' {
+        mata: st_local("_mdig", strofreal(_dash_is_digits(st_local("maxsessions"), 7)))
+        local _mval = .
+        if `_mdig' local _mval = real("`maxsessions'")
+        if !`_mdig' | `_mval' < 1 | `_mval' > 1000000 {
+            mata: _dash_say("err", "dash serve: maxsessions() must be an integer from 1 to 1,000,000 (got: ", st_local("maxsessions"), ")")
+            exit(198)
+        }
+        local maxsessions = strofreal(`_mval', "%12.0f")
+    }
+    if `: length local idletimeout' {
+        mata: st_local("_idig", strofreal(_dash_is_digits(st_local("idletimeout"), 6)))
+        local _ival = .
+        if `_idig' local _ival = real("`idletimeout'")
+        if !`_idig' | `_ival' > 525600 {
+            mata: _dash_say("err", "dash serve: idletimeout() must be a whole number of minutes from 0 to 525600 (got: ", st_local("idletimeout"), ")")
+            exit(198)
+        }
+        local idletimeout = strofreal(`_ival', "%12.0f")
+    }
+
     if `"`specpath'"' == "" | `"`datapath'"' == "" {
         display as error "dash serve: internal error — specpath() and datapath() are required."
         exit(198)
@@ -8358,6 +10882,8 @@ program define _dash_serve_spec, rclass
     return local port             "`port_int'"
     return local timeout          "`timeout'"
     return local nobrowser        "`nobrowser'"
+    return local maxsessions      "`maxsessions'"
+    return local idletimeout      "`idletimeout'"
     return local layout           `"`r(layout)'"'
     return local filterposition   `"`r(filterposition)'"'
 end
@@ -8367,7 +10893,7 @@ end
 // _dash_serve  — launch Bokeh Server for live interactive mode
 // ================================================================
 program define _dash_serve
-    version 16.0
+    version 19
 
     // Rule 16: text reaching the spec must be well-formed UTF-8 BEFORE it
     // leaves Stata.  The gate was applied at exactly one entry point --
@@ -8410,6 +10936,8 @@ program define _dash_serve
 
     local port_int   "`r(port)'"
     local timeout    "`r(timeout)'"
+    local _srv_maxs  "`r(maxsessions)'"
+    local _srv_idle  "`r(idletimeout)'"
     // The browser, by the rule `dash build' uses: its nobrowser option,
     // the session's $dash_nobrowser, or a registered graph's nodraw keeps
     // it shut.  This read the option alone (test_serve_browser.cscript).
@@ -8424,6 +10952,9 @@ program define _dash_serve
     _dash_require_python
     _dash_find_render
     local render_py `"`r(fn)'"'
+    // The module that runs the renderer (_dash_run_renderer; see
+    // _dash_do_render), also before the announcement.
+    _dash_xm_load
 
     // The generated Bokeh Server app is app.py in the private run folder
     // opened above (WP-29 P0.12b): written 0600 by the renderer, which
@@ -8446,7 +10977,7 @@ program define _dash_serve
         "  Stata waits while it runs; press Break (Ctrl+C in console Stata) to stop it."
 
     // Single-line python: calls to avoid ado-path IndentationError (see _dash_do_render).
-    python: import sys, runpy
+    python: import sys
     // --launch: `dash serve' is the path whose job IS to run a server.  The
     // renderer no longer starts one as a side effect of writing a file,
     // because `dash build, server' used that same entry point and was left
@@ -8455,22 +10986,31 @@ program define _dash_serve
     if "`no_browser_flag'" != "" {
         python: sys.argv.append("--no-browser")
     }
+    // WP-30 P1.31a: digits only, checked by _dash_serve_spec.
+    if "`_srv_maxs'" != "" {
+        python: sys.argv += ["--max-sessions", "`_srv_maxs'"]
+    }
+    if "`_srv_idle'" != "" {
+        python: sys.argv += ["--idle-timeout", "`_srv_idle'"]
+    }
     // GAPS2 F1: dash serve used to report success (rc 0) whatever the
     // launched app actually did -- a port already held by another program
     // failed only on the child's own process stderr, unseen here, after
     // about 1.7 seconds.  _dash_srv_rep is a dict shared by reference with
     // the executed module (a `python:' line inside an ado program takes
     // one statement per line and no compound statement, so a try/except
-    // cannot be written here, and an exception escaping run_path is
+    // cannot be written here, and an exception escaping the run is
     // r(7102) plus a traceback -- the opposite of a clean message).
     // dash_render.py's __main__ writes _dash_launch_app's failure text
-    // into this dict instead of raising, when the dict is present.
+    // into this dict instead of raising, when the dict is present; it
+    // reaches the run as run_path's init_globals did.
     python: _dash_srv_rep = {}
+    python: _dash_xm = sys.modules["_dash_render_export"]
     // Assign the result.  A single-line `python:' echoes the value of the
-    // expression, and run_path returns the module globals dict, so this
+    // expression, and the run returns the module globals dict, so this
     // line used to dump dash_render.py's whole namespace into the Stata log
     // on every render -- roughly 10 KB of noise per command.
-    python: _dash_serve_ns = runpy.run_path("`_py_render'", init_globals={"_dash_launch_report": _dash_srv_rep}, run_name="__main__")
+    python: _dash_serve_ns = _dash_xm._dash_run_renderer("`_py_render'", {"_dash_launch_report": _dash_srv_rep})
     python: from sfi import Macro as _dash_srv_M
     python: _dash_srv_M.setLocal("_srv_err", str(_dash_srv_rep.get("error", ""))[:4096])
     // WP-29 P0.13 F4: Break (or Ctrl+C) stopped the server; the launcher

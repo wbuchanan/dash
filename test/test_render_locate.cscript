@@ -46,6 +46,15 @@
 *! Version: 1.0  21sep2026
 
 cscript "dash locates its own renderer" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // `cscript' drops every global macro, the runner's $dash_nobrowser with them;
 // set it again before this script builds a dashboard (test_cscript_hygiene.py).
@@ -369,7 +378,7 @@ end
 local loc13warned 0
 local loc13s2 0
 if `loc13brc' == 0 {
-    foreach w13 in "was not found" "could be resolved" "UserWarning" {
+    foreach w13 in "was not found" "could be resolved" "(note:" "Warning:" {
         cert_log_has "`llg13'", needle("`w13'") lower
         if r(found) local loc13warned 1
     }
@@ -382,7 +391,8 @@ assert `loc13moved' == 1
 assert `loc13back' == 1
 assert `loc13sado' == 1
 assert `loc13rc' == 0
-assert `loc13nsch' == 20
+// 20 -> 26: P1.25a ships the six StataCorp schemes
+assert `loc13nsch' == 26
 assert "`loc13miss'" == ""
 assert `loc13py' == 1
 assert `loc13d' == 0

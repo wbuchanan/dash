@@ -16,6 +16,7 @@ keys.**  One key, no legend, no matter what else is passed;
 ``legend(on)`` forces one.
 """
 import json
+import re
 import math
 import os
 import sys
@@ -225,7 +226,11 @@ class TestAxisLabelGrammar:
         t = _ticker_of(fig)
         assert isinstance(t, CustomJSTicker)
         assert t.args["extra"] == [2000.0, 3000.0, 4000.0]
-        assert isinstance(t.args["base"], BasicTicker)
+        # WP-30 P1.3a: a BasicTicker base was wrong because the axis's own
+        # labels are now natscale's default FixedTicker.
+        from bokeh.models import FixedTicker
+        assert isinstance(t.args["base"], FixedTicker)
+        assert BasicTicker is not None
 
     def test_a_date_axis_ignores_a_numeric_format_gracefully(self):
         """Regression guard for the S08 work: no exception, no silent mangle."""
@@ -271,7 +276,8 @@ class TestAxisScale:
 
     def test_reverse_still_works(self):
         fig, _ = _fig_with_gopts(_SCATTER, {"yscale": "reverse"})
-        assert getattr(fig.y_range, "flipped", False) is True
+        # WP-30 P1.3a: a flipped DataRange1d is now a Range1d high to low.
+        assert fig.y_range.start > fig.y_range.end
 
     def test_the_dead_xrange_keys_are_gone(self):
         """A dead option read is how the axis work got misled in the first place."""
@@ -477,7 +483,10 @@ class TestTitleTextFidelity:
         styled, _ = _fig_with_gopts(
             _SCATTER, {"title": "T, size(large) color(red)"})
         assert styled.title.text == "T"
-        assert styled.title.text_font_size != plain.title.text_font_size
+        # WP-30 P1.12a (Evidence E4): twoway draws size(large) at 14 pt, which
+        # is also the s2color title's own size, so the drawn size is '14pt'
+        # (the same as the plain title), not a figure different from it.
+        assert styled.title.text_font_size == plain.title.text_font_size == "14pt"
         assert str(styled.title.text_color).lower() in ("red", "#ff0000")
 
     def test_abbreviated_size_and_colour_are_applied(self):
@@ -492,7 +501,10 @@ class TestTitleTextFidelity:
             text_truth = json.load(fh)
         assert styled.title.text.split("\n") == \
             text_truth["probes"]["t_size_color_abbr"]["added_texts"]
-        assert styled.title.text_font_size != plain.title.text_font_size
+        # WP-30 P1.12a (Evidence E4): twoway draws size(large) at 14 pt, which
+        # is also the s2color title's own size, so the drawn size is '14pt'
+        # (the same as the plain title), not a figure different from it.
+        assert styled.title.text_font_size == plain.title.text_font_size == "14pt"
         assert str(styled.title.text_color).lower() in ("red", "#ff0000")
 
     def test_canvas_text_is_not_html_escaped(self):
@@ -524,20 +536,18 @@ class TestTitleTextFidelity:
         caption was invisible.  Assert the two properties that actually
         decide the outcome instead: separate rows, and a drawable offset.
         """
+        # Flipped (WP-30 P1.2a): Labels with a y offset were wrong because
+        # twoway places the boxes by the scheme's clock, which S15 draws as
+        # side-panel Titles -- each its own row, with no offset to clip.
+        from bokeh.models import Title
         fig, _ = _fig_with_gopts(
             _SCATTER, {"note": "the note", "caption": "the caption"})
-        labels = [r for r in list(fig.below) + list(fig.center)
-                  if hasattr(r, "text") and hasattr(r, "y")]
-        found = {str(r.text): r for r in labels}
+        rows = [r for r in fig.below if isinstance(r, Title)]
+        found = {str(r.text): r for r in rows}
         assert "the note" in found and "the caption" in found, list(found)
         assert found["the note"] is not found["the caption"], (
-            "note and caption must be separate Labels in separate rows"
+            "note and caption must be separate Titles in separate rows"
         )
-        for key in ("the note", "the caption"):
-            assert found[key].y >= 0, (
-                "%s is at y=%r, outside its own row, where it is clipped"
-                % (key, found[key].y)
-            )
 
     def test_the_caption_sits_below_the_note(self, truth):
         """Measured in Stata: note is ring(4), caption ring(5).
@@ -551,8 +561,9 @@ class TestTitleTextFidelity:
         """
         fig, _ = _fig_with_gopts(
             _SCATTER, {"note": "the note", "caption": "the caption"})
-        below = [str(r.text) for r in fig.below
-                 if hasattr(r, "text") and hasattr(r, "y")]
+        # Flipped (WP-30 P1.2a): the boxes are side-panel Titles (no y).
+        from bokeh.models import Title
+        below = [str(r.text) for r in fig.below if isinstance(r, Title)]
         assert "the note" in below and "the caption" in below, below
         assert below.index("the note") < below.index("the caption"), below
 
@@ -599,10 +610,17 @@ class TestDashboardTitleEscaping:
         return html_text, dr
 
     def _header_html(self, layout, title, subtitle=""):
-        """The header markup as the browser will see it, for either layout."""
+        """The header markup as the browser will see it, for either layout.
+
+        Flipped (WP-30 P1.5): the whole Bootstrap page was the evidence,
+        which was wrong once every numeric axis carries Stata's writer,
+        because the writer's own dash_html_escape replace chain spells
+        ``&amp;amp;``; that chain is removed before the page is read."""
         html_text, dr = self._render(layout, title, subtitle)
         if layout == "bs":
-            return html_text
+            return re.sub(
+                r'\.replace\(/[^/]{1,12}/g, \\*"&[^"\\]{1,16}\\*"\)', "",
+                html_text)
         from bokeh.models import Div
         parts = []
         for model in dr._last_layout_root.select({"type": Div}):

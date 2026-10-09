@@ -1,0 +1,2797 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "4f8e528254fc29fa47274cb5d9f193625906392b",
+    "extracted": " 7 Oct 2026",
+    "scheme": "stcolor",
+    "script": "scripts/extract_axis_format_truth.do",
+    "stata_version": "19.5"
+  },
+  "cases": {
+    "a01": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%300.0f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a02": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%12s))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a03": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%-12s))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a04": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%21x))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "+1.f400000000000X+00a",
+        "+1.7700000000000X+00b",
+        "+1.f400000000000X+00b",
+        "+1.3880000000000X+00c"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a05": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%16H))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "409f400000000000",
+        "40a7700000000000",
+        "40af400000000000",
+        "40b3880000000000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a06": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%16L))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0000000000409f40",
+        "000000000070a740",
+        "000000000040af40",
+        "000000000088b340"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a07": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%tdDD/NN/CCYY))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "23/06/1965",
+        "19/03/1968",
+        "14/12/1970",
+        "09/09/1973"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a08": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%tbxyz))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a09": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%tq))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2460q1",
+        "2710q1",
+        "2960q1",
+        "3210q1"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a10": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%d))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "23jun1965",
+        "19mar1968",
+        "14dec1970",
+        "09sep1973"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a11": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%-9.0g))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a12": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%09.0f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "000002000",
+        "000003000",
+        "000004000",
+        "000005000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a13": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%5.4f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2.0e+03",
+        "3.0e+03",
+        "4.0e+03",
+        "5.0e+03"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a14": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9,2f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000,00",
+        "3000,00",
+        "4000,00",
+        "5000,00"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a15": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%253.0f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a16": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%254.0f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a17": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.0gc))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a18": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.2f %9.1f))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.0",
+        "3000.0",
+        "4000.0",
+        "5000.0"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a19": {
+      "command": "twoway scatter mpg weight, xlabel(, format(\"%9.2f\"))",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "a20": {
+      "command": "twoway scatter mpg weight, xlabel(, format())",
+      "data": "auto",
+      "errors": [],
+      "group": "a",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "d01": {
+      "command": "twoway scatter mpg weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "d02": {
+      "command": "twoway scatter mpg weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format weight %9.0fc"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "d03": {
+      "command": "twoway scatter mpg weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format weight %9.2f"
+      ],
+      "values_from": "",
+      "x": [
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "d04": {
+      "command": "twoway scatter gear_ratio weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "4.00",
+        "3.50",
+        "3.00",
+        "2.50",
+        "2.00"
+      ],
+      "y2": []
+    },
+    "d05": {
+      "command": "twoway scatter r weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "generate r = gear_ratio/10"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        ".4",
+        ".35",
+        ".3",
+        ".25",
+        ".2"
+      ],
+      "y2": []
+    },
+    "d06": {
+      "command": "twoway scatter price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format price %9.2e"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "1.50e+04",
+        "1.00e+04",
+        "5.00e+03",
+        "0.00e+00"
+      ],
+      "y2": []
+    },
+    "d07": {
+      "command": "twoway scatter gear_ratio weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format gear_ratio %9,2f"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "4,00",
+        "3,50",
+        "3,00",
+        "2,50",
+        "2,00"
+      ],
+      "y2": []
+    },
+    "d08": {
+      "command": "twoway scatter price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format price %9.0g"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "d09": {
+      "command": "twoway scatter mpg weight",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format weight %-9.0fc"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "d10": {
+      "command": "twoway scatter mpg weight, by(foreign)",
+      "data": "auto",
+      "errors": [],
+      "group": "d",
+      "rc": 0,
+      "setup": [
+        "format mpg %9.2f"
+      ],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000",
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40.00",
+        "30.00",
+        "20.00",
+        "10.00"
+      ],
+      "y2": []
+    },
+    "e01": {
+      "command": "twoway line close date, xlabel(, format(%9.0fc))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "14,976",
+        "15,066",
+        "15,157",
+        "15,249",
+        "15,341"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e02": {
+      "command": "twoway line close date, xlabel(, format(%9.0f))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "14976",
+        "15066",
+        "15157",
+        "15249",
+        "15341"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e03": {
+      "command": "twoway line close date, xlabel(, format(%tdDD/NN/CCYY))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "e02",
+      "x": [
+        "01/01/2001",
+        "01/04/2001",
+        "01/07/2001",
+        "01/10/2001",
+        "01/01/2002"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e04": {
+      "command": "twoway line close date, xlabel(, format(%tm))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "e02",
+      "x": [
+        "3208m1",
+        "3215m7",
+        "3223m2",
+        "3230m10",
+        "3238m6"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e05": {
+      "command": "twoway line close date, xlabel(15000(100)15300, format(%tdDD/NN/CCYY))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "e02",
+      "x": [
+        "25/01/2001",
+        "05/05/2001",
+        "13/08/2001",
+        "21/11/2001"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e06": {
+      "command": "twoway line date close, ylabel(, format(%9.0g))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "1000",
+        "1100",
+        "1200",
+        "1300",
+        "1400"
+      ],
+      "x2": [],
+      "y": [
+        "15341",
+        "15249",
+        "15157",
+        "15066",
+        "14976"
+      ],
+      "y2": []
+    },
+    "e07": {
+      "command": "twoway line close m, xlabel(, format(%td))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "e08",
+      "x": [
+        "07may1961",
+        "10may1961",
+        "13may1961",
+        "16may1961",
+        "19may1961"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e08": {
+      "command": "twoway line close m, xlabel(, format(%9.0fc))",
+      "data": "sp500",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "492",
+        "495",
+        "498",
+        "501",
+        "504"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "e09": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%td))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "d01",
+      "x": [
+        "23jun1965",
+        "19mar1968",
+        "14dec1970",
+        "09sep1973"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "e10": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%12s))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "e11": {
+      "command": "twoway scatteri 123456789 1 223456789 2, ylabel(, format(%12s))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "1",
+        "1.2",
+        "1.4",
+        "1.6",
+        "1.8",
+        "2"
+      ],
+      "x2": [],
+      "y": [
+        "2.200e+08",
+        "2.000e+08",
+        "1.800e+08",
+        "1.600e+08",
+        "1.400e+08",
+        "1.200e+08"
+      ],
+      "y2": []
+    },
+    "e12": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%21x))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "+1.f400000000000X+00a",
+        "+1.7700000000000X+00b",
+        "+1.f400000000000X+00b",
+        "+1.3880000000000X+00c"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "e13": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.2f %9.1f))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.0",
+        "3000.0",
+        "4000.0",
+        "5000.0"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "e14": {
+      "command": "twoway scatter mpg weight, xlabel(, format(\"%9.2f\"))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "e15": {
+      "command": "twoway scatter mpg weight, xlabel(, format())",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "e16": {
+      "command": "twoway scatter mpg weight, xlabel(, for(%9.1f))",
+      "data": "auto",
+      "errors": [],
+      "group": "e",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.0",
+        "3000.0",
+        "4000.0",
+        "5000.0"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "k01": {
+      "command": "twoway scatter price weight, ylabel(#5)",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15,000",
+        "10,000",
+        "5,000",
+        "0"
+      ],
+      "y2": []
+    },
+    "k02": {
+      "command": "twoway scatter mpg weight, xlabel(2000(1000)5000)",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "k03": {
+      "command": "twoway scatter mpg weight, xlabel(minmax)",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "1,760",
+        "4,840"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "k04": {
+      "command": "twoway scatter price weight, yscale(log) ylabel(#5)",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "0",
+        "15,000",
+        "10,000",
+        "5,000"
+      ],
+      "y2": []
+    },
+    "k05": {
+      "command": "twoway scatter price weight, yscale(log)",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15,000",
+        "10,000",
+        "5,000"
+      ],
+      "y2": []
+    },
+    "k06": {
+      "command": "twoway scatter mpg weight, xlabel(2000 \"two\" 3000 4000)",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "two",
+        "3,000",
+        "4,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "k07": {
+      "command": "twoway scatter mpg weight, xlabel(2000 \"two\" 3000 4000, format(%9.1f))",
+      "data": "auto",
+      "errors": [],
+      "group": "k",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "two",
+        "3000.0",
+        "4000.0"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "l01": {
+      "command": "twoway rarea price mpg weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15,000",
+        "10,000",
+        "5,000",
+        "0"
+      ],
+      "y2": []
+    },
+    "l02": {
+      "command": "twoway rarea mpg price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "l03": {
+      "command": "twoway pcspike mpg weight price length",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1,000",
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "l04": {
+      "command": "twoway scatteri 20 3000 30 4000",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "3000",
+        "3200",
+        "3400",
+        "3600",
+        "3800",
+        "4000"
+      ],
+      "x2": [],
+      "y": [
+        "30",
+        "28",
+        "26",
+        "24",
+        "22",
+        "20"
+      ],
+      "y2": []
+    },
+    "l05": {
+      "command": "twoway lfit price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "10000",
+        "8000",
+        "6000",
+        "4000"
+      ],
+      "y2": []
+    },
+    "l06": {
+      "command": "twoway lpoly price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "14000",
+        "12000",
+        "10000",
+        "8000",
+        "6000",
+        "4000"
+      ],
+      "y2": []
+    },
+    "l07": {
+      "command": "twoway kdensity price",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "5000",
+        "10000",
+        "15000"
+      ],
+      "x2": [],
+      "y": [
+        ".0003",
+        ".0002",
+        ".0001",
+        "0"
+      ],
+      "y2": []
+    },
+    "l08": {
+      "command": "twoway lowess price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "14000",
+        "12000",
+        "10000",
+        "8000",
+        "6000",
+        "4000"
+      ],
+      "y2": []
+    },
+    "l09": {
+      "command": "twoway mspline price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "14,000",
+        "12,000",
+        "10,000",
+        "8,000",
+        "6,000",
+        "4,000"
+      ],
+      "y2": []
+    },
+    "l10": {
+      "command": "twoway histogram price",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "5,000",
+        "10,000",
+        "15,000"
+      ],
+      "x2": [],
+      "y": [
+        "3.0e-04",
+        "2.0e-04",
+        "1.0e-04",
+        "0"
+      ],
+      "y2": []
+    },
+    "l11": {
+      "command": "twoway histogram price, frequency",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "5,000",
+        "10,000",
+        "15,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10",
+        "0"
+      ],
+      "y2": []
+    },
+    "l12": {
+      "command": "twoway histogram price, fraction",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "5,000",
+        "10,000",
+        "15,000"
+      ],
+      "x2": [],
+      "y": [
+        ".5",
+        ".4",
+        ".3",
+        ".2",
+        ".1",
+        "0"
+      ],
+      "y2": []
+    },
+    "l13": {
+      "command": "twoway histogram price, percent",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "5,000",
+        "10,000",
+        "15,000"
+      ],
+      "x2": [],
+      "y": [
+        "50",
+        "40",
+        "30",
+        "20",
+        "10",
+        "0"
+      ],
+      "y2": []
+    },
+    "l14": {
+      "command": "twoway function y = x, range(0 1)",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        ".2",
+        ".4",
+        ".6",
+        ".8",
+        "1"
+      ],
+      "x2": [],
+      "y": [
+        "1",
+        ".8",
+        ".6",
+        ".4",
+        ".2",
+        "0"
+      ],
+      "y2": []
+    },
+    "l15": {
+      "command": "twoway tsline close",
+      "data": "sp500",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "01jan2001",
+        "01apr2001",
+        "01jul2001",
+        "01oct2001",
+        "01jan2002"
+      ],
+      "x2": [],
+      "y": [
+        "1400",
+        "1300",
+        "1200",
+        "1100",
+        "1000"
+      ],
+      "y2": []
+    },
+    "l16": {
+      "command": "twoway fpfit price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "14000",
+        "12000",
+        "10000",
+        "8000",
+        "6000",
+        "4000"
+      ],
+      "y2": []
+    },
+    "l17": {
+      "command": "twoway mband price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "l",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "14,000",
+        "12,000",
+        "10,000",
+        "8,000",
+        "6,000",
+        "4,000"
+      ],
+      "y2": []
+    },
+    "m01": {
+      "command": "twoway scatter mpg price weight",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "m02": {
+      "command": "twoway scatter price mpg weight",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15,000",
+        "10,000",
+        "5,000",
+        "0"
+      ],
+      "y2": []
+    },
+    "m03": {
+      "command": "twoway (scatter mpg length) (scatter mpg weight)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1000",
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "m04": {
+      "command": "twoway (lfit price weight) (scatter price weight)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "m05": {
+      "command": "twoway (scatter price weight) (lfit price weight)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15,000",
+        "10,000",
+        "5,000",
+        "0"
+      ],
+      "y2": []
+    },
+    "m06": {
+      "command": "twoway (kdensity weight) (scatter mpg weight)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10",
+        "0"
+      ],
+      "y2": []
+    },
+    "m07": {
+      "command": "twoway (scatter mpg weight) (scatter price weight, yaxis(2))",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "0",
+        "5,000",
+        "10,000",
+        "15,000"
+      ]
+    },
+    "m08": {
+      "command": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) format(%9.1f))",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "0.0",
+        "5000.0",
+        "10000.0",
+        "15000.0"
+      ]
+    },
+    "m09": {
+      "command": "twoway (scatter mpg length) (scatter mpg weight, yaxis(2))",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1,000",
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "10",
+        "20",
+        "30",
+        "40"
+      ]
+    },
+    "m10": {
+      "command": "twoway (scatter mpg weight, yaxis(2)) (scatter mpg length)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1000",
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "10",
+        "20",
+        "30",
+        "40"
+      ]
+    },
+    "m11": {
+      "command": "twoway (scatter mpg weight) (scatter mpg length, yaxis(2)) (scatter price weight, yaxis(2))",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1000",
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "0",
+        "5000",
+        "10000",
+        "15000"
+      ]
+    },
+    "m12": {
+      "command": "twoway (scatter mpg weight, yaxis(2)) (scatter mpg weight, yaxis(2)) (scatter mpg length)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1000",
+        "2000",
+        "3000",
+        "4000",
+        "5000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "10",
+        "20",
+        "30",
+        "40"
+      ]
+    },
+    "m13": {
+      "command": "twoway (scatter mpg weight, yaxis(2)) (scatter mpg length, yaxis(2))",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0",
+        "1,000",
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "Mileage (mpg)",
+        "Mileage (mpg)"
+      ]
+    },
+    "m14": {
+      "command": "twoway (scatter mpg weight) (scatter price weight, xaxis(2))",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "y": [
+        "15,000",
+        "10,000",
+        "5,000",
+        "0"
+      ],
+      "y2": []
+    },
+    "m15": {
+      "command": "twoway (scatter price weight, xaxis(2)) (scatter mpg weight)",
+      "data": "auto",
+      "errors": [],
+      "group": "m",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "r01": {
+      "command": "twoway scatter mpg weight, xlabel(, format(bogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, bogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r02": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.999999999f))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.999999999f"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r03": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%2046.0f))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %2046.0f"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r04": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%0.0f))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %0.0f"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r05": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.2))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.2"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r06": {
+      "command": "twoway scatter mpg weight, xlabel(, format(9.2f))",
+      "data": "auto",
+      "errors": [
+        "invalid format, 9.2f"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r07": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%c))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %c"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r08": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r09": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.2f_n))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.2f_n"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r10": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.2fcc))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.2fcc"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r11": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.9f))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.9f"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r12": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%tdbogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %tdbogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r13": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.2f bogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.2f bogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r14": {
+      "command": "twoway scatter mpg weight, xlabel(, format(bogus %9.2f))",
+      "data": "auto",
+      "errors": [
+        "invalid format, bogus %9.2f"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r15": {
+      "command": "twoway scatter mpg weight, xlabel(, format(%9.1f,))",
+      "data": "auto",
+      "errors": [
+        "invalid format, %9.1f,"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r16": {
+      "command": "twoway scatter mpg weight, xtick(, format(bogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, bogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r17": {
+      "command": "twoway scatter mpg weight, xmlabel(, format(bogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, bogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r18": {
+      "command": "twoway scatter mpg weight, by(foreign) xlabel(, format(bogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, bogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r19": {
+      "command": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) format(bogus))",
+      "data": "auto",
+      "errors": [
+        "invalid format, bogus"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r20": {
+      "command": "twoway (scatter mpg weight) (scatter mpg length), xvarformat(%9.2f)",
+      "data": "auto",
+      "errors": [
+        "option xvarformat() not allowed"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "r21": {
+      "command": "twoway scatter mpg weight, xvar(%9.2f)",
+      "data": "auto",
+      "errors": [
+        "option xvar() not allowed"
+      ],
+      "group": "r",
+      "rc": 198,
+      "setup": [],
+      "values_from": "",
+      "x": [],
+      "x2": [],
+      "y": [],
+      "y2": []
+    },
+    "v01": {
+      "command": "twoway scatter mpg weight, xvarformat(%9.2f) yvarformat(%9.1f)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "40.0",
+        "30.0",
+        "20.0",
+        "10.0"
+      ],
+      "y2": []
+    },
+    "v02": {
+      "command": "twoway (scatter mpg weight) (scatter price weight, yaxis(2) yvarformat(%9.1f)),",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": [
+        "0.0",
+        "5000.0",
+        "10000.0",
+        "15000.0"
+      ]
+    },
+    "v03": {
+      "command": "twoway (lfit mpg weight, xvarformat(%9.2f) yvarformat(%9.1f)) (scatter mpg weight),",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "40.0",
+        "30.0",
+        "20.0",
+        "10.0"
+      ],
+      "y2": []
+    },
+    "v04": {
+      "command": "twoway (scatter mpg weight) (lfit mpg weight, xvarformat(%9.2f) yvarformat(%9.1f)),",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v05": {
+      "command": "twoway (scatter mpg weight) (scatter price weight, yvarformat(%9.1f)),",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15000",
+        "10000",
+        "5000",
+        "0"
+      ],
+      "y2": []
+    },
+    "v06": {
+      "command": "twoway histogram price, yvarformat(%9.3f)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "5,000",
+        "10,000",
+        "15,000"
+      ],
+      "x2": [],
+      "y": [
+        "0.000",
+        "0.000",
+        "0.000",
+        "0.000"
+      ],
+      "y2": []
+    },
+    "v07": {
+      "command": "twoway histogram price, xvarformat(%9.1f)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "5000.0",
+        "10000.0",
+        "15000.0"
+      ],
+      "x2": [],
+      "y": [
+        "3.0e-04",
+        "2.0e-04",
+        "1.0e-04",
+        "0"
+      ],
+      "y2": []
+    },
+    "v08": {
+      "command": "twoway rarea price mpg weight, yvarformat(%9.1f)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "15000.0",
+        "10000.0",
+        "5000.0",
+        "0.0"
+      ],
+      "y2": []
+    },
+    "v09": {
+      "command": "twoway pcspike mpg weight price length, yvarformat(%9.1f) xvarformat(%9.2f)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "0.00",
+        "1000.00",
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "15000.0",
+        "10000.0",
+        "5000.0",
+        "0.0"
+      ],
+      "y2": []
+    },
+    "v10": {
+      "command": "twoway scatter mpg weight, xvarformat(%td)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "01jan1964",
+        "01jan1966",
+        "01jan1968",
+        "01jan1970",
+        "01jan1972",
+        "01jan1974"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v11": {
+      "command": "twoway scatter mpg weight, xvarformat(%9.2f) xvarformat(%9.1f)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.0",
+        "3000.0",
+        "4000.0",
+        "5000.0"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v12": {
+      "command": "twoway (scatter mpg weight) (scatter mpg weight, xvarformat(%9.1f)), xlabel(, format(%9.3f))",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.000",
+        "3000.000",
+        "4000.000",
+        "5000.000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v13": {
+      "command": "twoway scatter mpg weight, xvarformat(%9.1f) xlabel(2000 \"two\" 3000)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "two",
+        "3000.0"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v14": {
+      "command": "twoway scatter mpg weight, xvarformat(%9.2f bogus)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2000.00",
+        "3000.00",
+        "4000.00",
+        "5000.00"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v15": {
+      "command": "twoway scatter mpg weight, xvarformat(bogus)",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    },
+    "v16": {
+      "command": "twoway scatter mpg weight, xvarformat()",
+      "data": "auto",
+      "errors": [],
+      "group": "v",
+      "rc": 0,
+      "setup": [],
+      "values_from": "",
+      "x": [
+        "2,000",
+        "3,000",
+        "4,000",
+        "5,000"
+      ],
+      "x2": [],
+      "y": [
+        "40",
+        "30",
+        "20",
+        "10"
+      ],
+      "y2": []
+    }
+  },
+  "datasets": {
+    "auto": {
+      "displacement": "%8.0g",
+      "foreign": "%8.0g",
+      "gear_ratio": "%6.2f",
+      "headroom": "%6.1f",
+      "length": "%8.0g",
+      "make": "%-18s",
+      "mpg": "%8.0g",
+      "price": "%8.0gc",
+      "rep78": "%8.0g",
+      "trunk": "%8.0g",
+      "turn": "%8.0g",
+      "weight": "%8.0gc"
+    },
+    "sp500": {
+      "change": "%9.0g",
+      "close": "%9.0g",
+      "date": "%td",
+      "high": "%9.0g",
+      "low": "%9.0g",
+      "m": "%tm",
+      "open": "%9.0g",
+      "volume": "%12.0gc"
+    }
+  }
+}

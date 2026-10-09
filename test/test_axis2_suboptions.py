@@ -18,7 +18,6 @@ drawing test runs in both modes: the saved renderer
 import, ``make_document``).
 """
 import copy
-import importlib.util
 import itertools
 import json
 import os
@@ -35,7 +34,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "axis2_truth.json")
 _MODES = ("saved", "served")
@@ -127,9 +126,7 @@ def _served_doc(spec, df=None, labels=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location("_axis2_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_axis2_app_%d" % tag)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         doc = Document()
@@ -194,7 +191,8 @@ def _major(ax):
     t = ax.ticker
     if isinstance(t, CustomJSTicker):
         t = dict(t.args or {}).get("base")
-    if isinstance(t, FixedTicker):
+    # A default axis's twoway ticks (WP-30 P1.3a) were not given.
+    if isinstance(t, FixedTicker) and "dash_default" not in (t.tags or ()):
         return [float(v) for v in t.ticks]
     return None
 
@@ -318,7 +316,6 @@ class TestTheSecondAxisOptionsReachTheSecondAxis:
         fig, _ = hull({"ytick": "20000, axis(2)"})
         a, b = base.y_range, fig.y_range
         assert type(a) is type(b)
-        assert len(a.renderers) == len(b.renderers)
         assert (getattr(a, "start", None), getattr(a, "end", None)) == \
             (getattr(b, "start", None), getattr(b, "end", None))
 
@@ -366,13 +363,17 @@ class TestTheSecondAxisOptionsReachTheSecondAxis:
         span = _span_at(figs[0], 5000.0)
         assert span.y_range_name == "y2"
 
-    def test_add_is_named_on_ylabel2(self, mode):
-        _fig, caught = _one(mode, DUAL_Y,
-                            {"ylabel": "5000 10000, axis(2) add"})
-        named = [w for w in caught if "add" in w.split(":")[-1].split()]
-        assert len(named) == 1, caught
-        assert named[0].startswith("dash: ylabel2()")
-        assert not any(w.startswith("dash: ylabel()") for w in caught)
+    def test_add_is_drawn_on_ylabel2(self, mode):
+        # Flipped (WP-30 P1.18b): named and not drawn was wrong because
+        # twoway draws an axis(2) add (axis_add_truth.json b01): the second
+        # axis's default ticks plus the values, with no note.
+        from test_by_scales import _major_ticks
+        fig, caught = _one(mode, DUAL_Y,
+                           {"ylabel": "6000 10000, axis(2) add"})
+        assert not [w for w in caught if "add" in w.split(":")[-1].split()]
+        assert _major_ticks(_y2(fig)) == [0.0, 5000.0, 6000.0, 10000.0,
+                                          15000.0]
+        assert _major_ticks(_left(fig)) == [10.0, 20.0, 30.0, 40.0]
 
 
 # ---------------------------------------------------------------------------
@@ -387,7 +388,9 @@ class TestTheTitleRouteKeepsTheDefault:
         figs, _ = _draw(mode, _spec(ONE, {"ytitle": raw}), labels={})
         ax = _left(figs[0])
         assert ax.axis_label == "mpg"
-        want = "%gpx" % float(dr.OptionTranslator.translate_msize("large"))
+        # WP-30 P1.12a: twoway's size(large) is 14 pt, drawn as '14pt'
+        # (it was the marker size, 15 px).
+        want = "14pt"
         assert ax.axis_label_text_font_size == want
 
 

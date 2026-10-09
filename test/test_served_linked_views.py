@@ -72,6 +72,9 @@ _MOVES = {
 _WIDGET = {"dropdown": Select, "range": RangeSlider, "slider": Slider}
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _rows_of(mask):
     return frozenset(int(i) for i in _DF.index[mask])
 
@@ -86,9 +89,19 @@ _IN_3_8 = frozenset(range(2, 8))
 
 
 def _panel(group):
-    """A panel's title: the graph's title, then the group as twoway writes
-    it -- foreign 0 is "0", which dash wrote "0.0" until WP-23."""
-    return "g1 %s %s" % (_EM, group)
+    """A panel's key: the graph's title, then the group as twoway writes
+    it -- foreign 0 is "0", which dash wrote "0.0" until WP-23.  Flipped
+    (WP-30 P1.15a): the key was the title "g1 — 0"; twoway keeps the title
+    and draws the label as a row of its own, so the key is title + " " +
+    label (_key)."""
+    return "g1 %s" % group
+
+
+def _key(fig):
+    """A figure's key: its title, then its panel label when it has one."""
+    from by_panel_probe import panel_label
+    lab = panel_label(fig)
+    return "%s %s" % (fig.title.text, lab) if lab else fig.title.text
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +213,7 @@ def _drawn_served(r):
 
 
 def _served_figures(doc):
-    return {f.title.text: f for f in doc.select({"type": _FIGURE})}
+    return {_key(f): f for f in doc.select({"type": _FIGURE})}
 
 
 def _served_rows(doc):
@@ -286,7 +299,7 @@ def _saved(tmp_path, spec, moves):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     order = [fc["varname"] for fc in spec["build_options"]["filters"]]
     state = {}
     for var, value in moves:
@@ -313,7 +326,7 @@ def _saved(tmp_path, spec, moves):
                                   enumerate(bools[:len(ids)]) if b))
             else:
                 per.append(sorted(ids))
-        out[fig.title.text] = per
+        out[_key(fig)] = per
     return out
 
 

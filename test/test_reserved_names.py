@@ -48,6 +48,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from dash_render import DashRenderer
+from by_panel_probe import panel_label
 from test_adversarial_matrix import _SCATTER, _load_app, _write_inputs
 
 _SEQ = itertools.count()
@@ -56,6 +57,9 @@ _SEQ = itertools.count()
 # ---------------------------------------------------------------------------
 # Specs, the saved page and the served session
 # ---------------------------------------------------------------------------
+
+from conftest import render_models  # noqa: E402
+
 
 def _graph(name, **go):
     """A scatter titled with its own name unless *go* says otherwise."""
@@ -121,6 +125,13 @@ def _titles(figs):
     return sorted(f.title.text for f in figs)
 
 
+def _panel_titles(figs):
+    """``[(title, panel label)]``, sorted.  Flipped (WP-30 P1.15a): the
+    title held the panel label; twoway keeps the graph's title on each
+    panel and draws the label as a row of its own."""
+    return sorted((f.title.text, panel_label(f)) for f in figs)
+
+
 def _cards(models):
     """``[(card name, title)]`` of the KPI cards among *models*."""
     out = []
@@ -154,9 +165,11 @@ def _one_refusal(msgs, kind, name):
 
 _LAYOUTS = [("auto", ""), ("bs", ""), ("bs", "A: g1"), ("auto", "A: g1")]
 
-#: g1 by(foreign)'s two panels, by title.
-#: Titled as twoway writes the values, 0 and 1 (dash wrote 0.0 and 1.0).
-_PANELS = ["g1 \u2014 0", "g1 \u2014 1"]
+#: g1 by(foreign)'s two panels, as (title, label).
+#: Labelled as twoway writes the values, 0 and 1 (dash wrote 0.0 and 1.0).
+#: Flipped (WP-30 P1.15a): "g1 — 0" was wrong because twoway keeps the
+#: title on each panel and draws the label as a row of its own.
+_PANELS = [("g1", "0"), ("g1", "1")]
 
 
 class TestAGraphNamedLikeAPanel:
@@ -173,13 +186,13 @@ class TestAGraphNamedLikeAPanel:
     def test_the_saved_page(self, tmp_path, layout, tabs):
         r, page, msgs = _saved(tmp_path, self._spec(layout, tabs))
         assert sorted(r.figures) == ["g1__by__0", "g1__by__1"]
-        assert _titles(r.figures.values()) == _PANELS
+        assert _panel_titles(r.figures.values()) == _PANELS
         _one_refusal(msgs, "graph", "g1__by__0")
 
     @pytest.mark.parametrize("layout, tabs", _LAYOUTS)
     def test_the_served_app(self, tmp_path, layout, tabs):
         doc, built, session = _served(tmp_path, self._spec(layout, tabs))
-        assert _titles(_figures(doc)) == _PANELS
+        assert _panel_titles(_figures(doc)) == _PANELS
         _one_refusal(built, "graph", "g1__by__0")
         # Reported once, when the app is built: not again on each session.
         assert _refusals(session) == []
@@ -425,8 +438,8 @@ class TestAdversarialReservedNames:
         name dash generates, so it is drawn beside them."""
         spec = _spec([_graph("g1", by="foreign"), _graph(name)])
         r, page, msgs = _saved(tmp_path, spec)
-        panels = {k: f.title.text for k, f in r.figures.items()
-                  if k.startswith("g1__by__")}
+        panels = {k: (f.title.text, panel_label(f))
+                  for k, f in r.figures.items() if k.startswith("g1__by__")}
         assert panels == dict(zip(["g1__by__0", "g1__by__1"], _PANELS))
         assert bool(_refusals(msgs)) is refused, msgs
         # Each graph here is titled with its own name.
@@ -511,7 +524,7 @@ class TestTheDashPrefix:
         spec = _spec([graph])
         sp, dp = _write_inputs(tmp_path, spec, df=df)
         r = DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
         [fig] = list(r.figures.values())
         [sc] = [x for x in fig.renderers
                if type(x.glyph).__name__ == "Scatter"]
@@ -549,7 +562,7 @@ class TestTheDashPrefix:
         sp, dp = _write_inputs(tmp_path, spec, df=df)
 
         r = DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
         [fig] = list(r.figures.values())
         [renderer] = [x for x in fig.renderers
                       if type(x.glyph).__name__ == "Scatter"]

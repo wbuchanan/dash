@@ -208,7 +208,7 @@
 *!     LB-16 level() with 3 decimals          r(198)
 *!     LB-17 level() not a number             r(7) / r(198)
 *!     LB-18 the order of the checks; D6 and D7 pinned
-*!     LB-19 p(800) is pstyle()
+*!     LB-19 p(800) is p(), never pwidth()
 *!     LB-20 pwidth()/var() on lpoly scatter lfitci kdensity: noted (D9)
 *!
 *! Every refusal and note is read back out of a captured log with Stata's
@@ -220,6 +220,15 @@
 cscript "dash statistical options" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 
@@ -1044,14 +1053,18 @@ if ${lb_trc} != 2001 | ${lb_drc} != 198 | `"${lb_dmsg}"' != "pwidth() must be a 
 }
 _so_tally LB-18 `bad' "lpolyci's refusals come in twoway's order, apart from D6 and D7"
 
-// LB-19: p(800) is pstyle(), never pwidth().
+// LB-19: p(800) is p(), never pwidth().  Flipped (WP-30 P1.14a): it was
+// "p(800) is pstyle()"; p() is twoway's own whole-plot style option, and
+// the spec holds "p":"800".
 sysuse auto, clear
 capture dash clear
 capture noisily dash lpolyci mpg weight, p(800) name(lb19)
 mata: st_local("_j", st_global("dash_json_lb19"))
 local bad = strpos(`"`macval(_j)'"', `""pwidth""') > 0
-if `bad' display as error `"LB-19 FAIL: p(800) became pwidth: `macval(_j)'"'
-_so_tally LB-19 `bad' "p(800) on lpolyci is pstyle(), not pwidth()"
+mata: st_local("_jp", strofreal(strpos(st_local("_j"), char(34) + "p" + char(34) + ":" + char(34) + "800" + char(34)) > 0))
+if !`_jp' local bad = 1
+if `bad' display as error `"LB-19 FAIL: p(800) became pwidth or no "p":"800": `macval(_j)'"'
+_so_tally LB-19 `bad' "p(800) on lpolyci is p(), not pwidth()"
 
 // LB-20: pwidth() and var() on other types: twoway refuses (recorded),
 // dash names each in its note, rc 0 (D9).

@@ -59,7 +59,10 @@ _JAN4_2001 = 978566400000.0
 
 
 def _figs(doc):
-    return [p for p in doc.select({"type": Plot})]
+    # Flipped (WP-30 P1.15a): a by() grid's chrome cells (bare Plots that
+    # hold its overall text, twoway's "Graphs by" note) are not figures.
+    from by_panel_probe import is_chrome
+    return [p for p in doc.select({"type": Plot}) if not is_chrome(p)]
 
 
 def _served_fig(doc):

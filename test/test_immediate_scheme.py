@@ -25,6 +25,9 @@ import dash_render as dr
 from conftest import make_data_json
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(tmp_path, build_options, graph_options, key="graph_options"):
     """Render one graph.
 
@@ -85,14 +88,18 @@ class TestGraphLevelScheme:
         assert r.scheme.name == "s2color"
 
     def test_the_first_graphs_scheme_wins_and_the_conflict_is_reported(self, tmp_path):
-        """Two graphs, two different scheme() values, one page to draw."""
+        """Two graphs, two different scheme() values: the dashboard takes
+        the first graph's, and each figure is drawn in its own, with no
+        "draws one scheme" warning (WP-30 P1.25.6; the node keeps its
+        name, flipped in place)."""
+        import warnings
         graphs = [
             {"name": "g1", "plots": [{"type": "scatter", "yvar": "mpg",
                                       "xvar": "weight", "options": {}}],
-             "options": {"scheme": "economist"}},
+             "graph_options": {"name": "g1", "scheme": "economist"}},
             {"name": "g2", "plots": [{"type": "line", "yvar": "mpg",
                                       "xvar": "weight", "options": {}}],
-             "options": {"scheme": "s1mono"}},
+             "graph_options": {"name": "g2", "scheme": "s1mono"}},
         ]
         spec = tmp_path / "spec2.json"
         data = tmp_path / "data2.json"
@@ -100,9 +107,14 @@ class TestGraphLevelScheme:
                                     "build_options": dict(IMMEDIATE)}))
         df = pd.DataFrame({"mpg": [22.0, 18.0], "weight": [2930.0, 3350.0]})
         data.write_text(json.dumps(make_data_json(df)))
-        with pytest.warns(UserWarning, match="scheme"):
-            r = dr.DashRenderer(str(spec), str(data))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            r = render_models(dr.DashRenderer(str(spec), str(data)))
+        assert not [w for w in caught if "draws one scheme" in str(w.message)]
         assert r.scheme.name == "economist"
+        assert [f.border_fill_color for f in r.figures.values()] == [
+            dr.SchemeParser("economist").background_color,
+            dr.SchemeParser("s1mono").background_color]
 
 
 class TestTheKeyDashAdoActuallyWrites:
@@ -180,7 +192,7 @@ class TestAnIncludeNoteIsPrintedOncePerBuild:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             r = dr.DashRenderer(spec, data)
-            r.render()
+            render_models(r)
         return r, [str(w.message) for w in caught]
 
     def _count(self, said):

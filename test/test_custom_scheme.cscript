@@ -1,7 +1,8 @@
 *! test_custom_scheme.cscript
 *! Certification script: a scheme is named by one of dash's shipped
-*! translations, a theme alias, or a .scheme file in the working directory
-*! (bare name or with the extension) -- the same rule on every entry point
+*! translations, a theme alias, or a scheme Stata finds along the ado-path
+*! (scheme-NAME.scheme, then NAME.scheme; WP-30 P1.25b; the working
+*! directory is on it) -- the same rule on every entry point
 *! -- and an explicit scheme() or theme() that is none of those is refused
 *! in Stata, before Python runs.  A shipped name may be written with the
 *! extension too (scheme(s2color.scheme), in any case): the renderer reads
@@ -33,10 +34,10 @@
 *! heading colour #1e2d53, which the half-applied page carried:
 *!
 *!   CS-01  dash scatter ..., scheme(mytheme) saving(a.html, replace)
-*!          rc 0, no UserWarning, a.html carries #123456
+*!          rc 0, no note, a.html carries #123456
 *!   CS-02  the same with scheme(mytheme.scheme)
 *!   CS-03  name(g) then dash build, scheme(mytheme)
-*!          rc 0, no UserWarning, #123456 present, #1e2d53 ABSENT
+*!          rc 0, no note, #123456 present, #1e2d53 ABSENT
 *!   CS-04  the same with scheme(mytheme.scheme)
 *!   CS-05  registered with graph-level scheme(mytheme), built with no
 *!          scheme(): #123456 present, #1e2d53 absent
@@ -44,17 +45,17 @@
 *!   CS-07  scheme(nosuchthing) on dash build   rc 198, names scheme()
 *!   CS-08  theme(nosuchtheme) on dash build    rc 198, names theme()
 *!   CS-09  scheme(../mytheme) on scatter and on build   rc 198 each
-*!   CS-10  set scheme zzdashtest, build with no scheme(): rc 0, EXACTLY
-*!          one UserWarning line, it mentions the session, page is s2color
-*!          (#1e2d53 present)
+*!   CS-10  set scheme zzdashtest, build with no scheme(): rc 0, no
+*!          note, the file's own #2a3b4c drawn (WP-30 P1.25b: a session
+*!          scheme Stata found is found by dash)
 *!   CS-11  set scheme s2color8, build: rc 0 and NO warning (s2color8 ships)
-*!   CS-12  every one of the twenty shipped names on dash build, scheme():
-*!          rc 0 and no warning; the list holds twenty
+*!   CS-12  every one of the twenty-six shipped names on dash build, scheme():
+*!          rc 0 and no warning; the list holds twenty-six
 *!   CS-13  _dash_serve_spec ..., scheme(nosuchthing) rc 198 naming
 *!          scheme(); theme(nosuchtheme) rc 198 naming theme()
 *!   CS-14  dash build, scheme(s2color.scheme) -- a shipped name written
 *!          with the extension, no such file in the working directory:
-*!          rc 0, no UserWarning, page is s2color (#1e2d53 present,
+*!          rc 0, no note, page is s2color (#1e2d53 present,
 *!          #123456 absent).  Measured before the fix: rc 198, the
 *!          extension form was looked for as a working-directory file only
 *!   CS-15  a scheme with two #include lines that resolve nowhere: each
@@ -64,8 +65,23 @@
 *!          prints it once.  Measured before the fix (S3 batch): twice on
 *!          the immediate route and the registered graph, where the
 *!          build's scheme and the graph's were parsed separately
+*!   SP-01  scheme(nosuchthing) on scatter, build and _dash_serve_spec:
+*!          rc 198, the refusal lists the twenty-six names and the themes
+*!   SP-02  scheme(sub/x), scheme(a:b), scheme(my theme): rc 198, "is not
+*!          looked for", no Traceback
+*!   SP-03  scheme-sp03.scheme in the working directory, scheme(sp03) on
+*!          scatter, build and _dash_serve_spec: rc 0, no note, #3c4d5e
+*!   SP-04  set scheme _SP04_ from PERSONAL (grstyle's layout): unschemed
+*!          build rc 0, no note, #4d5e6f
+*!   SP-05  PLUS/s/scheme-sp05.scheme: scheme(sp05), then set scheme sp05
+*!          and an unschemed build: rc 0, no note, #5e6f70
+*!   SP-06  scheme-sp06.scheme on an added directory, a link out of it:
+*!          rc 0, one note "was not read", s2color drawn
+*!   SP-07  scheme-sp07.scheme of 1,048,577 bytes: rc 0, one note "larger
+*!          than 1,048,576 bytes", s2color drawn
+*!   SP-08  scheme(dash-s2color) with no working-directory file: rc 198
 *!   CQ-01  scheme(myquoted) (s1rcolor with `color background "255 0 0"')
-*!          rc 0, no UserWarning, q1.html carries #ff0000 (WP-28 GAPS2 D1)
+*!          rc 0, no note, q1.html carries #ff0000 (WP-28 GAPS2 D1)
 *!   CQ-02  the same with `color background "255 0 0 %50"' (myquoted50)
 *!          into q2.html: #ff0000 present, no warning
 *!   CQ-03  scheme(myp1) (s1rcolor plus an appended `color p1 "31 119
@@ -81,6 +97,15 @@
 cscript "dash custom schemes" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 if `"`c(python_exec)'"' == "" {
@@ -210,6 +235,7 @@ if `cs_nsub' != 1 {
 tempname fh
 file open `fh' using "`cs_dir'/scheme-zzdashtest.scheme", write text replace
 file write `fh' "#include s2color" _n
+file write `fh' "color background #2a3b4c" _n
 file close `fh'
 
 cd "`cs_dir'"
@@ -300,6 +326,18 @@ program define _cs_log
     }
 end
 
+// The log of the case just run must carry `want' note lines, "(note:",
+// and no Python warning line, "Warning:" (WP-30 P1.26a: a note prints as
+// twoway prints its notes, never as a raw Python warning, so a count of
+// Python's warning class name could no longer fail).
+capture program drop _cs_notes
+program define _cs_notes
+    version 19
+    args id logfile want
+    _cs_log "`id'" "`logfile'" "(note:" `want'
+    _cs_log "`id'" "`logfile'" "Warning:" 0
+end
+
 // The page must (want = 1) or must not (want = 0) carry `needle'.
 capture program drop _cs_page
 program define _cs_page
@@ -328,7 +366,7 @@ _cs_run "" `"dash scatter mpg weight, scheme(mytheme) saving(a.html, replace)"'
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-01 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-01 "`lg'" "UserWarning" 0
+_cs_notes CS-01 "`lg'" 0
 _cs_page CS-01 "a.html" "#123456" 1
 _cs_done CS-01 "scheme(mytheme) on the immediate route: rc 0, no warning, mytheme drawn"
 
@@ -337,7 +375,7 @@ _cs_run "" `"dash scatter mpg weight, scheme(mytheme.scheme) saving(a.html, repl
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-02 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-02 "`lg'" "UserWarning" 0
+_cs_notes CS-02 "`lg'" 0
 _cs_page CS-02 "a.html" "#123456" 1
 _cs_done CS-02 "scheme(mytheme.scheme) on the immediate route: rc 0, no warning, mytheme drawn"
 
@@ -351,7 +389,7 @@ local prc = r(prc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-03 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-03 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-03 "`lg'" "UserWarning" 0
+_cs_notes CS-03 "`lg'" 0
 _cs_page CS-03 "b.html" "#123456" 1
 _cs_page CS-03 "b.html" "#1e2d53" 0
 _cs_done CS-03 "dash build, scheme(mytheme): rc 0, no warning, figure AND chrome from mytheme"
@@ -363,7 +401,7 @@ local prc = r(prc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-04 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-04 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-04 "`lg'" "UserWarning" 0
+_cs_notes CS-04 "`lg'" 0
 _cs_page CS-04 "b.html" "#123456" 1
 _cs_page CS-04 "b.html" "#1e2d53" 0
 _cs_done CS-04 "dash build, scheme(mytheme.scheme): rc 0, no warning, figure and chrome from mytheme"
@@ -378,7 +416,7 @@ local prc = r(prc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-05 "(`prc' == 0)" "registration with scheme(mytheme) rc `prc' (expected 0)"
 _cs_expect CS-05 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-05 "`lg'" "UserWarning" 0
+_cs_notes CS-05 "`lg'" 0
 _cs_page CS-05 "b.html" "#123456" 1
 _cs_page CS-05 "b.html" "#1e2d53" 0
 _cs_done CS-05 "a registered graph's scheme(mytheme): rc 0, no warning, figure and chrome from mytheme"
@@ -390,8 +428,8 @@ _cs_run "" `"dash scatter mpg weight, scheme(nosuchthing) saving(a.html, replace
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-06 "(`rc' == 198)" "rc `rc' (expected 198)"
-_cs_log CS-06 "`lg'" "scheme() must be a shipped scheme" -1
-_cs_log CS-06 "`lg'" "UserWarning" 0
+_cs_log CS-06 "`lg'" "scheme() must be one of economist, meta," -1
+_cs_notes CS-06 "`lg'" 0
 _cs_log CS-06 "`lg'" "Traceback" 0
 _cs_done CS-06 "scheme(nosuchthing) on scatter is refused, rc 198, naming scheme()"
 
@@ -401,8 +439,8 @@ local prc = r(prc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-07 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-07 "(`rc' == 198)" "rc `rc' (expected 198)"
-_cs_log CS-07 "`lg'" "dash build: scheme() must be a shipped scheme" -1
-_cs_log CS-07 "`lg'" "UserWarning" 0
+_cs_log CS-07 "`lg'" "dash build: scheme() must be one of economist, meta," -1
+_cs_notes CS-07 "`lg'" 0
 _cs_done CS-07 "scheme(nosuchthing) on dash build is refused, rc 198, naming scheme()"
 
 _cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) theme(nosuchtheme) replace"'
@@ -412,23 +450,23 @@ local lg `"`r(logfile)'"'
 _cs_expect CS-08 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-08 "(`rc' == 198)" "rc `rc' (expected 198)"
 _cs_log CS-08 "`lg'" "dash build: theme() must be one of" -1
-_cs_log CS-08 "`lg'" "UserWarning" 0
+_cs_notes CS-08 "`lg'" 0
 _cs_done CS-08 "theme(nosuchtheme) on dash build is refused, rc 198, naming theme()"
 
 _cs_run "" `"dash scatter mpg weight, scheme(../mytheme) saving(a.html, replace)"'
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-09 "(`rc' == 198)" "scatter: rc `rc' (expected 198)"
-_cs_log CS-09 "`lg'" "scheme() must be a shipped scheme" -1
+_cs_log CS-09 "`lg'" "scheme() must be one of economist, meta," -1
 _cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(../mytheme) replace"'
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-09 "(`rc' == 198)" "dash build: rc `rc' (expected 198)"
-_cs_log CS-09 "`lg'" "scheme() must be a shipped scheme" -1
+_cs_log CS-09 "`lg'" "scheme() must be one of economist, meta," -1
 _cs_done CS-09 "scheme(../mytheme) is refused on scatter and on dash build, rc 198"
 
 // ----------------------------------------------------------------
-// CS-10: an untranslatable session scheme is one warning and s2color
+// CS-10: a session scheme Stata found is drawn, with no note (WP-30 P1.25b)
 // ----------------------------------------------------------------
 capture noisily set scheme zzdashtest
 local src = _rc
@@ -441,10 +479,9 @@ _cs_expect CS-10 "(`src' == 0)" "set scheme zzdashtest rc `src' (expected 0; is 
 _cs_expect CS-10 `"("`c(scheme)'" == "zzdashtest")"' "c(scheme) is `c(scheme)' (expected zzdashtest)"
 _cs_expect CS-10 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-10 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-10 "`lg'" "UserWarning" 1
-_cs_log CS-10 "`lg'" "session" -1
-_cs_page CS-10 "b.html" "#1e2d53" 1
-_cs_done CS-10 "set scheme zzdashtest: rc 0, one warning naming the session, page is s2color"
+_cs_notes CS-10 "`lg'" 0
+_cs_page CS-10 "b.html" "#2a3b4c" 1
+_cs_done CS-10 "set scheme zzdashtest: rc 0, no note, the file's own #2a3b4c drawn"
 
 // ----------------------------------------------------------------
 // CS-11: the session scheme cscript sets now ships
@@ -459,7 +496,7 @@ local lg `"`r(logfile)'"'
 _cs_expect CS-11 "(`src' == 0)" "set scheme s2color8 rc `src' (expected 0)"
 _cs_expect CS-11 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-11 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CS-11 "`lg'" "UserWarning" 0
+_cs_notes CS-11 "`lg'" 0
 _cs_page CS-11 "b.html" "#1e2d53" 1
 _cs_done CS-11 "set scheme s2color8 then dash build: rc 0 and no warning"
 
@@ -471,7 +508,7 @@ capture noisily _dash_shipped_schemes
 local lrc = _rc
 _cs_expect CS-12 "(`lrc' == 0)" "_dash_shipped_schemes rc `lrc' (expected 0)"
 local nsh : word count `_dash_schemes'
-_cs_expect CS-12 "(`nsh' == 20)" "the shipped list holds `nsh' names (expected 20): `_dash_schemes'"
+_cs_expect CS-12 "(`nsh' == 26)" "the shipped list holds `nsh' names (expected 26): `_dash_schemes'"
 local nrun = 0
 foreach nm of local _dash_schemes {
     capture erase "c.html"
@@ -479,10 +516,12 @@ foreach nm of local _dash_schemes {
     local rc = r(rc)
     local lg `"`r(logfile)'"'
     _cs_expect CS-12 "(`rc' == 0)" "scheme(`nm'): rc `rc' (expected 0)"
-    _cs_count "`lg'" "UserWarning"
-    local nw = r(n)
-    local line `"`r(line)'"'
-    _cs_expect CS-12 "(`nw' == 0)" `"scheme(`nm'): `nw' UserWarning line(s): `macval(line)'"'
+    foreach w in "(note:" "Warning:" {
+        _cs_count "`lg'" "`w'"
+        local nw = r(n)
+        local line `"`r(line)'"'
+        _cs_expect CS-12 "(`nw' == 0)" `"scheme(`nm'): `nw' `w' line(s): `macval(line)'"'
+    }
     local ++nrun
 }
 _cs_done CS-12 "all `nrun' shipped names build with rc 0 and no warning"
@@ -497,7 +536,7 @@ local prc = r(prc)
 local lg `"`r(logfile)'"'
 _cs_expect CS-13 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-13 "(`rc' == 198)" "scheme(nosuchthing): rc `rc' (expected 198)"
-_cs_log CS-13 "`lg'" "dash serve: scheme() must be a shipped scheme" -1
+_cs_log CS-13 "`lg'" "dash serve: scheme() must be one of economist, meta," -1
 _cs_run `"dash scatter mpg weight, name(g)"' `"_dash_serve_spec, specpath("`mj'") datapath("`dj'") theme(nosuchtheme)"'
 local rc = r(rc)
 local lg `"`r(logfile)'"'
@@ -520,7 +559,7 @@ local lg `"`r(logfile)'"'
 _cs_expect CS-14 "(`prc' == 0)" "registration rc `prc' (expected 0)"
 _cs_expect CS-14 "(`rc' == 0)" "rc `rc' (expected 0)"
 _cs_log CS-14 "`lg'" "scheme() must be" 0
-_cs_log CS-14 "`lg'" "UserWarning" 0
+_cs_notes CS-14 "`lg'" 0
 _cs_page CS-14 "b.html" "#1e2d53" 1
 _cs_page CS-14 "b.html" "#123456" 0
 _cs_done CS-14 "dash build, scheme(s2color.scheme) with no such file in the working directory: rc 0, no warning, page is s2color"
@@ -599,12 +638,15 @@ mata: _cs_write_quoted(st_local("cs_src"), "myquoted50.scheme", ///
 mata: _cs_write_quoted(st_local("cs_src"), "myp1.scheme", "", ///
     "color p1 " + char(34) + "31 119 180" + char(34))
 
+// WP-30 P1.28a: CS-15's nodraw twoway graph would add dash's graph
+// export note to the counts below (setup only; the counts are unchanged).
+quietly graph drop _all
 capture erase "q1.html"
 _cs_run "" `"dash scatter mpg weight, scheme(myquoted) saving(q1.html, replace)"'
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CQ-01 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CQ-01 "`lg'" "UserWarning" 0
+_cs_notes CQ-01 "`lg'" 0
 _cs_page CQ-01 "q1.html" "#ff0000" 1
 _cs_done CQ-01 "scheme(myquoted), a quoted color background directive: rc 0, no warning, #ff0000 drawn"
 
@@ -613,7 +655,7 @@ _cs_run "" `"dash scatter mpg weight, scheme(myquoted50) saving(q2.html, replace
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CQ-02 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CQ-02 "`lg'" "UserWarning" 0
+_cs_notes CQ-02 "`lg'" 0
 _cs_page CQ-02 "q2.html" "#ff0000" 1
 _cs_done CQ-02 "scheme(myquoted50), a quoted color background directive with %opacity: rc 0, no warning, #ff0000 drawn"
 
@@ -622,9 +664,206 @@ _cs_run "" `"dash scatter mpg weight, scheme(myp1) saving(q3.html, replace)"'
 local rc = r(rc)
 local lg `"`r(logfile)'"'
 _cs_expect CQ-03 "(`rc' == 0)" "rc `rc' (expected 0)"
-_cs_log CQ-03 "`lg'" "UserWarning" 0
+_cs_notes CQ-03 "`lg'" 0
 _cs_page CQ-03 "q3.html" "#1f77b4" 1
 _cs_done CQ-03 "scheme(myp1), an appended quoted color p1 directive: rc 0, no warning, #1f77b4 drawn"
+
+// WP-30 P1.4b: a directive dash does not draw yet is kept with the scheme
+// and never noted (ratification row 4), on every route.
+tempname mkfh
+file open `mkfh' using "w33s.scheme", write text replace
+file write `mkfh' "#include s2color" _n "textboxstyle title subheading" _n "textboxstyle axis_title heading" _n "clockdir p 9" _n "yesno plabelboxed yes" _n "textboxstyle key_label heading" _n "textboxstyle tick heading" _n
+file close `mkfh'
+file open `mkfh' using "w33m.scheme", write text replace
+file write `mkfh' "#include s2color" _n
+forvalues i = 1/15 {
+    file write `mkfh' "clockdir p`i' 9" _n
+}
+file write `mkfh' "clockdir p 9" _n "textboxstyle tick heading" _n
+file close `mkfh'
+quietly graph drop _all
+
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, mlabel(make) scheme(w33s) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-06 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes MK-06 "`lg'" 0
+_cs_done MK-06 "scheme(w33s), six directives dash does not draw: rc 0, no note"
+
+capture erase "b.html"
+_cs_run "dash scatter mpg weight, mlabel(make) name(g)" "dash build, scheme(w33s) saving(b.html) replace"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-07 "(`rc' == 0)" "saved build: rc `rc' (expected 0)"
+_cs_notes MK-07 "`lg'" 0
+capture erase "c15.py"
+_cs_run "dash scatter mpg weight, mlabel(make) name(g)" "dash build, scheme(w33s) saving(c15.py) server replace"
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-07 "(`rc' == 0)" "served build: rc `rc' (expected 0)"
+_cs_notes MK-07 "`lg'" 0
+_cs_done MK-07 "dash build, scheme(w33s), saved and served: rc 0, no note"
+
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(w33m) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect MK-08 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes MK-08 "`lg'" 0
+_cs_done MK-08 "scheme(w33m), clockdir p1 to p15 and p: rc 0, no note"
+
+// ----------------------------------------------------------------
+// SP-01 .. SP-08 (WP-30 P1.25b): Stata's scheme lookup along the ado-path
+// ----------------------------------------------------------------
+local sp_needle1 "scheme() must be one of economist, meta, s1color,"
+local sp_needle2 "a theme (clean, dark, default, economist, mono, sj); or a scheme Stata finds along the ado-path as scheme-NAME.scheme or NAME.scheme (got: nosuchthing)"
+quietly graph drop _all
+_cs_run "" `"dash scatter mpg weight, scheme(nosuchthing) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-01 "(`rc' == 198)" "scatter: rc `rc' (expected 198)"
+_cs_log SP-01 "`lg'" "`sp_needle1'" -1
+_cs_log SP-01 "`lg'" "`sp_needle2'" -1
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(nosuchthing) replace"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-01 "(`rc' == 198)" "build: rc `rc' (expected 198)"
+_cs_log SP-01 "`lg'" "dash build: `sp_needle1'" -1
+_cs_log SP-01 "`lg'" "`sp_needle2'" -1
+_cs_run `"dash scatter mpg weight, name(g)"' `"_dash_serve_spec, specpath("`mj'") datapath("`dj'") scheme(nosuchthing)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-01 "(`rc' == 198)" "serve spec: rc `rc' (expected 198)"
+_cs_log SP-01 "`lg'" "dash serve: `sp_needle1'" -1
+_cs_log SP-01 "`lg'" "`sp_needle2'" -1
+_cs_done SP-01 "scheme(nosuchthing) is refused r(198) on all three routes, listing the schemes and themes"
+
+capture mkdir "sub"
+tempname spfh
+file open `spfh' using "sub/scheme-x.scheme", write text replace
+file write `spfh' "#include s2color" _n
+file close `spfh'
+file open `spfh' using "scheme-my theme.scheme", write text replace
+file write `spfh' "#include s2color" _n
+file close `spfh'
+foreach v in "sub/x" "a:b" "my theme" {
+    _cs_run "" `"dash scatter mpg weight, scheme(`v') saving(a.html, replace)"'
+    local rc = r(rc)
+    local lg `"`r(logfile)'"'
+    _cs_expect SP-02 "(`rc' == 198)" "scheme(`v'): rc `rc' (expected 198)"
+    _cs_log SP-02 "`lg'" "is not looked for" -1
+    _cs_log SP-02 "`lg'" "Traceback" 0
+}
+_cs_done SP-02 "a path, a colon or a blank in scheme() is refused r(198) before any file is looked for"
+
+file open `spfh' using "scheme-sp03.scheme", write text replace
+file write `spfh' "#include s2color" _n "color background #3c4d5e" _n
+file close `spfh'
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(sp03) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-03 "(`rc' == 0)" "scatter: rc `rc' (expected 0)"
+_cs_notes SP-03 "`lg'" 0
+_cs_page SP-03 "a.html" "#3c4d5e" 1
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) scheme(sp03) replace"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-03 "(`rc' == 0)" "build: rc `rc' (expected 0)"
+_cs_notes SP-03 "`lg'" 0
+_cs_page SP-03 "b.html" "#3c4d5e" 1
+_cs_run `"dash scatter mpg weight, name(g)"' `"_dash_serve_spec, specpath("`mj'") datapath("`dj'") scheme(sp03)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-03 "(`rc' == 0)" "serve spec: rc `rc' (expected 0)"
+_cs_notes SP-03 "`lg'" 0
+_cs_done SP-03 "scheme(sp03) from Stata's scheme-sp03.scheme: rc 0 on all three routes, no note, drawn"
+
+local sp_personal "`c(sysdir_personal)'"
+local sp_plus "`c(sysdir_plus)'"
+capture mkdir "`cs_dir'/personal"
+file open `spfh' using "`cs_dir'/personal/scheme-_SP04_.scheme", write text replace
+file write `spfh' "#include s2color" _n "color background #4d5e6f" _n
+file close `spfh'
+sysdir set PERSONAL "`cs_dir'/personal/"
+capture noisily set scheme _SP04_
+local src = _rc
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) replace"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+set scheme s2color
+sysdir set PERSONAL "`sp_personal'"
+_cs_expect SP-04 "(`src' == 0)" "set scheme _SP04_: rc `src' (expected 0)"
+_cs_expect SP-04 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes SP-04 "`lg'" 0
+_cs_page SP-04 "b.html" "#4d5e6f" 1
+_cs_done SP-04 "set scheme of a PERSONAL scheme: an unschemed build draws it, no note"
+
+capture mkdir "`cs_dir'/plus"
+capture mkdir "`cs_dir'/plus/s"
+file open `spfh' using "`cs_dir'/plus/s/scheme-sp05.scheme", write text replace
+file write `spfh' "#include s2color" _n "color background #5e6f70" _n
+file close `spfh'
+sysdir set PLUS "`cs_dir'/plus/"
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(sp05) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-05 "(`rc' == 0)" "scheme(sp05): rc `rc' (expected 0)"
+_cs_notes SP-05 "`lg'" 0
+_cs_page SP-05 "a.html" "#5e6f70" 1
+capture noisily set scheme sp05
+local src = _rc
+capture erase "b.html"
+_cs_run `"dash scatter mpg weight, name(g)"' `"dash build, saving(b.html) replace"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+set scheme s2color
+sysdir set PLUS "`sp_plus'"
+_cs_expect SP-05 "(`src' == 0)" "set scheme sp05: rc `src' (expected 0)"
+_cs_expect SP-05 "(`rc' == 0)" "inherited build: rc `rc' (expected 0)"
+_cs_notes SP-05 "`lg'" 0
+_cs_page SP-05 "b.html" "#5e6f70" 1
+_cs_done SP-05 "a PLUS/s scheme, named and inherited: rc 0, no note, drawn"
+
+capture mkdir "`cs_dir'/add6"
+capture mkdir "`cs_dir'/out"
+file open `spfh' using "`cs_dir'/out/x.scheme", write text replace
+file write `spfh' "#include s2color" _n "color background #6f7081" _n
+file close `spfh'
+capture erase "`cs_dir'/add6/scheme-sp06.scheme"
+shell ln -s "`cs_dir'/out/x.scheme" "`cs_dir'/add6/scheme-sp06.scheme"
+adopath + "`cs_dir'/add6"
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(sp06) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+adopath - "`cs_dir'/add6"
+_cs_expect SP-06 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes SP-06 "`lg'" 1
+_cs_log SP-06 "`lg'" "was not read" 1
+_cs_page SP-06 "a.html" "#1e2d53" 1
+_cs_page SP-06 "a.html" "#6f7081" 0
+_cs_done SP-06 "a scheme linked out of its ado-path directory is not read: one note, s2color"
+
+mata: _cs_big = fopen("scheme-sp07.scheme", "w"); fwrite(_cs_big, "#include s2color" + char(10)); fwrite(_cs_big, "*" * (1048577 - 17)); fclose(_cs_big)
+capture erase "a.html"
+_cs_run "" `"dash scatter mpg weight, scheme(sp07) saving(a.html, replace)"'
+local rc = r(rc)
+local lg `"`r(logfile)'"'
+_cs_expect SP-07 "(`rc' == 0)" "rc `rc' (expected 0)"
+_cs_notes SP-07 "`lg'" 1
+_cs_log SP-07 "`lg'" "larger than 1,048,576 bytes" 1
+_cs_page SP-07 "a.html" "#1e2d53" 1
+_cs_done SP-07 "a scheme file over 1,048,576 bytes is not read: one note, s2color"
+
+_cs_run "" `"dash scatter mpg weight, scheme(dash-s2color) saving(a.html, replace)"'
+local rc = r(rc)
+_cs_expect SP-08 "(`rc' == 198)" "rc `rc' (expected 198)"
+_cs_done SP-08 "scheme(dash-s2color) with no working-directory file is refused: dash- names stay working-directory only"
 
 // ----------------------------------------------------------------
 // Restore the session, leave the working directory as it was found
@@ -632,8 +871,11 @@ _cs_done CQ-03 "scheme(myp1), an appended quoted color p1 directive: rc 0, no wa
 capture set scheme `cs_scheme0'
 capture dash clear
 cd "`cs_home'"
-foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme q1.html q2.html q3.html myquoted.scheme myquoted50.scheme myp1.scheme {
+foreach f in a.html b.html c.html c15.py cs15inc.scheme mytheme.scheme scheme-zzdashtest.scheme q1.html q2.html q3.html myquoted.scheme myquoted50.scheme myp1.scheme w33s.scheme w33m.scheme sub/scheme-x.scheme "scheme-my theme.scheme" scheme-sp03.scheme personal/scheme-_SP04_.scheme plus/s/scheme-sp05.scheme add6/scheme-sp06.scheme out/x.scheme scheme-sp07.scheme {
     capture erase "`cs_dir'/`f'"
+}
+foreach d in sub personal plus/s plus add6 out {
+    capture rmdir "`cs_dir'/`d'"
 }
 capture rmdir "`cs_dir'"
 capture erase "`c(tmpdir)'dash_cs.log"

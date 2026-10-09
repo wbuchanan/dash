@@ -84,8 +84,6 @@ linewidth major_grid  medium
 * intensity class default (full), and dash's parser looks up the exact key.
 * ---------------------------------------------------------------------------
 intensity p        inten80
-intensity bar      full
-intensity area     full
 
 * ---------------------------------------------------------------------------
 * Font sizes (Stata gsize keywords)
@@ -331,6 +329,352 @@ color ci2_arealine  #f7f4e4
 linewidth ci2_area      medium
 
 * ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the
+* tick's colour, width, length and side, each axis role's style,
+* the alt-axis switches, the text boxes' justification and clock
+* positions, and system naturally_white.  Effective values, read
+* through style/ticksetstyle-*, gridstyle-*, tickstyle-major,
+* axisstyle-* and textboxstyle-* as the plot-region group's are.
+anglestyle horizontal_tick     horizontal
+anglestyle vertical_tick       horizontal
+linepattern major_grid          dash
+linepattern minor_grid          dot
+color tick                #000000
+color minortick           #000000
+linewidth tick                thin
+gsize tick                tiny
+tickposition axis_tick           outside
+axisstyle horizontal_default  horizontal_default
+axisstyle vertical_default    vertical_default
+axisstyle horizontal_nogrid   horizontal_nogrid
+axisstyle vertical_nogrid     vertical_nogrid
+yesno alt_xaxes           no
+yesno alt_yaxes           no
+horizontal heading             center
+horizontal subheading          center
+horizontal body                center
+horizontal small_body          center
+clockdir title_position      12
+clockdir subtitle_position   12
+clockdir note_position       7
+clockdir caption_position    7
+system naturally_white     1
+
+* ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* twoway's default tick count and plot-region margin (WP-30 P1.3a).
+numticks_g horizontal_major  5
+numticks_g vertical_major    5
+margin twoway            medsmall
+
+* ---------------------------------------------------------------------------
+* Added 07oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* A histogram's style: shadestyle-histogram.style fills it in
+* `color histogram' at `intensity histogram', and
+* linestyle-histogram.style outlines it in `color histogram_line'
+* at `linewidth histogram'.  twoway draws every histogram layer in
+* it.
+color histogram       #1a85ff
+color histogram_line  #5faaff
+intensity histogram       inten90
+linewidth histogram       vthin
+
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Marker-label size gsize p#label: only the keys this scheme's
+* #include chain declares (style/textboxstyle-p#.style: set size
+* scheme p#label).
+gsize plabel  small
+
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Named styles (WP-30 S36): the keys Stata's style files read for the
+* named styles dash draws
+color ci2_symbol          #efedd8
+color ci_symbol           #a0a0a0
+color clegend_line        #000000
+color cvcvline            #ff0000
+color cvlsline            #000000
+color cvseline            #0000ff
+color dot_arealine        #808080
+color dot_line            #808080
+color dotmarkline         #000000
+color dots                #000000
+color fp_line             #1a85ff
+color fpall               #00bf7f
+color fpall_line          #00bf7f
+color fpesinside_line     #ffd400
+color fpesrefline         #c10534
+color fpgraph             #ffffff
+color fpgrp_line          #d41159
+color fphrule             #000000
+color fpnullrefline       #808080
+color fpspacer            none
+color grid                #eaf2f3
+color hrule               #000000
+color matplotregion_line  #000000
+color matrixmarkline      #1a85ff
+color pieline             none
+color refline             #000000
+color refmarkline         #000000
+color reverse_big_line    #1a476f
+color sunflower           #0000ff
+color sunflowerdb         #ff7f00
+color sunflowerdf         #000000
+color sunflowerlb         #eaffaa
+color sunflowerlf         #804000
+color text_option_line    #000000
+color zyx2                #000000
+intensity background          inten100
+intensity foreground          inten100
+linepattern axisline            solid
+linepattern background          solid
+linepattern clegend             solid
+linepattern cvcvline            solid
+linepattern cvlsline            solid
+linepattern cvseline            solid
+linepattern dendrogram          solid
+linepattern dot                 solid
+linepattern dot_area            solid
+linepattern dotmark             solid
+linepattern dots                solid
+linepattern foreground          solid
+linepattern fp                  solid
+linepattern fpall               solid
+linepattern fpesrefline         solid
+linepattern fpgrp               solid
+linepattern fphrule             solid
+linepattern fpnullrefline       solid
+linepattern fpspacer            blank
+linepattern grid                solid
+linepattern histogram           solid
+linepattern hrule               solid
+linepattern legend              solid
+linepattern matrix_plotregion   solid
+linepattern matrixmark          solid
+linepattern minortick           solid
+linepattern pie                 solid
+linepattern pmark               solid
+linepattern refline             solid
+linepattern refmarker           solid
+linepattern sunflower           solid
+linepattern text_option         solid
+linepattern tick                solid
+linepattern zyx2                solid
+linewidth background          thin
+linewidth clegend             thin
+linewidth cvcvline            thin
+linewidth cvlsline            thin
+linewidth cvseline            thin
+linewidth dendrogram          medium
+linewidth dot_area            medium
+linewidth dot_line            medthick
+linewidth dotmark             thin
+linewidth dots                vvthin
+linewidth foreground          thin
+linewidth fp                  medium
+linewidth fpall               medium
+linewidth fpesrefline         thin
+linewidth fpgrp               medium
+linewidth fphrule             medium
+linewidth fpnullrefline       thin
+linewidth fpspacer            medium
+linewidth grid                medium
+linewidth hrule               medium
+linewidth legend              thin
+linewidth matrix_plotregion   thin
+linewidth matrixmark          medium
+linewidth medium              medium
+linewidth minortick           thin
+linewidth pie                 medium
+linewidth refline             medium
+linewidth refmarker           medium
+linewidth reverse_big         thin
+linewidth text_option         thin
+linewidth zyx2                medium
+symbol ci                  circle
+symbol ci2                 circle
+symbol histogram           circle
+symbolsize ci                  medium
+symbolsize ci2                 medium
+symbolsize histogram           medlarge
+symbolsize parrow              medium
+
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Text sizes and colours of the remaining text box styles, read by
+* mlabtextstyle() (WP-30 P1.24).
+gsize label             medsmall
+color label             #000000
+gsize small_label       small
+gsize filled_text       medsmall
+color filled_text       #000000
+gsize text_option       medsmall
+color text_option       #000000
+gsize reverse_big       large
+color reverse_big       #1a476f
+color reverse_big_text  #ffffff
+gsize matrix_label      medlarge
+color matrix_label      #000000
+gsize matrix_marklbl    small
+color matrix_marklbl    #000000
+gsize minortick_label   vsmall
+gsize tick_biglabel     medium
+color tick_biglabel     #000000
+gsize sts_risk_label    medsmall
+color sts_risk_label    #000000
+gsize sts_risk_title    medsmall
+color sts_risk_title    #000000
+gsize fpbody            11-pt
+color fpbody            #000000
+gsize fpcoltitle        11-pt
+color fpcoltitle        #000000
+gsize fpnulllefttext    11-pt
+color fpnulllefttext    #000000
+gsize fpnullrighttext   11-pt
+color fpnullrighttext   #000000
+gsize fpspacer          zero
+gsize pbarlabel         small
+gsize pboxlabel         small
+
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Stata's margin ladder, the sizes plotregion(margin()) names
+* (WP-30 P1.20b).
+gsize sidemargin    relative3
+gsize medmargin     relative3p5
+gsize medsmmargin   relative2p2
+gsize medlgmargin   relative5
+gsize largemargin   relative8
+gsize vlargemargin  relative12
+gsize smallmargin   relative1p2
+gsize vsmallmargin  relative0p6
+gsize tinymargin    relative0p3
+gsize emargin       relative1p5
+gsize esubmargin    relative4
+
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* Reference lines, xline() and yline(): twoway draws them in the
+* `gridlinestyle' class default, whose style file reads `linestyle
+* xyline'; that linestyle reads these three keys.
+yesno xyline_extend_low   yes
+yesno xyline_extend_high  yes
+
+* ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* by() axes and keys (WP-30 P1.15c): the legend's and colour key's
+* clock position and ring under by(), the outer- and individual-axis
+* switches, the space between panels, and the panel label's box:
+* `color by_label_fill' is dash's derived key, the fillcolor of the
+* style `textboxstyle subtitle' names, resolved.
+clockdir by_legend_position   6
+gridringstyle by_legend_ring       3
+clockdir zyx2legend_position  3
+gridringstyle zyx2legend_ring      4
+yesno by_edgelabel         yes
+yesno by_outer_xaxes       yes
+yesno by_outer_yaxes       yes
+yesno by_outer_xtitles     yes
+yesno by_outer_ytitles     yes
+yesno by_indiv_xaxes       no
+yesno by_indiv_yaxes       no
+yesno by_indiv_xlabels     yes
+yesno by_indiv_ylabels     yes
+yesno by_indiv_xticks      yes
+yesno by_indiv_yticks      yes
+yesno by_indiv_xtitles     no
+yesno by_indiv_ytitles     no
+yesno by_indiv_as_whole    no
+margin by_indiv             allsides-ms
+margin subheading           vsmall
+color bylabel_outline      #f0f0f0
+color by_label_fill        #f0f0f0
+
+* ---------------------------------------------------------------------------
+* Added 09oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* text() and ttext() (WP-30 P1.10): the text box's fill, its
+* compass direction from its point, whether it is boxed, its
+* margin, justification and vertical alignment.
+color text_option_fill  #d9e6eb
+compass2dir text_option       center
+yesno text_option       no
+margin text_option       zero
+horizontal text_option       center
+vertical_text text_option       middle
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -373,8 +717,6 @@ linewidth ci2_area      medium
 * provenance: linewidth major_grid -- transcribed from scheme-s2color.scheme:1203 `linewidth major_grid medium'
 * provenance: linewidth pbar -- transcribed from scheme-s2color.scheme:1246 `linewidth pbar thin'
 * provenance: intensity p -- transcribed from scheme-s2color.scheme:1300 `intensity p inten80'
-* provenance: intensity bar -- transcribed from scheme-s2color.scheme:1285 `intensity bar full'
-* provenance: intensity area -- inferred: class default; `intensity area' is not set anywhere in the #include chain, took the bare `intensity full' class default (scheme-s2color.scheme:1267)
 * provenance: color ci_area -- transcribed from scheme-stcolor.scheme:83 `color ci_area gs14'
 * provenance: color ci_arealine -- transcribed from scheme-stcolor.scheme:82 `color ci_arealine gs14'
 * provenance: intensity ci_area -- transcribed from scheme-s2color.scheme:1272 `intensity ci_area full'
@@ -386,6 +728,10 @@ linewidth ci2_area      medium
 * provenance: color ci2_area -- transcribed from scheme-stcolor.scheme:87 `color ci2_area ltkhaki*0.3'
 * provenance: color ci2_arealine -- transcribed from scheme-stcolor.scheme:86 `color ci2_arealine ltkhaki*0.3'
 * provenance: linewidth ci2_area -- transcribed from scheme-s2color.scheme:1211 `linewidth ci2_area medium'
+* provenance: color histogram -- transcribed from scheme-stcolor.scheme:65 `color histogram stc1'
+* provenance: color histogram_line -- transcribed from scheme-stcolor.scheme:66 `color histogram_line stc1*0.7'
+* provenance: intensity histogram -- transcribed from scheme-stcolor.scheme:68 `intensity histogram inten90'
+* provenance: linewidth histogram -- transcribed from scheme-stcolor.scheme:67 `linewidth histogram vthin'
 * provenance: gsize text -- transcribed from scheme-s2color.scheme:136 `gsize text medium'
 * provenance: gsize heading -- transcribed from scheme-s2color.scheme:139 `gsize heading large'
 * provenance: gsize axis_title -- transcribed from scheme-s2color.scheme:141 `gsize axis_title medsmall'
@@ -393,9 +739,24 @@ linewidth ci2_area      medium
 * provenance: gsize note -- transcribed from scheme-s2color.scheme:147 `gsize note small'
 * provenance: graphsize x -- transcribed from scheme-stcolor_alt.scheme:10 `graphsize x 6'
 * provenance: graphsize y -- transcribed from scheme-stcolor_alt.scheme:11 `graphsize y 4'
+* provenance: numticks_g horizontal_major -- transcribed from scheme-s2color.scheme:291 `numticks_g horizontal_major 5'
+* provenance: numticks_g vertical_major -- transcribed from scheme-s2color.scheme:292 `numticks_g vertical_major 5'
+* provenance: margin twoway -- transcribed from scheme-s2color.scheme:719 `margin twoway medsmall'
+* provenance: gsize sidemargin -- transcribed from scheme-s2color.scheme:195 `gsize sidemargin relative3'
+* provenance: gsize medmargin -- transcribed from scheme-s2color.scheme:196 `gsize medmargin relative3p5'
+* provenance: gsize medsmmargin -- transcribed from scheme-s2color.scheme:197 `gsize medsmmargin relative2p2'
+* provenance: gsize medlgmargin -- transcribed from scheme-s2color.scheme:198 `gsize medlgmargin relative5'
+* provenance: gsize largemargin -- transcribed from scheme-s2color.scheme:199 `gsize largemargin relative8'
+* provenance: gsize vlargemargin -- transcribed from scheme-s2color.scheme:200 `gsize vlargemargin relative12'
+* provenance: gsize smallmargin -- transcribed from scheme-s2color.scheme:201 `gsize smallmargin relative1p2'
+* provenance: gsize vsmallmargin -- transcribed from scheme-s2color.scheme:202 `gsize vsmallmargin relative0p6'
+* provenance: gsize tinymargin -- transcribed from scheme-s2color.scheme:203 `gsize tinymargin relative0p3'
+* provenance: gsize emargin -- transcribed from scheme-s2color.scheme:204 `gsize emargin relative1p5'
+* provenance: gsize esubmargin -- transcribed from scheme-s2color.scheme:205 `gsize esubmargin relative4'
 * provenance: symbolsize p -- transcribed from scheme-stcolor.scheme:13 `symbolsize p small'
 * provenance: clockdir legend_position -- transcribed from scheme-stcolor_alt.scheme:15 `clockdir legend_position 6'
 * provenance: numstyle legend_cols -- transcribed from scheme-stcolor_alt.scheme:14 `numstyle legend_cols 2'
+* provenance: gsize plabel -- transcribed from scheme-s2color.scheme:191 `gsize plabel small'
 * provenance: yesno draw_major_hgrid -- transcribed from scheme-stcolor.scheme:33 `yesno draw_major_hgrid yes'
 * provenance: yesno draw_major_vgrid -- transcribed from scheme-s2color.scheme:2121 `yesno draw_major_vgrid yes'
 * provenance: yesno draw_major_grid -- transcribed from scheme-s2color.scheme:2113 `yesno draw_major_grid no'
@@ -420,9 +781,204 @@ linewidth ci2_area      medium
 * provenance: color xyline -- transcribed from scheme-stcolor.scheme:77 `color xyline black'
 * provenance: linepattern xyline -- transcribed from scheme-stcolor.scheme:76 `linepattern xyline dash'
 * provenance: linewidth xyline -- transcribed from scheme-s2color.scheme:1214 `linewidth xyline medium'
+* provenance: yesno xyline_extend_low -- transcribed from scheme-s2color.scheme:2164 `yesno xyline_extend_low yes'
+* provenance: yesno xyline_extend_high -- transcribed from scheme-s2color.scheme:2165 `yesno xyline_extend_high yes'
 * provenance: color plotregion_line -- transcribed from scheme-s2color.scheme:409 `color plotregion_line white'
 * provenance: linewidth plotregion -- transcribed from scheme-s2color.scheme:1225 `linewidth plotregion thin'
 * provenance: linepattern plotregion -- transcribed from scheme-s2color.scheme:584 `linepattern plotregion solid'
 * provenance: textboxstyle note -- transcribed from scheme-s2color.scheme:1320 `textboxstyle note small_body'
+* provenance: gsize label -- transcribed from scheme-s2color.scheme:143 `gsize label medsmall'
+* provenance: color label -- transcribed from scheme-s2color.scheme:320 `color label black'
+* provenance: gsize small_label -- transcribed from scheme-s2color.scheme:144 `gsize small_label small'
+* provenance: gsize filled_text -- transcribed from scheme-s2color.scheme:161 `gsize filled_text medsmall'
+* provenance: color filled_text -- transcribed from scheme-s2color.scheme:336 `color filled_text black'
+* provenance: gsize text_option -- transcribed from scheme-s2color.scheme:149 `gsize text_option medsmall'
+* provenance: color text_option -- transcribed from scheme-s2color.scheme:332 `color text_option black'
+* provenance: gsize reverse_big -- transcribed from scheme-s2color.scheme:162 `gsize reverse_big large'
+* provenance: color reverse_big -- transcribed from scheme-s2color.scheme:340 `color reverse_big navy'
+* provenance: color reverse_big_text -- transcribed from scheme-s2color.scheme:342 `color reverse_big_text white'
+* provenance: gsize matrix_label -- transcribed from scheme-s2color.scheme:142 `gsize matrix_label medlarge'
+* provenance: color matrix_label -- transcribed from scheme-s2color.scheme:319 `color matrix_label black'
+* provenance: gsize matrix_marklbl -- transcribed from scheme-s2color.scheme:145 `gsize matrix_marklbl small'
+* provenance: color matrix_marklbl -- transcribed from scheme-s2color.scheme:324 `color matrix_marklbl black'
+* provenance: gsize minortick_label -- transcribed from scheme-s2color.scheme:160 `gsize minortick_label vsmall'
+* provenance: gsize tick_biglabel -- transcribed from scheme-s2color.scheme:159 `gsize tick_biglabel medium'
+* provenance: color tick_biglabel -- transcribed from scheme-s2color.scheme:323 `color tick_biglabel black'
+* provenance: gsize sts_risk_label -- transcribed from scheme-s2color.scheme:226 `gsize sts_risk_label medsmall'
+* provenance: color sts_risk_label -- transcribed from scheme-s2color.scheme:325 `color sts_risk_label black'
+* provenance: gsize sts_risk_title -- transcribed from scheme-s2color.scheme:227 `gsize sts_risk_title medsmall'
+* provenance: color sts_risk_title -- transcribed from scheme-s2color.scheme:326 `color sts_risk_title black'
+* provenance: gsize fpbody -- transcribed from scheme-s2color.scheme:217 `gsize fpbody 11-pt'
+* provenance: color fpbody -- transcribed from scheme-s2color.scheme:361 `color fpbody black'
+* provenance: gsize fpcoltitle -- transcribed from scheme-s2color.scheme:218 `gsize fpcoltitle 11-pt'
+* provenance: color fpcoltitle -- transcribed from scheme-s2color.scheme:362 `color fpcoltitle black'
+* provenance: gsize fpnulllefttext -- transcribed from scheme-s2color.scheme:220 `gsize fpnulllefttext 11-pt'
+* provenance: color fpnulllefttext -- transcribed from scheme-s2color.scheme:382 `color fpnulllefttext black'
+* provenance: gsize fpnullrighttext -- transcribed from scheme-s2color.scheme:221 `gsize fpnullrighttext 11-pt'
+* provenance: color fpnullrighttext -- transcribed from scheme-s2color.scheme:383 `color fpnullrighttext black'
+* provenance: gsize fpspacer -- transcribed from scheme-s2color.scheme:219 `gsize fpspacer zero'
+* provenance: gsize pbarlabel -- transcribed from scheme-stcolor.scheme:12 `gsize pbarlabel small'
+* provenance: gsize pboxlabel -- transcribed from scheme-s2color.scheme:193 `gsize pboxlabel small'
+* provenance: anglestyle horizontal_tick -- transcribed from scheme-s2color.scheme:1964 `anglestyle horizontal_tick horizontal'
+* provenance: anglestyle vertical_tick -- transcribed from scheme-stcolor.scheme:32 `anglestyle vertical_tick horizontal'
+* provenance: linepattern major_grid -- transcribed from scheme-stcolor.scheme:31 `linepattern major_grid dash'
+* provenance: linepattern minor_grid -- transcribed from scheme-s2color.scheme:566 `linepattern minor_grid dot'
+* provenance: color tick -- transcribed from scheme-s2color.scheme:349 `color tick black'
+* provenance: color minortick -- transcribed from scheme-s2color.scheme:350 `color minortick black'
+* provenance: linewidth tick -- transcribed from scheme-s2color.scheme:1206 `linewidth tick thin'
+* provenance: gsize tick -- transcribed from scheme-s2color.scheme:153 `gsize tick tiny'
+* provenance: tickposition axis_tick -- transcribed from scheme-s2color.scheme:1892 `tickposition axis_tick outside'
+* provenance: axisstyle horizontal_default -- transcribed from scheme-s2color.scheme:1821 `axisstyle horizontal_default horizontal_default'
+* provenance: axisstyle vertical_default -- transcribed from scheme-s2color.scheme:1822 `axisstyle vertical_default vertical_default'
+* provenance: axisstyle horizontal_nogrid -- transcribed from scheme-s2color.scheme:1823 `axisstyle horizontal_nogrid horizontal_nogrid'
+* provenance: axisstyle vertical_nogrid -- transcribed from scheme-s2color.scheme:1824 `axisstyle vertical_nogrid vertical_nogrid'
+* provenance: yesno alt_xaxes -- transcribed from scheme-s2color.scheme:2167 `yesno alt_xaxes no'
+* provenance: yesno alt_yaxes -- transcribed from scheme-s2color.scheme:2168 `yesno alt_yaxes no'
+* provenance: horizontal heading -- transcribed from scheme-s2color.scheme:1775 `horizontal heading center'
+* provenance: horizontal subheading -- transcribed from scheme-s2color.scheme:1776 `horizontal subheading center'
+* provenance: horizontal body -- transcribed from scheme-s2color.scheme:1779 `horizontal body center'
+* provenance: horizontal small_body -- transcribed from scheme-s2color.scheme:1780 `horizontal small_body center'
+* provenance: clockdir title_position -- transcribed from scheme-s2color.scheme:1920 `clockdir title_position 12'
+* provenance: clockdir subtitle_position -- transcribed from scheme-s2color.scheme:1921 `clockdir subtitle_position 12'
+* provenance: clockdir note_position -- transcribed from scheme-s2color.scheme:1923 `clockdir note_position 7'
+* provenance: clockdir caption_position -- transcribed from scheme-s2color.scheme:1922 `clockdir caption_position 7'
+* provenance: system naturally_white -- transcribed from scheme-s2color.scheme:28 `system naturally_white 1'
+* provenance: clockdir by_legend_position -- transcribed from scheme-stcolor_alt.scheme:16 `clockdir by_legend_position 6'
+* provenance: gridringstyle by_legend_ring -- transcribed from scheme-s2color.scheme:1954 `gridringstyle by_legend_ring 3'
+* provenance: clockdir zyx2legend_position -- transcribed from scheme-s2color.scheme:1925 `clockdir zyx2legend_position 3'
+* provenance: gridringstyle zyx2legend_ring -- transcribed from scheme-s2color.scheme:1952 `gridringstyle zyx2legend_ring 4'
+* provenance: yesno by_edgelabel -- transcribed from scheme-s2color.scheme:2191 `yesno by_edgelabel yes'
+* provenance: yesno by_outer_xaxes -- transcribed from scheme-s2color.scheme:2198 `yesno by_outer_xaxes yes'
+* provenance: yesno by_outer_yaxes -- transcribed from scheme-s2color.scheme:2199 `yesno by_outer_yaxes yes'
+* provenance: yesno by_outer_xtitles -- transcribed from scheme-s2color.scheme:2196 `yesno by_outer_xtitles yes'
+* provenance: yesno by_outer_ytitles -- transcribed from scheme-s2color.scheme:2197 `yesno by_outer_ytitles yes'
+* provenance: yesno by_indiv_xaxes -- transcribed from scheme-s2color.scheme:2200 `yesno by_indiv_xaxes no'
+* provenance: yesno by_indiv_yaxes -- transcribed from scheme-s2color.scheme:2201 `yesno by_indiv_yaxes no'
+* provenance: yesno by_indiv_xlabels -- transcribed from scheme-s2color.scheme:2204 `yesno by_indiv_xlabels yes'
+* provenance: yesno by_indiv_ylabels -- transcribed from scheme-s2color.scheme:2205 `yesno by_indiv_ylabels yes'
+* provenance: yesno by_indiv_xticks -- transcribed from scheme-s2color.scheme:2206 `yesno by_indiv_xticks yes'
+* provenance: yesno by_indiv_yticks -- transcribed from scheme-s2color.scheme:2207 `yesno by_indiv_yticks yes'
+* provenance: yesno by_indiv_xtitles -- transcribed from scheme-s2color.scheme:2202 `yesno by_indiv_xtitles no'
+* provenance: yesno by_indiv_ytitles -- transcribed from scheme-s2color.scheme:2203 `yesno by_indiv_ytitles no'
+* provenance: yesno by_indiv_as_whole -- transcribed from scheme-s2color.scheme:2210 `yesno by_indiv_as_whole no'
+* provenance: margin by_indiv -- transcribed from scheme-stcolor.scheme:28 `margin by_indiv allsides-ms'
+* provenance: margin subheading -- transcribed from scheme-s2color.scheme:737 `margin subheading vsmall'
+* provenance: color bylabel_outline -- transcribed from scheme-stcolor.scheme:25 `color bylabel_outline gs15'
+* provenance: color by_label_fill -- inferred: dash's derived key: `textboxstyle subtitle subheading_gs', style/textboxstyle-subheading_gs.style `set fillcolor scheme bylabel_outline', then `color bylabel_outline gs15' (scheme-stcolor.scheme:25)
+* provenance: color text_option_fill -- transcribed from scheme-s2color.scheme:334 `color text_option_fill bluishgray'
+* provenance: compass2dir text_option -- transcribed from scheme-s2color.scheme:1901 `compass2dir text_option center'
+* provenance: yesno text_option -- transcribed from scheme-s2color.scheme:2099 `yesno text_option no'
+* provenance: margin text_option -- transcribed from scheme-s2color.scheme:741 `margin text_option zero'
+* provenance: horizontal text_option -- transcribed from scheme-s2color.scheme:1784 `horizontal text_option center'
+* provenance: vertical_text text_option -- transcribed from scheme-s2color.scheme:1809 `vertical_text text_option middle'
+* provenance: color ci2_symbol -- transcribed from scheme-stcolor.scheme:88 `color ci2_symbol khaki*0.3'
+* provenance: color ci_symbol -- transcribed from scheme-stcolor.scheme:84 `color ci_symbol gs10'
+* provenance: color clegend_line -- transcribed from scheme-s2color.scheme:417 `color clegend_line black'
+* provenance: color cvcvline -- transcribed from scheme-s2color.scheme:403 `color cvcvline red'
+* provenance: color cvlsline -- transcribed from scheme-s2color.scheme:404 `color cvlsline black'
+* provenance: color cvseline -- transcribed from scheme-s2color.scheme:405 `color cvseline blue'
+* provenance: color dot_arealine -- transcribed from scheme-s2color.scheme:397 `color dot_arealine gs8'
+* provenance: color dot_line -- transcribed from scheme-s2color.scheme:396 `color dot_line gs8'
+* provenance: color dotmarkline -- transcribed from scheme-s2color.scheme:399 `color dotmarkline black'
+* provenance: color dots -- transcribed from scheme-s2color.scheme:406 `color dots black'
+* provenance: color fp_line -- transcribed from scheme-stcolor.scheme:96 `color fp_line stc1'
+* provenance: color fpall -- transcribed from scheme-stcolor.scheme:103 `color fpall stc3'
+* provenance: color fpall_line -- transcribed from scheme-stcolor.scheme:106 `color fpall_line stc3'
+* provenance: color fpesinside_line -- transcribed from scheme-stcolor.scheme:109 `color fpesinside_line stc4'
+* provenance: color fpesrefline -- transcribed from scheme-s2color.scheme:380 `color fpesrefline cranberry'
+* provenance: color fpgraph -- transcribed from scheme-s2color.scheme:363 `color fpgraph white'
+* provenance: color fpgrp_line -- transcribed from scheme-stcolor.scheme:101 `color fpgrp_line stc2'
+* provenance: color fphrule -- transcribed from scheme-s2color.scheme:377 `color fphrule black'
+* provenance: color fpnullrefline -- transcribed from scheme-s2color.scheme:381 `color fpnullrefline gs8'
+* provenance: color fpspacer -- transcribed from scheme-s2color.scheme:379 `color fpspacer none'
+* provenance: color grid -- transcribed from scheme-s2color.scheme:344 `color grid ltbluishgray'
+* provenance: color hrule -- transcribed from scheme-s2color.scheme:314 `color hrule black'
+* provenance: color matplotregion_line -- transcribed from scheme-s2color.scheme:411 `color matplotregion_line black'
+* provenance: color matrixmarkline -- transcribed from scheme-stcolor.scheme:73 `color matrixmarkline stc1'
+* provenance: color pieline -- transcribed from scheme-s2color.scheme:387 `color pieline none'
+* provenance: color refline -- transcribed from scheme-stcolor.scheme:78 `color refline black'
+* provenance: color refmarkline -- transcribed from scheme-s2color.scheme:392 `color refmarkline black'
+* provenance: color reverse_big_line -- transcribed from scheme-s2color.scheme:341 `color reverse_big_line navy'
+* provenance: color sunflower -- transcribed from scheme-s2color.scheme:423 `color sunflower blue'
+* provenance: color sunflowerdb -- transcribed from scheme-s2color.scheme:426 `color sunflowerdb orange'
+* provenance: color sunflowerdf -- transcribed from scheme-s2color.scheme:427 `color sunflowerdf black'
+* provenance: color sunflowerlb -- transcribed from scheme-s2color.scheme:424 `color sunflowerlb sunflowerlime'
+* provenance: color sunflowerlf -- transcribed from scheme-s2color.scheme:425 `color sunflowerlf chocolate'
+* provenance: color text_option_line -- transcribed from scheme-s2color.scheme:333 `color text_option_line black'
+* provenance: color zyx2 -- transcribed from scheme-s2color.scheme:421 `color zyx2 black'
+* provenance: intensity background -- transcribed from scheme-s2color.scheme:1269 `intensity background inten100'
+* provenance: intensity foreground -- transcribed from scheme-s2color.scheme:1268 `intensity foreground inten100'
+* provenance: linepattern axisline -- transcribed from scheme-s2color.scheme:567 `linepattern axisline solid'
+* provenance: linepattern background -- transcribed from scheme-s2color.scheme:559 `linepattern background solid'
+* provenance: linepattern clegend -- transcribed from scheme-s2color.scheme:583 `linepattern clegend solid'
+* provenance: linepattern cvcvline -- transcribed from scheme-s2color.scheme:572 `linepattern cvcvline solid'
+* provenance: linepattern cvlsline -- transcribed from scheme-s2color.scheme:573 `linepattern cvlsline solid'
+* provenance: linepattern cvseline -- transcribed from scheme-s2color.scheme:574 `linepattern cvseline solid'
+* provenance: linepattern dendrogram -- transcribed from scheme-s2color.scheme:563 `linepattern dendrogram solid'
+* provenance: linepattern dot -- transcribed from scheme-s2color.scheme:578 `linepattern dot solid'
+* provenance: linepattern dot_area -- transcribed from scheme-s2color.scheme:579 `linepattern dot_area solid'
+* provenance: linepattern dotmark -- transcribed from scheme-s2color.scheme:580 `linepattern dotmark solid'
+* provenance: linepattern dots -- transcribed from scheme-s2color.scheme:577 `linepattern dots solid'
+* provenance: linepattern foreground -- transcribed from scheme-s2color.scheme:558 `linepattern foreground solid'
+* provenance: linepattern fp -- transcribed from scheme-s2color.scheme:591 `linepattern fp solid'
+* provenance: linepattern fpall -- transcribed from scheme-s2color.scheme:593 `linepattern fpall solid'
+* provenance: linepattern fpesrefline -- transcribed from scheme-s2color.scheme:596 `linepattern fpesrefline solid'
+* provenance: linepattern fpgrp -- transcribed from scheme-s2color.scheme:592 `linepattern fpgrp solid'
+* provenance: linepattern fphrule -- transcribed from scheme-s2color.scheme:594 `linepattern fphrule solid'
+* provenance: linepattern fpnullrefline -- transcribed from scheme-s2color.scheme:597 `linepattern fpnullrefline solid'
+* provenance: linepattern fpspacer -- transcribed from scheme-s2color.scheme:595 `linepattern fpspacer blank'
+* provenance: linepattern grid -- transcribed from scheme-s2color.scheme:564 `linepattern grid solid'
+* provenance: linepattern histogram -- transcribed from scheme-s2color.scheme:562 `linepattern histogram solid'
+* provenance: linepattern hrule -- transcribed from scheme-s2color.scheme:589 `linepattern hrule solid'
+* provenance: linepattern legend -- transcribed from scheme-s2color.scheme:582 `linepattern legend solid'
+* provenance: linepattern matrix_plotregion -- transcribed from scheme-s2color.scheme:586 `linepattern matrix_plotregion solid'
+* provenance: linepattern matrixmark -- transcribed from scheme-s2color.scheme:576 `linepattern matrixmark solid'
+* provenance: linepattern minortick -- transcribed from scheme-s2color.scheme:569 `linepattern minortick solid'
+* provenance: linepattern pie -- transcribed from scheme-s2color.scheme:581 `linepattern pie solid'
+* provenance: linepattern pmark -- transcribed from scheme-s2color.scheme:600 `linepattern pmark solid'
+* provenance: linepattern refline -- transcribed from scheme-s2color.scheme:571 `linepattern refline solid'
+* provenance: linepattern refmarker -- transcribed from scheme-s2color.scheme:575 `linepattern refmarker solid'
+* provenance: linepattern sunflower -- transcribed from scheme-s2color.scheme:585 `linepattern sunflower solid'
+* provenance: linepattern text_option -- transcribed from scheme-s2color.scheme:587 `linepattern text_option solid'
+* provenance: linepattern tick -- transcribed from scheme-s2color.scheme:568 `linepattern tick solid'
+* provenance: linepattern zyx2 -- transcribed from scheme-s2color.scheme:588 `linepattern zyx2 solid'
+* provenance: linewidth background -- transcribed from scheme-s2color.scheme:1201 `linewidth background thin'
+* provenance: linewidth clegend -- transcribed from scheme-s2color.scheme:1227 `linewidth clegend thin'
+* provenance: linewidth cvcvline -- transcribed from scheme-s2color.scheme:1216 `linewidth cvcvline thin'
+* provenance: linewidth cvlsline -- transcribed from scheme-s2color.scheme:1217 `linewidth cvlsline thin'
+* provenance: linewidth cvseline -- transcribed from scheme-s2color.scheme:1218 `linewidth cvseline thin'
+* provenance: linewidth dendrogram -- transcribed from scheme-s2color.scheme:1213 `linewidth dendrogram medium'
+* provenance: linewidth dot_area -- transcribed from scheme-s2color.scheme:1223 `linewidth dot_area medium'
+* provenance: linewidth dot_line -- transcribed from scheme-s2color.scheme:1222 `linewidth dot_line medthick'
+* provenance: linewidth dotmark -- transcribed from scheme-s2color.scheme:1224 `linewidth dotmark thin'
+* provenance: linewidth dots -- transcribed from scheme-s2color.scheme:1221 `linewidth dots vvthin'
+* provenance: linewidth foreground -- transcribed from scheme-s2color.scheme:1200 `linewidth foreground thin'
+* provenance: linewidth fp -- transcribed from scheme-s2color.scheme:1241 `linewidth fp medium'
+* provenance: linewidth fpall -- transcribed from scheme-s2color.scheme:1238 `linewidth fpall medium'
+* provenance: linewidth fpesrefline -- transcribed from scheme-s2color.scheme:1243 `linewidth fpesrefline thin'
+* provenance: linewidth fpgrp -- transcribed from scheme-s2color.scheme:1236 `linewidth fpgrp medium'
+* provenance: linewidth fphrule -- transcribed from scheme-s2color.scheme:1240 `linewidth fphrule medium'
+* provenance: linewidth fpnullrefline -- transcribed from scheme-s2color.scheme:1244 `linewidth fpnullrefline thin'
+* provenance: linewidth fpspacer -- transcribed from scheme-s2color.scheme:1242 `linewidth fpspacer medium'
+* provenance: linewidth grid -- transcribed from scheme-s2color.scheme:1202 `linewidth grid medium'
+* provenance: linewidth hrule -- transcribed from scheme-s2color.scheme:1234 `linewidth hrule medium'
+* provenance: linewidth legend -- transcribed from scheme-s2color.scheme:1226 `linewidth legend thin'
+* provenance: linewidth matrix_plotregion -- transcribed from scheme-s2color.scheme:1231 `linewidth matrix_plotregion thin'
+* provenance: linewidth matrixmark -- transcribed from scheme-s2color.scheme:1220 `linewidth matrixmark medium'
+* provenance: linewidth medium -- transcribed from scheme-s2color.scheme:1198 `linewidth medium medium'
+* provenance: linewidth minortick -- transcribed from scheme-s2color.scheme:1207 `linewidth minortick thin'
+* provenance: linewidth pie -- transcribed from scheme-s2color.scheme:1228 `linewidth pie medium'
+* provenance: linewidth refline -- transcribed from scheme-s2color.scheme:1215 `linewidth refline medium'
+* provenance: linewidth refmarker -- transcribed from scheme-s2color.scheme:1219 `linewidth refmarker medium'
+* provenance: linewidth reverse_big -- transcribed from scheme-s2color.scheme:1229 `linewidth reverse_big thin'
+* provenance: linewidth text_option -- transcribed from scheme-s2color.scheme:1232 `linewidth text_option thin'
+* provenance: linewidth zyx2 -- transcribed from scheme-s2color.scheme:1233 `linewidth zyx2 medium'
+* provenance: symbol ci -- transcribed from scheme-s2color.scheme:513 `symbol ci circle'
+* provenance: symbol ci2 -- transcribed from scheme-s2color.scheme:514 `symbol ci2 circle'
+* provenance: symbol histogram -- transcribed from scheme-s2color.scheme:510 `symbol histogram circle'
+* provenance: symbolsize ci -- transcribed from scheme-s2color.scheme:256 `symbolsize ci medium'
+* provenance: symbolsize ci2 -- transcribed from scheme-s2color.scheme:257 `symbolsize ci2 medium'
+* provenance: symbolsize histogram -- transcribed from scheme-s2color.scheme:253 `symbolsize histogram medlarge'
+* provenance: symbolsize parrow -- transcribed from scheme-s2color.scheme:276 `symbolsize parrow medium'
 * END provenance (WP-17)
 * ---------------------------------------------------------------------------

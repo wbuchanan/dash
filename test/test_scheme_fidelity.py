@@ -6,8 +6,9 @@ WHAT THIS FILE IS
 Section 03 of the plan translates Stata's 14 shipped graph schemes into dash
 ``.scheme`` files; section 11 makes ``dash_render`` consume them; WP-17 adds
 the six user-selectable StataCorp schemes that were still missing (s2manual,
-s1manual, s2gmanual, s2color8, sttrans, stgcolor_alt), making twenty.  This
-file is
+s1manual, s2gmanual, s2color8, sttrans, stgcolor_alt), making twenty; WP-30
+P1.25a adds StataCorp's six internal schemes (meta, stcolor_meta, stcolor_mv,
+stcoloralias, stgcolor_meta, stgcolor_mv), making twenty-six.  This file is
 the *test-first* half of that work (project rule 8): every assertion below is
 driven by ``test/fixtures/scheme_truth.json``, the ground truth another agent
 extracted from Stata's own ``scheme-*.scheme`` and ``style/*.style`` files with
@@ -80,8 +81,10 @@ from collections import namedtuple
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from dash_render import OptionTranslator, SchemeParser
+from dash_render import OptionTranslator, SchemeParser  # noqa: E402
+from test_scheme_resolution import each  # noqa: E402
 
 
 # ===========================================================================
@@ -113,15 +116,16 @@ ALPHA_TOL = 1e-6
 #: Tolerance for graph size in inches.
 SIZE_TOL = 1e-9
 
-#: The 20 user-selectable schemes Stata ships and dash must translate.  The
-#: internal ones (meta, stcolor_meta, stgcolor_meta, stcolor_mv, stgcolor_mv,
-#: stcoloralias) are deliberately not here.
+#: The 26 schemes Stata ships in BASE/s, every one of which dash translates.
 EXPECTED_SCHEMES = (
     "stcolor", "stcolor_alt", "stgcolor", "stmono1", "stmono2", "stsj",
     "s2color", "s2mono", "s2gcolor", "s1color", "s1mono", "s1rcolor",
     "economist", "sj",
     # WP-17: the six that were missing.
     "s2manual", "s1manual", "s2gmanual", "s2color8", "sttrans", "stgcolor_alt",
+    # WP-30 P1.25a: StataCorp's six internal schemes
+    "meta", "stcolor_meta", "stcolor_mv", "stcoloralias", "stgcolor_meta",
+    "stgcolor_mv",
 )
 
 #: The six WP-17 added, kept apart so their tests can name them.
@@ -211,7 +215,15 @@ COLOR_LISTS = {
     "p_colors":      ["color p{i}", "color p"],
     "p_line_colors": ["color p{i}line", "color pline", "color p{i}", "color p"],
     "p_bar_colors":  ["color p{i}bar", "color pbar", "color p{i}", "color p"],
-    "p_mark_colors": ["color p{i}mark", "color pmark", "color p{i}", "color p"],
+    # A marker's fill and outline (style/markerstyle-p#.style, WP-30
+    # P1.4a); `color p#mark' is never a marker colour.
+    "p_mark_colors": ["color p{i}markfill", "color pmarkfill", "color p{i}",
+                      "color p"],
+    "p_markline_colors": ["color p{i}markline", "color pmarkline",
+                          "color p{i}", "color p"],
+    # A marker label's colour (style/textboxstyle-p#.style, WP-30 P1.4b).
+    "p_label_colors": ["color p{i}label", "color plabel", "color p{i}",
+                       "color p"],
 }
 
 #: fixture key -> per-index directive chain templates, compared as style names
@@ -224,12 +236,17 @@ NAME_LISTS = {
 #: fixture key -> directive chain; fixture value is {"name","pct","alpha"}
 ALPHA_SCALARS = {
     "fill_alpha": ["intensity p"],
-    "bar_alpha":  ["intensity bar"],
-    # No Stata base scheme sets "intensity area"; all 20 resolve it through the
-    # bare "intensity" class default (see _meta.sources).  Either spelling in a
-    # translated scheme supplies it.
-    "area_alpha": ["intensity area", "intensity"],
+    # bar_alpha and area_alpha (graph bar's `intensity bar' and `intensity
+    # area') are no longer written to the shipped files (WP-30 P1.4a):
+    # twoway's bar and area do not read them.  Flipped: their rows checked
+    # two retired directives.
 }
+
+#: Graph bar's intensity keys, which twoway's bar and area ignore (measured,
+#: WP-30 P1.2b): SchemeParser no longer parses them into an attribute, so
+#: the file's transcription is checked through the declared directive,
+#: read by SchemeParser._intensity, instead.
+RETIRED_INTENSITY = {"bar_alpha", "area_alpha"}
 
 #: fixture key -> directive chain; fixture value is {"name", "value", ...}
 STYLE_NAME_SCALARS = {
@@ -474,7 +491,12 @@ def evaluate_scheme(name):
         if expected is None:
             continue
         supplied = declared(sp, chain) is not None
-        actual = attr(sp, prop)
+        if prop in RETIRED_INTENSITY:
+            key = next((k for k in chain if declared(sp, [k]) is not None),
+                       None)
+            actual = sp._intensity(key) if key is not None else MISSING
+        else:
+            actual = attr(sp, prop)
         faithful = (
             supplied
             and isinstance(actual, (int, float))
@@ -586,7 +608,7 @@ def coverage(checks):
 # ===========================================================================
 
 def test_fixture_is_present_and_complete():
-    """The ground-truth fixture exists and covers exactly the 20 schemes."""
+    """The ground-truth fixture exists and covers exactly the 26 schemes."""
     assert _FIXTURE_ERROR is None, (
         f"cannot read {FIXTURE_PATH}: {_FIXTURE_ERROR}"
     )
@@ -655,12 +677,12 @@ def test_scheme_parser_exposes_props():
 
 
 # ===========================================================================
-# 1. All 20 schemes resolve, with no silent fallback
+# 1. All 26 schemes resolve, with no silent fallback
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_resolves(name):
-    """Every one of Stata's 20 schemes is a real, parseable dash scheme.
+    """Every one of Stata's 26 schemes is a real, parseable dash scheme.
 
     "Without falling back" means three things: the file dash-<name>.scheme exists, the
     parser does not raise, and no ``#include`` in the chain was silently skipped
@@ -697,7 +719,7 @@ def test_scheme_resolves(name):
 # 2. Every captured property matches the fixture
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_property_fidelity(name):
     """Each fixture property matches what dash resolves for that scheme."""
     try:
@@ -727,7 +749,7 @@ def test_scheme_property_fidelity(name):
 # 3. Full 15-entry cycles for colour, symbol and line pattern
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_defines_all_15_p_entries(name):
     """p1-p15 must be supplied for colour, symbol and line pattern.
 
@@ -848,7 +870,7 @@ def test_stcolor_p1_is_not_black():
 # 5. Graph size (consumed by section 10)
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_defines_graphsize(name):
     """Every translated scheme declares graphsize x/y and dash exposes them."""
     try:
@@ -883,7 +905,7 @@ def test_scheme_defines_graphsize(name):
 # 6. Coverage harness
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_scheme_coverage(name):
     """Faithful coverage of each scheme's fixture properties clears the gate.
 
@@ -926,7 +948,7 @@ def test_scheme_coverage(name):
 # 6b. dash must be able to express what the fixture declares
 # ===========================================================================
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_translator_can_express_scheme_symbols_and_patterns(name):
     """Every symbol / line-pattern name Stata's scheme uses is translatable.
 
@@ -1064,7 +1086,7 @@ def test_extractor_schemes_list_is_the_twenty():
     assert sorted(mod.SCHEMES) == sorted(EXPECTED_SCHEMES), (
         f"extractor SCHEMES {sorted(mod.SCHEMES)} != {sorted(EXPECTED_SCHEMES)}"
     )
-    assert len(mod.SCHEMES) == 20
+    assert len(mod.SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
 
 
 def test_extractor_reads_a_directive_value_as_stata_does(tmp_path):
@@ -1263,7 +1285,7 @@ def test_s2gmanual_lineplot_comes_from_its_declared_directive():
     assert m["provenance"]["p_lineplot_patterns"][0]["kind"] == "transcribed"
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_shipped_file_carries_one_provenance_line_per_directive(name):
     """Every shipped file ends with a provenance block: one ``* provenance:``
     line for each directive it carries, saying ``transcribed from
@@ -1297,7 +1319,10 @@ def test_shipped_provenance_agrees_with_the_fixture():
     assert ("color", "p1line") not in _file_directives(scheme_path("s2color"))
     assert prov[("linepattern", "p")].startswith(
         "transcribed from scheme-s2color.scheme:")
-    assert prov[("intensity", "area")].startswith("inferred: ")
+    # An inferred directive: `intensity area' was the example until WP-30
+    # P1.4a stopped writing it (twoway's area does not read it).
+    prov_e, _ = _provenance_lines(scheme_path("economist"))
+    assert prov_e[("color", "plotregion_line")].startswith("inferred: ")
     # s2mono's connecting-line colour is its declared `color pline'.
     prov_m, _ = _provenance_lines(scheme_path("s2mono"))
     assert prov_m[("color", "pline")].startswith(
@@ -1308,7 +1333,7 @@ def test_shipped_provenance_agrees_with_the_fixture():
     assert "draw_major_nlt_vgrid" in prov[("yesno", "draw_major_vgrid")]
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_regenerating_a_shipped_file_is_a_no_op(name, tmp_path):
     """update_scheme_file on a copy of the shipped file, fed the fixture it
     was generated from, changes nothing: no CHANGED value, no added
@@ -1333,30 +1358,54 @@ def test_an_older_translation_loses_its_resolved_stub_lines(tmp_path):
     written out resolved (`color p1mark' .. under s2color, as every shipped
     file did before the S3 batch) removes those lines and the comment
     paragraph that headed them, and adds the key Stata's chain declares
-    (`linepattern p'); a second run changes nothing."""
+    (`linepattern p'); graph bar's `intensity bar' and `intensity area',
+    which the files no longer carry (WP-30 P1.4a), go too; a second run
+    changes nothing."""
     mod = _extractor()
     dst = str(tmp_path / "s2color.scheme")
     shutil.copyfile(scheme_path("s2color"), dst)
     extra = ["", "* Per-plot marker fill color (resolved, spelled out).",
              *[f"color p{i}mark   #1a476f" for i in range(1, N_PLOTS + 1)],
              "", "* Line patterns, spelled out.",
-             *[f"linepattern p{i}line   solid" for i in range(1, N_PLOTS + 1)]]
+             *[f"linepattern p{i}line   solid" for i in range(1, N_PLOTS + 1)],
+             "", "* Graph bar's intensities.", "intensity bar   full",
+             "intensity area  full"]
     text = open(dst, encoding="utf-8").read()
     head, sep, tail = text.partition("* ---------------------------------------------------------------------------\n* BEGIN provenance")
     text = head.replace("linepattern p  solid\n", "") + "\n".join(extra) + "\n\n" + sep + tail
     open(dst, "w", encoding="utf-8").write(text)
     r = mod.update_scheme_file(dst, "s2color", truth_for("s2color"),
                                mod.DEFAULT_STATA_BASE, "01jan2000")
-    assert len(r["removed"]) == 2 * N_PLOTS, r
+    assert len(r["removed"]) == 2 * N_PLOTS + 2, r
+    assert {"intensity bar", "intensity area"} <= set(r["removed"]), r
     assert r["added"] == ["linepattern p"], r
     after = open(dst, encoding="utf-8").read()
     assert "Per-plot marker fill color (resolved" not in after
     assert "Line patterns, spelled out." not in after
     assert "color p1mark" not in after and "linepattern p1line" not in after
+    assert "intensity bar " not in after and "intensity area " not in after
     r2 = mod.update_scheme_file(dst, "s2color", truth_for("s2color"),
                                 mod.DEFAULT_STATA_BASE, "01jan2000")
     assert (r2["changed"], r2["added"], r2["removed"], r2["provenance"]) == (
         [], [], [], None), r2
+
+
+def test_the_histogram_keys_are_resolved():
+    """Every scheme's chain resolves the histogram's four keys (WP-30
+    P1.4a): a hex fill and outline, an intensity and a width; sttrans
+    declares its %20 on both colours, no other scheme any."""
+    bad = []
+    for name in EXPECTED_SCHEMES:
+        t = truth_for(name)
+        for k in ("histogram_color", "histogram_line_color"):
+            if not re.fullmatch(r"#[0-9a-f]{6}", t.get(k) or ""):
+                bad.append((name, k, t.get(k)))
+            if t.get(k + "_opacity") != (20.0 if name == "sttrans" else None):
+                bad.append((name, k + "_opacity", t.get(k + "_opacity")))
+        for k in ("histogram_intensity", "histogram_line_width"):
+            if not (t.get(k) or {}).get("name"):
+                bad.append((name, k, t.get(k)))
+    assert not bad, bad
 
 
 # ===========================================================================
@@ -1371,7 +1420,7 @@ _S3_KEYS = ("xyline_drawn", "xyline_color", "xyline_pattern",
             "note_text_color", "note_box_drawn", "note_box_fill_color")
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_the_s3_keys_are_resolved(name):
     t = truth_for(name)
     missing = [k for k in _S3_KEYS if k not in t]
@@ -1407,7 +1456,7 @@ def test_the_s3_anchors():
     assert s2["note_textbox"]["name"] == "small_body"
 
 
-@pytest.mark.parametrize("name", SCHEME_NAMES)
+@each("name", SCHEME_NAMES)
 def test_a_shipped_file_carries_each_directive_once(name):
     """note()'s small_body box is `gsize small_body', which an earlier
     group already carries; the extractor writes it once."""
@@ -1422,3 +1471,135 @@ def test_a_shipped_file_carries_each_directive_once(name):
                 dup.append(key)
             seen.add(key)
     assert not dup, (name, dup)
+
+
+# --- WP-30 P1.2a: the chrome keys ------------------------------------------ #
+
+#: The fixture keys the chrome group adds (extract_scheme_truth.chrome_truth).
+_CHROME_KEYS = ("tick_angle_x", "tick_angle_y", "major_grid_pattern",
+                "minor_grid_pattern", "tick_color", "minortick_color",
+                "tick_line_width", "tick_length", "tick_position",
+                "axis_styles", "alt_axes", "justification", "text_positions",
+                "naturally_white", "p_bar_intensity", "p_area_intensity")
+
+
+@each("name", SCHEME_NAMES)
+def test_the_chrome_keys_are_resolved(name):
+    t = truth_for(name)
+    for k in _CHROME_KEYS:
+        assert t.get(k) is not None, (name, k)
+    assert len(t["p_bar_intensity"]) == 15 and len(t["p_area_intensity"]) == 15
+
+
+def test_the_chrome_anchors():
+    """twoway's measured chrome (03oct2026): s2color's vertical y labels and
+    black outside ticks, stcolor's dashed grid, s1rcolor's white ticks,
+    economist's right-hand y axis with no line or ticks and inside ticks."""
+    s2 = truth_for("s2color")
+    assert s2["tick_angle_y"]["degrees"] == 90.0
+    assert s2["tick_position"] == "outside" and s2["tick_color"] == "#000000"
+    assert s2["tick_length"]["name"] == "tiny"
+    assert s2["text_positions"] == {"title": 12, "subtitle": 12, "note": 7,
+                                    "caption": 7}
+    assert truth_for("stcolor")["major_grid_pattern"]["name"] == "dash"
+    assert truth_for("s1rcolor")["tick_color"] == "#ffffff"
+    assert truth_for("s1rcolor")["naturally_white"] == 0
+    e = truth_for("economist")
+    assert e["tick_position"] == "inside"
+    assert e["alt_axes"] == {"x": False, "y": True}
+    assert (e["axis_styles"]["y"]["line"], e["axis_styles"]["y"]["ticks"]) \
+        == (False, False)
+    assert e["text_positions"]["note"] == 1
+    assert e["justification"]["heading"] == "left"
+
+
+def test_resolve_anglestyle_reads_the_style_file():
+    mod = _extractor()
+    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r.load("s2color")
+    assert mod.resolve_anglestyle(r, "vertical") == {"name": "vertical",
+                                                     "degrees": 90.0}
+    assert mod.resolve_anglestyle(r, "45")["degrees"] == 45.0
+
+
+_AXISSTYLES = [f"{d}_{k}" for d in ("horizontal", "vertical")
+               for k in ("default", "nogrid", "withgrid", "noline", "notick",
+                         "nolinetick")]
+
+
+def test_axis_style_flags_for_every_axisstyle_file():
+    mod = _extractor()
+    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r.load("s2color")
+    for name in _AXISSTYLES:
+        f = mod.axis_style_flags(r, name)
+        assert f["axisstyle"] == name
+        kind = name.split("_", 1)[1]
+        assert f["line"] == (kind not in ("noline", "nolinetick")), name
+        assert f["ticks"] == (kind not in ("notick", "nolinetick")), name
+
+
+def test_the_parser_axisstyle_table_is_statas():
+    mod = _extractor()
+    r = mod.SchemeResolver(mod.DEFAULT_STATA_BASE)
+    r.load("s2color")
+    want = {n: (mod.axis_style_flags(r, n)["line"],
+                mod.axis_style_flags(r, n)["ticks"]) for n in _AXISSTYLES}
+    assert SchemeParser._AXISSTYLE_FLAGS == want
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.14b (section 36): the keys the named styles read
+# ---------------------------------------------------------------------------
+
+def test_the_named_style_directives_are_carried():
+    """Every shipped file carries its Named styles group (the scheme's
+    named_style_directives less the keys an earlier group carries), value
+    for value (one loop over the 26)."""
+    mod = _extractor()
+    bad = []
+    for name in sorted(SchemeParser._BUILTIN_NAMES):
+        props = SchemeParser(name)._props
+        groups = [g for g in mod.expected_directives(TRUTH[name])
+                  if g[0][0].startswith("Named styles (WP-30 S36)")]
+        assert len(groups) == 1, name
+        for cls, key, v, _ref in groups[0][1]:
+            if props.get(f"{cls} {key}", "").strip() != v:
+                bad.append((name, cls, key, v))
+    assert not bad, bad[:20]
+
+
+def test_the_style_name_hops_are_identity():
+    """D-36h (E10): no shipped file carries a hop key, and for every hop
+    Stata's chain declares, the rule SchemeParser follows (the declared
+    value, else the chain step that names a style) gives that value."""
+    bad = []
+    for name in sorted(SchemeParser._BUILTIN_NAMES):
+        sp = SchemeParser(name)
+        if [k for k in sp._props if k.split(" ", 1)[0] in (
+                "markerstyle", "linestyle", "areastyle", "shadestyle",
+                "seriesstyle")]:
+            bad.append((name, "carries a hop key"))
+        for k, v in TRUTH["_meta"]["style_hops"][name].items():
+            cls, key = k.split(" ", 1)
+            if sp._style_leaf(cls, key, hop=True) != v:
+                bad.append((name, k, v))
+    assert not bad, bad[:20]
+
+
+def test_the_named_style_walk_follows_scheme_class(tmp_path):
+    """E8: a key no step declares is unresolvable -- a bare `color' class
+    default is not taken (linked() would take it)."""
+    mod = _extractor()
+    base = tmp_path / "base"
+    shutil.copytree(os.path.join(mod.DEFAULT_STATA_BASE, "style"),
+                    base / "style")
+    (base / "s").mkdir()
+    (base / "s" / "scheme-zz.scheme").write_text(
+        "color black\nlinewidth refline medium\nlinepattern refline solid\n",
+        encoding="utf-8")
+    r = mod.SchemeResolver(str(base))
+    r.load("zz")
+    out, _hops, bad = mod.named_style_directives(r, {}, {})
+    assert "color refline" not in out
+    assert [m for m in bad if "color refline" in m]

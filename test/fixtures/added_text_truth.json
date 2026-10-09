@@ -1,0 +1,3614 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "centre": 0.3504,
+  "compass": {
+   "0": "c",
+   "1": "ne",
+   "10": "nw",
+   "11": "nw",
+   "12": "n",
+   "2": "ne",
+   "3": "e",
+   "4": "se",
+   "5": "se",
+   "6": "s",
+   "7": "sw",
+   "8": "sw",
+   "9": "w",
+   "b": "s",
+   "bottom": "s",
+   "c": "c",
+   "center": "c",
+   "e": "e",
+   "east": "e",
+   "l": "w",
+   "left": "w",
+   "n": "n",
+   "ne": "ne",
+   "neast": "ne",
+   "north": "n",
+   "nw": "nw",
+   "nwest": "nw",
+   "r": "e",
+   "right": "e",
+   "s": "s",
+   "se": "se",
+   "seast": "se",
+   "south": "s",
+   "sw": "sw",
+   "swest": "sw",
+   "t": "n",
+   "top": "n",
+   "w": "w",
+   "west": "w",
+   "zz": null
+  },
+  "dash_commit": "2f51a5058df30a526536402dbdd5c0eea68d9d4d",
+  "data": "auto; monthly: t %tm 1995m1-2004m12, tn = t unformatted, y = 10 + mod(_n, 7), y2, tsset t; daily: d %td from 01jan2001 every 5 days, y = 5 + mod(_n, 9)",
+  "extracted": " 9 Oct 2026",
+  "orient": {
+   "bogus": null,
+   "h": null,
+   "horiz": 0.0,
+   "horizontal": 0.0,
+   "rh": null,
+   "rhoriz": -180.0,
+   "rhorizontal": -180.0,
+   "rv": null,
+   "rvert": -270.0,
+   "rvertical": -270.0,
+   "v": null,
+   "vert": -90.0,
+   "vertical": -90.0
+  },
+  "scheme": "stcolor unless the command names one",
+  "stata_version": "19.5"
+ },
+ "probes": {
+  "aaa": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"AAA\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "AAA",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "abbr": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"ABR\", c(red) si(large) orient(vert))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9507062397756,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#ff0000",
+     "rotate": -90.0,
+     "size": 157.44,
+     "text": "ABR",
+     "x_px": 2417.82,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "above": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(43 3000 \"ABOVE\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 42.998321055945866
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "ABOVE",
+     "x_px": 2362.67,
+     "y_px": 62.22
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "box": {
+   "boxes": [
+    {
+     "bottom": 1245.21,
+     "fill": "#ffff00",
+     "left": 2127.09,
+     "right": 2598.41,
+     "stroke": "#0000ff",
+     "stroke_width": 12.96,
+     "top": 905.85
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"BOX\", box fcolor(yellow) lcolor(blue) margin(medium))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3000.018695956999,
+    "y": 29.99962957932559
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "BOX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "by": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, by(foreign) text(30 3000 \"BYT\")",
+   "control": "ctl_by",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 95.68,
+     "text": "BYT",
+     "x_px": 1408.22,
+     "y_px": 1187.44
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 95.68,
+     "text": "BYT",
+     "x_px": 3831.47,
+     "y_px": 1187.44
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_by": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, by(foreign)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_d": {
+   "boxes": [],
+   "cmd": "twoway line y d",
+   "control": "",
+   "dataset": "daily",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "01apr2002"
+   ]
+  },
+  "ctl_lev": {
+   "boxes": [],
+   "cmd": "twoway (scatter mpg weight) (scatter mpg length)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "0",
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_log": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, xscale(log)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_m": {
+   "boxes": [],
+   "cmd": "twoway tsline y",
+   "control": "",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "1995m1",
+    "2000m1",
+    "2005m1"
+   ]
+  },
+  "ctl_rev": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, xscale(reverse)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "5,000",
+    "4,000",
+    "3,000",
+    "2,000"
+   ]
+  },
+  "ctl_s1mono": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s1mono)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_s1rcolor": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s1rcolor)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": []
+  },
+  "ctl_s2color": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s2color)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_s2color8": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s2color8)",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_seg": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight || scatter mpg length",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "0",
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "ctl_two2": {
+   "boxes": [],
+   "cmd": "twoway (line y t) (line y tn)",
+   "control": "",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "1995m1",
+    "2000m1",
+    "2005m1"
+   ]
+  },
+  "ctl_xl": {
+   "boxes": [],
+   "cmd": "twoway line y tn, xlabel(, format(%tm))",
+   "control": "",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "1993m5",
+    "1997m7",
+    "2001m9",
+    "2005m11"
+   ]
+  },
+  "ctl_xl9": {
+   "boxes": [],
+   "cmd": "twoway line y t, xlabel(, format(%9.0g))",
+   "control": "",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "420",
+    "480",
+    "540"
+   ]
+  },
+  "ctl_y2": {
+   "boxes": [],
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2))",
+   "control": "",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "empty": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "far": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(100 3000 \"FAR\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 99.9998891701342
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "FAR",
+     "x_px": 2362.67,
+     "y_px": -4554.28
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "html": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"<b>x</b>&amp;\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "<b>x</b>&amp;",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "just": {
+   "boxes": [
+    {
+     "bottom": 1188.17,
+     "fill": "#d9e6eb",
+     "left": 2153.59,
+     "right": 2571.75,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 963.22
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"J1\" \"JJJJJJ2\", just(left) box)",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99759226561632
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "J1",
+     "x_px": 2153.59,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "JJJJJJ2",
+     "x_px": 2153.59,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "level_pg": {
+   "boxes": [],
+   "cmd": "twoway (scatter mpg weight, text(30 3000 \"PG\")) (scatter mpg length), text(20 4000 \"GL\")",
+   "control": "ctl_lev",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9529293192195,
+    "y": 30.00072117895931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PG",
+     "x_px": 2760.92,
+     "y_px": 1154.87
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "GL",
+     "x_px": 3483.17,
+     "y_px": 2001.16
+    }
+   ],
+   "tick_x": [
+    "0",
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "level_seg": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"S1\") || scatter mpg length, text(20 4000 \"S2\")",
+   "control": "ctl_seg",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9529293192195,
+    "y": 30.00072117895931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "S1",
+     "x_px": 2760.92,
+     "y_px": 1154.87
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "S2",
+     "x_px": 3483.17,
+     "y_px": 2001.16
+    }
+   ],
+   "tick_x": [
+    "0",
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "lines": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"L1\" \"L2\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99760490930867
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "L1",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "L2",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "log": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, xscale(log) text(30 3000 \"LOG\")",
+   "control": "ctl_log",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3000.0282548851933,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "LOG",
+     "x_px": 2954.48,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "none": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text()",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "nostr": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000)",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "noted": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"NTD\", width(5) linegap(2) tstyle(heading))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 30.290989838126166
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 157.44,
+     "text": "NTD",
+     "x_px": 2362.67,
+     "y_px": 1107.1
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_1": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(horizontal))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_10": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(rhorizontal))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.998505673609998
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -180.0,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1036.18
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_11": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(rh))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [
+    "(note:  named style rh not found in class tb_orientstyle, default attributes used)"
+   ],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_12": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(rhoriz))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.998505673609998
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -180.0,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1036.18
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_13": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(bogus))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [
+    "(note:  named style bogus not found in class tb_orientstyle, default attributes used)",
+    "(note:  named style bogus not found in class anglestyle, default attributes used)"
+   ],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_2": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(h))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [
+    "(note:  named style h not found in class tb_orientstyle, default attributes used)"
+   ],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_3": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(horiz))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_4": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(vertical))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9618901612525,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -90.0,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2402.11,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_5": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(v))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [
+    "(note:  named style v not found in class tb_orientstyle, default attributes used)"
+   ],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_6": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(vert))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9618901612525,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -90.0,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2402.11,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_7": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(rvertical))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9633260107503,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -270.0,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2323.23,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_8": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(rv))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [
+    "(note:  named style rv not found in class tb_orientstyle, default attributes used)"
+   ],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "or_9": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"OX\", orientation(rvert))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9633260107503,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -270.0,
+     "size": 112.56,
+     "text": "OX",
+     "x_px": 2323.23,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_1": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(n))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "n",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_10": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(3))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "e",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_11": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(e))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "e",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_12": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(east))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "e",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_13": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(r))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "e",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_14": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(right))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "e",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_15": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(4))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "se",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_16": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(5))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "se",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_17": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(se))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "se",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_18": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(seast))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "se",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_19": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(6))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "s",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_2": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(north))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "n",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_20": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(s))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "s",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_21": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(south))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "s",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_22": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(b))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "s",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_23": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(bottom))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "s",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_24": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(7))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "sw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_25": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(8))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "sw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_26": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(sw))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "sw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_27": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(swest))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "sw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.30275746088975
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1171.41
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_28": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(9))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "w",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_29": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(w))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "w",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_3": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(12))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "n",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_30": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(west))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "w",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_31": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(l))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "w",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_32": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(left))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "w",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_33": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(10))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "nw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_34": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(11))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "nw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_35": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(nw))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "nw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_36": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(nwest))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "nw",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2946.13227389577,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2285.89,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_37": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(0))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "c",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_38": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(c))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "c",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_39": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(center))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "c",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_4": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(t))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "n",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_40": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(zz))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "e",
+   "error": "",
+   "notes": [
+    "(note:  named style zz not found in class compass2dir, default attributes used)"
+   ],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_5": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(top))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "n",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2362.67,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_6": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(1))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "ne",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_7": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(2))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "ne",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_8": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(ne))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "ne",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "pl_9": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"PX\", place(neast))",
+   "control": "ctl",
+   "dataset": "auto",
+   "direction": "ne",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3053.7929422762327,
+    "y": 30.692452357727596
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "PX",
+     "x_px": 2439.45,
+     "y_px": 1058.86
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "r_alpha": {
+   "cmd": "twoway scatter mpg weight, text(a 3000 \"x\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point, 3000 a",
+   "notes": [],
+   "rc": 198
+  },
+  "r_bare": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 x)",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point,  x",
+   "notes": [],
+   "rc": 198
+  },
+  "r_big": {
+   "cmd": "twoway scatter mpg weight, text(30 1e400 \"x\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point, 1e400 30",
+   "notes": [],
+   "rc": 198
+  },
+  "r_e3": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3e3 \"E3\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "E3",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "r_expr": {
+   "cmd": "twoway scatter mpg weight, text(1+1 3000 \"x\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point, 3000 1+1",
+   "notes": [],
+   "rc": 198
+  },
+  "r_missy": {
+   "cmd": "twoway scatter mpg weight, text(. 3000 \"MISS\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point, 3000 .",
+   "notes": [],
+   "rc": 198
+  },
+  "r_nopt_y2": {
+   "cmd": "twoway scatter mpg weight, text(, yaxis(2))",
+   "control": "",
+   "dataset": "auto",
+   "error": "text() option invalid, specified axis pair (2 1) not in graph",
+   "notes": [],
+   "rc": 198
+  },
+  "r_nosuch": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"x\", nosuch(1))",
+   "control": "",
+   "dataset": "auto",
+   "error": "option nosuch() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "r_onebad": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"ok\") text(30 \"bad\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point, bad 30",
+   "notes": [],
+   "rc": 198
+  },
+  "r_onept": {
+   "cmd": "twoway scatter mpg weight, text(30 \"AAA\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point, AAA 30",
+   "notes": [],
+   "rc": 198
+  },
+  "r_ori": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"x\", ori(v))",
+   "control": "",
+   "dataset": "auto",
+   "error": "option ori() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "r_tex": {
+   "cmd": "twoway scatter mpg weight, tex(30 3000 \"x\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "option tex() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "r_trail1": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"x\" 20)",
+   "control": "",
+   "dataset": "auto",
+   "error": "invalid point,  20",
+   "notes": [],
+   "rc": 198
+  },
+  "r_x2": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"x\", xaxis(2))",
+   "control": "",
+   "dataset": "auto",
+   "error": "text() option invalid, specified axis pair (1 2) not in graph",
+   "notes": [],
+   "rc": 198
+  },
+  "r_y2": {
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"x\", yaxis(2))",
+   "control": "",
+   "dataset": "auto",
+   "error": "text() option invalid, specified axis pair (2 1) not in graph",
+   "notes": [],
+   "rc": 198
+  },
+  "r_y2ok": {
+   "boxes": [],
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), text(30 3000 \"Y2OK\", yaxis(2))",
+   "control": "ctl_y2",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9963715793065,
+    "y": 10.058415636691407
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Y2OK",
+     "x_px": 1733.23,
+     "y_px": 2729.99
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "rev": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, xscale(reverse) text(30 3000 \"REV\")",
+   "control": "ctl_rev",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9579339984434,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "REV",
+     "x_px": 3446.72,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "5,000",
+    "4,000",
+    "3,000",
+    "2,000"
+   ]
+  },
+  "rhor": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"RHH\", orientation(rhorizontal))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.998505673609998
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -180.0,
+     "size": 112.56,
+     "text": "RHH",
+     "x_px": 2362.67,
+     "y_px": 1036.18
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "rvert": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"RVV\", orientation(rvertical))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9633260107503,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -270.0,
+     "size": 112.56,
+     "text": "RVV",
+     "x_px": 2323.23,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "sch_s1mono": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s1mono) text(30 3000 \"SCH\")",
+   "control": "ctl_s1mono",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3000.0064641241115,
+    "y": 30.00063730690681
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCH",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "sch_s1rcolor": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s1rcolor) text(30 3000 \"SCH\")",
+   "control": "ctl_s1rcolor",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCH",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": []
+  },
+  "sch_s2color": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s2color) text(30 3000 \"SCH\")",
+   "control": "ctl_s2color",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3000.0064641241115,
+    "y": 30.00063730690681
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCH",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "sch_s2color8": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, scheme(s2color8) text(30 3000 \"SCH\")",
+   "control": "ctl_s2color8",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3000.0064641241115,
+    "y": 30.00063730690681
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCH",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "schb_s1mono": {
+   "boxes": [
+    {
+     "bottom": 1016.64,
+     "fill": "#d9e6eb",
+     "left": 1627.44,
+     "right": 1838.43,
+     "stroke": "#000000",
+     "stroke_width": 11.52,
+     "top": 916.64
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, scheme(s1mono) text(30 3000 \"SCB\", box)",
+   "control": "ctl_s1mono",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9434389140274,
+    "y": 30.000548268157956
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCB",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "schb_s1rcolor": {
+   "boxes": [
+    {
+     "bottom": 1016.64,
+     "fill": "#606060",
+     "left": 1627.44,
+     "right": 1838.43,
+     "stroke": "#ffffff",
+     "stroke_width": 11.52,
+     "top": 916.64
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, scheme(s1rcolor) text(30 3000 \"SCB\", box)",
+   "control": "ctl_s1rcolor",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": null,
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCB",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": []
+  },
+  "schb_s2color": {
+   "boxes": [
+    {
+     "bottom": 1016.64,
+     "fill": "#d9e6eb",
+     "left": 1627.44,
+     "right": 1838.43,
+     "stroke": "#000000",
+     "stroke_width": 11.52,
+     "top": 916.64
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, scheme(s2color) text(30 3000 \"SCB\", box)",
+   "control": "ctl_s2color",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9434389140274,
+    "y": 30.000548268157956
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCB",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "schb_s2color8": {
+   "boxes": [
+    {
+     "bottom": 1016.64,
+     "fill": "#d2d7e4",
+     "left": 1627.44,
+     "right": 1838.43,
+     "stroke": "#000000",
+     "stroke_width": 11.52,
+     "top": 916.64
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, scheme(s2color8) text(30 3000 \"SCB\", box)",
+   "control": "ctl_s2color8",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9434389140274,
+    "y": 30.000548268157956
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 99.99,
+     "text": "SCB",
+     "x_px": 1733.0,
+     "y_px": 1001.67
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "schb_stcolor": {
+   "boxes": [
+    {
+     "bottom": 1131.81,
+     "fill": "#d9e6eb",
+     "left": 2244.04,
+     "right": 2481.47,
+     "stroke": "#000000",
+     "stroke_width": 12.96,
+     "top": 1019.25
+    }
+   ],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"SCB\", box)",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 3000.022201448937,
+    "y": 29.99962957932559
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "SCB",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "size_5": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"SZC\", size(5))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.998948005284667
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 162.0,
+     "text": "SZC",
+     "x_px": 2362.67,
+     "y_px": 1132.35
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "size_huge": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"SZD\", size(huge))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.999123041400683
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 224.94,
+     "text": "SZD",
+     "x_px": 2362.67,
+     "y_px": 1154.39
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "size_pt": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"SZB\", size(20pt))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99912936324686
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 199.97,
+     "text": "SZB",
+     "x_px": 2362.67,
+     "y_px": 1145.64
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "size_x2": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"SZA\", size(*2))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.999123041400683
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 224.94,
+     "text": "SZA",
+     "x_px": 2362.67,
+     "y_px": 1154.39
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "trail": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"TRL\" 20 4000)",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "TRL",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "tt_auto": {
+   "cmd": "twoway scatter mpg weight, ttext(30 2001m1 \"x\")",
+   "control": "",
+   "dataset": "auto",
+   "error": "2001m1 is not a number",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_d": {
+   "boxes": [],
+   "cmd": "twoway line y d, ttext(10 01jun2001 \"D1\")",
+   "control": "ctl_d",
+   "dataset": "daily",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 15126.998295644476,
+    "y": 9.999478322519487
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "D1",
+     "x_px": 2003.74,
+     "y_px": 1228.45
+    }
+   ],
+   "tick_x": [
+    "01jan2001",
+    "01apr2001",
+    "01jul2001",
+    "01oct2001",
+    "01jan2002",
+    "01apr2002"
+   ]
+  },
+  "tt_dm": {
+   "cmd": "twoway line y d, ttext(10 2001m6 \"x\")",
+   "control": "",
+   "dataset": "daily",
+   "error": "2001m6 is not a number",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_dot": {
+   "cmd": "twoway scatter mpg weight, ttext(30 . \"x\")",
+   "control": "",
+   "dataset": "auto",
+   "error": ". is not a number",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_fn": {
+   "cmd": "twoway tsline y, ttext(12 tm(2001m1) \"x\")",
+   "control": "",
+   "dataset": "monthly",
+   "error": "invalid point, tm(2001m1) 12",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_m": {
+   "boxes": [],
+   "cmd": "twoway tsline y, ttext(12 2001m1 \"TT1\")",
+   "control": "ctl_m",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 491.99729951378265,
+    "y": 11.999882957138931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "TT1",
+     "x_px": 3366.73,
+     "y_px": 1897.88
+    }
+   ],
+   "tick_x": [
+    "1995m1",
+    "2000m1",
+    "2005m1"
+   ]
+  },
+  "tt_m13": {
+   "cmd": "twoway tsline y, ttext(12 2001m13 \"x\")",
+   "control": "",
+   "dataset": "monthly",
+   "error": "2001m13 is not a number",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_mq": {
+   "boxes": [],
+   "cmd": "twoway tsline y, ttext(12 \"2001m1\" \"TT2\")",
+   "control": "ctl_m",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 491.99729951378265,
+    "y": 11.999882957138931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "TT2",
+     "x_px": 3366.73,
+     "y_px": 1897.88
+    }
+   ],
+   "tick_x": [
+    "1995m1",
+    "2000m1",
+    "2005m1"
+   ]
+  },
+  "tt_num": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, ttext(30 3000 \"TTN\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99865443455284
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "TTN",
+     "x_px": 2362.67,
+     "y_px": 1115.05
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "tt_q": {
+   "boxes": [],
+   "cmd": "twoway tsline y, ttext(12 2001q1 \"TT3\")",
+   "control": "ctl_m",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 491.99729951378265,
+    "y": 11.999882957138931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "TT3",
+     "x_px": 3366.73,
+     "y_px": 1897.88
+    }
+   ],
+   "tick_x": [
+    "1995m1",
+    "2000m1",
+    "2005m1"
+   ]
+  },
+  "tt_rev": {
+   "cmd": "twoway line t y, ttext(2001m1 12 \"x\")",
+   "control": "",
+   "dataset": "monthly",
+   "error": "invalid point, 12 2001m1",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_text": {
+   "cmd": "twoway tsline y, text(12 2001m1 \"x\")",
+   "control": "",
+   "dataset": "monthly",
+   "error": "invalid point, 2001m1 12",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_two1": {
+   "cmd": "twoway (line y tn) (line y t), ttext(12 2001m1 \"x\")",
+   "control": "",
+   "dataset": "monthly",
+   "error": "2001m1 is not a number",
+   "notes": [],
+   "rc": 198
+  },
+  "tt_two2": {
+   "boxes": [],
+   "cmd": "twoway (line y t) (line y tn), ttext(12 2001m1 \"TW2\")",
+   "control": "ctl_two2",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 492.00094566606657,
+    "y": 12.00012432964067
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "TW2",
+     "x_px": 3030.41,
+     "y_px": 1972.81
+    }
+   ],
+   "tick_x": [
+    "1995m1",
+    "2000m1",
+    "2005m1"
+   ]
+  },
+  "tt_xl": {
+   "boxes": [],
+   "cmd": "twoway line y tn, xlabel(, format(%tm)) ttext(12 2001m1 \"XL\")",
+   "control": "ctl_xl",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 492.00121608433824,
+    "y": 11.999882957138931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "XL",
+     "x_px": 3428.49,
+     "y_px": 1897.88
+    }
+   ],
+   "tick_x": [
+    "1993m5",
+    "1997m7",
+    "2001m9",
+    "2005m11"
+   ]
+  },
+  "tt_xl9": {
+   "boxes": [],
+   "cmd": "twoway line y t, xlabel(, format(%9.0g)) ttext(12 2001m1 \"XL9\")",
+   "control": "ctl_xl9",
+   "dataset": "monthly",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 491.99729951378265,
+    "y": 11.999882957138931
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "XL9",
+     "x_px": 3366.73,
+     "y_px": 1897.88
+    }
+   ],
+   "tick_x": [
+    "420",
+    "480",
+    "540"
+   ]
+  },
+  "two": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"AAA\", color(red) size(large)) text(20 4000 \"BBB\")",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9626080860016,
+    "y": 29.99885139957278
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#ff0000",
+     "rotate": null,
+     "size": 157.44,
+     "text": "AAA",
+     "x_px": 2362.67,
+     "y_px": 1130.76
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "BBB",
+     "x_px": 3788.94,
+     "y_px": 1924.88
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "vert": {
+   "boxes": [],
+   "cmd": "twoway scatter mpg weight, text(30 3000 \"VVV\", orientation(vertical))",
+   "control": "ctl",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9618901612525,
+    "y": 29.99864179086049
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": -90.0,
+     "size": 112.56,
+     "text": "VVV",
+     "x_px": 2402.11,
+     "y_px": 1075.61
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  },
+  "y2": {
+   "boxes": [],
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), text(10000 3000 \"Y2T\", yaxis(2))",
+   "control": "ctl_y2",
+   "dataset": "auto",
+   "error": "",
+   "notes": [],
+   "point": {
+    "x": 2999.9963715793065,
+    "y": 29.48821474521231
+   },
+   "rc": 0,
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "rotate": null,
+     "size": 112.56,
+     "text": "Y2T",
+     "x_px": 1733.23,
+     "y_px": 1156.39
+    }
+   ],
+   "tick_x": [
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000"
+   ]
+  }
+ }
+}

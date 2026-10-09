@@ -9,7 +9,12 @@ outline, whatever the scheme said.
 Stata's truth, measured 24sep2026 with StataNow 19.5 (batch) from the graph
 object -- .Graph.plotregion1.plot1.style.area, the band, and plot2's line --
 for each of the four ci types under each of the twenty shipped schemes, and
-kept in test/fixtures/ci_band_style_truth.json:
+kept in test/fixtures/ci_band_style_truth.json (below).
+ci_band_style_truth.json has no generator and covers the twenty schemes
+measured 24sep2026; StataCorp's six internal schemes are certified against
+twoway's graph object by test_wp30_truth.cscript SX-06 and
+test_twenty_six_schemes.py::TestTheSixDrawWhatTwowayDraws::test_the_ci_band_is_statas.
+The fixture's truth:
 
 * The band is areastyle ci (style/areastyle-ci.style): its fill is
   ``color ci_area`` at ``intensity ci_area``, its outline ``color
@@ -32,7 +37,6 @@ kept in test/fixtures/ci_band_style_truth.json:
   its intensity (red at fintensity(50) is #FF8080) at fill-opacity = the
   colour's opacity, and the outline as a closed path round the band.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -54,7 +58,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from dash_render import GlyphMapper, SchemeParser  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "ci_band_style_truth.json"),
           encoding="utf-8") as _fh:
@@ -65,9 +69,10 @@ _SCHEMES = sorted(_T["cases"])
 
 #: Measured, and not held to the graph object here, with the reason:
 _NOT_COMPARED = {
-    # astyle(), alstyle() and ciplot() are not honoured: dash names them in
-    # its note (they are not declared options).
-    "astyle", "ciplot",
+    # ciplot() is not honoured: dash names it in its note (it is not a
+    # declared option).  Flipped (WP-30 P1.14a): astyle() is drawn, so its
+    # case is compared.
+    "ciplot",
     # Refused by dash.ado, as by twoway when it draws (r(198)); the graph
     # object holds them only under nodraw.  test_ci_band_options.cscript.
     "alw_neg", "alw_big",
@@ -86,19 +91,29 @@ _NO_FIT_LINE = {"colnone", "lcnone"}
 #: Stata's widths as dash draws them: medium (.3) 1.5px, thick (.8) 2.5px,
 #: vthin (.15) 0.5px on dash's keyword ladder; economist's numeric 1.2 at
 #: 5px a unit (SchemeParser._lwidth); none 0.
-_UNIT_PX = {0.3: 1.5, 0.8: 2.5, 0.15: 0.5, 1.2: 6.0, 0.0: 0.0}
+# Flipped (WP-30 P1.12b): dash's private ladder (medium 1.5 px) became
+# Stata units, 1 unit = 3.84 px.
+_UNIT_PX = {0.3: 1.152, 0.8: 3.072, 0.15: 0.576, 1.2: 4.608, 0.0: 0.0}
 
 
 def _opts(text):
     return {k.lower(): v for k, v in re.findall(r"(\w+)\(([^()]*)\)", text)}
 
 
-def _blend(hexval, f):
+#: The schemes whose `system naturally_white' is 0: twoway multiplies an
+#: intensity towards black there (scheme-s1rcolor.scheme; SVG, s1rcolor
+#: lfitci fintensity(50) #282828, test/fixtures/intensity_truth.json).
+_NOT_WHITE = {"s1rcolor"}
+
+
+def _blend(hexval, f, white=True):
+    """twoway's blend at f <= 1: towards white, or (``white`` False,
+    naturally_white 0) multiplied towards black (WP-30 P1.2b)."""
     h = hexval.lstrip("#")
     out = []
     for i in (0, 2, 4):
         c = int(h[i:i + 2], 16)
-        v = 255.0 - (255.0 - c) * f
+        v = 255.0 - (255.0 - c) * f if white else c * f
         out.append(int(Decimal(repr(v)).quantize(Decimal("1"),
                                                  rounding=ROUND_HALF_UP)))
     return "#%02x%02x%02x" % tuple(out)
@@ -137,7 +152,7 @@ def _draw(ptype, scheme, opts, idx=0):
     return fig
 
 
-def _check(fig, want, var):
+def _check(fig, want, var, scheme=""):
     k = _parts(fig.renderers)
     band, outline, line = k["VArea"][0].glyph, k["Patch"][0].glyph, \
         k["Line"][0].glyph
@@ -145,7 +160,8 @@ def _check(fig, want, var):
         assert band.fill_alpha == 0.0
     else:
         assert _hex(band.fill_color) == _blend(
-            want["fill_rgb"], want["fill_intensity"] / 100.0), (
+            want["fill_rgb"], want["fill_intensity"] / 100.0,
+            scheme not in _NOT_WHITE), (
             band.fill_color, want)
         assert band.fill_alpha == pytest.approx(want["fill_opacity"] / 100.0)
     if var in _NO_OUTLINE or want["outline_width"] == 0:
@@ -179,9 +195,14 @@ class TestTheBandAgainstStata:
         want = _T["cases"][scheme][var]
         opts = _opts(_T["options"][var])
         for ptype in want["types"]:
-            _check(_draw(ptype, scheme, opts), want, var)
+            _check(_draw(ptype, scheme, opts), want, var, scheme)
 
     def test_the_fixture_covers_every_scheme_and_type(self):
+        """ci_band_style_truth.json has no generator and covers the twenty
+        schemes measured 24sep2026; StataCorp's six internal schemes are
+        certified against twoway's graph object by test_wp30_truth.cscript
+        SX-06 and test_twenty_six_schemes.py::TestTheSixDrawWhatTwowayDraws
+        ::test_the_ci_band_is_statas."""
         assert len(_SCHEMES) == 20
         for s in _SCHEMES:
             for v in ("def", "p3", "color", "fcolor", "acolor", "alcolor"):
@@ -262,7 +283,7 @@ class TestTheSchemeKeys:
         assert _hex(k["VArea"][0].glyph.fill_color) == _blend("#ff0000", 0.5)
         assert _hex(k["Patch"][0].glyph.line_color) == \
             dr.OptionTranslator.translate_mcolor("navy").lower()
-        assert k["Patch"][0].glyph.line_width == pytest.approx(2.5)
+        assert k["Patch"][0].glyph.line_width == pytest.approx(3.072)
         assert list(k["Patch"][0].glyph.line_dash) == _dash("dash")
 
     def test_a_user_schemes_other_keys_are_read(self, tmp_path, monkeypatch):
@@ -274,7 +295,7 @@ class TestTheSchemeKeys:
             "intensity pbar inten30\n", encoding="utf-8")
         k = _parts(_draw("lfitci", "oz.scheme", {"pstyle": "p2"}).renderers)
         assert _hex(k["VArea"][0].glyph.fill_color) == _blend("#ff0000", 0.3)
-        assert k["Patch"][0].glyph.line_width == pytest.approx(3.5)
+        assert k["Patch"][0].glyph.line_width == pytest.approx(5.376)
 
     @pytest.mark.parametrize("scheme", _SCHEMES)
     def test_each_shipped_file_declares_the_ci_keys(self, scheme):
@@ -334,9 +355,7 @@ def _figure(mode, wd, plots, scheme):
             return list(r._build_figures().values())[0]
         ap = str(wd / ("app_%d.py" % tag))
         dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-        ms = importlib.util.spec_from_file_location("_cib_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_cib_app_%d" % tag)
         doc = Document()
         mod.make_document(doc)
     figs = [m for root in doc.roots for m in root.references()
@@ -425,7 +444,10 @@ class TestAdversarial:
             dr._DASH_NOTED.clear()
             gm.map_lfitci(figure(), ColumnDataSource(_DF), "y", "x",
                           {"pstyle": "x" * 5000 + "\n<b>"})
-        msgs = [str(m.message) for m in w if "pstyle" in str(m.message)]
+        # Flipped (WP-30 P1.14b): the filter "pstyle" was wrong because the
+        # note is now twoway's "named style ... not found in class
+        # seriesstyle" (D-36d), which names the class, not the option.
+        msgs = [str(m.message) for m in w if "named style" in str(m.message)]
         assert msgs, [str(m.message) for m in w]
         assert all(len(m) < 400 and "\n<b>" not in m for m in msgs)
 
@@ -433,16 +455,19 @@ class TestAdversarial:
     @pytest.mark.parametrize("bad", [
         "red`=1'", "$(rm -rf)", "<script>", "1e400", "nan", "red%nan",
         "red%1e400", "red%-5", "x" * 100_000, "‮red", "#12345g"], ids=lambda v: repr(v)[:24])
-    def test_a_bad_colour_is_noted_and_the_scheme_kept(self, key, bad):
+    def test_a_bad_colour_is_noted_and_drawn_black(self, key, bad):
         """Injection and resource exhaustion: nothing raises, nothing of
-        the value reaches a glyph, and the band keeps the ci style."""
+        the value reaches a glyph.  An unknown colour draws the band black
+        (Flipped, WP-30 P1.13a: twoway draws an unknown colour black; the
+        band kept the ci style); a malformed opacity or hex keeps it."""
         t0 = time.perf_counter()
         fig = _draw("lfitci", "s2color", {key: bad})
         assert time.perf_counter() - t0 < 5.0
         k = _parts(fig.renderers)
         if key == "acolor":
-            assert _hex(k["VArea"][0].glyph.fill_color) in ("#c0c0c0",
-                                                           "#ff0000")
+            malformed = bad.startswith(("red%", "#"))
+            assert _hex(k["VArea"][0].glyph.fill_color) == (
+                "#c0c0c0" if malformed else "#000000")
         assert str(k["Patch"][0].glyph.line_color).startswith("#")
 
     @pytest.mark.parametrize("bad", ["1e400", "inf", "-inf", "nan", "-1",

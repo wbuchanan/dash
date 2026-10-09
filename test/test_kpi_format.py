@@ -42,6 +42,9 @@ _OWN = {"price": "%8.0gc", "mpg": "%8.0g", "weight": "%8.0gc",
 _DATE_KIND = {"when": "td", "whenm": "tm"}
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _load_rows():
     if not os.path.exists(_FIXTURE):
         pytest.fail("test/fixtures/format_truth.json is missing: section 04 "
@@ -183,6 +186,10 @@ def served_moved(served, df):
 # First paint
 # ===========================================================================
 
+# One worker for the class, so the module's renders are made once, not
+# once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.4 s on eight).
+@pytest.mark.xdist_group(name="kpi-format-first-paint")
 class TestFirstPaint:
 
     @pytest.mark.parametrize("rid", _IDS)
@@ -350,7 +357,7 @@ class TestRefusedOnACard:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         notes = [str(x.message) for x in w if "%21x" in str(x.message)]
         assert len(notes) == 1 and "kx" in notes[0], notes
         assert hc4._cards(d.text for d in r.kpi_divs.values())["kx"] == want

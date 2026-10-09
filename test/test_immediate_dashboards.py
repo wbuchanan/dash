@@ -89,6 +89,9 @@ _SEQ = itertools.count()
 # Harness: a spec in dash.ado's shape, drawn saved and served
 # ===========================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, plots, **graph_options):
     """One graph as dash.ado registers it; *name* "" is the one-line form's
     graph, which has none."""
@@ -126,7 +129,7 @@ def _saved(tmp_path, spec, data):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return list(r.figures.values()), [str(w.message) for w in caught]
 
 
@@ -360,9 +363,10 @@ class TestAFunctionIsDrawnWhereItIsDefined:
         figs, warns = _draw(mode, tmp_path, _spec([g]))
         (line,) = _one_line("Line", figs)
         ys = [_num(v) for v in line.data_source.data["y_fn"]]
-        assert [v is None for v in ys] == [w is None for w in want], ys
-        assert [v for v in ys if v is not None] == pytest.approx(
-            [w for w in want if w is not None])
+        # Flipped (WP-30 P1.8a): twoway's default cmissing(y) joins the
+        # defined points, so the missing ones are not in the line's source.
+        assert None not in ys, ys
+        assert ys == pytest.approx([w for w in want if w is not None])
         assert not _empty_reports(warns), warns
 
     def test_an_infinite_value_is_missing_as_in_stata(self, tmp_path, mode):
@@ -372,7 +376,9 @@ class TestAFunctionIsDrawnWhereItIsDefined:
         figs, _ = _draw(mode, tmp_path, _spec([g]))
         (line,) = _one_line("Line", figs)
         ys = [_num(v) for v in line.data_source.data["y_fn"]]
-        assert ys == [-2.0, None, 2.0]
+        # Flipped (WP-30 P1.8a): the missing point is bridged (cmissing(y)),
+        # and no inf reaches the page.
+        assert ys == [-2.0, 2.0]
 
 
 @pytest.mark.parametrize("mode", _MODES)
@@ -381,13 +387,21 @@ class TestARejectedExpressionIsStillReported:
     def test_with_data_or_none(self, tmp_path, mode, data):
         """dash refuses to evaluate it, and the layer is drawn empty.  With
         no data the report was lost: it was given only when the graph had
-        observations, which a function does not draw from."""
+        observations, which a function does not draw from.
+
+        Flipped (WP-30 P1.22): the note now says why the fallback drew
+        nothing."""
         g = _graph("a1", [{"type": "function", "expr": "__import__('os')",
                            "options": {}}])
         _, warns = _draw(mode, tmp_path, _spec([g]),
                          _DF if data == "six" else _EMPTY_DATA)
         assert _empty_reports(warns) == [
-            "dash: graph 'a1' plot 1 (function) drew nothing."], warns
+            "dash: graph 'a1' plot 1 (function) drew nothing: it needs the "
+            "points Stata computes for it when dash registers the graph, and "
+            "this spec carries none; without them dash evaluates only x, "
+            "_pi, numbers, + - * / ^ and sin(), cos(), tan(), exp(), log(), "
+            "log10(), sqrt(), abs(), floor() and ceil(), and __import__() is "
+            "not one of them."], warns
 
 
 # ===========================================================================
@@ -421,11 +435,21 @@ class TestTheReportHelpers:
     """``_dash_note_empty_layer`` decides, ``_dash_report_empty_layer``
     words it; both modes call the first."""
 
-    def _notes(self, *args):
+    def _notes(self, *args, **kw):
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            dr._dash_note_empty_layer(*args)
+            dr._dash_note_empty_layer(*args, **kw)
         return [str(w.message) for w in caught]
+
+    def test_a_layer_whose_own_qualifier_keeps_no_row_is_silent(self):
+        """M6 (WP-30 P1.26b): twoway draws it in silence; a layer with no
+        own qualifier that keeps rows is still named, and a function's note
+        does not read the count."""
+        assert self._notes("g1", 2, "bar", 74, [], layer_rows=0) == []
+        assert self._notes("g1", 2, "bar", 74, [], layer_rows=5) == [
+            "dash: graph 'g1' plot 2 (bar) drew nothing from 74 "
+            "observations."]
+        assert self._notes("g1", 2, "function", 74, [], layer_rows=0)
 
     def test_a_layer_that_drew_is_not_reported(self):
         src = dr.ColumnDataSource({"x": [1.0]})
@@ -514,7 +538,10 @@ class TestPciIsDrawnAsPcspike:
 
     def test_it_has_a_legend_key_as_twoway_gives_it(self, tmp_path, mode):
         """``twoway (scatteri 5 5) (pci 0 0 1 1)`` draws a legend of two
-        keys, as with pcspike; dash drew none."""
+        keys, as with pcspike; dash drew none.
+
+        Flipped (WP-30 P1.16): ["scatteri", "pci"] was wrong because twoway
+        keys them "y" and "y/yb" (series_label_truth.json I01, I02)."""
         figs, _ = _draw(mode, tmp_path, _spec([_pair("pci")]), _DF)
         labels = []
         for f in figs:
@@ -523,7 +550,7 @@ class TestPciIsDrawnAsPcspike:
                     lab = it.label
                     labels.append(lab.get("value") if isinstance(lab, dict)
                                   else getattr(lab, "value", lab))
-        assert labels == ["scatteri", "pci"]
+        assert labels == ["y", "y/yb"]
 
     @pytest.mark.parametrize("opt", [{"lcolor": "maroon"},
                                      {"color": "maroon"}])

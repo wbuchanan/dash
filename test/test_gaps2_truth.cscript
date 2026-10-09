@@ -26,6 +26,15 @@
 cscript "GAPS2 truth: twoway comparisons" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 if `"`c(python_exec)'"' == "" {
@@ -1095,14 +1104,16 @@ if inlist("`only'", "", "S14") {
 * ==== S18 B2: axis scale extents ====
 * AE-01..AE-05: twoway's drawn extent, live, equals the extent the fixture
 * recorded (test/fixtures/axis_truth.json, group b2_extent), and dash's
-* saved page spans the requested hull: its y Range1d, less dash's 5% pad
-* a side, is the hull of the data, the label positions and the range()
-* values the fixture records (Stata's own margin is 2.2% of the canvas,
-* B25, so inner hulls are compared, never extents).  AE-05 is a list with
-* norescale: twoway does not widen -- its labels fall outside the plot
-* region, where the SVG fit is not reliable, so .Graph's curmin/curmax
+* saved page spans the requested hull: its y Range1d, less twoway's
+* plot-region margin (WP-30 P1.3a: _dash_plot_margin for the session's
+* scheme; it was dash's 5% pad), is the hull of the data, the label
+* positions, the range() values the fixture records and the axis's own
+* natscale ticks (inner hulls are compared, never extents).  AE-05 is a
+* list with norescale: twoway does not widen -- its labels fall outside the
+* plot region, where the SVG fit is not reliable, so .Graph's curmin/curmax
 * (the inner hull, per the fixture's verdict) is compared with the
-* fixture's instead -- and dash keeps its autorange (no Range1d on y).  AE-06: .Graph's scale members on AE-02's graph equal
+* fixture's instead -- and dash's y axis is a Range1d over the data's hull
+* (WP-30 P1.3a: it was left to Bokeh's autorange).  AE-06: .Graph's scale members on AE-02's graph equal
 * the fixture's, and curmin/curmax is the candidate the fixture's inner
 * verdict names.
 local only : env GAPS2_ONLY
@@ -1157,17 +1168,22 @@ def _ae_check():
             and type(m).__name__ in ("figure", "Figure", "Plot")]
     rng = figs[0].y_range if len(figs) == 1 else None
     name = type(rng).__name__
+    import sys as _ae_sys, os as _ae_os
+    _ae_sys.path.insert(0, _ae_os.path.dirname(_ae_os.getcwd()))
+    import dash_render as _ae_dr
+    f = _ae_dr._dash_plot_margin(
+        _ae_dr.SchemeParser(Macro.getGlobal("ae_scheme")), {})["y"]
     if not want_range:
-        if name == "Range1d":
-            msgs.append("the page's y axis is a Range1d, not left to "
-                        "Bokeh's autorange")
-    elif name != "Range1d":
+        # WP-30 P1.3a: the norescale list leaves the scale to the data.
+        req = [12.0, 41.0]
+    if name != "Range1d":
         msgs.append("the page's y axis is a %s, not a Range1d" % name)
     else:
-        s, e = float(rng.start), float(rng.end)
-        a, b = min(s, e), max(s, e)
-        w = (b - a) / 1.1
-        h = (a + 0.05 * w, b - 0.05 * w)
+        h = _ae_dr._dash_range_hull(rng, margin=f)
+        t = figs[0].left[0].ticker if figs[0].left else None
+        if t is not None and _ae_dr._dash_count_of(t) is not None:
+            tk = [float(v) for v in t.ticks]
+            req = [min([req[0]] + tk), max([req[1]] + tk)]
         rs = req[1] - req[0]
         if not (abs(h[0] - req[0]) <= 1e-6 * rs
                 and abs(h[1] - req[1]) <= 1e-6 * rs):
@@ -1240,6 +1256,7 @@ end
         _gt_expect `id' "(`ae_rc' == 0)" "dash refused: rc `ae_rc'"
         _gt_expect `id' "(!missing(`ae_lo') & !missing(`ae_hi'))" "no svg extent: `ae_reason'"
         if `ae_rc' == 0 & !missing(`ae_lo') & !missing(`ae_hi') {
+            global ae_scheme "`c(scheme)'"
             python: __import__("__main__")._ae_check()
             _gt_expect `id' "(${ae_ok} == 1)" "${ae_msg}"
         }

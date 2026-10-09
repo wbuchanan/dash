@@ -32,6 +32,13 @@
 *!       dash.ado's _dash_json_str: its `0' read by value, the text
 *!       JSON-escaped into the local _dash_jsv, the name into _dash_jsn.
 *!
+*!   _dash_scheme_dirs_json()
+*!       The ado-path as Stata's findfile walks it, a JSON array of at most
+*!       64 directories (WP-30 P1.25b): "." is c(pwd), a relative entry is
+*!       joined to it, ~ entries are kept as written, and an entry holding
+*!       a backtick, dollar sign, double quote or control character is
+*!       skipped.
+*!
 *!   _dash_text_args(nlead, ntail, optnum)
 *!       A program's `0' read by value: its first nlead and last ntail
 *!       arguments (dash's own words) into _dash_a1, _dash_a2, ..., their
@@ -40,9 +47,39 @@
 *!       argument that is all digits is taken as one more.
 *!
 *!   _dash_path_badchar(path)
-*!       The byte value of the first shell-hazardous character in path --
-*!       the double quote, backtick, dollar sign, semicolon, &, |, <, >,
-*!       tab, LF or CR -- or 0.
+*!       The byte value of the first character saving() refuses in path --
+*!       the double quote, backtick, dollar sign or a control character
+*!       (1-31, 127) -- or 0.
+*!
+*!   _dash_strip_prefix()
+*!       Reads twoway, tw, two or graph twoway off the front of the
+*!       caller's `0' (WP-30 P1.27); sets _pf_kind and _pf_word.
+*!
+*!   _dash_saving_parse(s, ext)
+*!       saving()'s one grammar, as twoway reads it; refuses r(198) or sets
+*!       _sv_file, _sv_replace, _sv_asis, _sv_gph, _sv_comma and _sv_img.  Its
+*!       internal helper is _dash_saving_split().
+*!
+*!   _dash_seg_saving(seg)
+*!       The value of the last saving() an option list gives, as typed.
+*!
+*!   _dash_launch_quote(path, os)
+*!       path quoted for the To launch: line: single quotes on a Mac and
+*!       Unix, double quotes on Windows.
+*!
+*!   _dash_launch_warn(path, os)
+*!       On Windows, the line naming % and ! in path; else "".
+*!
+*!   _dash_abs_path(path, pwd, os)
+*!       path when it is absolute on os, else pwd, one separator and path,
+*!       with nothing normalised.
+*!
+*!   _dash_graph_names(list, max)
+*!       The first max graph names of list, then "and N more".
+*!
+*!   _dash_cmd_metachar(path)
+*!       The byte value of the first character Windows' command shell
+*!       reads in a quoted path -- % ! ^ & | < > ; -- or 0.
 *!
 *!   _dash_check_utf8(s)
 *!       Refuses s, r(198), unless it is well-formed UTF-8.
@@ -50,6 +87,10 @@
 *!   _dash_say(style, before, value, after)
 *!       Print before + value + after as one line in SMCL style "err",
 *!       "txt" or "res", every character shown as written.
+*!
+*!   _dash_note(before, value, after)
+*!       Print before + value + after as one note, (note:  ...), in text
+*!       colour on Stata's error channel, as twoway prints its notes.
 *!
 *!   _dash_is_digits(s, maxlen)
 *!       1 when s is 1..maxlen ASCII digits and nothing else.
@@ -99,18 +140,56 @@
 *!       bare "}" when there are none; points that are not dash's are
 *!       skipped with a note.
 *!
+*!   _dash_by_scan(scname)
+*!       twoway's three by() parse stages over the tail in the string
+*!       scalar scname (WP-30 P1.15b): the first copies of rows(), cols(),
+*!       holes(), iscale() and imargin(), whether each may go to -syntax-,
+*!       and the first leftover word in typed order, into _byg_* locals.
+*!
 *!   _dash_rep_scan(opts, unk, cap)
 *!       Whether an option list may give an option twice, and its distinct
 *!       spellings, into the caller's locals _rp_go, _rp_n, _rp_nm<i> and
 *!       _rp_tok<i>.
+*!
+*!   _dash_hz_order(opts)
+*!       The words spelling horizontal and vertical, each flag's first
+*!       spelling, in the order typed: "vert hor", one word or ""
+*!       (WP-30 P1.9a).
 *!
 *!   _dash_rep_keyof(snames)
 *!       The option a word read alone set, from the parser's s() names.
 *!
 *!   _dash_rep_reduce(opts, ptype)
 *!       The option list with one copy of each option, as twoway reads a
-*!       repeated one (the last copy, or the copies merged); the caller's
-*!       local _rp_refuse names a unique option given twice.
+*!       repeated one (the last copy, the first for p(), or the copies
+*!       merged); the caller's local _rp_refuse names a unique option
+*!       given twice.
+*!
+*!   _dash_stylelist_keys()
+*!       The style options read as stylelists across an expanded varlist.
+*!
+*!   _dash_stylelist_norm(raw)
+*!       "" when a style value holds only empty quotes; else raw unchanged.
+*!
+*!   _dash_stylelist_pick(raw, i)
+*!       The stylelist element the i-th y takes ("" for the default), with
+*!       twoway's . = .. ... and padding.  Helper _dash_stylelist_elems.
+*!
+*!   _dash_stylelist_bad(raw)
+*!       1 when a .. or ... of a stylelist is not its last element.
+*!
+*!   _dash_stylelist_blank(raw, n)
+*!       The first quoted blank element among the n used ones, or 0.
+*!
+*!   _dash_stylelist_probe(tok)
+*!       name(x) for an option word whose value is only empty quotes.
+*!
+*!   _dash_stylelist_locals(raw, stub)
+*!       A stylelist's elements as the caller's locals <stub>n, t<j>, q<j>.
+*!
+*!   _dash_connect_canon(kind, e)
+*!       One connect() or cmissing() element as twoway reads it: the
+*!       canonical style name, y or n; "" when empty, "?" when unknown.
 *!
 *!   _dash_rep_und_scan(opts, ptype)
 *!       An option dash does not declare, given twice where twoway takes
@@ -127,6 +206,9 @@
 *!
 *!   _dash_logit_typed(opts)
 *!       The first word spelling lowess's logit or its off form, as typed.
+*!
+*!   _dash_barwidth_typed(opts)
+*!       The first word spelling barwidth() as typed (refused on rcap and rcapsym).
 *!
 *!   _dash_foreign_scan(opts, ptype, unk, graph)
 *!       The option words of a list, for dash.ado to find one twoway
@@ -150,7 +232,43 @@
 *!
 *!   _dash_rep_merge_locals(key, m1, m2, out)
 *!       Two copies of option key, the caller's locals m1 then m2, merged
-*!       as twoway merges them, into the caller's local out.
+*!       as twoway merges them, into the caller's local out; two region
+*!       copies through _dash_rep_region, each copy editing the last as
+*!       twoway's region parser applies them, every margin() kept (WP-30
+*!       P1.20a).
+*!
+*!   _dash_at_parse(raw, datesok)
+*!       Every text() or ttext() copy of raw (cut at char(30) outside
+*!       quotes and tokenised in one pass by _dash_at_lex) read as twoway
+*!       reads it: points through _dash_at_isnum, lines unquoted by
+*!       _dash_at_unq, into the caller's _at_* locals (WP-30 P1.10).
+*!
+*!   _dash_at_dates(u1, u2)
+*!       ttext()'s date literals converted in their x axis's unit by
+*!       _dash_tdate_value, or 198 and the token in _at_err.
+*!
+*!   _dash_at_place(p)
+*!       twoway's compass direction for placement(p), "" for a name twoway
+*!       notes.
+*!
+*!   _dash_at_orient(o)
+*!       twoway's orientation for orientation(o), "" for a name it notes.
+*!
+*!   _dash_at_canon()
+*!       One copy's drawn sub-options from the caller's syntax locals, in
+*!       full names, JSON-escaped.
+*!
+*!   _dash_at_copy(k)
+*!       Copy k of the last parse into the caller's locals _at_o, _at_s
+*!       and _at_e.
+*!
+*!   _dash_at_records(kind)
+*!       The last parse's records as _dash_at_json() objects, comma-joined,
+*!       into the caller's local _at_json.
+*!
+*!   _dash_json_first_num(s, key)
+*!       The first "key":"<digits>" value in s, or missing: a graph's
+*!       added_text_n, summed over a dashboard (WP-30 P1.10).
 *!
 *!   _dash_immediate(vals, w)
 *!       Read the immediate values of scatteri (w = 2) or of pci and
@@ -213,6 +331,23 @@
 *!   _dash_sort_export()
 *!       The table into the caller's locals _ds_n and _ds_v<k>.
 *!
+*!   _dash_tsop_reset()
+*!       Empty the time-series table (plot-variable operator columns).
+*!
+*!   _dash_tsop_canon(expr)
+*!       1 when expr is <operators>.<exact variable name>, else 0.
+*!
+*!   _dash_tsop_rewrite(json, errmacro)
+*!       json with each operated plot variable replaced by its column
+*!       __dasht<k>; the reason in errmacro for one that is not canonical.
+*!
+*!   _dash_tsop_export()
+*!       The table into the caller's locals _dts_n and _dts_e<k>.
+*!
+*!   _dash_tsop_meta(fmtmacro)
+*!       The spec's "ts_cols" object; the columns' formats merged into
+*!       the caller's local fmtmacro.
+*!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
 *!       " || ", into the local filter_out, and `0' without them into
@@ -255,6 +390,11 @@
 *!       1 when the graph spec s names a plot type and every type it names
 *!       is a word of allowed: a graph that needs no data.
 *!
+*!   _dash_reflines_positions(gjson)
+*!       The reference-line positions of one graph's JSON: the tokens of
+*!       every copy of xline(), yline(), xline2() and yline2() (WP-30
+*!       P1.21a), for dash.ado's _dash_reflines_of.
+*!
 *!   _dash_computed_cells(gjson, nobs, bygroups, types)
 *!       -1 unless every plot of gjson is in types; else the cells its
 *!       computed layers draw (GAPS2 G3).  _dash_computed_plot_cells()
@@ -283,24 +423,105 @@
 *!
 *!   _dash_axreq_clear()
 *!       Empties the external _dash_axreq, the axis options recorded for
-*!       the command being parsed (WP-29 P0.5).
+*!       the command being parsed (WP-29 P0.5), and the sub-option record
+*!       (_dash_subreq_clear, WP-30 P1.19).
 *!
 *!   _dash_axreq_add(opts, seg)
 *!       Records each axis option of the raw option text opts of plot
-*!       segment seg (the options after the comma are segment n_segs+1).
+*!       segment seg (the options after the comma are segment n_segs+1);
+*!       column 10 holds twoway's refusal of a label or tick sub-option,
+*!       or of a scale word (WP-30 P1.18a).
+*!       Records the legend(), zlabel() and title sub-options too
+*!       (_dash_subreq_add).
+*!
+*!   _dash_axbound_list()
+*!       Lists, in the caller's locals _axb_n, _axb_k<j>, _axb_o<j> and
+*!       _axb_v<j>, the merged axis options twoway bounds when it draws:
+*!       each scale's last lwidth() and each label or tick family's last
+*!       angle() outside -360..360, axis by axis y1, x1, y2, x2, the scale
+*!       first (WP-30 P1.18a).  _dash_angle_out(s) (1 when s is a number
+*!       outside -360..360) is its internal helper.
 *!
 *!   _dash_axreq_check(ys, xs)
 *!       Refuses, r(198) with twoway's message and in twoway's order, the
 *!       first recorded axis option twoway refuses -- a second comma, an
 *!       axis no layer uses (ys, xs: the layers' axes), an axis word in
-*!       capitals or given twice -- and clears the record; 0 otherwise.
+*!       capitals or given twice, then (column 10) a label, tick or line
+*!       sub-option twoway refuses, or r(100) for a line's empty list --
+*!       and clears the record; 0 otherwise.  Columns 11-12 hold a line's
+*!       positions (WP-30 P1.21a): -1 hands them to dash.ado's
+*!       _dash_line_check through its locals _ln_text and _ln_row.
+*!
+*!   _dash_axreq_accept_line(row)
+*!       Marks row's line positions as read by numlist (WP-30 P1.21a).
+*!
+*!   _dash_taxis_unit(fmt, family)
+*!       The date unit ("d" "w" "m" "q" "h" "y", "" or "c") twoway reads a
+*!       t-option's literal in on an axis of label format fmt: family 1
+*!       for labels and ticks, 2 for lines and scale ranges (WP-30 P1.6).
+*!
+*!   _dash_tdate_ticks(opt, unit)
+*!       A tlabel(), ttick(), tmlabel() or tmtick() value (the caller's
+*!       _td_in) with its date literals written as numbers, in _td_out;
+*!       _td_rc and twoway's words in _td_msg (WP-30 P1.6).  Its helpers
+*!       are _dash_tdate_tok(tok, unit, out, bad, single), one position,
+*!       (position) or A(d)B rule, and _dash_tdate_value(tok, unit, val):
+*!       1 a number or a date of unit (val set), 2 a date of another unit,
+*!       3 neither -- the number first, then a whitelist, then Mata's
+*!       string date functions, never Stata code.
+*!
+*!   _dash_tdate_lines(unit)
+*!       A tline() value the same way, cut into _td_n pieces _td_s<i>
+*!       (_td_k<i> 1 for a copy's positions, 0 for its sub-options).
+*!
+*!   _dash_tdate_range(unit)
+*!       A tscale() value with its range() words made one range() of
+*!       numbers; r(121) in _td_rc for a position the unit cannot read.
+*!
+*!   _dash_taxis_fmt(v)
+*!       The argument of the last format() of a label or tick value, the
+*!       format its tickset reads the t-options' dates in (WP-30 P1.6).
+*!
+*!   _dash_xdate_find(v, family)
+*!       1 when an x label/tick (1), line (2) or scale (3) value holds a
+*!       date literal, which twoway refuses there; _xd_tok names it.
+*!
+*!   _dash_subreq_check(kind)
+*!       Refuses, r(198) with twoway's words, the first legend(), zlabel(),
+*!       title or region sub-option twoway refuses (kind legend, zlabel,
+*!       title or region; the region's helper is _dash_subreq_region);
+*!       -1 hands a cols()/rows()/holes() value to dash.ado's
+*!       _dash_subopt_check through its locals _so_name, _so_value and
+*!       _so_kind; prints twoway's legend notes (WP-30 P1.19).  Its helpers
+*!       are _dash_subreq_clear, _dash_subreq_add, _dash_subreq_toks,
+*!       _dash_subreq_label and _dash_subreq_drop, and twoway's tables and
+*!       reader _dash_so_rows, _dash_so_canon, _dash_so_isnum,
+*!       _dash_so_family and _dash_so_resolve, the twins of dash_render.py's
+*!       _DASH_*_SUBOPT_TABLE and _dash_subopt_resolve.
+*!
+*!   _dash_subreq_accept()
+*!       Marks the value _dash_subreq_check last handed back as passed.
+*!
+*!   _dash_so_unsafe(s)
+*!       1 when s holds a backtick, $, a quote, a backslash or a control
+*!       byte: a value never put to -numlist-.
 *!
 *!   _dash_axis_pieces(s)
 *!       An axis-label option's value split into strings, bare runs and
 *!       its sub-option tail, into the caller's locals _ap_n, _ap_tag<i>
-*!       and _ap_txt<i> (WP-28 S14, GAPS2 B1).
+*!       and _ap_txt<i> (WP-28 S14, GAPS2 B1), and the head's rating
+*!       _ap_rule; a rule-led head spends add (WP-30 P1.18b).
 *!
-*! Version: 0.1.0  02oct2026
+*!   _dash_imm_echo(s)
+*!       s cut at 80 characters with "..." for a one-line echo (WP-30
+*!       P1.5: dash.ado's format() refusal).
+*!
+*!   _dash_axis_fmts(s)
+*!       The format() arguments of an axis-label option's tail, gated, into
+*!       the caller's locals _af_n, _af_raw<i>, _af_nw<i>, _af_w<i>_<j> and
+*!       _af_ok<i> (WP-30 P1.5).
+*!
+*! Version: 0.1.0  09oct2026
 
 // ============================================================
 // Compile into memory
@@ -401,6 +622,45 @@ void _dash_json_str_args()
         t = substr(t, 2, n - 2)
     }
     st_local("_dash_jsv", _json_escape(t))
+}
+
+// _dash_scheme_dirs_json() -- the ado-path a scheme dash does not ship is
+// looked for along (WP-30 P1.25b, M7).
+//
+// Stata's setscheme runs findfile scheme-NAME.scheme and then findfile
+// NAME.scheme (BASE/s/scheme.class:172-173), and findfile walks c(adopath)
+// expanded by pathsubsysdir(), each directory followed by its first-letter
+// subdirectory.  The renderer walks the same list, so it is written into
+// the spec as build_options.scheme_dirs: at most 64 entries, "." as
+// c(pwd), any other relative entry joined to c(pwd), an entry starting ~
+// kept as written (the renderer expands it).  An entry holding a backtick,
+// a dollar sign, a double quote or a control character is skipped: dash
+// never passes such a directory through a macro, a documented difference
+// beside the unfollowed link.  Returns the JSON array text; every entry is
+// escaped by _json_escape().
+string scalar _dash_scheme_dirs_json()
+{
+    string rowvector d
+    string scalar    p, out
+    real scalar      i, n, k, bad
+
+    d = pathsubsysdir(pathlist(c("adopath")))
+    out = ""
+    n = 0
+    for (i = 1; i <= cols(d) & n < 64; i++) {
+        p = d[i]
+        if (p == "") continue
+        bad = strpos(p, char(96)) | strpos(p, char(36)) | strpos(p, char(34))
+        for (k = 1; k <= strlen(p) & !bad; k++) {
+            if (ascii(substr(p, k, 1)) < 32 | ascii(substr(p, k, 1)) == 127) bad = 1
+        }
+        if (bad) continue
+        if (p == ".") p = c("pwd")
+        else if (substr(p, 1, 1) != "~" & !pathisabs(p)) p = pathjoin(c("pwd"), p)
+        out = out + (n ? "," : "") + char(34) + _json_escape(p) + char(34)
+        n++
+    }
+    return("[" + out + "]")
 }
 
 // _dash_text_args(nlead, ntail, optnum) -- a program's arguments read by
@@ -596,7 +856,7 @@ real scalar _is_utf8(string scalar s) {
 // ============================================================
 // _dash_path_badchar(path)
 //
-// Returns the byte value of the first shell-hazardous character in
+// Returns the byte value of the first character saving() refuses in
 // `path', or 0 if there is none.
 //
 // This lives in Mata because the caller cannot do it in Stata.
@@ -609,10 +869,15 @@ real scalar _is_utf8(string scalar s) {
 // string read through st_local() is a value, not macro text, so
 // nothing the path contains can be parsed as code.
 //
-// Bytes rejected: " ` $ ; & | < > and TAB/LF/CR.  Scanning bytes
-// rather than characters is deliberate: these are shell metacharacters,
-// and a multibyte sequence that happens to contain one of these bytes
-// is still dangerous at the shell.  Parentheses are NOT rejected --
+// Bytes rejected: the double quote, backquote and dollar sign, which
+// Stata would read as macro text (or which end the quoted argument), and
+// every control character (1-31, 127), as dash_render.py's
+// _validate_output_path refuses them.  ; & | < > and a .. segment are
+// accepted, as twoway's saving() accepts them (WP-30 P1.27, M11): the
+// opener single-quotes the path on a Mac and Unix, and declines cmd's
+// metacharacters on Windows (_dash_cmd_metachar).  Scanning bytes
+// rather than characters is deliberate: no byte of a multibyte UTF-8
+// character is below 128.  Parentheses are NOT rejected --
 // every call site quotes the path, inside which they are literal, and
 // rejecting them broke every Windows path under "Program Files (x86)".
 // ============================================================
@@ -620,13 +885,395 @@ real scalar _dash_path_badchar(string scalar path) {
     real scalar      i, c, n
     real rowvector   bad
 
-    bad = (34, 96, 36, 59, 38, 124, 60, 62, 9, 10, 13)
+    bad = (34, 96, 36, (1..31), 127)
     n   = strlen(path)
     for (i = 1; i <= n; i++) {
         c = ascii(substr(path, i, 1))
         if (anyof(bad, c)) return(c)
     }
     return(0)
+}
+
+// ============================================================
+// _dash_cmd_metachar(path)
+//
+// Returns the byte value of the first character in `path' that
+// Windows' command shell would read in a double-quoted argument, or 0
+// if there is none (WP-30 P1.29, M11).
+//
+// _dash_open_page opens a page on Windows with `start "" "<path>"',
+// which runs inside cmd.exe.  Double quotes do not make a path literal
+// there: cmd.exe expands %NAME% inside them, ! under delayed expansion,
+// and reads ^ as its escape and & | < > ; as its separators wherever its
+// quoting fails.  So start could open another file than the one dash
+// wrote.  The opener builds no command for such a path on Windows; the
+// page is written and its path printed.  twoway's saving() accepts %, !
+// and ^ (measured), so the validator does not refuse them.
+//
+// Bytes flagged: % ! ^ & | < > ;.  Scanning bytes, as
+// _dash_path_badchar does: no byte of a multibyte UTF-8 character is
+// below 128, so none of them is flagged.
+// ============================================================
+real scalar _dash_cmd_metachar(string scalar path) {
+    real scalar      i, c, n
+    real rowvector   bad
+
+    bad = (37, 33, 94, 38, 124, 60, 62, 59)
+    n   = strlen(path)
+    for (i = 1; i <= n; i++) {
+        c = ascii(substr(path, i, 1))
+        if (anyof(bad, c)) return(c)
+    }
+    return(0)
+}
+
+// ============================================================
+// twoway's command form (WP-30 P1.27)
+//
+// _dash_strip_prefix, _dash_saving_split, _dash_saving_parse,
+// _dash_seg_saving, _dash_launch_quote and _dash_launch_warn.  Every one
+// reads its text by value (st_local, never macro text) and is linear in
+// the length of what it reads.
+// ============================================================
+
+// _dash_strip_prefix() -- reads twoway's own command words off the front
+// of the caller's `0'.  twoway takes `twoway', `tw' and `two', and
+// `graph'/`gr' followed by `tw' to `twoway' (measured, StataNow 19.5);
+// Stata refuses `twow', `twowa', `gra', `grap' and a capitalised spelling
+// with r(199), "command twow is unrecognized", and a second prefix word
+// with r(198), "two is not a twoway plot type".  Sets the caller's locals
+// _pf_kind ("", "strip", "unrec" or "twice") and _pf_word; on "strip" the
+// rest of the command is written back to `0'.  Only whole words from a
+// closed list match; the one regex is anchored at the start.
+void _dash_strip_prefix()
+{
+    string scalar    s, w1, w2, rest, t, kind, word
+    string rowvector nine
+
+    nine = ("twoway", "tw", "two", "twow", "twowa", "graph", "gr", "gra", "grap")
+    s    = st_local("0")
+    kind = ""
+    word = ""
+    rest = ""
+    w1   = (ustrregexm(s, "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
+    if (anyof(("twoway", "tw", "two"), w1)) {
+        kind = "strip"
+        rest = substr(s, strlen(w1) + 1, .)
+    }
+    else if (anyof(("graph", "gr"), w1)) {
+        t  = substr(s, strlen(w1) + 1, .)
+        w2 = (ustrregexm(t, "^[ \t]+([a-zA-Z][a-zA-Z0-9_]*)") ? ustrregexs(1) : "")
+        if (anyof(("tw", "two", "twow", "twowa", "twoway"), w2)) {
+            kind = "strip"
+            rest = substr(t, strpos(t, w2) + strlen(w2), .)
+        }
+    }
+    else if (anyof(("twow", "twowa", "gra", "grap"), w1) |
+             (w1 != strlower(w1) & anyof(nine, strlower(w1)))) {
+        kind = "unrec"
+        word = w1
+    }
+    if (kind == "strip") {
+        t = (ustrregexm(rest, "^[ \t]*([a-zA-Z][a-zA-Z0-9_]*)") ? ustrregexs(1) : "")
+        if (anyof(nine, t)) {
+            kind = "twice"
+            word = t
+        }
+        else st_local("0", rest)
+    }
+    st_local("_pf_kind", kind)
+    st_local("_pf_word", word)
+}
+
+// _dash_saving_opt_toks(o) -- the words of saving()'s option text, with
+// each comma outside quotes and parentheses as a token of its own.
+// Linear in the length of o.
+string rowvector _dash_saving_opt_toks(string scalar o)
+{
+    string rowvector out
+    string scalar    ch
+    real scalar      i, n, depth, in_dq, in_cq, nxt, start, k
+
+    n     = strlen(o)
+    out   = J(1, 16, "")
+    k     = 0
+    depth = 0
+    in_dq = 0
+    in_cq = 0
+    start = 0
+    i     = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(o, n, i, in_dq, in_cq)
+        if (nxt) {
+            if (!start) start = i
+            i = nxt
+            continue
+        }
+        ch = substr(o, i, 1)
+        if (depth == 0 & (ch == " " | ch == char(9) | ch == ",")) {
+            if (start) {
+                if (k == cols(out)) out = out, J(1, cols(out), "")
+                out[++k] = substr(o, start, i - start)
+                start = 0
+            }
+            if (ch == ",") {
+                if (k == cols(out)) out = out, J(1, cols(out), "")
+                out[++k] = ","
+            }
+            i++
+            continue
+        }
+        if (ch == "(") depth++
+        else if (ch == ")" & depth > 0) depth--
+        if (!start) start = i
+        i++
+    }
+    if (start) {
+        if (k == cols(out)) out = out, J(1, cols(out), "")
+        out[++k] = substr(o, start, n - start + 1)
+    }
+    return(k ? out[|1 \ k|] : J(1, 0, ""))
+}
+
+// _dash_saving_split(s) -- saving()'s text, as typed, read as twoway reads
+// it (gr_save.ado: syntax anything [, REPLACE ASIS]).  Returns (file,
+// replace, asis, comma, err): replace, asis and comma are "0"/"1", err ""
+// or twoway's own words (measured, StataNow 19.5; the fixture
+// twoway_command_form_truth.json holds them).  The name is the text before
+// the first comma outside quotes and parentheses, less one enclosing pair
+// of quotes; an empty name is twoway's Graph; a name of two words is
+// refused "invalid syntax,  <rest> not allowed".  replace and asis are
+// full lower-case words, once each.  Internal to _dash_saving_parse.
+// Linear in the length of s.
+string rowvector _dash_saving_split(string scalar s)
+{
+    string rowvector t, o
+    string scalar    f, err, w, nm
+    real scalar      p, n, i, j, rep, asis, k
+
+    err  = ""
+    rep  = 0
+    asis = 0
+    p    = _first_comma_pos(s)
+    f    = strtrim(p ? substr(s, 1, p - 1) : s)
+
+    // The name.
+    if (f == "") f = "Graph"
+    else {
+        t = _dash_rep_toks(f, 0)
+        n = cols(t)
+        if (n > 1) {
+            err = "invalid syntax,  " + invtokens(t[|2 \ n|], " ") + " not allowed"
+        }
+        else if (n == 1) {
+            w = t[1]
+            k = strlen(w)
+            if (k >= 2 & substr(w, 1, 1) == char(34) & substr(w, k, 1) == char(34)) {
+                f = substr(w, 2, k - 2)
+            }
+            else if (k >= 4 & substr(w, 1, 2) == char(96) + char(34) &
+                     substr(w, k - 1, 2) == char(34) + char(39)) {
+                f = substr(w, 3, k - 4)
+            }
+            if (f == "") f = "Graph"
+        }
+    }
+
+    // The sub-options, left to right; the first problem is the error.
+    if (p & err == "") {
+        o = _dash_saving_opt_toks(substr(s, p + 1, .))
+        n = cols(o)
+        // A second comma followed by a word is refused before any option
+        // word is judged, as twoway refuses saving(n1, bogus, replace)
+        // "invalid 'replace'" (measured; the fixture).
+        for (i = 1; i <= n & err == ""; i++) {
+            if (o[i] != ",") continue
+            for (j = i + 1; j <= n; j++) if (o[j] != ",") break
+            if (j <= n) err = "invalid '" + o[j] + "'"
+            break
+        }
+        for (i = 1; i <= n & err == ""; i++) {
+            w = o[i]
+            if (w == ",") break
+            if (w == "replace" | w == "asis") {
+                if ((w == "replace" & rep) | (w == "asis" & asis)) {
+                    err = "option " + w + " not allowed"
+                }
+                else if (w == "replace") rep = 1
+                else asis = 1
+                continue
+            }
+            nm = _dash_rep_optname(w)
+            if (nm != "" & strpos(w, "(")) {
+                if (nm == "replace" | nm == "asis") {
+                    err = "option " + nm + "() incorrectly specified"
+                }
+                else err = "option " + nm + "() not allowed"
+                continue
+            }
+            // A quoted word: twoway's message drops its closing quote,
+            // option "replace not allowed (measured; the fixture).
+            k = strlen(w)
+            if (k >= 2 & substr(w, 1, 1) == char(34) & substr(w, k, 1) == char(34)) {
+                w = substr(w, 1, k - 1)
+            }
+            err = "option " + w + " not allowed"
+        }
+    }
+    return((f, strofreal(rep), strofreal(asis), strofreal(p > 0), err))
+}
+
+// _dash_saving_parse(s, ext) -- the one saving() grammar of the one-line
+// form and dash build (HTML, ext "html", and server, ext "py").  Refuses,
+// r(198), what twoway refuses, in twoway's words; else sets the caller's
+// locals _sv_file (the name: a .gph suffix replaced, "." + ext appended
+// unless it ends so), _sv_replace ("replace"/""), _sv_asis ("asis"/"";
+// accepted, no effect), _sv_gph ("1" when .gph was replaced) and
+// _sv_comma ("1" when the text has a comma), _sv_img (the graph export
+// suffix replaced, or "").  Helper:
+// _dash_saving_split().  Linear in the length of s.
+void _dash_saving_parse(string scalar s, string scalar ext)
+{
+    string rowvector r, sfx
+    string scalar    f, gph, img, stem
+    real scalar      k, n
+
+    r = _dash_saving_split(s)
+    if (r[5] != "") {
+        _dash_say("err", "", r[5], "")
+        exit(198)
+    }
+    f   = r[1]
+    gph = ""
+    if (strlen(f) >= 4 & strlower(substr(f, strlen(f) - 3, 4)) == ".gph") {
+        f   = substr(f, 1, strlen(f) - 4)
+        gph = "1"
+    }
+    // WP-30 P1.28a: a suffix graph export writes -- its own eleven
+    // (gr_export.ado's VerifySuffix, measured) -- is replaced, not kept:
+    // twoway's saving(t.png) writes a .gph named t.png, and dash writes
+    // HTML and says so (_sv_img, the word from this row, never the
+    // user's bytes).  .tiff and other names graph export does not
+    // recognise are left alone, and a name that would become empty or a
+    // bare folder keeps its suffix.
+    img = ""
+    if (gph == "") {
+        sfx = ("png", "svg", "pdf", "eps", "ps", "jpg", "jpeg", "tif",
+               "gif", "emf", "wmf")
+        for (k = 1; k <= cols(sfx); k++) {
+            n = strlen(sfx[k]) + 1
+            if (strlen(f) <= n) continue
+            if (strlower(substr(f, strlen(f) - n + 1, n)) != "." + sfx[k]) continue
+            stem = substr(f, 1, strlen(f) - n)
+            if (substr(stem, -1, 1) == "/" | substr(stem, -1, 1) == char(92)) continue
+            f   = stem
+            img = sfx[k]
+            break
+        }
+    }
+    if (strlen(f) < strlen(ext) + 1 |
+        strlower(substr(f, strlen(f) - strlen(ext), .)) != "." + strlower(ext)) {
+        f = f + "." + ext
+    }
+    st_local("_sv_file", f)
+    st_local("_sv_replace", r[2] == "1" ? "replace" : "")
+    st_local("_sv_asis", r[3] == "1" ? "asis" : "")
+    st_local("_sv_gph", gph)
+    st_local("_sv_comma", r[4] == "1" ? "1" : "")
+    st_local("_sv_img", img)
+}
+
+// _dash_seg_saving(seg) -- the value of the last saving() a segment or an
+// after-comma list gives, exactly as typed, or "".  syntax's
+// SAVing(string) drops every pair of quotes, so saving("n, replace") and
+// saving(n, replace) arrive alike (measured); this reads the option words
+// as _dash_seg_by does.  sav to saving, lower case (SAVING() is the
+// parsers' refusal).  saving() gives "", which twoway treats as absent.
+// Linear in the length of seg.
+string scalar _dash_seg_saving(string scalar seg)
+{
+    string rowvector toks
+    string scalar    v, out
+    real scalar      pos, j
+
+    pos = _first_comma_pos(seg)
+    if (pos == 0) return("")
+    toks = _dash_rep_toks(substr(seg, pos + 1, .), 0)
+    out  = ""
+    for (j = 1; j <= cols(toks); j++) {
+        if (!anyof(("sav", "savi", "savin", "saving"), _dash_rep_optname(toks[j]))) continue
+        if (!strpos(toks[j], "(")) continue
+        v = _dash_rep_value(toks[j])
+        if (v != "") out = v
+    }
+    return(out)
+}
+
+// _dash_launch_quote(path, os) -- path quoted for the To launch: line of
+// dash build, server.  On a Mac and Unix it is single-quoted, with ' written
+// '\'' as _dash_open_page writes it, so nothing in it is special to sh,
+// bash or zsh (double quotes left ! to history expansion, measured).  On
+// Windows it keeps double quotes (_dash_launch_warn says what cmd.exe
+// still expands).  Linear in the length of path.
+string scalar _dash_launch_quote(string scalar path, string scalar os)
+{
+    if (os == "Windows") return(char(34) + path + char(34))
+    return(char(39) + subinstr(path, char(39),
+           char(39) + char(92) + char(39) + char(39), .) + char(39))
+}
+
+// _dash_launch_warn(path, os) -- on Windows, a line saying that cmd.exe
+// expands % and ! in a pasted line when the path holds either; else "".
+string scalar _dash_launch_warn(string scalar path, string scalar os)
+{
+    if (os != "Windows") return("")
+    if (!strpos(path, "%") & !strpos(path, "!")) return("")
+    return("  Windows:   cmd.exe expands % and ! in this path when the line is pasted; run the app from a folder whose path has neither")
+}
+
+// _dash_abs_path(path, pwd, os) -- the absolute path of the file a dash
+// command wrote, for r(filename) (WP-30 P1.28a): path unchanged when it
+// is absolute on os (c(os); "~" counts on a Mac and Unix, as pathisabs()
+// says), else pwd, one separator and path.  Nothing is normalised:
+// pathjoin() resolves ".." lexically and rewrites a backslash to a slash
+// on Unix (measured), and would name a file dash did not write.  Pure,
+// no file-system access; linear in the lengths.
+string scalar _dash_abs_path(string scalar path, string scalar pwd,
+                             string scalar os)
+{
+    string scalar c1, last, sep
+
+    if (path == "") return("")
+    c1 = substr(path, 1, 1)
+    if (os == "Windows") {
+        if (c1 == "/" | c1 == char(92)) return(path)
+        if (strlen(path) >= 2 & substr(path, 2, 1) == ":" &
+            ((c1 >= "A" & c1 <= "Z") | (c1 >= "a" & c1 <= "z"))) return(path)
+        sep = char(92)
+    }
+    else {
+        if (c1 == "/" | c1 == "~") return(path)
+        sep = "/"
+    }
+    if (pwd == "") return(path)
+    last = substr(pwd, -1, 1)
+    if (last == "/" | last == char(92)) return(pwd + path)
+    return(pwd + sep + path)
+}
+
+// _dash_graph_names(list, max) -- the first max names of graph dir,
+// memory's list, then "and N more" (WP-30 P1.28a).  The list, not graph
+// describe's current graph: after graph drop, graph close or a nodraw
+// draw that is not the graph graph export writes (measured).  Linear in
+// the length of list.
+string scalar _dash_graph_names(string scalar list, real scalar max)
+{
+    string rowvector t
+
+    t = tokens(list)
+    if (cols(t) == 0) return("")
+    if (cols(t) <= max) return(invtokens(t))
+    return(invtokens(t[1..max]) + " and " + strofreal(cols(t) - max) + " more")
 }
 
 void _dash_check_utf8(string scalar s) {
@@ -677,6 +1324,28 @@ void _dash_say(string scalar style, string scalar before,
                string scalar value, string scalar after) {
     if (!anyof(("err", "txt", "res"), style)) style = "txt"
     printf("{%s}%s\n", style, _dash_smcl_text(before + value + after))
+}
+
+// ============================================================
+// _dash_note(before, value, after)
+//
+// A note, printed as twoway prints its notes (WP-30 P1.26a).  Measured on
+// StataNow 19.5: twoway's named-style note is {txt}(note:  ...) on the
+// error stream, which quietly and set output error show and capture
+// hides; printf, which _dash_say uses, is hidden by quietly.  So a note is
+// one line "(note:  " + text + ")" through errprintf in text colour.  A
+// leading "dash: note: " says "note" once; the text is cut to 4,000
+// characters and passes _dash_smcl_text, and the format is a constant, so
+// the user's text is only ever an argument.  The renderer's twin is
+// dash_render.py's _dash_emit_note.
+// ============================================================
+void _dash_note(string scalar before, string scalar value,
+                string scalar after) {
+    string scalar t
+    t = before + value + after
+    if (substr(t, 1, 12) == "dash: note: ") t = "dash: " + substr(t, 13, .)
+    if (ustrlen(t) > 4000) t = usubstr(t, 1, 3997) + "..."
+    errprintf("{txt}(note:  %s)\n", _dash_smcl_text(t))
 }
 
 // ============================================================
@@ -1869,36 +2538,40 @@ void _dash_comma_pos(string scalar input, string scalar out_macro) {
 // 5. PLOT-SEGMENT SPLITTER   (_dash_split_segs)
 // ============================================================
 //
-// Detect whether the input uses:
-//   (a) PAREN syntax — first non-whitespace token is "("
-//   (b) FLAT  syntax — plot types separated by "||"
+// The command is read as twoway reads it: split at every "||" outside
+// quotes and parentheses into pieces, and each piece is one of
+//   (a) a run of parenthesised plots, `(plot) (plot)', with the graph's
+//       own [if] [in] [, options] after it;
+//   (b) a piece with no plot -- nothing but [if] [in] [, options], or
+//       nothing at all -- whose qualifier and options are the graph's;
+//   (c) a bare plot, `type args [if] [in] [, options]', one segment, whose
+//       options may hold graph-level options too (both are parsed together
+//       by the Stata syntax program -- no need to pre-separate them here).
+// Measured against twoway 09oct2026 (test_parser.cscript P1A-85): `a || b
+// || , title("T")', `(a) || b || , title("T")', `a || , title("T") || b',
+// `(a) (b), title("T") || c', `a || b ||', `a || || b' and `a || b || if
+// foreign==1' are all rc 0, the qualifier drawing both plots over the 22
+// foreign cars.  This splitter used to choose ONE form for the whole
+// command from its first character, so a piece with no plot was read as
+// a plot -- "unrecognised plot type ','" -- and a bare plot after a
+// parenthesised one as stray text; the trailing `|| , opts' form was
+// refused for every option.
 //
-// PAREN MODE:
-//   Collect each top-level parenthesised group as a segment.
-//   After all groups, a top-level comma introduces graph-level options.
-//   Sets: _n_segs, _seg_1..N, _graph_opts_raw
-//
-// FLAT MODE:
-//   Split the input on "||" tokens at depth 0.
-//   The last segment may contain BOTH plot options and graph-level options
-//   (both will be parsed together by the Stata syntax program — no need to
-//   pre-separate them here).
-//   Sets: _n_segs, _seg_1..N, _graph_opts_raw = ""
-//
-// In both modes each _seg_K includes the plot-type name as its first word.
+// Sets: _n_segs, _seg_1..N (each with its plot type as its first word),
+//       _graph_opts_raw (the options of (a) and (b), joined in order) and
+//       _graph_qual_raw (their qualifiers, joined).
 //
 void _dash_split_segs(string scalar input) {
-    real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt
+    real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt, p
     real   scalar  seg_start, n_segs
-    string scalar  seg_text, trimmed, stray, qword
-    real   scalar  qual_seen, qnext, qual_start, qdepth
-    string vector  segs
+    string scalar  piece
+    string vector  pieces, segs
     string scalar  graph_opts_raw, graph_qual
 
-    trimmed        = strtrim(input)
-    len            = strlen(trimmed)
-    n_segs         = 0
-    segs           = J(1, 0, "")
+    input  = strtrim(input)
+    len    = strlen(input)
+    pieces = J(1, 0, "")
+    segs   = J(1, 0, "")
     graph_opts_raw = ""
     graph_qual     = ""
 
@@ -1907,294 +2580,79 @@ void _dash_split_segs(string scalar input) {
         exit(198)
     }
 
-    // ---- detect syntax mode ----
-    // Skip leading whitespace and check first non-white character.
-    real scalar first_non_white
-    first_non_white = 0
-    for (i = 1; i <= len; i++) {
-        c_code = ascii(substr(trimmed, i, 1))
-        if (c_code != 32 & c_code != 9) {
-            first_non_white = c_code
-            break
+    // ---- split at "||" outside quotes and parentheses ----
+    depth     = 0
+    in_dq     = 0
+    in_cq     = 0
+    seg_start = 1
+    i         = 1
+    while (i <= len) {
+        // Quoted text is opaque at ANY depth.  The flat-mode scan once
+        // entered a quote only at depth 0, so a '(' inside a quoted option
+        // value was counted as a real parenthesis, `depth' never returned
+        // to 0, and every later "||" stopped separating.
+        nxt = _dash_quote_step(input, len, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
         }
-    }
 
-    // ================================================================
-    // PAREN MODE  (first real char is "(")
-    // ================================================================
-    if (first_non_white == 40) {
-        depth    = 0
-        in_dq    = 0
-        in_cq    = 0
-        seg_start = 0
-        qual_seen = 0
-        qual_start = 0
-        qdepth    = 0
-        i         = 1
+        c_code = ascii(substr(input, i, 1))
 
-        while (i <= len) {
-            // Quoted text is opaque at any depth.
-            nxt = _dash_quote_step(trimmed, len, i, in_dq, in_cq)
-            if (nxt) {
-                i = nxt
-                continue
-            }
-
-            c_code = ascii(substr(trimmed, i, 1))
-
-            // ---- inside an if/in qualifier written between or after the
-            // plot groups ----
-            // twoway applies such a qualifier to every plot (measured:
-            // `(scatter y x) (line y x) if foreign==1' draws the 22 foreign
-            // cars in both), wherever it stands at the top level -- after
-            // the last group, or before a `||' -- and allows one `if' and
-            // one `in' in all ("multiple global if's not allowed").  It is
-            // collected here, whole, into graph_qual, and _dash_plot reads
-            // it with -syntax- as the graph's own qualifier.  This scanner
-            // used to walk past it and throw it away, so every observation
-            // was drawn, in silence -- and a parenthesis in it,
-            // `if inlist(rep78,3,4)', opened a plot group.  Inside the
-            // qualifier a parenthesis is the expression's; it ends at a
-            // comma or a `||' outside its parentheses (and outside quotes,
-            // which the step above skips), or at the end.  A plot group
-            // written after it without `||' stays part of its text, where
-            // -syntax- refuses it with twoway's own "invalid '('".
-            if (qual_seen) {
-                if (c_code == 40) {
-                    qdepth++
-                }
-                else if (c_code == 41) {
-                    if (qdepth == 0) {
-                        errprintf("dash: unmatched ')' in the plot specification.\n")
-                        exit(198)
-                    }
-                    qdepth--
-                }
-                else if (qdepth == 0 & c_code == 124 & i + 1 <= len &
-                         ascii(substr(trimmed, i + 1, 1)) == 124) {
-                    graph_qual = graph_qual + " " +
-                                 strtrim(substr(trimmed, qual_start, i - qual_start))
-                    qual_seen = 0
-                    i = i + 2
-                    continue
-                }
-                else if (qdepth == 0 & c_code == 44) {
-                    graph_qual = graph_qual + " " +
-                                 strtrim(substr(trimmed, qual_start, i - qual_start))
-                    qual_seen = 0
-                    graph_opts_raw = strtrim(substr(trimmed, i + 1, .))
-                    if (graph_opts_raw != "" &
-                        ascii(substr(graph_opts_raw, 1, 1)) == 40) {
-                        errprintf(
-                          "dash: a plot group may not follow the graph-option comma.\n")
-                        errprintf(
-                          "      Write every plot before the comma: (plot1) (plot2), <options>\n")
-                        exit(198)
-                    }
-                    break
-                }
-                i++
-                continue
-            }
-
-            if (c_code == 40 & depth == 0) {
-                seg_start = i + 1
-                depth     = 1
-            }
-            else if (c_code == 40) depth++
-            else if (c_code == 41 & depth > 0) {
-                depth--
-                if (depth == 0 & seg_start > 0) {
-                    seg_text = strtrim(substr(trimmed, seg_start, i - seg_start))
-                    if (seg_text != "") {
-                        n_segs = n_segs + 1
-                        segs   = segs, seg_text
-                    }
-                    seg_start = 0
-                }
-            }
-            else if (c_code == 41) {
-                // A ')' with nothing open.  This used to fall through to
-                // i++ and be ignored, so `(a)) (b)' drew both plots where
-                // twoway returns r(198).
+        if (c_code == 40) {
+            depth++
+        }
+        else if (c_code == 41) {
+            // A ')' with nothing open: `scatter y x, title("ok"))' and
+            // `(a)) (b)' are r(198) in twoway -- measured.  It never leaves
+            // `depth' non-zero, so the end-of-scan check cannot catch it.
+            if (depth == 0) {
                 errprintf("dash: unmatched ')' in the plot specification.\n")
                 exit(198)
             }
-            else if (c_code == 44 & depth == 0) {
-                // top-level comma after all () groups → graph opts
-                graph_opts_raw = strtrim(substr(trimmed, i + 1, .))
-                // A graph option always begins with its own name, so a '('
-                // opening this text is a plot group written after the
-                // comma.  twoway returns r(198) for `(a), (b)'; dash used
-                // to swallow the second group into the option string.
-                if (graph_opts_raw != "" &
-                    ascii(substr(graph_opts_raw, 1, 1)) == 40) {
-                    errprintf(
-                      "dash: a plot group may not follow the graph-option comma.\n")
-                    errprintf(
-                      "      Write every plot before the comma: (plot1) (plot2), <options>\n")
-                    exit(198)
-                }
-                break
-            }
-            else if (depth == 0 & c_code != 32 & c_code != 9) {
-                // "||" is a legal separator BETWEEN parenthesised groups:
-                // twoway accepts `(scatter y x) || (line y x)', measured
-                // rc 0.  Treating it as stray text rejected a form dash
-                // claims drop-in parity for.
-                if (c_code == 124) {
-                    i++
-                    continue
-                }
-
-                // A top-level if/in qualifier may follow a plot group:
-                //     (scatter y x) if foreign==1, title("T")
-                // twoway accepts it after the last group and before a
-                // `||', with a blank or, for `if', a parenthesis after the
-                // word (measured rc 0: `(scatter mpg weight) if(foreign==1)'
-                // draws the 22 foreign cars); the word is lower case, as
-                // Stata's own -syntax- reads it (`IF foreign==1' is
-                // r(198) in twoway).  It is read by the branch above, from
-                // the word on.
-                qword = substr(trimmed, i, 2)
-                qnext = (i + 2 <= len ? ascii(substr(trimmed, i+2, 1)) : 32)
-                if ((qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) |
-                    (qword == "in" & (qnext == 32 | qnext == 9))) {
-                    qual_seen  = 1
-                    qual_start = i
-                    qdepth     = 0
-                    i = i + 2
-                    continue
-                }
-
-                // Text between top-level groups, which twoway rejects --
-                // `(a) junk (b)' is r(198) there and used to be rc 0 here
-                // with `junk' silently discarded.  Report the whole word,
-                // not the one character the scan happened to stop on.
-                stray = substr(trimmed, i, .)
-                if (strpos(stray, " ") > 0) {
-                    stray = substr(stray, 1, strpos(stray, " ") - 1)
-                }
-                errprintf("dash: unexpected text between plot groups: '%s'\n",
-                          stray)
-                errprintf(
-                  "      Each plot must be its own parenthesised group.\n")
-                exit(198)
-            }
-            i++
+            depth--
         }
-
-        // Reaching the end mid-construct means the specification is
-        // malformed.  Both conditions used to yield one silent segment.
-        // (A `break' at the top-level comma leaves the graph options
-        // unscanned by design -- Stata's -syntax- validates those.)
-        //
-        // The quote is tested FIRST because an unterminated quote also
-        // leaves `depth' stuck: `title("oops || line y x' is a missing '"',
-        // and reporting it as a paren problem sends the user hunting for
-        // the wrong character.
-        if (in_dq | in_cq) {
-            errprintf("dash: unterminated quotation in the plot specification.\n")
-            exit(198)
+        else if (c_code == 124 & depth == 0 &
+                 i + 1 <= len & ascii(substr(input, i+1, 1)) == 124) {
+            pieces    = pieces, substr(input, seg_start, i - seg_start)
+            seg_start = i + 2
+            i         = i + 2
+            continue
         }
-        if (depth != 0 | (qual_seen & qdepth != 0)) {
-            errprintf("dash: unbalanced parentheses in the plot specification.\n")
-            exit(198)
-        }
-        // A qualifier that runs to the end of the command.
-        if (qual_seen) {
-            graph_qual = graph_qual + " " + strtrim(substr(trimmed, qual_start, .))
-        }
-    }
-    // ================================================================
-    // FLAT MODE (|| separators)
-    // ================================================================
-    else {
-        depth     = 0
-        in_dq     = 0
-        in_cq     = 0
-        seg_start = 1
-        i         = 1
-
-        while (i <= len) {
-            // Quoted text is opaque at ANY depth.  These two branches used
-            // to carry `& depth == 0', so a '(' inside a quoted option
-            // value was counted as a real parenthesis, `depth' never
-            // returned to 0, and every later "||" stopped separating --
-            // the whole of the remaining command was folded into segment 1
-            // and reported as unknown options.  Paren mode never had the
-            // gate and has always been the correct reference.
-            nxt = _dash_quote_step(trimmed, len, i, in_dq, in_cq)
-            if (nxt) {
-                i = nxt
-                continue
-            }
-
-            c_code = ascii(substr(trimmed, i, 1))
-
-            if (c_code == 40) {
-                depth++
-                i++
-                continue
-            }
-            if (c_code == 41 & depth > 0) {
-                depth--
-                i++
-                continue
-            }
-            if (c_code == 41) {
-                // A ')' with nothing open.  Flat mode used to fall through
-                // to i++ and ignore it, so `scatter y x, title("ok"))' was
-                // rc 0 here and r(198) in twoway -- measured.  An
-                // unbalanced ')' never leaves `depth' non-zero, so the
-                // end-of-scan check below cannot catch this one.
-                errprintf("dash: unmatched ')' in the plot specification.\n")
-                exit(198)
-            }
-
-            // Check for "||" at depth 0
-            if (c_code == 124 & depth == 0 &
-                i + 1 <= len & ascii(substr(trimmed, i+1, 1)) == 124) {
-                seg_text = strtrim(substr(trimmed, seg_start, i - seg_start))
-                if (seg_text != "") {
-                    n_segs = n_segs + 1
-                    segs   = segs, seg_text
-                }
-                seg_start = i + 2
-                i         = i + 2
-                continue
-            }
-            i++
-        }
-
-        // Reaching the end mid-construct means the specification is
-        // malformed.  Both conditions used to yield one silent segment:
-        //     scatter y x, legend(off || line y2 x      -- unclosed '('
-        //     scatter y x, title("oops || line y2 x     -- unterminated '"'
-        //
-        // Quote first: an unterminated quote also leaves `depth' stuck, and
-        // naming the parenthesis sends the user after the wrong character.
-        if (in_dq | in_cq) {
-            errprintf("dash: unterminated quotation in the plot specification.\n")
-            exit(198)
-        }
-        if (depth != 0) {
-            errprintf("dash: unbalanced parentheses in the plot specification.\n")
-            exit(198)
-        }
-
-        // final (or only) segment
-        seg_text = strtrim(substr(trimmed, seg_start, .))
-        if (seg_text != "") {
-            n_segs = n_segs + 1
-            segs   = segs, seg_text
-        }
-
-        // In flat mode graph-level options are embedded in the last segment
-        // (handled by the Stata syntax call); no separate graph_opts_raw.
-        graph_opts_raw = ""
+        i++
     }
 
+    // Reaching the end mid-construct means the specification is
+    // malformed:
+    //     scatter y x, legend(off || line y2 x      -- unclosed '('
+    //     scatter y x, title("oops || line y2 x     -- unterminated '"'
+    // Quote first: an unterminated quote also leaves `depth' stuck, and
+    // naming the parenthesis sends the user after the wrong character.
+    if (in_dq | in_cq) {
+        errprintf("dash: unterminated quotation in the plot specification.\n")
+        exit(198)
+    }
+    if (depth != 0) {
+        errprintf("dash: unbalanced parentheses in the plot specification.\n")
+        exit(198)
+    }
+    pieces = pieces, substr(input, seg_start, .)
+
+    // ---- read each piece ----
+    // An empty piece -- `a || || b', a leading or a trailing `||' -- adds
+    // nothing, as in twoway.
+    for (p = 1; p <= cols(pieces); p++) {
+        piece = strtrim(pieces[p])
+        if (piece == "") continue
+        if (_dash_piece_is_bare(piece)) {
+            segs = segs, piece
+        }
+        else {
+            _dash_split_groups(piece, segs, graph_opts_raw, graph_qual)
+        }
+    }
+
+    n_segs = cols(segs)
     if (n_segs == 0) {
         errprintf("dash: no plot specifications found.\n")
         exit(198)
@@ -2205,12 +2663,167 @@ void _dash_split_segs(string scalar input) {
     for (i = 1; i <= n_segs; i++) {
         st_local("_seg_" + strofreal(i), segs[i])
     }
-    st_local("_graph_opts_raw", graph_opts_raw)
-    // The qualifier written between or after the parenthesised groups,
-    // every piece of it, "" in flat mode, where a qualifier belongs to the
-    // plot it is written in (twoway draws `scatter y x || line y x if
-    // foreign==1' as 74 points and a line through 22).
+    st_local("_graph_opts_raw", strtrim(graph_opts_raw))
+    // The qualifier written after the parenthesised groups or in a piece
+    // with no plot, every piece of it.  A qualifier in a bare plot is that
+    // plot's own (twoway draws `scatter y x || line y x if foreign==1' as
+    // 74 points and a line through 22), and stays in its segment.
     st_local("_graph_qual_raw", strtrim(graph_qual))
+}
+
+// 1 when a trimmed, non-empty piece of the command is a bare plot -- it
+// begins with neither '(', nor ',', nor an if/in qualifier -- and 0 when
+// it is a run of plot groups or a piece with no plot.  The qualifier word
+// is lower case, as -syntax- reads it, with a blank after it or, for `if',
+// a parenthesis: twoway takes `if(foreign==1)'.  No plot type is named if
+// or in, and `ifx' is a word.
+real scalar _dash_piece_is_bare(string scalar piece) {
+    real scalar   c1, qnext
+    string scalar qword
+
+    c1 = ascii(substr(piece, 1, 1))
+    if (c1 == 40 | c1 == 44) return(0)
+    qword = substr(piece, 1, 2)
+    qnext = (strlen(piece) >= 3 ? ascii(substr(piece, 3, 1)) : 32)
+    if (qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) return(0)
+    if (qword == "in" & (qnext == 32 | qnext == 9)) return(0)
+    return(1)
+}
+
+// One piece of the command that is not a bare plot (_dash_piece_is_bare):
+// its parenthesised plots are appended to segs, its qualifier to qual and
+// the text after its top-level comma to gopts, each joined with a blank.
+// The piece holds no top-level "||" and its quotes and parentheses are
+// balanced -- _dash_split_segs has checked both -- so nothing is left open
+// at its end.
+void _dash_split_groups(string scalar s,
+                        string vector segs,
+                        string scalar gopts,
+                        string scalar qual)
+{
+    real   scalar i, len, depth, in_dq, in_cq, c_code, nxt
+    real   scalar seg_start, qual_seen, qual_start, qnext
+    string scalar seg_text, stray, qword, go
+
+    len        = strlen(s)
+    depth      = 0
+    in_dq      = 0
+    in_cq      = 0
+    seg_start  = 0
+    qual_seen  = 0
+    qual_start = 0
+    i          = 1
+
+    while (i <= len) {
+        // Quoted text is opaque at any depth.
+        nxt = _dash_quote_step(s, len, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+
+        c_code = ascii(substr(s, i, 1))
+
+        // ---- inside an if/in qualifier written after the plot groups or
+        // in a piece with no plot ----
+        // twoway applies such a qualifier to every plot (measured:
+        // `(scatter y x) (line y x) if foreign==1' draws the 22 foreign
+        // cars in both, and so does `scatter y x || line y x || if
+        // foreign==1'), and allows one `if' and one `in' in all ("multiple
+        // global if's not allowed").  It is collected here, whole, into
+        // qual, and _dash_plot reads it with -syntax- as the graph's own
+        // qualifier.  Inside the qualifier a parenthesis is the
+        // expression's -- `if inlist(rep78,3,4)' opens no plot group; it
+        // ends at a comma outside its parentheses, or at the end.  A plot
+        // group written after it stays part of its text, where -syntax-
+        // refuses it with twoway's own "invalid '('".
+        if (qual_seen) {
+            if (c_code == 40) depth++
+            else if (c_code == 41) depth--
+            else if (depth == 0 & c_code == 44) {
+                qual      = qual + " " + strtrim(substr(s, qual_start, i - qual_start))
+                qual_seen = 0
+                // Back to the comma: the branch below reads the options.
+                continue
+            }
+            i++
+            continue
+        }
+
+        if (c_code == 40 & depth == 0) {
+            seg_start = i + 1
+            depth     = 1
+        }
+        else if (c_code == 40) depth++
+        else if (c_code == 41) {
+            depth--
+            if (depth == 0 & seg_start > 0) {
+                seg_text = strtrim(substr(s, seg_start, i - seg_start))
+                if (seg_text != "") segs = segs, seg_text
+                seg_start = 0
+            }
+        }
+        else if (c_code == 44 & depth == 0) {
+            // top-level comma after the () groups -> graph opts
+            go = strtrim(substr(s, i + 1, .))
+            // A graph option always begins with its own name, so a '('
+            // opening this text is a plot group written after the
+            // comma.  twoway returns r(198) for `(a), (b)' and for `a ||
+            // , (b)'; dash used to swallow the group into the option
+            // string.
+            if (go != "" & ascii(substr(go, 1, 1)) == 40) {
+                errprintf(
+                  "dash: a plot group may not follow the graph-option comma.\n")
+                errprintf(
+                  "      Write every plot before the comma: (plot1) (plot2), <options>\n")
+                exit(198)
+            }
+            gopts = gopts + " " + go
+            return
+        }
+        else if (depth == 0 & c_code != 32 & c_code != 9) {
+            // A top-level if/in qualifier may follow the plot groups or
+            // open a piece with no plot:
+            //     (scatter y x) if foreign==1, title("T")
+            //     scatter y x || line y x || if foreign==1, title("T")
+            // the word in lower case, as Stata's own -syntax- reads it
+            // (`IF foreign==1' is r(198) in twoway), with a blank or, for
+            // `if', a parenthesis after it (measured rc 0: `(scatter mpg
+            // weight) if(foreign==1)' draws the 22 foreign cars).  It is
+            // read by the branch above, from the word on.
+            qword = substr(s, i, 2)
+            qnext = (i + 2 <= len ? ascii(substr(s, i+2, 1)) : 32)
+            if ((qword == "if" & (qnext == 32 | qnext == 9 | qnext == 40)) |
+                (qword == "in" & (qnext == 32 | qnext == 9))) {
+                qual_seen  = 1
+                qual_start = i
+                i = i + 2
+                continue
+            }
+
+            // Text between top-level groups, which twoway rejects --
+            // `(a) junk (b)' and `(a) | (b)' are r(198) there; dash
+            // discarded `junk' and skipped a single `|', rc 0.  Report the
+            // whole word, not the one character the scan happened to stop
+            // on.  A bare plot after a group needs `||' before it, as in
+            // twoway: `(a) || line y x'.
+            stray = substr(s, i, .)
+            if (strpos(stray, " ") > 0) {
+                stray = substr(stray, 1, strpos(stray, " ") - 1)
+            }
+            errprintf("dash: unexpected text between plot groups: '%s'\n",
+                      stray)
+            errprintf(
+              "      Each plot must be its own parenthesised group.\n")
+            exit(198)
+        }
+        i++
+    }
+
+    // A qualifier that runs to the end of the piece.
+    if (qual_seen) {
+        qual = qual + " " + strtrim(substr(s, qual_start, .))
+    }
 }
 
 
@@ -2221,7 +2834,8 @@ void _dash_split_segs(string scalar input) {
 //
 // Scans a plot-spec JSON string and collects all "yvar", "xvar",
 // "var", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var" values,
-// and the option-named variables "mlabel", "colorvar" and "wexp" (the
+// and the option-named variables "mlabel", "mlabvposition" (WP-30
+// P1.24: a variable of per-row clock positions), "colorvar" and "wexp" (the
 // weight variable, WP-18: it lives inside "options" and must reach the
 // data JSON on the immediate route and the build route alike), into a
 // space-separated varlist stored in out_macro.
@@ -2238,6 +2852,7 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
                char(34)+"yvar1"+char(34)+":", char(34)+"yvar2"+char(34)+":",
                char(34)+"y1var"+char(34)+":", char(34)+"x1var"+char(34)+":", char(34)+"y2var"+char(34)+":", char(34)+"x2var"+char(34)+":",
                char(34)+"mlabel"+char(34)+":",
+               char(34)+"mlabvposition"+char(34)+":",
                char(34)+"colorvar"+char(34)+":",
                char(34)+"wexp"+char(34)+":")
     varlist = ""
@@ -3366,6 +3981,228 @@ void _dash_sort_export()
 }
 
 
+// ------------------------------------------------------------
+// The time-series table (WP-30 P1.7).  twoway draws L.close, D.close and
+// L(1/2).close in a plot varlist; -syntax- (varlist(numeric ts)) has
+// normalised each to tsunab's form (L.close, LD.close, L2.close) when the
+// graph was registered.  Each distinct expression a dashboard's plots
+// carry becomes one column __dasht<k>, made in Stata by _dash_tsop_gen
+// with tsrevar, as twoway computes it: over every observation, under the
+// tsset then in force.  The registry is a set of globals a do-file can
+// edit, so every expression is held to the canonical form here, and
+// again by _dash_tsop_gen, before tsrevar sees it.
+// ------------------------------------------------------------
+
+// _dash_tsop_reset() -- empty the table.
+void _dash_tsop_reset()
+{
+    external string colvector _dash_tsop_list
+
+    _dash_tsop_list = J(0, 1, "")
+}
+
+// _dash_tsop_canon(expr) -- 1 when expr is <ops>.<var>: one or more of the
+// operators L, F, D and S, each alone or followed by 1 to 4 digits not led
+// by 0 (tsunab writes L1 as L and drops L0), then a dot, then the exact
+// name of a variable in memory (no abbreviation).  Read byte by byte:
+// regexm's engine follows the caller's version.  A Unicode name passes, as
+// twoway takes it; a name holds no blank, quote, semicolon, dollar or
+// backtick, so nothing but a variable reaches tsrevar.
+real scalar _dash_tsop_canon(string scalar e)
+{
+    real rowvector b
+    real scalar    n, i, d, dot, ix
+    string scalar  base
+
+    b   = ascii(e)
+    n   = cols(b)
+    dot = 0
+    for (i = 1; i <= n; i++) {
+        if (b[i] == 46) {
+            dot = i
+            break
+        }
+    }
+    if (dot < 2 | dot == n) return(0)
+    i = 1
+    while (i < dot) {
+        // L F D S
+        if (b[i] != 76 & b[i] != 70 & b[i] != 68 & b[i] != 83) return(0)
+        i++
+        d = 0
+        while (i < dot & b[i] >= 48 & b[i] <= 57) {
+            if (d == 0 & b[i] == 48) return(0)
+            d++
+            i++
+        }
+        if (d > 4) return(0)
+    }
+    base = substr(e, dot + 1, .)
+    if (strlen(base) > 128) return(0)
+    ix = _st_varindex(base, 0)
+    if (ix >= .) return(0)
+    return(st_varname(ix) == base)
+}
+
+// _dash_tsop_rewrite(json, errmacro) -- json with each plot-variable value
+// holding a dot ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var",
+// "y2var", "x2var"; never an option's variable) replaced by its column
+// __dasht<k>, the expression added to the table once.  Keys are found by
+// walking the JSON's strings, as _dash_qual_rewrite finds its own.  A
+// value that is not the canonical form (_dash_tsop_canon) puts the reason
+// in the caller's local errmacro and returns json unchanged.
+string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
+{
+    external string colvector _dash_tsop_list
+    real rowvector   b
+    real scalar      n, i, e, k, v, ve, from, m, cap, ix
+    string scalar    tok, val, shown
+    string rowvector part, keys
+
+    if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
+        _dash_tsop_list = J(0, 1, "")
+    }
+    st_local(errmacro, "")
+    keys = ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
+    b    = ascii(json)
+    n    = cols(b)
+    cap  = 16
+    part = J(1, cap, "")
+    m    = 0
+    from = 1
+    i    = 1
+    while (i <= n) {
+        if (b[i] != 34) {
+            i++
+            continue
+        }
+        e = i + 1
+        while (e <= n) {
+            if (b[e] == 34) break
+            e = e + (b[e] == 92 ? 2 : 1)
+        }
+        if (e > n) break
+        tok = (e - i > 1 ? substr(json, i + 1, e - i - 1) : "")
+        k   = _dash_qual_skipws(b, e + 1)
+        if (k > n) break
+        if (b[k] != 58 | !anyof(keys, tok)) {
+            i = e + 1
+            continue
+        }
+        v = _dash_qual_skipws(b, k + 1)
+        if (v > n) break
+        if (b[v] != 34) {
+            i = v
+            continue
+        }
+        ve = v + 1
+        while (ve <= n) {
+            if (b[ve] == 34) break
+            ve = ve + (b[ve] == 92 ? 2 : 1)
+        }
+        if (ve > n) break
+        val = (ve - v > 1 ? substr(json, v + 1, ve - v - 1) : "")
+        if (!strpos(val, ".")) {
+            i = ve + 1
+            continue
+        }
+        if (!_dash_tsop_canon(val)) {
+            shown = (ustrlen(val) > 80 ? usubstr(val, 1, 77) + "..." : val)
+            st_local(errmacro, "registry entry " + shown +
+                " holds a variable dash cannot read")
+            return(json)
+        }
+        ix = 0
+        for (k = 1; k <= rows(_dash_tsop_list); k++) {
+            if (_dash_tsop_list[k] == val) {
+                ix = k
+                break
+            }
+        }
+        if (!ix) {
+            if (rows(_dash_tsop_list) >= 9999) {
+                st_local(errmacro, "it holds more than 9,999 distinct " +
+                    "time-series expressions")
+                return(json)
+            }
+            _dash_tsop_list = _dash_tsop_list \ val
+            ix = rows(_dash_tsop_list)
+        }
+        if (m + 2 > cap) {
+            part = part, J(1, cap, "")
+            cap  = 2 * cap
+        }
+        part[++m] = substr(json, from, v - from)
+        part[++m] = char(34) + "__dasht" + strofreal(ix) + char(34)
+        from = ve + 1
+        i    = ve + 1
+    }
+    if (m + 1 > cap) part = part, J(1, 1, "")
+    part[++m] = substr(json, from, .)
+    return(invtokens(part[|1 \ m|], ""))
+}
+
+// _dash_tsop_export() -- the table into the caller's locals: _dts_n, and
+// _dts_e<k>, the expression of column __dasht<k>.
+void _dash_tsop_export()
+{
+    external string colvector _dash_tsop_list
+    real scalar k
+
+    if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
+        _dash_tsop_list = J(0, 1, "")
+    }
+    st_local("_dts_n", strofreal(rows(_dash_tsop_list)))
+    for (k = 1; k <= rows(_dash_tsop_list); k++) {
+        st_local("_dts_e" + strofreal(k), _dash_tsop_list[k])
+    }
+}
+
+// _dash_tsop_meta(fmtmacro) -- the spec's "ts_cols" object,
+// {"__dasht<k>":{"expr":"L.close","label":"<text>"},...}, and each
+// column's display format, its base's, merged into the formats JSON the
+// caller's local fmtmacro holds.  <text> is twoway's: the base's label, a
+// comma and a space and the operators (Closing price, D), or the
+// expression when the base has no label (a label of blanks is a label:
+// twoway draws "   , L"); read by value, never cut (an 80-character label
+// keeps all 80).  Every value is escaped by
+// _json_escape.
+string scalar _dash_tsop_meta(string scalar fmtmacro)
+{
+    external string colvector _dash_tsop_list
+    real scalar   k, dot
+    string scalar e, base, lab, out, fmt, nm, q
+
+    if (rows(_dash_tsop_list) == 0 & cols(_dash_tsop_list) == 0) {
+        _dash_tsop_list = J(0, 1, "")
+    }
+    q   = char(34)
+    out = ""
+    fmt = ""
+    for (k = 1; k <= rows(_dash_tsop_list); k++) {
+        e    = _dash_tsop_list[k]
+        dot  = strpos(e, ".")
+        base = substr(e, dot + 1, .)
+        nm   = "__dasht" + strofreal(k)
+        lab  = (_st_varindex(base, 0) < . ? st_varlabel(base) : "")
+        lab  = (lab != "" ? lab + ", " + substr(e, 1, dot - 1) : e)
+        out  = out + (k > 1 ? "," : "") + q + nm + q + ":{" + q + "expr" + q +
+               ":" + q + _json_escape(e) + q + "," + q + "label" + q + ":" +
+               q + _json_escape(lab) + q + "}"
+        if (_st_varindex(base, 0) < .) {
+            fmt = fmt + (fmt != "" ? "," : "") + q + nm + q + ":" + q +
+                  _json_escape(st_varformat(base)) + q
+        }
+    }
+    if (fmt != "") {
+        e = strtrim(st_local(fmtmacro))
+        if (e == "" | e == "{}") st_local(fmtmacro, "{" + fmt + "}")
+        else st_local(fmtmacro, substr(e, 1, strlen(e) - 1) + "," + fmt + "}")
+    }
+    return("{" + out + "}")
+}
+
+
 // ============================================================
 // 7.  FILTER EXTRACTION
 //     _dash_extract_filters(filter_out, cmd_out)
@@ -4054,7 +4891,7 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     real scalar      i, j
 
     fld = _dash_kpi_fields()
-    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm,
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tu_" + nm,
            "dash_kpi_" + nm)
     for (j = 1; j <= length(fld); j++) {
         own = own, "dash_kpi_" + nm + "__" + fld[j]
@@ -4235,7 +5072,8 @@ real scalar _dash_fn_points_ok(string scalar txt)
 // Otherwise there is one entry "<name>":$dash_fpts_<name> for each word of
 // names whose global is not empty.  An entry that is not dash's
 // (_dash_fn_points_ok) is skipped with a note; the renderers then draw that
-// layer from its expression.  Appends ,"function_points":{<entries>}} or,
+// layer as a spec without points, and name what they cannot evaluate
+// (WP-30 P1.22).  Appends ,"function_points":{<entries>}} or,
 // with no entry, the bare }.
 void _dash_fn_spec_tail(string scalar path, string scalar names,
                         string scalar sc)
@@ -4252,8 +5090,9 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
         // write and nothing to say (it noted every one-line saving()).
         if (txt == "") {}
         else if (_dash_fn_points_ok(txt)) out = q + q + ":" + txt
-        else _dash_say("txt", "dash: the function points stored for graph '",
-                       "", "' are not dash's; that layer is drawn from its expression.")
+        else _dash_note("dash: the function points stored for graph '", "",
+                        "' are not dash's and are not used; run the graph's " +
+                        "dash command again to store Stata's points.")
     }
     else {
         nm = tokens(names)
@@ -4261,8 +5100,10 @@ void _dash_fn_spec_tail(string scalar path, string scalar names,
             txt = st_global("dash_fpts_" + nm[i])
             if (txt == "") continue
             if (!_dash_fn_points_ok(txt)) {
-                _dash_say("txt", "dash: the function points stored for graph '",
-                          nm[i], "' are not dash's; that layer is drawn from its expression.")
+                _dash_note("dash: the function points stored for graph '",
+                           nm[i], "' are not dash's and are not used; run " +
+                           "the graph's dash command again to store " +
+                           "Stata's points.")
                 continue
             }
             out = out + (out == "" ? "" : ",") + q + nm[i] + q + ":" + txt
@@ -4416,6 +5257,246 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
     return(k ? out[|1 \ k|] : J(1, 0, ""))
 }
 
+// ---- Stylelists (WP-30 P1.1a) ----
+// twoway reads a style option given to a varlist of several y as a
+// stylelist ([G-4] stylelists): element k styles the k-th y, "." is the
+// default, "=" repeats the element before it ("." when first), ".." and
+// "..." -- alone or glued to the end of an element -- repeat it to the
+// last y, a short list is padded with ".", extras are ignored, and a
+// quoted element is one element.  dash gave every y the whole list, so
+// mcolor(red blue) drew two series in the scheme's colours with a note
+// (measured 03oct2026, DROPIN-REMAINING.md P1.1).  These functions read
+// the list by value; dash.ado's _dash_stylelist_check and
+// _dash_plot_opts_to_json call them.
+
+// _dash_stylelist_keys() -- the options read as stylelists, the one list
+// of them: the style options (P1.1a), then the value lists mlabel jitter
+// base barwidth (P1.1b), then the named styles pstyle lstyle clstyle mstyle
+// mlstyle astyle alstyle bstyle blstyle (P1.14a; p() is one name and is
+// not split), dstyle dlstyle bmlinestyle (P1.14b, kept and named) and
+// mlabtextstyle (P1.24), then connect cmissing (P1.8a), which
+// _dash_connect_opt canonicalises before the per-y writer splits them.
+string scalar _dash_stylelist_keys()
+{
+    return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
+           "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
+           "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
+           "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +
+           "mlabel jitter base barwidth " +
+           "pstyle lstyle clstyle mstyle mlstyle astyle alstyle bstyle blstyle " +
+           "dstyle dlstyle bmlinestyle mlabtextstyle connect cmissing")
+}
+
+// _dash_stylelist_elems(raw) -- the elements of a stylelist: a 2 x k
+// matrix whose row 1 is each element's text and row 2 "1" when it came
+// quoted ("..." or `"..."', one level of quotes removed) and "0" when
+// bare.  A bare word ending in "..." or ".." (red..., red..) is cut into
+// its stem and the repeat, as twoway cuts it (red.... is red. then ...);
+// a word of ... alone is the repeat.
+// Nothing else is split: ..blue, red...blue, red=blue and (red) stay one
+// element each, as twoway reads them.  Linear in the length of raw.
+string matrix _dash_stylelist_elems(string scalar raw)
+{
+    string rowvector toks
+    string matrix    out
+    string scalar    t, stem, rep
+    real scalar      i, n, k, len, p, in_dq, in_cq, q
+
+    toks = _dash_rep_toks(raw, 0)
+    n    = cols(toks)
+    out  = J(2, 2 * n, "")
+    k    = 0
+    for (i = 1; i <= n; i++) {
+        t    = toks[i]
+        len  = strlen(t)
+        stem = t
+        rep  = ""
+        if (len > 3 & substr(t, len - 2, 3) == "...") {
+            stem = substr(t, 1, len - 3)
+            rep  = "..."
+        }
+        else if (len > 2 & t != "..." & substr(t, len - 1, 2) == "..") {
+            stem = substr(t, 1, len - 2)
+            rep  = ".."
+        }
+        // One quoted string and nothing else: the quote that opens at 1
+        // closes at the last character.
+        q   = 0
+        len = strlen(stem)
+        in_dq = 0
+        in_cq = 0
+        p = _dash_quote_step(stem, len, 1, in_dq, in_cq)
+        if (p & (in_dq | in_cq)) {
+            while (p <= len & (in_dq | in_cq)) {
+                p = _dash_quote_step(stem, len, p, in_dq, in_cq)
+            }
+            if (!in_dq & !in_cq & p == len + 1) {
+                if (substr(stem, 1, 1) == char(34)) {
+                    stem = substr(stem, 2, len - 2)
+                }
+                else {
+                    stem = substr(stem, 3, len - 4)
+                }
+                q = 1
+            }
+        }
+        k++
+        out[1, k] = stem
+        out[2, k] = (q ? "1" : "0")
+        if (rep != "") {
+            k++
+            out[1, k] = rep
+            out[2, k] = "0"
+        }
+    }
+    return(k ? out[|1, 1 \ 2, k|] : J(2, 0, ""))
+}
+
+// _dash_stylelist_norm(raw) -- "" when raw is blank or holds only empty
+// quoted elements ("", `""', "" ""), which -syntax-'s string made no
+// value; raw unchanged otherwise.  A blank element (" ") is kept, for
+// _dash_stylelist_blank to judge.
+string scalar _dash_stylelist_norm(string scalar raw)
+{
+    string matrix E
+    real scalar   j
+
+    if (strtrim(raw) == "") return("")
+    E = _dash_stylelist_elems(raw)
+    for (j = 1; j <= cols(E); j++) {
+        if (E[2, j] != "1" | E[1, j] != "") return(raw)
+    }
+    return("")
+}
+
+// _dash_stylelist_pick(raw, i) -- the element the i-th y takes, "" for
+// the default: "." and a leading "=" are the default, "=" repeats the
+// element before it, ".." and "..." repeat it to the last y, a list
+// shorter than i gives "", and a quoted element is its text (so "" is
+// the default).  Helper _dash_stylelist_elems.
+string scalar _dash_stylelist_pick(string scalar raw, real scalar i)
+{
+    string matrix E
+    string scalar prev, v, t
+    real scalar   j, bare
+
+    E    = _dash_stylelist_elems(raw)
+    prev = ""
+    for (j = 1; j <= cols(E); j++) {
+        t    = E[1, j]
+        bare = (E[2, j] == "0")
+        if (bare & (t == ".." | t == "...")) return(prev)
+        if (bare & t == "=")      v = prev
+        else if (bare & t == ".") v = ""
+        else                      v = t
+        if (j == i) return(v)
+        prev = v
+    }
+    return("")
+}
+
+// _dash_stylelist_bad(raw) -- 1 when a bare ".." or "..." (glued forms
+// included) is not the last element, which twoway refuses as
+// "<option>(<value>):  invalid syntax", r(198) (measured 03oct2026).
+real scalar _dash_stylelist_bad(string scalar raw)
+{
+    string matrix E
+    real scalar   j
+
+    E = _dash_stylelist_elems(raw)
+    for (j = 1; j < cols(E); j++) {
+        if (E[2, j] == "0" & (E[1, j] == ".." | E[1, j] == "...")) return(1)
+    }
+    return(0)
+}
+
+// _dash_stylelist_blank(raw, n) -- the first of the elements the n y
+// use that is quoted and blank (" ", `" "'): non-empty text of blanks
+// only; 0 when none is.  An empty "" is not blank: twoway reads it as
+// ".".  twoway refuses a used blank element with an internal class path
+// that differs by option and accepts an unused one (measured 03oct2026);
+// Q-11.1 was ratified 06oct2026 as a refusal in dash's own words, used
+// elements only.  A missing n or one below 1 reads as 1.
+real scalar _dash_stylelist_blank(string scalar raw, real scalar n)
+{
+    string matrix E
+    real scalar   j, m
+
+    m = ((n >= . | n < 1) ? 1 : n)
+    E = _dash_stylelist_elems(raw)
+    if (cols(E) < m) m = cols(E)
+    for (j = 1; j <= m; j++) {
+        if (E[2, j] == "1" & E[1, j] != "" & strtrim(E[1, j]) == "") return(j)
+    }
+    return(0)
+}
+
+// _dash_stylelist_probe(tok) -- "<name>(x)" when the option word tok is
+// <name>(<value>) whose value is no value (_dash_stylelist_norm), so the
+// caller can ask the parser which option an empty copy, mcolor(""), is;
+// "" otherwise.
+string scalar _dash_stylelist_probe(string scalar tok)
+{
+    string scalar nm
+
+    nm = _dash_rep_optname(tok)
+    if (nm == "" | !strpos(tok, "(")) return("")
+    if (_dash_stylelist_norm(_dash_rep_value(tok)) != "") return("")
+    return(nm + "(x)")
+}
+
+// _dash_connect_canon(kind, e) -- one element of connect() (kind
+// "connect") or cmissing() (kind "cmissing") as twoway reads it (WP-30
+// P1.8a): connect gives direct, ascending, stairstep, stepstair or none,
+// cmissing y or n; "" for an empty element and "?" for anything else.
+// The spellings are twoway's connectstyle and yesno names as
+// test/fixtures/connect_truth.json measures them (its S block): exact
+// and case-sensitive (L is ascending, l direct; N and j are unknown),
+// the long names also by the abbreviations the fixture shows taken (dir,
+// asc, asce, stair, stairs).  A fixed table read by value; O(len(e)).
+string scalar _dash_connect_canon(string scalar kind, string scalar e)
+{
+    string scalar t
+    real scalar   n
+
+    t = strtrim(e)
+    if (t == "" | t == ".") return("")
+    n = strlen(t)
+    if (kind == "cmissing") {
+        if (t == "y" | t == "ye" | t == "yes" | t == "on") return("y")
+        if (n <= 4 & t == substr("true", 1, n)) return("y")
+        if (t == "n" | t == "no" | t == "off") return("n")
+        if (n <= 5 & t == substr("false", 1, n)) return("n")
+        return("?")
+    }
+    if (t == "l" | t == "line" | t == "d" | t == "c" | t == "connected") return("direct")
+    if (n >= 3 & n <= 6 & t == substr("direct", 1, n)) return("direct")
+    if (t == "L" | t == "a") return("ascending")
+    if (n >= 3 & n <= 9 & t == substr("ascending", 1, n)) return("ascending")
+    if (t == "J" | t == "s") return("stairstep")
+    if (n >= 5 & n <= 9 & t == substr("stairstep", 1, n)) return("stairstep")
+    if (t == "u" | t == "upstairstep") return("stepstair")
+    if (n >= 4 & n <= 9 & t == substr("stepstair", 1, n)) return("stepstair")
+    if (t == "n" | t == "i" | t == "none") return("none")
+    return("?")
+}
+
+// _dash_stylelist_locals(raw, stub) -- the elements of a stylelist as the
+// caller's locals: <stub>n their count, <stub>t<j> element j's text and
+// <stub>q<j> "1" when it came quoted.  Read and written by value.
+void _dash_stylelist_locals(string scalar raw, string scalar stub)
+{
+    string matrix E
+    real scalar   j
+
+    E = _dash_stylelist_elems(raw)
+    st_local(stub + "n", strofreal(cols(E)))
+    for (j = 1; j <= cols(E); j++) {
+        st_local(stub + "t" + strofreal(j), E[1, j])
+        st_local(stub + "q" + strofreal(j), E[2, j])
+    }
+}
+
 // _dash_axis_pieces(s) -- an axis-label option's value split for
 // _dash_axis_expand (WP-28 S14, GAPS2 B1).  The head is cut from the tail
 // at the first comma outside a string followed by optional blanks and a
@@ -4427,11 +5508,25 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // such text never reaches numlist's command line).  The tail, with its
 // comma, is last (tag T, possibly empty).  Sets the caller's locals
 // _ap_n and, for each piece i, _ap_tag<i> and _ap_txt<i>.
+//
+// WP-30 P1.18b: the head is rated as twoway reads it, into the caller's
+// local _ap_rule (test/fixtures/axis_add_truth.json).  Its first word --
+// a quoted string counts as a value -- is a rule when it begins with #,
+// is minmax or none, or is a(b)c (a[b]c) with numbers a, b and c; the
+// head being that one a(b)c word alone is a lone rule.  _ap_rule is 2
+// for a lone rule, 1 for any other rule-led head, 0 for a value first or
+// an empty head.  After a rule twoway spends add (ylabel(15(10)35, add)
+// draws 15 25 35), so the tail loses every add word when _ap_rule is 1
+// or 2; after a lone rule it also loses norescale, which twoway does not
+// keep on a range of ticks (ylabel(0(10)100, norescale) widens the
+// axis).  The tail is rebuilt from its words (_dash_rep_toks) after one
+// comma and blank, "" when none is left.  No regex; linear in s.
 void _dash_axis_pieces(string scalar s)
 {
-    string rowvector tags, txts
-    string scalar    head, tail, run, ch
+    string rowvector tags, txts, hw, tw
+    string scalar    head, tail, run, ch, w1, lt
     real scalar      n, i, k, in_dq, in_cq, nxt, was_in, sstart, bstart
+    real scalar      rule, p1, p2, cut
 
     n    = strlen(s)
     head = s
@@ -4458,6 +5553,45 @@ void _dash_axis_pieces(string scalar s)
             }
         }
         i++
+    }
+
+    // The head's rating (WP-30 P1.18b).
+    rule = 0
+    hw   = _dash_rep_toks(subinstr(head, ",", " "), 0)
+    if (cols(hw)) {
+        w1 = hw[1]
+        ch = substr(w1, 1, 1)
+        if (ch == char(34) | ch == char(96)) rule = 0
+        else if (ch == "#" | w1 == "minmax" | w1 == "none") rule = 1
+        else {
+            p1 = strpos(w1, "(")
+            p2 = strpos(w1, ")")
+            if (!p1) {
+                p1 = strpos(w1, "[")
+                p2 = strpos(w1, "]")
+            }
+            if (p1 > 1 & p2 > p1 + 1 & p2 < strlen(w1)) {
+                if (strtoreal(substr(w1, 1, p1 - 1)) < . &
+                    strtoreal(substr(w1, p1 + 1, p2 - p1 - 1)) < . &
+                    strtoreal(substr(w1, p2 + 1, .)) < .) {
+                    rule = (cols(hw) == 1 ? 2 : 1)
+                }
+            }
+        }
+    }
+    st_local("_ap_rule", strofreal(rule))
+    if (rule & tail != "") {
+        tw  = _dash_rep_toks(substr(tail, 2, .), 0)
+        lt  = ""
+        cut = 0
+        for (k = 1; k <= cols(tw); k++) {
+            if (tw[k] == "add" | (rule == 2 & tw[k] == "norescale")) {
+                cut = 1
+                continue
+            }
+            lt = lt + (lt == "" ? "" : " ") + tw[k]
+        }
+        if (cut) tail = (lt == "" ? "" : ", " + lt)
     }
 
     tags = J(1, 0, "")
@@ -4525,6 +5659,116 @@ string scalar _dash_axis_run_tag(string scalar run)
     return("B")
 }
 
+// _dash_axis_fmts(s) -- the format() arguments of an axis-label option's
+// sub-option tail, for dash.ado's refusal of a format twoway refuses
+// (WP-30 P1.5, M5).  The tail is cut by _dash_axis_pieces' boundary rule;
+// its top-level tokens name(arg), outside quotes and parentheses, are read
+// when name is lower-case letters, 3 to 6 long, and a prefix of format
+// (capitals, fo() and f() are S10's refusals).  Sets the caller's locals
+// _af_n (at most 20) and, for each i, _af_raw<i> (the argument as typed,
+// trimmed, for the echo), _af_nw<i> (its words once one enclosing pair of
+// plain or compound quotes is removed, at most 20), _af_w<i>_<j>, and
+// _af_ok<i> (0 when a word fails the gate ^%[A-Za-z0-9_.,:!/+-]+$ or is
+// longer than 60 characters, or there are more than 20 words): a word
+// reaches confirm format only after the gate.  Linear in strlen(s); never
+// calls _stata().
+void _dash_axis_fmts(string scalar s)
+{
+    string scalar    tail, ch, nm, arg, inner
+    string rowvector w
+    real scalar      n, i, k, in_dq, in_cq, nxt, depth, nstart, astart
+    real scalar      cnt, ok, j, nw
+
+    n = strlen(s)
+    tail = ""
+    in_dq = 0
+    in_cq = 0
+    i = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(s, n, i, in_dq, in_cq)
+        if (nxt) {
+            i = nxt
+            continue
+        }
+        if (substr(s, i, 1) == ",") {
+            k = i + 1
+            while (k <= n & (substr(s, k, 1) == " " | substr(s, k, 1) == char(9))) k++
+            if (k <= n) {
+                ch = substr(s, k, 1)
+                if (_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) | ch == "_") {
+                    tail = substr(s, i + 1, .)
+                    break
+                }
+            }
+        }
+        i++
+    }
+
+    cnt = 0
+    n = strlen(tail)
+    in_dq = 0
+    in_cq = 0
+    depth = 0
+    nstart = 0
+    astart = 0
+    nm = ""
+    i = 1
+    while (i <= n) {
+        nxt = _dash_quote_step(tail, n, i, in_dq, in_cq)
+        if (nxt) {
+            nstart = 0
+            i = nxt
+            continue
+        }
+        ch = substr(tail, i, 1)
+        if (depth == 0) {
+            if (_dash_ascii_in(ch, 65, 90) | _dash_ascii_in(ch, 97, 122) |
+                _dash_ascii_in(ch, 48, 57) | ch == "_") {
+                if (!nstart) nstart = i
+            }
+            else if (ch == "(") {
+                nm = (nstart ? substr(tail, nstart, i - nstart) : "")
+                depth = 1
+                astart = i + 1
+                nstart = 0
+            }
+            else nstart = 0
+        }
+        else if (ch == "(") depth++
+        else if (ch == ")") {
+            depth--
+            if (depth == 0 & cnt < 20 & strlen(nm) >= 3 & strlen(nm) <= 6 &
+                regexm(nm, "^[a-z]+$") & substr("format", 1, strlen(nm)) == nm) {
+                cnt++
+                arg = strtrim(substr(tail, astart, i - astart))
+                inner = arg
+                if (strlen(inner) >= 2 & substr(inner, 1, 1) == char(34) &
+                    substr(inner, -1, 1) == char(34)) {
+                    inner = substr(inner, 2, strlen(inner) - 2)
+                }
+                else if (strlen(inner) >= 4 &
+                         substr(inner, 1, 2) == char(96) + char(34) &
+                         substr(inner, -2, 2) == char(34) + char(39)) {
+                    inner = substr(inner, 3, strlen(inner) - 4)
+                }
+                w = tokens(inner, " ")
+                nw = cols(w)
+                ok = (nw <= 20)
+                if (nw > 20) nw = 20
+                for (j = 1; j <= nw; j++) {
+                    if (strlen(w[j]) > 60 | !regexm(w[j], "^%[A-Za-z0-9_.,:!/+-]+$")) ok = 0
+                    st_local("_af_w" + strofreal(cnt) + "_" + strofreal(j), w[j])
+                }
+                st_local("_af_raw" + strofreal(cnt), arg)
+                st_local("_af_nw" + strofreal(cnt), strofreal(ok ? nw : 0))
+                st_local("_af_ok" + strofreal(cnt), strofreal(ok))
+            }
+        }
+        i++
+    }
+    st_local("_af_n", strofreal(cnt))
+}
+
 // _dash_rep_optname(tok) -- the name an option word was typed with, or ""
 // when the word is not an option: name or name(...), name a Stata name of
 // at most 32 characters.
@@ -4550,6 +5794,160 @@ string scalar _dash_rep_value(string scalar tok)
     p = strpos(tok, "(")
     if (!p) return("")
     return(substr(tok, p + 1, strlen(tok) - p - 1))
+}
+
+// ============================================================
+// by()'s grid sub-options refused as twoway refuses them (WP-30 P1.15b)
+//
+// bygraph_g.class reads by()'s options in three stages (E6, measured on
+// StataNow 19.5, test/fixtures/by_grid_truth.json): parse_make's -syntax-
+// (:74-81) takes the FIRST copy of each declared option and checks the
+// numbers of rows() then cols(); "may not specify both rows() and cols()"
+// follows; parse_settings (:266-285) checks holes(); the region, title,
+// spacer and bgcolor readers (:224-229) take theirs; and every word left
+// over -- a second copy of a word read once, a capitalised spelling, an
+// unknown word -- is refused in typed order by -syntax [,
+// FAKE_OPT_FOR_BETTER_MSG]- (:232-233), "option NAME[()] not allowed".
+// iscale()'s bound is a draw-time error after all of these.
+// ============================================================
+
+// _dash_by_grammar() -- twoway's by() grammar, one row per option in
+// declaration order: name, minimum, takes an argument, stage, may repeat.
+// dash_render.py's _DASH_BY_GRAMMAR is its twin (test_by_grid.py).
+string matrix _dash_by_grammar()
+{
+    string scalar s
+
+    s = ""
+    s = s + "total tot 0 1 0 missing miss 0 1 0 rows r 1 1 0 "
+    s = s + "colfirst colf 0 1 0 cols c 1 1 0 scale scale 1 1 0 "
+    s = s + "iscale iscale 1 1 0 legend leg 1 1 0 legloc legloc 1 1 0 "
+    s = s + "plegend pleg 1 1 0 plegloc plegloc 1 1 0 clegend cleg 1 1 0 "
+    s = s + "clegloc clegloc 1 1 0 compact com 0 2 0 style style 1 2 0 "
+    s = s + "norescale nor 0 2 0 rescale r 0 2 0 noxrescale noxr 0 2 0 "
+    s = s + "noyrescale noyr 0 2 0 xrescale xr 0 2 0 yrescale yr 0 2 0 "
+    s = s + "holes hol 1 2 0 noedgelabel noedge 0 2 0 edgelabel edge 0 2 0 "
+    s = s + "noixaxes noix 0 2 0 noiyaxes noiy 0 2 0 ixaxes ix 0 2 0 "
+    s = s + "iyaxes iy 0 2 0 noxtitles noxt 0 2 0 xtitles xt 0 2 0 "
+    s = s + "noytitles noyt 0 2 0 ytitles yt 0 2 0 noixlabels noixl 0 2 0 "
+    s = s + "noiylabels noiyl 0 2 0 ixlabels ixl 0 2 0 iylabels iyl 0 2 0 "
+    s = s + "noixticks noixt 0 2 0 noiyticks noiyt 0 2 0 ixticks ixt 0 2 0 "
+    s = s + "iyticks iyt 0 2 0 noixtitles noixt 0 2 0 noiytitles noiyt 0 2 0 "
+    s = s + "ixtitles ixt 0 2 0 iytitles iyt 0 2 0 noindividual noind 0 2 0 "
+    s = s + "individual ind 0 2 0 ilegends ileg 0 2 0 imargin im 1 2 0 "
+    s = s + "noshrink noshr 0 2 0 noishrink noishr 0 2 0 nooverallshrink nooverallshr 0 2 0 "
+    s = s + "shrink shr 0 2 0 ishrink ishr 0 2 0 overallshrink overallshr 0 2 0 "
+    s = s + "subtitleformat subtitleformat 1 2 0 graphregion graphr 1 3 1 plotregion plotr 1 3 1 "
+    s = s + "r1title r1 1 3 1 r2title r2 1 3 1 l1title l1 1 3 1 "
+    s = s + "l2title l2 1 3 1 t1title t1 1 3 1 t2title t2 1 3 1 "
+    s = s + "b1title b1 1 3 1 b2title b2 1 3 1 note note 1 3 1 "
+    s = s + "caption cap 1 3 1 subtitle sub 1 3 1 title t 1 3 1 "
+    s = s + "spacers space 1 3 0 bgcolor bgc 1 3 1 "
+    return(colshape(tokens(s), 5))
+}
+
+// _dash_by_scan(scname) -- read the by() tail in the string scalar scname
+// as twoway's three stages do, and set the caller's locals: _byg_rows,
+// _byg_cols, _byg_holes, _byg_iscale, _byg_imargin (the first copy's
+// argument as typed, "" when absent or empty); _byg_rows_ok, _byg_cols_ok,
+// _byg_holes_ok (1 when the argument holds only numlist characters, so
+// it may be put to -syntax-); _byg_left (the first leftover in typed
+// order, as twoway's message); _byg_iscale_kind (num, star, empty, bad)
+// and _byg_iscale_val; _byg_imargin_bad (no marginstyle twoway reads)
+// and _byg_imargin_neg (a number below 0).  Words are matched
+// case-sensitively; the text is read, never executed, in one pass.
+void _dash_by_scan(string scalar scname)
+{
+    string matrix    g
+    string rowvector toks
+    string scalar    tok, typed, arg, row, lead, a, w
+    real rowvector   seen
+    real scalar      j, k, p, paren, n, v
+    string rowvector ms, ws
+
+    g = _dash_by_grammar()
+    seen = J(1, rows(g), 0)
+    toks = _dash_rep_toks(st_strscalar(scname), 0)
+    st_local("_byg_left", "")
+    for (k = 1; k <= 5; k++) {
+        st_local("_byg_" + ("rows", "cols", "holes", "iscale", "imargin")[k], "")
+    }
+    for (j = 1; j <= cols(toks); j++) {
+        tok = toks[j]
+        p = strpos(tok, "(")
+        paren = (p > 0)
+        typed = (paren ? substr(tok, 1, p - 1) : tok)
+        arg = (paren ? _dash_rep_value(tok) : "")
+        if (paren & substr(tok, strlen(tok), 1) != ")") arg = substr(tok, p + 1, .)
+        row = ""
+        for (k = 1; k <= rows(g); k++) {
+            if (strtoreal(g[k, 3]) != paren) continue
+            if (strlen(typed) < strlen(g[k, 2])) continue
+            if (substr(typed, 1, strlen(g[k, 2])) != g[k, 2]) continue
+            if (substr(g[k, 1], 1, strlen(typed)) != typed) continue
+            row = g[k, 1]
+            break
+        }
+        if (row != "") {
+            if (seen[k] & g[k, 5] == "0") row = ""
+        }
+        if (row == "") {
+            if (st_local("_byg_left") == "") {
+                st_local("_byg_left", "option " + typed + (paren ? "()" : "") + " not allowed")
+            }
+            continue
+        }
+        if (seen[k]) continue
+        seen[k] = 1
+        if (anyof(("rows", "cols", "holes", "iscale", "imargin"), row)) {
+            st_local("_byg_" + row, strtrim(arg))
+        }
+    }
+    for (k = 1; k <= 3; k++) {
+        a = st_local("_byg_" + ("rows", "cols", "holes")[k])
+        st_local("_byg_" + ("rows", "cols", "holes")[k] + "_ok",
+                 strofreal(ustrregexm(a, "^[0-9 .eE+/(),:\[\]to-]*$")))
+    }
+    // iscale(): a number, * and a number, empty, or a text twoway notes
+    a = st_local("_byg_iscale")
+    lead = ""
+    if (substr(a, 1, 1) == "*") {
+        lead = "*"
+        a = strtrim(substr(a, 2, .))
+    }
+    v = strtoreal(a)
+    if (st_local("_byg_iscale") == "") st_local("_byg_iscale_kind", "empty")
+    else if (v < . & ustrregexm(a, "^[-+]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][-+]?[0-9]+)?$")) {
+        st_local("_byg_iscale_kind", (lead == "*" ? "star" : "num"))
+    }
+    else st_local("_byg_iscale_kind", "bad")
+    st_local("_byg_iscale_val", strofreal(v, "%21.0g"))
+    // imargin(): a marginstyle name (dash_render.py SchemeParser._MARGINSTYLES),
+    // one to four numbers, or {l|r|b|t}{+|-|=}# terms
+    a = st_local("_byg_imargin")
+    ms = tokens("10-pt 2-pt 3-pt 4-pt allsides-ms bargraph bottom ebargraph esubhead horiz_bargraph")
+    ms = ms, tokens("large left medium medlarge medsmall right side-2-pt side-3-pt side-4-pt sides")
+    ms = ms, tokens("small tiny top top_bottom vlarge vside-2-pt vsmall zero")
+    st_local("_byg_imargin_bad", "0")
+    st_local("_byg_imargin_neg", "0")
+    if (a != "" & !anyof(ms, a)) {
+        if (ustrregexm(a, "^(\s*[lrbt]\s*[-+=]\s*([0-9]*[.]?[0-9]+)([eE][-+]?[0-9]+)?)+\s*$")) {
+        }
+        else {
+            ws = tokens(a)
+            n = cols(ws)
+            if (n < 1 | n > 4) st_local("_byg_imargin_bad", "1")
+            for (k = 1; k <= n; k++) {
+                w = ws[k]
+                v = strtoreal(w)
+                if (v >= . | !ustrregexm(w, "^[-+]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][-+]?[0-9]+)?$")) {
+                    st_local("_byg_imargin_bad", "1")
+                }
+                else if (v < 0) st_local("_byg_imargin_neg", "1")
+            }
+            if (st_local("_byg_imargin_bad") == "1") st_local("_byg_imargin_neg", "0")
+        }
+    }
 }
 
 // _dash_rep_scan(opts, unk, cap) -- whether the list may give an option
@@ -4623,6 +6021,37 @@ void _dash_rep_scan(string scalar opts, real scalar unk, real scalar cap)
     }
 }
 
+// _dash_hz_order(opts) -- horizontal and vertical as typed in a plot's
+// option list (WP-30 P1.9a): the first word spelling each (minimums hor
+// and vert, lower case, no parentheses), in the order typed, as typed:
+// "vert hor", one word or "".  dash.ado's _dash_hz_check judges the flags
+// in this order and names the word as typed, as twoway names the first
+// one it refuses ("option vert not allowed").  The list is read by value;
+// nothing in it is run.
+string scalar _dash_hz_order(string scalar opts)
+{
+    string rowvector toks
+    string scalar    nm, out
+    real scalar      i, h, v
+
+    toks = _dash_rep_toks(opts, 0)
+    out = ""
+    h = v = 0
+    for (i = 1; i <= cols(toks); i++) {
+        if (strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (!h & strlen(nm) >= 3 & nm == substr("horizontal", 1, strlen(nm))) {
+            out = strtrim(out + " " + nm)
+            h = 1
+        }
+        else if (!v & strlen(nm) >= 4 & nm == substr("vertical", 1, strlen(nm))) {
+            out = strtrim(out + " " + nm)
+            v = 1
+        }
+    }
+    return(out)
+}
+
 // _dash_rep_keyof(snames) -- the option a word read alone set: the s()
 // macros the parser left non-empty (snames, from : s(macros)), without its
 // catch-all and its pending list, in sorted order; "" when the word left
@@ -4660,7 +6089,11 @@ string scalar _dash_rep_bare(string scalar key)
 // legend() or a region (merged-implicit), "S" an axis scale (merged-
 // implicit, range() the union), "B" by() (the last varlist, every copy's
 // sub-options), "X" xline()/yline() (each copy a line of its own), "A"
-// text() (each copy added), "R" everything else (the last copy).
+// text() (each copy added), "F" p() (the first copy: twoway draws
+// mcolor(red) p(p3) p(bogus) in p3, WP-30 P1.14a), "R" everything else
+// (the last copy).  The t-options take their x twins' categories (WP-30
+// P1.6): tlabel() ttick() tmlabel() tmtick() "L", ttitle() "T", tscale()
+// "S", tline() "X", and their axis-2 forms alike.
 string scalar _dash_rep_cat(string scalar key)
 {
     string scalar k
@@ -4669,15 +6102,18 @@ string scalar _dash_rep_cat(string scalar key)
     if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
                "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
                "b2title", "l1title", "l2title", "r1title", "r2title",
-               "title2", "subtitle2", "ztitle"), k)) return("T")
+               "title2", "subtitle2", "ztitle", "ttitle", "ttitle2"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
                "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
-               "zlabel"), k)) return("L")
+               "zlabel", "tlabel", "ttick", "tmlabel", "tmtick", "tlabel2",
+               "ttick2"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
-    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale"), k)) return("S")
+    if (anyof(("xscale", "yscale", "xscale2", "yscale2", "zscale", "tscale",
+               "tscale2"), k)) return("S")
     if (k == "by") return("B")
-    if (anyof(("xline", "yline", "xline2", "yline2"), k)) return("X")
-    if (k == "text") return("A")
+    if (anyof(("xline", "yline", "xline2", "yline2", "tline", "tline2"), k)) return("X")
+    if (anyof(("text", "ttext"), k)) return("A")
+    if (k == "p") return("F")
     return("R")
 }
 
@@ -5001,6 +6437,27 @@ string scalar _dash_logit_typed(string scalar opts)
     return("")
 }
 
+// _dash_barwidth_typed(opts) -- the name of the first top-level option word
+// of opts that spells barwidth() -- barw, barwi, barwid, barwidt, barwidth
+// -- as typed, or "".  twoway refuses it on rcap and rcapsym naming that
+// spelling, "option barw() not allowed", r(198) (measured 03oct2026; WP-30
+// P1.17a).  Quoted and nested text is never read: only top-level tokens.
+string scalar _dash_barwidth_typed(string scalar opts)
+{
+    string rowvector toks
+    string scalar    nm
+    real scalar      i
+
+    toks = _dash_rep_toks(opts, 0)
+    for (i = 1; i <= cols(toks); i++) {
+        if (!strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (anyof(("barw", "barwi", "barwid", "barwidt", "barwidth"), nm))
+            return(nm)
+    }
+    return("")
+}
+
 // _dash_foreign_scan(opts, ptype, unk, graph) -- the option words of a
 // list for dash.ado's _dash_refuse_foreign, which asks the parser about
 // each.  twoway refuses, even once, an option written in upper case
@@ -5167,7 +6624,7 @@ void _dash_kernel_flag(string scalar unk, string scalar ptype)
 //      positive number".
 // var() <= 0 is refused later, after the kernel, bwidth and degree rules
 // (_dash_validate_opts), as twoway orders it.  On ptype "lpolyci" only, a
-// word pw..pwidth(...) (minimum pw: p() is pstyle()) or v..var(...)
+// word pw..pwidth(...) (minimum pw: p() is twoway's own p() option) or v..var(...)
 // (minimum v) is taken out of unk; every other word stays.  Sets the
 // caller's locals _lpo_pwidth and _lpo_var (the value, %21.0g), _lpo_rest
 // (unk less those words), _lpo_rc (0 or the return code) and _lpo_msg.
@@ -5376,10 +6833,13 @@ string scalar _dash_ax_word(string scalar s)
 }
 
 // _dash_ax_parse(tok, fam, d, r, v, body, words, dcw, nax, n, badw, axpos)
-// -- 1 when the option word tok is one of twoway's axis options (an x or y
-// option of a family of _dash_axfam(), its name typed in lower case, at
-// least the family's minimum long and a prefix of twoway's full name),
-// else 0.  Sets, by reference: d the side letter; r the family's row; v
+// -- 1 when the option word tok is one of twoway's axis options (an x, t
+// or y option of a family of _dash_axfam(), its name typed in lower case,
+// at least the family's minimum long and a prefix of twoway's full name),
+// else 0.  t is twoway's time axis, its x axis read with dates (WP-30
+// P1.6: tlabels, tticks, tlines ... ; the rows of _dash_axfam serve it as
+// they serve x and y, so tt, tl, tml, ttic, tmt, tli and tsc are its
+// minimums).  Sets, by reference: d the side letter; r the family's row; v
 // the value as typed; body the text before the first comma (not for a
 // scale); words the sub-option words the axis words are read from (after
 // the first comma, or every word of a scale); dcw the word after a second
@@ -5402,7 +6862,7 @@ real scalar _dash_ax_parse(string scalar tok, string matrix fam,
     nm = _dash_rep_optname(tok)
     if (nm == "" | nm != strlower(nm)) return(0)
     d = substr(nm, 1, 1)
-    if (d != "x" & d != "y") return(0)
+    if (d != "x" & d != "y" & d != "t") return(0)
     r = 0
     for (i = 1; i <= rows(fam); i++) {
         full = d + fam[i, 2]
@@ -5535,7 +6995,9 @@ string scalar _dash_route_axis2(string scalar opts)
 // (WP-29 P0.5).  _dash_axreq_add records, from the RAW option text of plot
 // segment seg (the options after the top-level comma are segment n_segs+1,
 // read after every segment, as twoway reads them), one row per axis option
-// in the external string matrix _dash_axreq: side (1 x, 2 y), twoway's
+// in the external string matrix _dash_axreq: side (1 x, 2 t, 3 y: twoway's
+// X, T, Y order, f12/f13 of taxis_truth.json; a t option names the x
+// axes, "tlabels(...) not allowed, xaxis3 does not exist"), twoway's
 // family order (scale 1 .. lines 7), seg, the word's place, the axis
 // number, the name twoway's message uses (ylabels, ytitle, yscale ...),
 // the value as typed, the word after a second comma and the first axis
@@ -5554,7 +7016,8 @@ void _dash_axreq_clear()
 {
     external string matrix _dash_axreq
 
-    _dash_axreq = J(0, 9, "")
+    _dash_axreq = J(0, 12, "")
+    _dash_subreq_clear()
 }
 
 void _dash_axreq_add(string scalar opts, real scalar seg)
@@ -5562,25 +7025,74 @@ void _dash_axreq_add(string scalar opts, real scalar seg)
     external string matrix _dash_axreq
     string rowvector toks, words
     string matrix    fam, blk
-    string scalar    d, v, body, dcw, badw
-    real scalar      i, k, r, nax, n, axpos
+    string rowvector snames
+    string scalar    d, v, body, dcw, badw, sm, lb, lb2, ls2, lnone
+    real scalar      i, j, k, r, nax, n, axpos, sat, nex
 
+    _dash_subreq_add(opts, seg)
     toks = _dash_rep_toks(opts, 0)
     if (cols(toks) == 0) return
     fam = _dash_axfam()
-    blk = J(cols(toks), 9, "")
+    blk = J(cols(toks), 12, "")
     k   = 0
     for (i = 1; i <= cols(toks); i++) {
         if (!_dash_ax_parse(toks[i], fam, d, r, v, body, words, dcw, nax, n,
                             badw, axpos)) continue
         k++
-        blk[k, .] = ((d == "x" ? "1" : "2"), fam[r, 5], strofreal(seg),
+        // Column 10 (WP-30 P1.19): twoway's refusal of a label, mlabel,
+        // tick or mtick sub-option (_dash_so_resolve's message), or "";
+        // and of a scale word (WP-30 P1.18a: yscale(OFF), xscale(bogus),
+        // yscale(alt alt) are "option OFF not allowed", r(198)).
+        sm = ""
+        if (anyof(("label", "mlabel", "tick", "mtick"), fam[r, 1]) &
+            cols(words)) {
+            if (_dash_so_resolve(words, J(1, cols(words), 1), "axlabel",
+                                 snames, sm, sat) == 0) sm = ""
+        }
+        else if (fam[r, 1] == "scale" & cols(words)) {
+            if (_dash_so_resolve(words, J(1, cols(words), 1), "axscale",
+                                 snames, sm, sat) == 0) sm = ""
+        }
+        // Columns 11-12 (WP-30 P1.21a): a line's positions, stripped, and
+        // "1" when there are none to check.  twoway's
+        // _gs_parse_and_log_lines reads the sub-options first ("option
+        // foo not allowed"; a second extend, typed as ex or extend, too,
+        // where a second noextend is accepted), then an empty list given
+        // a comma ("something required", r(100), tested first), then the
+        // positions through numlist (_dash_axreq_check hands them back).
+        lb    = ""
+        lnone = ""
+        if (fam[r, 1] == "line") {
+            if (_dash_rep_split(v, lb2, ls2)) {
+                if (strtrim(lb2) == "") sm = "100|something required"
+            }
+            else lb2 = v
+            lb = strtrim(lb2)
+            // A tline()'s positions are dates: _dash_taxis_fold reads them.
+            if (lb == "" | d == "t") lnone = "1"
+            if (sm == "" & cols(words)) {
+                if (_dash_so_resolve(words, J(1, cols(words), 1), "refline",
+                                     snames, sm, sat) == 0) {
+                    sm  = ""
+                    nex = 0
+                    for (j = 1; j <= cols(words); j++) {
+                        if (snames[j] != "extend") continue
+                        nex++
+                        if (nex == 2) {
+                            sm = "option " + strtrim(words[j]) + " not allowed"
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        blk[k, .] = ((d == "x" ? "1" : (d == "t" ? "2" : "3")), fam[r, 5], strofreal(seg),
                      strofreal(i), strofreal(n, "%21.0f"), d + fam[r, 2], v,
-                     dcw, badw)
+                     dcw, badw, sm, lb, lnone)
     }
     if (!k) return
-    blk = blk[|1, 1 \ k, 9|]
-    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) _dash_axreq = blk
+    blk = blk[|1, 1 \ k, 12|]
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 12) _dash_axreq = blk
     else _dash_axreq = _dash_axreq \ blk
 }
 
@@ -5593,8 +7105,8 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
     real colvector   o
     real scalar      i, n
 
-    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 9) {
-        _dash_axreq_clear()
+    if (rows(_dash_axreq) == 0 | cols(_dash_axreq) != 12) {
+        _dash_axreq = J(0, 12, "")
         return(0)
     }
     a    = _dash_axreq
@@ -5604,7 +7116,7 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
     if (cols(xset) == 0) xset = 1
     o = order(strtoreal(a[., (1, 2, 3, 4)]), (1, 2, 3, 4))
     for (i = 1; i <= rows(o); i++) {
-        d = (a[o[i], 1] == "1" ? "x" : "y")
+        d = (a[o[i], 1] == "3" ? "y" : "x")
         if (a[o[i], 8] != "") {
             _dash_say("err", "invalid '", a[o[i], 8], "'")
             _dash_axreq_clear()
@@ -5624,26 +7136,1394 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
             _dash_axreq_clear()
             return(198)
         }
+        if (substr(a[o[i], 10], 1, 4) == "100|") {
+            _dash_say("err", "", substr(a[o[i], 10], 5, .), "")
+            _dash_axreq_clear()
+            return(100)
+        }
+        if (a[o[i], 10] != "") {
+            _dash_say("err", "", a[o[i], 10], "")
+            _dash_axreq_clear()
+            return(198)
+        }
+        // A line's positions (WP-30 P1.21a): text numlist must never see
+        // is refused here; the rest goes back to dash.ado's
+        // _dash_line_check (locals _ln_text, _ln_row), which runs Stata's
+        // own numlist and marks the row with _dash_axreq_accept_line.
+        if (a[o[i], 2] == "7" & a[o[i], 12] == "") {
+            if (_dash_so_unsafe(a[o[i], 11])) {
+                _dash_say("err", "invalid line argument, ", a[o[i], 11], "")
+                _dash_axreq_clear()
+                return(198)
+            }
+            st_local("_ln_text", a[o[i], 11])
+            st_local("_ln_row", strofreal(o[i]))
+            return(-1)
+        }
     }
-    _dash_axreq_clear()
+    _dash_axreq = J(0, 12, "")
     return(0)
 }
 
-// _dash_rep_subkey(tok, cat) -- which sub-option a word sets, for keeping
-// the last of each: its name in lower case, a noX taken as X (grid and
-// nogrid, box and nobox are one setting), pos as position, cols and rows
-// as one (twoway: legend(cols(1)) legend(rows(1)) draws rows(1)), on and
-// off as one, and label(# ...) and lastlabel(# ...) keyed by their number.
-string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
+// _dash_axreq_accept_line(row) -- marks row of _dash_axreq as a line
+// whose positions Stata's numlist read (WP-30 P1.21a).
+void _dash_axreq_accept_line(real scalar row)
+{
+    external string matrix _dash_axreq
+
+    if (row >= 1 & row <= rows(_dash_axreq) & cols(_dash_axreq) == 12) {
+        _dash_axreq[row, 12] = "1"
+    }
+}
+
+// ==== The t-options' date literals (WP-30 P1.6) ==========================
+// twoway folds tlabel(), ttick(), tmlabel(), tmtick(), ttitle(), tscale()
+// and tline() onto the x axis after the x options (graph_g.class "time
+// axis options, override the -x- axis options"), reading each date
+// literal through _date2elapsed.ado in the unit of the axis's label
+// format: 2002m1 is 504 on a %tm axis (test/fixtures/taxis_truth.json,
+// StataNow 19.5).  dash.ado's _dash_taxis_fold folds them at registration
+// with these functions.  A token is read with Mata's string date
+// functions, as data, behind a whitelist, and never put to _stata(),
+// stata() or a command line (critic C3); a number is a number first, so
+// 01012001 stays 1012001 (critic C2).  No regular expression; each value
+// is read once, linear in its length.
+
+// _dash_taxis_unit(fmt, family) -- the date unit twoway reads a literal in
+// on an axis whose label format is fmt: "d" (%td, %d), "w", "m", "q", "h",
+// "y", or "" (numbers only: %tc, %tC, %tb and every numeric format).
+// family 1 is a label or tick list (_date2elapsed's map, which reads %-tm
+// as %tm); family 2 a line or a scale range (axis.class get_time_format,
+// which tests only the prefixes %t and %d, so %-tm has no unit there, and
+// a %tc, %tC or %tb axis gives "c": a time format with no literal form,
+// whose lines fail as numlist fails, "invalid line argument, ...").
+string scalar _dash_taxis_unit(string scalar fmt, real scalar family)
+{
+    string scalar f, c
+
+    f = strtrim(fmt)
+    if (family == 2 & substr(f, 1, 2) != "%t" & substr(f, 1, 2) != "%d") {
+        return("")
+    }
+    if (substr(f, 1, 1) == "%") f = substr(f, 2, .)
+    if (substr(f, 1, 1) == "-") f = substr(f, 2, .)
+    if (substr(f, 1, 1) == "d") return("d")
+    if (substr(f, 1, 1) != "t") return("")
+    c = substr(f, 2, 1)
+    if (anyof(("d", "w", "m", "q", "h", "y"), c)) return(c)
+    return(family == 2 ? "c" : "")
+}
+
+// _dash_tdate_value(tok, unit, val) -- 1 when tok is a number, a missing
+// value or a date literal of unit (val set to its value); 2 when it is a
+// date literal of some other unit, or unit has none (unit "", "c", "y");
+// 3 when it is neither.  The number first (strtoreal); then the whitelist
+// gate -- 1 to 40 bytes of 0-9, A-Z, a-z and . + - * / @ = _, as twoway's
+// pseudo-functions read separators freely (2000x1, 2000/1, 2000@1 are all
+// 480; scalar s = m(2000x1), measured) -- and only then Mata's date(),
+// weekly(), monthly(), quarterly() and halfyearly() over the token as a
+// string; an integer answer is a date.  A token the gate refuses is never
+// evaluated.  S56's ttext() reads its position with it too.
+real scalar _dash_tdate_value(string scalar tok, string scalar unit,
+                              real scalar val)
+{
+    string scalar  t, ok
+    real scalar    v, i
+    real rowvector w
+
+    t = strtrim(tok)
+    v = strtoreal(t)
+    if (v < .) {
+        val = v
+        return(1)
+    }
+    if (t == "." | (strlen(t) == 2 & substr(t, 1, 1) == "." &
+        strpos("abcdefghijklmnopqrstuvwxyz", substr(t, 2, 1)))) {
+        val = v
+        return(1)
+    }
+    if (strlen(t) < 1 | strlen(t) > 40) return(3)
+    ok = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.+-*/@=_"
+    for (i = 1; i <= strlen(t); i++) {
+        if (!strpos(ok, substr(t, i, 1))) return(3)
+    }
+    w = (date(t, "DMY"), weekly(t, "YW"), monthly(t, "YM"),
+         quarterly(t, "YQ"), halfyearly(t, "YH"))
+    // (A chain of ?: reads unit == "d" ? .. : unit == .. wrongly in
+    // Mata, so the unit is looked up.)
+    i = strpos("dwmqh", unit)
+    v = ((unit != "" & strlen(unit) == 1 & i > 0) ? w[i] : .)
+    if (v < . & v == floor(v)) {
+        val = v
+        return(1)
+    }
+    for (i = 1; i <= 5; i++) if (w[i] < . & w[i] == floor(w[i])) return(2)
+    return(3)
+}
+
+// _dash_tdate_tok(tok, unit, out, bad, single) -- one position slot of a
+// tick, label or line list: a position, a position in parentheses, an
+// A(d)B rule ((A)(d)(B) too, c55) or a numeric A/B range.  Returns
+// _dash_tdate_value's rating (a rule takes its worst end; its step must
+// be a number, else 3), sets out to the slot with each position written
+// as the number twoway reads (%21.0g), bad to the token at fault, and
+// single to 1 for a lone position (a label may follow it).
+real scalar _dash_tdate_tok(string scalar tok, string scalar unit,
+                            string scalar out, string scalar bad,
+                            real scalar single)
+{
+    string scalar a, d, b, rest
+    real scalar   p, q, k, ka, kb, va, vb, v
+
+    single = 0
+    out    = tok
+    bad    = tok
+    p      = strpos(tok, "/")
+    if (p & !strpos(tok, "(")) {
+        if (strtoreal(substr(tok, 1, p - 1)) < . &
+            strtoreal(substr(tok, p + 1, .)) < .) return(1)
+    }
+    if (!strpos(tok, "(")) {
+        k = _dash_tdate_value(tok, unit, v)
+        if (k == 1) {
+            out    = strtrim(strofreal(v, "%21.0g"))
+            single = 1
+        }
+        return(k)
+    }
+    if (substr(tok, 1, 1) == "(") {
+        q = strpos(tok, ")")
+        if (!q) return(3)
+        a    = substr(tok, 2, q - 2)
+        rest = substr(tok, q + 1, .)
+        if (rest == "") {
+            k = _dash_tdate_value(a, unit, v)
+            if (k == 1) {
+                out    = strtrim(strofreal(v, "%21.0g"))
+                single = 1
+            }
+            else bad = a
+            return(k)
+        }
+    }
+    else {
+        p    = strpos(tok, "(")
+        a    = substr(tok, 1, p - 1)
+        rest = substr(tok, p, .)
+    }
+    if (substr(rest, 1, 1) != "(") return(3)
+    q = strpos(rest, ")")
+    if (!q) return(3)
+    d = substr(rest, 2, q - 2)
+    b = substr(rest, q + 1, .)
+    if (substr(b, 1, 1) == "(" & substr(b, strlen(b), 1) == ")") {
+        b = substr(b, 2, strlen(b) - 2)
+    }
+    if (a == "" | b == "" | strtoreal(d) >= .) return(3)
+    ka = _dash_tdate_value(a, unit, va)
+    kb = _dash_tdate_value(b, unit, vb)
+    if (ka == 3 | kb == 3) return(3)
+    if (ka == 2 | kb == 2) {
+        bad = (ka == 2 ? a : b)
+        return(2)
+    }
+    out = strtrim(strofreal(va, "%21.0g")) + "(" + strtrim(d) + ")" +
+          strtrim(strofreal(vb, "%21.0g"))
+    return(1)
+}
+
+// _dash_tdate_ticks(opt, unit) -- the caller's local _td_in, the value of
+// tlabel(), ttick(), tmlabel() or tmtick(), with every position converted
+// (twoway's tickset: rules, then a list of positions each optionally
+// followed by its label), into _td_out; _td_rc 0 or 198 and _td_msg
+// twoway's first error line (e01/e04/e10/e19/e27: "invalid label
+// specifier, :  <tok>:"; a date of another unit, "invalid ticklist
+// "<tok>" must be a number or valid argument for <u>() function", or
+// "... must be number" on a numeric axis).  #N, ##N, minmax, none and an
+// empty list are copied; the sub-options after the first comma are copied
+// as typed.  opt names the option for nothing but the caller's notes.
+void _dash_tdate_ticks(string scalar opt, string scalar unit)
+{
+    string scalar    v, body, sub, out, o, bad, tok, msg, sm
+    string rowvector t, w, sn
+    real scalar      comma, i, k, single, prev, rc, sat
+
+    v     = st_local("_td_in")
+    comma = _dash_rep_split(v, body, sub)
+    t     = _dash_rep_toks(body, 0)
+    out   = ""
+    rc    = 0
+    msg   = ""
+    prev  = 0
+    if (cols(t) == 1) {
+        if (substr(t[1], 1, 1) == "#" | anyof(("minmax", "none", "."),
+            strlower(t[1]))) t = J(1, 0, "")
+    }
+    if (cols(t) == 0) out = body
+    for (i = 1; i <= cols(t); i++) {
+        tok = t[i]
+        if (substr(tok, 1, 1) == char(34) | substr(tok, 1, 2) == char(96) + char(34)) {
+            if (!prev) {
+                rc  = 198
+                msg = "invalid label specifier, :  " + invtokens(t[|i \ cols(t)|]) + ":"
+                break
+            }
+            out  = out + " " + tok
+            prev = 0
+            continue
+        }
+        k = _dash_tdate_tok(tok, unit, o, bad, single)
+        if (k == 3) {
+            rc  = 198
+            msg = "invalid label specifier, :  " + invtokens(t[|i \ cols(t)|]) + ":"
+            break
+        }
+        if (k == 2) {
+            rc  = 198
+            msg = "invalid ticklist " + char(34) + bad + char(34) + " must be " +
+                  ((unit == "" | unit == "c" | unit == "y") ? "number" :
+                   "a number or valid argument for " + unit + "() function")
+            break
+        }
+        out  = out + (out == "" ? "" : " ") + o
+        prev = single
+    }
+    // The sub-options, as twoway's tickset reads them (e28:
+    // tlabel(2000m1,2001m1) is "option 2001m1 not allowed").
+    if (!rc & comma) {
+        w = _dash_rep_toks(sub, 0)
+        if (cols(w)) {
+            if (_dash_so_resolve(w, J(1, cols(w), 1), "axlabel", sn, sm,
+                                 sat) != 0) {
+                rc  = 198
+                msg = sm
+            }
+        }
+    }
+    st_local("_td_out", strtrim(out) + (comma ? "," + sub : ""))
+    st_local("_td_rc", strofreal(rc))
+    st_local("_td_msg", msg)
+}
+
+// _dash_tdate_lines(unit) -- the caller's local _td_in, a tline() value
+// (its copies joined ", " by _dash_rep_merge), cut at its top-level
+// commas into _td_n pieces _td_s<i>, each a copy's positions converted
+// (_td_k<i> 1) or a sub-option piece copied (_td_k<i> 0; a copy's
+// positions are its first piece and any later piece that starts with a
+// digit, a sign, a dot or a parenthesis, as _dash_line_expand reads
+// them).  dash.ado expands each positions piece with numlist.  _td_rc 0
+// or 198, _td_msg twoway's words (e02/e08/e18: "invalid line argument,
+// <the positions>"; e05/c25d: "invalid argument "<tok>" must be a number
+// or valid argument for <u>() function"; f01/g02, a numeric or %-t axis:
+// "invalid number, (<tok>)"; a %tc axis: "invalid line argument, ...").
+void _dash_tdate_lines(string scalar unit)
+{
+    string scalar    v, seg, rest, out, o, bad, msg
+    string rowvector t
+    real scalar      p, n, i, k, single, rc, first
+
+    v     = st_local("_td_in")
+    rest  = v
+    n     = 0
+    rc    = 0
+    msg   = ""
+    first = 1
+    while (rest != "" | first) {
+        p = _first_comma_pos(rest)
+        if (p) {
+            seg  = strtrim(substr(rest, 1, p - 1))
+            rest = substr(rest, p + 1, .)
+        }
+        else {
+            seg  = strtrim(rest)
+            rest = ""
+        }
+        n++
+        if (!first & !(seg != "" & strpos("0123456789+-.(", substr(seg, 1, 1)))) {
+            st_local("_td_s" + strofreal(n), seg)
+            st_local("_td_k" + strofreal(n), "0")
+            continue
+        }
+        first = 0
+        t   = tokens(seg)
+        out = ""
+        for (i = 1; i <= cols(t) & !rc; i++) {
+            k = _dash_tdate_tok(t[i], unit, o, bad, single)
+            if (k == 1) out = out + (out == "" ? "" : " ") + o
+            else if (k == 2 & unit != "" & unit != "c") {
+                rc  = 198
+                msg = "invalid argument " + char(34) + bad + char(34) +
+                      " must be a number or valid argument for " + unit +
+                      "() function"
+            }
+            else if (k == 2 & unit == "") {
+                rc  = 198
+                msg = "invalid number, (" + bad + ")"
+            }
+            else {
+                rc  = 198
+                msg = "invalid line argument, " + seg
+            }
+        }
+        if (rc) break
+        st_local("_td_s" + strofreal(n), out)
+        st_local("_td_k" + strofreal(n), "1")
+    }
+    st_local("_td_n", strofreal(n))
+    st_local("_td_rc", strofreal(rc))
+    st_local("_td_msg", msg)
+}
+
+// _dash_tdate_range(unit) -- the caller's local _td_in, a tscale() value,
+// into _td_out: every range() word's positions converted (unit as
+// _dash_taxis_unit(fmt, 2) gives it) and the words made one range(), the
+// union of their positions as twoway draws repeated ranges (c48: range(lo
+// hi), or range(v) for one position), at the first one's place; every
+// other word copied.  A position that is no number of the axis's unit is
+// _td_rc 121, "range() invalid -- invalid numlist" (e03, c13, g03).
+void _dash_tdate_range(string scalar unit)
+{
+    string rowvector w, t
+    string scalar    out, nm
+    real scalar      i, j, p, lo, hi, n, at, v, rc
+
+    w   = _dash_rep_toks(st_local("_td_in"), 0)
+    out = ""
+    lo  = .
+    hi  = .
+    n   = 0
+    at  = 0
+    rc  = 0
+    for (i = 1; i <= cols(w); i++) {
+        p  = strpos(w[i], "(")
+        nm = (p ? strlower(substr(w[i], 1, p - 1)) : "")
+        if (!p | _dash_so_canon(nm, "axscale") != "range") continue
+        if (!at) at = i
+        t = tokens(_dash_rep_value(w[i]))
+        for (j = 1; j <= cols(t); j++) {
+            if (_dash_tdate_value(t[j], unit, v) != 1 | v >= .) {
+                rc = 121
+                break
+            }
+            n++
+            lo = (lo >= . ? v : min((lo, v)))
+            hi = (hi >= . ? v : max((hi, v)))
+        }
+        if (rc) break
+    }
+    for (i = 1; i <= cols(w) & !rc; i++) {
+        p  = strpos(w[i], "(")
+        nm = (p ? strlower(substr(w[i], 1, p - 1)) : "")
+        if (p & _dash_so_canon(nm, "axscale") == "range") {
+            if (i != at | !n) continue
+            out = out + (out == "" ? "" : " ") + "range(" +
+                  strtrim(strofreal(lo, "%21.0g")) +
+                  (n > 1 ? " " + strtrim(strofreal(hi, "%21.0g")) : "") + ")"
+            continue
+        }
+        out = out + (out == "" ? "" : " ") + w[i]
+    }
+    st_local("_td_out", out)
+    st_local("_td_rc", strofreal(rc))
+    st_local("_td_msg", rc ? "range() invalid -- invalid numlist" : "")
+}
+
+// _dash_taxis_fmt(v) -- the argument of the last format() among the
+// sub-options of the label or tick value v (format, for, forma, ...: the
+// axis-label table's spellings), or "" when there is none.  twoway's
+// tickset keeps the label format its last format() set (tickset_g.class
+// 1129-1180; taxis_truth.json k01-k07), and _dash_taxis_fold reads the
+// t-options' dates in it (WP-30 P1.6).
+string scalar _dash_taxis_fmt(string scalar v)
+{
+    string rowvector w
+    string scalar    body, sub, out
+    real scalar      i, p
+
+    out = ""
+    if (!_dash_rep_split(v, body, sub)) return(out)
+    w = _dash_rep_toks(sub, 0)
+    for (i = 1; i <= cols(w); i++) {
+        p = strpos(w[i], "(")
+        if (!p) continue
+        if (_dash_so_canon(substr(w[i], 1, p - 1), "axlabel") == "format") {
+            out = strtrim(_dash_rep_value(w[i]))
+        }
+    }
+    return(out)
+}
+
+// _dash_xdate_find(v, family) -- 1 when the value v of an x label or tick
+// option (family 1), line option (2) or scale (3) holds a date literal in
+// a position slot (_dash_tdate_tok rates it 2 with no unit), which twoway
+// refuses there: the X options read no dates (c11-c13: "invalid label
+// specifier, :  <tok>:", "invalid line argument, <tok>", r(198); "range()
+// invalid -- invalid numlist", r(121)).  Sets the caller's local _xd_tok
+// to the token (a whole A(d)B rule, as c11 names it).
+real scalar _dash_xdate_find(string scalar v, real scalar family)
+{
+    string rowvector t, tt
+    string scalar    body, sub, o, bad, nm
+    real scalar      i, j, single, p, x
+
+    if (family == 3) {
+        t = _dash_rep_toks(v, 0)
+        for (i = 1; i <= cols(t); i++) {
+            p  = strpos(t[i], "(")
+            nm = (p ? strlower(substr(t[i], 1, p - 1)) : "")
+            if (!p | _dash_so_canon(nm, "axscale") != "range") continue
+            tt = tokens(_dash_rep_value(t[i]))
+            for (j = 1; j <= cols(tt); j++) {
+                if (_dash_tdate_value(tt[j], "", x) == 2) {
+                    st_local("_xd_tok", tt[j])
+                    return(1)
+                }
+            }
+        }
+        return(0)
+    }
+    (void) _dash_rep_split(v, body, sub)
+    t = (family == 2 ? tokens(body) : _dash_rep_toks(body, 0))
+    for (i = 1; i <= cols(t); i++) {
+        if (substr(t[i], 1, 1) == char(34) | substr(t[i], 1, 1) == char(96)) continue
+        if (_dash_tdate_tok(t[i], "", o, bad, single) == 2) {
+            st_local("_xd_tok", t[i])
+            return(1)
+        }
+    }
+    return(0)
+}
+
+// ==== twoway's sub-option tables and resolver (WP-30 P1.19) ==============
+// The Mata twins of dash_render.py's _DASH_*_SUBOPT_TABLE, _dash_subopt_canon
+// and _dash_subopt_resolve.  A row is (full, minimum, stage, kind, star,
+// check): kind "w" a word, "a" an argument once per stage, "r" a repeatable
+// argument; star "1" when the stage passes what it does not take on; check
+// "", "N1"/"NL" (a numlist, checked by dash.ado's _dash_subopt_check) or
+// "R"/"I" (a real/integer literal).  No regexm: it follows the caller's
+// version.
+
+// _dash_so_rows(fam) -- the rows of family fam: legend, axlabel, axscale,
+// refline, title, axtitle or textbox; J(0, 6, "") for any other.
+string matrix _dash_so_rows(string scalar fam)
+{
+    string matrix t
+
+    t = J(0, 6, "")
+    if (fam == "legend") {
+        t = t \ ("position", "pos", "1", "a", "1", "" \
+                  "ring", "ring", "1", "a", "1", "" \
+                  "style", "sty", "1", "a", "1", "" \
+                  "order", "order", "1", "a", "1", "" \
+                  "showindex", "showindex", "1", "w", "1", "" \
+                  "nospan", "nospan", "1", "w", "1", "")
+        t = t \ ("span", "span", "1", "w", "1", "" \
+                  "region", "reg", "2", "r", "1", "" \
+                  "nodrawview", "nodrawv", "3", "w", "1", "" \
+                  "drawview", "drawv", "3", "w", "1", "" \
+                  "all", "all", "3", "w", "1", "" \
+                  "styleonly", "styleonly", "3", "w", "1", "")
+        t = t \ ("holes", "hol", "3", "a", "1", "NL" \
+                  "textwidth", "textw", "3", "a", "1", "" \
+                  "xoffset", "xoffset", "3", "a", "1", "R" \
+                  "yoffset", "yoffset", "3", "a", "1", "R" \
+                  "style", "sty", "3", "a", "1", "" \
+                  "rows", "r", "3", "a", "1", "N1")
+        t = t \ ("nocolfirst", "nocolf", "3", "w", "1", "" \
+                  "colfirst", "colf", "3", "w", "1", "" \
+                  "cols", "c", "3", "a", "1", "N1" \
+                  "notextfirst", "notextf", "3", "w", "1", "" \
+                  "textfirst", "textf", "3", "w", "1", "" \
+                  "nostacked", "nostac", "3", "w", "1", "")
+        t = t \ ("stacked", "stac", "3", "w", "1", "" \
+                  "rowgap", "rowg", "3", "a", "1", "" \
+                  "colgap", "colg", "3", "a", "1", "" \
+                  "keygap", "keyg", "3", "a", "1", "" \
+                  "symplacement", "symp", "3", "a", "1", "" \
+                  "symxsize", "symx", "3", "a", "1", "")
+        t = t \ ("symysize", "symy", "3", "a", "1", "" \
+                  "noforcesize", "noforces", "3", "w", "1", "" \
+                  "forcesize", "forces", "3", "w", "1", "" \
+                  "bmargin", "bm", "3", "a", "1", "" \
+                  "bplacement", "bplace", "3", "a", "1", "" \
+                  "nobexpand", "nobex", "3", "w", "1", "")
+        t = t \ ("bexpand", "bex", "3", "w", "1", "" \
+                  "width", "width", "3", "a", "1", "" \
+                  "height", "height", "3", "a", "1", "" \
+                  "nodraw", "nodraw", "3", "w", "1", "" \
+                  "draw", "draw", "3", "w", "1", "" \
+                  "on", "on", "3", "w", "1", "")
+        t = t \ ("off", "off", "3", "w", "1", "" \
+                  "tstyle", "tsty", "4", "a", "1", "" \
+                  "angle", "angle", "4", "a", "1", "" \
+                  "size", "s", "4", "a", "1", "" \
+                  "color", "c", "4", "a", "1", "" \
+                  "justification", "j", "4", "a", "1", "")
+        t = t \ ("alignment", "a", "4", "a", "1", "" \
+                  "margin", "m", "4", "a", "1", "" \
+                  "linegap", "linegap", "4", "a", "1", "" \
+                  "nobox", "nob", "4", "w", "1", "" \
+                  "box", "b", "4", "w", "1", "" \
+                  "bmargin", "bm", "4", "a", "1", "")
+        t = t \ ("placement", "place", "4", "a", "1", "" \
+                  "bfcolor", "bfc", "4", "a", "1", "" \
+                  "fcolor", "fc", "4", "a", "1", "" \
+                  "bcolor", "bc", "4", "a", "1", "" \
+                  "blstyle", "blst", "4", "a", "1", "" \
+                  "blwidth", "blw", "4", "a", "1", "")
+        t = t \ ("blcolor", "blc", "4", "a", "1", "" \
+                  "blpattern", "blp", "4", "a", "1", "" \
+                  "blalign", "bla", "4", "a", "1", "" \
+                  "lstyle", "lst", "4", "a", "1", "" \
+                  "lwidth", "lw", "4", "a", "1", "" \
+                  "lcolor", "lc", "4", "a", "1", "")
+        t = t \ ("lpattern", "lp", "4", "a", "1", "" \
+                  "lalign", "la", "4", "a", "1", "" \
+                  "orientation", "orient", "4", "a", "1", "" \
+                  "r1title", "r1", "5", "r", "1", "" \
+                  "r2title", "r2", "5", "r", "1", "" \
+                  "l1title", "l1", "5", "r", "1", "")
+        t = t \ ("l2title", "l2", "5", "r", "1", "" \
+                  "t1title", "t1", "5", "r", "1", "" \
+                  "t2title", "t2", "5", "r", "1", "" \
+                  "b1title", "b1", "5", "r", "1", "" \
+                  "b2title", "b2", "5", "r", "1", "" \
+                  "note", "note", "5", "r", "1", "")
+        t = t \ ("caption", "cap", "5", "r", "1", "" \
+                  "subtitle", "sub", "5", "r", "1", "" \
+                  "title", "t", "5", "r", "1", "" \
+                  "label", "lab", "6", "r", "1", "" \
+                  "lastlabel", "lastlab", "7", "r", "1", "")
+    }
+    else if (fam == "axlabel") {
+        t = t \ ("add", "add", "1", "w", "1", "" \
+                  "custom", "custom", "1", "w", "1", "" \
+                  "norescale", "norescale", "1", "w", "1", "" \
+                  "noticks", "notick", "2", "w", "0", "" \
+                  "ticks", "tick", "2", "w", "0", "" \
+                  "nolabels", "nolab", "2", "w", "0", "")
+        t = t \ ("labels", "labels", "2", "w", "0", "" \
+                  "noshowlabels", "noshowlab", "2", "w", "0", "" \
+                  "showlabels", "showlab", "2", "w", "0", "" \
+                  "novaluelabels", "noval", "2", "w", "0", "" \
+                  "valuelabels", "val", "2", "w", "0", "" \
+                  "angle", "ang", "2", "a", "0", "")
+        t = t \ ("alternate", "alt", "2", "w", "0", "" \
+                  "altgap", "altgap", "2", "a", "0", "" \
+                  "style", "sty", "2", "a", "0", "" \
+                  "tstyle", "tsty", "2", "a", "0", "" \
+                  "tlength", "tl", "2", "a", "0", "" \
+                  "tposition", "tp", "2", "a", "0", "")
+        t = t \ ("labgap", "labgap", "2", "a", "0", "" \
+                  "tlstyle", "tlsty", "2", "a", "0", "" \
+                  "tlwidth", "tlw", "2", "a", "0", "" \
+                  "tlcolor", "tlc", "2", "a", "0", "" \
+                  "tlpattern", "tlp", "2", "a", "0", "" \
+                  "labstyle", "labsty", "2", "a", "0", "")
+        t = t \ ("labsize", "labs", "2", "a", "0", "" \
+                  "labcolor", "labc", "2", "a", "0", "" \
+                  "labjustification", "labj", "2", "a", "0", "" \
+                  "labalignment", "laba", "2", "a", "0", "" \
+                  "nopgmgrid", "nopgmgrid", "2", "w", "0", "" \
+                  "pgmgrid", "pgmgrid", "2", "w", "0", "")
+        t = t \ ("nogrid", "nog", "2", "w", "0", "" \
+                  "grid", "g", "2", "w", "0", "" \
+                  "gstyle", "gs", "2", "a", "0", "" \
+                  "nogextend", "nogex", "2", "w", "0", "" \
+                  "gextend", "gex", "2", "w", "0", "" \
+                  "nogmin", "nogmin", "2", "w", "0", "")
+        t = t \ ("gmin", "gmin", "2", "w", "0", "" \
+                  "nogmax", "nogmax", "2", "w", "0", "" \
+                  "gmax", "gmax", "2", "w", "0", "" \
+                  "glstyle", "gls", "2", "a", "0", "" \
+                  "glwidth", "glw", "2", "a", "0", "" \
+                  "glcolor", "glc", "2", "a", "0", "")
+        t = t \ ("glpattern", "glp", "2", "a", "0", "" \
+                  "format", "for", "2", "a", "0", "" \
+                  "axis", "ax", "2", "a", "0", "" \
+                  "labelminlen", "labelminlen", "2", "a", "0", "I" \
+                  "labelkeepleadingzero", "labelkeepleadingzero", "2", "w", "0", "" \
+                  "custom", "custom", "2", "w", "0", "")
+    }
+    else if (fam == "axscale") {
+        t = t \ ("nolog", "nolog", "1", "w", "1", "" \
+                  "log", "log", "1", "w", "1", "" \
+                  "noatanh", "noatanh", "1", "w", "1", "" \
+                  "atanh", "atanh", "1", "w", "1", "" \
+                  "nologit", "nologit", "1", "w", "1", "" \
+                  "logit", "logit", "1", "w", "1", "")
+        t = t \ ("nolog1m", "nolog1", "1", "w", "1", "" \
+                  "log1m", "log1", "1", "w", "1", "" \
+                  "alternate", "alt", "1", "w", "1", "" \
+                  "style", "sty", "1", "a", "1", "" \
+                  "titlegap", "titleg", "1", "a", "1", "" \
+                  "outergap", "outerg", "1", "a", "1", "")
+        t = t \ ("noline", "noli", "1", "w", "1", "" \
+                  "line", "li", "1", "w", "1", "" \
+                  "noextend", "noex", "1", "w", "1", "" \
+                  "extend", "ex", "1", "w", "1", "" \
+                  "nofextend", "nofex", "1", "w", "1", "" \
+                  "fextend", "fex", "1", "w", "1", "")
+        t = t \ ("lstyle", "lst", "1", "a", "1", "" \
+                  "lcolor", "lc", "1", "a", "1", "" \
+                  "lwidth", "lw", "1", "a", "1", "" \
+                  "lpattern", "lp", "1", "a", "1", "" \
+                  "on", "on", "1", "w", "1", "" \
+                  "off", "off", "1", "w", "1", "")
+        t = t \ ("nofillspace", "nofill", "1", "w", "1", "" \
+                  "fillspace", "fill", "1", "w", "1", "" \
+                  "ring", "ring", "1", "a", "1", "R" \
+                  "noreverse", "norev", "1", "w", "1", "" \
+                  "reverse", "rev", "1", "w", "1", "" \
+                  "axis", "ax", "1", "a", "1", "")
+        t = t \ ("range", "r", "2", "r", "1", "")
+    }
+    else if (fam == "refline") {
+        t = t \ ("style", "st", "1", "a", "0", "" \
+                  "noextend", "noex", "1", "w", "0", "" \
+                  "extend", "ex", "1", "w", "0", "" \
+                  "lstyle", "lst", "1", "a", "0", "" \
+                  "lcolor", "lc", "1", "a", "0", "" \
+                  "lwidth", "lw", "1", "a", "0", "")
+        t = t \ ("lpattern", "lp", "1", "a", "0", "" \
+                  "lalign", "la", "1", "a", "0", "" \
+                  "axis", "ax", "1", "a", "0", "")
+    }
+    else if (fam == "title") {
+        t = t \ ("nospan", "nospan", "1", "w", "1", "" \
+                  "span", "span", "1", "w", "1", "" \
+                  "prefix", "prefix", "1", "w", "1", "" \
+                  "suffix", "suffix", "1", "w", "1", "" \
+                  "position", "pos", "1", "a", "1", "" \
+                  "ring", "ring", "1", "a", "1", "")
+        t = t \ ("style", "sty", "1", "a", "1", "" \
+                  "width", "width", "2", "a", "1", "" \
+                  "height", "height", "2", "a", "1", "" \
+                  "noastextbox", "noast", "2", "w", "1", "" \
+                  "nobexpand", "nobex", "2", "w", "1", "" \
+                  "astextbox", "ast", "2", "w", "1", "")
+        t = t \ ("bexpand", "bex", "2", "w", "1", "" \
+                  "tstyle", "tsty", "3", "a", "1", "" \
+                  "angle", "angle", "3", "a", "1", "" \
+                  "size", "s", "3", "a", "1", "" \
+                  "color", "c", "3", "a", "1", "" \
+                  "justification", "j", "3", "a", "1", "")
+        t = t \ ("alignment", "a", "3", "a", "1", "" \
+                  "margin", "m", "3", "a", "1", "" \
+                  "linegap", "linegap", "3", "a", "1", "" \
+                  "nobox", "nob", "3", "w", "1", "" \
+                  "box", "b", "3", "w", "1", "" \
+                  "bmargin", "bm", "3", "a", "1", "")
+        t = t \ ("placement", "place", "3", "a", "1", "" \
+                  "bfcolor", "bfc", "3", "a", "1", "" \
+                  "fcolor", "fc", "3", "a", "1", "" \
+                  "bcolor", "bc", "3", "a", "1", "" \
+                  "blstyle", "blst", "3", "a", "1", "" \
+                  "blwidth", "blw", "3", "a", "1", "")
+        t = t \ ("blcolor", "blc", "3", "a", "1", "" \
+                  "blpattern", "blp", "3", "a", "1", "" \
+                  "blalign", "bla", "3", "a", "1", "" \
+                  "lstyle", "lst", "3", "a", "1", "" \
+                  "lwidth", "lw", "3", "a", "1", "" \
+                  "lcolor", "lc", "3", "a", "1", "")
+        t = t \ ("lpattern", "lp", "3", "a", "1", "" \
+                  "lalign", "la", "3", "a", "1", "" \
+                  "orientation", "orient", "3", "a", "1", "")
+    }
+    else if (fam == "axtitle") {
+        t = t \ ("prefix", "prefix", "1", "w", "1", "" \
+                  "suffix", "suffix", "1", "w", "1", "" \
+                  "axis", "ax", "1", "a", "1", "" \
+                  "width", "width", "2", "a", "1", "" \
+                  "height", "height", "2", "a", "1", "" \
+                  "noastextbox", "noast", "2", "w", "1", "")
+        t = t \ ("nobexpand", "nobex", "2", "w", "1", "" \
+                  "astextbox", "ast", "2", "w", "1", "" \
+                  "bexpand", "bex", "2", "w", "1", "" \
+                  "tstyle", "tsty", "3", "a", "1", "" \
+                  "angle", "angle", "3", "a", "1", "" \
+                  "size", "s", "3", "a", "1", "")
+        t = t \ ("color", "c", "3", "a", "1", "" \
+                  "justification", "j", "3", "a", "1", "" \
+                  "alignment", "a", "3", "a", "1", "" \
+                  "margin", "m", "3", "a", "1", "" \
+                  "linegap", "linegap", "3", "a", "1", "" \
+                  "nobox", "nob", "3", "w", "1", "")
+        t = t \ ("box", "b", "3", "w", "1", "" \
+                  "bmargin", "bm", "3", "a", "1", "" \
+                  "placement", "place", "3", "a", "1", "" \
+                  "bfcolor", "bfc", "3", "a", "1", "" \
+                  "fcolor", "fc", "3", "a", "1", "" \
+                  "bcolor", "bc", "3", "a", "1", "")
+        t = t \ ("blstyle", "blst", "3", "a", "1", "" \
+                  "blwidth", "blw", "3", "a", "1", "" \
+                  "blcolor", "blc", "3", "a", "1", "" \
+                  "blpattern", "blp", "3", "a", "1", "" \
+                  "blalign", "bla", "3", "a", "1", "" \
+                  "lstyle", "lst", "3", "a", "1", "")
+        t = t \ ("lwidth", "lw", "3", "a", "1", "" \
+                  "lcolor", "lc", "3", "a", "1", "" \
+                  "lpattern", "lp", "3", "a", "1", "" \
+                  "lalign", "la", "3", "a", "1", "" \
+                  "orientation", "orient", "3", "a", "1", "")
+    }
+    else if (fam == "textbox") {
+        t = t \ ("tstyle", "tsty", "1", "a", "1", "" \
+                  "bcolor", "bc", "1", "a", "1", "" \
+                  "orientation", "orient", "1", "a", "1", "" \
+                  "fcolor", "fc", "1", "a", "1", "" \
+                  "size", "s", "1", "a", "1", "" \
+                  "lstyle", "lst", "1", "a", "1", "")
+        t = t \ ("color", "c", "1", "a", "1", "" \
+                  "lpattern", "lp", "1", "a", "1", "" \
+                  "justification", "j", "1", "a", "1", "" \
+                  "lwidth", "lw", "1", "a", "1", "" \
+                  "alignment", "a", "1", "a", "1", "" \
+                  "lcolor", "lc", "1", "a", "1", "")
+        t = t \ ("margin", "m", "1", "a", "1", "" \
+                  "lalign", "la", "1", "a", "1", "" \
+                  "linegap", "linegap", "1", "a", "1", "" \
+                  "width", "width", "1", "a", "1", "" \
+                  "height", "height", "1", "a", "1", "" \
+                  "bmargin", "bm", "1", "a", "1", "")
+        t = t \ ("box", "b", "1", "a", "1", "" \
+                  "nobox", "nob", "1", "a", "1", "" \
+                  "bexpand", "bex", "1", "a", "1", "" \
+                  "placement", "place", "1", "a", "1", "" \
+                  "position", "pos", "1", "a", "1", "" \
+                  "ring", "ring", "1", "a", "1", "")
+        t = t \ ("span", "span", "1", "a", "1", "" \
+                  "prefix", "prefix", "1", "a", "1", "" \
+                  "suffix", "suffix", "1", "a", "1", "" \
+                  "axis", "ax", "1", "a", "1", "" \
+                  "angle", "angle", "1", "a", "1", "" \
+                  "bfcolor", "bfc", "1", "a", "1", "")
+        t = t \ ("blstyle", "blst", "1", "a", "1", "" \
+                  "blwidth", "blw", "1", "a", "1", "" \
+                  "blcolor", "blc", "1", "a", "1", "" \
+                  "blpattern", "blp", "1", "a", "1", "" \
+                  "blalign", "bla", "1", "a", "1", "" \
+                  "nobexpand", "nobex", "1", "a", "1", "")
+        t = t \ ("astextbox", "ast", "1", "a", "1", "" \
+                  "noastextbox", "noast", "1", "a", "1", "" \
+                  "nospan", "nospan", "1", "a", "1", "")
+    }
+    if (fam == "region") {
+        // _fr_area_parse_and_log.ado:33-43 (WP-30 P1.20a): one unstarred
+        // stage, in declaration order; twin of _dash_region_table().
+        t = t \ ("style", "sty", "1", "a", "0", "" \
+                  "istyle", "isty", "1", "a", "0", "" \
+                  "lstyle", "ls", "1", "a", "0", "" \
+                  "ilstyle", "ils", "1", "a", "0", "" \
+                  "lcolor", "lc", "1", "a", "0", "" \
+                  "ilcolor", "ilc", "1", "a", "0", "" \
+                  "lwidth", "lw", "1", "a", "0", "" \
+                  "ilwidth", "ilw", "1", "a", "0", "")
+        t = t \ ("lpattern", "lp", "1", "a", "0", "" \
+                  "ilpattern", "ilp", "1", "a", "0", "" \
+                  "lalign", "la", "1", "a", "0", "" \
+                  "ilalign", "ila", "1", "a", "0", "" \
+                  "shadestyle", "shades", "1", "a", "0", "" \
+                  "ishadestyle", "ishades", "1", "a", "0", "" \
+                  "fcolor", "fc", "1", "a", "0", "" \
+                  "ifcolor", "ifc", "1", "a", "0", "")
+        t = t \ ("color", "c", "1", "a", "0", "" \
+                  "icolor", "ic", "1", "a", "0", "" \
+                  "intensity", "inten", "1", "a", "0", "" \
+                  "iintensity", "iinten", "1", "a", "0", "" \
+                  "margin", "m", "1", "a", "0", "" \
+                  "marginonly", "marginonly", "1", "w", "0", "")
+    }
+    return(t)
+}
+
+// _dash_so_canon(name, fam) -- the full name typed name abbreviates in
+// family fam, or "": lower case only, from a row's minimum to its full
+// name, the first row in table order winning.
+string scalar _dash_so_canon(string scalar name, string scalar fam)
+{
+    string matrix t
+    string scalar nm
+    real scalar   i
+
+    nm = strtrim(name)
+    if (nm == "" | nm != strlower(nm)) return("")
+    t = _dash_so_rows(fam)
+    for (i = 1; i <= rows(t); i++) {
+        if (strlen(nm) >= strlen(t[i, 2]) & strlen(nm) <= strlen(t[i, 1]) &
+            substr(t[i, 1], 1, strlen(nm)) == nm) return(t[i, 1])
+    }
+    return("")
+}
+
+// _dash_so_isnum(s, isint) -- 1 when s, stripped, is twoway's integer
+// literal [+-]?digits (isint) or real literal [+-]?(d+.?d*|.d+)([eE][+-]?d+)?
+// and nothing else.  Byte by byte.
+real scalar _dash_so_isnum(string scalar s, real scalar isint)
+{
+    string scalar t, c
+    real scalar   i, n, nd, nf, dot
+
+    t = strtrim(s)
+    n = strlen(t)
+    i = 1
+    if (n == 0) return(0)
+    c = substr(t, 1, 1)
+    if (c == "+" | c == "-") i = 2
+    nd  = 0
+    nf  = 0
+    dot = 0
+    while (i <= n) {
+        c = substr(t, i, 1)
+        if (c >= "0" & c <= "9") {
+            if (dot) nf++
+            else nd++
+        }
+        else if (c == "." & !dot & !isint) dot = 1
+        else break
+        i++
+    }
+    if (nd + nf == 0) return(0)
+    if (i > n) return(1)
+    if (isint) return(0)
+    c = substr(t, i, 1)
+    if (c != "e" & c != "E") return(0)
+    i++
+    if (i <= n) {
+        c = substr(t, i, 1)
+        if (c == "+" | c == "-") i++
+    }
+    if (i > n) return(0)
+    for (; i <= n; i++) {
+        c = substr(t, i, 1)
+        if (c < "0" | c > "9") return(0)
+    }
+    return(1)
+}
+
+// _dash_so_resolve(toks, cid, fam, names, msg, at) -- twoway's reading of
+// one option's sub-option words: toks every copy's words in command
+// order, cid each word's copy.  names is set to each word's full name or
+// "".  Returns 198 with msg twoway's message ("option po() not allowed",
+// "option labs incorrectly specified") and at the word's index for the
+// first problem, else 0.  Each stage, in order, names the unnamed words of
+// each copy; a starred stage passes what it cannot take on, an unstarred
+// one refuses it; what no stage named is refused.  Linear in words times
+// rows.
+real scalar _dash_so_resolve(string rowvector toks, real rowvector cid,
+                             string scalar fam, string rowvector names,
+                             string scalar msg, real scalar at)
+{
+    string matrix    t
+    string rowvector nm
+    string scalar    taken, bad, arg
+    real rowvector   paren
+    real scalar      i, j, s, smax, star, row, p, c, n
+
+    t     = _dash_so_rows(fam)
+    n     = cols(toks)
+    names = J(1, n, "")
+    nm    = J(1, n, "")
+    paren = J(1, n, 0)
+    msg   = ""
+    at    = 0
+    for (i = 1; i <= n; i++) {
+        p = strpos(toks[i], "(")
+        nm[i]    = strtrim(p ? substr(toks[i], 1, p - 1) : toks[i])
+        paren[i] = (p > 0)
+    }
+    smax = 0
+    for (j = 1; j <= rows(t); j++) smax = max((smax, strtoreal(t[j, 3])))
+    for (s = 1; s <= smax; s++) {
+        star = -1
+        for (j = 1; j <= rows(t); j++) {
+            if (strtoreal(t[j, 3]) == s) {
+                star = (t[j, 5] == "1")
+                break
+            }
+        }
+        if (star < 0) continue
+        taken = " "
+        c     = .
+        for (i = 1; i <= n; i++) {
+            if (cid[i] != c) {
+                c     = cid[i]
+                taken = " "
+            }
+            if (names[i] != "") continue
+            row = 0
+            if (nm[i] != "" & nm[i] == strlower(nm[i])) {
+                for (j = 1; j <= rows(t); j++) {
+                    if (strtoreal(t[j, 3]) != s) continue
+                    if (strlen(nm[i]) >= strlen(t[j, 2]) &
+                        strlen(nm[i]) <= strlen(t[j, 1]) &
+                        substr(t[j, 1], 1, strlen(nm[i])) == nm[i]) {
+                        row = j
+                        break
+                    }
+                }
+            }
+            bad = ""
+            if (!row) bad = "none"
+            else {
+                if (strpos(taken, " " + t[row, 1] + ":" + t[row, 4] + " ") &
+                    (t[row, 4] == "a" | (star & t[row, 4] == "w"))) {
+                    bad = "taken"
+                }
+                else if ((t[row, 4] == "w") == paren[i]) bad = "form"
+                else if (t[row, 6] == "R" | t[row, 6] == "I") {
+                    arg = _dash_rep_value(toks[i])
+                    if (substr(toks[i], strlen(toks[i]), 1) != ")") {
+                        arg = substr(toks[i], strpos(toks[i], "(") + 1, .)
+                    }
+                    if (!_dash_so_isnum(arg, t[row, 6] == "I")) bad = "form"
+                }
+            }
+            if (bad == "") {
+                names[i] = t[row, 1]
+                taken = taken + t[row, 1] + ":" + t[row, 4] + " "
+                continue
+            }
+            if (star) continue
+            if (at == 0) {
+                at  = i
+                msg = "option " + nm[i] + (paren[i] ? "()" : "") +
+                      (bad == "form" ? " incorrectly specified" :
+                       " not allowed")
+            }
+        }
+        if (at) return(198)
+    }
+    for (i = 1; i <= n; i++) {
+        if (names[i] == "") {
+            at  = i
+            msg = "option " + nm[i] + (paren[i] ? "()" : "") + " not allowed"
+            return(198)
+        }
+    }
+    return(0)
+}
+
+// _dash_so_family(key) -- the sub-option table a merge key reads: legend()
+// "legend", an axis label or tick list "axlabel", an axis scale
+// "axscale", a title "textbox", plotregion() and graphregion() "region"
+// (WP-30 P1.20a); "" for by(), text() and lines.
+string scalar _dash_so_family(string scalar key)
+{
+    string scalar cat
+
+    if (_dash_rep_bare(key) == "legend") return("legend")
+    if (anyof(("plotregion", "graphregion"), _dash_rep_bare(key))) return("region")
+    cat = _dash_rep_cat(key)
+    if (cat == "L") return("axlabel")
+    if (cat == "S") return("axscale")
+    if (cat == "T") return("textbox")
+    return("")
+}
+
+// _dash_so_unsafe(s) -- 1 when s holds a backtick, $, a quote, a backslash
+// or a byte below 32: a value never put to -numlist-.
+real scalar _dash_so_unsafe(string scalar s)
+{
+    real scalar i, b
+
+    for (i = 1; i <= strlen(s); i++) {
+        b = ascii(substr(s, i, 1))
+        if (b < 32 | b == 96 | b == 36 | b == 39 | b == 34 | b == 92) return(1)
+    }
+    return(0)
+}
+
+// _dash_subreq_clear(), _dash_subreq_add(opts, seg), _dash_subreq_check(kind)
+// and _dash_subreq_accept() -- twoway's refusals of the sub-options of
+// legend(), zlabel() and the titles (WP-30 P1.19).  _dash_subreq_add
+// records, from the RAW option text (called by _dash_axreq_add, with its
+// arguments), one row per option in the external _dash_subreq: kind
+// ("legend", "zlabel", "title:<name>" or "axtitle:<name>"), seg, place and
+// the sub-option words.  _dash_subreq_check resolves them with twoway's
+// tables and refuses the first problem with twoway's words through
+// _dash_say, r(198); a cols()/rows()/holes() value it hands back (-1, the
+// caller's locals _so_name, _so_value and _so_kind) for dash.ado's
+// _dash_subopt_check to put to -numlist-, which then accepts it
+// (_dash_subreq_accept) and checks again.  The record is cleared at the
+// start of every graph command and after every check or refusal, so no
+// typed text is kept.
+void _dash_subreq_clear()
+{
+    external string matrix _dash_subreq
+    external real rowvector _dash_subreq_ok
+    external real scalar    _dash_subreq_last
+
+    _dash_subreq      = J(0, 4, "")
+    _dash_subreq_ok   = J(1, 0, .)
+    _dash_subreq_last = 0
+}
+
+void _dash_subreq_add(string scalar opts, real scalar seg)
+{
+    external string matrix _dash_subreq
+    string rowvector toks, tnames, tmins
+    string scalar    nm, v, body, sub, b2, s2, kind
+    real scalar      i, j, k
+
+    toks = _dash_rep_toks(opts, 0)
+    if (cols(toks) == 0) return
+    tnames = ("title", "subtitle", "note", "caption", "t1title", "t2title",
+              "b1title", "b2title", "l1title", "l2title", "r1title",
+              "r2title", "xtitle", "ytitle", "xtitle2", "ytitle2", "ztitle")
+    tmins  = ("ti", "sub", "note", "cap", "t1", "t2", "b1", "b2", "l1",
+              "l2", "r1", "r2", "xti", "yti", "xtitle2", "ytitle2", "zti")
+    if (rows(_dash_subreq) == 0 | cols(_dash_subreq) != 4) {
+        _dash_subreq = J(0, 4, "")
+    }
+    for (i = 1; i <= cols(toks); i++) {
+        if (!strpos(toks[i], "(")) continue
+        nm = _dash_rep_optname(toks[i])
+        if (nm == "" | nm != strlower(nm)) continue
+        v  = _dash_rep_value(toks[i])
+        kind = ""
+        if (strlen(nm) >= 3 & substr("legend", 1, strlen(nm)) == nm) {
+            kind = "legend"
+            sub  = v
+        }
+        else if (strlen(nm) >= 4 & substr("zlabel", 1, strlen(nm)) == nm) {
+            kind = "zlabel"
+            sub  = ""
+            if (_dash_rep_split(v, body, sub)) {
+                if (_dash_rep_split(sub, b2, s2)) sub = b2
+            }
+        }
+        else if ((strlen(nm) >= 6 & substr("graphregion", 1, strlen(nm)) == nm) |
+                 (strlen(nm) >= 5 & substr("plotregion", 1, strlen(nm)) == nm)) {
+            // A region's whole value (WP-30 P1.20a): graphr() and plotr()
+            // are the minimums dash.sthlp states.
+            kind = "region:" + (substr(nm, 1, 1) == "g" ? "graphregion" : "plotregion")
+            sub  = v
+        }
+        else {
+            k = 0
+            for (j = 1; j <= cols(tnames); j++) {
+                if (strlen(nm) >= strlen(tmins[j]) &
+                    strlen(nm) <= strlen(tnames[j]) &
+                    substr(tnames[j], 1, strlen(nm)) == nm) {
+                    k = j
+                    break
+                }
+            }
+            if (k) {
+                kind = (anyof(("xtitle", "ytitle", "xtitle2", "ytitle2",
+                               "ztitle"), tnames[k]) ? "axtitle:" : "title:") +
+                       tnames[k]
+                sub = ""
+                (void) _dash_rep_split(v, body, sub)
+            }
+        }
+        if (kind == "" | strtrim(sub) == "") continue
+        _dash_subreq = _dash_subreq \ (kind, strofreal(seg), strofreal(i), sub)
+    }
+}
+
+// _dash_subreq_toks(kind, toks, cid) -- every recorded copy of kind (an
+// exact kind, or every title/axtitle kind when kind is "title:" or
+// "axtitle:" and the next name) in (seg, place) order, as one word list
+// and each word's copy number.
+void _dash_subreq_toks(string scalar kind, string rowvector toks,
+                       real rowvector cid)
+{
+    external string matrix _dash_subreq
+    string rowvector w
+    real colvector   o
+    real scalar      i, c
+
+    toks = J(1, 0, "")
+    cid  = J(1, 0, .)
+    if (rows(_dash_subreq) == 0) return
+    o = order(strtoreal(_dash_subreq[., (2, 3)]), (1, 2))
+    c = 0
+    for (i = 1; i <= rows(o); i++) {
+        if (_dash_subreq[o[i], 1] != kind) continue
+        // A title's empty slots -- ytitle(A,,) -- are no words, as twoway
+        // ignores them (WP-29 P0.4).
+        w = _dash_rep_toks(_dash_subreq[o[i], 4], kind != "legend")
+        if (cols(w) == 0) continue
+        c++
+        toks = toks, w
+        cid  = cid, J(1, cols(w), c)
+    }
+}
+
+// _dash_subreq_label(w, opt) -- twoway's refusal of label()/lastlabel()'s
+// key word w (one pair of quotes stripped), or "".
+string scalar _dash_subreq_label(string scalar w, string scalar opt)
+{
+    string scalar t, d
+    real scalar   i, nz
+
+    t = w
+    if (strlen(t) >= 2 & substr(t, 1, 1) == char(34) &
+        substr(t, strlen(t), 1) == char(34)) t = substr(t, 2, strlen(t) - 2)
+    if (t == "") return("")
+    d = t
+    if (substr(d, 1, 1) == "+" | substr(d, 1, 1) == "-") d = substr(d, 2, .)
+    if (d == "" | !_dash_is_digits(d, .)) {
+        return(t + " not an integer in option " + opt + "()")
+    }
+    nz = 0
+    for (i = 1; i <= strlen(d); i++) if (substr(d, i, 1) != "0") nz = 1
+    if (substr(t, 1, 1) == "-" | !nz) return("legend.labels[" + t + "] invalid name")
+    return("")
+}
+
+real scalar _dash_subreq_check(string scalar kind)
+{
+    external string matrix  _dash_subreq
+    external real rowvector _dash_subreq_ok
+    external real scalar    _dash_subreq_last
+    string rowvector toks, names, w, kinds
+    string scalar    msg, f, arg, lastpos, lastring, lastorder, m, fam
+    real rowvector   cid
+    real colvector   o
+    real scalar      rc, at, i, j, k, c, q, hasp, hass
+
+    if (rows(_dash_subreq) == 0 | cols(_dash_subreq) != 4) {
+        _dash_subreq_clear()
+        return(0)
+    }
+    if (kind == "legend") {
+        _dash_subreq_toks("legend", toks, cid)
+        if (cols(toks) == 0) return(0)
+        rc = _dash_so_resolve(toks, cid, "legend", names, msg, at)
+        if (cols(_dash_subreq_ok) == 0) _dash_subreq_ok = J(1, 0, .)
+        // 1. Values, in twoway's order: per copy, holes() rows() cols()
+        //    as ParseLogOpts declares them; then every label(), then
+        //    every lastlabel().
+        for (c = 1; c <= max(cid); c++) {
+            for (k = 1; k <= 3; k++) {
+                f = (k == 1 ? "holes" : (k == 2 ? "rows" : "cols"))
+                for (i = 1; i <= cols(toks); i++) {
+                    if (cid[i] != c | names[i] != f) continue
+                    if (anyof(_dash_subreq_ok, i)) continue
+                    arg = strtrim(_dash_rep_value(toks[i]))
+                    if (arg == "") continue
+                    _dash_subreq_last = i
+                    st_local("_so_name", f)
+                    st_local("_so_value", arg)
+                    st_local("_so_kind", f == "holes" ? "NL" : "N1")
+                    return(-1)
+                }
+            }
+        }
+        for (k = 1; k <= 2; k++) {
+            f = (k == 1 ? "label" : "lastlabel")
+            for (i = 1; i <= cols(toks); i++) {
+                if (names[i] != f) continue
+                w = _dash_rep_toks(_dash_rep_value(toks[i]), 0)
+                m = (cols(w) ? _dash_subreq_label(w[1], f) : "")
+                if (m != "") {
+                    _dash_say("err", "", m, "")
+                    _dash_subreq_clear()
+                    return(198)
+                }
+            }
+        }
+        // 2. The leftover.  A bare top/bottom/left/right is left to
+        //    _dash_check_legend, which adds the position() hint.
+        if (rc) {
+            if (anyof(("top", "bottom", "left", "right"), toks[at])) {
+                _dash_subreq_drop("legend")
+                return(0)
+            }
+            _dash_say("err", "", msg, "")
+            _dash_subreq_clear()
+            return(198)
+        }
+        // 3. twoway's notes, once each.
+        lastpos   = ""
+        lastring  = ""
+        lastorder = ""
+        hasp      = 0
+        for (i = 1; i <= cols(toks); i++) {
+            if (names[i] == "position") lastpos   = strtrim(_dash_rep_value(toks[i]))
+            if (names[i] == "ring")     lastring  = strtrim(_dash_rep_value(toks[i]))
+            if (names[i] == "order") {
+                lastorder = _dash_rep_value(toks[i])
+                hasp = 1
+            }
+        }
+        if (lastpos != "" & !anyof(("0", "1", "2", "3", "4", "5", "6", "7",
+                                    "8", "9", "10", "11", "12"), lastpos)) {
+            _dash_note("named style ", lastpos,
+                       " not found in class clockdir, default attributes used")
+        }
+        if (lastring != "" & !_dash_so_isnum(lastring, 0)) {
+            _dash_note("named style ", lastring,
+                       " not found in class gridringstyle, default attributes used")
+            _dash_note("", "gridringstyle",
+                       " not found in scheme, default attributes used")
+        }
+        if (hasp) {
+            w = _dash_rep_toks(lastorder, 0)
+            for (j = 1; j <= cols(w); j++) {
+                q = ascii(substr(w[j], 1, 1))
+                if (q == 34 | q == 96 | w[j] == "-") continue
+                if (_dash_so_isnum(w[j], 1)) continue
+                _dash_note("", w[j], " not an integer, option order() ignored")
+                break
+            }
+        }
+        _dash_subreq_drop("legend")
+        return(0)
+    }
+    if (kind == "region") {
+        // WP-30 P1.20a: every graphregion() copy, then every plotregion()
+        // copy, in (seg, place) order, each read alone, as twoway's
+        // twowaygraph_g.class:183 and :456 call the region parser.
+        o = order(strtoreal(_dash_subreq[., (2, 3)]), (1, 2))
+        for (k = 1; k <= 2; k++) {
+            f = (k == 1 ? "region:graphregion" : "region:plotregion")
+            for (q = 1; q <= rows(o); q++) {
+                if (_dash_subreq[o[q], 1] != f) continue
+                m = _dash_subreq_region(_dash_subreq[o[q], 4])
+                if (m != "") {
+                    _dash_say("err", "", m, "")
+                    _dash_subreq_clear()
+                    return(198)
+                }
+            }
+        }
+        _dash_subreq_drop("region:graphregion")
+        _dash_subreq_drop("region:plotregion")
+        return(0)
+    }
+    if (kind == "zlabel") {
+        for (i = 1; i <= rows(_dash_subreq); i++) {
+            if (_dash_subreq[i, 1] != "zlabel") continue
+            toks = _dash_rep_toks(_dash_subreq[i, 4], 1)
+            if (cols(toks) == 0) continue
+            if (_dash_so_resolve(toks, J(1, cols(toks), 1), "axlabel",
+                                 names, msg, at)) {
+                _dash_say("err", "", msg, "")
+                _dash_subreq_clear()
+                return(198)
+            }
+        }
+        _dash_subreq_drop("zlabel")
+        return(0)
+    }
+    if (kind == "title") {
+        kinds = J(1, 0, "")
+        for (i = 1; i <= rows(_dash_subreq); i++) {
+            if (substr(_dash_subreq[i, 1], 1, 6) != "title:" &
+                substr(_dash_subreq[i, 1], 1, 8) != "axtitle:") continue
+            if (!anyof(kinds, _dash_subreq[i, 1])) kinds = kinds, _dash_subreq[i, 1]
+        }
+        for (k = 1; k <= cols(kinds); k++) {
+            _dash_subreq_toks(kinds[k], toks, cid)
+            if (cols(toks) == 0) continue
+            fam = (substr(kinds[k], 1, 8) == "axtitle:" ? "axtitle" : "title")
+            if (fam == "axtitle") {
+                for (c = 1; c <= max(cid); c++) {
+                    hasp = 0
+                    hass = 0
+                    for (i = 1; i <= cols(toks); i++) {
+                        if (cid[i] != c) continue
+                        if (_dash_so_canon(toks[i], "axtitle") == "prefix") hasp = 1
+                        if (_dash_so_canon(toks[i], "axtitle") == "suffix") hass = 1
+                    }
+                    if (hasp & hass) {
+                        _dash_say("err", "options prefix and suffix may not be combined", "", "")
+                        _dash_subreq_clear()
+                        return(198)
+                    }
+                }
+            }
+            if (_dash_so_resolve(toks, cid, fam, names, msg, at)) {
+                _dash_say("err", "", msg, "")
+                _dash_subreq_clear()
+                return(198)
+            }
+        }
+        _dash_subreq_clear()
+        return(0)
+    }
+    return(0)
+}
+
+// _dash_subreq_region(v) -- twoway's refusal of one region copy's value v,
+// or "" (WP-30 P1.20a): a word after a top-level comma is "invalid
+// '<word>'" (blanks after it are ignored); then the words are read with
+// twoway's region table (_dash_so_resolve: an unknown, capitalised or
+// too-short name, or one given twice, "option c() not allowed"); then a
+// word option given twice, "option marginonly not allowed".
+string scalar _dash_subreq_region(string scalar v)
+{
+    string rowvector w, names
+    string scalar    body, sub, msg
+    real scalar      at, i, j, p
+
+    body = v
+    if (_dash_rep_split(v, body, sub)) {
+        w = _dash_rep_toks(sub, 1)
+        if (cols(w)) {
+            p = strpos(w[1], "(")
+            return("invalid '" + (p ? substr(w[1], 1, p - 1) : w[1]) + "'")
+        }
+    }
+    w = _dash_rep_toks(body, 0)
+    if (cols(w) == 0) return("")
+    if (_dash_so_resolve(w, J(1, cols(w), 1), "region", names, msg, at)) {
+        return(msg)
+    }
+    for (i = 1; i <= cols(w); i++) {
+        if (names[i] != "marginonly") continue
+        for (j = i + 1; j <= cols(w); j++) {
+            if (names[j] == "marginonly") return("option " + w[j] + " not allowed")
+        }
+    }
+    return("")
+}
+
+// _dash_subreq_drop(kind) -- the record less its rows of kind, once that
+// kind is checked; the accepted values with it.
+void _dash_subreq_drop(string scalar kind)
+{
+    external string matrix  _dash_subreq
+    external real rowvector _dash_subreq_ok
+    real colvector keep
+
+    _dash_subreq_ok = J(1, 0, .)
+    if (rows(_dash_subreq) == 0) return
+    keep = (_dash_subreq[., 1] :!= kind)
+    if (any(keep)) _dash_subreq = select(_dash_subreq, keep)
+    else _dash_subreq = J(0, 4, "")
+}
+
+// _dash_subreq_accept() -- the value _dash_subreq_check last handed back
+// passed -numlist-: it is not handed back again.
+void _dash_subreq_accept()
+{
+    external real rowvector _dash_subreq_ok
+    external real scalar    _dash_subreq_last
+
+    if (_dash_subreq_last > 0) _dash_subreq_ok = _dash_subreq_ok, _dash_subreq_last
+    _dash_subreq_last = 0
+}
+
+// _dash_rep_subkey(tok, cat, full) -- which sub-option a word sets, for keeping
+// the last of each: its full name (full, twoway's reading; WP-30 P1.19) or
+// else its typed name in lower case, a noX taken as X (grid and nogrid,
+// box and nobox are one setting), on and off as one, and label(# ...) and
+// lastlabel(# ...) keyed by their number.  cols and rows are keys of their
+// own; _dash_rep_subs lets rows() beat cols().
+string scalar _dash_rep_subkey(string scalar tok, string scalar cat,
+                               string scalar full)
 {
     string scalar nm, v
     real scalar   p
 
     p  = strpos(tok, "(")
-    nm = strlower(strtrim(p ? substr(tok, 1, p - 1) : tok))
-    if (strlen(nm) > 2 & substr(nm, 1, 2) == "no") nm = substr(nm, 3, .)
-    if (nm == "pos") nm = "position"
-    if (nm == "cols" | nm == "rows") nm = "cols|rows"
+    nm = (full != "" ? full : strlower(strtrim(p ? substr(tok, 1, p - 1) : tok)))
+    if (strlen(nm) > 2 & substr(nm, 1, 2) == "no" & nm != "note") nm = substr(nm, 3, .)
     if (nm == "on" | nm == "off") nm = "on|off"
     if ((nm == "label" | nm == "lastlabel") & cat == "I" & p) {
         v = strtrim(_dash_rep_value(tok))
@@ -5652,24 +8532,69 @@ string scalar _dash_rep_subkey(string scalar tok, string scalar cat)
     return(nm)
 }
 
-// _dash_rep_subs(s1, s2, cat, drop) -- two sub-option lists as one: every
+// _dash_rep_subs(s1, s2, cat, drop, key) -- two sub-option lists as one: every
 // word of s1 then s2, keeping only the last word of each setting
 // (_dash_rep_subkey), in the order the kept words stand, less the words
 // listed in drop (suffix, prefix, add: merging instructions, spent here).
 // On an axis scale ("S") every range() is one range(), the union of the
 // ranges written, as twoway draws xscale(range(0 8000)) xscale(range(1000
-// 6000)) over 0 to 8000.
+// 6000)) over 0 to 8000; when one is not numbers (a tscale() date), their
+// values joined in one range() (WP-30 P1.6).
+//
+// For legend(), the axis labels and ticks, the scales and the titles
+// (_dash_so_family(key); WP-30 P1.19) each side is first read as twoway
+// reads it (_dash_so_resolve, s1 copy 1 and s2 copy 2), so a word is keyed
+// by its full name: lab(1 "AA") and label(2 "BB") are two labels, c(2) and
+// cols(1) one setting.  On each side of legend() and an axis label a word
+// beats its no form, and on beats off, as twoway's code order has it;
+// rows() beats every cols() in legend(); and a word whose full name is not
+// the one its spelling alone gives (the second c() of cols(1) c(red) is
+// color()) is written under its full name, so the merged text reads the
+// same.
 string scalar _dash_rep_subs(string scalar s1, string scalar s2,
-                             string scalar cat, string rowvector drop)
+                             string scalar cat, string rowvector drop,
+                             | string scalar key)
 {
-    string rowvector w, keys
-    string scalar    out, k
-    real scalar      i, j, keep, lo, hi, v, nr, rng, ok
-    real rowvector   nums
+    string rowvector w, keys, full, rw1, rw2, rn1, rn2
+    string scalar    out, k, fam, msg, nm, rv
+    real scalar      i, j, keep, lo, hi, v, nr, rng, ok, n1, at, p, hasrows
+    real rowvector   nums, cid, alive
 
+    // A region (WP-30 P1.20a): each copy read alone, then copy 2 applied
+    // to copy 1 as twoway's parser applies it (_dash_rep_region).
+    fam = (args() >= 5 ? _dash_so_family(key) : "")
+    if (fam == "region") {
+        rw1 = _dash_rep_toks(s1, 1)
+        rw2 = _dash_rep_toks(s2, 1)
+        (void) _dash_so_resolve(rw1, J(1, cols(rw1), 1), "region", rn1, msg, at)
+        (void) _dash_so_resolve(rw2, J(1, cols(rw2), 1), "region", rn2, msg, at)
+        return(_dash_rep_region(rw1, rn1, rw2, rn2))
+    }
+    n1 = cols(_dash_rep_toks(s1, 1))
     w = _dash_rep_toks(s1, 1), _dash_rep_toks(s2, 1)
-    keys = J(1, cols(w), "")
-    for (i = 1; i <= cols(w); i++) keys[i] = _dash_rep_subkey(w[i], cat)
+    keys  = J(1, cols(w), "")
+    full  = J(1, cols(w), "")
+    alive = J(1, cols(w), 1)
+    if (fam != "" & cols(w)) {
+        cid = J(1, n1, 1), J(1, cols(w) - n1, 2)
+        (void) _dash_so_resolve(w, cid, fam, full, msg, at)
+        if (fam == "legend" | fam == "axlabel") {
+            for (i = 1; i <= cols(w); i++) {
+                nm = full[i]
+                if (nm == "") continue
+                for (j = 1; j <= cols(w); j++) {
+                    if (cid[j] != cid[i] | j == i) continue
+                    if ((strlen(nm) > 2 & substr(nm, 1, 2) == "no" &
+                         full[j] == substr(nm, 3, .)) |
+                        (nm == "off" & full[j] == "on")) {
+                        alive[i] = 0
+                        break
+                    }
+                }
+            }
+        }
+    }
+    for (i = 1; i <= cols(w); i++) keys[i] = _dash_rep_subkey(w[i], cat, full[i])
     lo  = .
     hi  = .
     nr  = 0
@@ -5688,21 +8613,48 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
             }
         }
     }
+    hasrows = 0
+    if (fam == "legend") {
+        for (i = 1; i <= cols(w); i++) if (alive[i] & full[i] == "rows") hasrows = 1
+    }
     out = ""
     for (i = 1; i <= cols(w); i++) {
+        if (!alive[i]) continue
         if (anyof(drop, strlower(w[i]))) continue
+        if (hasrows & full[i] == "cols") continue
         keep = 1
         for (j = i + 1; j <= cols(w); j++) {
-            if (keys[j] == keys[i]) {
+            if (alive[j] & keys[j] == keys[i]) {
                 keep = 0
                 break
             }
         }
         if (!keep) continue
+        if (full[i] != "") {
+            p = strpos(w[i], "(")
+            if (_dash_so_canon(p ? substr(w[i], 1, p - 1) : w[i], fam) != full[i]) {
+                out = out + (out == "" ? "" : " ") + full[i] +
+                      (p ? substr(w[i], p, .) : "")
+                continue
+            }
+        }
         if (cat == "S" & i == rng & nr > 1 & ok) {
             out = out + (out == "" ? "" : " ") + "range(" +
                   strtrim(strofreal(lo, "%21.0g")) + " " +
                   strtrim(strofreal(hi, "%21.0g")) + ")"
+            continue
+        }
+        // A range() that is no number -- tscale(range(1999m1))
+        // tscale(range(2006m1)), dates read later by _dash_taxis_fold --
+        // keeps every copy's values, in order, in the one range() kept,
+        // so their union is taken once they are numbers (WP-30 P1.6).
+        if (cat == "S" & i == rng & nr > 1 & !ok) {
+            rv = ""
+            for (j = 1; j <= cols(w); j++) {
+                if (keys[j] != "range" | !strpos(w[j], "(")) continue
+                rv = rv + (rv == "" ? "" : " ") + strtrim(_dash_rep_value(w[j]))
+            }
+            out = out + (out == "" ? "" : " ") + "range(" + rv + ")"
             continue
         }
         out = out + (out == "" ? "" : " ") + w[i]
@@ -5710,22 +8662,127 @@ string scalar _dash_rep_subs(string scalar s1, string scalar s2,
     return(out)
 }
 
+// _dash_rep_region(w1, n1, w2, n2) -- two copies of plotregion() or
+// graphregion() as one (WP-30 P1.20a): w1/w2 each copy's words, n1/n2
+// their full names ("" for a word twoway refuses, which keeps its typed
+// form and its typed name).  twoway's _fr_area_parse_and_log.ado applies
+// each copy to the result of the one before (.style.editstyle), so a name
+// in copy 2 drops what it overrides in copy 1 -- style() everything but
+// margin(); lstyle() the outline; shadestyle() the fill; color() color,
+// fcolor and lcolor; fcolor() and lcolor() their own name, leaving copy
+// 1's color() the other half (written fcolor()/lcolor(), or dropped when
+// copy 1 sets that half itself); the rest their own name -- and every
+// margin() is kept, in order, for section 47.  The i* twins follow the same
+// rules among themselves.  Returns copy 1's survivors then copy 2, each as
+// full(arg).  Byte loops, no regular expression.
+string scalar _dash_rep_region(string rowvector w1, string rowvector n1,
+                               string rowvector w2, string rowvector n2)
+{
+    string rowvector a, an, drop
+    string scalar    out, nm, base, pre, rw, tn
+    real rowvector   alive
+    real scalar      i, j, k, has
+
+    a     = w1
+    an    = n1
+    alive = J(1, cols(a), 1)
+    for (j = 1; j <= cols(w2); j++) {
+        nm = n2[j]
+        if (nm == "margin" | nm == "imargin") continue
+        if (nm == "") {
+            tn = _dash_rep_optname(w2[j])
+            for (i = 1; i <= cols(a); i++) {
+                if (an[i] == "" & _dash_rep_optname(a[i]) == tn) alive[i] = 0
+            }
+            continue
+        }
+        pre  = ""
+        base = nm
+        if (substr(nm, 1, 1) == "i" & nm != "intensity") {
+            pre  = "i"
+            base = substr(nm, 2, .)
+        }
+        rw   = ""
+        drop = (base)
+        if (base == "style") {
+            drop = ("style", "lstyle", "lcolor", "lwidth", "lpattern",
+                    "lalign", "shadestyle", "color", "fcolor", "intensity")
+        }
+        else if (base == "lstyle") {
+            drop = ("lstyle", "lcolor", "lwidth", "lpattern", "lalign")
+            rw   = "fcolor"
+        }
+        else if (base == "shadestyle") {
+            drop = ("shadestyle", "fcolor", "intensity")
+            rw   = "lcolor"
+        }
+        else if (base == "color") drop = ("color", "fcolor", "lcolor")
+        else if (base == "fcolor") rw = "lcolor"
+        else if (base == "lcolor") rw = "fcolor"
+        for (k = 1; k <= cols(drop); k++) drop[k] = pre + drop[k]
+        for (i = 1; i <= cols(a); i++) {
+            if (alive[i] & anyof(drop, an[i])) alive[i] = 0
+        }
+        if (rw == "") continue
+        for (i = 1; i <= cols(a); i++) {
+            if (!alive[i] | an[i] != pre + "color") continue
+            has = 0
+            for (k = 1; k <= cols(a); k++) {
+                if (alive[k] & an[k] == pre + rw) has = 1
+            }
+            if (has) alive[i] = 0
+            else {
+                a[i]  = pre + rw + "(" + _dash_rep_value(a[i]) + ")"
+                an[i] = pre + rw
+            }
+        }
+    }
+    out = ""
+    for (i = 1; i <= cols(a); i++) {
+        if (!alive[i]) continue
+        out = out + (out == "" ? "" : " ") + _dash_rep_region_word(a[i], an[i])
+    }
+    for (j = 1; j <= cols(w2); j++) {
+        out = out + (out == "" ? "" : " ") + _dash_rep_region_word(w2[j], n2[j])
+    }
+    return(out)
+}
+
+// _dash_rep_region_word(w, full) -- a region word as full(arg), or as
+// typed when twoway gave it no full name; marginonly bare.
+string scalar _dash_rep_region_word(string scalar w, string scalar full)
+{
+    if (full == "") return(w)
+    if (!strpos(w, "(")) return(full)
+    return(full + substr(w, strpos(w, "("), .))
+}
+
 // _dash_rep_merge(key, v1, v2) -- the value twoway draws for option key
 // written first with value v1 and then with v2 (_dash_rep_cat says how).
+// An axis-label option (cat L) keeps add as twoway merges it (WP-30
+// P1.18b, test/fixtures/axis_add_truth.json): ylabel(25, add)
+// ylabel(35, add) is 25 35, add (both held add); ylabel(25)
+// ylabel(35, add) is 25 35 (appended, add spent); ylabel(25, add)
+// ylabel(35) is 35; ylabel(25, nolabels) ylabel(35, add) is 25 35,
+// nolabels; and a copy with no values keeps the earlier copy's add
+// (a01: ylabel(25, add) ylabel(, nolabels) is 25, nolabels add).
 string scalar _dash_rep_merge(string scalar key, string scalar v1,
                               string scalar v2)
 {
     string scalar    cat, b1, s1, b2, s2, body, sub
     string rowvector w2, drop
-    real scalar      c1, c2, has2, suf, pre, add
+    real scalar      c1, c2, has2, suf, pre, add, a1, keep
 
     cat = _dash_rep_cat(key)
+    if (cat == "F") return(strtrim(v1) != "" ? v1 : v2)
     if (cat == "R" | strtrim(v1) == "") return(v2)
     if (strtrim(v2) == "") return(v1)
-    if (cat == "A") return(v1 + " " + v2)
+    // Each copy kept apart by a record separator; _dash_at_lex splits
+    // only outside quotes (WP-30 P1.10).
+    if (cat == "A") return(v1 + char(30) + v2)
     if (cat == "X") return(v1 + ", " + v2)
     if (cat == "I" | cat == "S") {
-        return(_dash_rep_subs(v1, v2, cat, J(1, 0, "")))
+        return(_dash_rep_subs(v1, v2, cat, J(1, 0, ""), key))
     }
     c1 = _dash_rep_split(v1, b1, s1)
     c2 = _dash_rep_split(v2, b2, s2)
@@ -5740,7 +8797,12 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     else if (pre & has2)  body = strtrim(b2) + " " + strtrim(b1)
     else if (add & has2)  body = strtrim(b1) + " " + strtrim(b2)
     else                  body = (has2 ? strtrim(b2) : strtrim(b1))
-    sub = _dash_rep_subs(s1, s2, cat, drop)
+    sub = _dash_rep_subs(s1, s2, cat, drop, key)
+    if (cat == "L") {
+        a1   = anyof(strlower(_dash_rep_toks(s1, 1)), "add")
+        keep = (has2 ? (add & a1) : a1)
+        if (keep) sub = sub + (sub != "" ? " " : "") + "add"
+    }
     return(body + (sub != "" ? ", " + sub : ""))
 }
 
@@ -5750,6 +8812,448 @@ void _dash_rep_merge_locals(string scalar key, string scalar m1,
                             string scalar m2, string scalar out)
 {
     st_local(out, _dash_rep_merge(key, st_local(m1), st_local(m2)))
+}
+
+// ==== text() and ttext() (WP-30 P1.10) ===================================
+// twoway draws each copy of text(y x "line" ... [, sub-options]) as text
+// boxes at data points (twowaygraph_g.class ParseAndLogText and
+// _parse_log_1textbox, StataNow 19.5; test/fixtures/added_text_truth.json).
+// _dash_rep_merge keeps repeated copies apart with char(30); these
+// functions split them, read each copy's points and lines by value, and
+// write the records dash.ado puts in the graph's options.  Nothing here
+// runs a copy's text: every token is read as data, numbers through a
+// strict literal, date literals (ttext()) only through
+// _dash_tdate_value's gate (WP-30 P1.6).  Each scan reads the bytes once,
+// so 100,000 copies parse in linear time.
+
+// _dash_at_lex(raw, st, ln, kd, cp, os, ol, nt) -- raw read once, byte by
+// byte, as gettoken reads a text() copy.  Copies end at char(30); in each,
+// the text before the first comma outside quotes and parentheses is
+// tokens -- blank-separated words, or one simple "..." or compound
+// string, quotes kept -- and the rest, to the copy's end, its sub-options.
+// Sets by reference: per token its start st, length ln, kind kd (1 a
+// word, 2 a quoted string) and copy cp; per copy the start os and length
+// ol of its sub-options (ol 0 when none).  Returns the number of copies.
+// A char(30) inside a quoted string is the string's own; one string
+// opened and never closed runs to the copy's end.  Linear in the bytes.
+real scalar _dash_at_lex(string scalar raw, real colvector st,
+                         real colvector ln, real colvector kd,
+                         real colvector cp, real colvector os,
+                         real colvector ol, real scalar nt)
+{
+    real rowvector b
+    real scalar    i, j, n, k, depth, par, inopt, open, q
+
+    b  = ascii(raw)
+    n  = cols(b)
+    st = J(n + 1, 1, 0)
+    ln = st
+    kd = st
+    cp = st
+    os = st
+    ol = st
+    nt = 0
+    k  = 1
+    inopt = 0
+    par   = 0
+    open  = 0
+    i     = 1
+    while (i <= n) {
+        q = 0
+        if (b[i] == 96 & i < n) q = (b[i + 1] == 34) * 2
+        else if (b[i] == 34) q = 1
+        if (q) {
+            // A quoted string: skip to its close, nested pairs counted.
+            j = i + q
+            if (q == 2) {
+                depth = 1
+                while (j <= n) {
+                    if (b[j] == 96 & j < n) {
+                        if (b[j + 1] == 34) {
+                            depth++
+                            j = j + 2
+                            continue
+                        }
+                    }
+                    if (b[j] == 34 & j < n) {
+                        if (b[j + 1] == 39) {
+                            depth--
+                            j = j + 2
+                            if (!depth) break
+                            continue
+                        }
+                    }
+                    j++
+                }
+            }
+            else {
+                while (j <= n) {
+                    if (b[j] == 34) break
+                    j++
+                }
+                j++
+            }
+            if (j > n + 1) j = n + 1
+            if (!inopt) {
+                open = 0
+                nt++
+                st[nt] = i
+                ln[nt] = j - i
+                kd[nt] = 2
+                cp[nt] = k
+            }
+            i = j
+            continue
+        }
+        if (b[i] == 30) {
+            if (inopt) ol[k] = i - os[k]
+            open  = 0
+            inopt = 0
+            par   = 0
+            k++
+        }
+        else if (inopt) {
+        }
+        else if (b[i] == 32 | b[i] == 9) open = 0
+        else if (b[i] == 44 & !par) {
+            open  = 0
+            inopt = 1
+            os[k] = i + 1
+        }
+        else {
+            if (b[i] == 40) par++
+            else if (b[i] == 41 & par) par--
+            if (open) ln[nt] = ln[nt] + 1
+            else {
+                open = 1
+                nt++
+                st[nt] = i
+                ln[nt] = 1
+                kd[nt] = 1
+                cp[nt] = k
+            }
+        }
+        i++
+    }
+    if (inopt) ol[k] = n + 1 - os[k]
+    return(k)
+}
+
+// _dash_at_unq(tok, q) -- tok less one pair of enclosing quotes, compound
+// or simple, as gettoken reads it; q set to 1 when it had them.
+string scalar _dash_at_unq(string scalar tok, real scalar q)
+{
+    real scalar n
+
+    n = strlen(tok)
+    q = 1
+    if (n >= 4 & substr(tok, 1, 2) == char(96) + char(34) &
+        substr(tok, n - 1, 2) == char(34) + char(39)) {
+        return(substr(tok, 3, n - 4))
+    }
+    if (n >= 2 & substr(tok, 1, 1) == char(34) & substr(tok, n, 1) == char(34)) {
+        return(substr(tok, 2, n - 2))
+    }
+    q = 0
+    return(tok)
+}
+
+// _dash_at_isnum(tok) -- 1 when tok is a number as twoway's numlist reads
+// a point: an optional sign, digits with at most one point, an optional
+// exponent, and a value Stata can hold (1e400 is not; 3e3 is); else 0.
+// ".", "1+1", "a" and an empty token are not.
+real scalar _dash_at_isnum(string scalar tok)
+{
+    real rowvector b
+
+    if (tok == "" | strpos(tok, char(10)) | strpos(tok, char(13))) return(0)
+    // Digits alone, the common case, without the regular expression.
+    b = ascii(tok)
+    if (cols(b) <= 15) {
+        if (all(b :>= 48 :& b :<= 57)) return(1)
+    }
+    if (!ustrregexm(tok, "^[+-]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][+-]?[0-9]+)?$")) return(0)
+    return(strtoreal(tok) < .)
+}
+
+// _dash_at_parse(raw, datesok) -- every copy of raw read as twoway reads
+// it (_dash_at_lex): y x, then its quoted lines, and the next bare token
+// is the next point's y.  A point is two numbers (_dash_at_isnum), or
+// with datesok (ttext()) a number y and an x holding no parenthesis,
+// converted later (_dash_at_dates).  Kept in two Mata externals, read by
+// _dash_at_copy and _dash_at_records: _dash_at_C, per copy its
+// sub-options, its state (0 no point, 1 every point valid, 2 its first
+// point invalid, 3 a later one) and twoway's words for an invalid point
+// ("invalid point, <x> <y>"); _dash_at_R, one row per point with a line
+// that is not empty: y, x, the lines (a JSON array of escaped strings),
+// its copy, and "1" when x is a date literal to convert.  Sets the
+// caller's locals _at_k (copies) and _at_n (records).  Returns 0.  Reads
+// and writes by value only; 100,000 one-point copies take well under a
+// second (AT-04b).
+real scalar _dash_at_parse(string scalar raw, real scalar datesok)
+{
+    external string matrix _dash_at_R, _dash_at_C
+    real colvector st, ln, kd, cp, os, ol
+    real rowvector bb
+    string scalar  y, x, line, js, bare, ks
+    real scalar    nk, k, j, nt, n, state, pts, any, isd, q
+
+    nk = _dash_at_lex(raw, st, ln, kd, cp, os, ol, nt)
+    _dash_at_C = J(nk, 3, "")
+    _dash_at_R = J(floor(nt / 3) + 1, 5, "")
+    n  = 0
+    j  = 1
+    for (k = 1; k <= nk; k++) {
+        ks = strofreal(k)
+        if (ol[k]) _dash_at_C[k, 1] = substr(raw, os[k], ol[k])
+        y = ""
+        x = ""
+        if (cp[j] == k) {
+            y = substr(raw, st[j], ln[j])
+            if (kd[j] == 2) y = _dash_at_unq(y, q)
+            j++
+        }
+        if (cp[j] == k) {
+            x = substr(raw, st[j], ln[j])
+            if (kd[j] == 2) x = _dash_at_unq(x, q)
+            j++
+        }
+        state = 0
+        pts   = 0
+        while (y != "") {
+            pts++
+            isd = 0
+            if (!(_dash_at_isnum(y) & _dash_at_isnum(x))) {
+                if (datesok & _dash_at_isnum(y) & x != "" &
+                    !strpos(x, "(") & !strpos(x, ")") & !strpos(x, " ")) {
+                    isd = 1
+                }
+                else {
+                    state = (pts == 1 ? 2 : 3)
+                    _dash_at_C[k, 3] = "invalid point, " + x + " " + y
+                    break
+                }
+            }
+            js   = ""
+            any  = 0
+            bare = ""
+            while (cp[j] == k) {
+                if (kd[j] != 2) {
+                    bare = substr(raw, st[j], ln[j])
+                    j++
+                    break
+                }
+                line = _dash_at_unq(substr(raw, st[j], ln[j]), q)
+                j++
+                // _json_escape() only where a byte needs it.
+                bb = ascii(line)
+                if (cols(bb)) {
+                    if (any(bb :< 32 :| bb :== 34 :| bb :== 36 :| bb :== 39 :|
+                            bb :== 92 :| bb :== 96)) line = _json_escape(line)
+                    any = 1
+                }
+                js = js + (js != "" ? "," : "") + char(34) + line + char(34)
+            }
+            if (any) {
+                n++
+                _dash_at_R[n, 1] = y
+                _dash_at_R[n, 2] = x
+                _dash_at_R[n, 3] = "[" + js + "]"
+                _dash_at_R[n, 4] = ks
+                if (isd) _dash_at_R[n, 5] = "1"
+            }
+            y = bare
+            x = ""
+            if (y != "" & cp[j] == k) {
+                x = substr(raw, st[j], ln[j])
+                if (kd[j] == 2) x = _dash_at_unq(x, q)
+                j++
+            }
+        }
+        // The copy's tokens left after an invalid point are skipped.
+        while (cp[j] == k) j++
+        if (state == 0 & pts) state = 1
+        _dash_at_C[k, 2] = strofreal(state)
+    }
+    _dash_at_R = (n ? _dash_at_R[1..n, .] : J(0, 5, ""))
+    st_local("_at_k", strofreal(nk))
+    st_local("_at_n", strofreal(n))
+    return(0)
+}
+
+// _dash_at_copy(k) -- copy k of the last _dash_at_parse into the caller's
+// locals _at_o (its sub-options), _at_s (its state) and _at_e (twoway's
+// words for its invalid point, or "").
+void _dash_at_copy(real scalar k)
+{
+    external string matrix _dash_at_C
+
+    st_local("_at_o", _dash_at_C[k, 1])
+    st_local("_at_s", _dash_at_C[k, 2])
+    st_local("_at_e", _dash_at_C[k, 3])
+}
+
+// _dash_at_dates(u1, u2) -- each record of the last _dash_at_parse whose x
+// is a date literal (ttext()) converted in the unit of its x axis, u1 or
+// u2 (_dash_taxis_unit; the axis is the caller's local _at_xa<copy>), by
+// S51's gated converter (_dash_tdate_value), the token read as data and
+// never run.  Returns 0, or 198 with the token in the caller's local
+// _at_err when it is no date of that unit, or a missing value, which
+// twoway refuses: "<x> is not a number".
+real scalar _dash_at_dates(string scalar u1, string scalar u2)
+{
+    external string matrix _dash_at_R
+    real scalar    i, rc, val
+
+    for (i = 1; i <= rows(_dash_at_R); i++) {
+        if (_dash_at_R[i, 5] != "1") continue
+        val = .
+        rc = _dash_tdate_value(_dash_at_R[i, 2],
+                               st_local("_at_xa" + _dash_at_R[i, 4]) == "2" ? u2 : u1,
+                               val)
+        if (rc != 1 | val >= .) {
+            st_local("_at_err", _dash_at_R[i, 2])
+            return(198)
+        }
+        _dash_at_R[i, 2] = strofreal(val, "%21.0g")
+    }
+    return(0)
+}
+
+// _dash_at_place(p) -- the compass direction twoway draws placement(p) in
+// (style/compass2dir-*.style, measured: test/fixtures/
+// added_text_truth.json _meta.compass), "" for a name twoway notes and
+// draws east.  Lower case, as Stata's style names are.
+string scalar _dash_at_place(string scalar p)
+{
+    string matrix T
+    real scalar   i
+
+    T = ("n", "n" \ "north", "n" \ "12", "n" \ "t", "n" \ "top", "n" \
+         "1", "ne" \ "2", "ne" \ "ne", "ne" \ "neast", "ne" \
+         "3", "e" \ "e", "e" \ "east", "e" \ "r", "e" \ "right", "e" \
+         "4", "se" \ "5", "se" \ "se", "se" \ "seast", "se" \
+         "6", "s" \ "s", "s" \ "south", "s" \ "b", "s" \ "bottom", "s" \
+         "7", "sw" \ "8", "sw" \ "sw", "sw" \ "swest", "sw" \
+         "9", "w" \ "w", "w" \ "west", "w" \ "l", "w" \ "left", "w" \
+         "10", "nw" \ "11", "nw" \ "nw", "nw" \ "nwest", "nw" \
+         "0", "c" \ "c", "c" \ "center", "c")
+    for (i = 1; i <= rows(T); i++) {
+        if (T[i, 1] == p) return(T[i, 2])
+    }
+    return("")
+}
+
+// _dash_at_orient(o) -- the orientation twoway draws orientation(o) in
+// (style/tb_orientstyle-*.style, measured: _meta.orient): horizontal,
+// vertical, rvertical or rhorizontal, "" for a name twoway notes and
+// draws horizontally.
+string scalar _dash_at_orient(string scalar o)
+{
+    string matrix T
+    real scalar   i
+
+    T = ("horizontal", "horizontal" \ "horiz", "horizontal" \
+         "vertical", "vertical" \ "vert", "vertical" \
+         "rvertical", "rvertical" \ "rvert", "rvertical" \
+         "rhorizontal", "rhorizontal" \ "rhoriz", "rhorizontal")
+    for (i = 1; i <= rows(T); i++) {
+        if (T[i, 1] == o) return(T[i, 2])
+    }
+    return("")
+}
+
+// _dash_at_json(kind, y, x, ya, xa, lines, opts) -- one added_text record:
+// {"at_kind":..,"at_y":..,"at_x":..,"at_yaxis":..,"at_xaxis":..,
+// "at_lines":[..],"at_opts":".."}.  Numbers in %21.0g; lines already a
+// JSON array and opts already _json_escape()d (_dash_at_opts), written as
+// they come.  Every key starts at_, so no substring reader of the graph's
+// JSON (_dash_json_has_value, _dash_json_first_num) finds one.
+string scalar _dash_at_json(string scalar kind, real scalar y,
+                            real scalar x, real scalar ya, real scalar xa,
+                            string scalar lines, string scalar opts)
+{
+    string scalar q
+
+    q = char(34)
+    return("{" + q + "at_kind" + q + ":" + q + kind + q + "," +
+           q + "at_y" + q + ":" + strtrim(strofreal(y, "%21.0g")) + "," +
+           q + "at_x" + q + ":" + strtrim(strofreal(x, "%21.0g")) + "," +
+           q + "at_yaxis" + q + ":" + strofreal(ya) + "," +
+           q + "at_xaxis" + q + ":" + strofreal(xa) + "," +
+           q + "at_lines" + q + ":" + lines + "," +
+           q + "at_opts" + q + ":" + q + opts + q + "}")
+}
+
+// _dash_at_records(kind) -- the last _dash_at_parse's records as one
+// comma-joined list of _dash_at_json() objects, into the caller's local
+// _at_json; each copy's axes and drawn sub-options are the caller's
+// locals _at_ya<k>, _at_xa<k> and _at_cn<k> (_dash_at_opts), and a
+// converted date's value its _dash_at_R column 2.
+void _dash_at_records(string scalar kind)
+{
+    external string matrix _dash_at_R
+    string colvector r
+    string scalar    k
+    real scalar      i, n
+
+    n = rows(_dash_at_R)
+    r = J(n, 1, "")
+    for (i = 1; i <= n; i++) {
+        k = _dash_at_R[i, 4]
+        r[i] = _dash_at_json(kind, strtoreal(_dash_at_R[i, 1]),
+                             strtoreal(_dash_at_R[i, 2]),
+                             strtoreal(st_local("_at_ya" + k)),
+                             strtoreal(st_local("_at_xa" + k)),
+                             _dash_at_R[i, 3], st_local("_at_cn" + k))
+    }
+    st_local("_at_json", n ? invtokens(r', ",") : "")
+}
+
+// _dash_at_canon() -- the drawn sub-options of one copy, read from the
+// caller's (_dash_at_opts's) syntax locals by value, in full names:
+// size() color() justification() orientation() box or nobox fcolor()
+// lcolor() lwidth() margin() placement(), bfcolor() blcolor() blwidth()
+// standing in for the plain ones when those are absent and bcolor() for
+// both colours when neither is given; _json_escape()d.  orientation()
+// and placement() are dash.ado's canonical names (_dash_at_orient,
+// _dash_at_place); a name twoway notes is left out.
+string scalar _dash_at_canon()
+{
+    string scalar out, v, fc, lc, lw, o, p
+
+    out = ""
+    v = st_local("size")
+    if (v != "") out = out + " size(" + v + ")"
+    v = st_local("color")
+    if (v != "") out = out + " color(" + v + ")"
+    v = st_local("justification")
+    if (v != "") out = out + " justification(" + v + ")"
+    o = _dash_at_orient(st_local("orientation"))
+    if (o != "") out = out + " orientation(" + o + ")"
+    if (st_local("box") != "" & st_local("nobox") == "") out = out + " box"
+    else if (st_local("nobox") != "") out = out + " nobox"
+    fc = st_local("fcolor")
+    if (fc == "") fc = st_local("bfcolor")
+    lc = st_local("lcolor")
+    if (lc == "") lc = st_local("blcolor")
+    if (fc == "" & lc == "" & st_local("bcolor") != "") {
+        fc = st_local("bcolor")
+        lc = fc
+    }
+    if (fc != "") out = out + " fcolor(" + fc + ")"
+    if (lc != "") out = out + " lcolor(" + lc + ")"
+    lw = st_local("lwidth")
+    if (lw == "") lw = st_local("blwidth")
+    if (lw != "") out = out + " lwidth(" + lw + ")"
+    v = st_local("margin")
+    if (v != "") out = out + " margin(" + v + ")"
+    p = st_local("placement")
+    if (p != "") {
+        p = _dash_at_place(p)
+        out = out + " placement(" + (p != "" ? p : "e") + ")"
+    }
+    return(_json_escape(strtrim(out)))
 }
 
 // _dash_rep_reduce(opts, ptype) -- the option list with one copy of each
@@ -5999,6 +9503,45 @@ real scalar _dash_computed_cells(string scalar gjson, real scalar nobs,
     return(cells)
 }
 
+// _dash_reflines_positions(gjson) -- the reference-line positions of one
+// graph's JSON: the blank-separated tokens of every copy of xline(),
+// yline(), xline2() and yline2() (WP-30 P1.21a).  dash.ado has already
+// written each copy's positions as Stata's numlist expanded them
+// (_dash_line_expand); a copy is a top-level-comma segment whose first
+// non-blank byte is a digit, +, -, . or (.  The caller's local
+// _drl_val is used as scratch.  Linear in the text.
+real scalar _dash_reflines_positions(string scalar gjson)
+{
+    string rowvector keys
+    string scalar    rest, seg, c
+    real scalar      i, p, n
+
+    keys = ("xline", "yline", "xline2", "yline2")
+    n = 0
+    for (i = 1; i <= cols(keys); i++) {
+        _dash_json_get_str(gjson, keys[i], "_drl_val")
+        rest = st_local("_drl_val")
+        while (rest != "") {
+            p = _first_comma_pos(rest)
+            if (p) {
+                seg  = substr(rest, 1, p - 1)
+                rest = substr(rest, p + 1, .)
+            }
+            else {
+                seg  = rest
+                rest = ""
+            }
+            seg = strtrim(seg)
+            c   = substr(seg, 1, 1)
+            if (c != "" & (strpos("0123456789+-.(", c))) {
+                n = n + cols(tokens(seg))
+            }
+        }
+    }
+    st_local("_drl_val", "")
+    return(n)
+}
+
 // "" when every exclude() name of group is a bare word -- the registry
 // check itself is _dash_filter_refusal's, which calls this so the two
 // readers of a group's exclude() names cannot drift apart.  Factored out
@@ -6088,6 +9631,90 @@ string scalar _dash_qual_cols_in(string scalar gjson) {
         }
     }
     return(out)
+}
+
+// _dash_angle_out(s) -- 1 when s, stripped, is twoway's real literal and
+// lies outside -360..360, else 0 (WP-30 P1.18a).  twoway refuses such an
+// angle() on every axis label and tick family when it draws, r(198),
+// "textangle must be between -360.000 and 360.000"; a name, or a number
+// within the bounds, is no refusal.  No regex.
+real scalar _dash_angle_out(string scalar s)
+{
+    real scalar a
+
+    if (!_dash_so_isnum(strtrim(s), 0)) return(0)
+    a = strtoreal(strtrim(s))
+    if (a >= .) return(0)
+    return(a < -360 | a > 360)
+}
+
+// _dash_axbound_list() -- the merged axis options twoway bounds when it
+// draws (WP-30 P1.18a), listed in the calling program's locals: _axb_n
+// and, per finding j, _axb_k<j> ("l" a scale's lwidth(), "a" an angle()),
+// _axb_o<j> the option's name and _axb_v<j> the argument as typed.  The
+// order is twoway's, measured in StataNow 19.5: axis by axis y1, x1, y2,
+// x2, and on one axis the scale first, then the label, tick, mlabel and
+// mtick families (axis 2: label2, tick2).  It reads the caller's merged
+// locals g_<option>; each value is parsed under twoway's axis-1 spelling
+// (_dash_axfam knows no label2 row) and resolved with _dash_so_resolve.  A
+// scale's last lwidth() is always listed (the caller bounds it 0..10000
+// with _dash_validate_value); a label or tick family's last angle() only
+// when _dash_angle_out is 1.  Linear in the words; no regex.
+void _dash_axbound_list()
+{
+    string matrix    fam, plan
+    string rowvector words, names
+    string scalar    d, v, body, dcw, badw, msg, val, opt, last, sd, fw
+    real scalar      i, j, k, r, nax, n, axpos, at, sc
+
+    fam  = _dash_axfam()
+    plan = ("y", "scale", "scale" \ "y", "label", "label" \
+            "y", "tick", "tick" \ "y", "mlabel", "mlabel" \
+            "y", "mtick", "mtick" \
+            "x", "scale", "scale" \ "x", "label", "label" \
+            "x", "tick", "tick" \ "x", "mlabel", "mlabel" \
+            "x", "mtick", "mtick" \
+            "y", "scale2", "scale" \ "y", "label2", "label" \
+            "y", "tick2", "tick" \
+            "x", "scale2", "scale" \ "x", "label2", "label" \
+            "x", "tick2", "tick")
+    k = 0
+    for (i = 1; i <= rows(plan); i++) {
+        sd  = plan[i, 1]
+        opt = sd + plan[i, 2]
+        fw  = plan[i, 3]
+        val = st_local("g_" + opt)
+        if (strtrim(val) == "") continue
+        if (!_dash_ax_parse(sd + fw + "(" + val + ")", fam, d, r, v, body,
+                            words, dcw, nax, n, badw, axpos)) continue
+        if (!cols(words)) continue
+        sc = (fw == "scale")
+        (void) _dash_so_resolve(words, J(1, cols(words), 1),
+                                (sc ? "axscale" : "axlabel"), names, msg, at)
+        last = ""
+        for (j = 1; j <= cols(words); j++) {
+            if (names[j] == (sc ? "lwidth" : "angle") &
+                strpos(words[j], "(")) last = _dash_rep_value(words[j])
+        }
+        if (last == "" & !sc) continue
+        if (!sc) {
+            if (!_dash_angle_out(last)) continue
+        }
+        else {
+            // A scale with no lwidth() lists nothing.
+            if (last == "") {
+                for (j = 1; j <= cols(words); j++) {
+                    if (names[j] == "lwidth") break
+                }
+                if (j > cols(words)) continue
+            }
+        }
+        k++
+        st_local("_axb_k" + strofreal(k), (sc ? "l" : "a"))
+        st_local("_axb_o" + strofreal(k), opt)
+        st_local("_axb_v" + strofreal(k), last)
+    }
+    st_local("_axb_n", strofreal(k))
 }
 
 end

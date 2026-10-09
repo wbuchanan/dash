@@ -1,0 +1,7025 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "35765a482f3cad38863b86433913dd1dec90d34e",
+  "extracted": " 8 Oct 2026 03:49:30",
+  "source": "scripts/extract_scheme_layer_truth.do",
+  "stata_version": "19.5"
+ },
+ "derived": {
+  "s1mono_extent": [
+   44.06,
+   62.37,
+   44.06,
+   50.8,
+   31.15,
+   44.05,
+   44.06,
+   62.37,
+   44.06,
+   50.8,
+   31.18,
+   44.06,
+   31.19,
+   38.15,
+   22.05
+  ],
+  "s1mono_hollow": [
+   false,
+   false,
+   false,
+   false,
+   true,
+   true,
+   true,
+   true,
+   true,
+   true,
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  "s33": {
+   "chain": {
+    "mcolor": [
+     [
+      "#1a476f",
+      2.776,
+      null
+     ]
+    ],
+    "mlabcolor": [
+     [
+      "#ff0000",
+      2.776,
+      null
+     ]
+    ],
+    "mlabsize2": [
+     [
+      "#1a476f",
+      5.556,
+      null
+     ]
+    ],
+    "trmcolor": [
+     [
+      "#1a476f",
+      2.776,
+      0.2
+     ]
+    ],
+    "trmlabcolor": [
+     [
+      "#ff0000",
+      2.776,
+      0.2
+     ]
+    ],
+    "w33a": [
+     [
+      "#008000",
+      4.86,
+      null
+     ]
+    ],
+    "w33b": [
+     [
+      "#0000ff",
+      5.556,
+      null
+     ],
+     [
+      "#008000",
+      2.776,
+      null
+     ]
+    ],
+    "w33c": [
+     [
+      "#1a476f",
+      2.776,
+      null
+     ]
+    ],
+    "w33d": [
+     [
+      "#ff0000",
+      2.776,
+      null
+     ]
+    ]
+   },
+   "key": {
+    "economist": {
+     "axis_stroke": "#000000",
+     "label_fill": "#000000",
+     "label_rs": 3.819,
+     "tick_len_rs": 1.388,
+     "tick_side": "inward",
+     "tick_stroke": "#000000",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.819
+    },
+    "s1manual": {
+     "axis_stroke": "#000000",
+     "label_fill": "#000000",
+     "label_rs": 3.301,
+     "tick_len_rs": 1.39,
+     "tick_side": "outward",
+     "tick_stroke": "#000000",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.901
+    },
+    "s1rcolor": {
+     "axis_stroke": null,
+     "label_fill": "#ffffff",
+     "label_rs": 3.472,
+     "tick_len_rs": null,
+     "tick_side": null,
+     "tick_stroke": null,
+     "title_fill": "#ffffff",
+     "title_rotate": -90.0,
+     "title_rs": 3.472
+    },
+    "s2color": {
+     "axis_stroke": "#000000",
+     "label_fill": "#000000",
+     "label_rs": 3.472,
+     "tick_len_rs": 1.388,
+     "tick_side": "outward",
+     "tick_stroke": "#000000",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.472
+    },
+    "w33k": {
+     "axis_stroke": "#000000",
+     "label_fill": "#0000ff",
+     "label_rs": 2.776,
+     "tick_len_rs": 1.392,
+     "tick_side": "outward",
+     "tick_stroke": "#000000",
+     "title_fill": "#ff0000",
+     "title_rotate": -90.0,
+     "title_rs": 5.556
+    },
+    "w33t": {
+     "axis_stroke": "#ff7f00",
+     "label_fill": "#000000",
+     "label_rs": 3.472,
+     "tick_len_rs": 1.388,
+     "tick_side": "outward",
+     "tick_stroke": "#800080",
+     "title_fill": "#000000",
+     "title_rotate": -90.0,
+     "title_rs": 3.472
+    }
+   },
+   "label": {
+    "economist": {
+     "fill": "#3e647d",
+     "opacity": null,
+     "size_rs": 2.778
+    },
+    "s1mono": {
+     "fill": "#000000",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "s1rcolor": {
+     "fill": "#ffff00",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "s2color": {
+     "fill": "#1a476f",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "s2mono": {
+     "fill": "#000000",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "stcolor": {
+     "fill": "#1a85ff",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "stmono1": {
+     "fill": "#000000",
+     "opacity": null,
+     "size_rs": 2.776
+    },
+    "sttrans": {
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "size_rs": 2.776
+    }
+   },
+   "types": {
+    "bar": "#90353b",
+    "connected": "#90353b",
+    "dropline": "#90353b",
+    "pcarrow": "#90353b",
+    "pcarrowi": "#90353b",
+    "pcbarrow": "#90353b",
+    "pccapsym": "#90353b",
+    "pcscatter": "#90353b",
+    "rcapsym": "#90353b",
+    "rscatter": "#90353b",
+    "scatteri": "#90353b"
+   }
+  },
+  "sm_factor": {
+   "smcircle": {
+    "default": 0.7077,
+    "large": 0.7067
+   },
+   "smcircle_hollow": {
+    "default": 0.7077,
+    "large": 0.7067
+   },
+   "smdiamond": {
+    "default": 0.7064,
+    "large": 0.7075
+   },
+   "smdiamond_hollow": {
+    "default": 0.7064,
+    "large": 0.7075
+   },
+   "smplus": {
+    "default": 0.7079,
+    "large": 0.7067
+   },
+   "smsquare": {
+    "default": 0.7079,
+    "large": 0.7067
+   },
+   "smsquare_hollow": {
+    "default": 0.7079,
+    "large": 0.7067
+   },
+   "smtriangle": {
+    "default": 0.751,
+    "large": 0.7506
+   },
+   "smtriangle_hollow": {
+    "default": 0.751,
+    "large": 0.7506
+   },
+   "smv": {
+    "default": 1.0,
+    "large": 1.0
+   },
+   "smx": {
+    "default": 1.0,
+    "large": 1.0
+   }
+  }
+ },
+ "probes": {
+  "cy_dropline": {
+   "command": "(scatter mpg weight in 1/3) (dropline mpg weight in 1/3)",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 3,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "cycle",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 62.37,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "cy_pcscatter": {
+   "command": "(scatter mpg weight in 1/3) (pcscatter mpg weight price length in 1/3)",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 6,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "cycle",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 62.37,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "cy_rcapsym": {
+   "command": "(scatter mpg weight in 1/3) (rcapsym lo hi weight in 1/3)",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 3,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 6,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "cycle",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 62.37,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "cy_rscatter": {
+   "command": "(scatter mpg weight in 1/3) (rscatter lo hi weight in 1/3)",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 6,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "cycle",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 62.37,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "cy_scatteri": {
+   "command": "(scatter mpg weight in 1/3) (scatteri 20 3000)",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "cycle",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 62.37,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "hi2_economist": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#ffffff",
+     "stroke_opacity": null,
+     "stroke_width": 4.75
+    },
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 4.75
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "economist"
+  },
+  "hi2_s1mono": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "hi2_s1rcolor": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s1rcolor"
+  },
+  "hi2_s2color": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "hi2_s2mono": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#e8e8e8",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2mono"
+  },
+  "hi2_stcolor": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#f0f0f0",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#3191ff",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#5faaff",
+     "stroke_opacity": null,
+     "stroke_width": 4.86
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "hi2_stmono1": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "#8d8d8d",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 4.86
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "stmono1"
+  },
+  "hi2_sttrans": {
+   "command": "(histogram mpg) (histogram trunk)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "rect",
+     "n": 16,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 16,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "hi_economist": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#ffffff",
+     "stroke_opacity": null,
+     "stroke_width": 4.75
+    },
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 4.75
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "economist"
+  },
+  "hi_s1mono": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "hi_s1rcolor": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s1rcolor"
+  },
+  "hi_s2color": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "hi_s2mono": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#e8e8e8",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2mono"
+  },
+  "hi_stcolor": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#f0f0f0",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#3191ff",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#5faaff",
+     "stroke_opacity": null,
+     "stroke_width": 4.86
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "hi_stmono1": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "#8d8d8d",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 4.86
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "stmono1"
+  },
+  "hi_sttrans": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "histogram",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ho_color": {
+   "command": "histogram mpg, color(red)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#ff0000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram_opt",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "ho_fcolor": {
+   "command": "histogram mpg, fcolor(red)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#d7d29e",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram_opt",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "ho_lcolor": {
+   "command": "histogram mpg, lcolor(blue)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#cac27e",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "histogram_opt",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "ho_navy_stcolor": {
+   "command": "histogram mpg, fcolor(navy)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#f0f0f0",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#31597d",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#5faaff",
+     "stroke_opacity": null,
+     "stroke_width": 4.86
+    }
+   ],
+   "group": "histogram_opt",
+   "layers": [],
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "ho_w24h": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#ff8080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 40.32
+    }
+   ],
+   "group": "histogram_opt",
+   "layers": [],
+   "rc": 0,
+   "scheme": "w24h"
+  },
+  "mk_w24f_1": {
+   "command": "scatter mpg weight in 1/3",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#008000",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "mark",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#008000",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#0000ff"
+    }
+   ],
+   "rc": 0,
+   "scheme": "w24f"
+  },
+  "mk_w24f_2": {
+   "command": "(scatter mpg weight in 1/3) (scatter price weight in 1/3, yaxis(2))",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#008000",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#90353b",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#90353b",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 5.76
+    }
+   ],
+   "group": "mark",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#008000",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#0000ff"
+    },
+    {
+     "extent": 44.06,
+     "fill": "#90353b",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#90353b"
+    }
+   ],
+   "rc": 0,
+   "scheme": "w24f"
+  },
+  "mk_w24g_1": {
+   "command": "scatter mpg weight in 1/3",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#008000",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "mark",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#008000",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#0000ff"
+    }
+   ],
+   "rc": 0,
+   "scheme": "w24g"
+  },
+  "mk_w24g_2": {
+   "command": "(scatter mpg weight in 1/3) (scatter price weight in 1/3, yaxis(2))",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#008000",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 6,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 6,
+     "stroke": "#0000ff",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 5.76
+    }
+   ],
+   "group": "mark",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#008000",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#0000ff"
+    },
+    {
+     "extent": 44.06,
+     "fill": "#008000",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#0000ff"
+    }
+   ],
+   "rc": 0,
+   "scheme": "w24g"
+  },
+  "mk_w24m_1": {
+   "command": "scatter mpg weight in 1/3",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "mark",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "w24m"
+  },
+  "mk_w24m_2": {
+   "command": "(scatter mpg weight in 1/3) (scatter price weight in 1/3, yaxis(2))",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#90353b",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#90353b",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 5.76
+    }
+   ],
+   "group": "mark",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    },
+    {
+     "extent": 44.06,
+     "fill": "#90353b",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#90353b"
+    }
+   ],
+   "rc": 0,
+   "scheme": "w24m"
+  },
+  "op_area": {
+   "command": "area mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": 0.2,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 19.44
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_area_s2color": {
+   "command": "area mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 17.28
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "op_dropline": {
+   "command": "dropline mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 74,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "circle",
+     "n": 74,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 74,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_fpfit": {
+   "command": "fpfit mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_fpfitci": {
+   "command": "fpfitci mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 452,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 19.44
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_function": {
+   "command": "function y=x/1000, range(1760 4840)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_histogram": {
+   "command": "histogram mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_kdensity": {
+   "command": "kdensity mpg",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_lfit": {
+   "command": "lfit mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_lfitci": {
+   "command": "lfitci mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 19.44
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_lowess": {
+   "command": "lowess mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_lpoly": {
+   "command": "lpoly mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_lpolyci": {
+   "command": "lpolyci mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 452,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 19.44
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_mband": {
+   "command": "mband mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_mspline": {
+   "command": "mspline mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pcarrow": {
+   "command": "pcarrow mpg weight price length in 1/5",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 484,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 15,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pcarrowi": {
+   "command": "pcarrowi 20 3000 30 4000",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 3,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pcbarrow": {
+   "command": "pcbarrow mpg weight price length in 1/5",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 484,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 25,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pccapsym": {
+   "command": "pccapsym mpg weight price length in 1/5",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 484,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 5,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "circle",
+     "n": 10,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 10,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pci": {
+   "command": "pci 20 3000 30 4000",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pcscatter": {
+   "command": "pcscatter mpg weight price length",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 408,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "circle",
+     "n": 148,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 148,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_pcspike": {
+   "command": "pcspike mpg weight price length",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 408,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 74,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_qfit": {
+   "command": "qfit mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_qfitci": {
+   "command": "qfitci mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 452,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 19.44
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rarea": {
+   "command": "rarea lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": 0.2,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 19.44
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rarea_s2color": {
+   "command": "rarea lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 4,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 17.28
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "op_rbar": {
+   "command": "rbar lo hi rep78 if rep78<.",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 430,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#486c8c",
+     "fill_opacity": 0.2,
+     "kind": "rect",
+     "n": 69,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 69,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 6.48
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rcap": {
+   "command": "rcap lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 222,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rcapsym": {
+   "command": "rcapsym lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 74,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "circle",
+     "n": 148,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 148,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rline": {
+   "command": "rline lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rscatter": {
+   "command": "rscatter lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "circle",
+     "n": 148,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 148,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_rspike": {
+   "command": "rspike lo hi weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 74,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_scatteri": {
+   "command": "scatteri 20 3000 30 4000",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": 0.2,
+     "kind": "circle",
+     "n": 2,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "op_spike": {
+   "command": "spike mpg weight",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 344,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 74,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ou_hist_red": {
+   "command": "histogram mpg, color(red)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 516,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#ff0000",
+     "fill_opacity": 0.2,
+     "kind": "rect",
+     "n": 8,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 8,
+     "stroke": "#ff0000",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity_user",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ou_lfit_red70": {
+   "command": "lfit mpg weight, lcolor(red%70)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#ff0000",
+     "stroke_opacity": 0.7,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity_user",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ou_lfitci_ci": {
+   "command": "lfitci mpg weight, pstyle(ci)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 19.44
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#808080",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity_user",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ou_lfitci_p3": {
+   "command": "lfitci mpg weight, pstyle(p3)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#e4d692",
+     "fill_opacity": 0.2,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#ddcc77",
+     "stroke_opacity": 0.2,
+     "stroke_width": 19.44
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#ddcc77",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity_user",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ou_rarea_red": {
+   "command": "rarea lo hi weight, fcolor(red)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "#ff3333",
+     "fill_opacity": 0.2,
+     "kind": "path",
+     "n": 1,
+     "stroke": "none",
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": 0.2,
+     "stroke_width": 19.44
+    }
+   ],
+   "group": "opacity_user",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "ou_rspike_red": {
+   "command": "rspike lo hi weight, lcolor(red)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 398,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 9.72
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 74,
+     "stroke": "#ff0000",
+     "stroke_opacity": 0.2,
+     "stroke_width": 9.72
+    }
+   ],
+   "group": "opacity_user",
+   "layers": [],
+   "rc": 0,
+   "scheme": "sttrans"
+  },
+  "s33_colorkey_economist": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1163.48,
+     "x2": 1185.46
+    },
+    {
+     "length_rs": 74.222,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 1185.46,
+     "x2": 1185.46
+    }
+   ],
+   "rc": 0,
+   "scheme": "economist",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "10",
+     "x": 847.32
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "20",
+     "x": 847.32
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "30",
+     "x": 847.32
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "40",
+     "x": 847.32
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.819,
+     "text": "Mileage (mpg)",
+     "x": 982.16
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "0",
+     "x": 1196.5
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "5,000",
+     "x": 1196.5
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "10,000",
+     "x": 1196.5
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.819,
+     "text": "15,000",
+     "x": 1196.5
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.819,
+     "text": "Price",
+     "x": 1452.67
+    }
+   ]
+  },
+  "s33_colorkey_s1manual": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 1.39,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1824.52
+    },
+    {
+     "length_rs": 72.233,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 1800.59,
+     "x2": 1800.59
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1manual",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "0",
+     "x": 1836.53
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "5,000",
+     "x": 1836.53
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "10,000",
+     "x": 1836.53
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.301,
+     "text": "15,000",
+     "x": 1836.53
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.901,
+     "text": "Price",
+     "x": 2103.06
+    }
+   ]
+  },
+  "s33_colorkey_s1rcolor": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [],
+   "rc": 0,
+   "scheme": "s1rcolor",
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "10",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "20",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "30",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "40",
+     "x": 300.72
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Mileage (mpg)",
+     "x": 190.71
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "2,000",
+     "x": 632.36
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "3,000",
+     "x": 1374.86
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "4,000",
+     "x": 2117.24
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 2859.74
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "Weight (lbs.)",
+     "x": 1656.89
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "0",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "10,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "15,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ffffff",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Price",
+     "x": 3724.02
+    }
+   ]
+  },
+  "s33_colorkey_s2color": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 73.531,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3239.65
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "0",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "10,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "15,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Price",
+     "x": 3724.02
+    }
+   ]
+  },
+  "s33_colorkey_w33k": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 1.392,
+     "stroke": "#000000",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3288.41
+    },
+    {
+     "length_rs": 72.143,
+     "stroke": "#000000",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 3248.31,
+     "x2": 3248.31
+    }
+   ],
+   "rc": 0,
+   "scheme": "w33k",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "0",
+     "x": 3308.33
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "5,000",
+     "x": 3308.33
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "10,000",
+     "x": 3308.33
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "15,000",
+     "x": 3308.33
+    },
+    {
+     "anchor": "middle",
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 5.556,
+     "text": "Price",
+     "x": 3705.77
+    }
+   ]
+  },
+  "s33_colorkey_w33t": {
+   "command": "scatter mpg weight, colorvar(price)",
+   "group": "colorkey",
+   "key_lines": [
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 1.388,
+     "stroke": "#800080",
+     "vertical": false,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3279.62
+    },
+    {
+     "length_rs": 73.531,
+     "stroke": "#ff7f00",
+     "vertical": true,
+     "width_rs": 0.2,
+     "x1": 3239.65,
+     "x2": 3239.65
+    }
+   ],
+   "rc": 0,
+   "scheme": "w33t",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "0",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "5,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "10,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 3.472,
+     "text": "15,000",
+     "x": 3299.67
+    },
+    {
+     "anchor": "middle",
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": -90.0,
+     "size_rs": 3.472,
+     "text": "Price",
+     "x": 3724.02
+    }
+   ]
+  },
+  "s33_mlabel_chain_mcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_mlabcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mlabcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_mlabsize2": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mlabsize(*2)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_trmcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "sttrans",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_chain_trmlabcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make) mlabcolor(red)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "sttrans",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33a": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33a",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 4.86,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 4.86,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 4.86,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33b": {
+   "command": "(scatter mpg weight in 1/3, mlabel(make)) (scatter price weight in 1/3, mlabel(make) yaxis(2))",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33b",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Ford Fiesta",
+     "x": 3547.67
+    },
+    {
+     "anchor": null,
+     "fill": "#0000ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 5.556,
+     "text": "Plym. Champ",
+     "x": 3547.67
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3547.67
+    },
+    {
+     "anchor": null,
+     "fill": "#008000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3547.67
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33c": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33c",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_chain_w33d": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel_chain",
+   "rc": 0,
+   "scheme": "w33d",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#ff0000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_economist": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "economist",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#3e647d",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.778,
+     "text": "Honda Civic",
+     "x": 95.19
+    },
+    {
+     "anchor": null,
+     "fill": "#3e647d",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.778,
+     "text": "Ford Fiesta",
+     "x": 1549.3
+    },
+    {
+     "anchor": null,
+     "fill": "#3e647d",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.778,
+     "text": "Plym. Champ",
+     "x": 1549.3
+    }
+   ]
+  },
+  "s33_mlabel_s1mono": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s1mono",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_s1rcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s1rcolor",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#ffff00",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#ffff00",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#ffff00",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_s2color": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_s2mono": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "s2mono",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_stcolor": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "stcolor",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a85ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#1a85ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#1a85ff",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_stmono1": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "stmono1",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#000000",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_sttrans": {
+   "command": "scatter mpg weight in 1/3, mlabel(make)",
+   "group": "mlabel",
+   "rc": 0,
+   "scheme": "sttrans",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 223.93
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 5254.71
+    },
+    {
+     "anchor": null,
+     "fill": "#1a476f",
+     "opacity": 0.2,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 5254.71
+    }
+   ]
+  },
+  "s33_mlabel_types_bar": {
+   "command": "(scatter mpg weight in 1/3) (bar mpg weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": "middle",
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 208.4
+    },
+    {
+     "anchor": "middle",
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3751.48
+    },
+    {
+     "anchor": "middle",
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3751.48
+    }
+   ]
+  },
+  "s33_mlabel_types_connected": {
+   "command": "(scatter mpg weight in 1/3) (connected mpg weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_dropline": {
+   "command": "(scatter mpg weight in 1/3) (dropline mpg weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_pcarrow": {
+   "command": "(scatter mpg weight in 1/3) (pcarrow mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_pcarrowi": {
+   "command": "(scatter mpg weight in 1/3) (pcarrowi 20 3000 30 4000 \"lab\")",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "lab",
+     "x": 2385.03
+    }
+   ]
+  },
+  "s33_mlabel_types_pcbarrow": {
+   "command": "(scatter mpg weight in 1/3) (pcbarrow mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_pccapsym": {
+   "command": "(scatter mpg weight in 1/3) (pccapsym mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_pcscatter": {
+   "command": "(scatter mpg weight in 1/3) (pcscatter mpg weight price length in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 3401.89
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3474.53
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3474.53
+    }
+   ]
+  },
+  "s33_mlabel_types_rcapsym": {
+   "command": "(scatter mpg weight in 1/3) (rcapsym lo hi weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_rscatter": {
+   "command": "(scatter mpg weight in 1/3) (rscatter lo hi weight in 1/3, mlabel(make))",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Honda Civic",
+     "x": 206.17
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Ford Fiesta",
+     "x": 3837.61
+    },
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "Plym. Champ",
+     "x": 3837.61
+    }
+   ]
+  },
+  "s33_mlabel_types_scatteri": {
+   "command": "(scatter mpg weight in 1/3) (scatteri 20 3000 \"lab\")",
+   "group": "mlabel_types",
+   "rc": 0,
+   "scheme": "s2color",
+   "texts": [
+    {
+     "anchor": null,
+     "fill": "#90353b",
+     "opacity": null,
+     "rotate": null,
+     "size_rs": 2.776,
+     "text": "lab",
+     "x": 3837.61
+    }
+   ]
+  },
+  "sm_circle": {
+   "command": "scatter mpg weight in 1, msymbol(circle)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_circle_L": {
+   "command": "scatter mpg weight in 1, msymbol(circle) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_circle_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(circle_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_circle_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(circle_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_diamond": {
+   "command": "scatter mpg weight in 1, msymbol(diamond)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 62.37,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_diamond_L": {
+   "command": "scatter mpg weight in 1, msymbol(diamond) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 99.0,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_diamond_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(diamond_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 62.37,
+     "fill": null,
+     "hollow": true,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_diamond_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(diamond_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 99.0,
+     "fill": null,
+     "hollow": true,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_plus": {
+   "command": "scatter mpg weight in 1, msymbol(plus)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "plus",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_plus_L": {
+   "command": "scatter mpg weight in 1, msymbol(plus) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": null,
+     "hollow": true,
+     "shape": "plus",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smcircle": {
+   "command": "scatter mpg weight in 1, msymbol(smcircle)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 31.18,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smcircle_L": {
+   "command": "scatter mpg weight in 1, msymbol(smcircle) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 49.5,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smcircle_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(smcircle_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 31.18,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smcircle_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(smcircle_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 49.5,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smdiamond": {
+   "command": "scatter mpg weight in 1, msymbol(smdiamond)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smdiamond_L": {
+   "command": "scatter mpg weight in 1, msymbol(smdiamond) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smdiamond_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(smdiamond_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smdiamond_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(smdiamond_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": null,
+     "hollow": true,
+     "shape": "diamond",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smplus": {
+   "command": "scatter mpg weight in 1, msymbol(smplus)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 31.19,
+     "fill": null,
+     "hollow": true,
+     "shape": "plus",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smplus_L": {
+   "command": "scatter mpg weight in 1, msymbol(smplus) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 49.5,
+     "fill": null,
+     "hollow": true,
+     "shape": "plus",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smsquare": {
+   "command": "scatter mpg weight in 1, msymbol(smsquare)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 31.19,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smsquare_L": {
+   "command": "scatter mpg weight in 1, msymbol(smsquare) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 49.5,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smsquare_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(smsquare_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 31.19,
+     "fill": null,
+     "hollow": true,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smsquare_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(smsquare_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 49.5,
+     "fill": null,
+     "hollow": true,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smtriangle": {
+   "command": "scatter mpg weight in 1, msymbol(smtriangle)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 38.15,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smtriangle_L": {
+   "command": "scatter mpg weight in 1, msymbol(smtriangle) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 60.66,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smtriangle_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(smtriangle_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 38.15,
+     "fill": null,
+     "hollow": true,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smtriangle_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(smtriangle_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 60.66,
+     "fill": null,
+     "hollow": true,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smv": {
+   "command": "scatter mpg weight in 1, msymbol(smv)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 38.15,
+     "fill": null,
+     "hollow": true,
+     "shape": "v",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smv_L": {
+   "command": "scatter mpg weight in 1, msymbol(smv) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 60.66,
+     "fill": null,
+     "hollow": true,
+     "shape": "v",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smx": {
+   "command": "scatter mpg weight in 1, msymbol(smx)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 22.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_smx_L": {
+   "command": "scatter mpg weight in 1, msymbol(smx) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 35.0,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_square": {
+   "command": "scatter mpg weight in 1, msymbol(square)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_square_L": {
+   "command": "scatter mpg weight in 1, msymbol(square) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_square_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(square_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_square_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(square_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": null,
+     "hollow": true,
+     "shape": "square",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_triangle": {
+   "command": "scatter mpg weight in 1, msymbol(triangle)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 50.8,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_triangle_L": {
+   "command": "scatter mpg weight in 1, msymbol(triangle) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#1a476f",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 80.81,
+     "fill": "#1a476f",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_triangle_hollow": {
+   "command": "scatter mpg weight in 1, msymbol(triangle_hollow)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 50.8,
+     "fill": null,
+     "hollow": true,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_triangle_hollow_L": {
+   "command": "scatter mpg weight in 1, msymbol(triangle_hollow) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 80.81,
+     "fill": null,
+     "hollow": true,
+     "shape": "triangle",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_v": {
+   "command": "scatter mpg weight in 1, msymbol(v)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 38.15,
+     "fill": null,
+     "hollow": true,
+     "shape": "v",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_v_L": {
+   "command": "scatter mpg weight in 1, msymbol(v) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "path",
+     "n": 1,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 60.66,
+     "fill": null,
+     "hollow": true,
+     "shape": "v",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_x": {
+   "command": "scatter mpg weight in 1, msymbol(x)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 22.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sm_x_L": {
+   "command": "scatter mpg weight in 1, msymbol(x) msize(large)",
+   "elements": [
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#eaf2f3",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 2,
+     "stroke": "#1a476f",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "sm",
+   "layers": [
+    {
+     "extent": 35.0,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#1a476f"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "sy_cycle": {
+   "command": "scatter y1-y15 weight in 1/3",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": "#808080",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#404040",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#404040",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#202020",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#707070",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": "#909090",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#b0b0b0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#d0d0d0",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#d0d0d0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#505050",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#505050",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#303030",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": "#303030",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#c0c0c0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#505050",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "symbol",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 62.37,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    },
+    {
+     "extent": 44.06,
+     "fill": "#808080",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#808080"
+    },
+    {
+     "extent": 50.8,
+     "fill": "#404040",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#404040"
+    },
+    {
+     "extent": 31.15,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#000000"
+    },
+    {
+     "extent": 44.05,
+     "fill": null,
+     "hollow": true,
+     "shape": "plus",
+     "stroke": "#c0c0c0"
+    },
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#202020"
+    },
+    {
+     "extent": 62.37,
+     "fill": null,
+     "hollow": true,
+     "shape": "diamond",
+     "stroke": "#707070"
+    },
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "square",
+     "stroke": "#909090"
+    },
+    {
+     "extent": 50.8,
+     "fill": null,
+     "hollow": true,
+     "shape": "triangle",
+     "stroke": "#b0b0b0"
+    },
+    {
+     "extent": 31.18,
+     "fill": "#d0d0d0",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#d0d0d0"
+    },
+    {
+     "extent": 44.06,
+     "fill": "#505050",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#505050"
+    },
+    {
+     "extent": 31.19,
+     "fill": "#303030",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#303030"
+    },
+    {
+     "extent": 38.15,
+     "fill": "#c0c0c0",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#c0c0c0"
+    },
+    {
+     "extent": 22.05,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#505050"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "sy_large": {
+   "command": "scatter y1-y11 weight in 1/3, msize(large large large large large large large large large large large)",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#a0a0a0",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#808080",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": "#808080",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#404040",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#404040",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#000000",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "line",
+     "n": 6,
+     "stroke": "#c0c0c0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#202020",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#707070",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "rect",
+     "n": 3,
+     "stroke": "#909090",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "polygon",
+     "n": 3,
+     "stroke": "#b0b0b0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "#d0d0d0",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#d0d0d0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "symbol",
+   "layers": [
+    {
+     "extent": 70.04,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 99.0,
+     "fill": "#a0a0a0",
+     "hollow": false,
+     "shape": "diamond",
+     "stroke": "#a0a0a0"
+    },
+    {
+     "extent": 70.04,
+     "fill": "#808080",
+     "hollow": false,
+     "shape": "square",
+     "stroke": "#808080"
+    },
+    {
+     "extent": 80.81,
+     "fill": "#404040",
+     "hollow": false,
+     "shape": "triangle",
+     "stroke": "#404040"
+    },
+    {
+     "extent": 35.0,
+     "fill": null,
+     "hollow": true,
+     "shape": "x",
+     "stroke": "#000000"
+    },
+    {
+     "extent": 70.05,
+     "fill": null,
+     "hollow": true,
+     "shape": "plus",
+     "stroke": "#c0c0c0"
+    },
+    {
+     "extent": 70.04,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#202020"
+    },
+    {
+     "extent": 99.0,
+     "fill": null,
+     "hollow": true,
+     "shape": "diamond",
+     "stroke": "#707070"
+    },
+    {
+     "extent": 70.04,
+     "fill": null,
+     "hollow": true,
+     "shape": "square",
+     "stroke": "#909090"
+    },
+    {
+     "extent": 80.81,
+     "fill": null,
+     "hollow": true,
+     "shape": "triangle",
+     "stroke": "#b0b0b0"
+    },
+    {
+     "extent": 49.5,
+     "fill": "#d0d0d0",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#d0d0d0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "sy_p7_red": {
+   "command": "(scatter mpg weight in 1/3) (scatter mpg weight in 4/6, pstyle(p7) mfcolor(red))",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#202020",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "symbol",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 44.06,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#202020"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  },
+  "sy_smh_red": {
+   "command": "(scatter mpg weight in 1/3) (scatter mpg weight in 4/6, msymbol(smcircle_hollow) mfcolor(red))",
+   "elements": [
+    {
+     "fill": "#606060",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": null,
+     "stroke_opacity": null,
+     "stroke_width": null
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#606060",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    },
+    {
+     "fill": "none",
+     "fill_opacity": null,
+     "kind": "circle",
+     "n": 3,
+     "stroke": "#a0a0a0",
+     "stroke_opacity": null,
+     "stroke_width": 8.64
+    }
+   ],
+   "group": "symbol",
+   "layers": [
+    {
+     "extent": 44.06,
+     "fill": "#606060",
+     "hollow": false,
+     "shape": "circle",
+     "stroke": "#606060"
+    },
+    {
+     "extent": 31.18,
+     "fill": null,
+     "hollow": true,
+     "shape": "circle",
+     "stroke": "#a0a0a0"
+    }
+   ],
+   "rc": 0,
+   "scheme": "s1mono"
+  }
+ }
+}

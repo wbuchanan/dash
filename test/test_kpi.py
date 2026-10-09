@@ -26,6 +26,9 @@ from dash_render import DashRenderer
 # Fixtures
 # ================================================================
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture
 def auto_data():
     """Synthetic auto.dta-like dataset with known statistics."""
@@ -330,7 +333,7 @@ class TestKpiUpdateMode:
         with open(dp, "w") as f:
             _json.dump(_md(df), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for q in (sp, dp, op):
             try:
                 os.unlink(q)
@@ -445,7 +448,7 @@ class TestKpiInitialValueComputed:
                  "fmt": "%9.1f", "title": "Avg MPG", "subtitle": "",
                  "color": "", "bgcolor": "", "update": "filter"}]
         r = self._build_renderer_with_kpis(kpis, tmp_path)
-        r.render()
+        render_models(r)
         assert "k1" in r.kpi_divs
         div_html = r.kpi_divs["k1"].text
         expected_mean = sum([15,18,21,22,24,26,28,30]) / 8  # = 23.0
@@ -466,7 +469,7 @@ class TestKpiInitialValueComputed:
                  "fmt": "%9.1f", "title": "Avg MPG", "subtitle": "",
                  "color": "", "bgcolor": "", "update": "filter"}]
         r = self._build_renderer_with_kpis(kpis, tmp_path)
-        r.render()
+        render_models(r)
         div_html = r.kpi_divs["k1"].text
         # The full-precision raw value must NOT appear in the rendered card
         assert "21.2972972972973" not in div_html, (
@@ -485,7 +488,7 @@ class TestKpiInitialValueComputed:
                  "fmt": "%9.0fc", "title": "N", "subtitle": "",
                  "color": "", "bgcolor": "", "update": "filter"}]
         r = self._build_renderer_with_kpis(kpis, tmp_path)
-        r.render()
+        render_models(r)
         div_html = r.kpi_divs["k1"].text
         # 8 observations — should appear as "8" (no comma needed for small N)
         assert "8" in div_html, f"Count KPI must show '8', got: {div_html!r}"
@@ -550,7 +553,7 @@ class TestKpiMultiWordTitle:
                "fmt": "%9.1f", "title": "Avg MPG", "subtitle": "Miles per gallon",
                "color": "#2c3e50", "bgcolor": "#ecf0f1", "update": "filter"}
         r = self._build_renderer_with_kpi(kpi, tmp_path)
-        r.render()
+        render_models(r)
         div_html = r.kpi_divs["k1"].text
         assert "Avg MPG" in div_html, (
             f"KPI title 'Avg MPG' must appear in full — got: {div_html!r} "
@@ -567,7 +570,7 @@ class TestKpiMultiWordTitle:
                "fmt": "%9.0fc", "title": "Sample Size", "subtitle": "Total observations",
                "color": "", "bgcolor": "", "update": "both"}
         r = self._build_renderer_with_kpi(kpi, tmp_path)
-        r.render()
+        render_models(r)
         div_html = r.kpi_divs["k1"].text
         assert "Sample Size" in div_html, (
             f"KPI title 'Sample Size' must appear in full — got: {div_html!r}"
@@ -587,7 +590,7 @@ class TestKpiMultiWordTitle:
                "fmt": "%9.1f", "title": "Median Price", "subtitle": "1978 USD",
                "color": "#2c3e50", "bgcolor": "#ecf0f1", "update": "filter"}
         r = self._build_renderer_with_kpi(kpi, tmp_path)
-        r.render()
+        render_models(r)
         div_html = r.kpi_divs["k1"].text
         assert "Median Price" in div_html, (
             f"Title 'Median Price' must appear in full — got: {div_html!r}"
@@ -668,7 +671,7 @@ class TestKpiEmptyColorFallback:
                    "fmt": "%9.1f", "title": "Avg Y", "subtitle": "units",
                    "color": "", "bgcolor": "", "update": "filter"}
         r = self._make_renderer_with_kpi(kpi_def, tmp_path)
-        r.render()
+        render_models(r)
         div = r.kpi_divs["k2"]
         div_html = div.text
         assert "background:;" not in div_html, (
@@ -711,7 +714,7 @@ class TestKpiEmptyColorFallback:
                    "fmt": "%9.0f", "title": "Count", "subtitle": "",
                    "color": "", "bgcolor": "", "update": "filter"}
         r = self._make_renderer_with_kpi(kpi_def, tmp_path)
-        r.render()
+        render_models(r)
         div_html = r.kpi_divs["k3"].text
         assert "color:;" not in div_html, (
             "Bug 12: empty color produced invalid CSS 'color:;'."
@@ -797,7 +800,7 @@ class TestKpiVarKeyInAllVars:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_path:
             r = self._make_renderer_kpi_only_var(tmp_path)
-            r.render()
+            render_models(r)
             assert "z" in r.df.columns, (
                 "Bug 14: KPI variable 'z' (stored under key 'var') must be "
                 "loaded into self.df. Before the fix, kpi.get('varname') silently "
@@ -815,7 +818,7 @@ class TestKpiVarKeyInAllVars:
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_path:
             r = self._make_renderer_kpi_only_var(tmp_path)
-            r.render()
+            render_models(r)
             k1_div = r.kpi_divs.get("k1")
             assert k1_div is not None, "KPI div 'k1' must be created"
             div_html = k1_div.text

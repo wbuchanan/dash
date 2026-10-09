@@ -36,6 +36,9 @@ from conftest import make_data_json  # noqa: E402
 from test_server_scheme import _build_doc, _first_glyph_colour  # noqa: E402
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _props_scheme(props):
     """A SchemeParser rebuilt from a property dict with no file behind it,
     exactly as the generated server app rebuilds its scheme
@@ -165,7 +168,7 @@ class TestQuotedValuesAreRead:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             renderer = dr.DashRenderer(str(sp_path), str(dp_path))
-            renderer.render()
+            render_models(renderer)
         assert caught == [], [str(w.message) for w in caught]
         assert renderer.scheme.background_color == "#ff0000"
         assert renderer.scheme.p_colors[0] == "#1a476f"

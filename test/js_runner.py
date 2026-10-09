@@ -52,6 +52,7 @@ WP-29 S12 adds a renderer's ``muted``, a Title's or Div's ``visible`` and
 a LegendItem's ``label`` to what a run reads and commits, each key on its
 own, so the saved page's stale cue (P0.17) can be measured under node.
 """
+import datetime as _dt
 import json
 import math
 import os
@@ -65,8 +66,10 @@ import pandas as pd
 import pytest
 from bokeh.model import Model
 from bokeh.core.properties import value as _bk_value
-from bokeh.models import (BooleanFilter, ColumnDataSource, Div, GlyphRenderer,
-                          LegendItem, RangeSlider, Select, Slider, Title)
+from bokeh.models import (Arrow, BooleanFilter, BoxAnnotation,
+                          ColumnDataSource,
+                          Div, FixedTicker, GlyphRenderer, LegendItem,
+                          Range1d, RangeSlider, Select, Slider, Title)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
@@ -124,6 +127,10 @@ def plain(v):
         return bool(v)
     if isinstance(v, (pd.Timestamp, np.datetime64)):
         return dr._dash_json_value(v)
+    if isinstance(v, _dt.datetime):
+        # A second date column reaches a source as datetime objects (a
+        # millisecond datetime64 array's tolist(); WP-30 P1.23a).
+        return dr._dash_json_value(pd.Timestamp(v))
     return v
 
 
@@ -168,6 +175,27 @@ def stand_in(m, models, objs):
     if isinstance(m, LegendItem):
         return {"__type__": "LegendItem",
                 "label": {"value": _label_text(m.label)}}
+    # WP-30 P1.3a: a Range1d's Reset extent and a FixedTicker's ticks, the
+    # two models the axis re-finish writes (and reads back, below).
+    if isinstance(m, Range1d):
+        return {"__type__": "Range1d",
+                **{p: plain(getattr(m, p))
+                   for p in ("start", "end", "reset_start", "reset_end")}}
+    # WP-30 P1.20b: the plot region's inner box, whose edges the
+    # re-finish writes.
+    if isinstance(m, BoxAnnotation):
+        return {"__type__": "BoxAnnotation",
+                **{p: plain(getattr(m, p))
+                   for p in ("left", "right", "bottom", "top")}}
+    # WP-30 P1.21b: an unextended reference line's ends, which the
+    # re-finish writes.
+    if isinstance(m, Arrow):
+        return {"__type__": "Arrow",
+                **{p: plain(getattr(m, p))
+                   for p in ("x_start", "x_end", "y_start", "y_end")}}
+    if isinstance(m, FixedTicker):
+        return {"__type__": "FixedTicker",
+                "ticks": [plain(v) for v in (m.ticks or [])]}
     props = m.properties()
     return {"__type__": type(m).__name__,
             **{p: encode(getattr(m, p), models, objs)
@@ -208,6 +236,14 @@ for (const o of Object.values(REG)) {
     o.change = {emit() {}};
   } else if (o.__type__ === "BooleanFilter") {
     o.change = {emit() {}};
+  } else if (o.__type__ === "Range1d") {
+    // BokehJS's HasProps.setv assigns each attribute in turn.
+    o.change = {emit() {}};
+    o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
+  } else if (o.__type__ === "FixedTicker") {
+    o.change = {emit() {}};
+  } else if (o.__type__ === "BoxAnnotation" || o.__type__ === "Arrow") {
+    o.setv = function (attrs) { for (const k of Object.keys(attrs)) this[k] = attrs[k]; };
   }
 }
 const args = resolve(RAW.args);
@@ -219,6 +255,15 @@ const out = {};
 for (const [id, o] of Object.entries(REG)) {
   if (o.__type__ === "ColumnDataSource") out[id] = {data: o.data};
   else if (o.__type__ === "BooleanFilter") out[id] = {booleans: o.booleans};
+  else if (o.__type__ === "Range1d")
+    out[id] = {range: {start: o.start, end: o.end, reset_start: o.reset_start,
+                       reset_end: o.reset_end}};
+  else if (o.__type__ === "FixedTicker") out[id] = {ticks: Array.from(o.ticks)};
+  else if (o.__type__ === "BoxAnnotation")
+    out[id] = {box: {left: o.left, right: o.right, bottom: o.bottom, top: o.top}};
+  else if (o.__type__ === "Arrow")
+    out[id] = {arrow: {x_start: o.x_start, x_end: o.x_end, y_start: o.y_start,
+                       y_end: o.y_end}};
   else {
     const e = {};
     for (const k of ["text", "width", "visible", "muted", "label"])
@@ -325,6 +370,14 @@ class JsSession:
                               for c, col in state["data"].items()}
                 elif "booleans" in state:
                     m.booleans = list(state["booleans"])
+                elif "range" in state or "box" in state or "arrow" in state:
+                    for k, v in (state.get("range") or state.get("box")
+                                 or state.get("arrow")).items():
+                        if isinstance(v, (int, float)) \
+                                and not isinstance(v, bool):
+                            setattr(m, k, float(v))
+                elif "ticks" in state:
+                    m.ticks = [float(v) for v in state["ticks"]]
                 else:
                     # Each key commits on its own (WP-29 S12): a Div
                     # carries text AND visible, a renderer muted AND

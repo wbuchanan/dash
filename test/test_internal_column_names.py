@@ -34,6 +34,8 @@ _DASH_RENDER_PATH = os.path.join(os.path.dirname(_HERE), "dash_render.py")
 _ALLOWED_DUNDER_PREFIXES = (
     "__missing__", "__all__", "__tabs__", "__fw_", "__by__",
     "__builtins__", "__name__", "__main__", "__future__",
+    # A module's version, read by getattr (WP-30 P1.32's package floor).
+    "__version__",
     "__dashq", "__dashfix", "__DASH_ROW_ID__",
     # Bokeh's session-JWT member _dash_ws_payload bounds (WP-29 P0.12a).
     "__bk__zlib_",

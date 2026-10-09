@@ -1,0 +1,7499 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "e3680f61ee5b69299576da4ea30abd29b6cd78b2",
+  "extracted": " 8 Oct 2026",
+  "source": "scripts/extract_region_truth.do",
+  "stata_version": "19.5",
+  "units": "SVG 720 units per inch; 3960 x 2880"
+ },
+ "probes": {
+  "B01": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, by(foreign) plotregion(fcolor(red)) graphregion(fcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 4.9
+   },
+   "rc": 0,
+   "scheme": "s2color",
+   "twoway_draws_outer_graphregion": false
+  },
+  "M01": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red)) plotregion(lcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#0000ff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M02": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(blue)) plotregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M03": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red)) plotregion(c(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#0000ff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M04": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(red)) plotregion(style(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M05": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(red)) plotregion(lstyle(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M06": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(blue)) plotregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M07": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red)) plotregion(fcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M08": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none)) plotregion(fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "M09": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(red)) graphregion(lcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#0000ff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "R01": {
+   "cmd": "twoway scatter mpg weight, plotregion(bogus(1))",
+   "err": "option bogus() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R02": {
+   "cmd": "twoway scatter mpg weight, plotregion(st(none))",
+   "err": "option st() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R03": {
+   "cmd": "twoway scatter mpg weight, plotregion(is(none))",
+   "err": "option is() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R04": {
+   "cmd": "twoway scatter mpg weight, plotregion(COLOR(red))",
+   "err": "option COLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R05": {
+   "cmd": "twoway scatter mpg weight, plotregion(none)",
+   "err": "option none not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R06": {
+   "cmd": "twoway scatter mpg weight, plotregion(c(red) c(red))",
+   "err": "option c() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R07": {
+   "cmd": "twoway scatter mpg weight, plotregion(fc(red) fcolor(blue))",
+   "err": "option fcolor() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R08": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(l+10) margin(r+10))",
+   "err": "option margin() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R09": {
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) marginonly marginonly)",
+   "err": "option marginonly not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R10": {
+   "cmd": "twoway scatter mpg weight, plotregion(margino)",
+   "err": "option margino not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R11": {
+   "cmd": "twoway scatter mpg weight, plotregion(color(red), lcolor(blue))",
+   "err": "invalid 'lcolor'",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R12": {
+   "cmd": "twoway scatter mpg weight, plotregion(, color(red))",
+   "err": "invalid 'color'",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R13": {
+   "cmd": "twoway scatter mpg weight, graphregion(color(red)) graphregion(c(blue) c(green))",
+   "err": "option c() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R14": {
+   "cmd": "twoway scatter mpg weight, graphregion(bogus(1)) plotregion(foo(2))",
+   "err": "option bogus() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R15": {
+   "cmd": "twoway scatter mpg weight, plotregion(foo(2)) graphregion(bogus(1))",
+   "err": "option bogus() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R16": {
+   "cmd": "twoway scatter mpg weight, legend(bogus) plotregion(foo(1))",
+   "err": "option foo() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R17": {
+   "cmd": "twoway scatter mpg weight, xline(abc) plotregion(foo(1))",
+   "err": "option foo() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "R18": {
+   "cmd": "twoway scatter mpg weight, plotregion(color(red),)",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "R19": {
+   "cmd": "twoway scatter mpg weight, plotregion(lalign(bogus))",
+   "err": "",
+   "notes": [
+    "(note:  named style bogus not found in class alignstroke, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "R20": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpattern(bogus))",
+   "err": "",
+   "notes": [
+    "(note:  named style bogus not found in class linepattern, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "R21": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(bogus))",
+   "err": "",
+   "notes": [
+    "(note:  named style bogus not found in class margin, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "R22": {
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(notacolour))",
+   "err": "",
+   "notes": [
+    "(note:  named style notacolour not found in class color, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "R23": {
+   "cmd": "twoway scatter mpg weight, plotregion(lwidth(abc))",
+   "err": "",
+   "notes": [
+    "(note:  named style abc not found in class linewidth, default attributes used)",
+    "(note:  linewidth not found in scheme, default attributes used)"
+   ],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|color|COLOR": {
+   "cmd": "twoway scatter mpg weight, plotregion(COLOR(red))",
+   "err": "option COLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|color|c": {
+   "cmd": "twoway scatter mpg weight, plotregion(c(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|color|co": {
+   "cmd": "twoway scatter mpg weight, plotregion(co(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|color|col": {
+   "cmd": "twoway scatter mpg weight, plotregion(col(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|color|colo": {
+   "cmd": "twoway scatter mpg weight, plotregion(colo(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|color|color": {
+   "cmd": "twoway scatter mpg weight, plotregion(color(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|fcolor|FCOLOR": {
+   "cmd": "twoway scatter mpg weight, plotregion(FCOLOR(red))",
+   "err": "option FCOLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|fcolor|f": {
+   "cmd": "twoway scatter mpg weight, plotregion(f(red))",
+   "err": "option f() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|fcolor|fc": {
+   "cmd": "twoway scatter mpg weight, plotregion(fc(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|fcolor|fco": {
+   "cmd": "twoway scatter mpg weight, plotregion(fco(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|fcolor|fcol": {
+   "cmd": "twoway scatter mpg weight, plotregion(fcol(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|fcolor|fcolo": {
+   "cmd": "twoway scatter mpg weight, plotregion(fcolo(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|fcolor|fcolor": {
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|icolor|ICOLOR": {
+   "cmd": "twoway scatter mpg weight, plotregion(ICOLOR(red))",
+   "err": "option ICOLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|icolor|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(red))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|icolor|ic": {
+   "cmd": "twoway scatter mpg weight, plotregion(ic(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|icolor|ico": {
+   "cmd": "twoway scatter mpg weight, plotregion(ico(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|icolor|icol": {
+   "cmd": "twoway scatter mpg weight, plotregion(icol(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|icolor|icolo": {
+   "cmd": "twoway scatter mpg weight, plotregion(icolo(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|icolor|icolor": {
+   "cmd": "twoway scatter mpg weight, plotregion(icolor(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|IFCOLOR": {
+   "cmd": "twoway scatter mpg weight, plotregion(IFCOLOR(red))",
+   "err": "option IFCOLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(red))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|if": {
+   "cmd": "twoway scatter mpg weight, plotregion(if(red))",
+   "err": "option if() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|ifc": {
+   "cmd": "twoway scatter mpg weight, plotregion(ifc(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|ifco": {
+   "cmd": "twoway scatter mpg weight, plotregion(ifco(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|ifcol": {
+   "cmd": "twoway scatter mpg weight, plotregion(ifcol(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|ifcolo": {
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolo(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ifcolor|ifcolor": {
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|iintensity|IINTENSITY": {
+   "cmd": "twoway scatter mpg weight, plotregion(IINTENSITY(50))",
+   "err": "option IINTENSITY() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|iintensity|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(50))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|iintensity|ii": {
+   "cmd": "twoway scatter mpg weight, plotregion(ii(50))",
+   "err": "option ii() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iin": {
+   "cmd": "twoway scatter mpg weight, plotregion(iin(50))",
+   "err": "option iin() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iint": {
+   "cmd": "twoway scatter mpg weight, plotregion(iint(50))",
+   "err": "option iint() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iinte": {
+   "cmd": "twoway scatter mpg weight, plotregion(iinte(50))",
+   "err": "option iinte() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iinten": {
+   "cmd": "twoway scatter mpg weight, plotregion(iinten(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iintens": {
+   "cmd": "twoway scatter mpg weight, plotregion(iintens(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iintensi": {
+   "cmd": "twoway scatter mpg weight, plotregion(iintensi(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iintensit": {
+   "cmd": "twoway scatter mpg weight, plotregion(iintensit(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|iintensity|iintensity": {
+   "cmd": "twoway scatter mpg weight, plotregion(iintensity(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilalign|ILALIGN": {
+   "cmd": "twoway scatter mpg weight, plotregion(ILALIGN(inside))",
+   "err": "option ILALIGN() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilalign|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(inside))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilalign|il": {
+   "cmd": "twoway scatter mpg weight, plotregion(il(inside))",
+   "err": "option il() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilalign|ila": {
+   "cmd": "twoway scatter mpg weight, plotregion(ila(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilalign|ilal": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilal(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilalign|ilali": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilali(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilalign|ilalig": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilalig(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilalign|ilalign": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilalign(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|ILCOLOR": {
+   "cmd": "twoway scatter mpg weight, plotregion(ILCOLOR(red))",
+   "err": "option ILCOLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(red))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|il": {
+   "cmd": "twoway scatter mpg weight, plotregion(il(red))",
+   "err": "option il() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|ilc": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilc(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|ilco": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilco(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|ilcol": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilcol(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|ilcolo": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilcolo(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilcolor|ilcolor": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilcolor(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ILPATTERN": {
+   "cmd": "twoway scatter mpg weight, plotregion(ILPATTERN(dash))",
+   "err": "option ILPATTERN() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(dash))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|il": {
+   "cmd": "twoway scatter mpg weight, plotregion(il(dash))",
+   "err": "option il() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilp": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilp(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilpa": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilpa(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilpat": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilpat(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilpatt": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilpatt(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilpatte": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilpatte(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilpatter": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilpatter(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilpattern|ilpattern": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilpattern(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|ILSTYLE": {
+   "cmd": "twoway scatter mpg weight, plotregion(ILSTYLE(none))",
+   "err": "option ILSTYLE() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(none))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|il": {
+   "cmd": "twoway scatter mpg weight, plotregion(il(none))",
+   "err": "option il() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|ils": {
+   "cmd": "twoway scatter mpg weight, plotregion(ils(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|ilst": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilst(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|ilsty": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilsty(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|ilstyl": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilstyl(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilstyle|ilstyle": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilstyle(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|ILWIDTH": {
+   "cmd": "twoway scatter mpg weight, plotregion(ILWIDTH(thick))",
+   "err": "option ILWIDTH() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(thick))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|il": {
+   "cmd": "twoway scatter mpg weight, plotregion(il(thick))",
+   "err": "option il() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|ilw": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilw(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|ilwi": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilwi(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|ilwid": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilwid(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|ilwidt": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilwidt(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ilwidth|ilwidth": {
+   "cmd": "twoway scatter mpg weight, plotregion(ilwidth(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|intensity|INTENSITY": {
+   "cmd": "twoway scatter mpg weight, plotregion(INTENSITY(50))",
+   "err": "option INTENSITY() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|intensity|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(50))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|intensity|in": {
+   "cmd": "twoway scatter mpg weight, plotregion(in(50))",
+   "err": "option in() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|intensity|int": {
+   "cmd": "twoway scatter mpg weight, plotregion(int(50))",
+   "err": "option int() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|intensity|inte": {
+   "cmd": "twoway scatter mpg weight, plotregion(inte(50))",
+   "err": "option inte() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|intensity|inten": {
+   "cmd": "twoway scatter mpg weight, plotregion(inten(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|intensity|intens": {
+   "cmd": "twoway scatter mpg weight, plotregion(intens(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|intensity|intensi": {
+   "cmd": "twoway scatter mpg weight, plotregion(intensi(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|intensity|intensit": {
+   "cmd": "twoway scatter mpg weight, plotregion(intensit(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|intensity|intensity": {
+   "cmd": "twoway scatter mpg weight, plotregion(intensity(50))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ISHADESTYLE": {
+   "cmd": "twoway scatter mpg weight, plotregion(ISHADESTYLE(none))",
+   "err": "option ISHADESTYLE() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(none))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|is": {
+   "cmd": "twoway scatter mpg weight, plotregion(is(none))",
+   "err": "option is() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ish": {
+   "cmd": "twoway scatter mpg weight, plotregion(ish(none))",
+   "err": "option ish() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|isha": {
+   "cmd": "twoway scatter mpg weight, plotregion(isha(none))",
+   "err": "option isha() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishad": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishad(none))",
+   "err": "option ishad() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishade": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishade(none))",
+   "err": "option ishade() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishades": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishades(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishadest": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishadest(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishadesty": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishadesty(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishadestyl": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishadestyl(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|ishadestyle|ishadestyle": {
+   "cmd": "twoway scatter mpg weight, plotregion(ishadestyle(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|istyle|ISTYLE": {
+   "cmd": "twoway scatter mpg weight, plotregion(ISTYLE(none))",
+   "err": "option ISTYLE() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|istyle|i": {
+   "cmd": "twoway scatter mpg weight, plotregion(i(none))",
+   "err": "option i() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|istyle|is": {
+   "cmd": "twoway scatter mpg weight, plotregion(is(none))",
+   "err": "option is() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|istyle|ist": {
+   "cmd": "twoway scatter mpg weight, plotregion(ist(none))",
+   "err": "option ist() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|istyle|isty": {
+   "cmd": "twoway scatter mpg weight, plotregion(isty(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|istyle|istyl": {
+   "cmd": "twoway scatter mpg weight, plotregion(istyl(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|istyle|istyle": {
+   "cmd": "twoway scatter mpg weight, plotregion(istyle(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lalign|LALIGN": {
+   "cmd": "twoway scatter mpg weight, plotregion(LALIGN(inside))",
+   "err": "option LALIGN() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lalign|l": {
+   "cmd": "twoway scatter mpg weight, plotregion(l(inside))",
+   "err": "option l() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lalign|la": {
+   "cmd": "twoway scatter mpg weight, plotregion(la(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lalign|lal": {
+   "cmd": "twoway scatter mpg weight, plotregion(lal(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lalign|lali": {
+   "cmd": "twoway scatter mpg weight, plotregion(lali(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lalign|lalig": {
+   "cmd": "twoway scatter mpg weight, plotregion(lalig(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lalign|lalign": {
+   "cmd": "twoway scatter mpg weight, plotregion(lalign(inside))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lcolor|LCOLOR": {
+   "cmd": "twoway scatter mpg weight, plotregion(LCOLOR(red))",
+   "err": "option LCOLOR() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lcolor|l": {
+   "cmd": "twoway scatter mpg weight, plotregion(l(red))",
+   "err": "option l() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lcolor|lc": {
+   "cmd": "twoway scatter mpg weight, plotregion(lc(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lcolor|lco": {
+   "cmd": "twoway scatter mpg weight, plotregion(lco(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lcolor|lcol": {
+   "cmd": "twoway scatter mpg weight, plotregion(lcol(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lcolor|lcolo": {
+   "cmd": "twoway scatter mpg weight, plotregion(lcolo(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lcolor|lcolor": {
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(red))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|LPATTERN": {
+   "cmd": "twoway scatter mpg weight, plotregion(LPATTERN(dash))",
+   "err": "option LPATTERN() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lpattern|l": {
+   "cmd": "twoway scatter mpg weight, plotregion(l(dash))",
+   "err": "option l() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lp": {
+   "cmd": "twoway scatter mpg weight, plotregion(lp(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lpa": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpa(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lpat": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpat(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lpatt": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpatt(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lpatte": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpatte(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lpatter": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpatter(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lpattern|lpattern": {
+   "cmd": "twoway scatter mpg weight, plotregion(lpattern(dash))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lstyle|LSTYLE": {
+   "cmd": "twoway scatter mpg weight, plotregion(LSTYLE(none))",
+   "err": "option LSTYLE() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lstyle|l": {
+   "cmd": "twoway scatter mpg weight, plotregion(l(none))",
+   "err": "option l() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lstyle|ls": {
+   "cmd": "twoway scatter mpg weight, plotregion(ls(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lstyle|lst": {
+   "cmd": "twoway scatter mpg weight, plotregion(lst(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lstyle|lsty": {
+   "cmd": "twoway scatter mpg weight, plotregion(lsty(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lstyle|lstyl": {
+   "cmd": "twoway scatter mpg weight, plotregion(lstyl(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lstyle|lstyle": {
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lwidth|LWIDTH": {
+   "cmd": "twoway scatter mpg weight, plotregion(LWIDTH(thick))",
+   "err": "option LWIDTH() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lwidth|l": {
+   "cmd": "twoway scatter mpg weight, plotregion(l(thick))",
+   "err": "option l() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|lwidth|lw": {
+   "cmd": "twoway scatter mpg weight, plotregion(lw(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lwidth|lwi": {
+   "cmd": "twoway scatter mpg weight, plotregion(lwi(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lwidth|lwid": {
+   "cmd": "twoway scatter mpg weight, plotregion(lwid(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lwidth|lwidt": {
+   "cmd": "twoway scatter mpg weight, plotregion(lwidt(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|lwidth|lwidth": {
+   "cmd": "twoway scatter mpg weight, plotregion(lwidth(thick))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|marginonly|MARGINONLY": {
+   "cmd": "twoway scatter mpg weight, plotregion(MARGINONLY)",
+   "err": "option MARGINONLY not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|m": {
+   "cmd": "twoway scatter mpg weight, plotregion(m)",
+   "err": "option m incorrectly specified",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|ma": {
+   "cmd": "twoway scatter mpg weight, plotregion(ma)",
+   "err": "option ma incorrectly specified",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|mar": {
+   "cmd": "twoway scatter mpg weight, plotregion(mar)",
+   "err": "option mar incorrectly specified",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|marg": {
+   "cmd": "twoway scatter mpg weight, plotregion(marg)",
+   "err": "option marg incorrectly specified",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|margi": {
+   "cmd": "twoway scatter mpg weight, plotregion(margi)",
+   "err": "option margi incorrectly specified",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|margin": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin)",
+   "err": "option margin incorrectly specified",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|margino": {
+   "cmd": "twoway scatter mpg weight, plotregion(margino)",
+   "err": "option margino not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|marginon": {
+   "cmd": "twoway scatter mpg weight, plotregion(marginon)",
+   "err": "option marginon not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|marginonl": {
+   "cmd": "twoway scatter mpg weight, plotregion(marginonl)",
+   "err": "option marginonl not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|marginonly|marginonly": {
+   "cmd": "twoway scatter mpg weight, plotregion(marginonly)",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|margin|MARGIN": {
+   "cmd": "twoway scatter mpg weight, plotregion(MARGIN(zero))",
+   "err": "option MARGIN() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|margin|m": {
+   "cmd": "twoway scatter mpg weight, plotregion(m(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|margin|ma": {
+   "cmd": "twoway scatter mpg weight, plotregion(ma(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|margin|mar": {
+   "cmd": "twoway scatter mpg weight, plotregion(mar(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|margin|marg": {
+   "cmd": "twoway scatter mpg weight, plotregion(marg(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|margin|margi": {
+   "cmd": "twoway scatter mpg weight, plotregion(margi(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|margin|margin": {
+   "cmd": "twoway scatter mpg weight, plotregion(margin(zero))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|SHADESTYLE": {
+   "cmd": "twoway scatter mpg weight, plotregion(SHADESTYLE(none))",
+   "err": "option SHADESTYLE() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|s": {
+   "cmd": "twoway scatter mpg weight, plotregion(s(none))",
+   "err": "option s() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|sh": {
+   "cmd": "twoway scatter mpg weight, plotregion(sh(none))",
+   "err": "option sh() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|sha": {
+   "cmd": "twoway scatter mpg weight, plotregion(sha(none))",
+   "err": "option sha() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shad": {
+   "cmd": "twoway scatter mpg weight, plotregion(shad(none))",
+   "err": "option shad() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shade": {
+   "cmd": "twoway scatter mpg weight, plotregion(shade(none))",
+   "err": "option shade() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shades": {
+   "cmd": "twoway scatter mpg weight, plotregion(shades(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shadest": {
+   "cmd": "twoway scatter mpg weight, plotregion(shadest(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shadesty": {
+   "cmd": "twoway scatter mpg weight, plotregion(shadesty(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shadestyl": {
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyl(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|shadestyle|shadestyle": {
+   "cmd": "twoway scatter mpg weight, plotregion(shadestyle(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|style|STYLE": {
+   "cmd": "twoway scatter mpg weight, plotregion(STYLE(none))",
+   "err": "option STYLE() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|style|s": {
+   "cmd": "twoway scatter mpg weight, plotregion(s(none))",
+   "err": "option s() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|style|st": {
+   "cmd": "twoway scatter mpg weight, plotregion(st(none))",
+   "err": "option st() not allowed",
+   "notes": [],
+   "rc": 198,
+   "scheme": "s2color"
+  },
+  "S|style|sty": {
+   "cmd": "twoway scatter mpg weight, plotregion(sty(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|style|styl": {
+   "cmd": "twoway scatter mpg weight, plotregion(styl(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "S|style|style": {
+   "cmd": "twoway scatter mpg weight, plotregion(style(none))",
+   "err": "",
+   "notes": [],
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s1color|D01": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D02": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D03": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(c(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D04": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(blue) color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D05": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) fcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D06": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) lcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D07": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(blue) color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D08": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D09": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(style(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D10": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none) fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D11": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D12": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D13": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ls(none) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D14": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D15": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lc(red) lw(thick) lp(dash))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": "segments",
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 23.04
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D16": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(red%50))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D17": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(red%50) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.5,
+    "stroke": "#ff0000",
+    "width": 23.04
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D18": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D19": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D20": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D21": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D22": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fc(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D23": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lcolor(red) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 23.04
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D24": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 23.04
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D25": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D26": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(red)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D27": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(red) graphregion(color(none)) plotregion(fcolor(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D28": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red%50)) bgcolor(blue)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D29": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(none)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D30": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(foreground))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D31": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(foreground))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D32": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(p3))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#1a476f",
+    "width": 8.64
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D33": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(bogus))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [
+    "(note:  named style bogus not found in class areastyle, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D34": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lpattern(bogus))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [
+    "(note:  named style bogus not found in class linepattern, default attributes used)"
+   ],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D35": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(notacolour))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [
+    "(note:  named style notacolour not found in class color, default attributes used)"
+   ],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D36": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lalign(inside) lwidth(vthick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 40.32
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D37": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D38": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D39": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(intensity(50) fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff8080",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D40": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(none) graphregion(color(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D41": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lpattern(dash) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": "segments",
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D42": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lw(*2))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 11.52
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s1color|D43": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red%50))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s1color"
+  },
+  "s2color|D01": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D02": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D03": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(c(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D04": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(blue) color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D05": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) fcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D06": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) lcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D07": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(blue) color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D08": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D09": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(style(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D10": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none) fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D11": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D12": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D13": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ls(none) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D14": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D15": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lc(red) lw(thick) lp(dash))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": "segments",
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 23.04
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D16": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(red%50))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D17": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(red%50) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.5,
+    "stroke": "#ff0000",
+    "width": 23.04
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D18": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D19": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D20": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D21": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D22": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fc(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D23": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lcolor(red) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 23.04
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D24": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 23.04
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D25": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D26": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(red)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D27": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(red) graphregion(color(none)) plotregion(fcolor(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D28": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red%50)) bgcolor(blue)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D29": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(none)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D30": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(foreground))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D31": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(foreground))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D32": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(p3))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#55752f",
+    "width": 8.64
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D33": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(bogus))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [
+    "(note:  named style bogus not found in class areastyle, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D34": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lpattern(bogus))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [
+    "(note:  named style bogus not found in class linepattern, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D35": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(notacolour))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [
+    "(note:  named style notacolour not found in class color, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D36": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lalign(inside) lwidth(vthick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 40.32
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D37": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D38": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D39": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(intensity(50) fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff8080",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D40": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(none) graphregion(color(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D41": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lpattern(dash) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": "segments",
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D42": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lw(*2))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 11.52
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "s2color|D43": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#eaf2f3",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red%50))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#eaf2f3",
+    "width": 5.76
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 5.76
+   },
+   "rc": 0,
+   "scheme": "s2color"
+  },
+  "stcolor|D01": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight,",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D02": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D03": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(c(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D04": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(blue) color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D05": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) fcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D06": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(red) lcolor(blue))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D07": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(blue) color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D08": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D09": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(style(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D10": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(none) fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D11": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D12": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D13": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ls(none) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D14": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(none) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D15": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lc(red) lw(thick) lp(dash))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": "segments",
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 25.92
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D16": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(red%50))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D17": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(red%50) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.5,
+    "stroke": "#ff0000",
+    "width": 25.92
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D18": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(fcolor(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D19": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(color(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": null,
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D20": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(none))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D21": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D22": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fc(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D23": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lcolor(red) lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 25.92
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D24": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lwidth(thick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 25.92
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D25": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(color(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D26": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(red)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D27": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(red) graphregion(color(none)) plotregion(fcolor(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": null,
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D28": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#0000ff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red%50)) bgcolor(blue)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D29": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(none)",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D30": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(foreground))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D31": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(foreground))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D32": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lstyle(p3))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#00bf7f",
+    "width": 9.72
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D33": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(style(bogus))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [
+    "(note:  named style bogus not found in class areastyle, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D34": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lpattern(bogus))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [
+    "(note:  named style bogus not found in class linepattern, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D35": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lcolor(notacolour))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [
+    "(note:  named style notacolour not found in class color, default attributes used)"
+   ],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#000000",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D36": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lalign(inside) lwidth(vthick))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 45.36
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D37": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(ifcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D38": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(ifcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": 0.0,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D39": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(intensity(50) fcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ff8080",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D40": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#000000",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, bgcolor(none) graphregion(color(none))",
+   "err": "",
+   "graph_fill": null,
+   "graph_line": null,
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D41": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(lpattern(dash) lcolor(red))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": "segments",
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ff0000",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D42": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, plotregion(lw(*2))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 12.96
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  },
+  "stcolor|D43": {
+   "canvas": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "none",
+    "width": null
+   },
+   "cmd": "twoway scatter mpg weight, graphregion(fcolor(red%50))",
+   "err": "",
+   "graph_fill": {
+    "dasharray": null,
+    "fill": "#ff0000",
+    "fill_opacity": 0.5,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "graph_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "notes": [],
+   "plot_fill": {
+    "dasharray": null,
+    "fill": "#ffffff",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": null,
+    "width": null
+   },
+   "plot_line": {
+    "dasharray": null,
+    "fill": "none",
+    "fill_opacity": null,
+    "opacity": null,
+    "stroke": "#ffffff",
+    "width": 6.48
+   },
+   "rc": 0,
+   "scheme": "stcolor"
+  }
+ }
+}

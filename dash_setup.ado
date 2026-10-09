@@ -14,10 +14,13 @@
 *! Usage: dash_setup [, venv(path)]
 *!
 *! Author:  (see dash.sthlp)
-*! Version: 0.1.0  02oct2026
+*! Version: 0.1.0  09oct2026
 
 program define dash_setup, rclass
-    version 16.0
+    // WP-30 P1.35: the Stata floor first, before `version', so an older
+    // Stata is refused in dash's words and nothing is checked or installed.
+    _dash_setup_stata
+    version 19
     // dash_setup.sthlp's Syntax section was the bare command, and there was
     // no `syntax' line at all -- so `dash_setup, garbage(1)' ran the whole
     // setup and ignored the option in silence.  It now takes venv(path)
@@ -38,14 +41,21 @@ program define dash_setup, rclass
     // Minimum version requirements stored as locals, here so that venv()
     // can install them too.
     //
-    // The stata baseline of test/conftest.py, measured 25sep2026: Python
-    // 3.13.9, bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3 -- the versions both
-    // test suites run under; nothing older is tested (GAPS2 K2).  Every
+    // The package minimums are the stata pins of test/conftest.py
+    // (bokeh 3.8.0, numpy 2.3.5, pandas 2.3.3, test/requirements-stata.txt);
+    // both test suites, with both pin sets, pass under Python 3.11 and
+    // above (WP-30 P1.33, the floor matrix of scripts/floor_matrix.sh).  Every
     // render imports CustomJSTicker, present only from bokeh 3.6.0, so an
     // installed bokeh 3.0-3.5 used to pass this check and then fail every
     // dash command with r(7102); pandas is declared here because bokeh
     // 3.9 no longer installs it as a dependency.
+    //
+    // bokeh has a ceiling too (WP-30 P1.30, M9): max_bokeh is exclusive,
+    // the first minor dash was not verified on.  dash_render.py's
+    // _DASH_BOKEH_CEIL holds the same.  It reaches pip only where dash
+    // installs bokeh; a bokeh at or above it is reported, never changed.
     local min_bokeh       "3.8"
+    local max_bokeh       "3.10"
     local min_numpy       "2.3"
     local min_pandas      "2.3"
 
@@ -62,6 +72,7 @@ program define dash_setup, rclass
 
     display as text _newline "{txt}dash_setup: checking dependencies..."
     display as text "{hline 60}"
+    display as text "  Stata .............. {res}OK{txt} (version `c(stata_version)')"
 
     // Availability is CONFIGURATION, so it is read from configuration.
     // `capture python query' ran Python to ask whether Python was there,
@@ -89,7 +100,23 @@ program define dash_setup, rclass
     // declared minimum, so it now does: a user on a too-old Python was
     // told "OK (version ...)" and sent on to fail later inside bokeh, with
     // a message about neither Python nor dash.
-    python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+    _dash_setup_pystart
+    local pyver `"`r(pyver)'"'
+    if `"`pyver'"' == "" {
+        display as error "  Python ............. could not be started:"
+        mata: display("    " + c("python_exec"), 1)
+        if strpos(c(machine_type), "Mac") {
+            mata: display("    Stata reports this computer as " + c("machine_type") + ".", 1)
+            display as error "    On a Mac, Stata and Python must be built for the same processor:"
+            display as error "    both arm64 (Apple Silicon) or both x86_64 (Intel)."
+        }
+        display as error "    Link Stata to a Python that starts here: {help python}"
+        local n_fail = `n_fail' + 1
+        local fail_items `"`fail_items' Python (could not be started)"'
+        _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+            items(`"`fail_items'`warn_items'"')
+        exit 198
+    }
     _dash_pyver_ok "`pyver'" "`c_pymin'"
     local pyok = r(ok)
     if `pyok' == 1 {
@@ -97,7 +124,7 @@ program define dash_setup, rclass
     }
     else if `pyok' == 0 {
         display as error "  Python ............. version `pyver' is below the minimum `c_pymin'."
-        display as error "    bokeh and pandas will not install or import reliably."
+        display as error "    dash and the packages it needs are not tested below Python `c_pymin'."
         display as error "    Link Stata to Python `c_pymin' or later: {help python}"
         // Counted, not just printed.  This branch has never had an `exit',
         // so before this the run continued, installed against the too-old
@@ -153,7 +180,7 @@ program define dash_setup, rclass
             _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
                 items(`"`fail_items'`warn_items'"')
         }
-        _dash_setup_venv "`c_pymin'" "`min_bokeh'" "`min_numpy'" "`min_pandas'"
+        _dash_setup_venv "`c_pymin'" "`min_bokeh'" "`min_numpy'" "`min_pandas'" "`max_bokeh'"
         local v_step "`r(step)'"
         local v_linked "`r(linked)'"
         local v_py `"`r(venv_python)'"'
@@ -225,7 +252,7 @@ program define dash_setup, rclass
         if "`det_managed'" == "1" {
             display as text "  packaging .......... {err}not installed{txt} — this Python is externally managed"
             if `guide_shown' == 0 {
-                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
                 local guide_shown 1
@@ -236,7 +263,7 @@ program define dash_setup, rclass
         }
         else if "`det_pip'" == "0" {
             display as text "  packaging .......... {err}not installed{txt} — this Python has no pip"
-            _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+            _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
             local hint_cmd `"`r(cmd)'"'
             return local hint_cmd `"`hint_cmd'"'
             local guide_shown 1
@@ -294,14 +321,17 @@ program define dash_setup, rclass
             // install could land below the minimum dash requires and then
             // be reported as being below it.
             local _spec "`pkg'>=`min_`pkg''"
+            // WP-30 P1.30: only bokeh has a ceiling.  This runs only when
+            // the import failed, so nothing installed is replaced.
+            if "`pkg'" == "bokeh" local _spec "`_spec',<`max_bokeh'"
             if "`det_managed'" == "1" | "`det_pip'" == "0" {
                 display as text "  `pkg' ............. {err}missing{txt}"
                 if `guide_shown' == 0 {
                     if "`det_managed'" == "1" {
-                        _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                        _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                     }
                     else {
-                        _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+                        _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                     }
                     local hint_cmd `"`r(cmd)'"'
                     return local hint_cmd `"`hint_cmd'"'
@@ -327,13 +357,13 @@ program define dash_setup, rclass
             _dash_setup_pip "`_spec'" `_user' "`det_version'"
             local _outcome "`r(outcome)'"
             if "`_outcome'" == "externally-managed" & `guide_shown' == 0 {
-                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
                 local guide_shown 1
             }
             if "`_outcome'" == "no-pip" {
-                _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'"
+                _dash_setup_guide nopip "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
             }
@@ -346,7 +376,9 @@ program define dash_setup, rclass
                 }
                 else {
                     display as error "  Failed to install `pkg'. Please install manually:"
-                    _dash_pip_command "`pkg'" "`min_`pkg''" manual
+                    local _maxv ""
+                    if "`pkg'" == "bokeh" local _maxv "`max_bokeh'"
+                    _dash_pip_command "`pkg'" "`min_`pkg''" manual "`_maxv'"
                     local hint_cmd `"`r(cmd)'"'
                     return local hint_cmd `"`hint_cmd'"'
                     local fail_items `"`fail_items' `pkg' (could not install)"'
@@ -362,6 +394,8 @@ program define dash_setup, rclass
 
         // Retrieve installed version and compare to minimum
         local minver "`min_`pkg''"
+        local maxver ""
+        if "`pkg'" == "bokeh" local maxver "`max_bokeh'"
         local pkgver ""
         _dash_pkg_version "`pkg'" pkgver
 
@@ -369,7 +403,7 @@ program define dash_setup, rclass
         // the `else' printed "OK (version unknown)" for every package
         // whenever `packaging' was missing -- although _dash_pkg_version had
         // already returned the real version.  A bokeh 2.4 was reported OK.
-        _dash_setup_gate "`pkg'" "`pkgver'" "`minver'" `pkg_has_packaging'
+        _dash_setup_gate "`pkg'" "`pkgver'" "`minver'" `pkg_has_packaging' "`maxver'"
         local verdict "`r(verdict)'"
 
         if "`verdict'" == "ok" {
@@ -411,7 +445,7 @@ program define dash_setup, rclass
             // Python (N4): the private-environment guidance is, once.
             if "`det_managed'" == "1" {
                 if `guide_shown' == 0 {
-                    _dash_setup_guide managed "`det_ensurepip'" "`det_managed'"
+                    _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
                     local hint_cmd `"`r(cmd)'"'
                     return local hint_cmd `"`hint_cmd'"'
                     local guide_shown 1
@@ -421,7 +455,7 @@ program define dash_setup, rclass
                 // The Python Stata is linked to (Q27), quoted for the
                 // shell; the helper prints "To upgrade: <line>" as plain
                 // text.
-                _dash_pip_command "`pkg'" "`minver'" upgrade
+                _dash_pip_command "`pkg'" "`minver'" upgrade "`maxver'"
                 local hint_cmd `"`r(cmd)'"'
                 return local hint_cmd `"`hint_cmd'"'
             }
@@ -432,6 +466,56 @@ program define dash_setup, rclass
             // break unrelated work.
             local n_fail = `n_fail' + 1
             local fail_items `"`fail_items' `pkg' `pkgver' (needs `minver')"'
+        }
+        else if "`verdict'" == "above" {
+            // WP-30 P1.30 (M9, A105, A107): newer than dash was verified
+            // on.  A warning, never an install: something else in this
+            // Python may need the bokeh it has.  dash notes it as it draws.
+            display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
+                " (outside the verified range: `minver' or later, before `maxver')"
+            local n_warn = `n_warn' + 1
+            local warn_items `"`warn_items' `pkg' `pkgver' (outside the verified range)"'
+            if `det_done' == 0 {
+                _dash_setup_detect
+                local d_lib "`r(lib)'"
+                local d_ok "`r(ok)'"
+                local d_py `"`r(python)'"'
+                local d_managed "`r(managed)'"
+                local d_pip "`r(pip)'"
+                local d_ensurepip "`r(ensurepip)'"
+                local d_user "`r(user)'"
+                local d_version "`r(version)'"
+                if "`d_lib'" != "1" {
+                    local n_fail = `n_fail' + 1
+                    local fail_items `"`fail_items' dash's own files (dash_setup_lib.py)"'
+                    _dash_setup_summary , failures(`n_fail') warnings(`n_warn') ///
+                        items(`"`fail_items'`warn_items'"')
+                }
+                local det_done 1
+                return local python `"`d_py'"'
+                if "`d_ok'" == "1" {
+                    local det_managed "`d_managed'"
+                    local det_pip "`d_pip'"
+                    local det_ensurepip "`d_ensurepip'"
+                    local det_user "`d_user'"
+                    local det_version "`d_version'"
+                    return local externally_managed "`det_managed'"
+                }
+            }
+            if "`det_managed'" == "1" {
+                if `guide_shown' == 0 {
+                    _dash_setup_guide managed "`det_ensurepip'" "`det_managed'" "`pyok\'" "`c_pymin\'"
+                    local hint_cmd `"`r(cmd)'"'
+                    return local hint_cmd `"`hint_cmd'"'
+                    local guide_shown 1
+                }
+            }
+            else {
+                display as text "      To install a verified one:"
+                _dash_pip_command "`pkg'" "`minver'" manual "`maxver'"
+                local hint_cmd `"`r(cmd)'"'
+                return local hint_cmd `"`hint_cmd'"'
+            }
         }
         else if "`verdict'" == "unverified" {
             display as text "  `pkg' ............. {res}`pkgver'{txt}" ///
@@ -495,12 +579,48 @@ program define _dash_pymin, rclass
         dash_setup displays it, _dash_pyver_ok compares against it, and
         test/test_setup_python_gate.cscript asserts dash_setup.sthlp states
         the same number -- so the help cannot drift from the check.
+
+        The value is measured, never assumed (WP-30 P1.33): the lowest
+        Python the floor matrix passes (scripts/floor_matrix.sh: both test
+        suites with both pin sets, and a Stata session linked to it).
+        test/test_version_floor.py pins it to the lowest Python of
+        test/conftest.py's baselines.
     */
-    return local pymin "3.13"
+    return local pymin "3.11"
+end
+
+program define _dash_statamin, rclass
+    /*
+        The oldest Stata release dash runs on, named once.
+
+        returns r(statamin): "19".
+
+        _dash_setup_stata refuses below it.  dash.ado's
+        _dash_require_stata holds the same number (a program defined in
+        one ado-file cannot be called from another), and
+        test/test_version_floor.py pins the two, every program's
+        `version' line, dash.pkg and both help files equal.  No `version'
+        line: it runs on the Stata it refuses.
+    */
+    return local statamin "19"
+end
+
+program define _dash_setup_stata
+    version 13
+    _dash_statamin
+    local floor "`r(statamin)'"
+    local h = c(stata_version)
+    local w = real("`floor'")
+    if missing(`w') | `h' < `w' {
+        local shown : display %9.1f `h'
+        local shown `shown'
+        display as error "dash requires Stata `floor' or later; this is Stata `shown'"
+        exit 9
+    }
 end
 
 program define _dash_pyver_ok, rclass
-    version 16.0
+    version 19
     /*
         Is a dotted version string at or above a minimum?
 
@@ -518,9 +638,10 @@ program define _dash_pyver_ok, rclass
 
         THE ANSWER IS DECIDED ONCE AND RETURNED AFTER THE LOOP.  Written the
         obvious way -- `return scalar ok = 0' followed by `exit' inside the
-        forvalues -- neither took effect under `version 16.0', which is the
-        version dash_setup declares and therefore the version this runs
-        under in production.  Measured, with the loop body tracing itself:
+        forvalues -- neither took effect under language level 16, which
+        dash_setup declared until WP-30 raised it to 19, and therefore the
+        level this ran under in production.  Measured, with the loop body
+        tracing itself:
         at i=1 for "2.4" against "3.0" it computed gnum=2, wnum=3, did not
         take either branch, and carried on to i=2; every input then fell
         through to the final `ok = 1'.  So the comparator answered "at or
@@ -583,6 +704,28 @@ program define _dash_pyver_ok, rclass
     return scalar ok = `answer'
 end
 
+/*
+   _dash_setup_pystart  — start the linked Python and read its version
+   (WP-30 P1.32)
+
+   Returns r(pyver), sys.version's first word, or "" when Python could not
+   be started, and r(tries), 1 or 2.  The first python call of a session
+   can fail where Python works, so a line that set nothing is run once
+   more; the value decides, never the return code.
+*/
+program define _dash_setup_pystart, rclass
+    version 19
+    local pyver ""
+    capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+    local tries 1
+    if `"`pyver'"' == "" {
+        capture python: import sys; from sfi import Macro; Macro.setLocal("pyver", sys.version.split()[0])
+        local tries 2
+    }
+    return local pyver `"`pyver'"'
+    return scalar tries = `tries'
+end
+
 // ================================================================
 // _dash_pip_command  — the pip install line dash_setup prints (Q27)
 //
@@ -596,20 +739,22 @@ end
 // cmd.exe ignores single quotes, so on Windows it is double-quoted.
 //
 // Syntax:
-//   _dash_pip_command pkg minver [how]
+//   _dash_pip_command pkg minver [how] [maxver]
 //   how: "" (print nothing), upgrade ("To upgrade: <line>"), manual
+//   maxver: an exclusive ceiling, bokeh's (WP-30 P1.30); "" for none
 //   -> r(cmd) the line ("" when the helper is not reachable), r(note) what
 //      to add in PowerShell
 // ================================================================
 program define _dash_pip_command, rclass
-    version 16.0
-    args pkg minver how
+    version 19
+    args pkg minver how maxver
     _dash_setup_lib
     if r(ok) != 1 {
         return local cmd ""
         exit
     }
     local spec "`pkg'>=`minver'"
+    if "`maxver'" != "" local spec "`spec',<`maxver'"
     local pip_cmd ""
     local pip_note ""
     python: import sys; sys.modules["_dash_setup_lib"].stata_shell_line()
@@ -618,7 +763,7 @@ program define _dash_pip_command, rclass
 end
 
 program define _dash_pkg_version
-    version 16.0
+    version 19
     args pkg outmac
 
     // The name is READ inside Python with sfi.Macro.getLocal (below), so it
@@ -670,7 +815,7 @@ end
 // and linked to it; with no failure that is what the banner says.
 // ================================================================
 program define _dash_setup_summary
-    version 16.0
+    version 19
     syntax , FAILures(integer) WARNings(integer) [ITEMS(string) VENVready]
 
     display as text "{hline 60}"
@@ -722,6 +867,8 @@ end
 //   below       under the minimum
 //   unverified  a real version that could not be compared authoritatively
 //   unknown     no version could be read at all
+//   above       at or above the optional ceiling (bokeh's max_bokeh,
+//               WP-30 P1.30): newer than dash was verified on
 //
 // The old gate collapsed the last three into
 //     bokeh ............. OK (version unknown)
@@ -742,11 +889,11 @@ end
 // produced alone is reported as `unverified'.
 //
 // Syntax:
-//   _dash_setup_gate pkg got want has_packaging
+//   _dash_setup_gate pkg got want has_packaging [ceil]
 // ================================================================
 program define _dash_setup_gate, rclass
-    version 16.0
-    args pkg got want haspkg
+    version 19
+    args pkg got want haspkg ceil
 
     if `"`got'"' == "" | `"`got'"' == "unknown" {
         return local verdict "unknown"
@@ -792,6 +939,14 @@ program define _dash_setup_gate, rclass
         }
     }
 
+    // The ceiling (WP-30 P1.30): judged numerically, so 3.10.0rc1 is at
+    // or above 3.10, which is what "above" needs.  `got' reaches Python
+    // only through _dash_pyver_ok's getLocal, never interpolated.
+    if `"`ceil'"' != "" & inlist("`verdict'", "ok", "unverified") {
+        _dash_pyver_ok "`got'" "`ceil'"
+        if r(ok) == 1 local verdict "above"
+    }
+
     return local verdict "`verdict'"
 end
 
@@ -812,7 +967,7 @@ end
 // Returns r(failures), the number of things that are missing.
 // ================================================================
 program define _dash_setup_check_files, rclass
-    version 16.0
+    version 19
 
     local nfail 0
 
@@ -899,7 +1054,7 @@ end
 // Returns r(ok): 1 loaded, 0 not found or not loadable (each named).
 // ================================================================
 program define _dash_setup_lib, rclass
-    version 16.0
+    version 19
     local lib ""
     capture findfile dash_setup_lib.py
     if _rc == 0 {
@@ -944,7 +1099,7 @@ end
 // r(ok) "1" when the child answered.
 // ================================================================
 program define _dash_setup_detect, rclass
-    version 16.0
+    version 19
     _dash_setup_lib
     if r(ok) != 1 {
         return local lib "0"
@@ -975,7 +1130,7 @@ end
 // timeout, missing-interpreter, other) and r(user_tried).
 // ================================================================
 program define _dash_setup_pip, rclass
-    version 16.0
+    version 19
     args spec user ver
     local pip_outcome "other"
     local pip_user "0"
@@ -988,15 +1143,19 @@ end
 // ================================================================
 // _dash_setup_guide  — the way forward on a managed or pip-less Python
 // ================================================================
-// Syntax: _dash_setup_guide kind ensurepip managed
+// Syntax: _dash_setup_guide kind ensurepip managed pyok pymin
 //   kind  managed (PEP 668: suggest venv()) or nopip (ensurepip, or the
 //         distribution's packages)
+//   pyok  dash_setup's verdict on the linked Python: 0 below pymin, the
+//         floor.  A private environment made from a Python below the floor
+//         is below it too, so then neither kind suggests venv(): the
+//         guidance names the floor instead (WP-30 P1.33).
 // Printed by the helper as plain text.  Returns r(cmd), the command it
 // suggests ("" when it suggests none).  WP-29 P0.19.
 // ================================================================
 program define _dash_setup_guide, rclass
-    version 16.0
-    args kind ensurepip managed
+    version 19
+    args kind ensurepip managed pyok pymin
     local guide_cmd ""
     python: import sys; sys.modules["_dash_setup_lib"].stata_guide()
     return local cmd `"`guide_cmd'"'
@@ -1007,15 +1166,16 @@ end
 // _dash_setup_venv  — create or reuse, install into and verify the venv
 //                     stata_venv_check held (WP-29 P0.19)
 // ================================================================
-// Syntax: _dash_setup_venv pymin minb minn minp
+// Syntax: _dash_setup_venv pymin minb minn minp maxb
+// (maxb: bokeh's exclusive ceiling, WP-30 P1.30)
 // Returns r(step) ("" on success, else the step that failed: internal,
 // create, inspect, python, pip, verify), r(linked) ("1" when Stata is
 // already linked to it), r(venv_python), r(link_cmd) (the python set exec
 // line) and r(python) (the linked interpreter).
 // ================================================================
 program define _dash_setup_venv, rclass
-    version 16.0
-    args pymin minb minn minp
+    version 19
+    args pymin minb minn minp maxb
     local venv_step "internal"
     python: import sys; sys.modules["_dash_setup_lib"].stata_venv()
     return local step "`venv_step'"

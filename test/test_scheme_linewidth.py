@@ -28,7 +28,6 @@ says `set width scheme p#lineplot'):
 A ci band itself takes `linewidth ci' and a histogram `linewidth
 histogram'; neither follows p#.
 """
-import importlib.util
 import itertools
 import json
 import math
@@ -46,7 +45,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
 from dash_render import SchemeParser  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, load_app  # noqa: E402
 
 with open(os.path.join(_HERE, "fixtures", "linewidth_chain_truth.json"),
           encoding="utf-8") as _fh:
@@ -89,12 +88,11 @@ _CI = {"lfitci", "qfitci", "lpolyci", "fpfitci"}
 
 
 def _px(sp, unit):
-    """dash's width for Stata's *unit*: the keyword's rung of dash's
-    ladder, or a bare number's (economist's `linewidth p 1.2')."""
-    for kw, u in _T["units"].items():
-        if abs(u - unit) < 1e-9:
-            return dr.OptionTranslator.translate_lwidth(kw)
-    return unit * SchemeParser._LWIDTH_PX_PER_UNIT
+    """dash's width for Stata's *unit*: one rule for keywords and numbers
+    alike, Stata units x 2.88 pt through line_px (WP-30 P1.12b; it was
+    dash's private ladder, medium 1.5 px, and 5 px per number unit)."""
+    del sp
+    return dr.OptionTranslator.line_px(unit * dr.OptionTranslator.PT_PER_RS)
 
 
 def _cases():
@@ -311,9 +309,7 @@ def _figure(mode, wd, plots, scheme):
             return list(r._build_figures().values())[0]
         ap = str(wd / ("app_%d.py" % tag))
         dr.ServerAppBuilder(str(sp), str(dp)).build(ap)
-        ms = importlib.util.spec_from_file_location("_lw_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_lw_app_%d" % tag)
         doc = Document()
         mod.make_document(doc)
     figs = [m for root in doc.roots for m in root.references()
@@ -625,27 +621,27 @@ class TestBothModesDrawMarkerOutlines:
 class TestVvvthick:
     """Stata's linewidth-vvvthick.style is 4.2 units, drawn 1.615 times
     vvthick's 2.6 (measured 24sep2026 in twoway's SVG: 120.96 and 74.88
-    units).  dash's ladder compresses Stata's upper rungs (thick .8,
-    vthick 1.4, vvthick 2.6 are 2.5, 3.5 and 5.0px, a power of about 0.59
-    of the units); vvvthick continues it: 5.0 x (4.2/2.6)^0.588 = 6.6px."""
+    units).  Flipped (WP-30 P1.12b): dash's private ladder compressed the
+    upper rungs by a power of 0.588 (6.6px); the ladder is now Stata's,
+    linear, 1 unit = 3.84 px, so vvvthick is 4.2 x 3.84 = 16.128px, and a
+    name is case-sensitive (twoway notes THICK, measured 03oct2026)."""
 
     def test_on_the_ladder(self):
         tr = dr.OptionTranslator.translate_lwidth
-        assert tr("vvvthick") == 6.6
-        assert tr(" VVVTHICK ") == 6.6
+        assert tr("vvvthick") == pytest.approx(16.128)
+        with pytest.raises(ValueError):
+            tr(" VVVTHICK ")
         assert tr("vvvthick") > tr("vvthick")
         u = _T["units"]
-        a = math.log(tr("vvthick") / tr("thick")) / math.log(
-            u["vvthick"] / u["thick"])
-        assert tr("vvvthick") == pytest.approx(
-            tr("vvthick") * (u["vvvthick"] / u["vvthick"]) ** a, abs=0.1)
+        assert tr("vvvthick") / tr("vvthick") == pytest.approx(
+            u["vvvthick"] / u["vvthick"])
 
     def test_a_scheme_reads_it(self, wd):
         """lwt2's `linewidth p4 vvvthick'."""
         sp = _parse(wd, "v4", _T["schemes"]["lwt2"])
-        assert sp.plot_line_width(3, "") == 6.6
-        assert sp.plot_line_width(3, "mark") == 6.6
-        assert _px(sp, 4.2) == 6.6
+        assert sp.plot_line_width(3, "") == pytest.approx(16.128)
+        assert sp.plot_line_width(3, "mark") == pytest.approx(16.128)
+        assert _px(sp, 4.2) == pytest.approx(16.128)
 
     @pytest.mark.parametrize("bad", ["vvvvthick", "vvvthick;x", "vvv thick",
                                      "vvvthick" * 10_000, "<vvvthick>"])
@@ -666,4 +662,5 @@ class TestBothModesDrawVvvthick:
                  if type(getattr(r, "glyph", None)).__name__ == "Line"]
         marks = [r.glyph.line_width for r in fig.renderers
                  if type(getattr(r, "glyph", None)).__name__ == "Scatter"]
-        assert lines == [6.6] and marks == [6.6], (lines, marks)
+        assert lines == [pytest.approx(16.128)] and marks == [
+            pytest.approx(16.128)], (lines, marks)

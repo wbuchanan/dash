@@ -77,7 +77,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402
-from conftest import make_data_json, make_spec
+from conftest import make_data_json, make_spec, exec_app
 
 
 # ===========================================================================
@@ -331,7 +331,7 @@ SURFACES = {
             "test_adversarial.cscript:P20-15",
             "test_json_escaping.cscript:JSE-08",
             "test_json_escaping.cscript:JSE-29",
-            "test/test_help_claims_2.py::TestAnUnknownStyleInsideAStructuredOption::test_one_note_and_the_schemes_default_in_both_modes",
+            "test/test_help_claims_2.py::TestAnUnknownStyleInsideAStructuredOption::test_one_note_and_twoways_default_in_both_modes",
             "test/test_help_claims_7.py::TestAdversarialLegendAxesRegions::test_a_direction_word_in_any_spelling_is_not_a_placement",
             # The renderer's text boxes: text a string or a parenthesis
             # holds is never read as a sub-option (24sep2026).
@@ -947,6 +947,9 @@ _PYTEST_ID = re.compile(r"^test/test_\w+\.py::(?:\w+::)?test_\w+$")
 _CSCRIPT_ID = re.compile(r"^(test_\w+\.cscript):([A-Za-z0-9]+-[A-Za-z0-9]+)$")
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _entries():
     for surface, cats in SURFACES.items():
         for cat, ids in cats.items():
@@ -1027,6 +1030,7 @@ class TestTheMatrixIsComplete:
                if not (_PYTEST_ID.match(nid) or _CSCRIPT_ID.match(nid))]
         assert not bad, f"malformed registry entries: {bad}"
 
+    @pytest.mark.release  # a nested pytest --collect-only (WP-30 D)
     def test_every_pytest_entry_is_collected(self, collected_ids):
         assert collected_ids.proc.returncode == 0, (
             "pytest --collect-only failed on the registry's files:\n"
@@ -1134,8 +1138,8 @@ def _load_app(src, tag):
     ns = {"__name__": "dash_matrix_app_%s" % tag}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_CURDOC_ATTACH, "pass"),
-                     "dash_matrix_app_%s.py" % tag, "exec"), ns)
+        exec_app(src.replace(_CURDOC_ATTACH, "pass"),
+                 "dash_matrix_app_%s.py" % tag, ns)
     # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs it.
     ns["_DASH_SERVE_TOKEN"] = TEST_TOKEN
     return ns
@@ -1429,7 +1433,7 @@ class TestFunctionExpressionEncodings:
 class TestSchemeIncludes:
     """``#include`` inside a .scheme file.
 
-    None of the twenty shipped schemes has an ``#include`` line, and the one
+    None of the twenty-six shipped schemes has an ``#include`` line, and the one
     earlier cycle test wrote its files without changing directory, so its
     include never resolved and the cycle guard was never reached.  These
     run in the working directory, where dash reads custom schemes.
@@ -2056,7 +2060,7 @@ class TestALayoutThatCannotBeReadIsReported:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             saved = dr.DashRenderer(sp, dp)
-            saved.render()
+            render_models(saved)
             src = _app_source(tmp_path, spec)
         rows, cols = saved._compute_grid(
             ["g1", "g2"], saved.master_spec["build_options"]["layout"])
@@ -2121,6 +2125,8 @@ class TestARepeatedLayoutNameIsPlacedOnce:
         once, _ = _render(once_dir, _two_graph_spec("bs: g1=6 g2=6"))
 
         def _ids_aside(text):
+            # The CSP's script hashes are computed over the ids (P1.29).
+            text = re.sub(r"'sha256-[A-Za-z0-9+/]{43}='", "'HASH'", text)
             text = re.sub(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-"
                           r"[0-9a-f]{12}", "UUID", text)
             return re.sub(r"\bp\d{4,}\b", "PID", text)
@@ -2353,6 +2359,10 @@ class _LiveApp:
         # WP-29 P0.12a: the app runs with the shared test key unless *env*
         # maps DASH_SERVE_TOKEN to None, which removes it.
         env["DASH_SERVE_TOKEN"] = TEST_TOKEN
+        # WP-30 P1.31a: one shared live app serves a whole class's page
+        # requests, more than the default 20 within Bokeh's 15 s unused
+        # lifetime; the cap itself is test_served_resources.py's.
+        env["DASH_MAX_SESSIONS"] = "1000000"
         for k, v in self.env.items():
             if v is None:
                 env.pop(k, None)
@@ -2482,6 +2492,10 @@ def _launcher_said(app):
         return fh.read()
 
 
+# One worker for the class, so the module's live app is started once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.9 s on seven).
+@pytest.mark.xdist_group(name="adversarial-live-app")
 class TestSessionOrigin:
     """The websocket Origin check.  The served app passes Bokeh an
     allowlist; Bokeh lower-cases the Origin's host:port and matches it with
@@ -2686,6 +2700,10 @@ def lenient_live_app(tmp_path_factory):
         yield live
 
 
+# One worker for the class, so the module's live app is started once,
+# not once per worker its tests land on (WP-30 test performance A4;
+# measured 07oct2026: 0.9 s on three).
+@pytest.mark.xdist_group(name="adversarial-lenient-live-app")
 class TestSessionOriginUnderALenientBokeh:
     """Bokeh before 3.9 admitted a websocket origin whose host merely
     begins with an allowed one.  Measured 24sep2026 with pytest under
@@ -2889,8 +2907,10 @@ class TestRendererOutputPath:
     """``_validate_output_path`` mirrors dash.ado's saving() check for a
     renderer invoked directly.  It had no test."""
 
+    # WP-30 P1.27 (M11): "../x.html", "a/../x.html" and "a\\..\\x.html" moved
+    # to test_ordinary_paths_pass -- twoway's saving() writes a `..` segment.
     @pytest.mark.parametrize("path", [
-        "../x.html", "a/../x.html", "a\\..\\x.html", "a/..", "..",
+        "a/..", "..",
         "-x.html", "d/-x.html", "x.html\n", "x\x00.html", "x\r.html",
         "x\x1b[31m.html", "x\x7f.html", "x.htm", "x.html.py", "",
         "   ", "x.HTML.exe",
@@ -2907,13 +2927,17 @@ class TestRendererOutputPath:
     @pytest.mark.parametrize("path", ["out.html", "dir/out.html",
                                       "my..report.html", "a-b.html",
                                       "OUT.HTML", "C:\\dir\\out.html",
-                                      "\u2025\u2215x.html"])
+                                      "\u2025\u2215x.html",
+                                      "../x.html", "a/../x.html",
+                                      "a\\..\\x.html"])
     def test_ordinary_paths_pass(self, path):
         assert dr._validate_output_path(path, "standalone") == path
 
     def test_a_megabyte_path_is_judged_in_linear_time(self):
         long_ok = "a/" * 500000 + "x.html"
-        long_bad = "a/" * 500000 + "../x.html"
+        # WP-30 P1.27 (M11): a `..` segment is accepted now; a control
+        # character is still refused.
+        long_bad = "a/" * 500000 + "x\x01.html"
         t0 = time.monotonic()
         assert dr._validate_output_path(long_ok, "standalone") == long_ok
         with pytest.raises(ValueError):
@@ -2924,10 +2948,29 @@ class TestRendererOutputPath:
         sp, dp = _write_inputs(tmp_path, make_spec([dict(_SCATTER)]))
         sub = tmp_path / "sub"
         sub.mkdir()
-        target = str(sub / ".." / "escaped.html")
+        # WP-30 P1.27 (M11): a `..` segment is written now (see below); a
+        # leading `-` is still refused before anything is written.
+        target = str(sub / "-escaped.html")
         with pytest.raises(ValueError):
             dr.main(sp, dp, target)
-        assert not (tmp_path / "escaped.html").exists()
+        assert not (sub / "-escaped.html").exists()
+        assert not (tmp_path / "-escaped.html").exists()
+
+    def test_a_parent_segment_is_written_where_twoway_writes(self, tmp_path):
+        """WP-30 P1.27 (M11): twoway's saving() writes ../up.gph; the
+        renderer writes a `..` segment where it points."""
+        sp, dp = _write_inputs(tmp_path, make_spec([dict(_SCATTER)]))
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        dr.main(sp, dp, str(sub / ".." / "escaped.html"))
+        assert (tmp_path / "escaped.html").exists()
+
+    def test_the_launch_route_keeps_refusing_a_parent_segment(self):
+        """dash serve's private app path (--launch) still refuses `..`."""
+        with pytest.raises(ValueError):
+            dr._validate_output_path("a/../app.py", "server", launch=True)
+        assert dr._validate_output_path("a/../app.py", "server",
+                                        launch=False) == "a/../app.py"
 
     def test_the_launcher_runs_the_app_without_a_shell(self):
         """``--launch`` starts the generated app with an argv list; no call
@@ -3038,7 +3081,7 @@ class TestGraphTextBounds:
 
     def test_a_long_title_is_drawn_once_in_bounded_time(self, tmp_path):
         """A 200,000-character title and note are each drawn once, as
-        written: the title by the figure's Title, the note by one Label.
+        written: the title by the figure's Title, the note by a side-panel Title.
 
         This used to check that "<i>x</i><i>x</i>" was not on the page --
         it never is, since the page HTML-escapes the document it embeds --
@@ -3055,11 +3098,20 @@ class TestGraphTextBounds:
         page, _msgs = _render(tmp_path, spec)
         assert time.monotonic() - t0 < 30
         doc = _page_document(page)
-        assert [t.text for t in doc.select({"type": Title})] == [title]
-        assert [lb.text for lb in doc.select({"type": Label})] == [note]
+        # Flipped (WP-30 P1.2a): the note was one Label, which was wrong
+        # because twoway places note() by the scheme's clock; S15 draws it
+        # as a side-panel Title, so the Titles are [title, note].
+        assert sorted(t.text for t in doc.select({"type": Title})) == sorted(
+            [title, note])
+        assert [lb.text for lb in doc.select({"type": Label})] == []
         assert _holding(doc, title) == [("Title", "text")]
-        assert _holding(doc, note) == [("Label", "text")]
+        assert _holding(doc, note) == [("Title", "text")]
         (block,) = _page_blocks(page)
         assert block.count(_htmllib.escape(title, quote=False)) == 1
         assert block.count(_htmllib.escape(note, quote=False)) == 1
-        assert "&amp;lt;" not in block
+        # Flipped (WP-30 P1.5): "no &amp;lt; on the page" was wrong once
+        # every numeric axis carries Stata's writer, because the writer's
+        # own dash_html_escape replace chain spells it; the title's
+        # escaping is judged on the page without that chain.
+        assert "&amp;lt;" not in re.sub(
+            r'\.replace\(/[^/]{1,12}/g, \\*"&[^"\\]{1,16}\\*"\)', "", block)

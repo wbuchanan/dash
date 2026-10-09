@@ -12,13 +12,12 @@ not skipped.
 ```bash
 mkdir -p /tmp/dash-visual && cd /tmp/dash-visual && cat > run.do <<'DO'
 clear all
-adopath ++ "/Users/billy/Desktop/Programs/Java/StataJSON"
 adopath ++ "<repo>"
 cd /tmp/dash-visual
 do "<repo>/examples/geometry_responsive.do"
 exit, clear STATA
 DO
-arch -arm64 /usr/local/bin/stata-mp -b do run.do
+sh <repo>/scripts/stata_batch.sh -b do run.do
 ```
 
 `examples/geometry_responsive.do` is the exemplar: four KPI cards, a deliberately

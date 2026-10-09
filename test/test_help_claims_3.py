@@ -51,6 +51,9 @@ _HELP = os.path.join(_HERE, "..", "dash.sthlp")
 _FIGURE = tfe._FIGURE
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _graphs(n, **go):
     """``n`` scatter graphs g1..gn for ``tp._spec``, each titled by name."""
     return [("g%d" % i, [plot_for("scatter")], dict(go, title="g%d" % i))
@@ -353,7 +356,7 @@ class TestAKpiCardCanBeExcluded:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [w], [cb] = r.filter_widgets, r.filter_callbacks
         w.value = self.MOVE
         _, divs = _run_saved(cb.args, cb.code)
@@ -428,7 +431,7 @@ class TestAnExclusionHoldsAgainstEveryMove:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         (w_for, w_price), (cb_for, cb_price) = (r.filter_widgets,
                                                 r.filter_callbacks)
         s = js_runner.JsSession(r.filter_callbacks)

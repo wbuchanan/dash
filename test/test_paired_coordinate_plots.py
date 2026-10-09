@@ -61,6 +61,10 @@ _DATA = {
 }
 
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from conftest import render_models  # noqa: E402
+
+
 def _render(plot, quiet=True):
     td = tempfile.mkdtemp()
     spec = {"graphs": [{"graph_options": {"name": "g1"}, "plots": [plot]}],
@@ -78,10 +82,10 @@ def _render(plot, quiet=True):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
     else:
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r.figures["g1"]
 
 

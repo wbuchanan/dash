@@ -17,10 +17,16 @@ generator's r(min), r(delta) and y for each probe, with twoway's rc).
 
 Every test runs in both modes: the saved page (``DashRenderer``) and the
 served app (``ServerAppBuilder``'s generated module).
+
+P1.22 is closed by disposition (WP-30, maintainer decision M12): a graph
+registered in Stata is always drawn from Stata's points, and the fallback
+keeps its ten functions; a layer it cannot draw gives one note naming what
+it needs and the function or name it met (``GlyphMapper._mark_needs_points``,
+``GlyphMapper._needs_points_why``).
 """
 
+import ast
 import copy
-import importlib.util
 import inspect
 import itertools
 import json
@@ -29,19 +35,24 @@ import os
 import re
 import sys
 import tempfile
+import textwrap
 import time
 import warnings
 
 import numpy as np
 import pytest
 from bokeh.document import Document
+from bokeh.embed import file_html
 from bokeh.models import CustomJS, Plot, Select
+from bokeh.plotting import figure
+from bokeh.resources import CDN
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as mp  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "function_expr_truth.json")
@@ -66,6 +77,28 @@ _FALLBACK_UNSUPPORTED = {"y = c(pi)*x", "y = normalden(x)", "y = ln(x)",
 _REFUSED = ["pi*x", "e*x", "pi", "e", "PI", "E", "x**2", "x%2", "x//1", "+x",
             "2*+x", "(+x)", "x^", "2^^x", "ｓｉｎ(x)", "2x",
             "sin(x,1)", "sin (x)"]
+
+#: WP-30 P1.22: what a spec without points meets, and the tail of the one
+#: note it gives -- the first function the fallback refuses, the first bare
+#: name, or neither (the tokenizer reads left to right, so the first
+#: refusal decides).
+_NEEDS_STATA_FUNCS = {"normalden(x)": "normalden", "normal(x)": "normal",
+                      "ln(x)": "ln", "c(pi)*x": "c",
+                      "cond(x>1,x,0)": "cond", "min(x,1)": "min",
+                      "max(x,1)": "max", "round(x)": "round",
+                      "int(x-1)": "int", "scalar(s)*x": "scalar",
+                      "invlogit(x)": "invlogit",
+                      "__import__('os')": "__import__"}
+_NEEDS_STATA_NAMES = {"pi*x": "pi", "e*x": "e", "PI": "PI", "E": "E",
+                      "s*x": "s", "_b[_cons]+_b[weight]*x": "_b",
+                      "sin (x)": "sin"}
+_NO_NAME = ["x>1", "(x>1)*x", "x^", "sin(x,1)", "2x", "ｓｉｎ(x)",
+            "1>normalden(x)", "x**2"]
+_HEAD = ("dash: graph 'g1' plot 1 (function) drew nothing: it needs the "
+         "points Stata computes for it when dash registers the graph")
+_KNOWS = ("without them dash evaluates only x, _pi, numbers, + - * / ^ and "
+          "sin(), cos(), tan(), exp(), log(), log10(), sqrt(), abs(), "
+          "floor() and ceil()")
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +162,7 @@ def _render(mode, spec, raw=None, spy=None):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                r.render()      # the page: a test serialises its document
         finally:
             if undo:
                 undo()
@@ -142,9 +175,7 @@ def _render(mode, spec, raw=None, spy=None):
         dr.ServerAppBuilder(sp, dp).build(ap)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ms = importlib.util.spec_from_file_location(f"_fnexpr_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_fnexpr_{tag}")
     undo = spy(mod) if spy else None
     try:
         with warnings.catch_warnings(record=True) as caught:
@@ -205,6 +236,15 @@ def _same(a, b):
                           np.asarray(b, dtype=float), equal_nan=True)
 
 
+def _bridged(vals):
+    """The points twoway's line joins: *vals* less its missing values.
+    WP-30 P1.8a: under the default cmissing(y) a function's missing
+    points are bridged, so the drawn source leaves them out; a value
+    where Stata has a missing one is still an extra point."""
+    a = np.asarray(vals, dtype=float)
+    return a[~np.isnan(a)]
+
+
 def _points_of(probe):
     return {"x0": _num(probe["x0"]), "dx": _num(probe["dx"]),
             "y": [_num(v) for v in probe["gen_y"]]}
@@ -245,10 +285,14 @@ class TestStoredPoints:
         if mode == "saved":
             # Guard: the saved page never recomputes a function: its source
             # is referenced by no CustomJS, so a filter move cannot change it.
+            # The axis re-finish and zoom code only read it (WP-30 P1.3a).
             (src,) = _fn_sources(models)
             for m in models:
                 if isinstance(m, CustomJS):
-                    for v in m.args.values():
+                    for k, v in m.args.items():
+                        if k == "axis_models" or (
+                                k == "models" and "plan_json" in m.args):
+                            continue
                         vals = v if isinstance(v, (list, tuple)) else [v]
                         assert all(getattr(u, "id", None) != src.id
                                    for u in vals)
@@ -452,12 +496,13 @@ class TestStataGrammarFallback:
     @pytest.mark.parametrize("expr", sorted(_SIGN_AFTER_CARET))
     def test_a_sign_after_caret_takes_one_operand(self, expr, mode):
         _x, y, _w, _ = _draw(mode, expr)
-        assert _same(y, _SIGN_AFTER_CARET[expr]), (expr, list(y))
+        assert _same(_bridged(y), _bridged(_SIGN_AFTER_CARET[expr])), (
+            expr, list(y))
 
     @pytest.mark.parametrize("expr", sorted(_UNARY))
     def test_unary_minus_binds_looser_than_caret(self, expr, mode):
         _x, y, _w, _ = _draw(mode, expr)
-        assert _same(y, _UNARY[expr]), (expr, list(y))
+        assert _same(_bridged(y), _bridged(_UNARY[expr])), (expr, list(y))
 
     def test_division_binds_tighter_than_multiplication(self, mode):
         _x, y, _w, _ = _draw(mode, "0.1*3/0.3")
@@ -526,9 +571,15 @@ class TestAgainstTheFixture:
         bad = []
         for p in probes:
             x, y = _xy(models, p["id"])
-            if not _same(y, _floats(p["gen_y"])):
+            gy = _floats(p["gen_y"])
+            if not _same(_bridged(y), _bridged(gy)):
                 bad.append((p["id"], "y", list(y)[:4]))
-            if sorted(x) != [float(v) for v in p["serset_x"]]:
+            # The x of each joined point (gen_y and serset_x share an order).
+            want_x = [float(v) for v, w in zip(p["serset_x"], gy)
+                      if not np.isnan(w)]
+            got_x = [float(v) for v, w in zip(x, np.asarray(y, dtype=float))
+                     if not np.isnan(w)]
+            if sorted(got_x) != want_x:
                 bad.append((p["id"], "x", list(x)[:4]))
         assert not bad, bad
 
@@ -550,7 +601,8 @@ class TestAgainstTheFixture:
                 if p["rc"] != 0:
                     bad.append((p["id"], "accepted what twoway refuses"))
                     continue
-                want = _floats(p["gen_y"])
+                want = _bridged(_floats(p["gen_y"]))
+                y = _bridged(y)
                 if _has_plain_arith(p["expr"]):
                     ok = _same(y, want)
                 else:
@@ -663,7 +715,175 @@ class TestNoEval:
     def test_the_mapper_cannot_evaluate_python(self):
         pat = re.compile(r"(?<![A-Za-z0-9_.])(eval|compile|exec)\s*\(")
         for fn in (dr.GlyphMapper.map_function,
+                   dr.GlyphMapper._mark_needs_points,
+                   dr.GlyphMapper._needs_points_why,
                    getattr(dr, "_stata_fn_parse"),
                    getattr(dr, "_stata_fn_eval")):
             src = inspect.getsource(fn)
             assert not pat.search(src), fn.__name__
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.22: a layer the fallback cannot draw says what it needs
+# ---------------------------------------------------------------------------
+
+def _refusal_tail(expr):
+    if expr in _NEEDS_STATA_FUNCS:
+        return _NEEDS_STATA_FUNCS[expr] + "() is not one of them."
+    if expr in _NEEDS_STATA_NAMES:
+        return "the name " + _NEEDS_STATA_NAMES[expr] + " is not one of them."
+    return "the expression cannot be read with them."
+
+
+@pytest.mark.parametrize("mode", MODES)
+class TestTheFallbackSaysWhatItNeeds:
+    def test_each_refusal_names_what_it_met(self, mode):
+        """Every row: an empty layer and exactly one note, naming the first
+        function (``name()``), the first bare name, or neither."""
+        bad = []
+        for expr in (sorted(_NEEDS_STATA_FUNCS) + sorted(_NEEDS_STATA_NAMES)
+                     + _NO_NAME):
+            _x, y, warns, _ = _draw(mode, expr)
+            want = [_HEAD + ", and this spec carries none; " + _KNOWS
+                    + ", and " + _refusal_tail(expr)]
+            got = _empty_notes(warns)
+            if len(y) != 0 or got != want:
+                bad.append((expr, len(y), got))
+        assert not bad, bad
+
+    def test_points_that_cannot_be_read_say_so(self, mode):
+        points, raw = _HOSTILE["points a list"]
+        x, y, warns, _ = _draw(mode, "x", points=points, raw=raw)
+        assert len(x) == 0 and len(y) == 0
+        assert _empty_notes(warns) == [
+            _HEAD + ", and the points this spec carries for it cannot be "
+            "read."]
+
+
+class TestTheNeedsPointsMark:
+    def test_the_parser_names_what_it_refused(self):
+        for text, want, msg in (
+                ("normalden(x)", ("function", "normalden"),
+                 "unknown function"),
+                ("pi*x", ("name", "pi"), "unknown name"),
+                ("ln(x)+normalden(x)", ("function", "ln"),
+                 "unknown function")):
+            with pytest.raises(ValueError) as ei:
+                _parse(text)
+            assert str(ei.value) == msg, text
+            assert ei.value.dash_refused == want, text
+        with pytest.raises(ValueError) as ei:
+            _parse("x>1")
+        assert getattr(ei.value, "dash_refused", None) is None
+
+    def test_mark_needs_points_marks_each_renderer(self):
+        f = figure()
+        a, b = f.line(x=[], y=[]), f.line(x=[], y=[])
+        mark = dr.GlyphMapper._mark_needs_points
+        assert mark(a, "W") is a
+        both = [a, b]
+        assert mark(both, "W") is both
+        assert a._dash_needs_points == b._dash_needs_points == "W"
+        mark([object()], "W")  # raises nothing
+
+    def test_the_why_of_each_refusal(self):
+        why = dr.GlyphMapper._needs_points_why
+        assert why() == ("it needs the points Stata computes for it when "
+                         "dash registers the graph, and the points this "
+                         "spec carries for it cannot be read")
+        assert why(ValueError("x")) == (
+            "it needs the points Stata computes for it when dash registers "
+            "the graph, and this spec carries none; " + _KNOWS
+            + ", and the expression cannot be read with them")
+
+        def refused(got):
+            e = ValueError("x")
+            e.dash_refused = got
+            return why(e)
+        assert refused(("function", "normalden")).endswith(
+            ", and normalden() is not one of them")
+        assert refused(("name", "pi")).endswith(
+            ", and the name pi is not one of them")
+        assert refused(("function", "a" * 40)).endswith(
+            ", and " + "a" * 32 + "...() is not one of them")
+        assert "a" * 33 not in refused(("function", "a" * 40))
+        for got in (("function", "{bf:x}"), ("function", "é"),
+                    ("function", ""), ("name", "9x"), ("call", "x"),
+                    ["function", "x"], ("function", 5), ("function", "a b")):
+            # The expression tail, and nothing of the value echoed.
+            assert refused(got) == why(ValueError("x")), got
+
+    def test_the_note_lists_exactly_what_the_fallback_knows(self):
+        tree = ast.parse(textwrap.dedent(inspect.getsource(
+            dr._stata_fn_parse)))
+        funcs = None
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Assign)
+                    and any(getattr(t, "id", None) == "funcs"
+                            for t in node.targets)):
+                funcs = [e.value for e in node.value.elts]
+        assert funcs and len(funcs) == 10
+        text = dr.GlyphMapper._needs_points_why(ValueError("x"))
+        assert re.findall(r"(\w+)\(\)", text)[:10] == funcs
+        assert "x, _pi, numbers, + - * / ^" in text
+
+    @pytest.mark.parametrize("mode", MODES)
+    def test_the_mark_is_never_serialised(self, mode):
+        spec = mp._spec([_fn_plot("normalden(x)")])
+        models, _w, mod = _render(mode, spec)
+        doc = (next(m.document for m in models if m.document is not None)
+               if mode == "saved" else mod._dash_test_doc)
+        page = file_html(doc, CDN)
+        assert "_dash_needs_points" not in page
+        assert "it needs the points" not in page
+
+
+class TestTheReasonedReport:
+    def _notes(self, fn, *a, **k):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            fn(*a, **k)
+        return [str(w.message) for w in caught]
+
+    def test_a_reason_follows_drew_nothing(self):
+        rep = dr._dash_report_empty_layer
+        assert self._notes(rep, "g1", 3, "function", why="it needs x") == [
+            "dash: graph 'g1' plot 3 (function) drew nothing: it needs x."]
+        assert self._notes(rep, "g1", 3, "function", why="") == [
+            "dash: graph 'g1' plot 3 (function) drew nothing."]
+
+    def test_the_function_branch_reads_the_mark(self):
+        note = dr._dash_note_empty_layer
+        r = figure().line(x=[], y=[])
+        assert self._notes(note, "g1", 2, "function", 0, [r]) == [
+            "dash: graph 'g1' plot 2 (function) drew nothing."]
+        r._dash_needs_points = "W"
+        assert self._notes(note, "g1", 2, "function", 0, [r]) == [
+            "dash: graph 'g1' plot 2 (function) drew nothing: W."]
+        assert self._notes(note, "g1", 2, "scatter", 6, [r]) == [
+            "dash: graph 'g1' plot 2 (scatter) drew nothing from 6 "
+            "observations."]
+        for bad in (5, "x" * 1001):
+            r._dash_needs_points = bad
+            assert self._notes(note, "g1", 2, "function", 0, [r]) == [
+                "dash: graph 'g1' plot 2 (function) drew nothing."], bad
+
+
+class TestTheHelp:
+    def test_the_fallback_rule_is_stated(self):
+        with open(os.path.join(_HERE, "..", "dash.sthlp"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        a = text.index("{ul:Functions.}")
+        b = text.index("{ul:Graphs that need no data.}", a)
+        para = " ".join(re.sub(r"\{cmd:|\}", "", text[a:b]).split())
+        for want in ("carries no points",
+                     "needs the points Stata computes when dash registers "
+                     "the graph",
+                     "names the first function or name it uses that dash "
+                     "cannot evaluate",
+                     "Stored points that cannot be read get the same note",
+                     "Registering the graph with dash computes its points "
+                     "in Stata"):
+            assert want in para, want
+        assert "a note names it" not in para

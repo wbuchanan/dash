@@ -30,7 +30,6 @@ Two kinds of test:
 * TestReflowModel and the rest: the Bokeh model properties and CSS the
   fix sets, with no browser.
 """
-import importlib.util
 import itertools
 import json
 import os
@@ -48,7 +47,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import dash_render as dr
 import responsive_probe as rp
-from conftest import make_data_json
+from conftest import make_data_json, load_app
 
 WIDTHS = (375, 768, 1440)
 #: The narrowest a figure may be drawn at any of WIDTHS.  A grid column
@@ -79,6 +78,9 @@ _VLN = {"foreign": "origin"}
 # ---------------------------------------------------------------------------
 # Specs: one per layout family
 # ---------------------------------------------------------------------------
+
+from conftest import render_models  # noqa: E402
+
 
 def _sc(y, x):
     return {"type": "scatter", "yvar": y, "xvar": x, "options": {}}
@@ -188,9 +190,7 @@ def _served_doc(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location("_resp_app_%d" % tag, ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, "_resp_app_%d" % tag)
         doc = Document()
         mod.make_document(doc)
     return doc
@@ -201,7 +201,8 @@ def _served_page(spec):
     models the server sends, without its Python callbacks, which do not
     change a layout.  Rendered through the served template (WP-28 E14) so
     it declares the saved page's viewport meta, as a real ``bokeh serve``
-    session does (``doc.template = _dash_served_template()``, :25824)."""
+    session does (``doc.template = _dash_served_template(_dash_new_nonce())``
+    in the generated make_document)."""
     import logging
     from bokeh.embed import file_html
     from bokeh.resources import INLINE
@@ -249,6 +250,7 @@ def _check(name, results):
         results, indent=1))
 
 
+@pytest.mark.release  # headless Chrome (WP-30 D)
 class TestPagesFitInChrome:
     """The saved page of every layout family, at 375, 768 and 1440 px."""
 
@@ -259,6 +261,7 @@ class TestPagesFitInChrome:
         _check(name, rp.measure_many(page, WIDTHS, chrome))
 
 
+@pytest.mark.release  # headless Chrome (WP-30 D)
 class TestServedDocumentsFitInChrome:
     """The served document's layout at the same widths (TR-27.2): its
     grids stack as the saved ones do.  The served page declares the saved
@@ -300,6 +303,31 @@ class TestTheProbe:
         out = rp.with_probe("<html><body>x</body></html>")
         assert out.index("DASHPROBE") < out.index("</body>")
         assert "DASHPROBE" in rp.with_probe("<p>no body</p>")
+        # A page with no policy gains the probe and nothing else.
+        assert out == "<html><body>x" + rp.PROBE_JS + "</body></html>"
+
+    def test_with_probe_admits_itself_under_both_policies(self):
+        """WP-30 P1.29: a saved page runs only the scripts its policy names
+        by hash, a served page only those carrying its nonce; the probe is
+        admitted on the page copy under test, and nothing else changes."""
+        import base64
+        import hashlib
+        body = rp.PROBE_JS.split(">", 1)[1].rsplit("</script>", 1)[0]
+        digest = base64.b64encode(hashlib.sha256(
+            body.encode("utf-8")).digest()).decode("ascii")
+        saved = ("<html><head>" + dr._dash_saved_head([])
+                 + "</head><body>x</body></html>")
+        out = rp.with_probe(saved)
+        assert ("script-src 'sha256-%s' 'unsafe-eval'" % digest) in out
+        assert out.replace("'sha256-%s' " % digest, "", 1) == \
+            saved.replace("</body>", rp.PROBE_JS + "</body>")
+        n = "Nonce_-" * 4
+        served = ("<html><head>" + dr._dash_csp_meta(dr._dash_csp_served(n))
+                  + "</head><body>x</body></html>")
+        out = rp.with_probe(served)
+        assert '<script nonce="%s">' % n in out
+        assert out.count("nonce-%s" % n) == 1
+        assert "sha256" not in out
 
     def test_find_chrome_honours_only_an_executable(self, monkeypatch,
                                                     tmp_path):
@@ -357,6 +385,7 @@ class TestTheServedPageCarriesTheSavedPagesHead:
         assert csp_at < page.index(dr._DASH_VIEWPORT_META)
 
 
+@pytest.mark.release  # headless Chrome (WP-30 D)
 class TestTheServedBsGridReflowsAsTheSavedOne:
     """WP-28 E14: between 768 and 991 px a served layout(bs) grid takes the
     saved page's half rows and KPI cell minimum heights.  The saved page's
@@ -513,10 +542,20 @@ class TestReflowAdversarial:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         for s in _all_models(r._last_layout_root, InlineStyleSheet):
             if "container-type" in s.css:
                 assert "display:none" not in s.css
+
+
+def _shares_the_width(cols):
+    """Every column an equal share of the grid -- or, in a by() grid,
+    every panel column, its axis-title, legend and key columns as wide as
+    they hold and its stacking ruler's one pixel (WP-30 P1.15c)."""
+    if cols == dr._DASH_BS_TRACK:
+        return True
+    return (isinstance(cols, list) and dr._DASH_BS_TRACK in cols
+            and set(cols) <= {dr._DASH_BS_TRACK, "max-content", "1px"})
 
 
 class TestEveryGridIsReflowed:
@@ -528,7 +567,7 @@ class TestEveryGridIsReflowed:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         return r._last_layout_root
 
     @pytest.mark.parametrize("name", ["grid_3x2_filters", "tabs_facet",
@@ -539,7 +578,7 @@ class TestEveryGridIsReflowed:
         grids = _all_models(root, GridPlot)
         assert grids
         for g in grids:
-            assert g.cols == dr._DASH_BS_TRACK
+            assert _shares_the_width(g.cols), g.cols
         rows = _all_models(root, Row)
         assert all("flex-wrap: wrap" in _css(x) for x in rows)
 
@@ -551,7 +590,7 @@ class TestEveryGridIsReflowed:
         models = [m for root in doc.roots for m in root.references()]
         grids = [m for m in models if isinstance(m, GridPlot)]
         for g in grids:
-            assert g.cols == dr._DASH_BS_TRACK
+            assert _shares_the_width(g.cols), g.cols
         boxes = [m for m in models if type(m) is GridBox]
         for b in boxes:
             assert "@media (max-width: 767.98px)" in _css(b)
@@ -604,7 +643,7 @@ class TestTheSidebarPassesBokehValidation:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 r = dr.DashRenderer(sp, dp)
-                r.render()
+                render_models(r)
             return [r._last_layout_root]
         return list(_served_doc(FAMILIES[name]).roots)
 

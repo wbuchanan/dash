@@ -54,6 +54,24 @@ _HERE = os.path.dirname(__file__)
 _DASH_DIR = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.abspath(_HERE))
 from serve_token_probe import TEST_TOKEN, token_args  # noqa: E402  (P0.12a)
+from conftest import load_app  # noqa: E402  (WP-30 A3)
+import dash_render as _dr_mod  # noqa: E402  (WP-30 P1.3a)
+from by_panel_probe import is_chrome, panel_label  # noqa: E402  (WP-30 P1.15a)
+
+
+from conftest import render_models  # noqa: E402
+
+
+def _panel_name(fig):
+    """A by() panel's label row, else the figure's title.  Flipped (WP-30
+    P1.15a): these keyed panels on the title, which held the label;
+    twoway keeps title() on each panel and draws the label as its own
+    row."""
+    if fig is None:
+        return ""
+    return panel_label(fig) or (fig.title.text if fig.title is not None
+                                else "")
+
 
 def _load_dash_render():
     """Import dash_render module from the parent directory."""
@@ -223,7 +241,7 @@ def _panel_curves(roots, xcol, ycol):
     out = {}
     for fig, r in _glyph_layers(roots):
         if xcol in r.data_source.data:
-            title = fig.title.text if fig.title is not None else ""
+            title = _panel_name(fig)
             assert title not in out, f"two {xcol} layers in panel {title!r}"
             out[title] = list(zip(_drawn_values(r, xcol),
                                   _drawn_values(r, ycol)))
@@ -340,9 +358,7 @@ def test_make_document_callable(dr_module, auto_df):
         builder.build(out_f.name, port=5006)
 
         # Load and execute the generated module
-        app_spec = importlib.util.spec_from_file_location("_test_app", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_test_app")
 
         doc = Document()
         app_mod.make_document(doc)
@@ -397,9 +413,7 @@ def _served_layer(dr_module, df, plot, key, filter_move=None, mod="_srv_layer"):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            ms = importlib.util.spec_from_file_location(mod, out_f.name)
-            app = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(app)
+            app = load_app(out_f.name, mod)
             doc = Document()
             app.make_document(doc)
 
@@ -478,9 +492,7 @@ def test_filter_callback_updates_kpi_div(dr_module, auto_df):
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
 
-        app_spec_obj = importlib.util.spec_from_file_location("_test_app_kpi", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_test_app_kpi")
 
         full_mean = app_mod._compute_kpi(auto_df, "mean", "mpg")
         sub_df = auto_df[auto_df["foreign"] == 1]
@@ -523,9 +535,7 @@ def test_brush_callback_updates_kpi(dr_module, auto_df):
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
 
-        app_spec_obj = importlib.util.spec_from_file_location("_test_app_brush", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_test_app_brush")
 
         indices = [0, 1, 2, 3, 4]  # first 5 rows
         sel_df = auto_df.iloc[indices]
@@ -579,7 +589,6 @@ def test_xss_title_escaped(dr_module, auto_df):
     this by calling make_document and checking the resulting document title does
     not contain a raw '<script>' tag.
     """
-    import importlib.util as _ilu
     from bokeh.document import Document
 
     xss_title = "<script>alert(1)</script>"
@@ -618,9 +627,7 @@ def test_xss_title_escaped(dr_module, auto_df):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name, port=5006)
-        app_spec_obj = _ilu.spec_from_file_location("_test_xss_app", out_f.name)
-        app_mod = _ilu.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_test_xss_app")
         doc = Document()
         app_mod.make_document(doc)
         # --- Layer 2: the PAGE.  doc.title used to be set to the already
@@ -750,9 +757,7 @@ def test_compute_kpi_mean_and_dcount(dr_module, auto_df):
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
 
-        app_spec_obj = importlib.util.spec_from_file_location("_test_kpi_vals", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_test_kpi_vals")
 
         mean_val = app_mod._compute_kpi(auto_df, "mean", "mpg")
         assert abs(mean_val - float(auto_df["mpg"].mean())) < 0.001
@@ -800,9 +805,7 @@ def test_compute_kpi_sd_uses_ddof1(dr_module, auto_df):
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
 
-        app_spec_obj = importlib.util.spec_from_file_location("_test_sd_ddof", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec_obj)
-        app_spec_obj.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_test_sd_ddof")
 
         sd_val = app_mod._compute_kpi(auto_df, "sd", "mpg")
         expected_ddof1 = float(auto_df["mpg"].std(ddof=1))
@@ -852,9 +855,7 @@ def test_compute_kdensity_constant_data_returns_empty(dr_module, auto_df):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                ms = importlib.util.spec_from_file_location(mod_name, out_f.name)
-                mod = importlib.util.module_from_spec(ms)
-                ms.loader.exec_module(mod)
+                mod = load_app(out_f.name, mod_name)
                 doc = Document()
                 mod.make_document(doc)
             figs = [m for m in doc.select({"type": object})
@@ -1290,7 +1291,10 @@ class TestServerPcarrowPcbarrow:
         ("range(10 40)", lambda df: (min(10.0, float(df["mpg"].min())),
                                      max(40.0, float(df["mpg"].max())))),
         # range(0) extends the axis to 0 and keeps the data's own top.
-        ("range(0)", lambda df: (0.0, float(df["mpg"].max()))),
+        # WP-30 P1.3a: and twoway's ticks over 0 to that top.
+        ("range(0)", lambda df: (0.0, max(
+            float(df["mpg"].max()),
+            _dr_mod._dash_natscale_ticks(0.0, float(df["mpg"].max()), 5)[-1]))),
     ], ids=["both_ends", "one_end"])
     def test_yscale_range_bounds_the_y_axis_in_both_modes(
             self, dr_module, auto_df, tmp_path, given, bounds):
@@ -1500,10 +1504,13 @@ class TestServerLinePlotOpts:
 class TestServerLineWidthAllTypes:
     """All line-bearing server-mode plot types must actually apply lwidth to renderers.
 
-    Each test builds a server app with lwidth(thick)=2.5, executes make_document(),
-    and verifies that at least one renderer has line_width≈2.5.
-    'thick' maps to 2.5 in the lwidth translation table.
+    Each test builds a server app with lwidth(thick), executes make_document(),
+    and verifies that at least one renderer has line_width≈_THICK_PX.
+    Flipped (WP-30 P1.12b): 'thick' was 2.5 px on dash's private ladder;
+    it is Stata's .8 units x 3.84 px.
     """
+
+    _THICK_PX = 3.072  # Stata's thick, .8 units x 3.84 px (WP-30 P1.12b)
 
     def _exec_make_document(self, dr_module, df, spec):
         """Build app, exec make_document, return list of all glyph renderers."""
@@ -1514,9 +1521,7 @@ class TestServerLineWidthAllTypes:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_ta", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_ta")
             doc = Document()
             app_mod.make_document(doc)
             # Recursively collect all glyph renderers from the document tree
@@ -1555,9 +1560,7 @@ class TestServerLineWidthAllTypes:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tawa", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tawa")
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -1589,7 +1592,7 @@ class TestServerLineWidthAllTypes:
                 except OSError:
                     pass
 
-    def _has_renderer_with_lw(self, renderers, target_lw=2.5, tol=0.05):
+    def _has_renderer_with_lw(self, renderers, target_lw=_THICK_PX, tol=0.05):
         """Return True if any renderer glyph has line_width close to target_lw."""
         for r in renderers:
             glyph = getattr(r, 'glyph', None)
@@ -1599,7 +1602,7 @@ class TestServerLineWidthAllTypes:
                     return True
         return False
 
-    def _has_arrow_with_lw(self, arrow_annots, target_lw=2.5, tol=0.05):
+    def _has_arrow_with_lw(self, arrow_annots, target_lw=_THICK_PX, tol=0.05):
         """Return True if any Arrow annotation has line_width close to target_lw."""
         for arrow in arrow_annots:
             lw = getattr(arrow, 'line_width', None)
@@ -1608,149 +1611,149 @@ class TestServerLineWidthAllTypes:
         return False
 
     def test_lfit_applies_lwidth(self, dr_module, auto_df):
-        """lfit with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """lfit with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lfit", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode lfit must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode lfit must apply lwidth(thick)=3.072 to line renderer"
 
     def test_qfit_applies_lwidth(self, dr_module, auto_df):
-        """qfit with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """qfit with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "qfit", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode qfit must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode qfit must apply lwidth(thick)=3.072 to line renderer"
 
     def test_connected_applies_lwidth(self, dr_module, auto_df):
-        """connected with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """connected with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "connected", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode connected must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode connected must apply lwidth(thick)=3.072 to line renderer"
 
     def test_lowess_applies_lwidth(self, dr_module, auto_df):
-        """lowess with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """lowess with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "lowess", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode lowess must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode lowess must apply lwidth(thick)=3.072 to line renderer"
 
     def test_kdensity_applies_lwidth(self, dr_module, auto_df):
-        """kdensity with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """kdensity with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "kdensity", "yvar": "mpg", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode kdensity must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode kdensity must apply lwidth(thick)=3.072 to line renderer"
 
     def test_mspline_applies_lwidth(self, dr_module, auto_df):
-        """mspline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """mspline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "mspline", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode mspline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode mspline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_tsline_applies_lwidth(self, dr_module, auto_df):
-        """tsline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """tsline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "tsline", "yvar": "mpg", "xvar": "weight",
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode tsline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode tsline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_rspike_applies_lwidth(self, dr_module, auto_df):
-        """rspike with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rspike with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rspike", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rspike must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rspike must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_rline_applies_lwidth(self, dr_module, auto_df):
-        """rline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rline", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_function_applies_lwidth(self, dr_module, auto_df):
-        """function with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """function with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "function", "expr": "x", "range": [0, 10],
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode function must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode function must apply lwidth(thick)=3.072 to line renderer"
 
     def test_tsrline_applies_lwidth(self, dr_module, auto_df):
-        """tsrline with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """tsrline with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "tsrline", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode tsrline must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode tsrline must apply lwidth(thick)=3.072 to line renderer"
 
     def test_rconnected_applies_lwidth(self, dr_module, auto_df):
-        """rconnected with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rconnected with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rconnected", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rconnected must apply lwidth(thick)=2.5 to line renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rconnected must apply lwidth(thick)=3.072 to line renderer"
 
     def test_rcapsym_applies_lwidth(self, dr_module, auto_df):
-        """rcapsym with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """rcapsym with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rcapsym", "yvar1": "mpg", "yvar2": "price",
                        "xvar": "weight", "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode rcapsym must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode rcapsym must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcspike_applies_lwidth(self, dr_module, auto_df):
-        """pcspike with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """pcspike with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcspike", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1758,11 +1761,11 @@ class TestServerLineWidthAllTypes:
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode pcspike must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode pcspike must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcarrow_applies_lwidth(self, dr_module, auto_df):
-        """pcarrow with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """pcarrow with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1770,11 +1773,11 @@ class TestServerLineWidthAllTypes:
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode pcarrow must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode pcarrow must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcbarrow_applies_lwidth(self, dr_module, auto_df):
-        """pcbarrow with lwidth(thick)=2.5 must produce a renderer with line_width≈2.5."""
+        """pcbarrow with lwidth(thick)=3.072 must produce a renderer with line_width≈3.072."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcbarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1782,11 +1785,11 @@ class TestServerLineWidthAllTypes:
             "graph_options": {"name": "g1"},
         }])
         renderers = self._exec_make_document(dr_module, auto_df, spec)
-        assert self._has_renderer_with_lw(renderers, 2.5), \
-            "server-mode pcbarrow must apply lwidth(thick)=2.5 to segment renderer"
+        assert self._has_renderer_with_lw(renderers, self._THICK_PX), \
+            "server-mode pcbarrow must apply lwidth(thick)=3.072 to segment renderer"
 
     def test_pcarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
-        """pcarrow lwidth(thick)=2.5 must be applied to Arrow annotation objects, not just segment."""
+        """pcarrow lwidth(thick)=3.072 must be applied to Arrow annotation objects, not just segment."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1795,11 +1798,11 @@ class TestServerLineWidthAllTypes:
         }])
         _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
         assert arrow_annots, "server-mode pcarrow must produce Arrow annotations"
-        assert self._has_arrow_with_lw(arrow_annots, 2.5), \
-            "server-mode pcarrow Arrow annotations must have line_width=2.5 (thick)"
+        assert self._has_arrow_with_lw(arrow_annots, self._THICK_PX), \
+            "server-mode pcarrow Arrow annotations must have line_width=3.072 (thick)"
 
     def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
-        """pcbarrow lwidth(thick)=2.5 must be applied to Arrow annotation objects, not just segment."""
+        """pcbarrow lwidth(thick)=3.072 must be applied to Arrow annotation objects, not just segment."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "pcbarrow", "y1var": "mpg", "x1var": "weight",
                        "y2var": "price", "x2var": "foreign",
@@ -1808,8 +1811,8 @@ class TestServerLineWidthAllTypes:
         }])
         _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
         assert arrow_annots, "server-mode pcbarrow must produce Arrow annotations"
-        assert self._has_arrow_with_lw(arrow_annots, 2.5), \
-            "server-mode pcbarrow Arrow annotations must have line_width=2.5 (thick)"
+        assert self._has_arrow_with_lw(arrow_annots, self._THICK_PX), \
+            "server-mode pcbarrow Arrow annotations must have line_width=3.072 (thick)"
 
 
 class TestServerRconnectedRcapsymMarkers:
@@ -1824,9 +1827,7 @@ class TestServerRconnectedRcapsymMarkers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, mod_name)
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -1948,9 +1949,7 @@ class TestServerNamedColors:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_ta2", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_ta2")
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -2019,7 +2018,10 @@ class TestServerNamedColors:
         from bokeh.models import Plot
         borders = {}
         for bg in ("", "navy"):
-            go = {"name": "g1"}
+            # Flipped (WP-30 P1.20a): bgcolor() on the border alone was
+            # wrong because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); the graph region
+            # is none in both runs, so the canvas is what shows.
+            go = {"name": "g1", "graphregion": "color(none)"}
             if bg:
                 go["bgcolor"] = bg
             spec = _make_spec_json(graphs=[{
@@ -2034,10 +2036,7 @@ class TestServerNamedColors:
             try:
                 dr_module.ServerAppBuilder(spec_path, data_path).build(
                     out_f.name)
-                app_spec = importlib.util.spec_from_file_location(
-                    "_ta2_bg_" + (bg or "none"), out_f.name)
-                app_mod = importlib.util.module_from_spec(app_spec)
-                app_spec.loader.exec_module(app_mod)
+                app_mod = load_app(out_f.name, "_ta2_bg_" + (bg or "none"))
                 doc = Document()
                 app_mod.make_document(doc)
                 borders[bg] = [p.border_fill_color for p in doc.models
@@ -2063,9 +2062,7 @@ class TestServerMfcolorNamed:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm4", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm4")
             doc = Document()
             app_mod.make_document(doc)
             renderers = []
@@ -2127,9 +2124,7 @@ class TestServerMlabel:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm3", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm3")
             doc = Document()
             app_mod.make_document(doc)
             return doc
@@ -2200,9 +2195,7 @@ class TestServerMlabelNonScatter:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, mod_name)
             doc = Document()
             app_mod.make_document(doc)
             all_objs = []
@@ -2336,9 +2329,7 @@ class TestServerPerGraphFilter:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tmfilt", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tmfilt")
             doc = Document()
             app_mod.make_document(doc)
             return doc
@@ -2581,9 +2572,7 @@ class TestServerFitCIBand:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, mod_name)
             doc = Document()
             app_mod.make_document(doc)
             vareas = []
@@ -2929,9 +2918,7 @@ class TestServerFitCIFilterRecompute:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                ms = importlib.util.spec_from_file_location("_bf_" + ptype, out_f.name)
-                mod = importlib.util.module_from_spec(ms)
-                ms.loader.exec_module(mod)
+                mod = load_app(out_f.name, "_bf_" + ptype)
                 doc = Document()
                 mod.make_document(doc)
 
@@ -2988,9 +2975,7 @@ def _exec_doc(dr_module, df, spec, mod_name):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location(mod_name, out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, mod_name)
         doc = Document()
         app_mod.make_document(doc)
         renderers = []
@@ -3021,7 +3006,8 @@ class TestServerAreaOptions:
     """area plot in server mode must apply fcolor/fintensity."""
 
     def test_area_fcolor_applied(self, dr_module, auto_df):
-        """area with fcolor(red) must use the resolved hex for fill_color."""
+        """area with fcolor(red) is filled red at the area's intensity,
+        #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight",
                        "options": {"fcolor": "#ff0000"}}],
@@ -3029,20 +3015,22 @@ class TestServerAreaOptions:
         }])
         _, renderers = _exec_doc(dr_module, auto_df, spec, "_tar_fc")
         fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
-        assert "#ff0000" in fill_colors, \
-            f"area fcolor '#ff0000' must appear in fill_color; got {fill_colors}"
+        assert "#ff3333" in fill_colors, \
+            f"area fcolor '#ff0000' must fill #ff3333; got {fill_colors}"
 
-    def test_area_fintensity_sets_alpha(self, dr_module, auto_df):
-        """area with fintensity(50) must set fill_alpha ≈ 0.5."""
+    def test_area_fintensity_blends_the_colour(self, dr_module, auto_df):
+        """area with fintensity(50) is navy at 50, #8da3b7, opaque: an
+        intensity is a colour, never an alpha (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "area", "yvar": "mpg", "xvar": "weight",
                        "options": {"fintensity": "50"}}],
             "graph_options": {"name": "g1"},
         }])
         _, renderers = _exec_doc(dr_module, auto_df, spec, "_tar_fi")
+        fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
+        assert "#8da3b7" in fill_colors, fill_colors
         alphas = [getattr(r.glyph, 'fill_alpha', None) for r in renderers]
-        assert any(abs(a - 0.5) < 0.01 for a in alphas if a is not None), \
-            f"area fintensity(50) must set fill_alpha≈0.5; got {alphas}"
+        assert all(a == 1.0 for a in alphas if a is not None), alphas
 
 
 class TestServerHistogramOptions:
@@ -3085,7 +3073,8 @@ class TestServerRareaOptions:
     # the served glyph's fill_color and fails under that break.
 
     def test_rarea_fcolor_applied_functional(self, dr_module):
-        """rarea with fcolor(#ff0000) must set fill_color in rendered doc."""
+        """rarea with fcolor(#ff0000) is filled at rarea's intensity,
+        #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         rdf = _range_data()
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rarea", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
@@ -3094,7 +3083,7 @@ class TestServerRareaOptions:
         }])
         _, renderers = _exec_doc(dr_module, rdf, spec, "_tra_fc2")
         fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
-        assert "#ff0000" in fill_colors, \
+        assert "#ff3333" in fill_colors, \
             f"rarea fcolor must appear in fill_color; got {fill_colors}"
 
 
@@ -3102,7 +3091,8 @@ class TestServerRbarOptions:
     """rbar in server mode must apply bfcolor, blcolor, lwidth."""
 
     def test_rbar_bfcolor_applied(self, dr_module):
-        """rbar with bfcolor(#ff0000) must set fill_color."""
+        """rbar with bfcolor(#ff0000) is filled at rbar's intensity,
+        #ff3333 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         rdf = _range_data()
         spec = _make_spec_json(graphs=[{
             "plots": [{"type": "rbar", "yvar1": "lo", "yvar2": "hi", "xvar": "x",
@@ -3111,7 +3101,7 @@ class TestServerRbarOptions:
         }])
         _, renderers = _exec_doc(dr_module, rdf, spec, "_trb_bfc")
         fill_colors = [getattr(r.glyph, 'fill_color', None) for r in renderers]
-        assert "#ff0000" in fill_colors, \
+        assert "#ff3333" in fill_colors, \
             f"rbar bfcolor must appear in fill_color; got {fill_colors}"
 
     def test_rbar_lwidth_applied(self, dr_module):
@@ -3246,16 +3236,15 @@ class TestServerByFaceting:
         out_f.close()
         try:
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location(tag, out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, tag)
             doc = Document()
             app_mod.make_document(doc)
-            return {p.title.text: [max((len(v) for v in r.data_source.data.values()),
+            return {_panel_name(p): [max((len(v) for v in r.data_source.data.values()),
                                        default=0)
                                    for r in p.renderers
                                    if isinstance(r, GlyphRenderer)]
-                    for p in doc.models if isinstance(p, Plot)}
+                    for p in doc.models if isinstance(p, Plot)
+                    and not is_chrome(p)}
         finally:
             for _p in (spec_path, data_path, out_f.name):
                 try:
@@ -3301,15 +3290,13 @@ class TestServerByFaceting:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_by_test", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_by_test")
             doc = Document()
             app_mod.make_document(doc)
             assert len(doc.roots) == 1, doc.roots
             panels = {}
             for fig, r in _glyph_layers(doc.roots[:1]):
-                panels.setdefault(fig.title.text, []).append(sorted(zip(
+                panels.setdefault(_panel_name(fig), []).append(sorted(zip(
                     _drawn_values(r, "weight"), _drawn_values(r, "mpg"))))
             want = {"%d" % g: [sorted(zip(sub["weight"], sub["mpg"]))]
                     for g, sub in auto_df.groupby("foreign")}
@@ -3381,7 +3368,7 @@ class TestServerByFaceting:
                             if isinstance(r, GlyphRenderer)
                             and type(r.glyph).__name__ == "Scatter"]
                     if rows:
-                        out[fig.title.text if fig.title else ""] = rows
+                        out[_panel_name(fig)] = rows
             return out
 
         r, _ = _ql_saved(dr_module, tmp_path, spec, auto_df)
@@ -3550,9 +3537,7 @@ class TestServerRconnectedMlabel:
         out_f.close()
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tmrconn_mlab", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_tmrconn_mlab")
         doc = Document()
         app_mod.make_document(doc)
         all_objs = []
@@ -3737,7 +3722,6 @@ class TestServerLpolyFpfit:
         curve without it, in every panel.
         """
         from bokeh.document import Document
-        import importlib.util
         import warnings
 
         def _curves(options):
@@ -3753,9 +3737,7 @@ class TestServerLpolyFpfit:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                    ms = importlib.util.spec_from_file_location("_lpf_bwidth", out_f.name)
-                    mod = importlib.util.module_from_spec(ms)
-                    ms.loader.exec_module(mod)
+                    mod = load_app(out_f.name, "_lpf_bwidth")
                     doc = Document()
                     mod.make_document(doc)
                 out = []
@@ -3793,7 +3775,6 @@ class TestServerLpolyFpfit:
         curve without it, in every panel.
         """
         from bokeh.document import Document
-        import importlib.util
         import warnings
 
         def _curves(options):
@@ -3809,9 +3790,7 @@ class TestServerLpolyFpfit:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                    ms = importlib.util.spec_from_file_location("_lpf_degree", out_f.name)
-                    mod = importlib.util.module_from_spec(ms)
-                    ms.loader.exec_module(mod)
+                    mod = load_app(out_f.name, "_lpf_degree")
                     doc = Document()
                     mod.make_document(doc)
                 out = []
@@ -3915,28 +3894,28 @@ class TestServerXscaleYscaleReverse:
     def test_xscale_reverse_in_server_source(self, dr_module, auto_df):
         """P4-74: xscale(reverse) flips the served x range, and only it."""
         fig = self._figure(dr_module, auto_df, "_xsr_x", xscale="reverse")
-        assert fig.x_range.flipped is True
-        assert not fig.y_range.flipped
+        assert dr_module._dash_range_reversed(fig.x_range) is True
+        assert not dr_module._dash_range_reversed(fig.y_range)
 
     def test_yscale_reverse_in_server_source(self, dr_module, auto_df):
         """P4-75: yscale(reverse) flips the served y range, and only it."""
         fig = self._figure(dr_module, auto_df, "_xsr_y", yscale="reverse")
-        assert fig.y_range.flipped is True
-        assert not fig.x_range.flipped
+        assert dr_module._dash_range_reversed(fig.y_range) is True
+        assert not dr_module._dash_range_reversed(fig.x_range)
 
     def test_xscale_log_reverse_server_source(self, dr_module, auto_df):
         """P4-76: xscale(log reverse) gives a log x scale AND a flipped range."""
         from bokeh.models import LogScale
         fig = self._figure(dr_module, auto_df, "_xsr_lr", xscale="log reverse")
         assert isinstance(fig.x_scale, LogScale), type(fig.x_scale)
-        assert fig.x_range.flipped is True
+        assert dr_module._dash_range_reversed(fig.x_range) is True
 
     def test_xscale_log_only_uses_runtime_conditional_for_flip(self, dr_module, auto_df):
         """P4-74b: xscale(log) alone is a log scale and NOT a flip."""
         from bokeh.models import LogScale
         fig = self._figure(dr_module, auto_df, "_xsr_l", xscale="log")
         assert isinstance(fig.x_scale, LogScale), type(fig.x_scale)
-        assert not fig.x_range.flipped
+        assert not dr_module._dash_range_reversed(fig.x_range)
 
 
 # ================================================================
@@ -3972,7 +3951,8 @@ class TestServerAxisAngle:
         twoway's angle(45) turns the labels 45 degrees counter-clockwise;
         Bokeh's major_label_orientation is that angle in radians, and the
         saved page draws pi/4 (test_graph_options.py's TestAxisLabelAngle).
-        The y axis, asked nothing, keeps its labels level: the control."""
+        The y axis, asked nothing, takes s2color's vertical_tick anglestyle
+        (pi/2, WP-30 P1.2a): the control."""
         import math
         import tempfile, importlib.util
         from bokeh.document import Document
@@ -3987,9 +3967,7 @@ class TestServerAxisAngle:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm_axangle", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm_axangle")
             doc = Document()
             app_mod.make_document(doc)
             figs = [m for m in doc.select({"type": Plot})]
@@ -3998,8 +3976,11 @@ class TestServerAxisAngle:
             assert xaxis.major_label_orientation == pytest.approx(math.pi / 4), (
                 f"angle(45) served as {xaxis.major_label_orientation!r}")
             assert list(xaxis.ticker.ticks) == [0.0, 20.0, 40.0], xaxis.ticker
-            assert yaxis.major_label_orientation == "horizontal", (
-                yaxis.major_label_orientation)
+            # Flipped (WP-30 P1.2a): "horizontal" was wrong because twoway
+            # draws s2color's y labels vertical (anglestyle vertical_tick
+            # vertical, register P1.2.1), and S15 draws them so served.
+            assert yaxis.major_label_orientation == pytest.approx(
+                math.pi / 2), yaxis.major_label_orientation
         finally:
             import os
             for p in (spec_path, data_path, out_f.name):
@@ -4065,9 +4046,7 @@ class TestServerHealthAndRateLimit:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm_rl_allow", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm_rl_allow")
             limiter = app_mod._RateLimiter(max_rpm=5)
             for i in range(5):
                 assert limiter.is_allowed("127.0.0.1") is True, \
@@ -4091,9 +4070,7 @@ class TestServerHealthAndRateLimit:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm_rl_block", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm_rl_block")
             limiter = app_mod._RateLimiter(max_rpm=5)
             for _ in range(5):
                 limiter.is_allowed("10.0.0.1")
@@ -4118,9 +4095,7 @@ class TestServerHealthAndRateLimit:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm_rl_burst", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm_rl_burst")
             limiter = app_mod._RateLimiter(max_rpm=10)
             results = [limiter.is_allowed("192.168.1.1") for _ in range(100)]
             assert not all(results), "At least one of 100 rapid requests must be blocked"
@@ -4205,9 +4180,7 @@ class TestServerLegendColsRows:
             try:
                 builder = dr_module.ServerAppBuilder(spec_path, data_path)
                 builder.build(out_f.name)
-                app_spec = importlib.util.spec_from_file_location(tag, out_f.name)
-                app_mod = importlib.util.module_from_spec(app_spec)
-                app_spec.loader.exec_module(app_mod)
+                app_mod = load_app(out_f.name, tag)
                 doc = Document()
                 app_mod.make_document(doc)
                 return [(lg.ncols, lg.nrows) for lg in doc.select({"type": Legend})]
@@ -4261,9 +4234,7 @@ class TestServerMsangle:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_tm_msangle", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_tm_msangle")
             doc = Document()
             app_mod.make_document(doc)
             layers = _glyph_layers(doc.roots)
@@ -4302,9 +4273,7 @@ def _load_app_module(dr_module, auto_df, spec_dict):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_rl_app", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_rl_app")
         # WP-29 P0.12a: the key Gate B checks, as _dash_server_app installs.
         app_mod._DASH_SERVE_TOKEN = TEST_TOKEN
         return app_mod
@@ -4713,9 +4682,7 @@ def _exec_function_app(dr_module, expr, accepted=None):
     try:
         builder = dr_module.ServerAppBuilder(spec_path, data_path)
         builder.build(out_f.name)
-        app_spec = importlib.util.spec_from_file_location("_tfe", out_f.name)
-        app_mod = importlib.util.module_from_spec(app_spec)
-        app_spec.loader.exec_module(app_mod)
+        app_mod = load_app(out_f.name, "_tfe")
         if accepted is not None:
             _real = app_mod._stata_fn_eval
 
@@ -4938,7 +4905,6 @@ class TestServerFunctionExpressionOperators:
 def _assert_served_layer_refits(dr_module, df, ptype):
     """Serve *ptype* with a dropdown on `foreign', move it to 1, and compare
     every derived column against the saved renderer on the foreign==1 rows."""
-    import importlib.util
     import warnings
     from bokeh.document import Document
     from bokeh.models import Select
@@ -4979,10 +4945,7 @@ def _assert_served_layer_refits(dr_module, df, ptype):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            ms = importlib.util.spec_from_file_location("_refit_" + ptype,
-                                                        out_f.name)
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(out_f.name, "_refit_" + ptype)
             doc = Document()
             mod.make_document(doc)
             figs = [m for m in doc.select({"type": object})
@@ -5003,7 +4966,7 @@ def _assert_served_layer_refits(dr_module, df, ptype):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr_module.DashRenderer(spec_path, data_path)
-            r.render()
+            render_models(r)
             want = _derived(r.figures.values())
     finally:
         for _p in (spec_path, data_path):
@@ -5016,7 +4979,6 @@ def _assert_served_layer_refits(dr_module, df, ptype):
 
 def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
     """Rows drawn per by(foreign) panel, in each render mode, for a qualifier."""
-    import importlib.util
     import warnings
     from bokeh.document import Document
 
@@ -5051,9 +5013,7 @@ def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-            ms = importlib.util.spec_from_file_location("_prb", out_f.name)
-            mod = importlib.util.module_from_spec(ms)
-            ms.loader.exec_module(mod)
+            mod = load_app(out_f.name, "_prb")
             doc = Document()
             mod.make_document(doc)
             # In DOCUMENT order, walking the layout.  doc.select() yields
@@ -5082,7 +5042,7 @@ def _panel_rows_both_modes(dr_module, df, if_expr, in_expr):
                 _visit(_root)
             served_rows = _rows(_figs)
             r = dr_module.DashRenderer(spec_path, data_path)
-            r.render()
+            render_models(r)
             saved_rows = _rows(r.figures.values())
     finally:
         for _p in (spec_path, data_path, out_f.name):
@@ -5657,7 +5617,7 @@ def _ql_saved(dr, tmp_path, spec, df=None):
     with _w.catch_warnings(record=True) as caught:
         _w.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r, [str(x.message) for x in caught]
 
 
@@ -6097,7 +6057,7 @@ class TestDualLogScale:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             fig = list(renderer.figures.values())[0]
             assert isinstance(fig.x_scale, LogScale), \
                 "x-axis must be LogScale when xscale(log) and yscale(log) are both set"
@@ -6136,7 +6096,6 @@ class TestFacetedAggregatePerFacetData:
     @staticmethod
     def _facet_histograms(dr_module, df):
         """The `top' array of every histogram source in a faceted document."""
-        import importlib.util
         import os
         import tempfile
         import warnings
@@ -6157,12 +6116,9 @@ class TestFacetedAggregatePerFacetData:
                 warnings.simplefilter("ignore")
                 dr_module.ServerAppBuilder(spec_path, data_path).build(
                     out_f.name)
-            ms = importlib.util.spec_from_file_location(
-                "_facetagg", out_f.name)
-            mod = importlib.util.module_from_spec(ms)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                ms.loader.exec_module(mod)
+                mod = load_app(out_f.name, "_facetagg")
                 doc = Document()
                 mod.make_document(doc)
             out = []
@@ -6657,7 +6613,7 @@ class TestFilterCallbackExcludeAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # After render(), filter_widgets and filter_callbacks must have same length
             assert len(renderer.filter_widgets) == len(renderer.filter_callbacks), \
                 "filter_widgets and filter_callbacks must always have equal length"
@@ -6675,7 +6631,7 @@ class TestFilterCallbackExcludeAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # There should be exactly 1 widget (for 'foreign')
             assert len(renderer.filter_widgets) == 1, \
                 "foreign filter widget must be built even though missing_var was skipped"
@@ -6738,7 +6694,7 @@ class TestKpiFilterCallbackXssHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 cb_args = renderer.filter_callbacks[0].args
                 kpi_cfg_json = cb_args.get("kpi_config_json", "")
@@ -6761,7 +6717,7 @@ class TestKpiFilterCallbackXssHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 kpi_cfg_json = renderer.filter_callbacks[0].args.get("kpi_config_json", "")
                 assert "&amp;" in kpi_cfg_json, \
@@ -6779,7 +6735,7 @@ class TestKpiFilterCallbackXssHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 kpi_cfg_json = renderer.filter_callbacks[0].args.get("kpi_config_json", "")
                 assert "Mean MPG" in kpi_cfg_json, \
@@ -6809,6 +6765,10 @@ class TestLogScalePreservesStyle:
             "graph_options": {
                 "name": "g1",
                 "bgcolor": bgcolor,
+                # Flipped (WP-30 P1.20a): a lone bgcolor() showing was wrong
+                # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); the graph region is none
+                # so the canvas shows.
+                "graphregion": "color(none)",
                 "plotbgcolor": plotbgcolor,
                 "xscale": xscale,
                 "yscale": yscale,
@@ -6865,7 +6825,7 @@ class TestLogScalePreservesStyle:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Verify figures were built (not empty)
             assert renderer.figures, "figures must be built"
             fig = list(renderer.figures.values())[0]
@@ -6920,7 +6880,7 @@ class TestFilterUpdatesAllSources:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             assert "all_graph_sources" in cb_args, \
@@ -6967,7 +6927,7 @@ class TestFilterUpdatesAllSources:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             if renderer.filter_callbacks:
                 cb_args = renderer.filter_callbacks[0].args
                 # g2 source is excluded — only g1 source should be in all_graph_sources
@@ -7041,7 +7001,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             assert "all_graph_sources_orig" in cb_args, (
@@ -7060,7 +7020,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
@@ -7083,7 +7043,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "filter callback must be built"
             cb_args = renderer.filter_callbacks[0].args
             srcs = cb_args.get("all_graph_sources", [])
@@ -7114,7 +7074,7 @@ class TestFilterPerSourceOrigData:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Each of these used to `return' green.  Each holds (measured
             # 24sep2026); one that did not would be the defect itself.
             assert renderer.filter_callbacks, "no filter callback was built"
@@ -7284,7 +7244,6 @@ class TestBug21ExcludeSemantics:
         widget without exclude() must have empty _dash_exclude.
         Filter specs are separated by '||' (Mata-joined format).
         """
-        import importlib.util as _ilu
         from bokeh.models import Select, RangeSlider
         from bokeh.document import Document
 
@@ -7314,9 +7273,7 @@ class TestBug21ExcludeSemantics:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
 
-            app_spec_obj = _ilu.spec_from_file_location("_bug21_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug21_app")
 
             doc = Document()
             app_mod.make_document(doc)
@@ -7436,7 +7393,6 @@ class TestBug22MultiLayerSources:
         Verifies that the generated filter callback correctly handles the list-of-sources
         structure for graph_sources[gname] when updating data after a filter change.
         """
-        import importlib.util as _ilu
         from bokeh.document import Document
         from bokeh.models import Select
 
@@ -7448,9 +7404,7 @@ class TestBug22MultiLayerSources:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
 
-            app_spec_obj = _ilu.spec_from_file_location("_bug22e_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug22e_app")
 
             doc = Document()
             app_mod.make_document(doc)
@@ -7630,7 +7584,6 @@ class TestServerFilterPreservesDerivedColumns:
         measured 24sep2026).  jitter() adds the derived __dash_xjit/__dash_yjit that
         BUG-32 could blank; the served scatter must carry both, one value per
         row, over all 30 rows, and the foreign dropdown."""
-        import importlib.util as _ilu
         from bokeh.document import Document
         from bokeh.models import Select
         spec = self._make_jitter_spec()
@@ -7640,9 +7593,7 @@ class TestServerFilterPreservesDerivedColumns:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_spec_obj = _ilu.spec_from_file_location("_bug32_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug32_app")
             doc = Document()
             app_mod.make_document(doc)
             (_fig, r), = _glyph_layers(doc.roots)
@@ -7664,7 +7615,6 @@ class TestServerFilterPreservesDerivedColumns:
 
     def test_filter_callback_preserves_derived_column_length(self, dr_module, auto_df):
         """BUG-32-1e: after filter callback fires, derived columns must match data column lengths."""
-        import importlib.util as _ilu
         import warnings
         from bokeh.document import Document
         from bokeh.models import Select
@@ -7675,9 +7625,7 @@ class TestServerFilterPreservesDerivedColumns:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_spec_obj = _ilu.spec_from_file_location("_bug32e_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug32e_app")
             doc = Document()
             app_mod.make_document(doc)
             # Find filter widget and trigger it
@@ -7789,7 +7737,6 @@ class TestServerFilterReappliesGraphQualifiers:
         24sep2026).  The served graph (if foreign==1) must draw the 16
         foreign rows; the control, the same graph with no qualifier, draws
         all 30, so the reader sees the qualifier do the reducing."""
-        import importlib.util as _ilu
         from bokeh.document import Document
         spec = self._make_qualified_spec()
         spec_path, data_path = _write_temp_files(auto_df, spec)
@@ -7798,9 +7745,7 @@ class TestServerFilterReappliesGraphQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_spec_obj = _ilu.spec_from_file_location("_bug33_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug33_app")
             doc = Document()
             app_mod.make_document(doc)
             (_fig, r), = _glyph_layers(doc.roots)
@@ -7834,7 +7779,6 @@ class TestServerFilterReappliesGraphQualifiers:
         as a browser sets it: the callback reads the value, not its
         arguments.
         """
-        import importlib.util as _ilu
         from bokeh.document import Document
         from bokeh.models import GlyphRenderer, Select
         df = auto_df.assign(
@@ -7846,9 +7790,7 @@ class TestServerFilterReappliesGraphQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name, port=5006)
-            app_spec_obj = _ilu.spec_from_file_location("_bug33d_app", out_f.name)
-            app_mod = _ilu.module_from_spec(app_spec_obj)
-            app_spec_obj.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug33d_app")
             doc = Document()
             app_mod.make_document(doc)
             all_models = list(doc.models)
@@ -8214,7 +8156,7 @@ class TestLinkedGraphQualifierView:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             g2_fig = renderer.figures.get("g2")
             assert g2_fig is not None, "g2 figure must be built"
             # g2 has no qualifier so must not have a boolean-filter view
@@ -8258,7 +8200,7 @@ class TestLinkedGraphQualifierView:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # g1 and g2 share one source
             g1_src = renderer.sources.get("g1")
             g2_src = renderer.sources.get("g2")
@@ -8323,7 +8265,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # This SKIPPED when no callback was built, so a regression that
             # stopped building it reported a skip, not a failure.  The valid
             # filter (foreign) builds one (measured 24sep2026, WP-24).
@@ -8350,7 +8292,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Was a skip when no callback was built (WP-24); foreign builds one.
             assert renderer.filter_callbacks, (
                 "no filter callback was built for the valid filter (foreign)")
@@ -8403,7 +8345,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Was a skip when no callback was built (WP-24); foreign builds one.
             assert renderer.filter_callbacks, (
                 "no filter callback was built for the valid filter (foreign)")
@@ -8483,7 +8425,7 @@ class TestMixedFilterSpecAlignment:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Was a skip when no callback was built (WP-24); foreign builds one.
             assert renderer.filter_callbacks, (
                 "no filter callback was built for the valid filter (foreign)")
@@ -8934,10 +8876,7 @@ class TestServerSliderStringFallback:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_path)
-            import importlib.util as _ilu
-            _app_spec = _ilu.spec_from_file_location("_test_slider_app", out_path)
-            mod = _ilu.module_from_spec(_app_spec)
-            _app_spec.loader.exec_module(mod)
+            mod = load_app(out_path, "_test_slider_app")
             from bokeh.document import Document
             doc = Document()
             try:
@@ -9080,7 +9019,7 @@ class TestKpiColorCssInjectionHardening:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             # Both of these were skips, so a regression that stopped building
             # the filter callback, or stopped handing it the KPI's config,
             # reported a skip rather than a failure.  The foreign dropdown
@@ -9159,9 +9098,7 @@ class TestServerByFacetingRespectsQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b36c", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b36c")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9204,9 +9141,7 @@ class TestServerByFacetingRespectsQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b36d", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b36d")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9240,9 +9175,7 @@ class TestServerByFacetingRespectsQualifiers:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b36e", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b36e")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9295,7 +9228,7 @@ class TestDropdownSentinelCollision:
         spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_widgets, "Expected at least one filter widget"
             w = renderer.filter_widgets[0]
             sentinel = getattr(w, "_dash_sentinel", "__all__")
@@ -9334,7 +9267,7 @@ class TestDropdownSentinelCollision:
         spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_widgets
             w = renderer.filter_widgets[0]
             option_values = [v for v, _ in w.options]
@@ -9370,7 +9303,7 @@ class TestDropdownSentinelCollision:
         spec_path, data_path = _write_temp_files_with_strings(df, spec, ["cat"])
         try:
             renderer = dr_module.DashRenderer(spec_path, data_path)
-            renderer.render()
+            render_models(renderer)
             assert renderer.filter_callbacks, "Need at least one callback"
             cb_args = renderer.filter_callbacks[0].args
             fspecs = json.loads(cb_args["filter_specs_json"])
@@ -9404,7 +9337,6 @@ class TestDropdownSentinelCollision:
         of the saved one -- a data value equal to the literal string
         "__all__" does not collide with the "All" option.
         """
-        import importlib.util
         import tempfile
         import pandas as pd, numpy as np
         from bokeh.document import Document
@@ -9427,9 +9359,7 @@ class TestDropdownSentinelCollision:
         out_f.close()
         try:
             dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name, port=5006)
-            app_spec = importlib.util.spec_from_file_location("_bug37_app", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_bug37_app")
             doc = Document()
             app_mod.make_document(doc)
             selects = [m for m in doc.select({"type": Select})]
@@ -9539,9 +9469,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b38a", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b38a")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9572,9 +9500,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b38b", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b38b")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9602,7 +9528,6 @@ class TestServerByTotalFullDispatch:
         differs from each group's.
         """
         from bokeh.document import Document
-        import importlib.util
         import warnings
 
         def _fits(by):
@@ -9620,9 +9545,7 @@ class TestServerByTotalFullDispatch:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     dr_module.ServerAppBuilder(spec_path, data_path).build(out_f.name)
-                    ms = importlib.util.spec_from_file_location("_tot_fit", out_f.name)
-                    mod = importlib.util.module_from_spec(ms)
-                    ms.loader.exec_module(mod)
+                    mod = load_app(out_f.name, "_tot_fit")
                     doc = Document()
                     mod.make_document(doc)
                 out = []
@@ -9630,7 +9553,7 @@ class TestServerByTotalFullDispatch:
                     for r in f.renderers:
                         d = getattr(getattr(r, "data_source", None), "data", {})
                         if "y" in d and len(d["y"]):
-                            out.append((f.title.text, [round(float(v), 6) for v in d["y"]]))
+                            out.append((_panel_name(f), [round(float(v), 6) for v in d["y"]]))
                 return out
             finally:
                 for _p in (spec_path, data_path, out_f.name):
@@ -9660,9 +9583,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b38d", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b38d")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9692,9 +9613,7 @@ class TestServerByTotalFullDispatch:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b38e", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b38e")
             doc = Document()
             app_mod.make_document(doc)
             n_renderers = _count_glyph_renderers(doc)
@@ -9803,9 +9722,7 @@ class TestQualifierMissingColumnGraceful:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b39d", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b39d")
             doc = Document()
             # Must not raise — should render with unfiltered data
             with warnings.catch_warnings(record=True):
@@ -9876,10 +9793,12 @@ class TestQualifierMissingColumnGraceful:
 # dryrun, returns the command it would run without running it.  Their
 # claims are held by what runs, in test_serve_browser.cscript:
 #   BUG-40-1a/1c  start "" "<path>" on Windows: SB-14 (the whole command for
-#                 an ordinary path), SB-15 (for a path holding an apostrophe,
-#                 spaces, a semicolon and an ampersand) and SB-16 (a path
-#                 with a double quote, which would end start's argument, is
-#                 refused).  That both callers open through the one opener:
+#                 an ordinary path), SB-15 (whose Windows path, holding a
+#                 semicolon and an ampersand, is now declined for them,
+#                 WP-30 P1.29: SB-22), SB-24 (start's quoting of a hostile
+#                 path without them: an apostrophe, spaces, parentheses and
+#                 a comma) and SB-16 (a path with a double quote, which
+#                 would end start's argument, is refused).  That both callers open through the one opener:
 #                 test_help_claims_2.cscript HC2-30 (dash build) and HC2-34a
 #                 (the one-line form), each of which fails with that
 #                 caller's call removed (measured 24sep2026).
@@ -10170,7 +10089,7 @@ class TestByFallbackOnAllMissingFacets:
         spec_path, data_path = _write_temp_files(df_na, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             # The single source for 'g1' should have zero rows
             src = dr.sources.get("g1")
             assert src is not None, "Source 'g1' not found"
@@ -10368,7 +10287,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             # Must not raise; warning should be present
             warning_texts = [str(w.message) for w in caught]
             assert any("slider" in t.lower() or "numeric" in t.lower()
@@ -10399,7 +10318,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             warning_texts = [str(w.message) for w in caught]
             assert any("range" in t.lower() or "numeric" in t.lower()
                        for t in warning_texts), (
@@ -10425,7 +10344,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             # No slider/numeric warning expected for numeric column
             warning_texts = [str(w.message) for w in caught]
             slider_warns = [t for t in warning_texts
@@ -10454,7 +10373,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             warning_texts = [str(w.message) for w in caught]
             range_warns = [t for t in warning_texts
                            if "range" in t.lower() and "numeric" in t.lower()]
@@ -10487,7 +10406,7 @@ class TestStandaloneSliderStringColumn:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 dr = dr_module.DashRenderer(spec_path, data_path)
-                dr.render()
+                render_models(dr)
             warning_texts = [str(w.message) for w in caught]
             assert any("myvar" in t for t in warning_texts), (
                 f"Warning should mention variable 'myvar', got: {warning_texts}"
@@ -10554,7 +10473,7 @@ class TestSemicolonFilterSerialization:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             assert len(dr.filter_widgets) == 2, (
                 f"Expected 2 filter widgets (one per semicolon-separated spec), "
                 f"got {len(dr.filter_widgets)}"
@@ -10587,7 +10506,7 @@ class TestSemicolonFilterSerialization:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             assert len(dr.filter_widgets) == 2, (
                 f"Expected 2 filter widgets from '||' spec, got {len(dr.filter_widgets)}"
             )
@@ -10619,7 +10538,7 @@ class TestSemicolonFilterSerialization:
         spec_path, data_path = _write_temp_files(auto_df, spec)
         try:
             dr = dr_module.DashRenderer(spec_path, data_path)
-            dr.render()
+            render_models(dr)
             assert len(dr.filter_widgets) == 1, (
                 f"Expected 1 filter widget, got {len(dr.filter_widgets)}"
             )
@@ -10707,9 +10626,7 @@ class TestServerNaNBoundsSlider:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b46c", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b46c")
             doc = Document()
             with warnings.catch_warnings(record=True):
                 warnings.simplefilter("always")
@@ -10736,9 +10653,7 @@ class TestServerNaNBoundsSlider:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b46d", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b46d")
             doc = Document()
             with warnings.catch_warnings(record=True):
                 warnings.simplefilter("always")
@@ -10776,9 +10691,7 @@ class TestServerNaNBoundsSlider:
         try:
             builder = dr_module.ServerAppBuilder(spec_path, data_path)
             builder.build(out_f.name)
-            app_spec = importlib.util.spec_from_file_location("_b46e", out_f.name)
-            app_mod = importlib.util.module_from_spec(app_spec)
-            app_spec.loader.exec_module(app_mod)
+            app_mod = load_app(out_f.name, "_b46e")
             doc = Document()
             app_mod.make_document(doc)
             # Should have a RangeSlider widget in the layout
@@ -10930,7 +10843,6 @@ class TestServeUniqueAppPath:
         served scatter is read: all 30 (weight, mpg) points, from an app
         whose filename is a Stata tempfile style ST_99999.* -- so the fixed
         name is gone and the unique one still runs."""
-        import importlib.util as _ilu
         from bokeh.document import Document as _Doc
         spec = self._simple_spec()
         # Use a decidedly non-standard filename (mirrors Stata tempfile style)
@@ -10941,9 +10853,7 @@ class TestServeUniqueAppPath:
         sp, dp = _write_temp_files(auto_df, spec)
         try:
             dr_module.ServerAppBuilder(sp, dp).build(out.name)
-            ispec = _ilu.spec_from_file_location("_dash_bug47_test", out.name)
-            mod = _ilu.module_from_spec(ispec)
-            ispec.loader.exec_module(mod)
+            mod = load_app(out.name, "_dash_bug47_test")
             doc = _Doc()
             mod.make_document(doc)
             (_fig, r), = _glyph_layers(doc.roots)

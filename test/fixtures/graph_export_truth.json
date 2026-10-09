@@ -1,0 +1,111 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "90ad3936355a2f2610d2d8a1c20f617931370679",
+  "extracted": " 7 Oct 2026 23:27:15",
+  "mode": "batch",
+  "os": "Unix",
+  "source": "scripts/extract_graph_export_truth.do",
+  "stata_version": "19.5"
+ },
+ "cases": {
+  "dropped": {
+   "first": "file <work>/gx4.svg saved as SVG format",
+   "memory": "",
+   "rc": 0
+  },
+  "no_graph": {
+   "first": "no Graph window open",
+   "rc": 601
+  },
+  "no_such_name": {
+   "first": "could not find Graph window",
+   "rc": 693
+  },
+  "nodraw_only": {
+   "first": "no Graph window open",
+   "memory": "Graph",
+   "rc": 601
+  },
+  "saving_png": {
+   "first": "file <work>/gx6.png saved as .gph format",
+   "gph_appended": 0,
+   "named_as_typed": 1,
+   "rc": 0
+  }
+ },
+ "return_after_twoway": {
+  "macros": 0,
+  "scalars": 0
+ },
+ "suffixes": {
+  "PNG": {
+   "first": "output file suffix PNG not recognized",
+   "rc": 198
+  },
+  "emf": {
+   "first": "Stata for Unix cannot create emf files",
+   "rc": 198
+  },
+  "eps": {
+   "first": "file <work>/gx5_4.eps saved as EPS format",
+   "rc": 0
+  },
+  "gif": {
+   "first": "Stata for Unix cannot create gif files",
+   "rc": 198
+  },
+  "gph": {
+   "first": "output file suffix gph not recognized",
+   "rc": 198
+  },
+  "html": {
+   "first": "output file suffix html not recognized",
+   "rc": 198
+  },
+  "jpeg": {
+   "first": "translator Graph2jpeg not found",
+   "rc": 111
+  },
+  "jpg": {
+   "first": "file <work>/gx5_6.jpg written in JPEG format",
+   "rc": 0
+  },
+  "pdf": {
+   "first": "file <work>/gx5_3.pdf saved as PDF format",
+   "rc": 0
+  },
+  "pict": {
+   "first": "output file suffix pict not recognized",
+   "rc": 198
+  },
+  "png": {
+   "first": "file <work>/gx5_1.png written in PNG format",
+   "rc": 0
+  },
+  "ps": {
+   "first": "file <work>/gx5_5.ps saved as PostScript format",
+   "rc": 0
+  },
+  "svg": {
+   "first": "file <work>/gx5_2.svg saved as SVG format",
+   "rc": 0
+  },
+  "tif": {
+   "first": "translator Graph2tif not found",
+   "rc": 111
+  },
+  "tiff": {
+   "first": "output file suffix tiff not recognized",
+   "rc": 198
+  },
+  "wmf": {
+   "first": "Stata for Unix cannot create wmf files",
+   "rc": 198
+  },
+  "xyz": {
+   "first": "output file suffix xyz not recognized",
+   "rc": 198
+  }
+ }
+}

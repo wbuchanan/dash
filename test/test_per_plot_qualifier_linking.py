@@ -47,6 +47,9 @@ _DF = pd.DataFrame({
 _N_FOREIGN = int((_DF["foreign"] == 1).sum())
 
 
+from conftest import render_models  # noqa: E402
+
+
 def _render(tmp_path, link, plots, second_graph=True, graph_if="", df=None,
             go=None):
     df = _DF if df is None else df
@@ -76,7 +79,7 @@ def _render(tmp_path, link, plots, second_graph=True, graph_if="", df=None,
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(str(spec), str(data))
-        r.render()
+        render_models(r)
     return r
 
 

@@ -1,0 +1,1264 @@
+{
+ "_meta": {
+  "stata_version": "19.5",
+  "born_date": "12 Aug 2026",
+  "dash_commit": "87ec2a5da965e2c2440aa9e7fee0a5b8505e637e",
+  "extracted": " 8 Oct 2026"
+ },
+ "probes": {
+  "base": {
+   "cmd": "twoway scatter mpg weight",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "add25": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "add5": {
+   "cmd": "twoway scatter mpg weight, ylabel(5, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     5.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     5.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "add50": {
+   "cmd": "twoway scatter mpg weight, ylabel(50, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     50.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     50.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "addto": {
+   "cmd": "twoway scatter mpg weight, ylabel(15 25 to 35, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     15.0,
+     25.0,
+     35.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "addslash": {
+   "cmd": "twoway scatter mpg weight, ylabel(15/17, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     15.0,
+     16.0,
+     17.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "addmixed": {
+   "cmd": "twoway scatter mpg weight, ylabel(15 \"a\" 25(10)45, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     15.0,
+     25.0,
+     35.0,
+     45.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     45.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "addlab": {
+   "cmd": "twoway scatter mpg weight, ylabel(25 \"x\", add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "rule": {
+   "cmd": "twoway scatter mpg weight, ylabel(15(10)35, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     15.0,
+     25.0,
+     35.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "rule50": {
+   "cmd": "twoway scatter mpg weight, ylabel(15(10)35 50, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     15.0,
+     25.0,
+     35.0,
+     50.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     50.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "n2": {
+   "cmd": "twoway scatter mpg weight, ylabel(#2, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     0.0,
+     20.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     0.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "n2_25": {
+   "cmd": "twoway scatter mpg weight, ylabel(#2 25, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     0.0,
+     20.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     0.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "minmax": {
+   "cmd": "twoway scatter mpg weight, ylabel(minmax, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     12.0,
+     41.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "none": {
+   "cmd": "twoway scatter mpg weight, ylabel(none, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "empty": {
+   "cmd": "twoway scatter mpg weight, ylabel(, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "m_plain": {
+   "cmd": "twoway scatter mpg weight, ylabel(25) ylabel(35, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     25.0,
+     35.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "m_both": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add) ylabel(35, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0,
+     35.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "m_second": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add) ylabel(35)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     35.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "m_nolab": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, nolabels) ylabel(35, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     25.0,
+     35.0
+    ],
+    "unlabelled": [],
+    "labels_shown": false,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a01": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add) ylabel(, nolabels)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": false,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a02": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add) ylabel(, labsize(small))",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a03": {
+   "cmd": "twoway scatter mpg weight, ytick(25)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [
+     25.0
+    ],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a04": {
+   "cmd": "twoway scatter mpg weight, ytick(25, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [
+     25.0
+    ],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a05": {
+   "cmd": "twoway scatter mpg weight, ylabel(#3 25, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a06": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add norescale)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a07": {
+   "cmd": "twoway scatter mpg weight, ylabel(50, add norescale)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     50.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "a08": {
+   "cmd": "twoway scatter mpg weight, xlabel(5000, add) xlabel(1500, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0,
+     1500.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1500.0,
+     5000.0
+    ]
+   }
+  },
+  "nr_rule": {
+   "cmd": "twoway scatter mpg weight, ylabel(0(10)100, norescale)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     0.0,
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     50.0,
+     60.0,
+     70.0,
+     80.0,
+     90.0,
+     100.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     0.0,
+     100.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "nr_list": {
+   "cmd": "twoway scatter mpg weight, ylabel(0 10 20, norescale)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     0.0,
+     10.0,
+     20.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     12.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "noticks": {
+   "cmd": "twoway scatter mpg weight, ylabel(, noticks) ylabel(25, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   }
+  },
+  "b00": {
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2))",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yaxis2": {
+    "ticks": [
+     0.0,
+     5000.0,
+     10000.0,
+     15000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   }
+  },
+  "b01": {
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(6000, axis(2) add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yaxis2": {
+    "ticks": [
+     0.0,
+     5000.0,
+     10000.0,
+     15000.0,
+     6000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   }
+  },
+  "b02": {
+   "cmd": "twoway (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(6000, axis(2) add) ylabel(9000, axis(2) add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     10.0,
+     41.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     2000.0,
+     3000.0,
+     4000.0,
+     5000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     1760.0,
+     5000.0
+    ]
+   },
+   "yaxis2": {
+    "ticks": [
+     0.0,
+     5000.0,
+     10000.0,
+     15000.0,
+     6000.0,
+     9000.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   }
+  },
+  "by": {
+   "cmd": "twoway scatter mpg weight, ylabel(25, add) by(foreign)",
+   "rc": 0,
+   "panel1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   },
+   "panel2": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0,
+     25.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   }
+  },
+  "by_base": {
+   "cmd": "twoway scatter mpg weight, by(foreign)",
+   "rc": 0,
+   "panel1": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   },
+   "panel2": {
+    "ticks": [
+     10.0,
+     20.0,
+     30.0,
+     40.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true
+   }
+  },
+  "ts_base": {
+   "cmd": "tsline y",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     100.0,
+     120.0,
+     140.0,
+     160.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     100.0,
+     160.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     480.0,
+     498.0,
+     516.0,
+     534.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     480.0,
+     539.0
+    ]
+   }
+  },
+  "ts_x492": {
+   "cmd": "tsline y, xlabel(492, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     100.0,
+     120.0,
+     140.0,
+     160.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     100.0,
+     160.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     480.0,
+     498.0,
+     516.0,
+     534.0,
+     492.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     480.0,
+     539.0
+    ]
+   }
+  },
+  "ts_tlabel": {
+   "cmd": "tsline y, tlabel(2001m1, add)",
+   "rc": 0,
+   "yaxis1": {
+    "ticks": [
+     100.0,
+     120.0,
+     140.0,
+     160.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     100.0,
+     160.0
+    ]
+   },
+   "xaxis1": {
+    "ticks": [
+     480.0,
+     498.0,
+     516.0,
+     534.0,
+     492.0
+    ],
+    "unlabelled": [],
+    "labels_shown": true,
+    "range": [
+     480.0,
+     539.0
+    ]
+   }
+  }
+ }
+}

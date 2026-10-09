@@ -544,24 +544,38 @@ class TestCreateVenv:
 
 
 MINS = {"python": "3.13", "packaging": "", "bokeh": "3.8", "numpy": "2.3", "pandas": "2.3"}
+# WP-30 P1.33: the Python minimum is dash_setup.ado's own floor, never a copy.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_version_floor import _setup_ado_floor  # noqa: E402
+MINS = dict(MINS, python=_setup_ado_floor()[0])
 
 
 class TestVerifyIn:
 
     def test_a_bare_venv_reports_each_missing_package(self, lib, tmp_path):
+        """Under any interpreter: the Python minimum is the running one's
+        major.minor (WP-30 P1.33, D-05d), so the packages are reached."""
         vpy = _bare_venv(tmp_path / "bare")
-        got = lib.verify_in(vpy, RENDER, MINS, sys.version_info)
+        mins = dict(MINS, python="%d.%d" % sys.version_info[:2])
+        got = lib.verify_in(vpy, RENDER, mins, sys.version_info)
         assert got["ok"] is False
         assert got["packages"] == {"packaging": "", "bokeh": "", "numpy": "", "pandas": ""}
 
     def test_a_venv_seeing_the_packages_passes_versions_and_schemes(self, lib, tmp_path):
+        """The pass path of the packages and schemes, under any interpreter:
+        the Python minimum is the running one's major.minor (WP-30 P1.33,
+        D-05d); the floor has its own tests."""
         vpy = _bare_venv(tmp_path / "seeing")
         with open(os.path.join(_purelib(vpy), "dash_base.pth"), "w") as fh:
             fh.write(_purelib(sys.executable) + "\n")
-        got = lib.verify_in(vpy, RENDER, MINS, sys.version_info)
+        mins = dict(MINS, python="%d.%d" % sys.version_info[:2])
+        got = lib.verify_in(vpy, RENDER, mins, sys.version_info)
         assert got["ok"] is True, got
         assert got["schemes"] is True
         assert all(got["packages"][n] for n in ("packaging", "bokeh", "numpy", "pandas"))
+
+    def test_the_python_minimum_is_dash_setups_floor(self):
+        assert MINS["python"] == _setup_ado_floor()[0]
 
     def test_a_venv_below_the_python_floor_is_refused(self, lib):
         got = lib.verify_in(sys.executable, RENDER, dict(MINS, python="99.0"), sys.version_info)
@@ -576,6 +590,20 @@ class TestVerifyIn:
 
 
 class TestMessages:
+
+    def test_below_the_floor_the_guidance_names_the_floor_and_never_venv(self, lib):
+        """WP-30 P1.33: a private environment made from a Python below the
+        floor is below it too, so the guidance points at a newer Python."""
+        exe = "/opt/homebrew/bin/python3.10"
+        for kind, what in (("managed", "externally managed (PEP 668)"),
+                           ("nopip", "has no pip")):
+            text, cmd = lib.below_floor_message(exe, "3.11", kind)
+            assert cmd == ""
+            for needle in (exe, "3.11 or later", "help python",
+                           "restart Stata", what):
+                assert needle in text, (kind, needle)
+            assert "venv(" not in text
+            assert "break-system-packages" not in text
 
     def test_the_managed_message_names_the_python_and_never_the_override_flag(self, lib):
         text, cmd = lib.managed_message("/opt/homebrew/bin/python3.13", False, {})
@@ -726,6 +754,31 @@ class TestStataEntryPoints:
         lib.stata_guide()
         assert fake_sfi["local"]["guide_cmd"] == "'/opt/{bf:X}/python3' -m ensurepip --upgrade"
 
+    def test_stata_guide_below_the_floor_suggests_no_venv(self, lib, fake_sfi, capsys):
+        """WP-30 P1.33: below the floor neither guidance kind suggests
+        venv(), and the command handed back is empty."""
+        fake_sfi["local"].update(kind="managed", ensurepip="1", managed="1",
+                                 pyok="0", pymin="3.11")
+        lib.stata_guide()
+        out = capsys.readouterr().out
+        assert fake_sfi["local"]["guide_cmd"] == ""
+        assert "venv(" not in out
+        assert "3.11 or later" in out
+        fake_sfi["local"].update(kind="nopip", ensurepip="1", managed="0")
+        lib.stata_guide()
+        out = capsys.readouterr().out
+        assert fake_sfi["local"]["guide_cmd"] == ""
+        assert "venv(" not in out and "has no pip" in out
+        fake_sfi["local"].update(kind="managed", pyok="1")
+        lib.stata_guide()
+        assert fake_sfi["local"]["guide_cmd"] == 'dash_setup, venv("~/.dash/venv")'
+        capsys.readouterr()
+        fake_sfi["local"].update(pyok="0", pymin="abc")
+        lib.stata_guide()
+        out = capsys.readouterr().out
+        assert fake_sfi["local"]["guide_cmd"] == 'dash_setup, venv("~/.dash/venv")'
+        assert "externally managed (PEP 668)" in out
+
     def test_stata_venv_check_and_stata_venv_with_a_recorded_run(self, lib, fake_sfi, tmp_path,
                                                                  monkeypatch, capsys):
         seen = []
@@ -747,7 +800,8 @@ class TestStataEntryPoints:
         lib.stata_venv_check()
         absp = os.path.join(os.path.realpath(str(tmp_path)), "env")
         assert loc["venv_ok"] == "1"
-        loc.update(pymin="3.13", minb="3.8", minn="2.3", minp="2.3")
+        # WP-30 P1.30: _dash_setup_venv passes bokeh's ceiling as maxb.
+        loc.update(pymin="3.13", minb="3.8", minn="2.3", minp="2.3", maxb="3.10")
         lib.stata_venv()
         vpy = os.path.join(absp, "bin", "python")
         assert loc["venv_step"] == ""
@@ -820,3 +874,73 @@ class TestTheFixture:
             if k != "_meta":
                 assert isinstance(rec["argv"], list) and isinstance(rec["rc"], int)
                 assert rec["stderr"]
+
+
+class TestTheBokehWindow:
+    """WP-30 P1.30 (M9, A107): dash_setup installs bokeh inside the
+    verified window, and never downgrades a bokeh at or above its ceiling
+    (critic C5: a reused venv's newer bokeh)."""
+
+    def test_the_requirement_never_downgrades(self, lib):
+        rows = {"": "bokeh>=3.8,<3.10", None: "bokeh>=3.8,<3.10",
+                "3.7.3": "bokeh>=3.8,<3.10", "3.9.2": "bokeh>=3.8,<3.10",
+                "garbage": "bokeh>=3.8,<3.10", "3.10.0": "bokeh>=3.8",
+                "3.10.0rc1": "bokeh>=3.8", "4.1": "bokeh>=3.8"}
+        bad = {v: lib.bokeh_requirement(v, "3.8", "3.10") for v in rows
+               if lib.bokeh_requirement(v, "3.8", "3.10") != rows[v]}
+        assert not bad, bad
+        assert all(lib._SPEC_RE.fullmatch(s) for s in rows.values())
+        with pytest.raises(ValueError):
+            lib.bokeh_requirement("", "3.8; rm", "3.10")
+
+    def test_the_venv_route_downgrades_nothing(self, lib, fake_sfi, tmp_path,
+                                               monkeypatch, capsys):
+        def run_with(have, state):
+            seen = []
+
+            def run(argv, **k):
+                seen.append(list(argv))
+                if "venv" in argv:
+                    return _fake_venv_run(argv)
+                code = argv[argv.index("-c") + 1] if "-c" in argv else ""
+                if "DASH_DETECT_V1" in code:
+                    return 0, _detect_line(prefix="/v", base_prefix="/b"), ""
+                if "DASH_VERIFY_V1" in code:
+                    above = ["bokeh"] if have.startswith("3.10") else []
+                    return 0, json.dumps({
+                        "tag": "DASH_VERIFY_V1", "ok": True,
+                        "version": [3, 13, 9], "packages": {"bokeh": have},
+                        "schemes": True, "why": "", "above": above}), ""
+                return 0, "Successfully installed", ""
+            monkeypatch.setattr(lib, "run_child", run)
+            absp = str(tmp_path / ("env_%s_%s" % (state, have)))
+            if state == "venv":
+                _fake_venv_run(["venv", absp])
+            lib._PENDING["venv"] = (absp, state, [])
+            fake_sfi["local"].update(pymin="3.11", minb="3.8", minn="2.3",
+                                     minp="2.3", maxb="3.10")
+            lib.stata_venv()
+            assert fake_sfi["local"]["venv_step"] == "", capsys.readouterr()
+            pip = [a for a in seen if "pip" in a]
+            assert len(pip) == 1, seen
+            return [a for a in pip[0] if a.startswith("bokeh")], \
+                capsys.readouterr().out
+
+        rows = [("", "new", "bokeh>=3.8,<3.10", False),
+                ("3.10.0", "venv", "bokeh>=3.8", True),
+                ("3.9.0", "venv", "bokeh>=3.8,<3.10", False)]
+        for have, state, want, left in rows:
+            spec, out = run_with(have, state)
+            assert spec == [want], (have, state, spec)
+            assert ("it was left as it is" in out) is left, (have, out)
+
+    def test_verify_reports_above_without_failing(self, lib):
+        import bokeh
+        mm = tuple(int(x) for x in bokeh.__version__.split(".")[:2])
+        mins = dict(MINS, python="%d.%d" % sys.version_info[:2])
+        rows = {"%d.%d" % mm: ["bokeh"], "%d.%d" % (mm[0], mm[1] + 1): []}
+        for ceil, want in rows.items():
+            got = lib.verify_in(sys.executable, RENDER,
+                                dict(mins, bokeh_ceil=ceil), sys.version_info)
+            assert got["above"] == want, (ceil, got)
+            assert got["ok"] is True, got

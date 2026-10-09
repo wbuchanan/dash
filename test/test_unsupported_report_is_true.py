@@ -92,11 +92,17 @@ PLOT_VALUES = {
     "bin": ("5", "9", "histogram"),
     "blabel": ("total", "bar", "bar"),
     "ciopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
-    "cmissing": ("n", "y", "line"),
+    # Flipped (WP-30 P1.8a): ("n", "y", "line") was wrong because dash draws
+    # cmissing(n) on line as twoway does (connect_truth.json P08); it stays
+    # named, and inert, on area (P2.42).
+    "cmissing": ("n", "y", "area"),
     "color": ("maroon", "navy", "scatter"),
     "colorlist": ("red blue", "green orange", "scatter"),
     "coloruseplegend": ("coloruseplegend", "", "scatter"),
-    "connect": ("l", "J", "line"),
+    # Flipped (WP-30 P1.8a): ("l", "J", "line") was wrong because dash draws
+    # connect() on line as twoway does (connect_truth.json P02); it stays
+    # named, and inert, as anything but direct on rarea (P2.42).
+    "connect": ("direct", "stairstep", "rarea"),
     "density": ("density", "frequency", "histogram"),
     "falpha": ("30", "80", "area"),
     "fitopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
@@ -108,33 +114,30 @@ PLOT_VALUES = {
     "fxsize": ("50", "80", "scatter"),
     "fysize": ("50", "80", "scatter"),
     "link": ("g1", "g2", "scatter"),
-    "horizontal": ("horizontal", "", "bar"),
     "jitterseed": ("7", "99", "scatter"),
     "kernel": ("epan2", "gaussian", "kdensity"),
     "l1title": ("l1", "lA", "scatter"),
     "l2title": ("l2", "lB", "scatter"),
     "level": ("80", "99", "lfitci"),
     "lineopts": ("lcolor(red)", "lcolor(blue)", "kdensity"),
-    "lstyle": ("p3", "p7", "line"),
     # WP-22 TR-22.3: twoway options that used to land in the note as
     # unknown, now declared -- named by their full names -- and not drawn.
-    "mlabtextstyle": ("heading", "body", "scatter"),
-    "mlabvposition": ("rep78", "foreign", "scatter"),
     "mlabwidth": ("thick", "vthin", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
-    "mlstyle": ("p1", "p5", "scatter"),
+    # WP-30 P1.14b: kept and named, not drawn (P2.9 dot rows, P2.8 marker
+    # back lines); twoway accepts all three on scatter (plan E9.7).
+    "dstyle": ("p3", "p5", "scatter"),
+    "dlstyle": ("p3", "p5", "scatter"),
+    "bmlinestyle": ("p3", "p5", "scatter"),
     "mlwidth": ("thick", "vthin", "scatter"),
-    "mstyle": ("p1", "p5", "scatter"),
     "n": ("30", "70", "kdensity"),
     "nodraw": ("nodraw", "", "scatter"),
     "percent": ("percent", "frequency", "histogram"),
     "play": ("x", "y", "scatter"),
-    "pstyle": ("p2", "p6", "scatter"),
     "r1title": ("r1", "rA", "scatter"),
     "r2title": ("r2", "rB", "scatter"),
     "range": ("10 30", "12 28", "kdensity"),
-    "recast": ("line", "area", "scatter"),
     "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
     # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
@@ -145,12 +148,13 @@ PLOT_VALUES = {
     "subtitle2": ("S2", "SS", "scatter"),
     "t1title": ("t1", "tA", "scatter"),
     "t2title": ("t2", "tB", "scatter"),
-    "text": ('20 3000 "hi"', '25 2500 "yo"', "scatter"),
     "title2": ("T2", "TT", "scatter"),
-    "vertical": ("vertical", "", "bar"),
     "width": ("2", "4", "histogram"),
     "xmlabel": ("5(5)40", "10(10)40", "scatter"),
     "xmtick": ("5(1)40", "10(2)40", "scatter"),
+    # WP-30 P1.6: stored on xmlabel/xmtick at registration and named.
+    "tmlabel": ("5(5)40", "10(10)40", "scatter"),
+    "tmtick": ("5(1)40", "10(2)40", "scatter"),
     "xoverhangs": ("xoverhangs", "", "scatter"),
     "xsize": ("3", "9", "scatter"),
     "xtick": ("5(5)40", "10(10)40", "scatter"),
@@ -194,7 +198,13 @@ FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
          "logit"}
 
 
+# The CSP lists a sha256 of every inline script, and those scripts carry
+# Bokeh's per-render ids: the hashes differ whenever the ids do (WP-30 P1.29).
+_CSP_HASH = re.compile(r"'sha256-[A-Za-z0-9+/]{43}='")
+
+
 def _norm(html: str) -> str:
+    html = _CSP_HASH.sub("'HASH'", html)
     return hashlib.sha256(
         _PID.sub("PID", _UUID.sub("UUID", html)).encode()).hexdigest()
 
@@ -237,8 +247,20 @@ class TestTheListIsCoveredAndHonest:
         # a refactor dropped most of a block from the regex's reach, which
         # would turn every "reported unsupported really is" case below into
         # a silent no-op.
-        assert len(_plot_pending()) == 48, sorted(_plot_pending())
-        assert len(_graph_pending()) == 23, sorted(_graph_pending())
+        # Flipped (WP-30 P1.14a): 48 -> 44: pstyle(), lstyle(), mstyle()
+        # and mlstyle() are drawn (p1-p15), so they leave the list.
+        # 44 -> 47: P1.14b dstyle dlstyle bmlinestyle declared and named
+        # Flipped (WP-30 P1.24): 47 was wrong because twoway draws
+        # mlabvposition() per row (mlabvpos_truth.json A).
+        # 47 -> 46: P1.24 mlabvposition() honoured
+        # 46 -> 45: P1.24 mlabtextstyle() honoured (part 2)
+        # 45 -> 44: P1.8b recast() honoured
+        # 44 -> 42: P1.9a horizontal drawn, vertical silent
+        # 42 -> 44 and 23 -> 25: P1.6 tmlabel() and tmtick() declared and
+        # named until minor ticks are drawn
+        # 44 -> 43 and 25 -> 24: P1.10 text() drawn
+        assert len(_plot_pending()) == 43, sorted(_plot_pending())
+        assert len(_graph_pending()) == 24, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -380,7 +402,19 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            # exactly as twoway_yxview_parse.class declares it; the argument
            # form is reported as sort() and never written to the spec
            # (WP-22, pinned in test_twoway_option_parity.cscript TP-06).
-           "sort1"}
+           "sort1",
+           # cmissings() is twoway's other spelling of cmissing(), copied
+           # onto it before the spec is written (WP-30 P1.8a).
+           "cmissings",
+           # recastas() and type() are twoway's other spellings of
+           # recast(), resolved into it before the spec is written (WP-30
+           # P1.8b; test_twoway_option_parity.cscript RC-05).
+           "recastas", "type",
+           # The time-axis options, folded at registration onto their x
+           # twins (WP-30 P1.6; test_twoway_option_parity.cscript TA-01).
+           "tlabel", "ttick", "tscale", "ttitle", "tline",
+           # and their axis-2 forms, onto xlabel2() .. xtitle2() (part 2).
+           "tlabel2", "ttick2", "tline2", "tscale2", "ttitle2"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -394,6 +428,14 @@ NOT_IN_FILE = {
     "replace": "lets saving() write over a file that exists (WP-27); the "
                "page is the same with or without it, so it is certified by "
                "test_path_validation.cscript PV-22..27",
+    # Flipped (WP-30 P1.9a): vertical was named and inert on bar
+    # (PLOT_VALUES), which was wrong because twoway takes it silently as
+    # its default orientation (horizontal_truth.json accept bar).
+    "vertical": "twoway's default orientation, taken in silence (WP-30 "
+                "P1.9a); the page is the one without it, pinned by "
+                "test_horizontal.py::TestUprightIsUntouched and refused "
+                "where twoway refuses it by test_option_validation.cscript "
+                "HZ-02",
 }
 
 #: option -> (options A, options B, plot type, extra graph options).  Two
@@ -404,11 +446,26 @@ _CV = {"colorvar": "price"}
 _ML = {"mlabel": "foreign"}
 LIVE_VALUES = {
     # ---- plot-level -------------------------------------------------------
+    # WP-30 P1.14a: drawn, p1-p15 (each pair of styles differs on its type).
+    "alstyle": ({"alstyle": "p3"}, {"alstyle": "p7"}, "bar", {}),
+    "astyle": ({"astyle": "p3"}, {"astyle": "p7"}, "area", {}),
     "bands": ({"bands": "3"}, {"bands": "6"}, "mband", {}),
+    # Flipped (WP-30 P1.8b): recast() was named and inert on scatter
+    # (PLOT_VALUES), which was wrong because twoway draws the target
+    # (recast_truth.json); a derived layer draws its points as it.
+    "recast": ({"recast": "scatter"}, {"recast": "line"}, "lfit", {}),
+    # Flipped (WP-30 P1.9a): horizontal was named and inert on bar
+    # (PLOT_VALUES), which was wrong because twoway turns the bars
+    # (horizontal_truth.json draw bar).
+    "horizontal": ({"horizontal": "horizontal"}, {}, "bar", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
     "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
     "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
     "bin": ({"bin": "4"}, {"bin": "8"}, "histogram", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "blstyle": ({"blstyle": "p3"}, {"blstyle": "p7"}, "bar", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "bstyle": ({"bstyle": "p3"}, {"bstyle": "p7"}, "bar", {}),
     "blcolor": ({"blcolor": "red"}, {"blcolor": "blue"}, "bar", {}),
     "bwidth": ({"bwidth": "300"}, {"bwidth": "700"}, "lpoly", {}),
     "color": ({"color": "red"}, {"color": "blue"}, "scatter", {}),
@@ -454,10 +511,26 @@ LIVE_VALUES = {
     "clcolor": ({"clcolor": "red"}, {"clcolor": "blue"}, "line", {}),
     "clpattern": ({"clpattern": "dash"}, {"clpattern": "dot"}, "line", {}),
     "clwidth": ({"clwidth": "vthin"}, {"clwidth": "vthick"}, "line", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "clstyle": ({"clstyle": "p3"}, {"clstyle": "p7"}, "line", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "lstyle": ({"lstyle": "p3"}, {"lstyle": "p7"}, "line", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "mlstyle": ({"mlstyle": "p1"}, {"mlstyle": "p5"}, "scatter", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "mstyle": ({"mstyle": "p1"}, {"mstyle": "p5"}, "scatter", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "p": ({"p": "p2"}, {"p": "p6"}, "scatter", {}),
+    # WP-30 P1.14a: drawn, p1-p15
+    "pstyle": ({"pstyle": "p2"}, {"pstyle": "p6"}, "scatter", {}),
     "mlabangle": ({**_ML, "mlabangle": "45"}, {**_ML, "mlabangle": "90"},
                   "scatter", {}),
     "mlabformat": ({"mlabel": "price", "mlabformat": "%9.1f"},
                    {"mlabel": "price", "mlabformat": "%9.2f"}, "scatter", {}),
+    "xvarformat": ({"xvarformat": "%9.2f"}, {"xvarformat": "%9.1f"},
+                   "scatter", {}),
+    "yvarformat": ({"yvarformat": "%9.2f"}, {"yvarformat": "%9.1f"},
+                   "scatter", {}),
     "level": ({"level": "80"}, {"level": "99"}, "lfitci", {}),
     "lpattern": ({"lpattern": "dash"}, {"lpattern": "dot"}, "line", {}),
     "lwidth": ({"lwidth": "vthin"}, {"lwidth": "vthick"}, "line", {}),
@@ -474,6 +547,16 @@ LIVE_VALUES = {
                      {**_ML, "mlabposition": "9"}, "scatter", {}),
     "mlabsize": ({**_ML, "mlabsize": "tiny"}, {**_ML, "mlabsize": "vlarge"},
                  "scatter", {}),
+    # Flipped (WP-30 P1.24): mlabvposition() was reported unsupported,
+    # which was wrong because twoway draws it per row
+    # (mlabvpos_truth.json A).
+    # Flipped (WP-30 P1.24, part 2): mlabtextstyle() was reported
+    # unsupported, which was wrong because twoway draws the scheme's text
+    # box style (mlabtextstyle_truth.json).
+    "mlabtextstyle": ({**_ML, "mlabtextstyle": "heading"},
+                      {**_ML, "mlabtextstyle": "body"}, "scatter", {}),
+    "mlabvposition": ({**_ML, "mlabvposition": "rep78"},
+                      {**_ML, "mlabvposition": "foreign"}, "scatter", {}),
     "mlcolor": ({"mlcolor": "navy"}, {"mlcolor": "maroon"}, "scatter", {}),
     "mlwidth": ({"mlwidth": "thick"}, {"mlwidth": "vthin"}, "scatter", {}),
     "msangle": ({"msymbol": "T", "msangle": "0"},
@@ -511,7 +594,11 @@ LIVE_VALUES = {
               {"ytitle2": "Second"}),
     # ---- graph-level --------------------------------------------------------
     "aspectratio": ({}, {}, "scatter", ("aspectratio", "0.5", "2")),
-    "bgcolor": ({}, {}, "scatter", ("bgcolor", "red", "blue")),
+    # Flipped (WP-30 P1.20a): two lone bgcolor() pages differing was wrong
+    # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); under graphregion(color(none))
+    # the canvas shows.
+    "bgcolor": ({}, {}, "scatter", ("bgcolor", "red", "blue",
+                                    {"graphregion": "color(none)"})),
     "by": ({}, {}, "scatter", ("by", "foreign", "rep78")),
     "caption": ({}, {}, "scatter", ("caption", "A", "B")),
     "graphregion": ({}, {}, "scatter", ("graphregion", "color(red)",
@@ -554,6 +641,23 @@ LIVE_VALUES = {
     "xline2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
                ("xline2", "3000", "3500")),
     "yline": ({}, {}, "scatter", ("yline", "20", "25")),
+    # Flipped (WP-30 P1.10): text() was named and inert (PLOT_VALUES),
+    # which was wrong because twoway draws it (added_text_truth.json); the
+    # renderer reads the records dash.ado writes for it.
+    "text": ({}, {}, "scatter", (
+        "added_text",
+        [{"at_kind": "text", "at_y": 20, "at_x": 3000, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["hi"], "at_opts": ""}],
+        [{"at_kind": "text", "at_y": 25, "at_x": 2500, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["yo"], "at_opts": ""}])),
+    # WP-30 P1.10 part 2: ttext() writes the same records (at_kind ttext),
+    # its x converted by dash.ado.
+    "ttext": ({}, {}, "scatter", (
+        "added_text",
+        [{"at_kind": "ttext", "at_y": 20, "at_x": 3000, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["hi"], "at_opts": ""}],
+        [{"at_kind": "ttext", "at_y": 25, "at_x": 2500, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["yo"], "at_opts": ""}])),
     "yscale": ({}, {}, "scatter", ("yscale", "log", "reverse")),
     "yscale2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
                 ("yscale2", "log", "reverse")),
@@ -574,8 +678,9 @@ def _live_pair(opt):
     """``(popts_a, gopts_a, popts_b, gopts_b, ptype)`` for one live option."""
     pa, pb, ptype, g = LIVE_VALUES[opt]
     if isinstance(g, tuple):
-        key, a, b = g
-        return dict(pa), {key: a}, dict(pb), {key: b}, ptype
+        key, a, b, *extra = g
+        more = dict(extra[0]) if extra else {}
+        return dict(pa), {**more, key: a}, dict(pb), {**more, key: b}, ptype
     return dict(pa), dict(g), dict(pb), dict(g), ptype
 
 
@@ -604,8 +709,18 @@ class TestEveryDeclaredOptionIsClassified:
         # them -- and still pass.
         # Flipped (WP-29 P0.5): 169 and 72, with ytick2(), xtick2(),
         # yline2() and xline2() declared in both blocks.
-        assert len(_declared_plot()) == 169, len(_declared_plot())
-        assert len(_declared_graph()) == 72, len(_declared_graph())
+        # 169 -> 171: P1.5 xvarformat() and yvarformat() declared
+        # Flipped (WP-30 P1.14a): 171 -> 177: astyle(), alstyle(),
+        # bstyle(), blstyle(), clstyle() and p() declared.
+        # 177 -> 180: P1.14b dstyle dlstyle bmlinestyle declared and named
+        # 180 -> 181: P1.8a cmissings() declared
+        # 181 -> 183: P1.8b recastas() and type() declared
+        # 183 -> 190 and 72 -> 79: P1.6 the seven time-axis options
+        # declared in both blocks; 190 -> 195 and 79 -> 84: part 2's five
+        # axis-2 forms
+        # 195 -> 196 and 84 -> 85: P1.10 ttext declared
+        assert len(_declared_plot()) == 196, len(_declared_plot())
+        assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

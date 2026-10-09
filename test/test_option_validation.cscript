@@ -34,10 +34,10 @@
 *!   OV-06  mlabgap(abc)              rc 0
 *!   OV-07  lwidth(thick)             rc 0
 *!   OV-08  lwidth(0)                 rc 0   (the corpus writes lw(0))
-*!   OV-09  lwidth(-1)                rc 198 naming lwidth()
+*!   OV-09  lwidth(-1)                rc 198 naming lwidth() and twoway's gm_linewidth line
 *!   OV-10  lwidth(abc)               rc 0
 *!   OV-11  mlwidth(0.5)              rc 0
-*!   OV-12  mlwidth(-1)               rc 198 naming mlwidth()
+*!   OV-12  mlwidth(-1)               rc 198 naming mlwidth() and twoway's gm_linewidth line
 *!   OV-13  msangle(30)               rc 0
 *!   OV-14  msangle(abc)              rc 0
 *!   OV-15  msangle(400)              rc 198 naming msangle()
@@ -46,7 +46,7 @@
 *!   OV-18  mlabposition(2.5)         rc 0
 *!   OV-19  fintensity(50)            rc 0
 *!   OV-20  fintensity(inten50)       rc 0   (a name)
-*!   OV-21  fintensity(150)           rc 0   (unbounded: the renderer notes it)
+*!   OV-21  fintensity(150)           rc 0   (drawn darker, as twoway draws it)
 *! Numeric kinds -- a word is refused, a number must sit in the range:
 *!   OV-22  jitter(5)                 rc 0
 *!   OV-23  jitter(abc)               rc 198 naming jitter()
@@ -236,7 +236,7 @@
 *!                                    the file)
 *! WP-22 TR-22.3 -- the connecting-line width and the marker-label angle:
 *!   OV-149 line clwidth(thick)       rc 0, registry carries "clwidth":"thick"
-*!   OV-150 line clwidth(-1)          rc 198 naming clwidth()
+*!   OV-150 line clwidth(-1)          rc 198 naming clwidth() and twoway's gm_linewidth line
 *!   OV-151 line clwidth(abc)         rc 0   (a name)
 *!   OV-152 bar clwidth(-1)           rc 0, and no clwidth in the registry
 *!                                    (bar draws no connecting line, so
@@ -246,6 +246,35 @@
 *!   OV-155 mlabangle(abc)            rc 0   (a name: twoway notes it)
 *!   OV-156 line mlabangle(400)       rc 0   (twoway draws no marker
 *!                                    labels on line, so never evaluates it)
+*! Size forms (WP-30 S08, P1.12a): every Stata size spelling registers
+*! untouched -- rc 0, no "must be" line, the spec carrying the value as
+*! written (dash.ado is unchanged; the renderer reads the units):
+*!   SU-01  msize(4pt)                rc 0, registry carries "msize":"4pt"
+*!   SU-02  msize(*2)                 rc 0, registry carries "msize":"*2"
+*!   SU-03  msize(vhuge)              rc 0, registry carries "msize":"vhuge"
+*!   SU-04  msize(.1in)               rc 0, registry carries "msize":".1in"
+*!   SU-05  msize(1d3)                rc 0, registry carries "msize":"1d3"
+*!   SU-06  msize(HUGE)               rc 0, registry carries "msize":"HUGE"
+*!   SU-07  mlabsize(*1.5)            rc 0, registry carries "mlabsize":"*1.5"
+*!   SU-08  mlabgap(2pt)              rc 0, registry carries "mlabgap":"2pt"
+*! Line widths (WP-30 S13, P1.12b): the forms twoway refuses, r(198) with
+*! "gm_linewidth must be between 0.000 and  1.0e+04" (measured 03oct2026),
+*! then dash's line naming the option; the rest register (rc 0):
+*!   LN-01  lwidth(*-1)               rc 198 naming lwidth(), both lines
+*!   LN-02  lwidth(-1pt)              rc 198 naming lwidth()
+*!   LN-03  lwidth(-0.5in)            rc 198 naming lwidth()
+*!   LN-04  lwidth(1e5rs)             rc 198 naming lwidth()
+*!   LN-05  scatter mlwidth(*-1)      rc 198 naming mlwidth()
+*!   LN-06  line clwidth(-1pt)        rc 198 naming clwidth()
+*!   LN-07  lfitci alwidth(*-1)       rc 198 naming alwidth()
+*!   LN-08  line alwidth(*-1)         rc 0   (not on alwidth()'s type list)
+*!   LN-09  lwidth(10000rs|*0|0pt|-0) rc 0
+*!   LN-10  lwidth(20000pt|*40000)    rc 0   (the renderer notes them, D-13b)
+*!   LN-11  lwidth(vvvthin|none|THICK|1PT|-1PT|*1e400)  rc 0 (names)
+*!   LN-12  lwidth(-1)                rc 198, twoway's line before dash's
+*!   LN-13  scatter lwidth(*-1)       rc 198 (dash refuses on every type)
+*!   LN-14  msize(-1pt|*-1), mlabgap(-2pt)  rc 0 (the ,u reading is the
+*!                                    line options' alone)
 *! The words the absence checks search for, each found where it must be
 *! (24sep2026):
 *!   OV-09m                           OV-09's refusal says "must be", which
@@ -254,6 +283,15 @@
 *!                                    "unsupported option", which no
 *!                                    refusal may print ("not found" is
 *!                                    found at OV-134m)
+*! A comma-written plot colour (WP-30 P1.13a), refused in twoway's words:
+*!   CG-01  mcolor("255,0,128")        rc 198, invalid '0', nothing registered
+*!   CG-02  lcolor("1,2,3") on line    rc 198, invalid '2'
+*!   CG-03  mcolor("red,blue")         rc 198, invalid 'blue'
+*!   CG-04  mcolor("1,")               rc 198, invalid 'editcopy'
+*!   CG-05  mcolor(red "255,0,0")      rc 198, invalid '0' (two y)
+*!   CG-06  mcolor("1,,2")             rc 0, registered (the renderer notes it)
+*!   CG-07  bgcolor("1,2,3")           rc 0 (twoway accepts it)
+*!   CG-08  mcolor(navy*.5)            rc 0, the spec carries "mcolor":"navy*.5"
 *! The corpus arbiter:
 *!   CV-nn  every line of test/fixtures/conformance_corpus.txt registers
 *!          with rc 0 and no refusal -- the table accepts every value the
@@ -269,6 +307,15 @@
 cscript "dash option validation" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 if `"`c(python_exec)'"' == "" {
@@ -862,6 +909,252 @@ _ov_case OV-167 `"dash kpi mean(mpg), name(k) title(T) fmt(%tm)"' 0 ""
 _ov_case OV-168 `"dash kpi mean(mpg), name(k) title(T) fmt(%10.0g)"' 0 ""
 
 // ----------------------------------------------------------------
+// SU-01 .. SU-08 (WP-30 S08, P1.12a): the size forms twoway reads --
+// a unit (pt, in), a *# multiplier, a symbolsize name in either case
+// and Stata's d exponent -- register untouched; the renderer converts
+// them.  _su_case is _ov_case under version 19, registering as suNN.
+// ----------------------------------------------------------------
+capture program drop _su_case
+program define _su_case
+    version 19
+    args id cmdtext expected opt needle needle2
+    _ov_probe "`id'" `"`macval(cmdtext)'"' `expected' "`opt'"
+    local bad = r(bad)
+    local rc  = r(rc)
+    local nm = "su" + subinstr("`id'", "SU-", "", 1)
+    foreach nd in needle needle2 {
+        if `"`macval(`nd')'"' != "" & `bad' == 0 {
+            _ov_has "`nm'" `"`macval(`nd')'"'
+            if r(found) != 1 {
+                display as error `"`id' FAIL: the registered spec does not carry `macval(`nd')':"'
+                mata: st_global("dash_json_" + st_local("nm"))
+                local bad = 1
+            }
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else {
+        display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+    }
+end
+_su_case SU-01 `"dash scatter mpg weight, msize(4pt) name(su01)"' 0 "" `""msize":"4pt""'
+_su_case SU-02 `"dash scatter mpg weight, msize(*2) name(su02)"' 0 "" `""msize":"*2""'
+_su_case SU-03 `"dash scatter mpg weight, msize(vhuge) name(su03)"' 0 "" `""msize":"vhuge""'
+_su_case SU-04 `"dash scatter mpg weight, msize(.1in) name(su04)"' 0 "" `""msize":".1in""'
+_su_case SU-05 `"dash scatter mpg weight, msize(1d3) name(su05)"' 0 "" `""msize":"1d3""'
+_su_case SU-06 `"dash scatter mpg weight, msize(HUGE) name(su06)"' 0 "" `""msize":"HUGE""'
+_su_case SU-07 `"dash scatter mpg weight, mlabsize(*1.5) name(su07)"' 0 "" `""mlabsize":"*1.5""'
+_su_case SU-08 `"dash scatter mpg weight, mlabgap(2pt) name(su08)"' 0 "" `""mlabgap":"2pt""'
+
+// ----------------------------------------------------------------
+// LN-01 .. LN-14 (WP-30 S13, P1.12b): line widths in Stata's units.
+// twoway refuses a negative number, *# or unit form and an rs value
+// above 10000 with r(198) and "gm_linewidth must be between 0.000 and
+// 1.0e+04" (measured 03oct2026); dash prints that line, then its own
+// naming the option.  Forms twoway accepts, or judges only once drawn,
+// register.
+// ----------------------------------------------------------------
+_ov_case LN-01 `"dash line mpg weight, lwidth(*-1) name(ln01)"' 198 lwidth
+_ov_said LN-01 "gm_linewidth must be between 0.000 and"
+_ov_said LN-01 "lwidth() must be a line width from 0 to 10000 Stata units (got: *-1)"
+_ov_case LN-02 `"dash line mpg weight, lwidth(-1pt) name(ln02)"' 198 lwidth
+_ov_said LN-02 "gm_linewidth must be between 0.000 and"
+_ov_said LN-02 "lwidth() must be a line width"
+_ov_case LN-03 `"dash line mpg weight, lwidth(-0.5in) name(ln03)"' 198 lwidth
+_ov_said LN-03 "gm_linewidth must be between 0.000 and"
+_ov_said LN-03 "lwidth() must be a line width"
+_ov_case LN-04 `"dash line mpg weight, lwidth(1e5rs) name(ln04)"' 198 lwidth
+_ov_said LN-04 "gm_linewidth must be between 0.000 and"
+_ov_said LN-04 "lwidth() must be a line width"
+_ov_case LN-05 `"dash scatter mpg weight, mlwidth(*-1) name(ln05)"' 198 mlwidth
+_ov_said LN-05 "gm_linewidth must be between 0.000 and"
+_ov_said LN-05 "mlwidth() must be a line width"
+_ov_case LN-06 `"dash line mpg weight, clwidth(-1pt) name(ln06)"' 198 clwidth
+_ov_said LN-06 "gm_linewidth must be between 0.000 and"
+_ov_said LN-06 "clwidth() must be a line width"
+_ov_case LN-07 `"dash lfitci mpg weight, alwidth(*-1) name(ln07)"' 198 alwidth
+_ov_said LN-07 "gm_linewidth must be between 0.000 and"
+_ov_said LN-07 "alwidth() must be a line width"
+_ov_case LN-08 `"dash line mpg weight, alwidth(*-1) name(ln08)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(10000rs) name(ln09a)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(*0) name(ln09b)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(0pt) name(ln09c)"' 0 ""
+_ov_case LN-09 `"dash line mpg weight, lwidth(-0) name(ln09d)"' 0 ""
+_ov_case LN-10 `"dash line mpg weight, lwidth(20000pt) name(ln10a)"' 0 ""
+_ov_case LN-10 `"dash line mpg weight, lwidth(*40000) name(ln10b)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(vvvthin) name(ln11a)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(none) name(ln11b)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(THICK) name(ln11c)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(1PT) name(ln11d)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(-1PT) name(ln11e)"' 0 ""
+_ov_case LN-11 `"dash line mpg weight, lwidth(*1e400) name(ln11f)"' 0 ""
+_ov_case LN-12 `"dash line mpg weight, lwidth(-1) name(ln12)"' 198 lwidth
+_ov_said LN-12 "gm_linewidth must be between 0.000 and"
+_ov_said LN-12 "lwidth() must be a line width"
+_ov_case LN-13 `"dash scatter mpg weight, lwidth(*-1) name(ln13)"' 198 lwidth
+_ov_said LN-13 "gm_linewidth must be between 0.000 and"
+_ov_said LN-13 "lwidth() must be a line width"
+_ov_case LN-14 `"dash scatter mpg weight, msize(-1pt) name(ln14a)"' 0 ""
+_ov_case LN-14 `"dash scatter mpg weight, msize(*-1) name(ln14b)"' 0 ""
+_ov_case LN-14 `"dash scatter mpg weight, mlabgap(-2pt) name(ln14c)"' 0 ""
+
+// ----------------------------------------------------------------
+// AF-01 .. AF-18 (WP-30 S18, P1.5; M5): a format() word twoway refuses is
+// refused in its words, r(198) "invalid format, <the argument>", on every
+// axis-label option and on zlabel() (AF-14..AF-18, S17's measurement);
+// every word twoway accepts registers.  xvarformat()/yvarformat() are read
+// in a plot and refused after the plot groups' comma as twoway refuses
+// them.  Measured 03oct2026 (StataNow 19.5).  _af_case judges rc; a
+// refusal must hold the needle and no "unsupported option" line, an
+// acceptance neither "invalid format" nor "not allowed", and the spec
+// needle when one is given.
+// ----------------------------------------------------------------
+capture program drop _af_case
+program define _af_case
+    version 19
+    args id cmdtext expected needle specneedle
+    local logfile "`c(tmpdir)'dash_af.log"
+    set linesize 255
+    capture log close _aflog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_aflog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _aflog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `expected' != 0 {
+        _ov_count "`logfile'" `"`macval(needle)'"'
+        if r(n) == 0 {
+            display as error `"`id' FAIL: the refusal does not say `macval(needle)'"'
+            local bad = 1
+        }
+        _ov_count "`logfile'" "unsupported option"
+        if r(n) > 0 {
+            display as error `"`id' FAIL: reported as an unsupported option: `r(line)'"'
+            local bad = 1
+        }
+    }
+    else {
+        foreach nd in "invalid format" "not allowed" {
+            _ov_count "`logfile'" "`nd'"
+            if r(n) > 0 {
+                display as error `"`id' FAIL: an accepted value was refused: `r(line)'"'
+                local bad = 1
+            }
+        }
+        if `"`macval(specneedle)'"' != "" & `bad' == 0 {
+            local nm = "af" + subinstr("`id'", "AF-", "", 1)
+            _ov_has "`nm'" `"`macval(specneedle)'"'
+            if r(found) != 1 {
+                display as error `"`id' FAIL: the registered spec does not carry `macval(specneedle)'"'
+                local bad = 1
+            }
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else {
+        display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+    }
+end
+_af_case AF-01 `"dash scatter mpg weight, xlabel(, format(bogus)) name(af01)"' 198 "invalid format, bogus"
+_af_case AF-02 `"dash scatter mpg weight, ylabel(, format(%9.999999999f)) name(af02)"' 198 "invalid format, %9.999999999f"
+_af_case AF-03 `"dash scatter mpg weight, xlabel(, format(%9.2f bogus)) name(af03)"' 198 "invalid format, %9.2f bogus"
+_af_case AF-04 `"dash scatter mpg weight, xtick(, format(%tdbogus)) name(af04)"' 198 "invalid format, %tdbogus"
+_af_case AF-05 `"dash (scatter mpg weight) (scatter price weight, yaxis(2)), ylabel(, axis(2) format(%2046.0f)) name(af05)"' 198 "invalid format, %2046.0f"
+_af_case AF-06 `"dash scatter mpg weight, xlabel(, format(%12s)) ylabel(, for(%9.1f)) name(af06)"' 0 ""
+_af_case AF-07 `"dash scatter mpg weight, xlabel(, format(%21x)) ylabel(, format("%9.2f")) name(af07)"' 0 ""
+_af_case AF-08 `"dash scatter mpg weight, xlabel(, format()) ylabel(, format(%9.2f %9.1f)) name(af08)"' 0 ""
+_af_case AF-09 `"dash scatter mpg weight, xlabel(, format(%9.2f;display 1)) name(af09)"' 198 "invalid format, %9.2f;display 1"
+_af_case AF-10 `"dash (scatter mpg weight) (scatter mpg length), xvarformat(%9.2f) name(af10)"' 198 "option xvarformat() not allowed"
+_af_case AF-11 `"dash scatter mpg weight, xvarformat(%9.2f) yvarformat(%9.1f) name(af11)"' 0 "" `""xvarformat":"%9.2f""'
+_af_case AF-12 `"dash scatter mpg weight, xvarformat(bogus) name(af12)"' 0 "" `""xvarformat":"bogus""'
+_af_case AF-13 `"dash scatter mpg weight, by(foreign) xlabel(, format(bogus)) name(af13)"' 198 "invalid format, bogus"
+_af_case AF-14 `"dash scatter mpg weight, colorvar(price) zlabel(, format(bogus)) name(af14)"' 198 "invalid format, bogus"
+_af_case AF-15 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%9.2x)) name(af15)"' 198 "invalid format, %9.2x"
+_af_case AF-16 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%tdbogus)) name(af16)"' 198 "invalid format, %tdbogus"
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%12s)) name(af17a)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%21x)) name(af17b)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format("%9.2f")) name(af17c)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format()) name(af17d)"' 0 ""
+_af_case AF-17 `"dash scatter mpg weight, colorvar(price) zlabel(, format(%td) labsize(small)) name(af17e)"' 0 ""
+_af_case AF-18 `"twoway scatter mpg weight, colorvar(price) zlabel(, format(bogus))"' 198 "invalid format, bogus"
+_af_case AF-18 `"dash scatter mpg weight, colorvar(price) zlabel(, format(bogus)) name(af18)"' 198 "invalid format, bogus"
+
+// ----------------------------------------------------------------
+// CG-nn (WP-30 P1.13a): a comma-written plot colour is refused as twoway
+// refuses it, invalid '<word>', r(198), before anything is registered;
+// mcolor("1,,2") and bgcolor("1,2,3") draw in twoway and register here.
+// _cg_case: rc must equal `expected'; the log must say `needle' (when
+// given); a refusal registers nothing; an acceptance registers cgNN and
+// carries `json' (when given).
+capture program drop _cg_case
+program define _cg_case
+    version 16.0
+    args id cmdtext expected needle json
+    local logfile "`c(tmpdir)'dash_ov.log"
+    local nm = "cg" + subinstr("`id'", "CG-", "", 1)
+    set linesize 80
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ovlog
+    local bad = 0
+    if `rc' != `expected' {
+        display as error `"`id' FAIL: expected rc `expected', got rc `rc': `macval(cmdtext)'"'
+        local bad = 1
+    }
+    if `"`macval(needle)'"' != "" {
+        _ov_count "`logfile'" `"`macval(needle)'"'
+        if r(n) == 0 {
+            display as error `"`id' FAIL: the log does not say `macval(needle)'"'
+            local bad = 1
+        }
+    }
+    if `expected' != 0 & `"${dash_json_`nm'}"' != "" {
+        display as error `"`id' FAIL: the refused command still registered `nm'"'
+        local bad = 1
+    }
+    if `expected' == 0 & `"${dash_json_`nm'}"' == "" {
+        display as error `"`id' FAIL: nothing was registered as `nm'"'
+        local bad = 1
+    }
+    if `expected' == 0 & `"`macval(json)'"' != "" & `bad' == 0 {
+        _ov_has "`nm'" `"`macval(json)'"'
+        if r(found) != 1 {
+            display as error `"`id' FAIL: the registered spec does not carry `macval(json)'"'
+            local bad = 1
+        }
+    }
+    if `bad' {
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: rc `rc' -- `macval(cmdtext)'"'
+end
+_cg_case CG-01 `"dash scatter mpg weight, mcolor("255,0,128") name(cg01)"' 198 "invalid '0'"
+_cg_case CG-02 `"dash line mpg weight, lcolor("1,2,3") name(cg02)"' 198 "invalid '2'"
+_cg_case CG-03 `"dash scatter mpg weight, mcolor("red,blue") name(cg03)"' 198 "invalid 'blue'"
+_cg_case CG-04 `"dash scatter mpg weight, mcolor("1,") name(cg04)"' 198 "invalid 'editcopy'"
+_cg_case CG-05 `"dash scatter mpg turn weight, mcolor(red "255,0,0") name(cg05)"' 198 "invalid '0'"
+_cg_case CG-06 `"dash scatter mpg weight, mcolor("1,,2") name(cg06)"' 0 ""
+_cg_case CG-07 `"dash scatter mpg weight, bgcolor("1,2,3") name(cg07)"' 0 ""
+_cg_case CG-08 `"dash scatter mpg weight, mcolor(navy*.5) name(cg08)"' 0 "" `""mcolor":"navy*.5""'
+
+// ----------------------------------------------------------------
 // CV-nn: the corpus arbiter.  Every line of the conformance corpus must
 // register with rc 0 and no refusal: the table accepts every value the
 // documented corpus writes.  Read with `file read' as
@@ -899,6 +1192,80 @@ if `cv_lines' == 0 | `ncv' != `cv_lines' {
     global ov_faillist "${ov_faillist} CV-count"
 }
 else display as text "CV: all `ncv' corpus lines probed"
+
+// ----------------------------------------------------------------
+// HZ: horizontal and vertical refused as twoway refuses them (WP-30 P1.9a)
+// ----------------------------------------------------------------
+// Each case runs twoway's own command (nodraw) and dash's, and compares
+// rc and the first error line (test/fixtures/horizontal_truth.json holds
+// the same rows); an accepted case must not name either flag.  E4's
+// order: a refusing type names its first refused flag as typed, then the
+// two together are refused; recast() is judged first, a derived type on
+// both its own type and its target.
+capture program drop _hz_case
+program define _hz_case
+    version 16.0
+    args id cmd
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 120
+    capture log close _ovlog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily twoway `cmd' nodraw
+    local trc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local tline `"`r(line)'"'
+    if `trc' != 0 & `"`tline'"' == "" {
+        _ov_count "`logfile'" "may not combine"
+        local tline `"`r(line)'"'
+    }
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    quietly graph drop _all
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `cmd' name(hz)
+    local drc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local dline `"`r(line)'"'
+    if `drc' != 0 & `"`dline'"' == "" {
+        _ov_count "`logfile'" "may not combine"
+        local dline `"`r(line)'"'
+    }
+    _ov_count "`logfile'" "unsupported option"
+    local named = r(n)
+    local bad = (`trc' != `drc') | (strtrim(`"`tline'"') != strtrim(`"`dline'"')) | (`drc' == 0 & `named' > 0)
+    if `bad' {
+        display as error `"`id' FAIL: twoway rc `trc' [`tline'], dash rc `drc' [`dline'], named `named': `cmd'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: rc `drc' as twoway -- `cmd'"'
+end
+_hz_case HZ-01 "scatter mpg weight, horizontal"
+_hz_case HZ-02 "kdensity mpg, vertical"
+_hz_case HZ-03 "scatter mpg weight, vertical horizontal"
+_hz_case HZ-04 "kdensity mpg, horizontal vertical"
+_hz_case HZ-05 "bar mpg weight, vertical horizontal"
+_hz_case HZ-06 "bar mpg weight, recast(scatter) horizontal"
+_hz_case HZ-07 "kdensity mpg, recast(area) vertical"
+_hz_case HZ-08 "lfit mpg weight, recast(bar) horizontal"
+_hz_case HZ-09 "lfit mpg weight, recast(scatter) horizontal"
+_hz_case HZ-10 "histogram mpg, recast(line) vertical"
+_hz_case HZ-11 "scatter mpg weight, recast(bar) horizontal"
+_hz_case HZ-12 "area mpg weight, recast(line) vertical"
+_hz_case HZ-13 "rcap mpg price weight, recast(rscatter) horizontal vertical"
+_hz_case HZ-14 "tsline mpg, horizontal"
+_hz_case HZ-15 "bar mpg weight, hor"
+_hz_case HZ-16 "kdensity mpg, vert horizontal"
+// The typed-order scan itself: minimums, parentheses and quoted text.
+mata: st_local("_hz_o1", _dash_hz_order("vert hor"))
+mata: st_local("_hz_o2", _dash_hz_order("horizontal"))
+mata: st_local("_hz_o3", _dash_hz_order("hor(1) ve"))
+mata: st_local("_hz_o4", _dash_hz_order(`"title("vert hor") horiz vertical"'))
+_ov_assert HZ-17 `"("`_hz_o1'" == "vert hor") & ("`_hz_o2'" == "horizontal") & ("`_hz_o3'" == "") & ("`_hz_o4'" == "horiz vertical")"' "_dash_hz_order reads the flags in typed order, as typed"
 
 // ----------------------------------------------------------------
 // Summary

@@ -1,0 +1,796 @@
+{
+  "_meta": {
+    "born_date": "12 Aug 2026",
+    "dash_commit": "41d6e10c803d01051f103fcf3c90ff8ed1e5c9ed",
+    "extracted": " 7 Oct 2026",
+    "stata_version": "19.5"
+  },
+  "cases": {
+    "B01": {
+      "cmd": "bar mpg turn weight, base(10 20)",
+      "message": "",
+      "rc": 0
+    },
+    "B02": {
+      "cmd": "bar mpg turn weight, base(10 ..)",
+      "message": "",
+      "rc": 0
+    },
+    "B03": {
+      "cmd": "bar mpg turn weight, base(10 =)",
+      "message": "",
+      "rc": 0
+    },
+    "B04": {
+      "cmd": "bar mpg turn weight, base(10 .. 20)",
+      "message": "base(10 .. 20):  invalid syntax",
+      "rc": 198
+    },
+    "B05": {
+      "cmd": "bar mpg turn weight, barwidth(1 2)",
+      "message": "",
+      "rc": 0
+    },
+    "B06": {
+      "cmd": "bar mpg turn weight, barwidth(. 200)",
+      "message": "",
+      "rc": 0
+    },
+    "B07": {
+      "cmd": "bar mpg turn weight, barwidth(1 ..)",
+      "message": "",
+      "rc": 0
+    },
+    "B08": {
+      "cmd": "bar mpg turn weight, barwidth(.)",
+      "message": "",
+      "rc": 0
+    },
+    "B09": {
+      "cmd": "dropline mpg turn weight, base(10 20)",
+      "message": "",
+      "rc": 0
+    },
+    "B10": {
+      "cmd": "spike mpg turn weight, base(10 20)",
+      "message": "",
+      "rc": 0
+    },
+    "B11": {
+      "cmd": "area mpg turn weight, sort base(10 20)",
+      "message": "",
+      "rc": 0
+    },
+    "B12": {
+      "cmd": "bar mpg weight, barwidth(1 2)",
+      "message": "",
+      "rc": 0
+    },
+    "B13": {
+      "cmd": "bar mpg weight, base(10 20)",
+      "message": "",
+      "rc": 0
+    },
+    "B14": {
+      "cmd": "rbar mpg turn weight, barwidth(50 100)",
+      "message": "option barwidth() not allowed",
+      "rc": 198
+    },
+    "B15": {
+      "cmd": "rbar mpg turn weight, barwidth(50 ..)",
+      "message": "option barwidth() not allowed",
+      "rc": 198
+    },
+    "B16": {
+      "cmd": "rbar mpg turn weight, barwidth(50) barwidth(10 20)",
+      "message": "option barwidth() not allowed",
+      "rc": 198
+    },
+    "B17": {
+      "cmd": "histogram mpg, barwidth(1 2)",
+      "message": "option barwidth() not allowed",
+      "rc": 198
+    },
+    "B18": {
+      "cmd": "rcap mpg turn weight, barwidth(1 2)",
+      "message": "option barwidth() not allowed",
+      "rc": 198
+    },
+    "B19": {
+      "cmd": "rspike mpg turn weight, barwidth(1 2)",
+      "message": "option barwidth() not allowed",
+      "rc": 198
+    },
+    "B20": {
+      "cmd": "rbar mpg turn weight, base(10 20)",
+      "message": "option base() not allowed",
+      "rc": 198
+    },
+    "B21": {
+      "cmd": "histogram mpg, base(10 20)",
+      "message": "option base() not allowed",
+      "rc": 198
+    },
+    "B22": {
+      "cmd": "lowess mpg weight, bwidth(.5 .8)",
+      "message": "option bwidth() not allowed",
+      "rc": 198
+    },
+    "B23": {
+      "cmd": "bar mpg turn weight, base(10 abc)",
+      "message": "option base() incorrectly specified, abc is not a number",
+      "rc": 4026
+    },
+    "B24": {
+      "cmd": "rbar mpg turn weight, barwidth(.)",
+      "message": "unrecognized command",
+      "rc": 199
+    },
+    "G01": {
+      "bars": {
+        "#486c8c": [
+          [
+            0.4,
+            10.0,
+            31.0
+          ],
+          [
+            0.4,
+            10.0,
+            32.0
+          ],
+          [
+            0.4,
+            10.0,
+            33.0
+          ],
+          [
+            0.4,
+            10.0,
+            34.0
+          ],
+          [
+            0.4,
+            10.0,
+            35.0
+          ]
+        ],
+        "#a65d62": [
+          [
+            0.8,
+            20.0,
+            41.0
+          ],
+          [
+            0.8,
+            20.0,
+            42.0
+          ],
+          [
+            0.8,
+            20.0,
+            43.0
+          ],
+          [
+            0.8,
+            20.0,
+            44.0
+          ],
+          [
+            0.8,
+            20.0,
+            45.0
+          ]
+        ]
+      },
+      "cmd": "bar y1 y2 x, barwidth(0.4 0.8) base(10 20)",
+      "message": "",
+      "rc": 0
+    },
+    "G02": {
+      "bars": {
+        "#486c8c": [
+          [
+            0.4,
+            10.0,
+            31.0
+          ],
+          [
+            0.4,
+            10.0,
+            32.0
+          ],
+          [
+            0.4,
+            10.0,
+            33.0
+          ],
+          [
+            0.4,
+            10.0,
+            34.0
+          ],
+          [
+            0.4,
+            10.0,
+            35.0
+          ]
+        ],
+        "#a65d62": [
+          [
+            0.4,
+            10.0,
+            41.0
+          ],
+          [
+            0.4,
+            10.0,
+            42.0
+          ],
+          [
+            0.4,
+            10.0,
+            43.0
+          ],
+          [
+            0.4,
+            10.0,
+            44.0
+          ],
+          [
+            0.4,
+            10.0,
+            45.0
+          ]
+        ]
+      },
+      "cmd": "bar y1 y2 x, barwidth(0.4 ..) base(10 =)",
+      "message": "",
+      "rc": 0
+    },
+    "G03": {
+      "bars": {
+        "#486c8c": [
+          [
+            1.0,
+            31.0,
+            50.0
+          ],
+          [
+            1.0,
+            32.0,
+            50.0
+          ],
+          [
+            1.0,
+            33.0,
+            50.0
+          ],
+          [
+            1.0,
+            34.0,
+            50.0
+          ],
+          [
+            1.0,
+            35.0,
+            50.0
+          ]
+        ],
+        "#a65d62": [
+          [
+            1.0,
+            30.0,
+            41.0
+          ],
+          [
+            1.0,
+            30.0,
+            42.0
+          ],
+          [
+            1.0,
+            30.0,
+            43.0
+          ],
+          [
+            1.0,
+            30.0,
+            44.0
+          ],
+          [
+            1.0,
+            30.0,
+            45.0
+          ]
+        ]
+      },
+      "cmd": "bar y1 y2 x, base(50)",
+      "message": "",
+      "rc": 0
+    },
+    "G04": {
+      "bars": {
+        "#486c8c": [
+          [
+            1.0,
+            30.0,
+            31.0
+          ],
+          [
+            1.0,
+            30.0,
+            32.0
+          ],
+          [
+            1.0,
+            30.0,
+            33.0
+          ],
+          [
+            1.0,
+            30.0,
+            34.0
+          ],
+          [
+            1.0,
+            30.0,
+            35.0
+          ]
+        ],
+        "#a65d62": [
+          [
+            1.0,
+            41.0,
+            50.0
+          ],
+          [
+            1.0,
+            42.0,
+            50.0
+          ],
+          [
+            1.0,
+            43.0,
+            50.0
+          ],
+          [
+            1.0,
+            44.0,
+            50.0
+          ],
+          [
+            1.0,
+            45.0,
+            50.0
+          ]
+        ]
+      },
+      "cmd": "bar y1 y2 x, base(. 50)",
+      "message": "",
+      "rc": 0
+    },
+    "J01": {
+      "cmd": "scatter y1 y2 x, jitter(5) jitterseed(1)",
+      "jitter": {
+        "#1a476f": 31,
+        "#90353b": 7
+      },
+      "message": "",
+      "rc": 0
+    },
+    "J02": {
+      "cmd": "scatter y1 y2 x, jitter(. 5) jitterseed(1)",
+      "jitter": {
+        "#1a476f": 7,
+        "#90353b": 30
+      },
+      "message": "",
+      "rc": 0
+    },
+    "J03": {
+      "cmd": "scatter y1 y2 x, jitter(5 ..) jitterseed(1)",
+      "jitter": {
+        "#1a476f": 31,
+        "#90353b": 30
+      },
+      "message": "",
+      "rc": 0
+    },
+    "M01": {
+      "cmd": "scatter mpg turn weight, mlabel(make rep78)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ],
+        [
+          "#90353b",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M02": {
+      "cmd": "scatter mpg weight, mlabel(make foreign)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M03": {
+      "cmd": "scatter mpg turn weight, mlabel(. rep78)",
+      "labels": [
+        [
+          "#90353b",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M04": {
+      "cmd": "scatter mpg turn weight, mlabel(make .)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M05": {
+      "cmd": "scatter mpg turn weight, mlabel(make)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M06": {
+      "cmd": "scatter mpg turn weight, mlabel(make rep78 foreign)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ],
+        [
+          "#90353b",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M07": {
+      "cmd": "scatter mpg turn weight, mlabel(mak rep7)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ],
+        [
+          "#90353b",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M08": {
+      "cmd": "scatter mpg turn weight, mlabel(make \"\")",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M09": {
+      "cmd": "scatter mpg turn weight, mlabel(rep*)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M10": {
+      "cmd": "scatter mpg turn weight, mlabel(t*)",
+      "labels": [],
+      "message": "",
+      "rc": 0
+    },
+    "M11": {
+      "cmd": "scatter mpg turn weight, mlabel(make) mlabel(rep78 foreign)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ],
+        [
+          "#90353b",
+          74,
+          [
+            "Domestic",
+            "Domestic",
+            "Domestic"
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "M12": {
+      "cmd": "scatter mpg turn weight, mlabel(make ..)",
+      "message": ".. not allowed in option mlabel()",
+      "rc": 198
+    },
+    "M13": {
+      "cmd": "scatter mpg turn weight, mlabel(make ...)",
+      "message": "... not allowed in option mlabel()",
+      "rc": 198
+    },
+    "M14": {
+      "cmd": "scatter mpg turn weight, mlabel(make .. rep78)",
+      "message": ".. not allowed in option mlabel()",
+      "rc": 198
+    },
+    "M15": {
+      "cmd": "scatter mpg turn weight, mlabel(make =)",
+      "message": "=exp not allowed",
+      "rc": 101
+    },
+    "M16": {
+      "cmd": "scatter mpg turn weight, mlabel(= make)",
+      "message": "=exp not allowed",
+      "rc": 101
+    },
+    "M17": {
+      "cmd": "scatter mpg turn weight, mlabel(.)",
+      "message": "too few variables specified",
+      "rc": 102
+    },
+    "M18": {
+      "cmd": "scatter mpg turn weight, mlabel(. ..)",
+      "message": "too few variables specified",
+      "rc": 102
+    },
+    "M19": {
+      "cmd": "scatter mpg turn weight, mlabel(make rep78 nosuch)",
+      "message": "variable nosuch not found",
+      "rc": 111
+    },
+    "M20": {
+      "cmd": "scatter mpg weight, mlabel(rep78 nosuch)",
+      "message": "variable nosuch not found",
+      "rc": 111
+    },
+    "M21": {
+      "cmd": "scatter mpg turn weight, mlabel(nosuch ..)",
+      "message": "variable nosuch not found",
+      "rc": 111
+    },
+    "M22": {
+      "cmd": "scatter mpg turn weight, mlabel(make .. nosuch)",
+      "message": "variable nosuch not found",
+      "rc": 111
+    },
+    "M23": {
+      "cmd": "scatter mpg turn weight, mlabel(nosuch =)",
+      "message": "variable nosuch not found",
+      "rc": 111
+    },
+    "M24": {
+      "cmd": "scatter mpg turn weight, mlabel(= nosuch)",
+      "message": "=exp not allowed",
+      "rc": 101
+    },
+    "M25": {
+      "cmd": "histogram mpg, mlabel(nosuch ..)",
+      "message": ".. not allowed in option mlabel()",
+      "rc": 198
+    },
+    "M26": {
+      "cmd": "histogram mpg, mlabel(= make)",
+      "message": "invalid syntax",
+      "rc": 198
+    },
+    "M27": {
+      "cmd": "histogram mpg, mlabel(nosuch)",
+      "labels": [],
+      "message": "",
+      "rc": 0
+    },
+    "M28": {
+      "cmd": "function y=x, mlabel(make ..)",
+      "message": ".. not allowed in option mlabel()",
+      "rc": 198
+    },
+    "M29": {
+      "cmd": "function y=x, mlabel(nosuch =)",
+      "labels": [],
+      "message": "",
+      "rc": 0
+    },
+    "M30": {
+      "cmd": "mspline mpg weight, mlabel(make rep78)",
+      "message": "",
+      "rc": 103
+    },
+    "M31": {
+      "cmd": "mspline mpg weight, mlabel(make ..)",
+      "message": ".. not allowed in option mlabel()",
+      "rc": 198
+    },
+    "M32": {
+      "cmd": "mband mpg weight, mlabel(nosuch rep78)",
+      "message": "variable nosuch not found",
+      "rc": 111
+    },
+    "M33": {
+      "cmd": "scatter mpg turn weight, mlabel(make..)",
+      "message": "factor-variable and time-series operators not allowed",
+      "rc": 101
+    },
+    "M34": {
+      "cmd": "scatter mpg turn weight, mlabel(L.mpg)",
+      "message": "variable L not found",
+      "rc": 111
+    },
+    "M35": {
+      "cmd": "connected mpg turn weight, mlabel(make rep78) mlabposition(3 9)",
+      "labels": [
+        [
+          "#1a476f",
+          74,
+          [
+            "AMC Concord",
+            "AMC Pacer",
+            "AMC Spirit"
+          ]
+        ],
+        [
+          "#90353b",
+          74,
+          [
+            "3",
+            "3",
+            "."
+          ]
+        ]
+      ],
+      "message": "",
+      "rc": 0
+    },
+    "V01": {
+      "cmd": "scatter mpg turn weight, jitter(2 3)",
+      "message": "",
+      "rc": 0
+    },
+    "V02": {
+      "cmd": "scatter mpg turn weight, jitter(2 ..)",
+      "message": "",
+      "rc": 0
+    },
+    "V03": {
+      "cmd": "scatter mpg turn weight, jitter(. 3)",
+      "message": "",
+      "rc": 0
+    },
+    "V04": {
+      "cmd": "scatter mpg turn weight, jitter(2 =)",
+      "message": "",
+      "rc": 0
+    },
+    "V05": {
+      "cmd": "scatter mpg turn weight, jitter(2 .. 5)",
+      "message": "jitter(2 .. 5):  invalid syntax",
+      "rc": 198
+    },
+    "V06": {
+      "cmd": "scatter mpg turn weight, jitter(2 200)",
+      "message": "",
+      "rc": 0
+    },
+    "V07": {
+      "cmd": "scatter mpg weight, jitter(2 200)",
+      "message": "",
+      "rc": 0
+    },
+    "V08": {
+      "cmd": "scatter mpg turn weight, jitter(.)",
+      "message": "",
+      "rc": 0
+    },
+    "V09": {
+      "cmd": "scatter mpg turn weight, jitter(2 abc)",
+      "message": "",
+      "rc": 0
+    },
+    "V10": {
+      "cmd": "scatter mpg weight, jitter(2 abc)",
+      "message": "",
+      "rc": 0
+    }
+  },
+  "scheme": "s2color"
+}

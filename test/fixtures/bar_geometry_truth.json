@@ -1,0 +1,261 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "10f1c5861325117c1cf9582bbc4f6d0e28243465",
+  "extracted": " 7 Oct 2026 13:08:13",
+  "stata_version": "19.5"
+ },
+ "caps": {
+  "rcap_default": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 44.059999999999945,
+   "marker_size_val": 1.52778,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.5298611111111091
+  },
+  "rcap_large": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 70.03999999999996,
+   "marker_size_val": 2.4306,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 2.431944444444443
+  },
+  "rcap_medium": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 44.059999999999945,
+   "marker_size_val": 1.52778,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.5298611111111091
+  },
+  "rcap_n2": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 57.54000000000002,
+   "marker_size_val": 2.0,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.9979166666666672
+  },
+  "rcap_s5": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 44.059999999999945,
+   "marker_size_val": 1.52778,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.5298611111111091
+  },
+  "rcap_small": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 29.94999999999999,
+   "marker_size_val": 1.04166,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.0399305555555551
+  },
+  "rcap_stcolor": {
+   "canvas": [
+    5400.0,
+    3240.0
+   ],
+   "cap_svg": 33.75,
+   "marker_size_val": 1.04166,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.0416666666666667
+  },
+  "rcap_tiny": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 10.019999999999982,
+   "marker_size_val": 0.34722222,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 0.34791666666666604
+  },
+  "rcap_vlarge": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 89.96000000000004,
+   "marker_size_val": 3.125,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 3.1236111111111122
+  },
+  "rcap_wide": {
+   "canvas": [
+    7920.0,
+    2880.0
+   ],
+   "cap_svg": 44.05000000000018,
+   "marker_size_val": 1.52778,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 1.5295138888888953
+  },
+  "rcap_x2": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "cap_svg": 87.98000000000002,
+   "marker_size_val": 3.05556,
+   "n_caps": 10,
+   "n_spines": 5,
+   "ratio": 3.0548611111111117
+  }
+ },
+ "rcapsym": {
+  "default": {
+   "cap_lines": 0,
+   "circles": 20,
+   "marker_size_val": 1.52778,
+   "spines": 5
+  },
+  "stcolor": {
+   "cap_lines": 0,
+   "circles": 20,
+   "marker_size_val": 1.04166,
+   "spines": 5
+  }
+ },
+ "refusals": {
+  "area": {
+   "message": null,
+   "rc": 0
+  },
+  "dropline": {
+   "message": null,
+   "rc": 0
+  },
+  "line": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rarea": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rcap": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rcap_barw": {
+   "message": "option barw() not allowed",
+   "rc": 198
+  },
+  "rcap_barwi": {
+   "message": "option barwi() not allowed",
+   "rc": 198
+  },
+  "rcap_bw": {
+   "message": "option bw() not allowed",
+   "rc": 198
+  },
+  "rcapsym": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rconnected": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rline": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rscatter": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "rspike": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "scatter": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "spike": {
+   "message": null,
+   "rc": 0
+  }
+ },
+ "widths": {
+  "bar_s01": {
+   "bar_size": 1.0,
+   "svg_width_x_units": null
+  },
+  "bar_s1": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 1.000086037594688
+  },
+  "bar_s5": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 1.0001005505140645
+  },
+  "bar_su": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 0.9999827921463356
+  },
+  "bar_td_daily": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 1.000086037594688
+  },
+  "bar_td_weekly": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 0.9996374058437567
+  },
+  "bar_td_weekly_bw3": {
+   "bar_size": 3.0,
+   "svg_width_x_units": 2.9997680782967673
+  },
+  "bar_tm": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 1.000086037594688
+  },
+  "bar_tm_bw05": {
+   "bar_size": 0.5,
+   "svg_width_x_units": 0.4999579160003367
+  },
+  "rbar_bw03": {
+   "bar_size": 0.3,
+   "svg_width_x_units": 0.30001898039871705
+  },
+  "rbar_s1": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 0.999906480875339
+  },
+  "rbar_s5": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 1.0001005505140645
+  },
+  "rbar_tm": {
+   "bar_size": 1.0,
+   "svg_width_x_units": 0.999906480875339
+  }
+ }
+}

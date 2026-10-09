@@ -1,0 +1,426 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "10f1c5861325117c1cf9582bbc4f6d0e28243465",
+  "extracted": " 7 Oct 2026",
+  "source": "scripts/extract_line_width_truth.do",
+  "stata_version": "19.5",
+  "units": "SVG 720 units per inch; 10 units = 1 pt; 1 rs = min(graph width, height)/100"
+ },
+ "floor_pt": 0.3,
+ "forms": {
+  "+1pt": {
+   "rc": 0,
+   "setting": 1.0,
+   "stroke_pt": 1.0,
+   "value": "+1pt"
+  },
+  "0pt": {
+   "rc": 0,
+   "setting": 0.0,
+   "stroke_pt": 0.0,
+   "value": "0pt"
+  },
+  "10000rs": {
+   "rc": 0,
+   "setting": 10000.0,
+   "stroke_pt": 28799.1,
+   "value": "10000rs"
+  },
+  "1PT": {
+   "rc": 0,
+   "setting": 0.3,
+   "stroke_pt": 0.864,
+   "value": "1PT"
+  },
+  "1d3": {
+   "rc": 0,
+   "setting": 1000.0,
+   "stroke_pt": 2879.91,
+   "value": "1d3"
+  },
+  "1eneg7": {
+   "rc": 0,
+   "setting": 1e-07,
+   "stroke_pt": 0.3,
+   "value": "1e-7"
+  },
+  "1in": {
+   "rc": 0,
+   "setting": 1.0,
+   "stroke_pt": 71.998,
+   "value": "1in"
+  },
+  "1pt": {
+   "rc": 0,
+   "setting": 1.0,
+   "stroke_pt": 1.0,
+   "value": "1pt"
+  },
+  "2": {
+   "rc": 0,
+   "setting": 2.0,
+   "stroke_pt": 5.76,
+   "value": "2"
+  },
+  "20000pt": {
+   "rc": 0,
+   "setting": 20000.0,
+   "stroke_pt": 19999.375,
+   "value": "20000pt"
+  },
+  "THICK": {
+   "rc": 0,
+   "setting": 0.3,
+   "stroke_pt": 0.864,
+   "value": "THICK"
+  },
+  "Thick": {
+   "rc": 0,
+   "setting": 0.3,
+   "stroke_pt": 0.864,
+   "value": "Thick"
+  },
+  "default": {
+   "rc": 0,
+   "setting": 0.3,
+   "stroke_pt": 0.864,
+   "value": ""
+  },
+  "none": {
+   "rc": 0,
+   "setting": 0.0,
+   "stroke_pt": 0.0,
+   "value": "none"
+  },
+  "p3": {
+   "rc": 0,
+   "setting": 0.3,
+   "stroke_pt": 0.864,
+   "value": ".3"
+  },
+  "p5cm": {
+   "rc": 0,
+   "setting": 0.5,
+   "stroke_pt": 14.173,
+   "value": ".5cm"
+  },
+  "star0": {
+   "rc": 0,
+   "setting": 0.0,
+   "stroke_pt": 0.0,
+   "value": "*0"
+  },
+  "star2": {
+   "rc": 0,
+   "setting": 0.6,
+   "stroke_pt": 1.728,
+   "value": "*2"
+  },
+  "star33333": {
+   "rc": 0,
+   "setting": 9999.9,
+   "stroke_pt": 28798.812,
+   "value": "*33333"
+  },
+  "vvthin": {
+   "rc": 0,
+   "setting": 0.01,
+   "stroke_pt": 0.3,
+   "value": "vvthin"
+  },
+  "vvvthin": {
+   "rc": 0,
+   "setting": 1e-06,
+   "stroke_pt": 0.3,
+   "value": "vvvthin"
+  }
+ },
+ "ladder": {
+  "medium": {
+   "rc": 0,
+   "setting": 0.3,
+   "style_val": 0.3
+  },
+  "medthick": {
+   "rc": 0,
+   "setting": 0.45,
+   "style_val": 0.45
+  },
+  "medthin": {
+   "rc": 0,
+   "setting": 0.25,
+   "style_val": 0.25
+  },
+  "none": {
+   "rc": 0,
+   "setting": 0.0,
+   "style_val": 0.0
+  },
+  "thick": {
+   "rc": 0,
+   "setting": 0.8,
+   "style_val": 0.8
+  },
+  "thin": {
+   "rc": 0,
+   "setting": 0.2,
+   "style_val": 0.2
+  },
+  "vthick": {
+   "rc": 0,
+   "setting": 1.4,
+   "style_val": 1.4
+  },
+  "vthin": {
+   "rc": 0,
+   "setting": 0.15,
+   "style_val": 0.15
+  },
+  "vvthick": {
+   "rc": 0,
+   "setting": 2.6,
+   "style_val": 2.6
+  },
+  "vvthin": {
+   "rc": 0,
+   "setting": 0.01,
+   "style_val": 0.01
+  },
+  "vvvthick": {
+   "rc": 0,
+   "setting": 4.2,
+   "style_val": 4.2
+  },
+  "vvvthin": {
+   "rc": 0,
+   "setting": 1e-06,
+   "style_val": 1e-06
+  }
+ },
+ "refusals": {
+  "bar_lwidth_starneg1": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "bar",
+   "value": "*-1",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "economist_line_lwidth_20000pt": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "20000pt",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "lfitci_alwidth_neg1pt": {
+   "option": "alwidth",
+   "rc": 198,
+   "type": "lfitci",
+   "value": "-1pt",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "lfitci_alwidth_starneg1": {
+   "option": "alwidth",
+   "rc": 198,
+   "type": "lfitci",
+   "value": "*-1",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_alwidth_starneg1": {
+   "option": "alwidth",
+   "rc": 0,
+   "type": "line",
+   "value": "*-1",
+   "words": ""
+  },
+  "line_clwidth_starneg1": {
+   "option": "clwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "*-1",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_10001": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "10001",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_1e5rs": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "1e5rs",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_neg0p0001rs": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "-0.0001rs",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_neg0p5in": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "-0.5in",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_neg1": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "-1",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_neg1pt": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "-1pt",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_star40000": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "*40000",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_starneg0p0001": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "*-0.0001",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "line_lwidth_starneg1": {
+   "option": "lwidth",
+   "rc": 198,
+   "type": "line",
+   "value": "*-1",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "scatter_lwidth_starneg1": {
+   "option": "lwidth",
+   "rc": 0,
+   "type": "scatter",
+   "value": "*-1",
+   "words": ""
+  },
+  "scatter_mlwidth_neg1pt": {
+   "option": "mlwidth",
+   "rc": 198,
+   "type": "scatter",
+   "value": "-1pt",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  },
+  "scatter_mlwidth_starneg1": {
+   "option": "mlwidth",
+   "rc": 198,
+   "type": "scatter",
+   "value": "*-1",
+   "words": "gm_linewidth must be between 0.000 and  1.0e+04"
+  }
+ },
+ "schemes": {
+  "economist": {
+   "1pt": {
+    "setting": 1.0,
+    "stroke_pt": 1.0
+   },
+   "abc": {
+    "setting": 1.2,
+    "stroke_pt": 1.901
+   },
+   "default": {
+    "setting": 1.2,
+    "stroke_pt": 1.901
+   },
+   "medium": {
+    "setting": 0.3,
+    "stroke_pt": 0.475
+   },
+   "star2": {
+    "setting": 2.4,
+    "stroke_pt": 3.802
+   }
+  },
+  "stcolor": {
+   "1pt": {
+    "setting": 1.0,
+    "stroke_pt": 1.0
+   },
+   "abc": {
+    "setting": 0.3,
+    "stroke_pt": 0.972
+   },
+   "default": {
+    "setting": 0.3,
+    "stroke_pt": 0.972
+   },
+   "medium": {
+    "setting": 0.3,
+    "stroke_pt": 0.972
+   },
+   "star2": {
+    "setting": 0.6,
+    "stroke_pt": 1.944
+   }
+  }
+ },
+ "sites": {
+  "bar_outline": {
+   "stroke_pt": 0.576
+  },
+  "bar_x2": {
+   "stroke_pt": 1.152
+  },
+  "economist_bar_outline": {
+   "stroke_pt": 0.3
+  },
+  "lfitci_alwidth_x2": {
+   "stroke_pt": 3.456
+  },
+  "lfitci_outline": {
+   "stroke_pt": 1.728
+  },
+  "mlwidth_x2": {
+   "stroke_pt": 1.728
+  },
+  "plotregion_default": {
+   "stroke_pt": 0.576
+  },
+  "plotregion_thick": {
+   "stroke_pt": 2.304
+  },
+  "plotregion_x2": {
+   "stroke_pt": 1.152
+  },
+  "scatter_outline": {
+   "stroke_pt": 0.864
+  },
+  "xline_1_pt": {
+   "stroke_pt": 1.0
+  },
+  "xline_1pt": {
+   "stroke_pt": 1.0
+  },
+  "xline_default": {
+   "stroke_pt": 0.864
+  },
+  "xline_x2": {
+   "stroke_pt": 1.728
+  }
+ },
+ "user_scheme": {
+  "THICK": {
+   "note": "(note:  named style THICK not found in class linewidth, default attributes used)",
+   "rc": 0,
+   "setting": 0.3
+  }
+ }
+}

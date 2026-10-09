@@ -25,6 +25,15 @@
 *! The replacement asks the same question without a compound statement.
 
 cscript "dash_setup version gate" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
@@ -83,6 +92,40 @@ capture noisily python: from packaging.version import Version; import sfi; sfi.M
 assert _rc == 0
 assert "`ver_ok'" == "1"
 display "SVG-05 PASS: the version comparison runs on the reported value"
+
+// BK: the verified bokeh window (WP-30 P1.30)
+// ----------------------------------------------------------------
+// BK-01 -- the gate's optional ceiling: at or above it is `above', a
+// release candidate of the ceiling included, with or without packaging;
+// inside the window `ok'; below the floor `below'.
+// ----------------------------------------------------------------
+local bk01bad ""
+foreach row in "3.10.0 1 above" "3.10.0 0 above" "3.10.0rc1 1 above" "3.9.2 1 ok" "3.7.3 1 below" {
+    tokenize "`row'"
+    _dash_setup_gate "bokeh" "`1'" "3.8" `2' "3.10"
+    if "`r(verdict)'" != "`3'" local bk01bad "`bk01bad' `1'/`2':`r(verdict)'"
+}
+if "`bk01bad'" != "" display as error "BK-01 FAIL:`bk01bad'"
+assert "`bk01bad'" == ""
+display "BK-01 PASS: the ceiling makes 3.10.0 and 3.10.0rc1 above, 3.9.2 ok, 3.7.3 below"
+
+// ----------------------------------------------------------------
+// BK-02 -- the four-argument form is unchanged: no ceiling, 99.0 is ok
+// ----------------------------------------------------------------
+_dash_setup_gate "bokeh" "99.0" "3.8" 1
+assert "`r(verdict)'" == "ok"
+display "BK-02 PASS: without a ceiling the gate has a floor only"
+
+// ----------------------------------------------------------------
+// BK-03 -- the ceiling's comparison never runs the version as code
+// ----------------------------------------------------------------
+capture erase "BK03"
+local bk03got `"1.0") == __import__("os").system("touch BK03") or Version("1.0"'
+capture noisily _dash_setup_gate "bokeh" `"`bk03got'"' "3.8" 1 "3.10"
+assert _rc == 0
+capture confirm file "BK03"
+assert _rc != 0
+display "BK-03 PASS: a hostile version reaches the ceiling check as data"
 
 display ""
 display "test_setup_version_gate.cscript: ALL CHECKS PASSED"

@@ -8,10 +8,10 @@
 *! and FOUR branches reached it after reporting a failure:
 *!
 *!   1. Python below the minimum.  The branch displays "version X is below
-*!      the minimum 3.13" and "bokeh and pandas will not install or import
-*!      reliably" -- and there is no `exit'.  Every `exit' in the file was on
-*!      another branch (no Python at all, a required pip install that failed,
-*!      and the two jsonio ones).
+*!      the minimum" (the one _dash_pymin returns) and "bokeh and pandas
+*!      will not install or import reliably" -- and there is no `exit'.
+*!      Every `exit' in the file was on another branch (no Python at all, a
+*!      required pip install that failed, and the two jsonio ones).
 *!   2. A required package present but BELOW its minimum.  The gate prints
 *!      "(below minimum 3.8)" and carries on.
 *!   3. An optional package that could not be installed -- `continue'.
@@ -59,7 +59,8 @@
 *! PEP-17..19 (WP-29 P0.19): dash_setup, venv() on real venvs, offline, and
 *! pip's non-ASCII PEP 668 refusal read in Stata's own interpreter.
 *!
-*! Tests: HON-01 through HON-30, PEP-17..19.  HON-19..25 run dash_setup itself with pip
+*! Tests: HON-01 through HON-42, PEP-17..19.  HON-40..42 (WP-30 P1.32): dash_setup's
+*! first Python call, captured and retried, through test/dep_block.py.  HON-19..25 run dash_setup itself with pip
 *! replaced by a recorder, so nothing is installed (see the section header).
 *! HON-26..28 run it in test/setup_sandbox.py's sandbox, for the order of its
 *! steps (packaging before the packages that need it) and for what it leaves
@@ -73,6 +74,15 @@
 *! Version: 1.1  24sep2026
 
 cscript "dash_setup does not claim success it did not achieve" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 if "`c(python_exec)'" == "" {
     display as error "SKIP: Python not available."
@@ -420,7 +430,8 @@ program define _hon_reload
     foreach p in dash_setup _dash_pymin _dash_pyver_ok _dash_pip_command ///
             _dash_pkg_version _dash_setup_summary _dash_setup_gate ///
             _dash_setup_check_files _dash_setup_lib _dash_setup_detect ///
-            _dash_setup_pip _dash_setup_guide _dash_setup_venv {
+            _dash_setup_pip _dash_setup_guide _dash_setup_venv ///
+            _dash_statamin _dash_setup_stata _dash_setup_pystart {
         capture program drop `p'
     }
     quietly do "../dash_setup.ado"
@@ -515,7 +526,8 @@ _hon_reload
 _hon_has "`h20log'" "(below minimum 3.8)" h20below
 // Q27: the upgrade line names the interpreter Stata is linked to, never
 // a bare `python'.  WP-29 P0.19: quoted for the shell (the shlex oracle).
-python: import shlex, sfi; sfi.Macro.setLocal("h20wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: import shlex, sfi; sfi.Macro.setLocal("h20wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 _hon_has "`h20log'" `"`h20wantcmd'"' h20cmd
 _hon_has "`h20log'" "bokeh 2.4 (needs 3.8)" h20unmet
 _hon_has "`h20log'" "All dependencies are satisfied" h20ok
@@ -564,7 +576,8 @@ assert `h22rc' == 198
 // WP-29 P0.19: the probe first (this recorder answers it HONPIPOUT, so
 // detection fails and the run goes on as for an ordinary Python), then pip
 // with -P and its fixed flags, and the --user retry.
-assert `"`h22calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: bokeh>=3.8 | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --user bokeh>=3.8"
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+assert `"`h22calls'"' == "-c <code> | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: bokeh>=3.8,<3.10 | -P -m pip install --disable-pip-version-check --no-input --only-binary=:all: --user bokeh>=3.8,<3.10"
 assert `h22unmet' == 1
 assert `h22ok' == 0
 display "HON-22 PASS: pip is asked for bokeh>=3.0, then again with --user, and the failure is fatal"
@@ -743,7 +756,8 @@ display "HON-26 PASS: without packaging, pip is asked for it once, no version is
 // by HON-26, where the same line is there.
 // WP-29 P0.19: the probe first; pip runs PYTHON_EXEC with its flags.
 global HON_SB_SPEC `"{"block": ["packaging", "bokeh"], "unblock_on_install": ["packaging", "bokeh"]}"'
-python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["packaging"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["bokeh>=3.8"]]))
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: import json, sfi; _hon_f = ["--disable-pip-version-check", "--no-input", "--only-binary=:all:"]; sfi.Macro.setGlobal("HON_SB_EXPECT", json.dumps([["PYTHON_EXEC", "-c", "<ANY>"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["packaging"], ["PYTHON_EXEC", "-P", "-m", "pip", "install"] + _hon_f + ["bokeh>=3.8,<3.10"]]))
 _hon_sb_setup
 local h27rc = r(rc)
 local h27m = r(match)
@@ -794,7 +808,8 @@ foreach p in "scipy" "statsmodels" {
 display "HON-28 PASS: with scipy and statsmodels missing, setup names neither, installs nothing, and succeeds"
 
 // ================================================================
-// HON-29..30 -- the floor is 3.13/3.8, and refuses without installing
+// HON-29..30 -- the floor (the minimum _dash_pymin returns, and bokeh 3.8)
+// refuses without installing
 // (WP-28 K2, Q27)
 // ================================================================
 // A below-floor bokeh, and a below-floor Python, are refused by NAME --
@@ -817,7 +832,8 @@ if `h29m' != 1 {
 assert `h29m' == 1
 assert `h29rc' == 198
 _hon_has "`h29log'" "3.7.3 (below minimum 3.8)" h29below
-python: import shlex, sfi; sfi.Macro.setLocal("h29wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8"]))
+// Flipped (WP-30 P1.30): dash_setup installs bokeh inside the verified window.
+python: import shlex, sfi; sfi.Macro.setLocal("h29wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
 _hon_has "`h29log'" `"`h29wantcmd'"' h29cmd
 _hon_has "`h29log'" "Unmet:  bokeh 3.7.3 (needs 3.8)" h29unmet
 _hon_has "`h29log'" "All dependencies are satisfied" h29ok
@@ -827,8 +843,11 @@ assert `h29unmet' == 1
 assert `h29ok' == 0
 display "HON-29 PASS: bokeh 3.7.3 is refused by name, the pip line names c(python_exec), nothing installed"
 
-// ---- HON-30: Python 3.12.11 is below the 3.13 floor ----
-global HON_SB_SPEC `"{"pyversion": "3.12.11 (dash test sandbox)"}"'
+// ---- HON-30: Python 3.10.10 is below the floor ----
+// The floor is read from _dash_pymin, never copied (WP-30 P1.33).
+_dash_pymin
+local pymin "`r(pymin)'"
+global HON_SB_SPEC `"{"pyversion": "3.10.10 (dash test sandbox)"}"'
 global HON_SB_EXPECT "[]"
 _hon_sb_setup
 local h30rc = r(rc)
@@ -839,13 +858,71 @@ if `h30m' != 1 {
 }
 assert `h30m' == 1
 assert `h30rc' == 198
-_hon_has "`h30log'" "version 3.12.11 is below the minimum 3.13." h30below
-_hon_has "`h30log'" "Unmet:  Python 3.12.11 (needs 3.13)" h30unmet
+_hon_has "`h30log'" "version 3.10.10 is below the minimum `pymin'." h30below
+_hon_has "`h30log'" "Unmet:  Python 3.10.10 (needs `pymin')" h30unmet
 _hon_has "`h30log'" "All dependencies are satisfied" h30ok
 assert `h30below' == 1
 assert `h30unmet' == 1
 assert `h30ok' == 0
-display "HON-30 PASS: Python 3.12.11 is refused by name, nothing installed"
+display "HON-30 PASS: a Python below the floor is refused by name, nothing installed"
+
+// ================================================================
+// HON-50..52 -- the verified bokeh window (WP-30 P1.30, M9, A105, A107)
+// ================================================================
+// A bokeh at or above the ceiling is reported "outside the verified
+// range", a warning with rc 0, and never changed: no pip install runs.
+// With pip, the line that installs a verified bokeh is printed; on a
+// managed Python the venv guidance instead (critic C6).
+
+// ---- HON-50: bokeh 3.10.0, pip available ----
+global HON_SB_SPEC `"{"fake": [["bokeh", "3.10.0"]]}"'
+global HON_SB_EXPECT `"[["PYTHON_EXEC", "-c", "<ANY>"]]"'
+_hon_sb_setup
+local h50rc = r(rc)
+local h50m = r(match)
+local h50log "`r(log)'"
+if `h50m' != 1 {
+    mata: printf("{err}HON-50: %s\n", st_global("HON_SB_WHY"))
+}
+python: import shlex, sfi; sfi.Macro.setLocal("h50wantcmd", shlex.join([sfi.SFIToolkit.macroExpand(chr(96) + "c(python_exec)'"), "-m", "pip", "install", "bokeh>=3.8,<3.10"]))
+local h50s ""
+foreach nd in "3.10.0 (outside the verified range: 3.8 or later, before 3.10)" "with 1 warning(s)" "Warned:  bokeh 3.10.0 (outside the verified range)" `"`h50wantcmd'"' {
+    _hon_has "`h50log'" `"`nd'"' _h50
+    local h50s "`h50s' `_h50'"
+}
+display "HON-50 measured: rc `h50rc' match `h50m' said`h50s'"
+assert `h50rc' == 0 & `h50m' == 1
+assert "`h50s'" == " 1 1 1 1"
+display "HON-50 PASS: bokeh 3.10.0 is outside the verified range, a warning, rc 0, the ceilinged pip line printed and nothing installed"
+
+// ---- HON-51: the same on an externally managed Python ----
+global HON_SB_SPEC `"{"fake": [["bokeh", "3.10.0"]], "env": {"managed": true}}"'
+_hon_sb_setup
+local h51rc = r(rc)
+local h51m = r(match)
+local h51log "`r(log)'"
+if `h51m' != 1 {
+    mata: printf("{err}HON-51: %s\n", st_global("HON_SB_WHY"))
+}
+local h51s ""
+foreach nd in "outside the verified range" "This Python is externally managed (PEP 668):" "-m pip install" {
+    _hon_has "`h51log'" `"`nd'"' _h51
+    local h51s "`h51s' `_h51'"
+}
+display "HON-51 measured: rc `h51rc' match `h51m' said`h51s'"
+assert `h51rc' == 0 & `h51m' == 1
+assert "`h51s'" == " 1 1 0"
+display "HON-51 PASS: on a managed Python bokeh 3.10.0 gets the venv guidance and no pip line, rc 0"
+
+// ---- HON-52: _dash_pip_command with and without the ceiling ----
+_dash_pip_command bokeh 3.8 "" 3.10
+local h52a `"`r(cmd)'"'
+_dash_pip_command bokeh 3.8
+local h52b `"`r(cmd)'"'
+mata: st_local("h52ok", strofreal(strpos(st_local("h52a"), "bokeh>=3.8,<3.10") > 0 & strpos(st_local("h52b"), "bokeh>=3.8'") > 0))
+display `"HON-52 measured: `h52a' | `h52b'"'
+assert `h52ok' == 1
+display "HON-52 PASS: the pip line carries the ceiling when given one, and is unchanged without"
 
 // ================================================================
 // PEP-17..19 -- dash_setup, venv() with real processes, offline, and
@@ -974,6 +1051,127 @@ if `"`pep_failed'"' != "" {
     display as error "PEP FAILED: `pep_failed'"
     exit 9
 }
+
+// ================================================================
+// HON-31..32 -- the measured floor admits Python 3.11 and 3.12
+// (WP-30 P1.33)
+// ================================================================
+// With every package present, a Python at or above the floor is OK: the
+// run ends "All dependencies are satisfied", rc 0, installing nothing.
+
+// ---- HON-31: Python 3.12.12 is above the floor ----
+global HON_SB_SPEC `"{"pyversion": "3.12.12 (dash test sandbox)"}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h31rc = r(rc)
+local h31m = r(match)
+local h31log "`r(log)'"
+if `h31m' != 1 {
+    mata: printf("{err}HON-31: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h31m' == 1
+assert `h31rc' == 0
+_hon_has "`h31log'" "All dependencies are satisfied" h31ok
+_hon_has "`h31log'" "below the minimum" h31below
+assert `h31ok' == 1
+assert `h31below' == 0
+display "HON-31 PASS: Python 3.12.12 is accepted, every package OK, rc 0"
+
+// ---- HON-32: Python 3.11.2 is at the floor ----
+global HON_SB_SPEC `"{"pyversion": "3.11.2 (dash test sandbox)"}"'
+global HON_SB_EXPECT "[]"
+_hon_sb_setup
+local h32rc = r(rc)
+local h32m = r(match)
+local h32log "`r(log)'"
+if `h32m' != 1 {
+    mata: printf("{err}HON-32: %s\n", st_global("HON_SB_WHY"))
+}
+assert `h32m' == 1
+assert `h32rc' == 0
+_hon_has "`h32log'" "All dependencies are satisfied" h32ok
+_hon_has "`h32log'" "below the minimum" h32below
+assert `h32ok' == 1
+assert `h32below' == 0
+display "HON-32 PASS: Python 3.11.2 is accepted, every package OK, rc 0"
+
+// ================================================================
+// HON-40..42 (WP-30 P1.32): dash_setup's first Python call is captured,
+// retried once, and a Python that cannot start is reported in the summary.
+// Run in setup_sandbox's sandbox with test/dep_block.py between install
+// and run; Python is restored before any assert.
+// ================================================================
+python: import os as _rg_os, sys as _rg_sys
+python: _rg_sys.path.insert(0, _rg_os.getcwd())
+python: import dep_block
+global HON_SB_SPEC "{}"
+global HON_SB_EXPECT "[]"
+
+// ---- HON-40: a Python that cannot start ----
+local lg40 "`c(tmpdir)'dash_hon40.log"
+capture erase "`lg40'"
+python: import setup_sandbox; setup_sandbox.stata_install("HON_SB_SPEC")
+local h40ok "`pc_sb_ok'"
+python: dep_block.block("sfi", "missing")
+quietly log using "`lg40'", text replace name(_hon40)
+capture noisily dash_setup
+local h40rc = _rc
+quietly log close _hon40
+python: dep_block.stata_restored()
+local h40c "`rg_clean'"
+python: import setup_sandbox; setup_sandbox.stata_verdict("HON_SB_EXPECT")
+local h40m "`pc_sb_match'"
+python: import setup_sandbox; setup_sandbox.restore()
+python: import setup_sandbox; setup_sandbox.stata_restored()
+local h40sb "`pc_sb_clean'"
+local h40s ""
+foreach nd in "could not be started" "`c(python_exec)'" "dash_setup did not complete" "Unmet:" "Python (could not be started)" "both arm64" {
+    _hon_has "`lg40'" `"`nd'"' _h40
+    local h40s "`h40s' `_h40'"
+}
+capture erase "`lg40'"
+display "HON-40 measured: install `h40ok' rc `h40rc' said`h40s' match `h40m' clean `h40c' `h40sb'"
+
+// ---- HON-41: a first start that fails is tried once more ----
+local lg41 "`c(tmpdir)'dash_hon41.log"
+capture erase "`lg41'"
+python: import setup_sandbox; setup_sandbox.stata_install("HON_SB_SPEC")
+local h41ok "`pc_sb_ok'"
+python: dep_block.sfi_flaky()
+quietly log using "`lg41'", text replace name(_hon41)
+capture noisily dash_setup
+local h41rc = _rc
+quietly log close _hon41
+python: dep_block.stata_hits()
+local h41h "`rg_hits'"
+python: dep_block.stata_restored()
+local h41c "`rg_clean'"
+python: import setup_sandbox; setup_sandbox.stata_verdict("HON_SB_EXPECT")
+local h41m "`pc_sb_match'"
+python: import setup_sandbox; setup_sandbox.restore()
+python: import setup_sandbox; setup_sandbox.stata_restored()
+local h41sb "`pc_sb_clean'"
+_hon_has "`lg41'" "Python ............. OK" h41py
+capture erase "`lg41'"
+display "HON-41 measured: install `h41ok' rc `h41rc' python-ok `h41py' hits `h41h' match `h41m' clean `h41c' `h41sb'"
+
+// ---- HON-42: the start program by itself ----
+capture _dash_setup_pystart
+local h42rc = _rc
+local h42v `"`r(pyver)'"'
+local h42t = r(tries)
+python: import sys; from sfi import Macro; Macro.setLocal("h42want", sys.version.split()[0])
+display "HON-42 measured: rc `h42rc' pyver `h42v' want `h42want' tries `h42t'"
+
+assert "`h40ok'" == "1" & `h40rc' == 198
+assert "`h40s'" == " 1 1 1 1 1 1"
+assert "`h40m'" == "1" & "`h40c'" == "1" & "`h40sb'" == "1"
+display "HON-40 PASS: a Python that cannot start is reported in the summary with its path and the processor rule, r(198), no process started"
+assert "`h41ok'" == "1" & `h41rc' == 0 & `h41py' == 1 & "`h41h'" == "1"
+assert "`h41m'" == "1" & "`h41c'" == "1" & "`h41sb'" == "1"
+display "HON-41 PASS: a first Python call that fails is tried once more and dash_setup completes"
+assert `h42rc' == 0 & `"`h42v'"' == "`h42want'" & `h42t' == 1
+display "HON-42 PASS: _dash_setup_pystart returns the version from one try"
 
 
 macro drop HON_SB_SPEC HON_SB_EXPECT HON_SB_WHY

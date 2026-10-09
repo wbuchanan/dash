@@ -32,6 +32,15 @@
 cscript "WP-29 truth: twoway comparisons" adodir ".."
 
 clear all
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 set more off
 
 if `"`c(python_exec)'"' == "" {
@@ -1106,7 +1115,8 @@ if inlist("`only'", "", "S03") {
     _s03_dash ET-01 et01 "scatter mpg weight, ytitle(, size(large))" "`d'"
     display as text `"  ET-01 twoway [`tw'] dash [$S03_AXS]"'
     _w29_expect ET-01 `"(real(substr("`tw'", 1, strpos("`tw'", "|") - 1)) > `base' & strpos("`tw'", "|-90") > 0)"' "twoway `tw'"
-    _w29_expect ET-01 `"(strpos("$S03_AXS", "default=Mileage (mpg)@15px@") > 0)"' "dash $S03_AXS"
+    // WP-30 P1.12a: size(large) is twoway's 14pt (was 15px) in ET-01, -04 to -08 and -10.
+    _w29_expect ET-01 `"(strpos("$S03_AXS", "default=Mileage (mpg)@14pt@") > 0)"' "dash $S03_AXS"
     _w29_done ET-01 "ytitle(, size(large)) keeps Mileage (mpg), at large"
 
     // ---- ET-02: xtitle(, color(red)) ----
@@ -1149,8 +1159,8 @@ if inlist("`only'", "", "S03") {
     local a2 "$S03_AXS"
     display as text `"  ET-04 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-04 `"(real(substr("`tw1'", 1, strpos("`tw1'", "|") - 1)) > `base' & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' `tw2'"
-    _w29_expect ET-04 `"(strpos("`a1'", "default=Density@15px@") > 0)"' "histogram `a1'"
-    _w29_expect ET-04 `"(strpos("`a2'", "default=kdensity mpg@15px@") > 0)"' "kdensity `a2'"
+    _w29_expect ET-04 `"(strpos("`a1'", "default=Density@14pt@") > 0)"' "histogram `a1'"
+    _w29_expect ET-04 `"(strpos("`a2'", "default=kdensity mpg@14pt@") > 0)"' "kdensity `a2'"
     _w29_done ET-04 "histogram and kdensity keep Density and kdensity mpg at large"
 
     // ---- ET-05: the second axis ----
@@ -1165,8 +1175,8 @@ if inlist("`only'", "", "S03") {
     local a2 "$S03_AXS"
     display as text `"  ET-05 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-05 `"(real(substr("`tw1'", 1, strpos("`tw1'", "|") - 1)) > `base' & strpos("`tw1'", "|-90") > 0 & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) == `base' & strpos("`tw2'", "|-90") > 0)"' "twoway `tw1' / `tw2'"
-    _w29_expect ET-05 `"(strpos("`a1'", "y2=Price@15px@") > 0)"' "sized `a1'"
-    _w29_expect ET-05 `"(strpos("`a2'", "y2=Price@") > 0 & strpos("`a2'", "y2=Price@15px@") == 0)"' "default `a2'"
+    _w29_expect ET-05 `"(strpos("`a1'", "y2=Price@14pt@") > 0)"' "sized `a1'"
+    _w29_expect ET-05 `"(strpos("`a2'", "y2=Price@") > 0 & strpos("`a2'", "y2=Price@14pt@") == 0)"' "default `a2'"
     _w29_done ET-05 "the second axis is titled Price, styled by ytitle(, axis(2) size(large))"
 
     // ---- ET-06: the colour key ----
@@ -1175,7 +1185,7 @@ if inlist("`only'", "", "S03") {
     _s03_dash ET-06 et06 "scatter mpg weight, colorvar(price) ztitle(, size(large))" "`d'"
     display as text `"  ET-06 twoway [`tw'] dash [$S03_CBAR]"'
     _w29_expect ET-06 `"(real(substr("`tw'", 1, strpos("`tw'", "|") - 1)) > `base')"' "twoway `tw'"
-    _w29_expect ET-06 `"(strpos("$S03_CBAR", "Price@15px@") == 1)"' "dash $S03_CBAR"
+    _w29_expect ET-06 `"(strpos("$S03_CBAR", "Price@14pt@") == 1)"' "dash $S03_CBAR"
     _w29_done ET-06 "ztitle(, size(large)) keeps the key title Price"
 
     // ---- ET-07: merges ----
@@ -1190,7 +1200,7 @@ if inlist("`only'", "", "S03") {
     display as text `"  ET-07 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-07 `"("`tw1'" == "" & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' / `tw2'"
     _w29_expect ET-07 `"("`a1'" == "default=|default=Weight (lbs.)")"' "removed `a1'"
-    _w29_expect ET-07 `"(strpos("`a2'", "default=A@15px@") > 0)"' "merged `a2'"
+    _w29_expect ET-07 `"(strpos("`a2'", "default=A@14pt@") > 0)"' "merged `a2'"
     _w29_done ET-07 `"ytitle("") still removes; ytitle("A") merged with size(large) is A at large"'
 
     // ---- ET-08: doubled and trailing commas ----
@@ -1205,7 +1215,7 @@ if inlist("`only'", "", "S03") {
     display as text `"  ET-08 twoway [`tw1'][`tw2'] dash [`a1'][`a2']"'
     _w29_expect ET-08 `"(strpos("`tw1'", "|-90") > 0 & real(substr("`tw2'", 1, strpos("`tw2'", "|") - 1)) > `base')"' "twoway `tw1' / `tw2'"
     _w29_expect ET-08 `"("`a1'" == "default=A|default=Weight (lbs.)")"' "ytitle(A,,) `a1'"
-    _w29_expect ET-08 `"(strpos("`a2'", "default=A@15px@") > 0)"' "ytitle(A, size(large),) `a2'"
+    _w29_expect ET-08 `"(strpos("`a2'", "default=A@14pt@") > 0)"' "ytitle(A, size(large),) `a2'"
     _w29_done ET-08 "ytitle(A,,) and ytitle(A, size(large),) title A"
 
     // ---- ET-09: no axis-2 default under by() ----
@@ -1239,8 +1249,8 @@ if inlist("`only'", "", "S03") {
     display as text `"  ET-10 saved [$S03_AXS][$S03_CBAR]"'
     display as text `"  ET-10 served [$S03_SAXS][$S03_SCBAR] fired $S03_FIRED same $S03_SAME_AFTER"'
     _w29_expect ET-10 `"("$S03_AXS" == "$S03_SAXS" & "$S03_CBAR" == "$S03_SCBAR")"' "saved and served differ"
-    _w29_expect ET-10 `"(strpos("$S03_SAXS", "default=Mileage (mpg)@15px@") > 0 & strpos("$S03_SAXS", "y2=Price@15px@") > 0)"' "served axes $S03_SAXS"
-    _w29_expect ET-10 `"(strpos("$S03_SCBAR", "Price@15px@") == 1)"' "served key $S03_SCBAR"
+    _w29_expect ET-10 `"(strpos("$S03_SAXS", "default=Mileage (mpg)@14pt@") > 0 & strpos("$S03_SAXS", "y2=Price@14pt@") > 0)"' "served axes $S03_SAXS"
+    _w29_expect ET-10 `"(strpos("$S03_SCBAR", "Price@14pt@") == 1)"' "served key $S03_SCBAR"
     _w29_expect ET-10 "($S03_FIRED == 1 & $S03_SAME_AFTER == 1)" "after the move: fired $S03_FIRED same $S03_SAME_AFTER"
     _w29_done ET-10 "the served app draws the same titles, sizes and key title, before and after a move"
 
@@ -1402,8 +1412,15 @@ def _fx_check(names, html, app):
             if y is None:
                 bad.append(mode + ":" + nm + ":missing")
                 continue
-            pairs = sorted(zip(x, y), key=lambda t: t[0])
-            if sorted(x) != want_x or not _fx_same([t[1] for t in pairs], want_y):
+            # Flipped (WP-30 P1.8a): under twoway's default cmissing(y) the
+            # line joins the defined points, so a missing point is left out
+            # of the drawn source: compare the points twoway joins.
+            want = [(u, v) for u, v in zip(want_x, want_y) if not _math.isnan(v)]
+            pairs = sorted(((u, v) for u, v in zip(x, y)
+                            if v is not None and not _math.isnan(v)),
+                           key=lambda t: t[0])
+            if [t[0] for t in pairs] != [t[0] for t in want] or \
+                    not _fx_same([t[1] for t in pairs], [t[1] for t in want]):
                 bad.append(mode + ":" + nm + ":" + repr(y[:4]))
     return bad
 
@@ -3072,7 +3089,8 @@ def _pf_log_lines(p):
 
 
 def _pf_notes(p):
-    return [x for x in _pf_log_lines(p) if x.startswith("dash: note:")]
+    # The R-8 note prints as twoway prints its notes (WP-30 P1.26a).
+    return [x for x in _pf_log_lines(p) if x.startswith("(note:  dash: ")]
 
 
 def _pf_roots():
@@ -3464,6 +3482,9 @@ end
     python: _pf_m12 = _pf_stat.S_IMODE(_pf_os.stat(_PF_TMP).st_mode)
     python: _pf_M.setLocal("pf12_before", oct(_pf_m12))
     capture erase "`pf_sd'/rec.txt"
+    // WP-30 P1.28a: no Stata graph in memory, so dash's graph export note
+    // is not among the notes counted (setup only; the counts are unchanged).
+    quietly graph drop _all
     capture dash clear
     python: _pf_os.chmod(_PF_TMP, _pf_m12 | 0o020)
     capture noisily {
@@ -3587,7 +3608,25 @@ def _s10_saved():
     for blob in _s10_re.findall(r'<script type="application/json" id="[^"]*">\s*(.*?)\s*</script>', page, _s10_re.S):
         for dd in _s10_json.loads(blob).values():
             out += list(_s10_Doc.from_json(dd).select(dict(type=_s10_Plot)))
-    return sorted(out, key=lambda p: str(p.title.text if p.title is not None else ""))
+    return _s10_figs(out)
+
+
+def _s10_key(p):
+    # WP-30 P1.15a: a by() panel is named by its label row (a Title named
+    # dash_by_label), no longer by its title; other plots by their title.
+    for m in list(p.above) + list(p.below):
+        if type(m).__name__ == "Title" and m.name == "dash_by_label":
+            return str(m.text or "")
+    return str(p.title.text if p.title is not None else "")
+
+
+def _s10_figs(plots):
+    # WP-30 P1.15a: the by() grid's head and foot cells are bare Plots
+    # holding the overall text, not panels.  WP-30 P1.15c: nor are its
+    # title, legend, colour-key and ruler cells; every such cell is dash_by_*.
+    return sorted((p for p in plots
+                   if not str(p.name or "").startswith("dash_by_")),
+                  key=_s10_key)
 
 
 def _s10_served():
@@ -3600,8 +3639,7 @@ def _s10_served():
         exec(compile(src.replace(attach, "pass"), "dash_s10_app.py", "exec"), ns)
         doc = _s10_Doc()
         ns["make_document"](doc)
-    return sorted(doc.select(dict(type=_s10_Plot)),
-                  key=lambda p: str(p.title.text if p.title is not None else ""))
+    return _s10_figs(doc.select(dict(type=_s10_Plot)))
 
 
 def _s10_cont(side):
@@ -3867,7 +3905,8 @@ if inlist("`only'", "", "S10") {
 // what BokehJS spans over a shared DataRange1d).
 
 // _s10_panels: every panel of the current by() graph, into $s10_tw as
-// "title|ymin|ymax|xmin|xmax|y2min|y2max|majmin|majmax|majdelta|curmin;".
+// "title|ymin|ymax|xmin|xmax|y2min|y2max|majmin|majmax|majdelta|curmin;",
+// each min/max its scale's curmin/curmax (WP-30 P1.3a).
 capture program drop _s10_panels
 program define _s10_panels
     version 16.0
@@ -3875,7 +3914,9 @@ program define _s10_panels
     local out ""
     forvalues k = 1/`n' {
         local p ".Graph.graphs[`k']"
-        local out "`out'``p'.subtitle.text[1]'|``p'.plotregion1.yscale.min'|``p'.plotregion1.yscale.max'|``p'.plotregion1.xscale.min'|``p'.plotregion1.xscale.max'|``p'.yaxis2.plotregion.yscale.min'|``p'.yaxis2.plotregion.yscale.max'|``p'.yaxis1.major.min'|``p'.yaxis1.major.max'|``p'.yaxis1.major.delta'|``p'.plotregion1.yscale.curmin';"
+        // WP-30 P1.3a: the scales' curmin/curmax (twoway's scale, its
+        // ticks included), which dash's hull now spans; it was min/max.
+        local out "`out'``p'.subtitle.text[1]'|``p'.plotregion1.yscale.curmin'|``p'.plotregion1.yscale.curmax'|``p'.plotregion1.xscale.curmin'|``p'.plotregion1.xscale.curmax'|``p'.yaxis2.plotregion.yscale.curmin'|``p'.yaxis2.plotregion.yscale.curmax'|``p'.yaxis1.major.min'|``p'.yaxis1.major.max'|``p'.yaxis1.major.delta'|``p'.plotregion1.yscale.curmin';"
     }
     global s10_tw "`out'"
 end
@@ -3900,7 +3941,7 @@ def _s10_live():
 
 
 def _s10_panelmap(plots):
-    return {str(p.title.text if p.title is not None else ""): p for p in plots}
+    return {_s10_key(p): p for p in plots}
 
 
 def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
@@ -3909,6 +3950,12 @@ def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
         if sorted(live) != sorted(got):
             return ["panels %s, twoway %s" % (sorted(got), sorted(live))]
         figs = [got[t] for t in sorted(live)]
+        # WP-30 P1.3a: a page read back has no _dash_margin_f; the margin
+        # is the session scheme's, times by()'s f(G).
+        from sfi import SFIToolkit as _s10_tk
+        mg = _s10_tb.dr._dash_plot_margin(
+            _s10_tb.dr.SchemeParser(_s10_tk.macroExpand("\x60c(scheme)'")),
+            {}, panels=len(figs))
         for d in ("x", "y"):
             ids = {id(getattr(f, d + "_range")) for f in figs}
             if d in shared and len(ids) != 1:
@@ -3917,15 +3964,16 @@ def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
                 bad.append("%s is not per panel" % d)
             for t in sorted(live):
                 f = got[t]
-                h = (_s10_tb._emulated_hull(figs, d) if d in shared
-                     else _s10_tb._hull_of(f, d))
+                h = (_s10_tb._emulated_hull(figs, d, margin=mg[d])
+                     if d in shared else _s10_tb._hull_of(f, d, margin=mg[d]))
                 want = (live[t][d + "min"], live[t][d + "max"])
                 if not _s10_tb._close(h, want):
                     bad.append("%s %s hull %s, twoway %s" % (t, d, h, want))
         if y2:
             for t in sorted(live):
                 r2 = got[t].extra_y_ranges.get("y2")
-                h = _s10_tb.dr._dash_range_hull(r2) if r2 is not None else None
+                h = (_s10_tb.dr._dash_range_hull(r2, margin=mg["y"])
+                     if r2 is not None else None)
                 want = (live[t]["y2min"], live[t]["y2max"])
                 if not _s10_tb._close(h, want):
                     bad.append("%s y2 hull %s, twoway %s" % (t, h, want))
@@ -3938,7 +3986,7 @@ def _s10_by(shared, rescaled=(), y2=False, ticks=False, no_zero=False):
                     bad.append("%s ticks %s, twoway %s" % (t, tk, want))
         if no_zero:
             for t in sorted(live):
-                h = _s10_tb._hull_of(got[t], "y")
+                h = _s10_tb._hull_of(got[t], "y", margin=mg["y"])
                 if h is None or h[0] <= 0 or live[t]["curmin"] != 10:
                     bad.append("%s hull %s, twoway curmin %s" % (t, h, live[t]["curmin"]))
         return bad
@@ -4523,6 +4571,15 @@ def _ew_check(tag, width_too=0):
             - _ew_styles(_ew_os.path.join(d, "base.svg"))}
     a, b = _ew_second(sp, dp, _ew_os.path.join(d, tag + ".py"))
     got = (_ew_colour(a), _ew_colour(b))
+    if type(a).__name__ in ("VArea", "VBar"):
+        # A fill is the key's stroke colour at the layer's (p2's) bar or
+        # area intensity, as twoway fills it (WP-30 P1.2b).
+        import dash_render as dr
+        sch = dr.SchemeParser("s2color")
+        f = (sch.p_area_intensity if type(a).__name__ == "VArea"
+             else sch.p_bar_intensity)[1]
+        want = {dr.GlyphMapper._blend_intensity(c, f, sch.naturally_white)
+                for c in want}
     ok = got[0] in want and got[1] in want
     why = "twoway %s, saved %s, served %s" % (sorted(want), got[0], got[1])
     if width_too:

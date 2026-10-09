@@ -670,11 +670,39 @@ class TestTheServedAppWritesNoFile:
                 hits.append((scope(node), "%s.%s" % (node.value.id,
                                                      node.attr), node))
 
+        def read_opener(node):
+            """WP-30 P1.25b: ``os.open`` as the ``opener=`` lambda of an
+            ``open(path, "rb")`` that adds only ``O_NONBLOCK`` to the
+            read's own flags (_read_scheme_lines): a read, not a write."""
+            lam = parents.get(node)
+            kw = parents.get(lam)
+            call = parents.get(kw)
+            if not (isinstance(lam, ast.Lambda) and lam.body is node
+                    and isinstance(kw, ast.keyword) and kw.arg == "opener"
+                    and isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Name)
+                    and call.func.id == "open" and len(call.args) > 1
+                    and isinstance(call.args[1], ast.Constant)
+                    and call.args[1].value == "rb"):
+                return False
+            # os.open(p, fl | getattr(os, "O_NONBLOCK", 0)), *fl* the
+            # lambda's own parameter: the flags open() chose for "rb".
+            fl = node.args[1] if len(node.args) == 2 else None
+            params = [a.arg for a in lam.args.args]
+            return (isinstance(fl, ast.BinOp) and isinstance(fl.op, ast.BitOr)
+                    and len(params) == 2
+                    and isinstance(fl.left, ast.Name)
+                    and fl.left.id == params[1]
+                    and ast.unparse(fl.right)
+                    == "getattr(os, 'O_NONBLOCK', 0)")
+
         allowed, bad, page = [], [], set()
         for where, what, node in hits:
             up = parents.get(node)
             ok = False
-            if where == "_dash_private_page":
+            if what == "os.open" and read_opener(node):
+                ok = True
+            elif where == "_dash_private_page":
                 if what == "tempfile.mkdtemp" and isinstance(up, ast.Call) \
                         and [k.arg for k in up.keywords] == ["prefix"]:
                     ok = True
@@ -1321,16 +1349,22 @@ class TestTheNote:
         user = tmp_path / "user"
         user.mkdir()
         out = str(user / "app.py")
+        # Outside Stata (no sfi) the note is one plain line on stderr, in
+        # twoway's form (WP-30 P1.26a).
+        monkeypatch.setitem(sys.modules, "sfi", None)
         capsys.readouterr()
         _main(sp, dp, out, mode="server")
-        printed = capsys.readouterr().out
-        lines = [ln for ln in printed.splitlines() if "dash: note: " in ln]
+        printed = capsys.readouterr().err
+        lines = [ln for ln in printed.splitlines()
+                 if ln.startswith("(note:  dash: ")
+                 and out in ln and "every observation" in ln]
         assert len(lines) == 1, printed
-        assert out in lines[0] and "every observation" in lines[0]
         assert os.path.exists(out)
         run = dr._dash_run_open(str(tmp_path))
         _main(sp, dp, run["app"], mode="server", launch=True)
-        assert "dash: note: " not in capsys.readouterr().out
+        got = capsys.readouterr()
+        assert "(note:  dash: " not in got.out + got.err
+        assert "dash: note: " not in got.out + got.err
 
     def test_a_file_in_a_folder_dash_chose_is_never_noted_by_the_renderer(
             self, tmp_path):
@@ -2060,7 +2094,8 @@ class TestTheAdoUsesThePrivateDir:
         progs = _programs()
         _need(progs, *_NEW_PROGRAMS)
         to = "\n".join(progs["_dash_tmp_open"])
-        assert '_dash_say("txt"' in to and "_to_note" in to
+        # The note takes twoway's channel since WP-30 P1.26a.
+        assert '_dash_note(' in to and "_to_note" in to
         assert re.search(r"return local noted\b", to)
         plot = [ln.strip() for ln in progs["_dash_render_immediate"]]
         i = [k for k, ln in enumerate(plot) if "r(data)" in ln][0]
@@ -2088,6 +2123,119 @@ def _tempfiles_section():
     assert "{marker tempfiles}" in h, "dash.sthlp has no {marker tempfiles}"
     sec = h.split("{marker tempfiles}", 1)[1]
     return sec.split("{marker ", 1)[0]
+
+
+_RENDER_PY = os.path.join(_ROOT, "dash_render.py")
+
+
+def _load_setup_lib():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dash_setup_lib_s25", os.path.join(_ROOT, "dash_setup_lib.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _plant_tree(base, dead):
+    root = os.path.join(base, "dash-%d" % _UID)
+    os.makedirs(root, mode=0o700)
+    os.chmod(base, 0o700)
+    for pid in (_PID, dead):
+        os.mkdir(os.path.join(root, "run-%d-s25" % pid), 0o700)
+    os.mkdir(os.path.join(base, "dash-%d-s25abcde" % _UID), 0o700)
+    prev = os.path.join(root, "previews")
+    os.mkdir(prev, 0o700)
+    for i in range(dr._DASH_PREVIEW_KEEP + 2):
+        _page(prev, _PID, "q", age=1000 - i * 10, tag="%08x" % i)
+    return root
+
+
+def _walk(base):
+    out = []
+    for d, dirs, files in os.walk(base):
+        for n in dirs + files:
+            out.append(os.path.relpath(os.path.join(d, n), base))
+    return sorted(out)
+
+
+class TestDashClearPrunesWithoutThePackages:
+    """WP-30 P1.32 (register P1.32.3, A122): dash clear prunes through
+    dash_setup_lib.stdlib_entry, which compiles dash_render.py's own
+    _dash_tmp_clear and what it reaches with the standard library alone, so
+    it prunes with numpy, pandas or bokeh missing."""
+
+    def test_the_slice_prunes_as_the_renderer_does(self, tmp_path):
+        p = subprocess.Popen([sys.executable, "-c", "0"])
+        p.wait()
+        a, b = str(tmp_path / "a"), str(tmp_path / "b")
+        os.mkdir(a)
+        os.mkdir(b)
+        _plant_tree(a, p.pid)
+        _plant_tree(b, p.pid)
+        assert _walk(a) == _walk(b)
+        before = _walk(a)
+        f = _load_setup_lib().stdlib_entry(_RENDER_PY, "_dash_tmp_clear")
+        assert f is not None
+        assert dr._dash_tmp_clear(a) == "" and f(b) == ""
+        assert _walk(a) == _walk(b)
+        assert _walk(a) != before
+
+    def test_the_slice_imports_no_package(self, tmp_path):
+        code = """
+import sys, os, importlib.util
+for m in ("numpy", "pandas", "bokeh", "tornado", "jinja2"):
+    sys.modules[m] = None
+s = importlib.util.spec_from_file_location("L", %r)
+L = importlib.util.module_from_spec(s); s.loader.exec_module(L)
+f = L.stdlib_entry(%r, "_dash_tmp_clear")
+tmp = %r
+root = os.path.join(tmp, "dash-%%d" %% os.getuid()); os.mkdir(root, 0o700)
+run = os.path.join(root, "run-%%d-s25" %% os.getpid()); os.mkdir(run, 0o700)
+assert f is not None and f(tmp) == "" and not os.path.exists(run)
+assert all(sys.modules.get(m) is None for m in ("numpy", "pandas", "bokeh", "tornado", "jinja2"))
+print("ok")
+""" % (os.path.join(_ROOT, "dash_setup_lib.py"), _RENDER_PY, str(tmp_path))
+        os.chmod(str(tmp_path), 0o700)
+        r = subprocess.run([sys.executable, "-B", "-c", code],
+                           capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0 and r.stdout.strip() == "ok", r.stderr
+
+    def test_a_slice_that_would_import_a_package_is_refused(self, tmp_path):
+        L = _load_setup_lib()
+        bad = tmp_path / "bad.py"
+        bad.write_text("try:\n    import json as np\nexcept Exception:\n"
+                       "    pass\ndef f():\n    return np\nclass C:\n    pass\n")
+        assert L.stdlib_entry(str(bad), "f") is None
+        assert L.stdlib_entry(str(bad), "absent") is None
+        assert L.stdlib_entry(str(bad), "C") is None
+        enc = tmp_path / "enc.py"
+        enc.write_bytes(b"def f():\n    return '\xff\xfe'\n")
+        assert L.stdlib_entry(str(enc), "f") is None
+
+    def test_the_slice_is_built_once_per_file_version(self, tmp_path):
+        L = _load_setup_lib()
+        src = tmp_path / "m.py"
+        src.write_text("import os\ndef g():\n    return os.sep\n")
+        one = L.stdlib_entry(str(src), "g")
+        assert one is not None and L.stdlib_entry(str(src), "g") is one
+        st = os.stat(str(src))
+        os.utime(str(src), ns=(st.st_atime_ns, st.st_mtime_ns + 10 ** 9))
+        two = L.stdlib_entry(str(src), "g")
+        assert two is not None and two is not one
+
+    def test_dash_clear_prunes_through_the_slice(self):
+        from test_program_coverage_map import _ado_programs, _logical_lines
+        with open(_ADO, encoding="utf-8") as fh:
+            text = fh.read()
+        first, last = _ado_programs(text)["_dash_tmp_clear"]
+        body = [ln for n, ln in _logical_lines(text) if first < n < last]
+        assert body[:2] == ["version 19", "_dash_require_python"], body[:2]
+        mata = next(i for i, ln in enumerate(body) if 'dir(c("tmpdir"), "dirs", "dash*")' in ln)
+        first_py = next(i for i, ln in enumerate(body) if "python:" in ln)
+        assert mata < first_py
+        assert any('stdlib_entry(' in ln and '"_dash_tmp_clear"' in ln for ln in body)
+        assert not any("_dash_xm_load" in ln for ln in body)
 
 
 def _flat(text):
@@ -2119,7 +2267,8 @@ class TestTheHelpDocumentsTheTempfiles:
 
     def test_it_states_the_note_and_the_anti_hijack_guard(self):
         sec = _flat(_tempfiles_section())
-        for s in ("dash: note:", "chmod go-w", "STATATMP",
+        # The note is printed as twoway prints its notes (WP-30 P1.26a).
+        for s in ("(note: dash:", "chmod go-w", "STATATMP",
                   "never stops a command for privacy", "r(7102)",
                   "never writes through a symbolic link", "r(603)"):
             assert s in sec, s

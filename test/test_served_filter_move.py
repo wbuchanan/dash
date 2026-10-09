@@ -742,54 +742,117 @@ class TestAdversarialFilterMoves:
 # WP-29 P0.18: a served move copies the redrawn bar width
 # ---------------------------------------------------------------------------
 
-def _spaced(width):
-    from bokeh.models import VBar
-    src = ColumnDataSource({"x": [1.0]})
-    src._dash_spacing_glyphs = [VBar(width=width)]
-    return src
+def _vbar_widths(figs):
+    return [g["coords"].get("width") for f in figs for g in f["glyphs"]
+            if g["type"] == "VBar"]
+
+
+def _served_source(spec):
+    """The generated server app's source text for *spec*."""
+    tag, sp, dp = tp._write(spec)
+    ap = os.path.join(tempfile.mkdtemp(), f"app_{tag}.py")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dr.ServerAppBuilder(sp, dp).build(ap)
+    with open(ap, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _sources_of(mode, spec):
+    """Every ColumnDataSource a mode's document holds for *spec*."""
+    if mode == "saved":
+        r, _ = tp._standalone(spec)
+    else:
+        doc, _ = tp._served(spec)
+        figs = [m for m in tp._walk_models(doc)
+                if type(m).__name__ == "figure"]
+        r = None
+    figs = list(r.figures.values()) if r is not None else figs
+    return [g.data_source for f in figs
+            for g in getattr(f, "renderers", [])
+            if getattr(g, "data_source", None) is not None]
+
+
+def _bar_widths_and_notes(mode, spec):
+    if mode == "saved":
+        r, caught = tp._standalone(spec)
+        figs = list(r.figures.values())
+    else:
+        doc, caught = tp._served(spec)
+        figs = [m for m in tp._walk_models(doc)
+                if type(m).__name__ == "figure"]
+    ws = [g.glyph.width for f in figs
+          for g in getattr(f, "renderers", [])
+          if type(getattr(g, "glyph", None)).__name__ == "VBar"]
+    return ws, caught
 
 
 class TestTheRedrawGeometry:
-    """``_dash_copy_redraw_geometry(live, new)`` gives each live spacing
-    glyph the width the redraw drew from the kept rows."""
+    """No width is taken from the kept rows any more (WP-30 P1.17a), so a
+    served move has no geometry to copy: the redraw's widths equal the
+    live ones, and ``_dash_copy_redraw_geometry`` is gone."""
 
     def test_a_bar_takes_the_redraws_width(self):
-        live, new = _spaced(56.0), _spaced(168.0)
-        dr._dash_copy_redraw_geometry(live, new)
-        assert live._dash_spacing_glyphs[0].width == 168.0
+        """Flipped (WP-30 P1.17a): the live width 168 was wrong because
+        twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a)."""
+        spec = tp._spec([plot_for("bar")], {"filter": _DROPDOWN})
+        figs, _ = tp._served_after_move(spec, ("Select", "Foreign"))
+        widths = _vbar_widths(figs)
+        assert widths and all(w == ("value", 1.0) for w in widths), widths
+        assert not hasattr(dr, "_dash_copy_redraw_geometry")
+        assert "_dash_copy_redraw_geometry" not in _served_source(spec)
 
-    def test_an_untagged_source_is_left_alone(self):
-        live = _spaced(56.0)
-        dr._dash_copy_redraw_geometry(live, ColumnDataSource({"x": [1.0]}))
-        assert live._dash_spacing_glyphs[0].width == 56.0
-        dr._dash_copy_redraw_geometry(ColumnDataSource({"x": [1.0]}),
-                                      _spaced(168.0))
+    @pytest.mark.parametrize("mode", ["saved", "served"])
+    def test_an_untagged_source_is_left_alone(self, mode):
+        """Flipped (WP-30 P1.17a): no source is tagged at all, because
+        twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a)."""
+        spec = tp._spec([plot_for("bar"), plot_for("rbar"),
+                         plot_for("rcap"), plot_for("rcapsym")],
+                        {"filter": _DROPDOWN})
+        srcs = _sources_of(mode, spec)
+        assert srcs
+        for src in srcs:
+            assert not hasattr(src, "_dash_spacing_glyphs")
+            assert not hasattr(src, "_dash_spacing")
 
+    @pytest.mark.parametrize("mode", ["saved", "served"])
     @pytest.mark.parametrize("bad", [float("nan"), float("inf"), 0.0, -1.0,
                                      "text", None],
                              ids=["nan", "inf", "0", "-1", "text", "None"])
-    def test_a_non_finite_or_non_positive_width_is_ignored(self, bad):
-        from types import SimpleNamespace
-        live = _spaced(56.0)
-        new = SimpleNamespace(_dash_spacing_glyphs=[SimpleNamespace(
-            width=bad)])
-        dr._dash_copy_redraw_geometry(live, new)
-        assert live._dash_spacing_glyphs[0].width == 56.0
+    def test_a_non_finite_or_non_positive_width_is_ignored(self, bad, mode):
+        """A spec barwidth that is not a finite positive number draws one
+        x unit with one note, and nothing raises.
+
+        Flipped (WP-30 P1.17a): the copy guard it pinned is gone because
+        twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
+        spec = tp._spec([plot_for("bar", {"barwidth": str(bad)})],
+                        {"filter": _DROPDOWN})
+        widths, caught = _bar_widths_and_notes(mode, spec)
+        assert widths == [1.0], widths
+        assert sum("barwidth" in w for w in caught) == 1, caught
 
     def test_extra_glyphs_are_zipped_to_the_shorter(self):
-        from bokeh.models import VBar
-        live = _spaced(56.0)
-        live._dash_spacing_glyphs.append(VBar(width=10.0))
-        dr._dash_copy_redraw_geometry(live, _spaced(168.0))
-        assert [g.width for g in live._dash_spacing_glyphs] == [168.0, 10.0]
+        """A graph with a bar and an rbar keeps both widths after a served
+        move.
+
+        Flipped (WP-30 P1.17a): the zip of spacing glyphs is gone because
+        twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a).
+        """
+        spec = tp._spec([plot_for("bar"), plot_for("rbar")],
+                        {"filter": _DROPDOWN})
+        figs, _ = tp._served_after_move(spec, ("Select", "Foreign"))
+        widths = _vbar_widths(figs)
+        assert widths == [("value", 1.0), ("value", 1.0)], widths
 
 
 class TestTheServedBarAfterAMove:
 
     @pytest.mark.parametrize("t", ["bar", "rbar"])
     def test_the_served_width_is_the_kept_rows_spacing(self, t):
+        """Flipped (WP-30 P1.17a): 168 was wrong because twoway draws a bar one x unit wide and caps as long as a marker of its msize (P1.17a)."""
         spec = tp._spec([plot_for(t)], {"filter": "foreign, type(dropdown)"})
         figs, _ = tp._served_after_move(spec, ("Select", "Foreign"))
         widths = [g["coords"].get("width") for f in figs for g in f["glyphs"]
                   if g["type"] == "VBar"]
-        assert widths and all(w == ("value", 168.0) for w in widths), widths
+        assert widths and all(w == ("value", 1.0) for w in widths), widths

@@ -62,6 +62,9 @@ _ALLOWED_INLINE_PY_MACROS = {
         "_py_render": "escaped by _dash_json_str before interpolation",
         "port_int": "validated ^[0-9]+$ and range 1024-65535 in _dash_serve_spec",
         "timeout": "validated ^[0-9]+$ in _dash_serve_spec",
+        # WP-30 P1.31a: r(maxsessions) and r(idletimeout), digits only.
+        "_srv_maxs": "digits only, 1-1,000,000, checked byte by byte (_dash_is_digits) in _dash_serve_spec",
+        "_srv_idle": "digits only, 0-525600, checked byte by byte (_dash_is_digits) in _dash_serve_spec",
     },
     # dash_setup.ado has no entry: its last in-string macro, `_spec' in the
     # inline pip call, went with that call (WP-29 P0.19) -- the spec now
@@ -288,10 +291,12 @@ class TestTheChecksReachEveryScript:
         # package adds (review D11): every twoway/Stata-value comparison of
         # the GAPS2 fix package lives in this one script, one block per
         # section, so 66; plus WP-29's test_wp29_truth, the one script that
-        # package adds (.ultraplan/wp29/index.md A3), so 67 now.  An empty
+        # package adds (.ultraplan/wp29/index.md A3), so 67; plus WP-30's
+        # test_wp30_truth, the one script that package adds
+        # (.ultraplan/wp30/index.md A142), so 68 now.  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 67, (
+        assert len(_CSCRIPTS) == 68, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -309,8 +314,9 @@ class TestTheChecksReachEveryScript:
         # test_string_values.  WP-28's test_gaps2_truth gates on
         # c(python_exec) itself (its own line, not cert_svg.do's, which
         # loads after it and would otherwise be the only carrier), so 48;
-        # WP-29's test_wp29_truth gates the same way, so 49.
-        assert len(names) == 49, f"{len(names)}: {sorted(names)}"
+        # WP-29's test_wp29_truth gates the same way, so 49; WP-30's
+        # test_wp30_truth gates the same way, so 50.
+        assert len(names) == 50, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
@@ -844,6 +850,91 @@ def _code_only(src):
     return "\n".join(out)
 
 
+def _display_seam_problems(src):
+    """WP-30 P1.27: the undocumented test seam ``$dash__display`` may be set
+    only after a stub is first on PATH (``os.environ["PATH"] =``) or the
+    ado-path (``adopath ++`` naming a stub folder); must be dropped after
+    it is set; and while it is on with ``$dash_nobrowser`` unset, no
+    ``dash build`` may run outside the body of a program defined earlier
+    (the stub controls' own helpers).  Returns the problems, as text."""
+    out = []
+    lines = src.splitlines()
+    stub_seen = False
+    set_at = None
+    seam_on = False
+    nb_unset = False
+    in_prog = False
+    for n, line in enumerate(lines, 1):
+        code = line.split("//", 1)[0]
+        st = code.strip()
+        if re.match(r"program\s+(define\s+)?\w", st) and not st.startswith(
+                "program drop"):
+            in_prog = True
+            continue
+        if in_prog:
+            if st == "end":
+                in_prog = False
+            continue
+        if 'os.environ["PATH"] =' in code or (
+                "adopath ++" in code and "stub" in code):
+            stub_seen = True
+        if re.match(r"\s*global\s+dash__display\s+\S", code):
+            if not stub_seen:
+                out.append(f"line {n}: sets the seam with no stub first")
+            if set_at is None:
+                set_at = n
+            seam_on = True
+        if re.search(r"macro\s+drop\s+dash__display", code):
+            seam_on = False
+        if re.search(r"macro\s+drop\s+dash_nobrowser", code) or re.match(
+                r'\s*global\s+dash_nobrowser\s*(""\s*)?$', code):
+            nb_unset = True
+        elif re.match(r"\s*global\s+dash_nobrowser\s+\S", code):
+            nb_unset = False
+        if seam_on and nb_unset and re.match(
+                r"\s*(cap(ture)?\s+(n(oisily)?\s+)?)?(qui(etly)?\s+)?"
+                r"dash\s+build\b", code):
+            out.append(f"line {n}: builds with the seam on and "
+                       "$dash_nobrowser unset, outside a stub helper")
+    if set_at is not None and not any(
+            re.search(r"macro\s+drop\s+dash__display", l.split("//", 1)[0])
+            for l in lines[set_at:]):
+        out.append(f"line {set_at}: sets the seam and never drops it")
+    return out
+
+
+class TestTheDisplaySeamIsFenced:
+    """The seam reaches no sink a user's session does not: only behind a
+    stub, and always dropped (WP-30 P1.27)."""
+
+    def test_the_detector_reads_the_seam(self):
+        assert _display_seam_problems("global dash__display on\n")
+        ok = ('python: os.environ["PATH"] = x\n'
+              "global dash__display on\nmacro drop dash__display\n")
+        assert _display_seam_problems(ok) == []
+        undropped = 'adopath ++ "`stubdir\'"\nglobal dash__display on\n'
+        assert _display_seam_problems(undropped)
+        loose_build = ('adopath ++ "`stubdir\'"\nmacro drop dash_nobrowser\n'
+                       "global dash__display on\n"
+                       "dash build, saving(x.html)\n"
+                       "macro drop dash__display\n")
+        assert _display_seam_problems(loose_build)
+        helper = ('program define _h\n    dash build, saving(x.html)\nend\n'
+                  'adopath ++ "`stubdir\'"\nmacro drop dash_nobrowser\n'
+                  "global dash__display on\n_h\nmacro drop dash__display\n")
+        assert _display_seam_problems(helper) == []
+
+    def test_no_script_sets_the_seam_without_a_stub_and_a_drop(self):
+        bad = {}
+        for path in sorted(glob.glob(os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "*.cscript"))):
+            with open(path, encoding="utf-8") as fh:
+                probs = _display_seam_problems(fh.read())
+            if probs:
+                bad[os.path.basename(path)] = probs
+        assert bad == {}
+
+
 class TestJsonioIsNotADependency:
 
     def test_the_guard_reader_finds_the_old_guard(self):
@@ -972,4 +1063,149 @@ class TestTheWp29TruthScript:
                                'cscript "x"\n' + _W29_MARK + "\n"),
                  "below the marker")):
             _blocks, bad = _wp29_blocks(text)
+            assert any(says in b for b in bad), (says, bad)
+
+
+# ---------------------------------------------------------------------------
+# WP-30's truth script: one block per section, gated, timed, closed, in order
+# ---------------------------------------------------------------------------
+# test/test_wp30_truth.cscript is WP-30's one new certification script
+# (.ultraplan/wp30/index.md A142, merge rule R1).  Section 01 writes a stub
+# block for every fix section (S02-S57) and each fills its own from a
+# parallel worktree: a block that is not gated cannot be run alone
+# (WP30_ONLY=S<NN>), one that is not closed swallows the next, one below the
+# marker runs after the summary has judged the run, and one that does not
+# print its start and end lines first and last cannot be timed (S58.7).
+
+_WP30_TRUTH = os.path.join(_HERE, "test_wp30_truth.cscript")
+_W30_OPEN = re.compile(r"^\* ==== (S\d{2}) (.+) ====$")
+_W30_CLOSE = re.compile(r"^\* ==== end (S\d{2}) ====$")
+_W30_MARK = "* ==== append new blocks above this line ===="
+_W30_HEAD = re.compile(r"^(scaffold|P1\.\d{1,2}[abc]?): \S")
+
+
+def _wp30_blocks(src):
+    """``(blocks, problems)`` for the truth script's text.  A block is
+    ``(section, header line, end line)``; a problem names a marker line that
+    is not there exactly once, a block that is not closed by its own end
+    line, not headed by an entry id, not gated by its own section, not timed
+    by its own start and end lines, below the marker or out of section
+    order, or a section whose blocks name two entries."""
+    lines = src.split("\n")
+    bad = []
+    marks = [n for n, ln in enumerate(lines, 1) if ln.rstrip() == _W30_MARK]
+    if len(marks) != 1:
+        bad.append("the line %r appears %d times" % (_W30_MARK, len(marks)))
+    mark = marks[0] if marks else len(lines) + 1
+    blocks, heads, cur = [], {}, None
+    for n, ln in enumerate(lines, 1):
+        o, c = _W30_OPEN.match(ln.rstrip()), _W30_CLOSE.match(ln.rstrip())
+        if o:
+            if cur:
+                bad.append("%s (line %d) is not closed before line %d"
+                           % (cur[0], cur[1], n))
+            cur = (o.group(1), n, o.group(2))
+        elif c:
+            if cur is None or c.group(1) != cur[0]:
+                bad.append("line %d closes %s, which is not the open block"
+                           % (n, c.group(1)))
+            else:
+                blocks.append((cur[0], cur[1], n))
+                head = _W30_HEAD.match(cur[2])
+                if not head:
+                    bad.append("%s (line %d) names no entry ('P1.<n>: <what>')"
+                               % (cur[0], cur[1]))
+                else:
+                    heads.setdefault(cur[0], set()).add(head.group(1))
+            cur = None
+    if cur:
+        bad.append("%s (line %d) is never closed" % cur[:2])
+    for k, (sec, first, last) in enumerate(blocks):
+        code = [ln.strip() for ln in lines[first:last - 1]
+                if ln.strip() and not ln.strip().startswith(("//", "*"))]
+        if code[:2] != ["local only : env WP30_ONLY",
+                        'if inlist("`only\'", "", "%s") & `: list posof '
+                        '"%s" in w30_run\' {' % (sec, sec)]:
+            bad.append("%s (line %d) is not gated by WP30_ONLY=%s"
+                       % (sec, first, sec))
+        timed = ['display as text "%s %s " c(current_date) " " '
+                 'c(current_time)' % (sec, w) for w in ("start", "end")]
+        if code[2:3] != timed[:1] or code[-2:] != [timed[1], "}"]:
+            bad.append("%s (line %d) does not print its start line first and "
+                       "its end line last" % (sec, first))
+        if last > mark:
+            bad.append("%s (line %d) is below the marker" % (sec, first))
+        if k and sec < blocks[k - 1][0]:
+            bad.append("%s (line %d) follows %s: blocks go in section order"
+                       % (sec, first, blocks[k - 1][0]))
+    for sec, ids in sorted(heads.items()):
+        if len(ids) > 1:
+            bad.append("%s's blocks name %d entries: %s"
+                       % (sec, len(ids), sorted(ids)))
+    return blocks, bad
+
+
+class TestTheWp30TruthScript:
+    """The scaffold section 01 writes, and every block a later section
+    fills or adds."""
+
+    def test_the_scaffold_is_in_order(self):
+        text = _read(_WP30_TRUTH)
+        order = ['cscript "WP-30 truth', "SKIP: Python not available.",
+                 'do "cert_helpers.do"', 'do "cert_svg.do"',
+                 "// ---- parts: begin", "local w30_sh : environment "
+                 "DASH_CERT_SHARD", "// ---- parts: end", "* ==== S01 ",
+                 "local only : env WP30_ONLY", "* ==== end S01 ====",
+                 "* ==== S02 ", "* ==== end S57 ====", _W30_MARK,
+                 "test_wp30_truth: ALL CHECKS PASSED"]
+        positions = [text.find(s) for s in order]
+        assert -1 not in positions, dict(zip(order, positions))
+        assert positions == sorted(positions), (order, positions)
+        assert "capture python:" not in text
+
+    def test_every_block_is_gated_timed_closed_and_in_section_order(self):
+        blocks, bad = _wp30_blocks(_read(_WP30_TRUTH))
+        assert not bad, "\n".join(bad)
+        assert sorted({b[0] for b in blocks}) == [
+            "S%02d" % n for n in range(1, 58)], blocks
+        assert blocks[0][0] == "S01", blocks
+
+    def test_the_block_reader(self):
+        def block(sec, head, body=""):
+            return ("* ==== %s %s ====\nlocal only : env WP30_ONLY\n"
+                    'if inlist("`only\'", "", "%s") & `: list posof "%s" '
+                    'in w30_run\' {\n'
+                    '    display as text "%s start " c(current_date) " " '
+                    "c(current_time)\n%s"
+                    '    display as text "%s end " c(current_date) " " '
+                    "c(current_time)\n}\n* ==== end %s ====\n"
+                    % (sec, head, sec, sec, sec, body, sec, sec))
+        good = ('cscript "x"\n' + block("S01", "scaffold: smoke",
+                                        "    // a case\n")
+                + "\n" + block("S10", "P1.19: abbreviations")
+                + _W30_MARK + "\nexit 9\n")
+        blocks, bad = _wp30_blocks(good)
+        assert bad == [], bad
+        assert blocks == [("S01", 2, 9), ("S10", 11, 17)], blocks
+        moved = good.replace(_W30_MARK + "\n", "")
+        second = block("S10", "P1.20a: more")
+        for text, says in (
+                (good.replace('"S10") &', '"S01") &'), "not gated"),
+                (good.replace('"S10" in w30_run', '"S01" in w30_run'),
+                 "not gated"),
+                (good.replace("* ==== end S10 ====\n", ""), "never closed"),
+                (good.replace("* ==== end S01 ====\n", ""),
+                 "not closed before"),
+                (good.replace("S10", "S00"), "section order"),
+                (moved, "appears 0 times"),
+                (moved.replace('cscript "x"\n',
+                               'cscript "x"\n' + _W30_MARK + "\n"),
+                 "below the marker"),
+                (good.replace('"S10 end "', '"S10 stop "'),
+                 "does not print its start line first"),
+                (good.replace("S10 P1.19: abbreviations", "S10 abbreviations"),
+                 "names no entry"),
+                (good.replace(_W30_MARK, second + _W30_MARK),
+                 "blocks name 2 entries")):
+            _blocks, bad = _wp30_blocks(text)
             assert any(says in b for b in bad), (says, bad)

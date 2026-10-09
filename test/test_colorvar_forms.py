@@ -31,7 +31,7 @@ sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from conftest import make_spec, make_data_json  # noqa: E402
+from conftest import make_spec, make_data_json, exec_app  # noqa: E402
 import colour_bins as cb  # noqa: E402
 
 _LE, _DASH = chr(0x2264), chr(0x2013)   # ASCII source, whatever the editor
@@ -39,6 +39,9 @@ _LE, _DASH = chr(0x2264), chr(0x2013)   # ASCII source, whatever the editor
 _VL = {"repair": {"1": "Poor", "2": "Fair", "3": "Avg", "4": "Good",
                   "5": "Exc"}}
 _VLN = {"rep78": "repair"}
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _df(n=20):
@@ -261,8 +264,13 @@ class TestZOptions:
 
         r2, _doc2, _sw2, _rw2 = _both(go={"zlabel": "#3"}, plots=plots)
         bar2 = _colorbar(list(r2.figures.values())[0])
-        assert isinstance(bar2.ticker, BasicTicker)
-        assert bar2.ticker.desired_num_ticks == 3
+        # WP-30 P1.23b: zlabel(#3) as Bokeh's BasicTicker was wrong
+        # because twoway places #N key ticks by its natscale rule (15,000
+        # 15,200 15,400 for sp500's dates).
+        assert isinstance(bar2.ticker, FixedTicker)
+        assert list(bar2.ticker.ticks) == [5000.0, 10000.0, 15000.0]
+        assert [bar2.major_label_overrides[t] for t in bar2.ticker.ticks] \
+            == ["5,000", "10,000", "15,000"]
 
         r3, _doc3, _sw3, _rw3 = _both(go={"zlabel": "none"}, plots=plots)
         bar3 = _colorbar(list(r3.figures.values())[0])
@@ -321,14 +329,21 @@ class TestZOptions:
         assert any("alt" in w for w in std_w2)
 
         _r3, _d3, std_w3, _sw3 = _both(
-            go={"zlabel": "1(1)5, format(%9.2f)"}, plots=plots)
-        assert any("format(%9.2f)" in w for w in std_w3)
+            go={"zlabel": "4000(4000)12000, format(%9.2f)"}, plots=plots)
+        # WP-30 P1.23b: naming format(%9.2f) was wrong because twoway
+        # writes the key in it (0.00 5000.00 ...).
+        assert not any("format(%9.2f)" in w for w in std_w3)
+        bar3 = _colorbar(list(_r3.figures.values())[0])
+        assert [bar3.major_label_overrides[t] for t in bar3.ticker.ticks] \
+            == ["4000.00", "8000.00", "12000.00"]
 
     def test_ztitle_suboptions_keep_the_key_title(self):
         """WP-29 P0.4: ztitle() with only sub-options keeps the colour
         variable's title and styles it, as twoway draws it (f1, f2); a typed
         "" still removes it (f3).  It emptied the key's title."""
-        large = f"{dr._textbox_size({'size': 'large'}, None):g}px"
+        # WP-30 P1.12a: _textbox_size returns the CSS string; twoway's
+        # size(large) is 14 pt ('14pt').
+        large = dr._textbox_size({'size': 'large'}, None)
         bar_plots = [tp.plot_for("scatter", {"colorvar": "price"})]
         r, doc, _sw, _rw = _both(go={"ztitle": ", size(large)"},
                                  plots=bar_plots)
@@ -444,7 +459,7 @@ def _served_ns(spec):
         with open(ap, encoding="utf-8") as fh:
             src = fh.read()
         ns = {"__name__": f"colour_ns_{tag}"}
-        exec(compile(src, ap, "exec"), ns)
+        exec_app(src, ap, ns)
     return ns
 
 
@@ -755,7 +770,7 @@ class TestTheDomainIsReset:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 with pytest.raises(RuntimeError):
-                    r.render()
+                    render_models(r)
             assert r.mapper.colorvar_domain is None
         else:
             ns = _served_ns(spec)

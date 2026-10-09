@@ -54,6 +54,9 @@ from conftest import make_spec, make_data_json
 _FIXTURE = os.path.join(_HERE, "fixtures", "kpi_truth.json")
 
 
+from conftest import render_models  # noqa: E402
+
+
 @pytest.fixture(scope="module")
 def truth():
     """Stata's measured numbers.
@@ -119,7 +122,7 @@ def _render_kpi(df, *, stat, var, if_expr="", fmt="", extra_cols=None,
     with open(dp, "w") as f:
         json.dump(make_data_json(df), f)
     dr = DashRenderer(sp, dp, op)
-    dr.render()
+    render_models(dr)
     for p in (sp, dp, op):
         try:
             os.unlink(p)
@@ -185,7 +188,7 @@ class TestQualifiedKpiShowsTheConditionalStatistic:
             with open(paths[1], "w") as f:
                 json.dump(data, f)
             dr = DashRenderer(*paths)
-            dr.render()
+            render_models(dr)
         finally:
             for p in paths:
                 try:

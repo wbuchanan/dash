@@ -57,7 +57,6 @@ built exactly as ``test_mode_parity.py`` builds them; the served module is
 kept so its ``_DASH_SCHEME`` can be read back.  One render per (scheme,
 case), cached, whichever assertion asks first.
 """
-import importlib.util
 import os
 import re
 import sys
@@ -73,6 +72,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+from conftest import load_app  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
@@ -82,8 +82,10 @@ FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
 
 #: Stata's unit scale (DESIGN.md section 3).
 PT_PER_RELATIVE_UNIT = 2.88      # at the 4-inch reference dimension
-PX_PER_LINEWIDTH_UNIT = 5.0      # medium (.30) = 1.5 px
-MARKER_PX_ANCHOR = 8.0           # dash draws Stata's medium marker at 8 px
+PX_PER_LINEWIDTH_UNIT = 3.84  # 2.88 pt x 4/3 per Stata unit (WP-30 P1.12b)
+# WP-30 P1.12a: Stata's medium marker (1.52778 rs) on dash's one unit,
+# 1 rs = 2.88pt = 3.84px (was dash's own 8 px).
+MARKER_PX_ANCHOR = 1.52778 * 2.88 * 4.0 / 3.0
 MARKER_PX_ANCHOR_PT = 4.4        # symbolsize medium is 4.4 pt at 4 inches
 SIZE_TOL_PT = 0.01
 SIZE_TOL_PX = 0.02
@@ -96,10 +98,34 @@ CASES = ("titles", "legend_pos9", "kpi", "kpi_bg", "xgrid")
 
 
 def _grouped(names, prefix):
-    """Parametrise with an xdist group per scheme, so a scheme's renders
-    stay on one worker and are made once (pyproject: --dist loadgroup)."""
+    """Parametrise with an xdist group per name, so the renders a group
+    shares stay on one worker and are made once (pyproject: --dist
+    loadgroup)."""
     return [pytest.param(n, id=n, marks=pytest.mark.xdist_group(
         name=f"{prefix}:{n}")) for n in names]
+
+
+def _case_group(case):
+    """The xdist group of the tests that read *case*'s renders."""
+    return pytest.mark.xdist_group(name=f"rendered:{case}")
+
+
+def _every_scheme(case, schemes=SCHEMES):
+    """Run a ``(self, scheme, mode)`` check once per scheme inside one test,
+    each scheme a subtest, so every scheme is still checked and every
+    mismatch reported, without a test item per scheme: the check reads each
+    scheme's value through the same code path.  The test joins *case*'s
+    xdist group, so each render is made on one worker."""
+    def deco(check):
+        def run(self, mode, subtests):
+            for scheme in schemes:
+                with subtests.test(scheme=scheme, mode=mode):
+                    check(self, scheme, mode)
+        run.__name__ = check.__name__
+        run.__qualname__ = check.__qualname__
+        run.__doc__ = check.__doc__
+        return _case_group(case)(run)
+    return deco
 
 
 # ---------------------------------------------------------------------------
@@ -153,8 +179,9 @@ def _pt_of(css):
 
 def _line_width_px(entry):
     """Expected pixels for a fixture linewidth entry ``{name, value}``: a
-    number is a Stata linewidth unit (x5); a keyword keeps dash's keyword
-    ladder, which DESIGN.md section 3 leaves out of scope."""
+    number is a Stata linewidth unit (x 3.84 px); a keyword is its rung of
+    Stata's ladder, on the same unit (WP-30 P1.12b; it was dash's private
+    ladder, medium 1.5 px, and 5 px per number unit)."""
     name = str(entry["name"]).strip().lower()
     try:
         return float(name) * PX_PER_LINEWIDTH_UNIT
@@ -203,9 +230,7 @@ def _served_with_module(spec):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr.ServerAppBuilder(sp, dp).build(ap)
-        ms = importlib.util.spec_from_file_location(f"_rendered_{tag}", ap)
-        mod = importlib.util.module_from_spec(ms)
-        ms.loader.exec_module(mod)
+        mod = load_app(ap, f"_rendered_{tag}")
         doc = Document()
         mod.make_document(doc)
     curdoc().clear()
@@ -286,14 +311,22 @@ def _v(x):
 
 
 def _labels(fig, side):
-    return [l for l in getattr(fig, side) if isinstance(l, Label)]
+    """The text boxes of a side panel: side-panel Titles (WP-30 P1.2a),
+    not the figure's own title, plus any Label there."""
+    from bokeh.models import Title
+    return [l for l in getattr(fig, side)
+            if isinstance(l, Label) or (isinstance(l, Title)
+                                        and l is not fig.title)]
 
 
 def _label(fig, text):
-    """The one Label carrying *text* (the subtitle sits above, the note and
-    the caption below)."""
-    hits = [l for side in ("above", "below") for l in _labels(fig, side)
-            if l.text == text]
+    """The one text box carrying *text*: a side-panel Title, or the Label
+    economist's note is drawn as in the title's band (fig.center).
+    Flipped (WP-30 P1.2a): it read Labels only, which were wrong because
+    twoway places the boxes by the scheme's clock and S15 draws them as
+    Title rows in both modes."""
+    hits = [l for side in ("above", "below", "center")
+            for l in _labels(fig, side) if l.text == text]
     assert len(hits) == 1, f"{len(hits)} Labels read {text!r}"
     return hits[0]
 
@@ -411,7 +444,6 @@ def _profile(page):
 # (i) the minor grid, (ii) the major grid
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestTheGrids:
     """Stata draws each grid only where the scheme's yesno flag says.
@@ -423,6 +455,7 @@ class TestTheGrids:
     and reads ``draw_major_nlt_vgrid``).
     """
 
+    @_every_scheme("titles")
     def test_the_minor_grid_is_drawn_only_where_the_scheme_says(
             self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
@@ -435,6 +468,7 @@ class TestTheGrids:
                     f"{scheme}/{mode}: {key} is {_truth(scheme, key)!r} but "
                     f"the minor grid is {g.minor_grid_line_color!r}")
 
+    @_every_scheme("titles")
     def test_the_major_grid_is_the_schemes_per_axis(self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
         colour = _hex(_truth(scheme, "grid_color"))
@@ -446,6 +480,7 @@ class TestTheGrids:
                     f"{scheme}/{mode}: {key} is {_truth(scheme, key)!r} but "
                     f"the major grid is {g.grid_line_color!r}")
 
+    @_every_scheme("titles")
     def test_the_major_grid_width_is_the_schemes(self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
         want = _line_width_px(_truth(scheme, "grid_line_width"))
@@ -453,12 +488,12 @@ class TestTheGrids:
             assert g.grid_line_width == pytest.approx(want, abs=SIZE_TOL_PX)
 
 
-@pytest.mark.parametrize("scheme", _grouped(GRIDLESS, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestAC161NoGridWhereStataDrawsNone:
     """AC-16.1: s1color, s1mono, s1rcolor and stmono1 draw no grid at all
     -- no major grid and no minor grid, on either axis, in either mode."""
 
+    @_every_scheme("titles", GRIDLESS)
     def test_no_grid_at_all(self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
         for g in list(fig.xgrid) + list(fig.ygrid):
@@ -473,7 +508,6 @@ class TestAC161NoGridWhereStataDrawsNone:
 # (iii) the figure title, (v) subtitle / note / caption, (vi) axis text
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestTheText:
     """Stata's textbox styles (DESIGN.md section 2): title() is the heading
@@ -482,6 +516,7 @@ class TestTheText:
     (textboxstyle-small_body.style: ``set color scheme small_body``); axis
     titles and tick labels have their own colour keys."""
 
+    @_every_scheme("titles")
     def test_the_title_has_the_heading_colour_and_size(self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
         assert fig.title.text == "T"
@@ -489,6 +524,7 @@ class TestTheText:
         assert _pt_of(fig.title.text_font_size) == pytest.approx(
             _size_pt(_truth(scheme, "heading_size")), abs=SIZE_TOL_PT)
 
+    @_every_scheme("titles")
     def test_the_subtitle_has_the_subheading_size_and_colour(
             self, scheme, mode):
         lab = _label(_page(scheme, "titles", mode).fig, "S")
@@ -497,6 +533,7 @@ class TestTheText:
                             "subheading_font_size")), abs=SIZE_TOL_PT)
         assert _hex(lab.text_color) == _hex(_truth(scheme, "subheading_color"))
 
+    @_every_scheme("titles")
     def test_the_note_has_its_textboxs_size_colour_and_fill(self, scheme,
                                                             mode):
         """This compared the note to ``body_color`` and passed only because
@@ -515,6 +552,7 @@ class TestTheText:
         else:
             assert _hex(lab.background_fill_color) == _hex(fill)
 
+    @_every_scheme("titles")
     def test_the_caption_has_the_body_size_and_colour(self, scheme, mode):
         lab = _label(_page(scheme, "titles", mode).fig, "C")
         assert _pt_of(lab.text_font_size) == pytest.approx(
@@ -522,6 +560,7 @@ class TestTheText:
             abs=SIZE_TOL_PT)
         assert _hex(lab.text_color) == _hex(_truth(scheme, "body_color"))
 
+    @_every_scheme("titles")
     def test_axis_titles_and_tick_labels_take_the_schemes_colours(
             self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
@@ -533,6 +572,7 @@ class TestTheText:
             assert _hex(ax.major_label_text_color) == tick_c, (
                 f"{scheme}/{mode}: tick labels {ax.major_label_text_color!r}")
 
+    @_every_scheme("titles")
     def test_axis_title_and_tick_label_sizes_are_the_schemes(
             self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
@@ -542,6 +582,7 @@ class TestTheText:
             assert _pt_of(ax.major_label_text_font_size) == pytest.approx(
                 _size_pt(_truth(scheme, "tick_label_size")), abs=SIZE_TOL_PT)
 
+    @_every_scheme("titles")
     def test_the_header_css_carries_the_heading_and_subheading(
             self, scheme, mode):
         """css_block(): .db-title is the heading box, .db-subtitle the
@@ -597,9 +638,9 @@ class TestAC162TheEconomistTitleIsLargerThanItsSubtitle:
 # (iv) line width, (x) marker size
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestTheGlyphSizes:
+    @_every_scheme("titles")
     def test_the_line_width_is_the_schemes_on_statas_scale(
             self, scheme, mode):
         line = _glyph(_page(scheme, "titles", mode).fig, "Line")
@@ -609,6 +650,7 @@ class TestTheGlyphSizes:
             f"{_truth(scheme, 'default_line_width')['name']!r} drawn as "
             f"{_v(line.line_width)!r}, want {want}")
 
+    @_every_scheme("titles")
     def test_the_marker_size_follows_the_symbolsize_ladder(
             self, scheme, mode):
         sc = _glyph(_page(scheme, "titles", mode).fig, "Scatter")
@@ -622,14 +664,16 @@ class TestTheGlyphSizes:
 @pytest.mark.parametrize("mode", MODES)
 class TestAC162TheEconomistLineIsThickerThanS2colors:
     """AC-16.2b: economist's ``linewidth p 1.2`` is four medium widths --
-    6.0 px against s2color's 1.5 px.  dash drew it as 1.2 px."""
+    4.608 px against s2color's 1.152 px.  dash drew it as 1.2 px.  Flipped
+    (WP-30 P1.12b): 6.0 and 1.5 were dash's private scale; the name is
+    kept."""
 
     def test_6_0_over_1_5(self, mode):
         eco = _v(_glyph(_page("economist", "titles", mode).fig, "Line")
                  .line_width)
         s2 = _v(_glyph(_page("s2color", "titles", mode).fig, "Line")
                 .line_width)
-        assert (eco, s2) == (pytest.approx(6.0), pytest.approx(1.5))
+        assert (eco, s2) == (pytest.approx(4.608), pytest.approx(1.152))
         assert eco > s2
 
 
@@ -638,24 +682,28 @@ class TestNamedMarkerSizes:
     """The symbolsize keywords are NOT the gsize ladder (DESIGN.md
     section 3): small is 3.0 pt, medium 4.4, large 7.0 at 4 inches."""
 
-    @pytest.mark.parametrize("scheme,px", [
-        ("stcolor", 5.45), ("economist", 12.73), ("s2color", 8.0)])
-    def test_the_size(self, mode, scheme, px):
-        sc = _glyph(_page(scheme, "titles", mode).fig, "Scatter")
-        assert round(float(_v(sc.size)), 2) == px
+    @_case_group("titles")
+    def test_the_size(self, mode, subtests):
+        # WP-30 P1.12a: on one unit, 3.84px per Stata unit (twoway's small
+        # 1.04166, large 2.4306, medium 1.52778 rs); were 5.45, 12.73, 8.0.
+        for scheme, px in (("stcolor", 4.0), ("economist", 9.33),
+                           ("s2color", 5.87)):
+            with subtests.test(scheme=scheme):
+                sc = _glyph(_page(scheme, "titles", mode).fig, "Scatter")
+                assert round(float(_v(sc.size)), 2) == px
 
 
 # ---------------------------------------------------------------------------
 # (vii) the legend
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestTheLegend:
     """With no legend() placement, the scheme's ``clockdir legend_position``
     decides where the legend sits and ``numstyle legend_cols`` how many
     columns it has; its labels are the key_label textbox."""
 
+    @_every_scheme("titles")
     def test_the_default_placement_is_the_schemes_clock(self, scheme, mode):
         fig = _page(scheme, "titles", mode).fig
         lg = _legend(fig)
@@ -673,6 +721,7 @@ class TestTheLegend:
         else:
             assert lg.ncols in ("auto", 1)
 
+    @_every_scheme("titles")
     def test_the_scheme_placed_legend_sits_nearest_the_plot(
             self, scheme, mode):
         """Stata's rings (scheme-s2color.scheme: ``legend_ring 3``,
@@ -700,6 +749,7 @@ class TestTheLegend:
             f"{scheme}/{mode}: a Label sits between the plot and the "
             f"legend in fig.{side}: {order}")
 
+    @_every_scheme("titles")
     def test_the_scheme_placed_legend_is_centred_in_its_panel(
             self, scheme, mode):
         """A legend Stata places at 6, 12, 3 or 9 o'clock is centred on the
@@ -709,6 +759,7 @@ class TestTheLegend:
         assert lg.location == "center", (
             f"{scheme}/{mode}: legend location {lg.location!r}")
 
+    @_every_scheme("titles")
     def test_the_labels_are_the_key_label_textbox(self, scheme, mode):
         lg = _legend(_page(scheme, "titles", mode).fig)
         assert _pt_of(lg.label_text_font_size) == pytest.approx(
@@ -717,6 +768,7 @@ class TestTheLegend:
         assert _hex(lg.label_text_color) == \
             _hex(_truth(scheme, "key_label_color"))
 
+    @_every_scheme("titles")
     def test_the_box_is_the_schemes_legend_colours(self, scheme, mode):
         lg = _legend(_page(scheme, "titles", mode).fig)
         assert _hex(lg.background_fill_color) == \
@@ -724,6 +776,7 @@ class TestTheLegend:
         assert _hex(lg.border_line_color) == \
             _hex(_truth(scheme, "legend_border_color"))
 
+    @_every_scheme("legend_pos9")
     def test_an_explicit_position_and_cols_still_win(self, scheme, mode):
         fig = _page(scheme, "legend_pos9", mode).fig
         lg = _legend(fig)
@@ -758,7 +811,6 @@ class TestNamedLegendPlacements:
 # (viii) the KPI card
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestTheKpiCard:
     """The KPI card is Stata's legend box: ``color legend`` fills it,
@@ -768,12 +820,14 @@ class TestTheKpiCard:
     ``<style>`` never reaches it); an explicit bgcolor() is inline and
     beats the rule."""
 
+    @_every_scheme("kpi")
     def test_no_inline_background_without_bgcolor(self, scheme, mode):
         card = _card(_page(scheme, "kpi", mode).kpis["k1"])
         assert card["class"] == "db-kpi-card"
         assert not card["inline_background"], (
             f"{scheme}/{mode}: inline {card['style']!r}")
 
+    @_every_scheme("kpi")
     def test_the_stylesheet_carries_the_legend_colours(self, scheme, mode):
         card = _card(_page(scheme, "kpi", mode).kpis["k1"])
         rule = _rule(card["css"], ".db-kpi-card")
@@ -783,10 +837,12 @@ class TestTheKpiCard:
         assert re.search(r"background-color:\s*" + re.escape(lbg), rule), rule
         assert re.search(r"border:\s*1px solid " + re.escape(lbc), rule), rule
 
+    @_every_scheme("kpi")
     def test_the_value_is_the_schemes_text_colour(self, scheme, mode):
         card = _card(_page(scheme, "kpi", mode).kpis["k1"])
         assert _hex(card["value_color"]) == _hex(_truth(scheme, "text_color"))
 
+    @_every_scheme("kpi_bg")
     def test_an_explicit_bgcolor_is_still_inline(self, scheme, mode):
         card = _card(_page(scheme, "kpi_bg", mode).kpis["k1"])
         assert card["class"] == "db-kpi-card"
@@ -810,9 +866,9 @@ class TestAC163TheEconomistCardIsTheEconomistLegendBox:
 # (ix) xlabel(, grid) under a gridless scheme
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
 @pytest.mark.parametrize("mode", MODES)
 class TestXlabelGridUsesTheSchemesGridColour:
+    @_every_scheme("xgrid")
     def test_the_grid_the_option_turns_on_is_the_schemes(self, scheme, mode):
         fig = _page(scheme, "xgrid", mode).fig
         want = _hex(_truth(scheme, "grid_color"))
@@ -846,15 +902,18 @@ class TestTheUnitFunctions:
     def test_the_two_corrected_gsize_keywords(self, name, want):
         assert dr.SchemeParser._GSIZE_PT[name] == want
 
-    @pytest.mark.parametrize("raw,want", [("1.2", 6.0), ("0.30", 1.5),
-                                          ("3.5", 17.5)])
+    # Flipped (WP-30 P1.12b): a number is Stata units, 3.84 px each (was
+    # 5 px on dash's private scale); the name is kept.
+    @pytest.mark.parametrize("raw,want", [("1.2", 4.608), ("0.30", 1.152),
+                                          ("3.5", 13.44)])
     def test_a_numeric_linewidth_is_5px_per_stata_unit(self, sp, raw, want):
         sp._props["linewidth k"] = raw
         assert sp._lwidth("linewidth k") == pytest.approx(want)
 
     def test_medium_keyword_still_anchors_at_1_5(self, sp):
         sp._props["linewidth k"] = "medium"
-        assert sp._lwidth("linewidth k") == pytest.approx(1.5)
+        # Flipped (WP-30 P1.12b): medium is .30 x 3.84 = 1.152 px.
+        assert sp._lwidth("linewidth k") == pytest.approx(1.152)
 
     def test_the_symbolsize_ladder_is_statas(self):
         want = {"zero": 0, "vtiny": 0.29, "tiny": 1.0, "vsmall": 1.5,
@@ -868,9 +927,10 @@ class TestTheUnitFunctions:
         assert dr.SchemeParser._MARKER_PX_ANCHOR_PT == pytest.approx(4.4)
 
     @pytest.mark.parametrize("kw,px", [
-        ("medium", 8.0), ("small", 8.0 * 3.0 / 4.4),
-        ("large", 8.0 * 7.0 / 4.4), ("3.0", 8.0 * 3.0 * 2.88 / 4.4)])
-    def test_markersize_px_anchors_medium_at_8px(self, sp, kw, px):
+        # WP-30 P1.12a: Stata's symbolsize values x 2.88pt x 4/3 px per pt.
+        ("medium", 1.52778 * 2.88 * 4 / 3), ("small", 1.04166 * 2.88 * 4 / 3),
+        ("large", 2.4306 * 2.88 * 4 / 3), ("3.0", 3.0 * 2.88 * 4 / 3)])
+    def test_markersize_px_anchors_medium_at_4_4pt(self, sp, kw, px):
         assert sp._markersize_px(kw) == pytest.approx(px, abs=1e-6)
 
 
@@ -878,17 +938,23 @@ class TestTheUnitFunctions:
 # (xii) both modes agree on every value above
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("scheme", _grouped(SCHEMES, "scheme"))
-@pytest.mark.parametrize("case", CASES)
+@pytest.mark.parametrize("case", _grouped(CASES, "rendered"))
 class TestBothModesAgree:
-    def test_same_profile(self, scheme, case):
-        std = _profile(_page(scheme, case, "standalone"))
-        srv = _profile(_page(scheme, case, "served"))
-        diffs = tp._diff(std, srv)
-        assert not diffs, tp._explain(f"{scheme}/{case}", "profiles", diffs)
+    """Every scheme, one subtest each, per case."""
 
-    def test_the_profile_is_not_empty(self, scheme, case):
-        p = _profile(_page(scheme, case, "standalone"))
-        assert p["figures"] and p["figures"][0]["glyphs"]
-        if case.startswith("kpi"):
-            assert "k1" in p["kpis"]
+    def test_same_profile(self, case, subtests):
+        for scheme in SCHEMES:
+            with subtests.test(scheme=scheme):
+                std = _profile(_page(scheme, case, "standalone"))
+                srv = _profile(_page(scheme, case, "served"))
+                diffs = tp._diff(std, srv)
+                assert not diffs, tp._explain(f"{scheme}/{case}",
+                                              "profiles", diffs)
+
+    def test_the_profile_is_not_empty(self, case, subtests):
+        for scheme in SCHEMES:
+            with subtests.test(scheme=scheme):
+                p = _profile(_page(scheme, case, "standalone"))
+                assert p["figures"] and p["figures"][0]["glyphs"]
+                if case.startswith("kpi"):
+                    assert "k1" in p["kpis"]

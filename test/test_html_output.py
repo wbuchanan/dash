@@ -293,25 +293,71 @@ def _figure_models(html: str, attr: str) -> list:
     return out
 
 
+def _page_inner(html, spec, data, attr):
+    """WP-30 P1.3a: the inner hull of the page's *attr* Range1d -- its ends
+    less twoway's plot-region margin, the frame fraction
+    ``_dash_plot_margin`` gives the page's scheme (a page read back has no
+    ``_dash_margin_f``) -- and that axis's FixedTicker ticks."""
+    sp = tempfile.mkstemp(suffix=".json")
+    dp = tempfile.mkstemp(suffix=".json")
+    try:
+        with os.fdopen(sp[0], "w") as f:
+            json.dump(spec, f)
+        with os.fdopen(dp[0], "w") as f:
+            json.dump(data, f)
+        scheme = DashRenderer(sp[1], dp[1]).scheme
+    finally:
+        os.unlink(sp[1])
+        os.unlink(dp[1])
+    go = spec["graphs"][0]["graph_options"]
+    f = dash_render._dash_plot_margin(scheme, go)[attr[0]]
+    (name, attrs), = _figure_models(html, attr)
+    rng = bkm.Range1d(start=float(attrs.get("start", 0.0)),
+                      end=float(attrs.get("end")))
+    return name, dash_render._dash_range_hull(rng, margin=f)
+
+
 def _figure_titles(html: str) -> list:
     """Each figure's title text, in order; None where it has none."""
     return [attrs.get("text") for _name, attrs
             in _figure_models(html, "title")]
 
 
-def _grid_cells(html: str) -> list:
-    """``(title, row, column)`` of each figure a GridPlot in the page's
-    document places, in order: where each panel is drawn."""
+def _panel_labels(html: str) -> list:
+    """Each figure's by() panel label (its Title named dash_by_label), in
+    order; None where it has none (WP-30 P1.15a: the label is a row of its
+    own, no longer the title)."""
     byid = _doc_models(html)
+    out = []
+    for fig in [m for m in byid.values() if m["name"] == "Figure"]:
+        found = None
+        for ref in fig.get("attributes", {}).get("above", []) or []:
+            mod = byid.get(ref.get("id"), {}) if isinstance(ref, dict) else {}
+            at = mod.get("attributes", {})
+            if mod.get("name") == "Title" and at.get("name") == "dash_by_label":
+                found = at.get("text")
+        out.append(found)
+    return out
+
+
+def _panel_cells(html: str) -> list:
+    """``(label, row, column)`` of each by() panel the page's GridPlot
+    places, rows counted from the first panel row: the grid's chrome
+    cells (bare Plots holding the overall text) are not panels."""
+    byid = _doc_models(html)
+    labels = dict(zip([i for i, m in byid.items() if m["name"] == "Figure"],
+                      _panel_labels(html)))
     out = []
     for grid in [m for m in byid.values() if m["name"] == "GridPlot"]:
         for child in grid.get("attributes", {}).get("children", []):
-            fig = byid.get(child[0].get("id"), {})
-            if fig.get("name") == "Figure":
-                title = byid.get(fig.get("attributes", {}).get(
-                    "title", {}).get("id"), {}).get("attributes", {})
-                out.append((title.get("text"), child[1], child[2]))
-    return out
+            fid = child[0].get("id")
+            if byid.get(fid, {}).get("name") == "Figure":
+                out.append((labels.get(fid), child[1], child[2]))
+    base = min((r for _, r, _ in out), default=0)
+    # WP-30 P1.15c: the y-axis title's column sits left of the panels, so
+    # columns are counted from the first panel column too.
+    cbase = min((c for _, _, c in out), default=0)
+    return [(t, r - base, c - cbase) for t, r, c in out]
 
 
 def _text_homes(html: str, needle: str) -> list:
@@ -1003,8 +1049,10 @@ class TestGraphOptionsInHtml:
         # FixedTicker tick values should be embedded in the model JSON --
         # read from the document: "FixedTicker" and "ticks" are words the
         # page's BokehJS carries whatever the axes do.
-        assert [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])] \
-            == [[2.0, 6.0, 10.0, 14.0, 18.0]], \
+        # WP-30 P1.3a: "the page's only FixedTicker" was wrong because the
+        # default y axis now carries natscale's FixedTicker too.
+        assert [2.0, 6.0, 10.0, 14.0, 18.0] in \
+            [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])], \
             "xlabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_ylabel_tick_values_in_html(self):
@@ -1012,23 +1060,30 @@ class TestGraphOptionsInHtml:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["ylabel"] = "5 10 15 20"
         html = _render_to_html(spec, data)
-        assert [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])] \
-            == [[5.0, 10.0, 15.0, 20.0]], \
+        # WP-30 P1.3a: the default x axis carries a FixedTicker too.
+        assert [5.0, 10.0, 15.0, 20.0] in \
+            [t.get("ticks") for t in _page_models(html).get("FixedTicker", [])], \
             "ylabel() must embed FixedTicker (with ticks) in model JSON"
 
     def test_xlabel_labeled_ticks_in_html(self):
-        """xlabel() with labeled ticks must embed CustomJSTickFormatter in model JSON."""
+        """xlabel() with labeled ticks must embed CustomJSTickFormatter in model JSON.
+
+        Flipped (WP-30 P1.5): "exactly one CustomJSTickFormatter" was wrong
+        once every numeric axis carries Stata's writer, because the y axis
+        now has one too; the x axis's is the one holding the labels."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["xlabel"] = '1 "Low" 10 "Mid" 20 "High"'
         html = _render_to_html(spec, data)
         models = _page_models(html)
-        fmts = models.get("CustomJSTickFormatter", [])
+        fmts = [f for f in models.get("CustomJSTickFormatter", [])
+                if "labels" in dict(f["args"]["entries"])]
         assert len(fmts) == 1, \
             "xlabel labeled ticks must produce CustomJSTickFormatter in model JSON"
         labels = json.loads(dict(fmts[0]["args"]["entries"])["labels"])
         assert labels == {"1.0": "Low", "10.0": "Mid", "20.0": "High"}, labels
-        assert [t.get("ticks") for t in models.get("FixedTicker", [])] == \
-            [[1.0, 10.0, 20.0]]
+        # WP-30 P1.3a: the default y axis carries a FixedTicker too.
+        assert [1.0, 10.0, 20.0] in \
+            [t.get("ticks") for t in models.get("FixedTicker", [])]
 
     def test_title_xss_not_in_html_unescaped(self):
         """XSS payload in title does not appear as a raw <script> tag in output."""
@@ -1087,12 +1142,13 @@ class TestPlotOptionsInHtml:
         assert "#ff00ff" in html, "lcolor(magenta) should produce #ff00ff in Bokeh JSON"
 
     def test_fcolor_maroon_appears_in_area_html(self):
-        """fcolor(maroon) produces #90353b in area HTML Bokeh JSON."""
+        """fcolor(maroon) is filled at the area's intensity: #a65d62 in the
+        area HTML Bokeh JSON (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec, data = _single_graph_spec(
             "area", {"yvar": "y", "xvar": "x"}, options={"fcolor": "maroon"}
         )
         html = _render_to_html(spec, data)
-        assert "#90353b" in html, "fcolor(maroon) should produce #90353b in Bokeh JSON"
+        assert "#a65d62" in html, "fcolor(maroon) should produce #a65d62 in Bokeh JSON"
 
     def test_fcolor_in_bar_html(self):
         """fcolor(forest_green) in bar produces Stata's #55752f in HTML.
@@ -1100,13 +1156,14 @@ class TestPlotOptionsInHtml:
         This asserted #538d22, which is not a colour Stata has.  Stata's
         own style/color-forest_green.style sets rgb "85 117 47" = #55752f;
         52 of the 92 named colours disagreed with their style files the same
-        way.  See test_color_fidelity.py.
+        way.  See test_color_fidelity.py.  The bar fills it at its intensity,
+        inten80: #779159 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
         """
         spec, data = _single_graph_spec(
             "bar", {"yvar": "y", "xvar": "x"}, options={"fcolor": "forest_green"}
         )
         html = _render_to_html(spec, data)
-        assert "#55752f" in html, "fcolor(forest_green) should produce #55752f"
+        assert "#779159" in html, "fcolor(forest_green) should fill #779159"
 
     def test_combined_mcolor_and_lcolor_in_scatter_html(self):
         """mcolor() and lcolor() together on a scatter: the markers are
@@ -1318,7 +1375,8 @@ class TestColorRenderingAllPlotTypes:
     def test_rbar_fcolor_in_html(self):
         html = self._html("rbar",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "fcolor")
-        assert self._HEX in html, "rbar fcolor(magenta) must embed #ff00ff in model JSON"
+        # Filled at rbar's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert "#ff33ff" in html, "rbar fcolor(magenta) must embed #ff33ff in model JSON"
 
     def test_histogram_fcolor_in_html(self):
         html = self._html("histogram", {"var": "y"}, "fcolor")
@@ -1335,7 +1393,8 @@ class TestColorRenderingAllPlotTypes:
     def test_rarea_fcolor_in_html(self):
         html = self._html("rarea",
                           {"yvar1": "lo", "yvar2": "hi", "xvar": "x"}, "fcolor")
-        assert self._HEX in html, "rarea fcolor(magenta) must embed #ff00ff in model JSON"
+        # Filled at rarea's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
+        assert "#ff33ff" in html, "rarea fcolor(magenta) must embed #ff33ff in model JSON"
 
 
 # ================================================================
@@ -1349,34 +1408,37 @@ class TestAdversarialPlotOptions:
     # marker, and a raised cap, passed.  Each refusal is also named.
 
     def test_injection_in_mcolor_produces_valid_html(self):
-        """Injection attempt in mcolor is rejected; render uses default color."""
+        """Injection attempt in mcolor is rejected; it is drawn black, as
+        twoway draws an unknown colour (Flipped, WP-30 P1.13a: the scheme's
+        p1 was drawn)."""
         spec, data = _single_graph_spec(
             "scatter", {"yvar": "y", "xvar": "x"},
             options={"mcolor": "'; import os; os.system('id')"},
         )
         with pytest.warns(UserWarning, match=re.escape(
                 "mcolor('; import os; os.system('id')) is not a recognised "
-                "colour; using the scheme's default")):
+                "colour; using black")):
             html = _render_to_html(spec, data)
-        # The scheme's first series colour, fill and outline.
+        # Black, fill and outline.
         pts = _only_layer(html, "Scatter")
         assert _values(pts, "fill_color") == _values(pts, "line_color") \
-            == ["#1a476f"] * 20
+            == ["#000000"] * 20
         # Injected string must NOT appear literally in output HTML
         assert "os.system" not in html
 
     def test_injection_in_lcolor_produces_valid_html(self):
-        """Injection attempt in lcolor is rejected; render uses default color."""
+        """Injection attempt in lcolor is rejected; it is drawn black, as
+        twoway draws an unknown colour (Flipped, WP-30 P1.13a)."""
         spec, data = _single_graph_spec(
             "line", {"yvar": "y", "xvar": "x"},
             options={"lcolor": "__import__('os').system('id')"},
         )
         with pytest.warns(UserWarning, match=re.escape(
                 "lcolor(__import__('os').system('id')) is not a recognised "
-                "colour; using the scheme's default")):
+                "colour; using black")):
             html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Line"), "line_color") \
-            == ["#1a476f"] * 20
+            == ["#000000"] * 20
 
     def test_invalid_msymbol_falls_back_to_default(self):
         """Invalid msymbol value falls back to default circle marker."""
@@ -1450,8 +1512,10 @@ class TestAdversarialPlotOptions:
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["note"] = "<script>alert('xss')</script>"
         html = _render_to_html(spec, data)
-        # The note is a Label -- canvas text -- and live markup nowhere.
-        _assert_drawn_as_text(html, "<script>alert('xss')</script>", "Label")
+        # The note is a Title -- canvas text -- and live markup nowhere.
+        # Flipped (WP-30 P1.2a): "Label" was wrong because twoway places
+        # note() by the scheme's clock, which S15 draws as a side-panel Title.
+        _assert_drawn_as_text(html, "<script>alert('xss')</script>", "Title")
 
 
 # ================================================================
@@ -1542,6 +1606,10 @@ class TestBgcolorPlotbgcolor:
         """bgcolor(#aabbcc) sets border_fill_color; sentinel hex must appear in Bokeh JSON."""
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
         spec["graphs"][0]["graph_options"]["bgcolor"] = "#aabbcc"
+        # Flipped (WP-30 P1.20a): a lone bgcolor() on the border was wrong
+        # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); graphregion(color(none))
+        # lets the canvas show.
+        spec["graphs"][0]["graph_options"]["graphregion"] = "color(none)"
         html = _render_to_html(spec, data)
         assert "#aabbcc" in html.lower(), \
             "bgcolor(#aabbcc) must appear as border_fill_color in Bokeh model JSON"
@@ -1564,6 +1632,10 @@ class TestBgcolorPlotbgcolor:
         border is not navy without the option.
         """
         spec, data = _single_graph_spec("scatter", {"yvar": "y", "xvar": "x"})
+        # Flipped (WP-30 P1.20a): a lone bgcolor() on the border was wrong
+        # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); graphregion(color(none))
+        # lets the canvas show, in the control too.
+        spec["graphs"][0]["graph_options"]["graphregion"] = "color(none)"
         before = _figure_colors(_render_to_html(spec, data),
                                 "border_fill_color")
         spec["graphs"][0]["graph_options"]["bgcolor"] = "navy"
@@ -1622,16 +1694,13 @@ class TestXrangeYrange:
         # WP-28 B2: range() widens to include -37 and 99 and never narrows;
         # the Range1d is that hull padded 5% a side (this pinned exactly
         # (-37, 99)).
-        got = [(name, attrs.get("start", bkm.Range1d().start),
-                attrs.get("end"))
-               for name, attrs in _figure_models(html, "x_range")]
-        assert [g[0] for g in got] == ["Range1d"]
-        start, end = float(got[0][1]), float(got[0][2])
-        assert start < -37.0 and end > 99.0
-        assert dash_render._dash_range_hull(bkm.Range1d(start=start, end=end)) \
-            == pytest.approx((-37.0, 99.0))
-        assert [name for name, _a in _figure_models(html, "y_range")] \
-            == ["DataRange1d"]
+        # WP-30 P1.3a: the hull padded 5% (and a DataRange1d on y) was
+        # wrong because every axis spans its hull and natscale ticks plus
+        # twoway's plot-region margin: -37 and 99 reach -50(50)100's ends.
+        name, (lo, hi) = _page_inner(html, spec, data, "x_range")
+        assert name == "Range1d"
+        assert (lo, hi) == pytest.approx((-50.0, 100.0))
+        assert _page_inner(html, spec, data, "y_range")[0] == "Range1d"
 
     def test_yrange_embeds_unique_end_value(self):
         """yrange(0 9999) must embed 9999 in model JSON (unique sentinel not in data)."""
@@ -1645,16 +1714,12 @@ class TestXrangeYrange:
         # WP-28 B2: the hull of 0, 9999 and the data, padded 5% a side
         # (this pinned exactly (0, 9999)); the padded start is never 0,
         # so the document writes it.
-        got = [(name, attrs.get("start", bkm.Range1d().start),
-                attrs.get("end"))
-               for name, attrs in _figure_models(html, "y_range")]
-        assert [g[0] for g in got] == ["Range1d"]
-        start, end = float(got[0][1]), float(got[0][2])
-        assert start < 0.0 and end > 9999.0
-        assert dash_render._dash_range_hull(bkm.Range1d(start=start, end=end)) \
-            == pytest.approx((0.0, 9999.0))
-        assert [name for name, _a in _figure_models(html, "x_range")] \
-            == ["DataRange1d"]
+        # WP-30 P1.3a: natscale ticks 0(2000)10000 reach past 9999 and the
+        # margin is twoway's (was 5%; the x axis was a DataRange1d).
+        name, (lo, hi) = _page_inner(html, spec, data, "y_range")
+        assert name == "Range1d"
+        assert (lo, hi) == pytest.approx((0.0, 10000.0), abs=1e-6)
+        assert _page_inner(html, spec, data, "x_range")[0] == "Range1d"
 
     def test_xrange_invalid_ignores_gracefully(self):
         """xrange with non-numeric values must not crash -- renders normally.
@@ -1669,8 +1734,10 @@ class TestXrangeYrange:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             html = _render_to_html(spec, data)
+        # WP-30 P1.3a: a Range1d over the data and its ticks (was a
+        # DataRange1d); the bad value changes nothing.
         assert [name for name, _a in _figure_models(html, "x_range")] \
-            == ["DataRange1d"]
+            == ["Range1d"]
         # Named once (WP-28 B2): an unhonoured value is named, Q22.
         assert [str(w.message) for w in caught
                 if "range()" in str(w.message)] == [
@@ -1688,8 +1755,9 @@ class TestXrangeYrange:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             html = _render_to_html(spec, data)
+        # WP-30 P1.3a: a Range1d over the data and its ticks.
         assert [name for name, _a in _figure_models(html, "y_range")] \
-            == ["DataRange1d"]
+            == ["Range1d"]
         assert [str(w.message) for w in caught
                 if "range()" in str(w.message)] == [
             "dash: yscale(range()) ignores bad, which is not a number"]
@@ -1836,7 +1904,9 @@ class TestOutputBackendAndVisualMarkers:
         assert _values(bars, "top") == pytest.approx(dens.tolist())
         assert _values(bars, "left") == pytest.approx(edges[:-1].tolist())
         assert _values(bars, "right") == pytest.approx(edges[1:].tolist())
-        assert _values(bars, "fill_color") == ["#1a476f"] * 4
+        # The scheme's histogram style, s2color's khaki (WP-30 P1.4a).
+        # Flipped: #1a476f was the bar p# cycle twoway's histogram ignores.
+        assert _values(bars, "fill_color") == ["#cac27e"] * 4
 
     def test_all_plot_types_produce_renderers_in_json(self):
         """Every basic plot type must produce a non-empty 'renderers' array in model JSON."""
@@ -1860,10 +1930,13 @@ class TestOutputBackendAndVisualMarkers:
         )
         html = _render_to_html(spec, data)
         band = _only_layer(html, "VArea")
-        # The band's own fill: the scheme's first series colour at the 0.5
-        # alpha map_rarea gives it (the renderer's value, pinned here).
-        assert _values(band, "fill_color") == ["#1a476f"] * 20
-        assert _values(band, "fill_alpha") == [0.5] * 20
+        # The band's own fill: the scheme's first series colour at its
+        # p1area intensity, #486c8c (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3), opaque by area's rule: twoway's
+        # rarea is drawn as area is (WP-30 P1.4a).  Flipped: the 0.5 pinned
+        # here was dash's own, which twoway never draws.
+        assert _values(band, "fill_color") == ["#486c8c"] * 20
+        # Opaque is Bokeh's own default, which the page then omits.
+        assert _values(band, "fill_alpha", 1.0) == [1.0] * 20
 
 
 class TestWebglBackendLargeData:
@@ -1914,9 +1987,10 @@ class TestBokehJsBundleInHtml:
     "bokeh" and "<script" were looked for in the page text, where the
     page's own embed script spells both: a page that fetched BokehJS from
     Bokeh's CDN passed (measured 24sep2026) -- a script the page's own
-    Content-Security-Policy, script-src 'unsafe-inline' 'unsafe-eval' and
-    no source, does not allow.  And 'application/json' is a string
-    BokehJS itself carries.
+    Content-Security-Policy does not allow: it names the page's own
+    scripts by hash and no source (WP-30 P1.29), so a CDN script is not
+    allowed.  And 'application/json' is a string BokehJS itself
+    carries.
     """
 
     def test_html_contains_bokeh_script_reference(self):
@@ -2061,15 +2135,16 @@ class TestNewOptionHtml:
         assert _values(band, "y2") == [float(i) for i in range(1, 21)]
 
     def test_bfcolor_bar_fill_in_html(self):
-        """bar with bfcolor(red) must embed #ff0000 as fill_color in Bokeh JSON."""
+        """bar with bfcolor(red) embeds red at the bar's intensity, #ff3333,
+        as fill_color in Bokeh JSON (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         spec, data = _single_graph_spec(
             "bar",
             extra_keys={"yvar": "y", "xvar": "x"},
             options={"bfcolor": "red"},
         )
         html = _render_to_html(spec, data)
-        assert "#ff0000" in html, \
-            "bfcolor(red) must embed #ff0000 as fill_color in bar glyph model"
+        assert "#ff3333" in html, \
+            "bfcolor(red) must embed #ff3333 as fill_color in bar glyph model"
 
     def test_blcolor_bar_line_in_html(self):
         """bar with blcolor(magenta) must embed #ff00ff as line_color in
@@ -2104,12 +2179,14 @@ class TestLineWidthPatternHtml:
             options={"lwidth": "thick"},
         )
         html = _render_to_html(spec, data)
-        # thick is 2.5, where the scheme draws the same line 1.5 wide.
+        # thick is .8 Stata units, 3.072 px, where the scheme draws the same
+        # line at medium, 1.152 px (WP-30 P1.12b; dash's private ladder had
+        # 2.5 and 1.5).
         assert _values(_only_layer(html, "Line"), "line_width") \
-            == [2.5] * 20, "lwidth(thick)=2.5 must be the line's width"
+            == pytest.approx([3.072] * 20), "lwidth(thick) must be the line's width"
         spec["graphs"][0]["plots"][0]["options"] = {}
         assert _values(_only_layer(_render_to_html(spec, data), "Line"),
-                       "line_width") == [1.5] * 20
+                       "line_width") == pytest.approx([1.152] * 20)
 
     def test_lpattern_dash_in_line_html(self):
         """line with lpattern(dash) must have line_dash in Bokeh model JSON."""
@@ -2124,7 +2201,8 @@ class TestLineWidthPatternHtml:
             "lpattern(dash) must dash the line"
 
     def test_lwidth_applied_to_spike(self):
-        """spike with lwidth(vthick) must embed line_width=3.5 in Bokeh JSON."""
+        """spike with lwidth(vthick) must embed line_width=5.376 in Bokeh JSON
+        (1.4 Stata units; 3.5 on dash's private ladder, WP-30 P1.12b)."""
         spec, data = _single_graph_spec(
             "spike",
             extra_keys={"yvar": "y", "xvar": "x"},
@@ -2132,10 +2210,11 @@ class TestLineWidthPatternHtml:
         )
         html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Segment"), "line_width") \
-            == [3.5] * 20, "lwidth(vthick)=3.5 must be the spikes' width"
+            == pytest.approx([5.376] * 20), "lwidth(vthick) must be the spikes' width"
 
     def test_lwidth_applied_to_bar(self):
-        """bar with lwidth(thick) must embed line_width=2.5 in Bokeh JSON."""
+        """bar with lwidth(thick) must embed line_width=3.072 in Bokeh JSON
+        (WP-30 P1.12b; 2.5 on dash's private ladder)."""
         spec, data = _single_graph_spec(
             "bar",
             extra_keys={"yvar": "y", "xvar": "x"},
@@ -2143,10 +2222,11 @@ class TestLineWidthPatternHtml:
         )
         html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "VBar"), "line_width") \
-            == [2.5] * 20, "lwidth(thick)=2.5 must be the bars' outline width"
+            == pytest.approx([3.072] * 20), "lwidth(thick) must be the bars' outline width"
 
     def test_lwidth_applied_to_histogram(self):
-        """histogram with lwidth(thick) must embed line_width=2.5 in Bokeh JSON."""
+        """histogram with lwidth(thick) must embed line_width=3.072 in Bokeh
+        JSON (WP-30 P1.12b; 2.5 on dash's private ladder)."""
         spec, data = _single_graph_spec(
             "histogram",
             extra_keys={"yvar": "y"},
@@ -2154,7 +2234,7 @@ class TestLineWidthPatternHtml:
         )
         html = _render_to_html(spec, data)
         assert _values(_only_layer(html, "Quad"), "line_width") \
-            == [2.5] * 4, "lwidth(thick)=2.5 must be the bins' outline width"
+            == pytest.approx([3.072] * 4), "lwidth(thick) must be the bins' outline width"
 
     def test_lpattern_applied_to_histogram(self):
         """histogram with lpattern(dash) must have line_dash in Bokeh JSON."""
@@ -2293,7 +2373,9 @@ class TestByFacetingHtmlOutput:
         # group's ten -- read from the document.  "Total" in the page text
         # found the title alone (the one copy on the page, measured
         # 24sep2026), so a Total panel drawing one group's rows passed.
-        assert _figure_titles(html) == ["Group A", "Group B", "Total"], \
+        # Flipped (WP-30 P1.15a): read the titles, which held the label;
+        # the label is a row of its own, as twoway draws it.
+        assert _panel_labels(html) == ["Group A", "Group B", "Total"], \
             "Total facet label not found in HTML"
         layers = _figure_layers(html)
         assert [[(layer["glyph"], layer["rows"]) for layer in fig]
@@ -2342,8 +2424,9 @@ class TestByFacetingHtmlOutput:
         spec, data = _by_facet_spec("grp")
         spec["build_options"]["link"] = "fig1"  # match the graph name
         html = _render_to_html(spec, data)
-        # Both panels, each drawing its group.
-        assert _figure_titles(html) == ["Group A", "Group B"]
+        # Both panels, each drawing its group.  Flipped (WP-30 P1.15a):
+        # the group is the panel's label row, no longer its title.
+        assert _panel_labels(html) == ["Group A", "Group B"]
         assert [[(layer["glyph"], layer["rows"]) for layer in fig]
                 for fig in _figure_layers(html)] \
             == [[("Scatter", 10)], [("Scatter", 10)]], \
@@ -2355,12 +2438,13 @@ class TestByFacetingHtmlOutput:
         # Set by with cols suboption in the raw string
         spec["graphs"][0]["graph_options"]["by"] = "grp, cols(1)"
         html = _render_to_html(spec, data)
-        # cols(1) stacks the two panels in one column...
-        assert _grid_cells(html) == [("Group A", 0, 0), ("Group B", 1, 0)]
+        # cols(1) stacks the two panels in one column...  Flipped (WP-30
+        # P1.15a): panels by their label row, chrome cells left out.
+        assert _panel_cells(html) == [("Group A", 0, 0), ("Group B", 1, 0)]
         assert _figure_glyphs(html) == [["Scatter"], ["Scatter"]]
         # ...where by(grp) alone sets them side by side.
         spec["graphs"][0]["graph_options"]["by"] = "grp"
-        assert _grid_cells(_render_to_html(spec, data)) \
+        assert _panel_cells(_render_to_html(spec, data)) \
             == [("Group A", 0, 0), ("Group B", 0, 1)]
 
 

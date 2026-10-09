@@ -41,7 +41,11 @@ sys.path.insert(0, _HERE)
 import dash_render
 from dash_render import DashRenderer, SchemeParser
 
-from conftest import make_spec, make_data_json
+from conftest import make_spec, make_data_json, exec_app
+from test_scheme_resolution import each  # noqa: E402
+
+
+from conftest import render_models  # noqa: E402
 
 
 def _df(n=30):
@@ -293,7 +297,9 @@ class TestPerSeriesStyleCycle:
         if key == "marker":
             assert str(g.marker) == "diamond"
         else:
-            assert float(g.size) == pytest.approx(12.0)
+            # WP-30 P1.12a: msize(12) is 12 Stata units, 3.84px each
+            # (twoway's relative unit; was read as 12 px).
+            assert float(g.size) == pytest.approx(46.08)
 
 
 # ======================================================================
@@ -383,7 +389,7 @@ class TestSchemeSelection:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -456,7 +462,7 @@ class TestSchemeSelection:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -478,7 +484,7 @@ class TestSchemeSelection:
         with open(dp, "w") as f:
             json.dump(make_data_json(_df()), f)
         dr = DashRenderer(sp, dp, op)
-        dr.render()
+        render_models(dr)
         for p in (sp, dp, op):
             try:
                 os.unlink(p)
@@ -540,12 +546,13 @@ class TestNoParsedKeyIsDiscarded:
 
     def test_a_schemes_area_intensity_and_minor_grid_reach_both_modes(
             self, tmp_path, monkeypatch):
-        """`intensity area' and `color minor_grid' reach the figure, in both
-        modes.  They were checked only by counting `.area_alpha' and
-        `.minor_grid_color' in dash_render.py's text (below), because no
-        shipped scheme can show either: every one says `intensity area
-        full', which is Bokeh's own default, and none draws a minor grid.
-        So a scheme written here says otherwise (WP-24)."""
+        """`color minor_grid' reaches the figure, in both modes, and
+        `intensity area' -- graph bar's key, which twoway's area ignores
+        (measured: a scheme with `intensity area inten40' draws the area
+        #486C8C, opaque) -- changes nothing: the area is s2color's p1 at its
+        p1area intensity, #486c8c, at 1.0 (WP-30 P1.2b; twoway's SVG, plan
+        section 16 Evidence E3).  No shipped scheme draws a minor grid, so
+        a scheme written here says otherwise (WP-24)."""
         import warnings
         from bokeh.document import Document
         from bokeh.models import GlyphRenderer, Plot
@@ -566,7 +573,7 @@ class TestNoParsedKeyIsDiscarded:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr = DashRenderer(sp, dp)
-            dr.render()
+            render_models(dr)
             dash_render.ServerAppBuilder(sp, dp).build(ap)
         with open(ap, encoding="utf-8") as fh:
             src = fh.read()
@@ -575,8 +582,7 @@ class TestNoParsedKeyIsDiscarded:
         ns = {"__name__": "_wp24_scheme_app"}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            exec(compile(src.replace(attach, "pass"), "_wp24_scheme_app.py",
-                         "exec"), ns)
+            exec_app(src.replace(attach, "pass"), "_wp24_scheme_app.py", ns)
             doc = Document()
             ns["make_document"](doc)
         served = [f for root in doc.roots for f in root.select({"type": Plot})]
@@ -585,20 +591,29 @@ class TestNoParsedKeyIsDiscarded:
             areas = [r.glyph for r in fig.renderers
                      if isinstance(r, GlyphRenderer)
                      and type(r.glyph).__name__ == "VArea"]
-            assert [a.fill_alpha for a in areas] == [0.4], (mode, areas)
+            assert [a.fill_alpha for a in areas] == [1.0], (mode, areas)
+            assert [str(a.fill_color).lower() for a in areas] == \
+                ["#486c8c"], (mode, areas)
             # draw_minor_hgrid is the HORIZONTAL axis's grid: the x grid.
             assert [str(g.minor_grid_line_color) for g in fig.xgrid] == \
                 ["#ff0000"], (mode, [g.minor_grid_line_color for g in fig.xgrid])
             assert [g.minor_grid_line_color for g in fig.ygrid] == [None], mode
 
     @pytest.mark.parametrize("attr", [
-        "fill_alpha", "bar_alpha", "area_alpha", "minor_grid_color",
+        "fill_alpha", "minor_grid_color",
         "title_color", "heading_font_size",
         # The S3 batch's keys: the reference line's, the plot region
         # border's and note()'s text box.
         "xyline_color", "xyline_dash", "xyline_width",
         "plotregion_line_color", "plotregion_line_width",
         "note_text_font_size", "note_text_color", "note_box_fill_color",
+        # WP-30 P1.4a: the histogram style, the symbol traits and the
+        # marker outline cycle.
+        "histogram_color", "histogram_line_color", "histogram_intensity",
+        "histogram_line_width", "p_symbol_hollow", "p_symbol_factor",
+        "p_markline_colors",
+        # WP-30 P1.4b: the marker-label style.
+        "p_label_colors", "p_label_alphas", "p_label_sizes",
     ])
     def test_the_key_is_read_somewhere(self, attr):
         """A parsed key with no consumer is a key that does nothing.
@@ -652,6 +667,20 @@ class TestNoParsedKeyIsDiscarded:
         assert all(v.get("size") != "gsize text" for v in boxes.values()
                    if isinstance(v, dict)), boxes
 
+    @pytest.mark.parametrize("attr", ["bar_alpha", "area_alpha"])
+    def test_graph_bars_intensity_keys_are_retired_because_twoway_ignores_them(
+            self, attr):
+        """`intensity bar' and `intensity area' are graph bar's keys.
+        twoway's bar and area ignore them: measured (StataNow 19.5, SVG,
+        03oct2026), a scheme of `#include s2color', `intensity bar inten40'
+        and `intensity area inten40' draws its bar and area #486C8C, s2color's
+        own, while `intensity p1bar inten40' and `intensity p1area inten40'
+        draw both #A3B5C5 (plan section 16 Evidence E3, register P1.2.8).
+        So SchemeParser no longer offers bar_alpha or area_alpha, as
+        `gsize text' was retired (WP-30 P1.2b)."""
+        assert not hasattr(SchemeParser("s2color"), attr)
+        assert _scheme_attr_reads(attr) == []
+
 
 # ======================================================================
 # The reference line, the plot region's border and note()'s text box,
@@ -691,7 +720,7 @@ def _both_modes(tmp_path, plots, scheme, gopts=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         dr = DashRenderer(sp, dp)
-        dr.render()
+        render_models(dr)
         dash_render.ServerAppBuilder(sp, dp).build(ap)
     with open(ap, encoding="utf-8") as fh:
         src = fh.read()
@@ -700,8 +729,7 @@ def _both_modes(tmp_path, plots, scheme, gopts=None):
     ns = {"__name__": "_s3_scheme_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(attach, "pass"), "_s3_scheme_app.py",
-                     "exec"), ns)
+        exec_app(src.replace(attach, "pass"), "_s3_scheme_app.py", ns)
         doc = Document()
         ns["make_document"](doc)
     served = [f for root in doc.roots for f in root.select({"type": Plot})]
@@ -716,9 +744,15 @@ def _spans(fig):
 
 
 def _labels(fig, text):
-    from bokeh.models import Label
+    """The text boxes reading *text*: a Label (economist's in-band note) or
+    a side-panel Title.  Flipped (WP-30 P1.2a): Labels only was wrong
+    because twoway places the boxes by the scheme's clock, which S15 draws
+    as side-panel Titles."""
+    from bokeh.models import Label, Title
     return [m for side in ("below", "above", "center", "left", "right")
-            for m in getattr(fig, side) if isinstance(m, Label)
+            for m in getattr(fig, side)
+            if (isinstance(m, Label) or (isinstance(m, Title)
+                                         and m is not fig.title))
             and m.text == text]
 
 
@@ -741,7 +775,7 @@ class TestTheReferenceLineIsTheSchemes:
         assert st.xyline_color == "#000000" and st.xyline_dash, (
             st.xyline_color, st.xyline_dash)
 
-    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    @each("name", _ALL_SCHEMES)
     def test_every_scheme_reads_what_stata_resolves(self, name):
         e = _SCHEME_TRUTH()[name]
         sp = SchemeParser(name)
@@ -797,7 +831,7 @@ class TestThePlotRegionBorderIsTheSchemes:
     (s2color `plotregion': `color plotregion_line' white; s1color
     `foreground': black; economist `areastyle twoway_plotregion none')."""
 
-    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    @each("name", _ALL_SCHEMES)
     def test_every_scheme_reads_what_stata_resolves(self, name):
         e = _SCHEME_TRUTH()[name]
         sp = SchemeParser(name)
@@ -836,7 +870,7 @@ class TestNoteIsDrawnInItsTextbox:
     fonts.note): 4.1660% of the height, medlarge, #FFFFFF; the box's fill
     is `color reverse_big', emidblue, read from scheme-economist.scheme."""
 
-    @pytest.mark.parametrize("name", _ALL_SCHEMES)
+    @each("name", _ALL_SCHEMES)
     def test_every_scheme_reads_what_stata_resolves(self, name):
         e = _SCHEME_TRUTH()[name]
         sp = SchemeParser(name)
@@ -1140,7 +1174,7 @@ class TestDirectivesOnlyAUserSchemeCarries:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             dr = DashRenderer(sp, dp)
-            dr.render()
+            render_models(dr)
         # A scheme that failed to resolve falls back to s2color, which is
         # what several of the expected values are.
         if dr.scheme.name != scheme or dr.scheme.is_fallback:
@@ -1477,6 +1511,11 @@ class TestAChildPHashReachesWhatStatasChainReaches:
 
     So Stata's chain p#stub -> pstub -> p# -> p decides, per scheme; the
     kept values are the scheme's own (#000000, or #606060 in s2gmanual).
+
+    Measured 03oct2026 over StataCorp's six internal schemes (WP-30 S07,
+    test_wp30_truth.cscript SX-05): every one follows the not-kept rows:
+    red markers, bars, connected and line, dashed; both symbols diamond;
+    both sizes 4.8611 (huge).
     """
 
     _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
@@ -1501,12 +1540,12 @@ class TestAChildPHashReachesWhatStatasChainReaches:
         return SchemeParser(name)
 
     def test_the_twenty_are_the_ones_measured(self):
-        assert len(self._SCHEMES) == 20
+        assert len(self._SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         kept = (set(self._CONNECT_COLOUR_KEPT) | self._CONNECT_PATTERN_KEPT
                 | set(self._LINEPLOT_KEPT))
         assert kept <= set(self._SCHEMES)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_what_a_child_p1_reaches(self, wd, scheme):
         red = self._parse(wd, "w26red_" + scheme, "#include %s\ncolor p1 red\n"
                           "linepattern p1 dash\n" % scheme)
@@ -1533,7 +1572,7 @@ class TestAChildPHashReachesWhatStatasChainReaches:
             assert red.default_color(1, kind) == inc.default_color(1, kind)
         assert red.default_connect_pattern(1) == inc.default_connect_pattern(1)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_draws_what_it_drew(self, scheme):
         """Carrying only the keys Stata declares changes nothing a shipped
         scheme draws: every cycle equals the fixture, which records Stata's
@@ -1543,12 +1582,18 @@ class TestAChildPHashReachesWhatStatasChainReaches:
             truth = json.load(fh)[scheme]
         sp = SchemeParser(scheme)
         for key in ("p_colors", "p_line_colors", "p_bar_colors",
-                    "p_mark_colors", "p_lineplot_colors"):
+                    "p_mark_colors", "p_markline_colors",
+                    "p_label_colors", "p_lineplot_colors"):
             assert [c.lower() for c in getattr(sp, key)] == [
                 c.lower() for c in truth[key]], key
             assert getattr(sp, key.replace("colors", "alphas")) == [
                 None if p is None else p / 100.0
                 for p in truth[key + "_opacity"]], key
+        # WP-30 P1.4b: the marker-label sizes, in points at Stata's 4-inch
+        # reference.
+        assert [dash_render.OptionTranslator.css_to_pt(s)
+                for s in sp.p_label_sizes] == [
+            d["pt_at_4in"] for d in truth["p_label_sizes"]]
         for key in ("p_line_patterns", "p_lineplot_patterns"):
             assert getattr(sp, key) == [
                 dash_render.OptionTranslator.translate_lpattern(p)
@@ -1711,7 +1756,12 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
 
     The shipped files wrote the fallback out, `symbol p1 circle' ..
     `symbol p15 circle', keys Stata's s2color does not write, so a bare
-    `symbol p diamond' reached no plot in the eleven."""
+    `symbol p diamond' reached no plot in the eleven.
+
+    Measured 03oct2026 over StataCorp's six internal schemes (WP-30 S07,
+    test_wp30_truth.cscript SX-05): every one follows the not-kept rows:
+    red markers, bars, connected and line, dashed; both symbols diamond;
+    both sizes 4.8611 (huge)."""
 
     _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
     _DECLARE_P_HASH = {"stmono1", "stmono2", "stsj", "s2mono", "s1mono",
@@ -1730,10 +1780,10 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
         return SchemeParser(name)
 
     def test_the_nine_are_a_subset_of_the_twenty(self):
-        assert len(self._SCHEMES) == 20
+        assert len(self._SCHEMES) == 26  # 20 -> 26: P1.25a ships the six StataCorp schemes
         assert self._DECLARE_P_HASH <= set(self._SCHEMES)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_bare_symbol_p(self, wd, scheme):
         sp = self._parse(wd, "b2sp_" + scheme,
                          "#include %s\nsymbol p diamond\n" % scheme)
@@ -1745,7 +1795,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
             assert inc.p_symbols == [self._CIRCLE] * 15
             assert sp.p_symbols == [self._DIAMOND] * 15
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_symbol_p_hash(self, wd, scheme):
         inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
         p1 = self._parse(wd, "b2sp1_" + scheme,
@@ -1758,7 +1808,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
         assert p2.p_symbols[0] == inc.p_symbols[0]
         assert p2.p_symbols[2:] == inc.p_symbols[2:]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_draws_the_symbols_it_drew(self, scheme):
         """Carrying only the declared symbol keys changes nothing a shipped
         scheme draws: every symbol equals the fixture's resolution."""
@@ -1769,7 +1819,7 @@ class TestAChildSymbolReachesWhatStatasChainReaches:
             dash_render.OptionTranslator.translate_msymbol(s)
             for s in truth["p_symbols"]]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_declares_only_what_stata_declares(self, scheme):
         """No `symbol p#' line a Stata file in the chain does not write:
         each one the file carries is `transcribed' in its provenance."""
@@ -1802,13 +1852,18 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
 
     Measured 24sep2026 (S3 batch), `twoway scatter y1 y2 x' and
     `.Graph.plotregion1.plot<k>.style.marker.size.setting': under
-    `symbolsize p huge' both plots are 4.8611 (huge) in nineteen schemes,
+    `symbolsize p huge' both plots are 4.8611 (huge) in twenty-five schemes,
     and in s1manual both stay 2.2 -- scheme-s1manual.scheme:51-59 declares
     `symbolsize p1'..`symbolsize p9' 2.2, which a bare `p' does not reach.
     Under `symbolsize p1 huge' plot 1 is 4.8611 and plot 2 the scheme's
     own in all twenty.  dash read only `symbolsize p', one size for every
     plot: `symbolsize p1 huge' changed nothing, and under s1manual
-    `symbolsize p huge' drew huge markers where Stata draws 2.2."""
+    `symbolsize p huge' drew huge markers where Stata draws 2.2.
+
+    Measured 03oct2026 over StataCorp's six internal schemes (WP-30 S07,
+    test_wp30_truth.cscript SX-05): every one follows the not-kept rows:
+    red markers, bars, connected and line, dashed; both symbols diamond;
+    both sizes 4.8611 (huge)."""
 
     _SCHEMES = sorted(SchemeParser._BUILTIN_NAMES)
 
@@ -1822,7 +1877,7 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
         (wd / (name + ".scheme")).write_text(text, encoding="utf-8")
         return SchemeParser(name)
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_bare_symbolsize_p(self, wd, scheme):
         inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
         zp = self._parse(wd, "b2zp_" + scheme,
@@ -1836,7 +1891,7 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
         else:
             assert got == [huge, huge]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_a_symbolsize_p1(self, wd, scheme):
         inc = self._parse(wd, "b2inc_" + scheme, "#include %s\n" % scheme)
         zp1 = self._parse(wd, "b2zp1_" + scheme,
@@ -1845,7 +1900,7 @@ class TestAChildSymbolsizeReachesWhatStatasChainReaches:
         assert [zp1.default_marker_size(i) for i in range(1, 15)] == [
             inc.default_marker_size(i) for i in range(1, 15)]
 
-    @pytest.mark.parametrize("scheme", _SCHEMES)
+    @each("scheme", _SCHEMES)
     def test_the_shipped_file_draws_the_sizes_it_drew(self, scheme):
         """Every shipped scheme's fifteen marker sizes are the one size it
         drew before, and equal the fixture's per-plot resolution."""

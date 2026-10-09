@@ -49,6 +49,23 @@ from test_server_layer_defects import plot_for  # noqa: E402
 _MODES = ("saved", "served")
 _TYPES = sorted(dr._dash_plot_type_names())
 
+#: The plot types whose SERVED half a per-type sweep keeps (WP-30 test
+#: performance E), one per family: point, line, area/range, bar,
+#: fit/smooth, pc.  The saved half keeps every type.  The served app draws
+#: through the same GlyphMapper text (copied by inspect.getsource), and
+#: test_mode_parity's corpus compares every dispatched type in both modes;
+#: TestTheSecondAxisFitsTheLayer keeps both halves whole.
+_SERVED_TYPES = ("scatter", "line", "rarea", "bar", "lfitci", "pccapsym")
+
+
+def _types_by_mode(types, served=_SERVED_TYPES):
+    """``(ptype, mode)`` parameters: every type saved, and the types in
+    *served* served too; the ids are the ones the two stacked decorators
+    gave (``scatter-saved``)."""
+    return ([pytest.param(t, "saved", id=f"{t}-saved") for t in types]
+            + [pytest.param(t, "served", id=f"{t}-served")
+               for t in types if t in served])
+
 
 # ---------------------------------------------------------------------------
 # Rendering in one mode or the other
@@ -194,7 +211,8 @@ _REGION = [
     ("plotregion", "lcolor(maroon)", "outline_line_color", "#90353b"),
     ("plotregion", 'lcolor("255 0 0")', "outline_line_color", "#ff0000"),
     ("plotregion", "lcolor(#ff0000)", "outline_line_color", "#ff0000"),
-    ("plotregion", "lwidth(2)", "outline_line_width", 2.0),
+    # Flipped (WP-30 P1.12b): 2 Stata units x 3.84 px (was 2 px).
+    ("plotregion", "lwidth(2)", "outline_line_width", 7.68),
     ("plotregion", "lwidth(thick)", "outline_line_width",
      dr.OptionTranslator.translate_lwidth("thick")),
     ("graphregion", "color(forest_green)", "border_fill_color", "#55752f"),
@@ -202,22 +220,48 @@ _REGION = [
     ("graphregion", "color(#1a476f)", "border_fill_color", "#1a476f"),
     ("graphregion", "fcolor(navy)", "border_fill_color", "#1a476f"),
     ("graphregion", 'fcolor("0 0 255")', "border_fill_color", "#0000ff"),
-    ("bgcolor", "navy", "border_fill_color", "#1a476f"),
-    ("bgcolor", "255 0 0", "border_fill_color", "#ff0000"),
-    ("bgcolor", "#1a476f", "border_fill_color", "#1a476f"),
+    # Flipped (WP-30 P1.20a): bgcolor() setting the border was wrong
+    # because twoway paints bgcolor() under the graph region (region_truth.json D26-D29); alone it leaves the scheme's
+    # graph region (test_region_truth.py carries the canvas cases).
+    ("bgcolor", "navy", "border_fill_color",
+     dr.SchemeParser("s2color").background_color),
+    ("bgcolor", "255 0 0", "border_fill_color",
+     dr.SchemeParser("s2color").background_color),
+    ("bgcolor", "#1a476f", "border_fill_color",
+     dr.SchemeParser("s2color").background_color),
     ("plotbgcolor", "maroon", "background_fill_color", "#90353b"),
     ("plotbgcolor", "255 0 0", "background_fill_color", "#ff0000"),
     ("plotbgcolor", "#ff0000", "background_fill_color", "#ff0000"),
 ]
 
 
+#: The rows whose SERVED half TestRegionColours keeps (WP-30 test
+#: performance E): each option, each colour notation and a width once.  The
+#: saved half keeps every row; both modes read the options through the same
+#: reader, _dash_apply_regions (WP-30 P1.20a).
+_REGION_SERVED = ("plotregion(color(navy))", 'plotregion(lcolor("255 0 0"))',
+                  "plotregion(lwidth(thick))", "graphregion(color(#1a476f))",
+                  "bgcolor(255 0 0)", "plotbgcolor(maroon)")
+
+
+def _region_by_mode():
+    """``(opt, value, attr, want, mode)``: every row saved, the
+    ``_REGION_SERVED`` rows served, with the ids the stacked decorators
+    gave."""
+    out = []
+    for mode in _MODES:
+        for o, v, a, w in _REGION:
+            rid = f"{o}({v})"
+            if mode == "saved" or rid in _REGION_SERVED:
+                out.append(pytest.param(o, v, a, w, mode, id=f"{rid}-{mode}"))
+    return out
+
+
 class TestRegionColours:
     """dash.sthlp, Region Styling Options: each option sets the Bokeh
     property the help names, from a colour in each notation it names."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("opt,value,attr,want", _REGION,
-                             ids=[f"{o}({v})" for o, v, _, _ in _REGION])
+    @pytest.mark.parametrize("opt,value,attr,want,mode", _region_by_mode())
     def test_the_option_sets_the_property(self, mode, opt, value, attr, want):
         fig, caught = _render(mode, [plot_for("scatter")], {opt: value})
         got = getattr(fig, attr)
@@ -231,11 +275,12 @@ class TestRegionColours:
             f"{opt}({value}) was reported as an unknown colour: {caught}")
 
     @pytest.mark.parametrize("mode", _MODES)
-    def test_an_unknown_colour_is_named_and_the_scheme_kept(self, mode):
-        base, _ = _render(mode, [plot_for("scatter")])
+    def test_an_unknown_colour_is_named_and_drawn_black(self, mode):
+        """Flipped (WP-30 P1.13a): twoway draws an unknown region colour
+        black (colour_grammar_truth.json site_08); this kept the scheme's."""
         fig, caught = _render(mode, [plot_for("scatter")],
                               {"plotregion": "color(notacolour)"})
-        assert fig.background_fill_color == base.background_fill_color
+        assert fig.background_fill_color == "#000000"
         assert any("notacolour" in w for w in caught), caught
 
 
@@ -331,8 +376,9 @@ class TestSecondaryAxisLabelGrammar:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_suboption_it_does_not_honour_is_named(self, mode):
-        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labcolor(red)"})
-        assert any("ylabel2() sub-option" in w and "labcolor(red)" in w
+        # Flipped (WP-30 P1.18a): labcolor() is drawn; labgap() is not.
+        _, caught = _render(mode, _Y2, {"ylabel2": "4000 8000, labgap(2)"})
+        assert any("ylabel2() sub-option" in w and "labgap(2)" in w
                    for w in caught), caught
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -372,33 +418,42 @@ class TestTheSecondAxisFitsTheLayer:
     """dash.sthlp, Secondary axes: "yaxis(2) on any plot layer ... a
     right-hand y axis scaled to that layer's own data"."""
 
+    # WP-30 P1.3a: "no more than 1.25 x the drawn extent" was wrong
+    # because the second axis is now ticked as twoway ticks it (natscale)
+    # and spans the hull of its layer's data and those ticks, padded by
+    # twoway's margin; a default bar/area/spike/dropline base is no part
+    # of twoway's scale (P1.3.7).
+    @staticmethod
+    def _check(fig, name, ptype, mode):
+        letter = name[0]
+        rng = getattr(fig, "extra_%s_ranges" % letter)[name]
+        ext = dr._dash_layer_extent(fig.renderers, letter + "_range_name",
+                                    name)
+        assert ext is not None, f"{ptype} drew nothing on {name} ({mode})"
+        ax = [a for a in getattr(fig, "right" if letter == "y" else "above")
+              + getattr(fig, "left" if letter == "y" else "below")
+              if getattr(a, letter + "_range_name", "") == name][0]
+        ticks = list(getattr(ax.ticker, "ticks", None) or [])
+        lo, hi = min([ext[0]] + ticks), max([ext[1]] + ticks)
+        got = dr._dash_range_hull(rng)
+        # A bar is one x unit wide: its outer half-width is in the hull.
+        half = 0.5 if letter == "x" and ptype in ("bar", "rbar") else 0.0
+        lo, hi = lo - half, hi + half
+        assert got == pytest.approx((lo, hi), rel=1e-9, abs=1e-9), (
+            f"{ptype} on {name}: hull {got} of data {ext} and ticks {ticks} "
+            f"({mode})")
+
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("ptype", _TYPES)
     def test_the_right_hand_axis_spans_the_layer(self, mode, ptype):
         fig, _ = _render(mode, [plot_for("line"), _y2_layer(ptype, "yaxis")])
-        rng = fig.extra_y_ranges["y2"]
-        lo, hi = _drawn_extent(fig, "y2")
-        assert lo is not None, f"{ptype} drew nothing on y2 ({mode})"
-        assert rng.start <= lo and rng.end >= hi, (
-            f"{ptype} on yaxis(2) draws {lo:g}..{hi:g} on a right-hand axis "
-            f"of {rng.start:g}..{rng.end:g} ({mode})")
-        assert (rng.end - rng.start) <= 1.25 * max(hi - lo, 1e-9) + 1e-9, (
-            f"the right-hand axis {rng.start:g}..{rng.end:g} is far wider "
-            f"than the layer's {lo:g}..{hi:g} ({mode})")
+        self._check(fig, "y2", ptype, mode)
 
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("ptype", _TYPES)
     def test_the_top_axis_spans_the_layer(self, mode, ptype):
         fig, _ = _render(mode, [plot_for("line"), _y2_layer(ptype, "xaxis")])
-        rng = fig.extra_x_ranges["x2"]
-        lo, hi = _drawn_extent(fig, "x2")
-        assert lo is not None, f"{ptype} drew nothing on x2 ({mode})"
-        assert rng.start <= lo and rng.end >= hi, (
-            f"{ptype} on xaxis(2) draws {lo:g}..{hi:g} on a top axis of "
-            f"{rng.start:g}..{rng.end:g} ({mode})")
-        assert (rng.end - rng.start) <= 1.25 * max(hi - lo, 1e-9) + 1e-9, (
-            f"the top axis {rng.start:g}..{rng.end:g} is far wider than the "
-            f"layer's {lo:g}..{hi:g} ({mode})")
+        self._check(fig, "x2", ptype, mode)
 
 
 # ===========================================================================
@@ -432,8 +487,7 @@ def _colour_mapped(fig):
 
 class TestWhereColorvarIsDrawn:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_a_continuous_colorvar(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"colorvar": "price"})])
         got = _colour_mapped(fig)
@@ -442,8 +496,7 @@ class TestWhereColorvarIsDrawn:
         else:
             assert got == {"field": False, "bar": False, "key": False}, got
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_a_discrete_colorvar(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"colorvar": "foreign",
                                                  "colordiscrete": "1"})])
@@ -630,8 +683,7 @@ def _coords(fig, only=None):
 
 class TestJitter:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_the_types_jitter_moves(self, mode, ptype):
         base, _ = _render(mode, [plot_for(ptype)])
         moved, _ = _render(mode, [plot_for(ptype, {"jitter": "20",
@@ -650,8 +702,7 @@ class TestJitter:
 
 class TestMsangle:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_the_types_msangle_turns(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"msangle": "45"})])
         angles = {round(float(r.glyph.angle), 9) for r in _glyphs(fig)
@@ -693,8 +744,7 @@ def _alphas(fig, markers):
 class TestAlphaOptions:
     """malpha() is the markers' opacity and nothing else's."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_malpha_is_the_markers_opacity(self, mode, ptype):
         base, _ = _render(mode, [plot_for(ptype)])
         fig, _ = _render(mode, [plot_for(ptype, {"malpha": "30"})])
@@ -725,26 +775,28 @@ class TestColorColoursTheWholeLayer:
     band on lfitci (SVG, 23sep2026).  dash left a range area and a range
     bar's fill at the scheme's colour and every confidence band grey."""
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", ["rarea", "rbar", "area", "bar",
-                                       "histogram"])
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(
+        ["rarea", "rbar", "area", "bar", "histogram"]))
     def test_the_fill_is_the_colour(self, mode, ptype):
+        """The fill is color()'s colour at the layer's intensity: twoway's
+        rbar, color(red) fills #FF3333 (p#bar or p#area at inten80); a
+        histogram is at full intensity until section 24 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3)."""
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         fills = [str(r.glyph.fill_color).lower() for r in _glyphs(fig)
                  if hasattr(r.glyph, "fill_color")]
-        assert fills and set(fills) == {"#ff0000"}, (ptype, fills)
+        want = "#ff0000" if ptype == "histogram" else "#ff3333"
+        assert fills and set(fills) == {want}, (ptype, fills)
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", ["lfitci", "qfitci", "lpolyci",
-                                       "fpfitci"])
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(
+        ["lfitci", "qfitci", "lpolyci", "fpfitci"]))
     def test_the_confidence_band_is_the_colour(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         got = _colours(fig)
         assert got.get("VArea") == {"#ff0000"}, got
         assert got.get("Line") == {"#ff0000"}, got
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", sorted(_MARKER_TYPES))
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(
+        sorted(_MARKER_TYPES)))
     def test_markers_and_lines_alike(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"color": "red"})])
         got = _colours(fig)
@@ -754,8 +806,9 @@ class TestColorColoursTheWholeLayer:
     def test_a_specific_colour_option_wins(self, mode):
         fig, _ = _render(mode, [plot_for("rbar", {"color": "red",
                                                   "fcolor": "navy"})])
+        # fcolor()'s navy at rbar's intensity, inten80 (WP-30 P1.2b; twoway's SVG, plan section 16 Evidence E3).
         assert {str(r.glyph.fill_color).lower() for r in _glyphs(fig)} == {
-            "#1a476f"}
+            "#486c8c"}
 
 
 class TestMarkerIsMsymbol:
@@ -800,8 +853,7 @@ def _hover_rows(fig):
 
 class TestHover:
 
-    @pytest.mark.parametrize("mode", _MODES)
-    @pytest.mark.parametrize("ptype", _TYPES)
+    @pytest.mark.parametrize("ptype,mode", _types_by_mode(_TYPES))
     def test_the_types_whose_tooltip_shows_the_variable(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype)], {"hover": "rep"})
         assert ("rep" in _hover_rows(fig)) == (ptype in _HOVER_TYPES), (
@@ -935,14 +987,18 @@ class TestTheSecondAxisIsItsOwn:
         right = _axis2(fig, "y2")
         assert [float(v) for v in left.ticker.ticks] == [15.0, 20.0, 25.0,
                                                          30.0]
-        assert not isinstance(right.ticker, FixedTicker), (
+        # WP-30 P1.3a: "not a FixedTicker" was wrong because the right-hand
+        # axis now carries its own default (natscale) FixedTicker; ylabel()
+        # must still not reach it.
+        assert dr._DASH_DEFAULT_TAG in (right.ticker.tags or []), (
             f"ylabel() set the right-hand axis's ticks too ({mode})")
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_xlabel_labels_the_bottom_axis_only(self, mode):
         fig, _ = _render(mode, _X2, {"xlabel": "2000 3000"})
         top = _axis2(fig, "x2")
-        assert not isinstance(top.ticker, FixedTicker), (
+        # WP-30 P1.3a: the top axis carries its own default ticker.
+        assert dr._DASH_DEFAULT_TAG in (top.ticker.tags or []), (
             f"xlabel() set the top axis's ticks too ({mode})")
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -989,19 +1045,28 @@ class TestTheSecondAxisIsItsOwn:
         fig, _ = _render(mode, plots)
         rng = fig.y_range if which == "y" else fig.x_range
         attr = "y_range_name" if which == "y" else "x_range_name"
-        rends = rng.renderers
-        assert rends != "auto" and rends, (
-            f"the {which} range reads every renderer ({mode})")
-        assert all(getattr(r, attr) == "default" for r in rends), (
-            [getattr(r, attr) for r in rends])
+        # WP-30 P1.3a: a renderer list was wrong because the axis is now a
+        # Range1d over the hull of the layers on its own range (and ticks).
+        own = dr._dash_layer_extent(fig.renderers, attr, "default")
+        lo, hi = dr._dash_range_hull(rng)
+        ax = _primary(fig, which)
+        t = list(getattr(ax.ticker, "ticks", None) or [])
+        assert (lo, hi) == pytest.approx((min([own[0]] + t),
+                                          max([own[1]] + t))), (
+            f"the {which} range reads the second axis's layer ({mode})")
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_a_figure_without_a_second_axis_keeps_its_range(self, mode):
         """No second axis, no change: a line and its fit still range over
         every renderer (an empty list is Bokeh's "all of them")."""
         plain, _ = _render(mode, [plot_for("line"), plot_for("lfit")])
-        assert list(plain.y_range.renderers) == []
-        assert list(plain.x_range.renderers) == []
+        # WP-30 P1.3a: an empty renderer list was wrong because the axes
+        # are now Range1d over every layer, the fit included.
+        for rng, attr in ((plain.y_range, "y_range_name"),
+                          (plain.x_range, "x_range_name")):
+            ext = dr._dash_layer_extent(plain.renderers, attr, "default")
+            lo, hi = dr._dash_range_hull(rng)
+            assert lo <= ext[0] + 1e-9 and hi >= ext[1] - 1e-9
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_legend_stays_on_the_figure(self, mode):
@@ -1043,8 +1108,9 @@ class TestTheSecondAxisIsItsOwn:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_an_unhonoured_yscale2_suboption_is_named(self, mode):
-        _, caught = _render(mode, _Y2, {"yscale2": "noline"})
-        assert any("yscale2() sub-option" in w and "noline" in w
+        # Flipped (WP-30 P1.18a): noline is drawn; outergap() is not.
+        _, caught = _render(mode, _Y2, {"yscale2": "outergap(1)"})
+        assert any("yscale2() sub-option" in w and "outergap(1)" in w
                    for w in caught), caught
 
 
@@ -1132,19 +1198,26 @@ class TestTheNewHelpers:
         assert dr._dash_unquoted(raw) == want
 
     def test_the_region_readers_unquote(self):
-        assert dr._extract_region_color('lwidth(2) color("0 0 255")') == \
-            "0 0 255"
-        assert dr._extract_region_color('fcolor(navy)') == "navy"
-        assert dr._extract_region_lcolor('lcolor("1 2 3") color(red)') == \
-            "1 2 3"
-        assert dr._extract_region_color("lcolor(red)") == ""
+        # Flipped (WP-30 P1.20a): _extract_region_color/_lcolor were wrong
+        # because the region reader is _dash_region_spec; an RGB triplet's
+        # quotes still come off.
+        base = {"fill": "#ffffff", "fill_alpha": 1.0, "line": "#ffffff",
+                "line_alpha": 1.0, "line_width": 0.768, "line_dash": []}
+        s, _ = dr._dash_region_spec('lwidth(2) color("0 0 255")',
+                                    "plotregion", base)
+        assert s["fill"] == "#0000ff"
+        s, _ = dr._dash_region_spec('lcolor("1 2 3")', "plotregion", base)
+        assert (s["line"], s["fill"]) == ("#010203", "#ffffff")
 
     def test_dash_legend_parts(self):
         words, calls = dr._dash_legend_parts(
             'OFF pos(6) label(1 "on top") order(2 1)')
-        assert words == {"off"}
-        assert calls == [("pos", "6"), ("label", '1 "on top"'),
-                         ("order", "2 1")]
+        # Names are twoway's (WP-30 P1.19): capitals are unread, and each
+        # call is (full name, argument, name as typed).
+        assert words == set()
+        assert calls == [("position", "6", "pos"),
+                         ("label", '1 "on top"', "label"),
+                         ("order", "2 1", "order")]
         assert dr._dash_legend_parts("") == (set(), [])
 
     def test_dash_legend_arg(self):
@@ -1219,7 +1292,12 @@ class TestAdversarialLegendAxesRegions:
             fig = _render(mode, _TWO, {"legend": 'label(1 "%s")' % text})[0]
             assert _legend_state(fig) == _legend_state(base), mode
             assert fig.legend[0].ncols == base.legend[0].ncols
-            assert fig.legend[0].items[0].label.value == text
+            # Flipped (WP-30 P1.11a): twoway draws a TeX pair as typed, so
+            # the key carries the text with each delimiter broken by U+2060.
+            from bokeh.embed.util import contains_tex_string
+            lab = fig.legend[0].items[0].label.value
+            assert lab.replace(dr._DASH_WORD_JOINER, "") == text
+            assert not contains_tex_string(lab)
 
     def test_a_ten_thousand_word_legend_is_read_in_bounded_time(self):
         """Exhaustion: the sub-option reader is linear."""
@@ -1243,7 +1321,9 @@ class TestAdversarialLegendAxesRegions:
             t0 = time.perf_counter()
             fig, caught = _render(mode, _Y2, {"ylabel2": rule, "xtick": rule})
             assert time.perf_counter() - t0 < 30, mode
-            assert not isinstance(_axis2(fig, "y2").ticker, FixedTicker)
+            # WP-30 P1.3a: the default ticks are now a tagged FixedTicker.
+            assert dr._DASH_DEFAULT_TAG in (_axis2(fig, "y2").ticker.tags
+                                            or [])
             assert type(_primary(fig, "x").ticker).__name__ != "CustomJSTicker"
             assert sum("more than 2,000 ticks" in w for w in caught) >= 1
             # One note each: ylabel2() and xtick() are read apart and each
@@ -1284,15 +1364,15 @@ class TestAdversarialLegendAxesRegions:
 
     def test_a_hostile_colour_is_refused_not_passed_through(self):
         """Injection: a colour that is CSS with a payload is no colour; it
-        is named and the scheme's colour is kept, never set raw."""
+        is named and drawn black, as twoway draws an unknown colour, never
+        set raw (Flipped, WP-30 P1.13a: the scheme's colour was kept)."""
         payload = 'color("red; background:url(javascript:alert(1))")'
         for mode in _MODES:
-            base = _render(mode, [plot_for("scatter")])[0]
             fig, caught = _render(mode, [plot_for("scatter")],
                                   {"plotregion": payload,
                                    "graphregion": payload})
-            assert fig.background_fill_color == base.background_fill_color
-            assert fig.border_fill_color == base.border_fill_color
+            assert fig.background_fill_color == "#000000"
+            assert fig.border_fill_color == "#000000"
             assert any("javascript" in w for w in caught), caught
 
     def test_quotes_that_are_not_a_pair_are_not_stripped(self):
@@ -1302,10 +1382,11 @@ class TestAdversarialLegendAxesRegions:
             fig, _ = _render(mode, [plot_for("scatter")],
                              {"plotregion": 'color(`"255 0 0"\')'})
             assert str(fig.background_fill_color).lower() == "#ff0000"
-            base = _render(mode, [plot_for("scatter")])[0]
             fig, caught = _render(mode, [plot_for("scatter")],
                                   {"plotregion": 'color("255 0 0)'})
-            assert fig.background_fill_color == base.background_fill_color
+            # Flipped (WP-30 P1.13a): an unknown colour is black; the
+            # scheme's colour was kept.
+            assert fig.background_fill_color == "#000000"
             assert caught
             # Any warning passed `assert caught'.  The note that names the
             # colour is knowable (measured 24sep2026, both modes, the only
@@ -1331,3 +1412,20 @@ class TestAdversarialLegendAxesRegions:
                      and "is not a recognised colour" in w]
             assert len(notes) == 1, caught
             assert len(notes[0]) < 1000, len(notes[0])
+
+
+class TestTheServedHalvesAreRepresentative:
+    """Guards the pruning (WP-30 E): every served representative is a real
+    type or row, and every pruned sweep still serves at least one."""
+
+    def test_the_representatives_exist(self):
+        assert set(_SERVED_TYPES) < set(_TYPES) and len(_SERVED_TYPES) == 6
+        rows = {f"{o}({v})" for o, v, _, _ in _REGION}
+        assert set(_REGION_SERVED) < rows and len(_REGION_SERVED) == 6
+
+    @pytest.mark.parametrize("types", [
+        _TYPES, ["rarea", "rbar", "area", "bar", "histogram"],
+        ["lfitci", "qfitci", "lpolyci", "fpfitci"], sorted(_MARKER_TYPES)],
+        ids=["all", "fill", "band", "markers"])
+    def test_every_pruned_sweep_still_serves(self, types):
+        assert [p for p in _types_by_mode(types) if p.values[1] == "served"]

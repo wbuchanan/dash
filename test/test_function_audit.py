@@ -36,7 +36,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
-from conftest import make_data_json  # noqa: E402
+from conftest import make_data_json, exec_app  # noqa: E402
 import colour_bins as cb  # noqa: E402
 
 _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
@@ -45,6 +45,9 @@ _ATTACH = "if __name__ != '__main__':\n    make_document(curdoc())"
 # ---------------------------------------------------------------------------
 # Both modes from one spec
 # ---------------------------------------------------------------------------
+
+from conftest import render_models  # noqa: E402
+
 
 def _spec(plots, kpis=None, build_options=None, graph_options=None,
           if_expr=""):
@@ -89,7 +92,7 @@ def _saved(tmp_path, spec, df, strings=()):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     return r, [str(w.message) for w in caught]
 
 
@@ -106,7 +109,7 @@ def _app(tmp_path, spec, df, strings=()):
     ns = {"__name__": "fn_audit_app"}
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        exec(compile(src.replace(_ATTACH, "pass"), ap, "exec"), ns)
+        exec_app(src.replace(_ATTACH, "pass"), ap, ns)
     return ns, [str(w.message) for w in built]
 
 
@@ -318,7 +321,7 @@ class TestColorCutsPutEachPointInItsLabelledBin:
         got, factors = _bins({"colorcuts": "2000 3000"},
                              [1000.0, 2000.0, 2000.5, 3000.0, 3500.0,
                               np.nan])
-        lo, mid, hi = f"{_LE}2000", f"2000{_DASH}3000", ">3000"
+        lo, mid, hi = f"{_LE}2,000", f"2,000{_DASH}3,000", ">3,000"  # WP-30 P1.23b: 2000 was wrong because twoway writes key numbers in %8.0gc whatever the variable's format (2,000)
         # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
         assert got == [lo, lo, mid, mid, hi, None]
         assert factors == [lo, mid, hi]
@@ -329,7 +332,7 @@ class TestColorCutsPutEachPointInItsLabelledBin:
         got, factors = _bins({"colorcuts": "500 2000 3000"},
                              [1000.0, 2000.0, 2000.5, 3000.0, 3500.0,
                               np.nan])
-        lo, mid, hi = f"{_LE}2000", f"2000{_DASH}3000", ">3000"
+        lo, mid, hi = f"{_LE}2,000", f"2,000{_DASH}3,000", ">3,000"  # WP-30 P1.23b: 2000 was wrong because twoway writes key numbers in %8.0gc whatever the variable's format (2,000)
         # WP-29 P0.16: the missing sentinel is None / the colour column is named under __dash_cvar.
         assert got == [lo, lo, mid, mid, hi, None]
         assert factors == [lo, mid, hi]
@@ -337,7 +340,7 @@ class TestColorCutsPutEachPointInItsLabelledBin:
     def test_the_cuts_may_come_in_any_order(self):
         a, _f = _bins({"colorcuts": "3000 2000"}, [2500.0, 1000.0, 4000.0])
         b, _g = _bins({"colorcuts": "2000 3000"}, [2500.0, 1000.0, 4000.0])
-        assert a == b == [f"2000{_DASH}3000", f"{_LE}2000", ">3000"]
+        assert a == b == [f"2,000{_DASH}3,000", f"{_LE}2,000", ">3,000"]  # WP-30 P1.23b: 2000 was wrong because twoway writes key numbers in %8.0gc whatever the variable's format (2,000)
 
     def test_one_cut_makes_two_bins(self):
         got, factors = _bins({"colorcuts": "5"}, [4.0, 5.0, 6.0])
@@ -832,8 +835,14 @@ class TestAColourKeyDoesNotWidenTheFirstAxis:
                     if str(getattr(r, "name", "") or "").startswith(
                         dr._DASH_SWATCH_PREFIX)]
         assert swatches, "no colour key was drawn"
-        ranged = list(fig.y_range.renderers)
-        assert ranged and not any(r in swatches for r in ranged)
-        # The scatter the key belongs to is still ranged over.
-        assert any(getattr(r, "y_range_name", "default") == "default"
-                   for r in ranged)
+        # WP-30 P1.3a: the y axis is now a Range1d over its layers' hull and
+        # ticks (it listed renderers); the swatches are no part of it and
+        # the scatter the key belongs to is.
+        ext = dr._dash_layer_extent(
+            [r for r in fig.renderers if r not in swatches],
+            "y_range_name", "default")
+        assert dr._dash_layer_extent(fig.renderers, "y_range_name",
+                                     "default") == ext
+        ticks = list(fig.yaxis[0].ticker.ticks)
+        assert dr._dash_range_hull(fig.y_range) == pytest.approx(
+            (min([ext[0]] + ticks), max([ext[1]] + ticks)))

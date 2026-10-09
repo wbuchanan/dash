@@ -75,15 +75,18 @@ def _help_lines(name):
 
 class TestTheShapeOfTheExamples:
     """WP-23, after every example was made one a fresh session can run: 32
-    groups, 98 commands, 102 lines (29, 63 and 65 at 4ede074)."""
+    groups, 98 commands, 102 lines (29, 63 and 65 at 4ede074); WP-30
+    P1.11b's Text in graphs example makes 33, 100 and 104; WP-30 P1.7's
+    Time-series operators example (sp500, tsset, dash line D.close date)
+    makes 34, 103 and 107."""
 
-    GROUP_SIZES = [3, 2, 2, 2, 4, 6, 4, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4, 2, 2,
-                   5, 2, 2, 2, 3, 2, 2, 3, 7, 2, 3, 3, 2]
+    GROUP_SIZES = [3, 3, 2, 2, 2, 4, 6, 4, 2, 1, 2, 2, 5, 4, 5, 2, 6, 4, 2, 2,
+                   5, 2, 2, 2, 3, 2, 2, 2, 3, 7, 2, 3, 3, 2]
 
     def test_how_many(self, groups):
-        assert len(groups) == 32
-        assert len(_commands(groups)) == 98
-        assert sum(len(c.lines) for c in _commands(groups)) == 102
+        assert len(groups) == 34
+        assert len(_commands(groups)) == 103
+        assert sum(len(c.lines) for c in _commands(groups)) == 107
 
     def test_how_they_group(self, groups):
         assert [len(g.commands) for g in groups] == self.GROUP_SIZES
@@ -115,13 +118,17 @@ class TestTheShapeOfTheExamples:
     def test_which_commands_the_help_shows_output_for(self, groups):
         shown_out = {c.text: len(c.outputs) for c in _commands(groups)
                      if c.outputs}
+        # Flipped (WP-30 P1.10): text() is drawn, so the Differences
+        # example names play() alone; it was play(x) text(20 3000 "hi").
         assert shown_out == {
-            'dash scatter mpg weight, play(x) text(20 3000 "hi")': 1,
+            'dash scatter mpg weight, play(x)': 1,
             'dash (scatter mpg weight, yaxis(3))': 1,
             'dash (scatter mpg weight, discrete)': 1,
             'dash lfit mpg weight [aw=price+1]': 1,
             'dash build, saving(d.html) scheme(nosuchthing) replace': 1,
-            'dash scatter mpg weight, pstyle(p3) t1title("hi")': 1,
+            # Flipped (WP-30 P1.14a): pstyle() is drawn, so the
+            # Unsupported example names mlpattern() instead.
+            'dash scatter mpg weight, mlpattern(dash) t1title("hi")': 1,
         }
 
 
@@ -498,7 +505,10 @@ class TestTheShownCommands:
         forms = [(s.file, s.form) for s in shown]
         assert forms.count(("dash.sthlp", "line")) == 1
         # WP-29 P0.8: two date-unit illustrations joined the six.
-        assert forms.count(("dash.sthlp", "inline")) == 8
+        # 8 -> 9: WP-30 batch 4 added one inline example.
+        # 9 -> 10: WP-30 P1.26b's Notes paragraph shows dash build, server.
+        # 10 -> 12: WP-30 P1.17b's base() and P1.32's guard sentences.
+        assert forms.count(("dash.sthlp", "inline")) == 12
         assert forms.count(("dash_setup.sthlp", "line")) == 7
         # dash_setup.sthlp once also named `python set exec` inline, in the
         # prose; WP-23 rewrote that paragraph, and the command is shown
@@ -508,15 +518,18 @@ class TestTheShownCommands:
         # `python: import subprocess, sys' became four one-line shell
         # commands, and the venv() and ensurepip lines were added; WP-29
         # P0.8 added two date-unit illustrations (13 + 2).
-        assert len({s.text for s in shown}) == 15
+        # WP-30 P1.17b and P1.32: two more sentence illustrations (15 + 2).
+        assert len({s.text for s in shown}) == 17
 
     def test_the_two_line_pip_commands_are_joined(self, shown):
         # WP-29 P0.19: the recipes became one-line shell commands that name
         # the linked Python and quote each requirement.
         pip = [s for s in shown if "pip" in s.text]
         assert [len(s.lines) for s in pip] == [1, 1, 1, 1]
-        assert pip[0].text == ('"/path/to/python3" -m pip install "bokeh>=3.8" '
-                               '"numpy>=2.3" "pandas>=2.3"')
+        # Flipped (WP-30 P1.30): the help installs bokeh inside the
+        # verified window.
+        assert pip[0].text == ('"/path/to/python3" -m pip install '
+                               '"bokeh>=3.8,<3.10" "numpy>=2.3" "pandas>=2.3"')
 
     def test_each_passes_the_check_its_pin_names(self, shown, pins, groups):
         kind = {text: value for k, value, text in pins if k == "shown"}
@@ -606,11 +619,12 @@ class TestThePinnedLists:
                  if ln.startswith("_hx_pin ")]
         # WP-29 P0.19: the four `python' recipe pins became six
         # `placeholder' pins (four shell lines, venv(), its link line);
-        # WP-29 P0.8 pinned its two date-unit illustrations (22 + 2).
-        assert len(lines) == len(pins) == 24
+        # WP-29 P0.8 pinned its two date-unit illustrations (22 + 2), and
+        # WP-30 P1.17b and P1.32 two more sentence illustrations (24 + 2).
+        assert len(lines) == len(pins) == 26
         kinds = [k for k, _v, _t in pins]
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 4, 4, 15)
+                kinds.count("check"), kinds.count("shown")) == (1, 4, 4, 17)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]
@@ -899,6 +913,24 @@ class TestTheJudge:
     ])
     def test_a_warning_a_sub_option_note_or_a_traceback_is_flagged(self, line):
         assert len(hx.judge(line + "\n", 0, 0, [])) == 1
+
+    #: WP-30 P1.26a: dash's notes print as twoway prints its notes, one
+    #: "(note:  dash: ...)" line, with no "Warning:" in it; dash's copy of
+    #: twoway's estimator note keeps its own words.
+    @pytest.mark.parametrize("line", [
+        "(note:  dash: graph 'g' plot 2 (lpoly) drew nothing from 74 "
+        "observations.)",
+        "(note:  dash: mcolor(x) is not a recognised colour; using the "
+        "scheme's default.)",
+        "dash: graph 'g' plot 2 (lfit): (note:  regress could not fit model)",
+    ])
+    def test_a_note_line_is_flagged(self, line):
+        assert len(hx.judge(line + "\n", 0, 0, [])) == 1
+
+    def test_an_ignored_option_note_keeps_its_reason(self):
+        (p,) = hx.judge("(note:  dash: ignoring unsupported option(s): "
+                        "[aweight])\n", 0, 0, [])
+        assert "names an option as ignored" in p
 
     #: What Bokeh 3.9 logs to stderr when it finds the document it is saving
     #: broken, measured 24sep2026 (a glyph naming a column its source lacks,

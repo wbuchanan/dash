@@ -133,12 +133,59 @@ def find_chrome():
     return None
 
 
-def with_probe(page_html):
-    """*page_html* with the probe script placed before ``</body>``."""
+#: The page's CSP <meta>, in the form dash writes it.
+_CSP_META_RE = re.compile(
+    r'(<meta\s+http-equiv="Content-Security-Policy"\s+content=")([^"]*)(")',
+    re.I)
+
+
+def admit_script(page_html, script_html):
+    """*page_html* with *script_html* -- one complete script element --
+    placed before ``</body>`` (or appended), and admitted under the page's
+    own policy (WP-30 P1.29), so a probe still runs on a page that runs
+    only the scripts it names.
+
+    * A policy naming ``'nonce-X'`` (a served page): the element's opening
+      tag gains ``nonce="X"``.
+    * Else a script-src without ``'unsafe-inline'`` (a saved page): the
+      element's own ``'sha256-...'`` (its text, LF line endings) goes
+      first in that script-src.
+    * No policy: nothing but the placement changes.
+
+    Test-only: the page copy under test is edited, never dash's text.
+    """
+    import base64
+    import hashlib
+    m = _CSP_META_RE.search(page_html)
+    if m:
+        policy = m.group(2)
+        nonce = re.search(r"'nonce-([A-Za-z0-9_-]+)'", policy)
+        src = re.search(r"(?:^|;)\s*script-src\s([^;]*)", policy)
+        if nonce:
+            script_html = re.sub(r"<script(?=[\s>/])",
+                                 '<script nonce="%s"' % nonce.group(1),
+                                 script_html, count=1, flags=re.I)
+        elif src and "'unsafe-inline'" not in src.group(1).split():
+            a = re.search(r"<script(?=[\s>/])[^>]*>", script_html, re.I)
+            b = script_html.lower().find("</script", a.end())
+            body = script_html[a.end():b if b >= 0 else len(script_html)]
+            body = body.replace("\r\n", "\n").replace("\r", "\n")
+            digest = base64.b64encode(hashlib.sha256(
+                body.encode("utf-8")).digest()).decode("ascii")
+            policy = policy.replace("script-src ",
+                                    "script-src 'sha256-%s' " % digest, 1)
+            page_html = (page_html[:m.start(2)] + policy
+                         + page_html[m.end(2):])
     i = page_html.rfind("</body>")
     if i < 0:
-        return page_html + PROBE_JS
-    return page_html[:i] + PROBE_JS + page_html[i:]
+        return page_html + script_html
+    return page_html[:i] + script_html + page_html[i:]
+
+
+def with_probe(page_html):
+    """*page_html* with the probe script placed before ``</body>``, and
+    admitted under the page's policy (:func:`admit_script`)."""
+    return admit_script(page_html, PROBE_JS)
 
 
 def measure(page_html, width, chrome=None, timeout=90):

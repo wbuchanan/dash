@@ -1,8 +1,9 @@
 *! test_parser.cscript  v2.0
 *! Certification script for the dash command parsing (syntax-based, v2.0 architecture).
 *!
-*! Tests: P1A-31 through P1A-84  (rewritten for syntax-based parsing), and
+*! Tests: P1A-31 through P1A-85  (rewritten for syntax-based parsing), and
 *!        FX-01 through FX-11 (function evaluated by Stata, WP-29 P0.6)
+*!        FN-02 through FN-05 (a function layer without Stata's points, WP-30 P1.22)
 *!
 *! In v2.0 parsing is done via Stata's -syntax- command rather than a
 *! hand-rolled Mata parser.  These tests exercise:
@@ -12,10 +13,30 @@
 *!   - _dash_process_segment : full segment parse to JSON fragment
 *!   - End-to-end via dash command (no jsonio/render required)
 *!
+*! twoway's answers are measured once and replayed (WP-30 test performance,
+*! B2; cert_truth.do): P1A-77..84 and FX-01..05 hold dash to twoway's
+*! return codes, its words and the state it leaves, which a certification
+*! run reads from test/fixtures/parser_twoway_truth.json;
+*! scripts/extract_twoway_oracle_truth.do writes it by running this script
+*! with twoway asked, and DASH_CERT_REMEASURE=1 asks twoway in the run again
+*! and fails on any answer that is no longer the fixture's (the release run).
+*!
+*! NP-40..NP-42 (WP-30 P1.14a): the named styles and p() reach the spec by
+*! value; p()'s drop list holds per series.
+*!
 *! Usage:  do test/test_parser.cscript
 *! Version: 2.0  27mar2026
 
 cscript "dash syntax-based parser" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // ----------------------------------------------------------------
 // Setup
@@ -23,6 +44,14 @@ cscript "dash syntax-based parser" adodir ".."
 qui sysuse auto, clear
 do "../dash_parse.mata"
 do "../dash.ado"
+
+// twoway's answers (WP-30 test performance, B2): every question below is
+// asked of twoway in a run with DASH_CERT_REMEASURE set, and read from
+// fixtures/parser_twoway_truth.json otherwise (cert_truth.do).  Each is
+// keyed by its case and the data in memory (cert_truth_ctx).
+do "cert_truth.do"
+cert_truth_init parser_twoway
+python: _dct = __import__("sys").modules["_dash_cert_truth"]
 
 // ================================================================
 // P1A-31 — _dash_parse_varpart_std parses yvar xvar correctly
@@ -231,21 +260,39 @@ display "P1A-48 PASS: _dash_extract_vars includes colorvar variable"
 do "cert_helpers.do"
 
 // Run one command under a log of its own, at a linesize that keeps each
-// message on one line, and hand back its rc and the log.
+// message on one line, and hand back its rc and the log.  A twoway
+// command's answer -- its rc and the words it logs -- is asked here in a
+// live run and read back otherwise (cert_truth.do), the same words in the
+// same log either way; every other command (dash's) runs.
 capture program drop _p1a_logrun
 program define _p1a_logrun, rclass
     version 16.0
     args cmdtext
     local logfile "`c(tmpdir)'dash_p1a_run.log"
-    local ls = c(linesize)
-    set linesize 255
-    capture log close _p1alog
-    capture erase "`logfile'"
-    quietly log using "`logfile'", name(_p1alog) text replace
-    capture noisily `cmdtext'
-    local rc = _rc
-    quietly log close _p1alog
-    set linesize `ls'
+    mata: st_local("_ct_tw", strofreal(substr(st_local("cmdtext"), 1, 7) == "twoway "))
+    local _ct_l 1
+    if `_ct_tw' {
+        python: _dct = __import__("sys").modules["_dash_cert_truth"]
+        python: _dct.flag("_ct_l")
+    }
+    if `_ct_l' {
+        local ls = c(linesize)
+        set linesize 255
+        capture log close _p1alog
+        capture erase "`logfile'"
+        quietly log using "`logfile'", name(_p1alog) text replace
+        capture noisily `cmdtext'
+        local rc = _rc
+        quietly log close _p1alog
+        set linesize `ls'
+        if `_ct_tw' {
+            python: _dct.log_put("cmdtext", "rc", "logfile")
+        }
+    }
+    else {
+        python: _dct.log_get("cmdtext", "logfile", "rc")
+        if "`rc'" == "" local rc 9
+    }
     return scalar rc  = `rc'
     return local  log "`logfile'"
 end
@@ -1462,21 +1509,23 @@ display "P1A-76 PASS: no prefix of a plot-type name reaches two rows, and _expan
 // P1A-77 -- a function layer calling a function Stata does not have is
 //           refused as twoway refuses it (BUGS.md, S3)
 // ================================================================
-// Measured 24sep2026 with the console binary, and again below on every
-// run: `twoway function y = nosuchfunction(x), range(0 10) nodraw' is
+// Measured 24sep2026 with the console binary, and again below, twoway's
+// own codes (asked of twoway once and replayed: cert_truth.do):
+// `twoway function y = nosuchfunction(x), range(0 10) nodraw' is
 // "error in expression: nosuchfunction(x)", r(133); so is system(x), Sin(x)
 // (functions are case-sensitive), a call anywhere in the expression, and
 // the form with no `y ='.  normal(x), which Stata has, twoway draws (rc 0).
 // dash registered every refused one, rc 0, and drew an empty layer.
 // Flipped by WP-29 P0.6: dash now runs twoway's own generator, so its
 // refusal is twoway's one line -- no "unknown function" line after it --
-// and its codes are twoway's, read live, for the long expressions too.
+// and its codes are twoway's, for the long expressions too.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-77"
 local rs77 = c(rngstate)
 foreach e in "y = nosuchfunction(x)" "y = system(x)" "y = Sin(x)" ///
     "y = x*nosuch(x) + 2" "nosuchfunction(x)" "y = sin(x) + mpg(x)" {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw77 = _rc
     _p1a_logrun `"dash function `e', range(0 10) name(p1a77)"'
     local rc77 = r(rc)
@@ -1490,7 +1539,7 @@ foreach e in "y = nosuchfunction(x)" "y = system(x)" "y = Sin(x)" ///
     cert_file_has "`lg77'", needle("unknown function ")
     assert r(found) == 0
 }
-capture twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw
+capture cert_tw twoway (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), nodraw
 assert _rc == 133
 _p1a_logrun `"dash (function y = nosuchfunction(x), range(0 10)) (scatter mpg weight), name(p1a77)"'
 assert r(rc) == 133
@@ -1505,7 +1554,7 @@ assert c(rngstate) == "`rs77'"
 // not the renderer draws them, and a name inside a string.
 foreach e in "y = x^2" "y = sin(x) + sqrt(abs(x))" "y = normal(x)" ///
     "y = max(x, 1) + inlist(x, 1, 2)" `"y = strlen("nosuch(x)") + x"' {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw77 = _rc
     capture dash clear
     _p1a_logrun `"dash function `e', range(0 10) name(p1a77ok)"'
@@ -1523,8 +1572,8 @@ assert r(rc) == 133
 cert_file_has "`r(log)'", needle("{bf:BOLD} + {res}")
 assert r(found) == 1
 // Resource exhaustion: 5,000 distinct unknown calls are refused at the
-// first; 5,000 calls of one known function are twoway's answer, read live
-// (r(130), the expression too long, measured).
+// first; 5,000 calls of one known function are twoway's answer (r(130),
+// the expression too long, measured; replayed, cert_truth.do).
 local e77 "x"
 local k77 "x"
 forvalues i = 1/5000 {
@@ -1542,7 +1591,7 @@ cert_file_has "`lg77'", needle("f22(x) + f23...")
 assert r(found) == 1
 cert_file_has "`lg77'", needle("f4999(x)")
 assert r(found) == 0
-capture twoway function y = `k77', range(0 1) nodraw
+capture cert_tw twoway function y = `k77', range(0 1) nodraw
 local tw77 = _rc
 _p1a_logrun `"dash function y = `k77', range(0 1) name(p1a77k)"'
 assert r(rc) == `tw77'
@@ -1559,7 +1608,8 @@ display "P1A-77 PASS: a function layer calling a function Stata does not have is
 //           refused as twoway refuses it (BUGS.md, S3)
 // ================================================================
 // Stata never reads sin (x) as a call.  Measured 24sep2026 with the console
-// binary, and again below on every run: `twoway function y = sin (x)' is
+// binary, and again below (twoway's codes, asked of twoway once and
+// replayed: cert_truth.do): `twoway function y = sin (x)' is
 // "error in expression:  sin (x)", r(111) -- sin looked for as a variable
 // -- and so is any name the data does not have (abs, max, c, nosuch, X),
 // anywhere in the expression and without `y ='; a name the data has (mpg,
@@ -1569,12 +1619,13 @@ display "P1A-77 PASS: a function layer calling a function Stata does not have is
 // drawn by both.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-78"
 foreach e in "y = sin (x)" "sin (x)" "y = x*sin (x)" "y = abs (x) + 1" ///
     "y = sin  (x)" "y = max (x, 1)" "y = sin(x) + cos (x)" "y = c (pi)*x" ///
     "y = mpg (x)" "y = mp (x)" "y = x (x)" "y = _pi (x)" "y = _n (x)" ///
     "y = 2 (x)" "y = 1.5 (x)" "y = sin(x) (x)" "y = (x) (x)" "y = nosuch (x)" ///
     "y = X (x)" "y = sin ( x )" "y = nosuch(x) + sin (x)" "y = sin (x) + nosuch(x)" {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw78 = _rc
     _p1a_logrun `"dash function `e', range(0 10) name(p1a78)"'
     local rc78 = r(rc)
@@ -1589,12 +1640,12 @@ foreach e in "y = sin (x)" "sin (x)" "y = x*sin (x)" "y = abs (x) + 1" ///
 // Tabs alone between the name and its `(' are r(133) in twoway, an
 // unknown function; a tab and a space r(111).
 local e78 = "y = sin" + char(9) + "(x)"
-capture twoway function `e78', range(0 10) nodraw
+capture cert_tw twoway function `e78', range(0 10) nodraw
 assert _rc == 133
 _p1a_logrun `"dash function `e78', range(0 10) name(p1a78)"'
 assert r(rc) == 133
 local e78 = "y = sin" + char(9) + " (x)"
-capture twoway function `e78', range(0 10) nodraw
+capture cert_tw twoway function `e78', range(0 10) nodraw
 assert _rc == 111
 _p1a_logrun `"dash function `e78', range(0 10) name(p1a78)"'
 assert r(rc) == 111
@@ -1602,7 +1653,7 @@ assert r(rc) == 111
 foreach e in "y = sin(x)" "y = 2 * (x)" "y = x + (1)" "y = -(x)" "y = x^(2)" ///
     "y = sin( x )" "y = x > (1)" "y = x/(1+x)" "y = sin((x))" ///
     `"y = strlen("a (b") + x"' "y = 3*(x) + (1)" {
-    capture twoway function `e', range(0 10) nodraw
+    capture cert_tw twoway function `e', range(0 10) nodraw
     local tw78 = _rc
     capture dash clear
     _p1a_logrun `"dash function `e', range(0 10) name(p1a78ok)"'
@@ -1613,7 +1664,7 @@ foreach e in "y = sin(x)" "y = 2 * (x)" "y = x + (1)" "y = -(x)" "y = x^(2)" ///
 }
 capture dash clear
 // In a plot group and after ||, as twoway.
-capture twoway (function y = sin (x), range(0 10)) (scatter mpg weight), nodraw
+capture cert_tw twoway (function y = sin (x), range(0 10)) (scatter mpg weight), nodraw
 assert _rc == 111
 _p1a_logrun `"dash (function y = sin (x), range(0 10)) (scatter mpg weight), name(p1a78)"'
 assert r(rc) == 111
@@ -1623,26 +1674,28 @@ assert "${dash_graph_registry}" == ""
 // Adversarial (rule 18).  Injection: the expression is echoed as typed,
 // SMCL shown, not obeyed, and a name only reaches -confirm- as a Stata
 // name.  Resource exhaustion: 5,000 terms before the blank are one pass.
-// twoway's code for it, read live (WP-29 P0.6: the generator answers).
-capture twoway function y = {bf:BOLD} + sin (x), range(0 1) nodraw
+// twoway's code for it (WP-29 P0.6: the generator answers; replayed,
+// cert_truth.do).
+capture cert_tw twoway function y = {bf:BOLD} + sin (x), range(0 1) nodraw
 local tw78b = _rc
 _p1a_logrun "dash function y = {bf:BOLD} + sin (x), range(0 1) name(p1a78)"
 assert r(rc) == `tw78b' & `tw78b' != 0
 cert_file_has "`r(log)'", needle("{bf:BOLD} + sin (x)")
 assert r(found) == 1
-// Since WP-29 P0.6 the codes for these are twoway's own, read live: the
-// generator answers r(130) for an expression this long (measured).
+// Since WP-29 P0.6 the codes for these are twoway's own (replayed,
+// cert_truth.do): the generator answers r(130) for an expression this long
+// (measured).
 local e78 "x"
 forvalues i = 1/5000 {
     local e78 "`e78' + (x)"
 }
 timer clear 78
 timer on 78
-capture twoway function y = `e78' + sin (x), range(0 1) nodraw
+capture cert_tw twoway function y = `e78' + sin (x), range(0 1) nodraw
 local tw78 = _rc
 _p1a_logrun `"dash function y = `e78' + sin (x), range(0 1) name(p1a78)"'
 assert r(rc) == `tw78' & `tw78' != 0
-capture twoway function y = `e78', range(0 1) nodraw
+capture cert_tw twoway function y = `e78', range(0 1) nodraw
 local tw78 = _rc
 _p1a_logrun `"dash function y = `e78', range(0 1) name(p1a78k)"'
 assert r(rc) == `tw78'
@@ -1658,7 +1711,8 @@ display "P1A-78 PASS: a name or value written apart from its parenthesis is refu
 // ----------------------------------------------------------------
 // P1A-79..81 share one check: the same command through twoway and
 // dash, each logged; the codes must agree, and each needle must be in
-// BOTH logs, so the words are twoway's own, measured on every run.
+// BOTH logs, so the words are twoway's own -- measured once and replayed
+// (cert_truth.do), dash's on every run.
 // ----------------------------------------------------------------
 capture program drop _p1a_vs_tw
 program define _p1a_vs_tw
@@ -1668,20 +1722,32 @@ program define _p1a_vs_tw
     // nodraw is added to the twoway command after its comma, or with one.
     if strpos(`"`twcmd'"', ",") local twcmd `"`twcmd' nodraw"'
     else                        local twcmd `"`twcmd', nodraw"'
-    graph drop _all
     // Logged here rather than by _p1a_logrun: twoway fpfit's refusal of a
     // third variable leaves SMCL in paragraph mode, and its words stay
-    // unwritten until a {p_end}, after the log has closed.
+    // unwritten until a {p_end}, after the log has closed.  twoway's
+    // answer -- its rc and its log -- is asked here in a live run and read
+    // back otherwise (cert_truth.do), the same words in the same log
+    // either way.
     local twlog "`c(tmpdir)'dash_p1a_tw.log"
-    local ls = c(linesize)
-    set linesize 255
-    capture log close _p1atw
-    quietly log using "`twlog'", name(_p1atw) text replace
-    capture noisily `twcmd'
-    local twrc = _rc
-    display as text "{p_end}"
-    quietly log close _p1atw
-    set linesize `ls'
+    python: _dct = __import__("sys").modules["_dash_cert_truth"]
+    python: _dct.flag("_ct_l")
+    if `_ct_l' {
+        graph drop _all
+        local ls = c(linesize)
+        set linesize 255
+        capture log close _p1atw
+        quietly log using "`twlog'", name(_p1atw) text replace
+        capture noisily `twcmd'
+        local twrc = _rc
+        display as text "{p_end}"
+        quietly log close _p1atw
+        set linesize `ls'
+        python: _dct.log_put("twcmd", "twrc", "twlog")
+    }
+    else {
+        python: _dct.log_get("twcmd", "twlog", "twrc")
+        if "`twrc'" == "" local twrc 9
+    }
     _p1a_logrun `"`dcmd'"'
     local drc = r(rc)
     local dlog "`r(log)'"
@@ -1719,6 +1785,7 @@ sysuse auto, clear
 dash clear
 quietly generate t81 = _n
 quietly tsset t81
+cert_truth_ctx "P1A-81 tsset t81"
 local V78 "mpg weight price length turn"
 foreach t in rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline ///
     pcspike pccapsym pcarrow pcbarrow pcscatter {
@@ -1757,6 +1824,7 @@ foreach form in "rscatter mpg weight price, name(p1a78a)" ///
 capture dash clear
 // Untsset, tsrline asks for tsset first, whatever the count, as twoway.
 quietly tsset, clear
+cert_truth_ctx "P1A-81 not tsset"
 foreach vl in "mpg" "mpg weight price" {
     _p1a_vs_tw P1A-81 "twoway tsrline `vl'" "dash tsrline `vl', name(p1a81)"
 }
@@ -1797,6 +1865,7 @@ display "P1A-81 PASS: a range or pc type given too few or too many variables is 
 // that take several y variables are unchanged.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-79"
 foreach t in lfit qfit lfitci qfitci fpfit fpfitci mspline mband lowess lpoly lpolyci {
     foreach vl in "mpg weight price" "mpg weight price length turn" {
         local msg "too many variables specified: `vl'"
@@ -1867,8 +1936,11 @@ program define _p1a80d
     capture dash clear
 end
 // ---- no observation in the sample, by the qualifier
+// (twoway's answers are keyed by the data in memory: a cert_truth_ctx
+// after each change to it.)
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-80 auto"
 foreach q in "if price < 0" "in 1/5 if price > 100000" {
     _p1a80 "lpoly mpg weight"   "`q'" "" "no observations"
     _p1a80 "lpolyci mpg weight" "`q'" "" "no observations"
@@ -1902,22 +1974,27 @@ _p1a_vs_tw "P1A-80 graph qualifier" "twoway (lfit mpg weight) (scatter mpg weigh
 assert "${dash_graph_registry}" == ""
 // ---- the sample emptied by weights, and by missing values
 generate w80 = cond(_n == 1, 1, .)
+cert_truth_ctx "P1A-80 w80 1 then missing"
 _p1a80 "lpoly mpg weight [aw=w80]" "" "" "insufficient observations"
 _p1a80 "kdensity mpg [aw=w80]"     "" "" "insufficient observations"
 quietly replace w80 = cond(_n == 1, 1, 0)
+cert_truth_ctx "P1A-80 w80 1 then 0"
 _p1a80 "lfit mpg weight [fw=w80]"  "" "" "`nreg'" "insufficient observations"
 _p1a80 "lpoly mpg weight [fw=w80]" "" "" "insufficient observations"
 quietly replace w80 = 0
+cert_truth_ctx "P1A-80 w80 0"
 _p1a80 "lpoly mpg weight [fw=w80]" "" "" "no observations"
 foreach p in "fpfit mpg weight [fw=w80]" "lfit mpg weight [fw=w80]" "histogram mpg [fw=w80]" {
     _p1a80d "`p'" ""
 }
 quietly replace mpg = . if _n > 1
+cert_truth_ctx "P1A-80 mpg in 1 only"
 _p1a80 "lfit mpg weight" "" "" "`nreg'" "insufficient observations"
 _p1a80 "kdensity mpg"    "" "" "insufficient observations"
 // by(): twoway draws the panels, rc 0, and so does dash.
 _p1a80d "lfit mpg weight" "" "by(foreign)"
 quietly replace mpg = .
+cert_truth_ctx "P1A-80 mpg missing"
 _p1a80 "lpoly mpg weight" "" "" "no observations"
 foreach p in "fpfit mpg weight" "mband mpg weight" "histogram mpg" "lfit mpg weight" {
     _p1a80d "`p'" ""
@@ -1925,6 +2002,7 @@ foreach p in "fpfit mpg weight" "mband mpg weight" "histogram mpg" "lfit mpg wei
 // ---- no observations at all
 sysuse auto, clear
 quietly drop in 1/l
+cert_truth_ctx "P1A-80 no observations"
 _p1a80 "histogram mpg"      "" ""       "`oor'"
 _p1a80 "histogram mpg"      "" "bin(5)" "`oor'"
 _p1a80 "histogram mpg"      "if price < 0" "discrete" "`oor'"
@@ -1990,6 +2068,7 @@ display "P1A-80 PASS: a statistical plot whose sample twoway cannot draw is refu
 // by run (_p1a_vs_tw).
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-82"
 local few "too few variables specified"
 foreach t in scatter line connected area bar spike dropline dot lfit qfit ///
     lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband {
@@ -2038,6 +2117,7 @@ display "P1A-82 PASS: a two-variable type given one variable is refused, r(102),
 sysuse auto, clear
 dash clear
 generate byte one83 = make == "Audi 5000"
+cert_truth_ctx "P1A-83 one83"
 local T83 "lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband"
 local ntg "nothing to graph"
 // ---- no panel at all
@@ -2067,10 +2147,12 @@ _p1a_vs_tw "P1A-83 fpfit first" "twoway (fpfit mpg weight if foreign==0) (lpoly 
 // A weight not above zero leaves the row out of the sample.
 generate w83 = cond(foreign, 0, 1)
 quietly replace w83 = 1 if one83
+cert_truth_ctx "P1A-83 w83"
 _p1a_vs_tw "P1A-83 weighted" "twoway (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign)" "dash (scatter mpg weight) (lpoly mpg weight [aw=w83]), by(foreign) name(p1a83)"
 dash clear
 drop w83
 generate byte bm83 = .
+cert_truth_ctx "P1A-83 bm83"
 _p1a_vs_tw "P1A-83 by() missing" "twoway lfit mpg weight, by(bm83)" "dash lfit mpg weight, by(bm83) name(p1a83)" "`ntg'"
 _p1a_vs_tw "P1A-83 by(, missing)" "twoway lfit mpg weight, by(bm83, missing)" "dash lfit mpg weight, by(bm83, missing) name(p1a83)"
 dash clear
@@ -2108,6 +2190,7 @@ foreach t of local T83 {
 }
 preserve
 quietly replace mpg = . if foreign
+cert_truth_ctx "P1A-83 mpg missing if foreign"
 foreach t in fpfit mspline mband lpoly {
     _p1a_vs_tw "P1A-83 `t' missing" "twoway (scatter weight length) (`t' mpg weight), by(foreign)" "dash (scatter weight length) (`t' mpg weight), by(foreign) name(p1a83)"
     dash clear
@@ -2196,6 +2279,7 @@ display "P1A-83 PASS: a by() graph with no panel, or a panel twoway refuses, is 
 //   twoway draws the Total panel, rc 0.
 sysuse auto, clear
 dash clear
+cert_truth_ctx "P1A-84 auto"
 local ntg "nothing to graph"
 local ins "insufficient observations"
 local nfit "(note:  fracpoly could not fit model)"
@@ -2235,8 +2319,10 @@ quietly {
     generate foreign = .
     generate mpg = .
 }
+cert_truth_ctx "P1A-84 no observations"
 _p1a_vs_tw "P1A-84 || histogram empty" "twoway histogram mpg || scatter mpg foreign, by(foreign)" "dash histogram mpg || scatter mpg foreign, by(foreign) name(p1a84)" "`ntg'"
 restore
+cert_truth_ctx "P1A-84 auto, total"
 assert "${dash_graph_registry}" == ""
 // ---- (b) by(, total)
 foreach t in lfit lfitci lpoly lpolyci {
@@ -2265,6 +2351,7 @@ generate g84 = foreign
 quietly replace g84 = . in 1/5
 generate byte m84 = _n <= 5
 generate byte one84 = _n == 60
+cert_truth_ctx "P1A-84 g84"
 _p1a_vs_tw "P1A-84 total missing lfit" "twoway lfit mpg weight if m84 | one84, by(g84, total)" "dash lfit mpg weight if m84 | one84, by(g84, total) name(p1a84)" "`ins'" "`ntg'"
 _p1a_vs_tw "P1A-84 total missing lpoly" "twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total)" "dash (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total) name(p1a84)" "`ntg'"
 _p1a_vs_tw "P1A-84 total missing lpoly missing" "twoway (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing)" "dash (scatter mpg weight) (lpoly mpg weight if m84 | one84), by(g84, total missing) name(p1a84)"
@@ -2305,6 +2392,146 @@ assert "${dash_graph_registry}" == ""
 display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answered panel by panel as twoway answers them"
 
 // ================================================================
+// P1A-85 -- a || segment with no plot: `|| , opts' and `|| if exp'
+//           are the graph's, as twoway reads them
+// ================================================================
+// twoway splits the command at every top-level `||'; each piece is a
+// bare plot, a run of parenthesised plots, or a piece with no plot, which
+// holds only the graph's own [if] [in] [, options].  Measured 09oct2026
+// with the console binary on auto (and tsset _n for tsline), rc 0 unless
+// given:
+//     a || b || , title("T")             title T, 2 plots
+//     (a) || b || , title("T")           the same; (a) || (b) || , too
+//     a || b || ,      a || b ||         2 plots, no title
+//     a || , title("T") || b,            title T, 2 plots
+//     a || || b                          2 plots
+//     (a) (b), title("T") || c           title T, 3 plots
+//     a || (b)                           2 plots
+//     a || b || if foreign==1, title("T") both plots over the 22 foreign
+//     a || b || , title("T") || , title("U")    title U
+//     a, title("A") || b || , title("T")        title T
+//     || , msymbol(Oh)    r(198) "option msymbol() not allowed"
+//     || , (c)            r(198) "option ( not allowed"
+//     || [fw=rep78]       r(198) "[ is not a twoway plot type"
+//     || if a || if b     r(198) "multiple global if's not allowed"
+//     (a) | (b)           r(198) "| is not a twoway plot type"
+//     ((a) (b)), (a || b), (a) ((b)): r(198); (a (b)): r(111)
+// dash read a piece with no plot as a plot and refused it -- "unrecognised
+// plot type ','" -- for every option, and refused a bare plot after a
+// parenthesised one, `(a) || line b', as text between plot groups; WP-30
+// S51 wrote c45 as `tsline y || line y2 t, tlabel(...)' to get round it.
+// It accepted `(a) | (b)', which twoway refuses.
+dash clear
+cert_truth_ctx "P1A-85 auto"
+local _sm "scatter mpg weight"
+local _lp "line price weight"
+local _sp "scatter price weight"
+foreach f in `"`_sm' || `_lp' || , title("T")"' ///
+    `"(`_sm') || `_lp' || , title("T")"' ///
+    `"(`_sm') || (`_lp') || , title("T")"' ///
+    `"(`_sm') (`_lp') || , title("T")"' ///
+    `"`_sm' || `_lp', title("T")"' ///
+    `"`_sm' || , title("T") || `_lp',"' ///
+    `"`_sm' || || `_lp',"' ///
+    `"(`_sm') (`_lp'), title("T") || `_sp',"' ///
+    `"`_sm' || (`_lp'),"' ///
+    `"`_sm' || (`_lp') (`_sp'), title("T")"' ///
+    `"`_sm' || `_lp' || if foreign==1, title("T")"' ///
+    `"`_sm' || `_lp' || in 1/10, title("T")"' ///
+    `"`_sm' || if foreign==1 || `_lp',"' ///
+    `"`_sm' || `_lp' || if foreign==1 || in 1/40,"' ///
+    `"`_sm' || `_lp' || , title("T") || , title("U")"' ///
+    `"`_sm', title("A") || `_lp' || , title("T")"' ///
+    `"`_sm' || `_lp' || , legend(off) xlabel(2000 4000) ytitle("Y") note("n")"' {
+    _p1a_vs_tw `"P1A-85 `f'"' `"twoway `f'"' `"dash `f' name(p1a85)"'
+    dash clear
+}
+// The graph's options and qualifier land on the graph.
+_p1a_logrun `"dash `_sm' || `_lp' || , title("T") name(p1a85)"'
+assert r(rc) == 0
+mata: st_local("_j", st_global("dash_json_p1a85"))
+mata: assert(strpos(st_local("_j"), `""graph_options":{"title":"\"T\"""') > 0)
+mata: assert(strpos(st_local("_j"), `""type":"line","yvar":"price""') > 0)
+dash clear
+_p1a_logrun `"dash (`_sm') || `_lp' || if foreign==1, title("T") name(p1a85)"'
+assert r(rc) == 0
+mata: st_local("_j", st_global("dash_json_p1a85"))
+mata: assert(strpos(st_local("_j"), `""type":"scatter","yvar":"mpg""') > 0)
+mata: assert(strpos(st_local("_j"), `""type":"line","yvar":"price""') > 0)
+mata: assert(strpos(st_local("_j"), `"},"if_expr":"foreign==1""') > 0)
+dash clear
+_p1a_logrun `"dash `_sm', title("A") || `_lp' || , title("T") || , title("U") name(p1a85)"'
+assert r(rc) == 0
+mata: assert(strpos(st_global("dash_json_p1a85"), `""title":"\"U\"""') > 0)
+dash clear
+_p1a_logrun `"dash (`_sm') (`_lp'), title("T") || `_sp', name(p1a85)"'
+assert r(rc) == 0
+mata: assert(strpos(st_global("dash_json_p1a85"), `""type":"scatter","yvar":"price""') > 0)
+mata: assert(strpos(st_global("dash_json_p1a85"), `""title":"\"T\"""') > 0)
+dash clear
+// The two helpers, by name: which piece is a bare plot, and what a piece
+// that is not one gives the graph.
+mata: assert(_dash_piece_is_bare("scatter mpg weight") == 1)
+mata: assert(_dash_piece_is_bare("ifx mpg weight") == 1)
+mata: assert(_dash_piece_is_bare("IF foreign==1") == 1)
+mata: assert(_dash_piece_is_bare(", title(T)") == 0)
+mata: assert(_dash_piece_is_bare("(scatter mpg weight)") == 0)
+mata: assert(_dash_piece_is_bare("if foreign==1, title(T)") == 0)
+mata: assert(_dash_piece_is_bare("if(foreign==1)") == 0)
+mata: assert(_dash_piece_is_bare("in 1/10") == 0)
+mata: assert(_dash_piece_is_bare("if") == 0)
+mata:
+_p85s = J(1, 0, ""); _p85o = ""; _p85q = ""
+_dash_split_groups(`"(scatter mpg weight) (line price weight, title("a,b")) if inlist(rep78,3,4), title(T)"', _p85s, _p85o, _p85q)
+assert(_p85s == ("scatter mpg weight", `"line price weight, title("a,b")"'))
+assert(strtrim(_p85o) == "title(T)" & strtrim(_p85q) == "if inlist(rep78,3,4)")
+_dash_split_groups("in 1/10, note(n)", _p85s, _p85o, _p85q)
+assert(cols(_p85s) == 2 & strtrim(_p85o) == "title(T) note(n)")
+assert(strtrim(_p85q) == "if inlist(rep78,3,4) in 1/10")
+mata drop _p85s _p85o _p85q
+end
+// `|| ,' and `||' with nothing after them add nothing.
+foreach f in "`_sm' || `_lp' || ," "`_sm' || `_lp' ||" "|| `_sm' || `_lp'" {
+    mata: _dash_split_segs(st_local("f"))
+    assert `_n_segs' == 2
+    assert "`_seg_1'" == "`_sm'" & "`_seg_2'" == "`_lp'"
+    assert `"`_graph_opts_raw'"' == "" & `"`_graph_qual_raw'"' == ""
+}
+_p1a_logrun `"dash `_sm', name(p1a85) || `_lp' || ,"'
+assert r(rc) == 0
+dash clear
+_p1a_logrun `"dash `_sm', name(p1a85) || `_lp' ||"'
+assert r(rc) == 0
+dash clear
+// The t-options after `|| ,' (WP-30 S51, c45).
+preserve
+quietly generate t85 = _n
+quietly tsset t85
+cert_truth_ctx "P1A-85 tsset t85"
+_p1a_vs_tw "P1A-85 tlabel" `"twoway tsline mpg || line price t85 || , tlabel(10 20) title("T")"' `"dash tsline mpg || line price t85 || , tlabel(10 20) title("T") name(p1a85)"'
+dash clear
+restore
+cert_truth_ctx "P1A-85 auto refused"
+// What twoway refuses, with its rc: a plot option or a plot group after
+// `|| ,', a weight or a stray word in a piece with no plot, two
+// global ifs, a single `|', and a plot group nested in another.
+_p1a_vs_tw "P1A-85 plot option" `"twoway `_sm' || `_lp' || , title("T") msymbol(Oh)"' `"dash `_sm' || `_lp' || , title("T") msymbol(Oh) name(p1a85)"' "option msymbol() not allowed"
+_p1a_vs_tw "P1A-85 group after comma" `"twoway `_sm' || `_lp' || , (`_sp')"' `"dash `_sm' || `_lp' || , (`_sp') name(p1a85)"'
+_p1a_vs_tw "P1A-85 weight" `"twoway `_sm' || `_lp' || [fw=rep78],"' `"dash `_sm' || `_lp' || [fw=rep78], name(p1a85)"'
+_p1a_vs_tw "P1A-85 stray word" `"twoway `_sm' || `_lp' || foo,"' `"dash `_sm' || `_lp' || foo, name(p1a85)"'
+_p1a_vs_tw "P1A-85 two ifs" `"twoway `_sm' || `_lp' || if foreign==1 || if rep78>3,"' `"dash `_sm' || `_lp' || if foreign==1 || if rep78>3, name(p1a85)"'
+_p1a_vs_tw "P1A-85 two ifs group" `"twoway (`_sm') if foreign==1 || `_lp' || if rep78>3,"' `"dash (`_sm') if foreign==1 || `_lp' || if rep78>3, name(p1a85)"'
+_p1a_vs_tw "P1A-85 two schemes" `"twoway `_sm' || `_lp' || , scheme(s1mono) || , scheme(s2color)"' `"dash `_sm' || `_lp' || , scheme(s1mono) || , scheme(s2color) name(p1a85)"'
+_p1a_vs_tw "P1A-85 single bar" `"twoway (`_sm') | (`_lp'),"' `"dash (`_sm') | (`_lp'), name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested pair" `"twoway ((`_sm') (`_lp')), title("T")"' `"dash ((`_sm') (`_lp')), title("T") name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested ||" `"twoway (`_sm' || `_lp'), title("T")"' `"dash (`_sm' || `_lp'), title("T") name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested || trailing" `"twoway (`_sm' || `_lp') || , title("T")"' `"dash (`_sm' || `_lp') || , title("T") name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested double" `"twoway (`_sm') ((`_lp')),"' `"dash (`_sm') ((`_lp')), name(p1a85)"'
+_p1a_vs_tw "P1A-85 nested inside" `"twoway (`_sm' (`_lp')),"' `"dash (`_sm' (`_lp')), name(p1a85)"'
+assert "${dash_graph_registry}" == ""
+display "P1A-85 PASS: a || piece with no plot gives the graph its options and qualifier, and is refused where twoway refuses it"
+
+// ================================================================
 // FX-01 .. FX-10 -- a function layer is evaluated by Stata's own
 // generator (WP-29 P0.6, section 04)
 // ================================================================
@@ -2312,8 +2539,10 @@ display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answere
 // it drew pi*x, x**2 and +x, which twoway refuses, and refused nothing
 // twoway draws in a way twoway would.  It now runs twoway__function_gen,
 // the generator twoway function itself calls, at twoway's point in the
-// command, and stores the points.  Every case below compares with twoway
-// live, in the same session state.
+// command, and stores the points.  Every case below compares with twoway's
+// answer in the same session state: its return code, its words, the
+// random-number state and the data it leaves, measured once and replayed
+// (cert_truth.do).
 
 // _fx_errline <log>: the first line of <log> holding "error in
 // expression:", in r(line) (empty when there is none).
@@ -2348,6 +2577,7 @@ end
 // ================================================================
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-01"
 local fx01_long "x"
 forvalues i = 1/600 {
     local fx01_long "`fx01_long' + sin(x)"
@@ -2355,7 +2585,7 @@ forvalues i = 1/600 {
 foreach e in "pi*x" "e*x" "pi" "e" "PI" "E" "x**2" "x%2" "x//1" "+x" ///
     "2*+x" "(+x)" "x^" "2^^x" "ｓｉｎ(x)" "2x" "sin(x,1)" "sin (x)" ///
     "nosuch(x)" "`fx01_long'" {
-    capture twoway function y = `e', range(0 2) nodraw
+    capture cert_tw twoway function y = `e', range(0 2) nodraw
     local tw01 = _rc
     _p1a_logrun `"dash function y = `e', range(0 2) name(fx01)"'
     local rc01 = r(rc)
@@ -2371,12 +2601,12 @@ foreach e in "pi*x" "e*x" "pi" "e" "PI" "E" "x**2" "x%2" "x//1" "+x" ///
         exit 9
     }
 }
-capture twoway (function y = x**2) (scatter mpg weight), nodraw
+capture cert_tw twoway (function y = x**2) (scatter mpg weight), nodraw
 local tw01 = _rc
 _p1a_logrun `"dash (function y = x**2) (scatter mpg weight), name(fx01)"'
 assert r(rc) == `tw01' & `tw01' == 198
 assert "${dash_graph_registry}" == ""
-capture twoway scatter mpg weight || function y = pi*x, nodraw
+capture cert_tw twoway scatter mpg weight || function y = pi*x, nodraw
 local tw01 = _rc
 _p1a_logrun `"dash scatter mpg weight || function y = pi*x, name(fx01)"'
 assert r(rc) == `tw01' & `tw01' == 111
@@ -2397,6 +2627,7 @@ display "FX-01 PASS: what twoway function refuses is refused with twoway's code 
 // refuses it (an existing, documented difference, not this section's).
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-02"
 // xsize(0) is checked when the graph is drawn, so twoway runs without
 // nodraw there, with the graphics off.
 local fx02_gr = c(graphics)
@@ -2416,14 +2647,27 @@ foreach pair in ///
     local ++fx02_n
     local fx02_`fx02_n' : copy local pair
 }
+// twoway's code and the random-number state it leaves: asked in a live
+// run, read back otherwise (cert_truth.do).
+python: _dct.flag("_ct_l")
 forvalues i = 1(3)`fx02_n' {
     local twc : copy local fx02_`i'
     local dc  : copy local fx02_`=`i'+1'
     local cmprc = `fx02_`=`i'+2''
+    local _ct_q `"twoway `twc'"'
     set seed 20261001
-    capture twoway `twc'
-    local tw02 = _rc
-    local st02 = c(rngstate)
+    if `_ct_l' {
+        capture twoway `twc'
+        local tw02 = _rc
+        local st02 = c(rngstate)
+        python: _dct.rc_put("_ct_q", "tw02")
+        python: _dct.val_put("rngstate", "_ct_q", "st02")
+    }
+    else {
+        python: _dct.rc_get("_ct_q", "tw02")
+        python: _dct.val_get("rngstate", "_ct_q", "st02")
+        if "`tw02'" == "" local tw02 9
+    }
     set seed 20261001
     dash clear
     _p1a_logrun `"dash `dc'"'
@@ -2442,9 +2686,21 @@ display "FX-02 PASS: plots and by() are checked before a function layer is evalu
 // ================================================================
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-03"
+// The state twoway leaves: asked in a live run, read back otherwise
+// (cert_truth.do).
+local _ct_q "twoway function y = runiform(), nodraw"
+python: _dct.flag("_ct_l")
 set seed 42
-twoway function y = runiform(), nodraw
-local s03 = c(rngstate)
+if `_ct_l' {
+    twoway function y = runiform(), nodraw
+    local s03 = c(rngstate)
+    python: _dct.val_put("rngstate", "_ct_q", "s03")
+}
+else {
+    python: _dct.val_get("rngstate", "_ct_q", "s03")
+    if "`s03'" == "" local s03 "."
+}
 set seed 42
 dash function y = runiform(), name(fx03)
 assert c(rngstate) == "`s03'"
@@ -2466,21 +2722,42 @@ program define _fx04_state, rclass
     return scalar changed = c(changed)
     return local sorted : sortedby
 end
+python: _dct.flag("_ct_l")
 foreach setup in "sysuse auto, clear" "clear" {
+    cert_truth_ctx "FX-04 `setup'"
     foreach e in "y = x" "y = nosuch(x)" {
-        // twoway
+        // twoway: its code and the state it leaves, asked in a live run
+        // and read back otherwise (cert_truth.do)
         quietly `setup'
         if "`setup'" == "clear" {
             quietly set obs 2
             quietly gen v = _n
         }
-        capture twoway function `e', n(3) nodraw
-        local tw04 = _rc
-        _fx04_state
-        local t_sig "`r(sig)'"
-        local t_N = r(N)
-        local t_ch = r(changed)
-        local t_so "`r(sorted)'"
+        local _ct_q "twoway function `e', n(3) nodraw"
+        if `_ct_l' {
+            capture twoway function `e', n(3) nodraw
+            local tw04 = _rc
+            _fx04_state
+            local t_sig "`r(sig)'"
+            local t_N = r(N)
+            local t_ch = r(changed)
+            local t_so "`r(sorted)'"
+            python: _dct.rc_put("_ct_q", "tw04")
+            python: _dct.val_put("datasignature", "_ct_q", "t_sig")
+            python: _dct.val_put("_N", "_ct_q", "t_N")
+            python: _dct.val_put("c(changed)", "_ct_q", "t_ch")
+            python: _dct.val_put("sortedby", "_ct_q", "t_so")
+        }
+        else {
+            python: _dct.rc_get("_ct_q", "tw04")
+            python: _dct.val_get("datasignature", "_ct_q", "t_sig")
+            python: _dct.val_get("_N", "_ct_q", "t_N")
+            python: _dct.val_get("c(changed)", "_ct_q", "t_ch")
+            python: _dct.val_get("sortedby", "_ct_q", "t_so")
+            if "`tw04'" == "" local tw04 9
+            if "`t_N'" == "" local t_N .
+            if "`t_ch'" == "" local t_ch .
+        }
         // dash
         quietly `setup'
         if "`setup'" == "clear" {
@@ -2505,10 +2782,21 @@ dash clear
 dash function y = x^2, range(0 2) n(3) name(fx04)
 assert x == 99
 // Observations and no variables: twoway leaves none, and so does dash.
+// (twoway's count is asked in a live run, read back otherwise.)
 clear
 set obs 5
-twoway function y = x, nodraw
-assert _N == 0
+cert_truth_ctx "FX-04 observations, no variables"
+local _ct_q "twoway function y = x, nodraw"
+if `_ct_l' {
+    twoway function y = x, nodraw
+    local n04 = _N
+    python: _dct.val_put("_N", "_ct_q", "n04")
+}
+else {
+    python: _dct.val_get("_N", "_ct_q", "n04")
+    if "`n04'" == "" local n04 .
+}
+assert `n04' == 0
 clear
 set obs 5
 dash clear
@@ -2517,7 +2805,8 @@ assert _N == 0
 // A variable named pi is read as twoway reads it.
 sysuse auto, clear
 gen pi = 2
-capture twoway function y = pi*x, nodraw
+cert_truth_ctx "FX-04 pi"
+capture cert_tw twoway function y = pi*x, nodraw
 assert _rc == 0
 dash clear
 _p1a_logrun "dash function y = pi*x, name(fx04)"
@@ -2530,6 +2819,7 @@ display "FX-04 PASS: the data, their sort order, c(changed) and a variable named
 // ================================================================
 sysuse auto, clear
 dash clear
+cert_truth_ctx "FX-05"
 _p1a_logrun "dash function y = nosuch(x) + {bf:BOLD}, name(fx05)"
 assert r(rc) == 133
 local lg05 "`r(log)'"
@@ -2537,6 +2827,8 @@ cert_file_has "`lg05'", needle("{bf:BOLD}")
 assert r(found) == 1
 cert_log_has "`lg05'", needle("unknown function")
 assert r(count) == 0
+// twoway's line is its logged answer (asked in a live run, read back
+// otherwise: _p1a_logrun, cert_truth.do).
 foreach e in "y = nosuch(x)" "y=nosuch(x)" "nosuch(x)" {
     _p1a_logrun `"twoway function `e', nodraw"'
     assert r(rc) == 133
@@ -2852,6 +3144,438 @@ if ${lb_pfail} {
     exit 9
 }
 macro drop lb_pfail
+
+// ================================================================
+// KT-12 (WP-30 P1.16) -- a function's y name is any Stata name, as in
+// twoway (twoway__function_gen's confirm name): `function _y =' and
+// `function ü =' are refused "nothing found where expression expected",
+// r(111), as twoway refuses them, and nothing is registered; the spec
+// carries the name beside the expression.  dash said "error in
+// expression: ", r(111) (measured at 41d6e10).
+// ================================================================
+sysuse auto, clear
+dash clear
+foreach form in "function _y =, name(kt12)" "function ü = , range(0 1)" {
+    _p1a_logrun `"dash `form'"'
+    local rckt = r(rc)
+    cert_file_has "`r(log)'", needle("nothing found where expression expected")
+    if `rckt' != 111 | !r(found) {
+        display as error `"KT-12 FAIL: dash `form' gave rc `rckt'"'
+        exit 9
+    }
+}
+assert "${dash_graph_registry}" == ""
+_dash_process_segment "function _y = x^2, range(0 2)" _ptk12 _jsk12
+assert strpos(`"`_jsk12'"', `""expr":"x^2","yname":"_y""') > 0
+display "KT-12 PASS: function _y = and function ü = are refused r(111) in twoway's words; the spec carries yname"
+
+// ================================================================
+// FN-02..FN-05 (WP-30 P1.22) -- a function layer without Stata's points
+// says what it needs, saved and served, and stored points that are not
+// dash's are said to be unused.  Dropping $dash_fpts_<name> is the one
+// route from Stata into the points-free fallback (setting registry
+// macros by hand is unsupported, dash.sthlp; it stands in here for a
+// spec written by hand).
+// ================================================================
+sysuse auto, clear
+quietly graph drop _all
+dash clear
+dash function y = normalden(x), range(-3 3) n(7) name(fn02)
+macro drop dash_fpts_fn02
+local h02 "`c(tmpdir)'dash_fn02.html"
+capture erase "`h02'"
+_p1a_logrun `"dash build, saving("`h02'") replace"'
+assert r(rc) == 0
+local lg02 "`r(log)'"
+cert_log_has "`lg02'", needle("drew nothing: it needs the points Stata computes for it when dash registers the graph")
+assert r(count) == 1
+cert_log_has "`lg02'", needle("normalden() is not one of them")
+assert r(count) == 1
+capture erase "`h02'"
+display "FN-02 PASS: a saved build names normalden() as what the fallback cannot evaluate, once, rc 0"
+
+local a03 "`c(tmpdir)'dash_fn03.py"
+capture erase "`a03'"
+_p1a_logrun `"dash build, saving("`a03'") server replace"'
+assert r(rc) == 0
+local lg03 "`r(log)'"
+cert_log_has "`lg03'", needle("drew nothing: it needs the points Stata computes for it when dash registers the graph")
+assert r(count) == 1
+cert_log_has "`lg03'", needle("normalden() is not one of them")
+assert r(count) == 1
+capture erase "`a03'"
+dash clear
+display "FN-03 PASS: dash build, server prints the same note once, rc 0"
+
+dash function y = normalden(x), range(-3 3) n(7) name(fn04)
+mata: st_global("dash_fpts_fn04", `"{"1":"abc"}"')
+local h04 "`c(tmpdir)'dash_fn04.html"
+capture erase "`h04'"
+_p1a_logrun `"dash build, saving("`h04'") replace"'
+assert r(rc) == 0
+local lg04 "`r(log)'"
+cert_log_has "`lg04'", needle("are not dash's and are not used; run the graph's dash command again to store Stata's points.")
+assert r(count) == 1
+cert_log_has "`lg04'", needle("drawn from its expression")
+assert r(count) == 0
+cert_log_has "`lg04'", needle("normalden() is not one of them")
+assert r(count) == 1
+capture erase "`h04'"
+dash clear
+display "FN-04 PASS: points that are not dash's are said to be unused, and the layer's note names normalden()"
+
+dash function y = sin(x), range(0 2) n(5) name(fn05)
+macro drop dash_fpts_fn05
+local h05 "`c(tmpdir)'dash_fn05.html"
+capture erase "`h05'"
+_p1a_logrun `"dash build, saving("`h05'") replace"'
+assert r(rc) == 0
+cert_log_has "`r(log)'", needle("drew nothing")
+assert r(count) == 0
+capture erase "`h05'"
+dash clear
+display "FN-05 PASS: a function the fallback knows draws without a note"
+
+// NP-40..NP-42 (WP-30 P1.14a): the named styles reach the spec.  NP-40
+// every new key, by value; NP-41 a hostile name is stored as text; NP-42
+// p()'s drop list holds on each series of a 3-y varlist.
+dash clear
+quietly sysuse auto, clear
+dash line mpg weight, sort pstyle(p3) lstyle(p4) clstyle(p5) mstyle(p6) mlstyle(p7) astyle(p8) alstyle(p9) bstyle(p10) blstyle(p11) name(np40)
+mata: _np_j = st_global("dash_json_np40")
+foreach kv in pstyle:p3 lstyle:p4 clstyle:p5 mstyle:p6 mlstyle:p7 astyle:p8 alstyle:p9 bstyle:p10 blstyle:p11 {
+    gettoken k v : kv, parse(":")
+    local v = substr("`v'", 2, .)
+    mata: assert(strpos(_np_j, char(34) + "`k'" + char(34) + ":" + char(34) + "`v'" + char(34)) > 0)
+}
+dash scatter mpg weight, p(p12) name(np40b)
+mata: assert(strpos(st_global("dash_json_np40b"), char(34) + "p" + char(34) + ":" + char(34) + "p12" + char(34)) > 0)
+display "NP-40 PASS: the nine named styles and p() reach the spec under their keys"
+// The dollar sign is written \u0024 by _dash_json_str, never expanded.
+dash scatter mpg weight, mstyle("\$HOME") name(np41)
+mata: assert(strpos(st_global("dash_json_np41"), char(34) + "mstyle" + char(34) + ":" + char(34) + char(92) + "u0024HOME" + char(34)) > 0)
+display "NP-41 PASS: a dollar sign in a style name is stored as text"
+dash scatter mpg turn trunk weight, mcolor(red) msymbol(T) p(p3) name(np42)
+mata: _np_j = st_global("dash_json_np42")
+mata: assert(strpos(_np_j, "mcolor") == 0 & strpos(_np_j, "msymbol") == 0)
+mata: assert((strlen(_np_j) - strlen(subinstr(_np_j, char(34) + "p" + char(34) + ":" + char(34) + "p3" + char(34), ""))) / 8 == 3)
+dash clear
+display "NP-42 PASS: under p() the style options are dropped on each of three series"
+
+// ================================================================
+// TSO: time-series operators in plot varlists (WP-30 P1.7)
+//
+// twoway draws L.close, D.close and L(1/2).close on 29 types and refuses
+// them in its own words elsewhere; dash refused every one r(101).  Each
+// case holds dash to twoway's answer for the same command, read from
+// fixtures/ts_operator_truth.json (scripts/extract_ts_operator_truth.do):
+// its rc and its first error line.  The data are the extractor's.
+// ================================================================
+capture program drop _tso_data
+program define _tso_data
+    version 19
+    args ds
+    if inlist("`ds'", "sp", "spd", "nt") {
+        quietly sysuse sp500, clear
+        quietly {
+            gen t = _n
+            format volume %12.0fc
+            gen float xf = close / 7
+            gen g = t > 124
+            gen c80 = close
+            label variable c80 "Closing price of the Standard and Poors 500 index on each trading day of 2001 US"
+        }
+        if "`ds'" == "sp"  quietly tsset t
+        if "`ds'" == "spd" quietly tsset date
+    }
+    else if "`ds'" == "au" {
+        quietly sysuse auto, clear
+        quietly gen t = _n
+        quietly tsset t
+    }
+end
+
+// _tso_tw <probe>: twoway's rc and first error line for the probe.
+capture program drop _tso_tw
+program define _tso_tw, rclass
+    version 19
+    args pid
+    python: import json as _tj, sfi as _ts
+    python: _tp = _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]["twoway"]
+    python: _ts.Macro.setLocal("rc", str(_tp["rc"])); _ts.Macro.setLocal("err", (_tp["err"] or [""])[0])
+    return scalar rc = `rc'
+    return local err : copy local err
+end
+
+// _tso_vs <id> <probe> <ds> <dash command>: dash's rc and first error
+// line equal twoway's.
+capture program drop _tso_vs
+program define _tso_vs
+    version 19
+    args id pid ds dcmd
+    _tso_tw `pid'
+    local twrc = r(rc)
+    local twerr `"`r(err)'"'
+    _tso_data `ds'
+    quietly dash clear
+    _p1a_logrun `"`dcmd'"'
+    local drc = r(rc)
+    if `drc' != `twrc' {
+        display as error `"`id' FAIL: `pid' twoway r(`twrc'), dash r(`drc'): `dcmd'"'
+        exit 9
+    }
+    if `twrc' {
+        cert_file_has "`r(log)'", needle(`"`twerr'"')
+        if !r(found) {
+            display as error `"`id' FAIL: `pid' dash's log lacks twoway's "`twerr'": `dcmd'"'
+            exit 9
+        }
+    }
+end
+
+capture program drop _tso_spec
+program define _tso_spec
+    version 19
+    args stem
+    capture erase "`c(tmpdir)'`stem'_s.json"
+    capture erase "`c(tmpdir)'`stem'_d.json"
+    _dash_prepare_spec, specpath("`c(tmpdir)'`stem'_s.json") datapath("`c(tmpdir)'`stem'_d.json")
+end
+
+if `"`c(python_exec)'"' != "" {
+    quietly graph drop _all
+    local tsotmp "`c(tmpdir)'"
+    python: import json as _tj, sfi as _ts
+    python: _tdir = _ts.Macro.getLocal("tsotmp")
+    // TSO-01..03: drawn on the one-line route, and the spec maps the column
+    // to the expression and twoway's text.
+    local tsopg "`c(tmpdir)'dash_tso.html"
+    local k 0
+    foreach row in "T01|spd|line D.close date" "T04|sp|tsline D.close" "V02|sp|lfit close L.close" {
+        local ++k
+        gettoken pid rest : row, parse("|")
+        gettoken bar rest : rest, parse("|")
+        gettoken ds rest : rest, parse("|")
+        local body = substr(`"`rest'"', 2, .)
+        _tso_vs TSO-0`k' `pid' `ds' `"dash `body', saving("`tsopg'") replace"'
+        display "TSO-0`k' PASS: dash `body' draws, as twoway does"
+    }
+    _tso_data spd
+    dash clear
+    dash line D.close date, name(tso01)
+    _tso_spec tso01
+    cert_file_has "`c(tmpdir)'tso01_s.json", needle(`""ts_cols":{"__dasht1":{"expr":"D.close","label":"Closing price, D"}}"')
+    assert r(found)
+    display "TSO-01 PASS: the spec maps __dasht1 to D.close and Closing price, D"
+
+    // TSO-04: every type twoway takes operators on registers them; the seven
+    // it refuses them on refuse them in its words.
+    python: _ts.Macro.setLocal("tso_ar", " ".join(sorted(k for k in _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"] if k[0] in "AR")))
+    foreach pid of local tso_ar {
+        python: _ts.Macro.setLocal("tso_b", _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]["body"])
+        _tso_vs TSO-04 `pid' sp `"dash `tso_b', name(tso04)"'
+    }
+    dash clear
+    display "TSO-04 PASS: the 29 types take operators and the 7 others refuse them, as twoway does"
+
+    // TSO-05: no tsset, a string base, a factor variable, an unknown
+    // operator, a missing variable -- twoway's codes and words.
+    _tso_vs TSO-05 E01 nt "dash line L.close t, name(tso05)"
+    foreach pid in E02 E03 E04 E05 {
+        python: _ts.Macro.setLocal("tso_b", _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]["body"])
+        _tso_vs TSO-05 `pid' au `"dash `tso_b', name(tso05)"'
+    }
+    dash clear
+    display "TSO-05 PASS: no tsset r(111), string r(109), factor r(101), X. r(198), a missing variable r(111), in twoway's words"
+
+    // TSO-06: data sorted otherwise at build: tsrevar's "not sorted", r(5),
+    // nothing left behind, the data unchanged; tsset cleared since
+    // registration: "time variable not set", r(111).
+    _tso_data sp
+    dash clear
+    dash scatter L.close t, name(tso06)
+    sort close
+    local so0 : sortedby
+    local ch0 = c(changed)
+    _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+    assert r(rc) == 5
+    cert_file_has "`r(log)'", needle("not sorted")
+    assert r(found)
+    capture unab x : __dash*
+    assert _rc == 111
+    assert "`: sortedby'" == "`so0'" & c(changed) == `ch0'
+    sort t
+    tsset, clear
+    _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+    assert r(rc) == 111
+    cert_file_has "`r(log)'", needle("time variable not set")
+    assert r(found)
+    dash clear
+    display "TSO-06 PASS: unsorted data r(5) not sorted and no tsset r(111) at build, nothing left behind"
+
+    // TSO-08: dash build and dash serve write the same map and column.
+    _tso_data sp
+    dash clear
+    dash scatter D.close t, name(tso08)
+    _tso_spec tso08b
+    _dash_prepare_spec, cmdname("dash serve") specpath("`c(tmpdir)'tso08s_s.json") datapath("`c(tmpdir)'tso08s_d.json")
+    python: _sb, _ss = [_tj.load(open(_tdir + _n, encoding="utf-8")) for _n in ("tso08b_s.json", "tso08s_s.json")]
+    python: _db, _dv = [_tj.load(open(_tdir + _n, encoding="utf-8")) for _n in ("tso08b_d.json", "tso08s_d.json")]
+    python: _ok = _sb["build_options"]["ts_cols"] == _ss["build_options"]["ts_cols"] == {"__dasht1": {"expr": "D.close", "label": "Closing price, D"}} and [r.get("__dasht1") for r in _db["values"]] == [r.get("__dasht1") for r in _dv["values"]]
+    python: _ts.Macro.setLocal("tso_ok", "1" if _ok else "0")
+    assert `tso_ok' == 1
+    dash clear
+    display "TSO-08 PASS: dash build and dash serve write the same ts_cols and __dasht1"
+
+    // TSO-09: tsrevar's storage type, the base's format and value label,
+    // and an 80-character label carried whole.
+    local tso_ok 1
+    foreach row in "sp|D.xf|float|%9.0g|" "au|L.mpg|int|%8.0g|" "sp|L.volume|double|%12.0fc|" "au|L.foreign|byte|%8.0g|origin" {
+        tokenize `"`row'"', parse("|")
+        _tso_data `1'
+        dash clear
+        dash scatter `3' t, name(tso09)
+        _tso_spec tso09
+        global TSO_W `"`5'|`7'|`9'"'
+        python: _w = _ts.Macro.getGlobal("TSO_W").split("|"); _s = _tj.load(open(_tdir + "tso09_s.json", encoding="utf-8")); _dd = _tj.load(open(_tdir + "tso09_d.json", encoding="utf-8"))
+        python: _ts.Macro.setLocal("tso_one", "1" if (_dd["storageTypes"]["__dasht1"] == _w[0] and _s["build_options"]["formats"]["__dasht1"] == _w[1] and _dd["valueLabelNames"].get("__dasht1", "") == _w[2]) else "0")
+        if !`tso_one' {
+            display as error `"TSO-09 FAIL: `3'"'
+            local tso_ok 0
+        }
+    }
+    macro drop TSO_W
+    _tso_data sp
+    dash clear
+    dash line L.c80 t, name(tso09)
+    _tso_spec tso09
+    cert_file_has "`c(tmpdir)'tso09_s.json", needle(`""label":"Closing price of the Standard and Poors 500 index on each trading day of 2001 US, L""')
+    assert r(found) & `tso_ok'
+    dash clear
+    display "TSO-09 PASS: storage float/int/double/byte as tsrevar, the base's format and value label, an 80-character label whole"
+
+    // TSO-11: a registry edited by hand to smuggle text past the rewrite is
+    // refused r(198) and the data are untouched.
+    _tso_data sp
+    foreach bad in "L.close;drop _all" "X.close" {
+        dash clear
+        dash scatter L.close t, name(tso11)
+        mata: st_global("dash_json_tso11", subinstr(st_global("dash_json_tso11"), char(34) + "L.close" + char(34), char(34) + st_local("bad") + char(34)))
+        local n0 = c(N)
+        local k0 = c(k)
+        _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+        assert r(rc) == 198
+        cert_file_has "`r(log)'", needle("holds a variable dash cannot read")
+        assert r(found) & c(N) == `n0' & c(k) == `k0'
+    }
+    dash clear
+    display "TSO-11 PASS: a hand-edited operator expression is refused r(198), the data untouched"
+
+    // TSO-12: [aw=L.weight] stays refused r(198) (WP-30 P2.14's).
+    _tso_data au
+    dash clear
+    _p1a_logrun "dash lfit mpg t [aw=L.weight], name(tso12)"
+    assert r(rc) == 198
+    display "TSO-12 PASS: a weight with an operator is still refused r(198)"
+
+    // TSO-13: a graph of operators alone draws, one-line and built.
+    foreach body in "scatter D.close LD.close" "lfit D.close L.close" {
+        _tso_data sp
+        dash clear
+        _p1a_logrun `"dash `body', saving("`tsopg'") replace"'
+        assert r(rc) == 0
+        dash `body', name(tso13)
+        _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+        assert r(rc) == 0
+    }
+    dash clear
+    display "TSO-13 PASS: dash scatter D.close LD.close and dash lfit D.close L.close draw on both routes"
+
+    // TSO-14: an operator in the qualifier keeps twoway's rows (a guard).
+    _tso_data sp
+    dash clear
+    dash scatter close t if L.close > 1300, name(tso14)
+    _tso_spec tso14
+    quietly count if L.close > 1300 & !missing(close, t)
+    local want = r(N)
+    python: _dd = _tj.load(open(_tdir + "tso14_d.json", encoding="utf-8")); _ts.Macro.setLocal("tso_n", str(int(sum(r.get("__dashq1") or 0 for r in _dd["values"]))))
+    assert `tso_n' == `want' & `want' == 33
+    dash clear
+    display "TSO-14 PASS: if L.close > 1300 keeps twoway's 33 rows"
+
+    // TSO-15: a qualifier is never expanded a second time on the parser
+    // dispatch (P1A-80's attack on a type the ts parser reads, and on lpoly).
+    _tso_data au
+    local f15 "`c(tmpdir)'dash_tso15_inj.txt"
+    foreach pt in scatter lpoly {
+        capture erase "`f15'"
+        dash clear
+        capture noisily dash `pt' mpg weight if make == `"\`=filewrite("`f15'","x")'"', name(tso15)
+        capture confirm file "`f15'"
+        assert _rc != 0
+    }
+    dash clear
+    display "TSO-15 PASS: a qualifier holding =filewrite() is not run, on scatter and lpoly"
+
+    // TSO-07: by() with an operated plot variable in any layer is "not
+    // sorted", r(5), then dash's hint; a bare sort with an operated x is
+    // refused on the 18 types twoway refuses it on, in its two lines,
+    // r(198), and drawn on the others and with an operated y.  Each
+    // compared with twoway's answer (B and O probes, Y01).
+    python: _ts.Macro.setLocal("tso_bo", " ".join(sorted(k for k in _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"] if k[0] in "BOY")))
+    foreach pid of local tso_bo {
+        python: _tq = _tj.load(open("fixtures/ts_operator_truth.json", encoding="utf-8"))["probes"][_ts.Macro.getLocal("pid")]; _ts.Macro.setLocal("tso_b", _tq["body"]); _ts.Macro.setLocal("tso_o", _tq["opts"]); _ts.Macro.setLocal("tso_ds", _tq["ds"])
+        if "`tso_ds'" == "xt" {
+            clear
+            quietly set obs 20
+            quietly gen id = ceil(_n / 10)
+            quietly gen tt = mod(_n - 1, 10) + 1
+            quietly gen y = _n * _n
+            quietly xtset id tt
+            _tso_tw `pid'
+            local twrc = r(rc)
+            dash clear
+            _p1a_logrun `"dash `tso_b', `tso_o' name(tso07)"'
+            assert r(rc) == `twrc'
+            continue
+        }
+        _tso_vs TSO-07 `pid' sp `"dash `tso_b', `tso_o' name(tso07)"'
+        if substr("`pid'", 1, 1) == "B" & "`pid'" != "B04" {
+            cert_file_has "`c(tmpdir)'dash_p1a_run.log", needle("generate the variable first, for example: generate double dclose = D.close")
+            assert r(found)
+        }
+        if inlist("`pid'", "O01", "O15") {
+            cert_file_has "`c(tmpdir)'dash_p1a_run.log", needle("option sort() incorrectly specified")
+            assert r(found)
+        }
+    }
+    dash clear
+    display "TSO-07 PASS: by() with an operator r(5) with dash's hint; a bare sort with an operated x r(198) on the 18 types, as twoway"
+
+    // TSO-10: a user variable __dasht1 is refused r(110), naming __dasht#.
+    _tso_data sp
+    quietly gen __dasht1 = 1
+    dash clear
+    _p1a_logrun `"dash scatter D.close t, saving("`tsopg'") replace"'
+    assert r(rc) == 110
+    cert_file_has "`r(log)'", needle("its time-series columns __dasht#")
+    assert r(found)
+    drop __dasht1
+    display "TSO-10 PASS: a variable named __dasht1 is refused r(110), naming the time-series columns"
+    foreach f in tso01 tso08b tso08s tso09 tso14 {
+        capture erase "`c(tmpdir)'`f'_s.json"
+        capture erase "`c(tmpdir)'`f'_d.json"
+    }
+    capture erase "`tsopg'"
+}
+
+// twoway's answers: a question the fixture could not answer, or (with
+// DASH_CERT_REMEASURE=1) an answer twoway no longer gives, fails the run.
+cert_truth_close
+if r(problems) > 0 {
+    display as error "TRUTH FAIL: twoway's answers (fixtures/parser_twoway_truth.json): `r(problems)' problem(s)"
+    exit 9
+}
 
 capture erase "`c(tmpdir)'dash_p1a_run.log"
 

@@ -71,6 +71,9 @@ _ALL = len(_DF)
 # Specs
 # ---------------------------------------------------------------------------
 
+from conftest import render_models  # noqa: E402
+
+
 def _graph(name, if_expr="", **go):
     opts = {"name": name, "title": name}
     opts.update(go)
@@ -185,6 +188,15 @@ def _rows(src):
     return len(next(iter(src.data.values()))) if src.data else 0
 
 
+def _key(fig):
+    """A figure's key: its title, then its by() panel label when it has
+    one.  Flipped (WP-30 P1.15a): the key was the title "g1 — 0", which held
+    the label; twoway keeps the title and draws the label as its own row."""
+    from by_panel_probe import panel_label
+    lab = panel_label(fig)
+    return "%s %s" % (fig.title.text, lab) if lab else fig.title.text
+
+
 def _saved(tmp_path, spec, value):
     """``(before, after, renderer, callback output)``: rows per figure title
     before the move and after the page's own callback ran."""
@@ -192,7 +204,7 @@ def _saved(tmp_path, spec, value):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         r = dr.DashRenderer(sp, dp)
-        r.render()
+        render_models(r)
     [w] = r.filter_widgets
     [cb] = r.filter_callbacks
     assert cb.code == dr._FILTER_JS
@@ -201,8 +213,8 @@ def _saved(tmp_path, spec, value):
     before, after = {}, {}
     for fig in r.figures.values():
         src = _renderer_source(fig)
-        before[fig.title.text] = _rows(src)
-        after[fig.title.text] = (out[src.id]["rows"] if src.id in out
+        before[_key(fig)] = _rows(src)
+        after[_key(fig)] = (out[src.id]["rows"] if src.id in out
                                  else _rows(src))
     return dict(sorted(before.items())), dict(sorted(after.items())), r, out
 
@@ -212,7 +224,7 @@ def _saved(tmp_path, spec, value):
 # ---------------------------------------------------------------------------
 
 def _served_rows(doc):
-    return dict(sorted((f.title.text, _rows(_renderer_source(f)))
+    return dict(sorted((_key(f), _rows(_renderer_source(f)))
                        for f in doc.select({"type": _FIGURE})))
 
 
@@ -283,10 +295,11 @@ class TestTheSavedPageLeavesAnExcludedGraphAlone:
         spec = _spec([_graph("g1", by="foreign"), _graph("g2")], "range",
                      ["g2"])
         before, after, _, _ = _saved(tmp_path, spec, _MOVES["range"][1])
-        # A panel is titled "<title> <em dash> <group>", in both modes, the
+        # A panel is keyed "<title> <group>" (_key), in both modes, the
         # group written as twoway writes it: 0 and 1 (dash wrote 0.0 and
-        # 1.0 until WP-23).
-        p0, p1 = ("g1 %s %s" % (chr(0x2014), grp) for grp in ("0", "1"))
+        # 1.0 until WP-23).  Flipped (WP-30 P1.15a): "<title> — <group>"
+        # was the title; the label is a row of its own now.
+        p0, p1 = ("g1 %s" % grp for grp in ("0", "1"))
         assert before == {p0: 5, p1: 5, "g2": _ALL}
         assert after == {p0: 2, p1: 3, "g2": _ALL}
 
@@ -387,7 +400,7 @@ class TestTheCallbackKnowsWhatItProtects:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp)
-            r.render()
+            render_models(r)
         [cb] = r.filter_callbacks
         filtered = {s.id for s in cb.args["all_graph_sources"]}
         protected = {s.id for s in cb.args["excluded_sources"]}

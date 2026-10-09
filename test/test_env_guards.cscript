@@ -76,17 +76,30 @@
 *! and the guard is driven by redefining it, which is what
 *! test_render_locate.cscript does for the renderer locator.
 *!
-*! Tests: ENV-01 through ENV-23.  ENV-17..19 run the three routes with no
+*! Tests: ENV-01 through ENV-39 (no ENV-30).  ENV-31..39 are the dependency guard of
+*! WP-30 P1.32 (test/dep_block.py).  ENV-17..19 run the three routes with no
 *! Python; ENV-20..21 cut the ado-path through $S_ADO so the Mata guard cannot
 *! repair, and restore it before asserting; ENV-22 runs the guard over a
 *! library file that is found but does not load completely; ENV-23a/b leave
 *! part of the library in memory, which is repaired from the file where one
-*! is found and refused by name where none is.
+*! is found and refused by name where none is.  ENV-24..29 (WP-30 P1.35)
+*! drive the Stata floor: the by-value comparator, the refusal reached
+*! through a stub, the silent pass, a version 16 caller in both modes, every
+*! route refused below the floor, and dash_setup's own guard.
 *!
 *! Usage:  do test/test_env_guards.cscript
 *! Version: 1.0  22sep2026
 
 cscript "dash verifies its own environment" adodir ".."
+// Certification timing: run_all_cscripts.do reads timer 100 when this
+// script ends; with DASH_CERT_PROFILE set it also prints the profile.
+timer clear 100
+timer on 100
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler clear
+    profiler on
+}
 
 // `cscript' drops every global macro; ENV-17..19 run dash build and dash
 // serve, so the browser is kept shut after it (test_cscript_hygiene.py).
@@ -471,7 +484,7 @@ capture erase "`lg17'"
 // exercised the shipped one before it was stubbed.
 capture program drop _dash_python_ok
 program define _dash_python_ok, rclass
-    version 16.0
+    version 19
     args probe
     local probe = strtrim(`"`probe'"')
     return scalar ok = cond(`"`probe'"' == "", 0, 1)
@@ -541,7 +554,8 @@ assert `_env_py' >= 3
 // private folder's programs run Python.
 mata: st_local("_env_pyprogs", _env_progs_with("../dash.ado", "python"))
 display "ENV-12: programs running python: `_env_pyprogs'"
-assert "`_env_pyprogs'" == "_dash_do_render _dash_empty_data _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
+// Flipped (WP-30 P1.32): _dash_require_deps runs python: (its two captured lines) and joins the list.
+assert "`_env_pyprogs'" == "_dash_require_deps _dash_do_render _dash_empty_data _dash_write_data _dash_xm_load _dash_tmp_open _dash_tmp_preview _dash_tmp_close _dash_tmp_clear _dash_render_immediate _dash_prepare_spec _dash_serve"
 foreach _env_p of local _env_pyprogs {
     mata: st_local("_env_g", strofreal(_env_first_in("../dash.ado", "`_env_p'", "_dash_require_python")))
     mata: st_local("_env_y", strofreal(_env_first_in("../dash.ado", "`_env_p'", "python")))
@@ -814,6 +828,537 @@ display "ENV-23a PASS: a library in memory only in part is repaired from the fil
 assert `e23brc' == 198
 assert `e23bnamed' == 1
 display "ENV-23b PASS: a library in memory only in part, with nothing to repair it from, is refused by name, r(198), not r(3499) at the first call"
+
+// ================================================================
+// ENV-24..ENV-29 (WP-30 P1.35): the Stata floor.  `dash' and `dash_setup'
+// refuse a Stata below 19 as their first act, in dash's words, with r(9):
+// Stata's own code for a version it cannot run.  The refusal cannot be
+// reached on the Stata this runs on, so the comparator is driven by value
+// and stubbed; each stub is defined before its log is opened and the
+// shipped body is restated after it (re-`do'ing an ado-file over programs
+// in memory is r(110)).  r() and _rc are copied before any log search,
+// which clobbers r().
+// ================================================================
+
+// ENV-24: the comparator's table, every value passed as text.
+capture program drop _env24_row
+program define _env24_row
+    version 19
+    args have want ok shown
+    _dash_stata_ok `"`have'"' `"`want'"'
+    local gok = r(ok)
+    local gshown `"`r(shown)'"'
+    if `gok' != `ok' | `"`gshown'"' != `"`shown'"' {
+        display as error `"ENV-24: [`have'] against [`want'] gave ok `gok' shown [`gshown'], not `ok' [`shown']"'
+        global env24_bad = ${env24_bad} + 1
+    }
+end
+global env24_bad 0
+_env24_row "19.5"   "19" 1 "19.5"
+_env24_row "19"     "19" 1 "19.0"
+_env24_row "20"     "19" 1 "20.0"
+_env24_row "18.5"   "19" 0 "18.5"
+_env24_row "17"     "19" 0 "17.0"
+_env24_row "15.1"   "19" 0 "15.1"
+_env24_row ""       "19" 0 "."
+_env24_row "abc"    "19" 0 "."
+_env24_row "19 | 1" "19" 0 "."
+_env24_row "19.5"   ""   0 "19.5"
+local e24bad = ${env24_bad}
+macro drop env24_bad
+capture program drop _env24_row
+assert `e24bad' == 0
+display "ENV-24 PASS: the floor comparator answers by value, 1 at or above, 0 below or unreadable"
+
+// ENV-25: the refusal's words and code, below the floor (stubbed).
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    return local shown "18.5"
+    return scalar ok = 0
+end
+local lg25 "`c(tmpdir)'dash_env25.log"
+capture erase "`lg25'"
+quietly log using "`lg25'", replace text name(_e2x)
+capture noisily _dash_require_stata
+local e25rc1 = _rc
+quietly log close _e2x
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    return local shown "17.0"
+    return scalar ok = 0
+end
+local lg25b "`c(tmpdir)'dash_env25b.log"
+capture erase "`lg25b'"
+quietly log using "`lg25b'", replace text name(_e2x)
+capture noisily _dash_require_stata
+local e25rc2 = _rc
+quietly log close _e2x
+// The shipped comparator back (dash.ado, TR-03.1), restated verbatim.
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    args have want
+    mata: st_local("h", strofreal(strtoreal(st_local("have"))))
+    mata: st_local("w", strofreal(strtoreal(st_local("want"))))
+    local shown : display %9.1f `h'
+    local shown `shown'
+    return local shown "`shown'"
+    return scalar ok = cond(missing(`h') | missing(`w'), 0, `h' >= `w')
+end
+cert_file_has "`lg25'", needle("dash requires Stata 19 or later; this is Stata 18.5")
+local e25said1 = r(found)
+cert_file_has "`lg25b'", needle("dash requires Stata 19 or later; this is Stata 17.0")
+local e25said2 = r(found)
+capture erase "`lg25'"
+capture erase "`lg25b'"
+assert `e25rc1' == 9
+assert `e25said1' == 1
+assert `e25rc2' == 9
+assert `e25said2' == 1
+display "ENV-25 PASS: below the floor dash refuses in its own words, naming the floor and the running release, r(9)"
+
+// ENV-26: at or above the floor the check is silent, whatever version
+// the caller sets.
+local lg26 "`c(tmpdir)'dash_env26.log"
+capture erase "`lg26'"
+quietly log using "`lg26'", replace text name(_e2x)
+capture noisily _dash_require_stata
+local e26a = _rc
+capture noisily version 16: _dash_require_stata
+local e26b = _rc
+capture noisily version 13: _dash_require_stata
+local e26c = _rc
+quietly log close _e2x
+cert_file_has "`lg26'", needle("dash requires")
+local e26said = r(found)
+capture erase "`lg26'"
+assert `e26a' == 0
+assert `e26b' == 0
+assert `e26c' == 0
+assert `e26said' == 0
+display "ENV-26 PASS: on a Stata at or above the floor the check passes silently, under version 16 and 13 callers too"
+
+// ENV-27: a do-file at version 16 still builds the saved page and the
+// served app.
+quietly sysuse auto, clear
+capture dash clear
+local f27 "`c(tmpdir)'dash_env27"
+capture erase "`f27'_v16.html"
+capture erase "`f27'_v16.py"
+capture noisily version 16: dash scatter mpg weight, saving("`f27'_v16.html") replace
+local e27a = _rc
+capture confirm file "`f27'_v16.html"
+local e27af = (_rc == 0)
+capture dash clear
+capture noisily version 16: dash scatter mpg weight, name(e27)
+local e27r = _rc
+capture noisily version 16: dash build, saving("`f27'_v16.py") server replace
+local e27b = _rc
+capture confirm file "`f27'_v16.py"
+local e27bf = (_rc == 0)
+capture dash clear
+capture erase "`f27'_v16.html"
+capture erase "`f27'_v16.py"
+assert `e27a' == 0
+assert `e27af' == 1
+assert `e27r' == 0
+assert `e27b' == 0
+assert `e27bf' == 1
+display "ENV-27 PASS: a version 16 caller builds the saved page and the served app on this Stata"
+
+// ENV-28: below the floor (stubbed) every route of both modes is refused
+// before anything is registered, written or served.
+quietly sysuse auto, clear
+capture dash clear
+local f28 "`c(tmpdir)'dash_env28"
+capture erase "`f28'i.html"
+capture erase "`f28'.html"
+capture erase "`f28'.py"
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    return local shown "18.5"
+    return scalar ok = 0
+end
+local lg28 "`c(tmpdir)'dash_env28.log"
+capture erase "`lg28'"
+quietly log using "`lg28'", replace text name(_e2x)
+capture noisily dash scatter mpg weight, saving("`f28'i.html") replace
+local e28_1 = _rc
+capture noisily dash scatter mpg weight, name(e28)
+local e28_2 = _rc
+capture noisily dash kpi mean(mpg), name(k28)
+local e28_3 = _rc
+capture noisily dash build, saving("`f28'.html") replace nobrowser
+local e28_4 = _rc
+capture noisily dash build, saving("`f28'.py") server replace
+local e28_5 = _rc
+capture noisily dash serve, port(5098) timeout(1) nobrowser
+local e28_6 = _rc
+capture noisily dash clear
+local e28_7 = _rc
+quietly log close _e2x
+local reg28 "${dash_graph_registry}"
+local e28files = 0
+foreach x in "`f28'i.html" "`f28'.html" "`f28'.py" {
+    capture confirm file "`x'"
+    if _rc == 0 local e28files = `e28files' + 1
+}
+// The shipped comparator back (dash.ado, TR-03.1), restated verbatim.
+capture program drop _dash_stata_ok
+program define _dash_stata_ok, rclass
+    version 13
+    args have want
+    mata: st_local("h", strofreal(strtoreal(st_local("have"))))
+    mata: st_local("w", strofreal(strtoreal(st_local("want"))))
+    local shown : display %9.1f `h'
+    local shown `shown'
+    return local shown "`shown'"
+    return scalar ok = cond(missing(`h') | missing(`w'), 0, `h' >= `w')
+end
+cert_log_has "`lg28'", needle("dash requires Stata 19 or later; this is Stata 18.5")
+local e28n = r(count)
+cert_file_has "`lg28'", needle("starting Bokeh Server")
+local e28srv = r(found)
+capture erase "`lg28'"
+capture erase "`f28'i.html"
+capture erase "`f28'.html"
+capture erase "`f28'.py"
+capture dash clear
+forvalues i = 1/7 {
+    assert `e28_`i'' == 9
+}
+assert `"`reg28'"' == ""
+assert `e28files' == 0
+assert `e28n' == 7
+assert `e28srv' == 0
+display "ENV-28 PASS: below the floor every dash route, saved and served, stops first with r(9) and registers, writes and serves nothing"
+
+// ENV-29: dash_setup's own guard, from its own named constant.
+quietly do "../dash_setup.ado"
+_dash_statamin
+local e29a = (`"`r(statamin)'"' == "19")
+local lg29 "`c(tmpdir)'dash_env29.log"
+capture erase "`lg29'"
+quietly log using "`lg29'", replace text name(_e2x)
+capture noisily _dash_setup_stata
+local e29b = _rc
+quietly log close _e2x
+cert_file_has "`lg29'", needle("dash requires")
+local e29bsaid = r(found)
+capture program drop _dash_statamin
+program define _dash_statamin, rclass
+    return local statamin "99"
+end
+local lg29c "`c(tmpdir)'dash_env29c.log"
+capture erase "`lg29c'"
+quietly log using "`lg29c'", replace text name(_e2x)
+capture noisily dash_setup
+local e29c = _rc
+quietly log close _e2x
+// The shipped constant back (dash_setup.ado, TR-03.4), restated verbatim.
+capture program drop _dash_statamin
+program define _dash_statamin, rclass
+    /*
+        The oldest Stata release dash runs on, named once.
+
+        returns r(statamin): "19".
+
+        _dash_setup_stata refuses below it.  dash.ado's
+        _dash_require_stata holds the same number (a program defined in
+        one ado-file cannot be called from another), and
+        test/test_version_floor.py pins the two, every program's
+        `version' line, dash.pkg and both help files equal.  No `version'
+        line: it runs on the Stata it refuses.
+    */
+    return local statamin "19"
+end
+local want29 = "dash requires Stata 99 or later; this is Stata " + strtrim(string(c(stata_version), "%9.1f"))
+cert_file_has "`lg29c'", needle("`want29'")
+local e29csaid = r(found)
+cert_file_has "`lg29c'", needle("checking dependencies")
+local e29cran = r(found)
+capture erase "`lg29'"
+capture erase "`lg29c'"
+assert `e29a' == 1
+assert `e29b' == 0
+assert `e29bsaid' == 0
+assert `e29c' == 9
+assert `e29csaid' == 1
+assert `e29cran' == 0
+display "ENV-29 PASS: dash_setup names the floor once, passes silently at or above it, and below it stops first with r(9), checking nothing"
+
+// ================================================================
+// ENV-31..ENV-39 (WP-30 P1.32): the dependency guard (its wiring in dash.ado's
+// text is pinned by test_dependency_guards.py::TestTheGuardOrder).  numpy, pandas or
+// bokeh missing or broken, a Python below the floor, a Python that cannot
+// start, each simulated in Stata's own Python through test/dep_block.py,
+// which puts everything back (dep_block.stata_restored sets rg_clean)
+// before any assert.  Every case measures and displays; the asserts follow
+// the last case, in id order.
+// ================================================================
+python: import os as _rg_os, sys as _rg_sys
+python: _rg_sys.path.insert(0, _rg_os.getcwd())
+python: import dep_block
+capture graph drop _all
+_dash_pyfloor
+local rg_floor "`r(pyfloor)'"
+
+// ENV-31: every route, each package missing.
+sysuse auto, clear
+capture dash clear
+quietly dash scatter mpg weight, name(e31g)
+tempfile e31
+foreach pkg in numpy pandas bokeh {
+    foreach sfx in "_i.html" ".html" ".py" {
+        capture erase "`e31'_`pkg'`sfx'"
+    }
+    local rg_pkg "`pkg'"
+    python: dep_block.stata_block("rg_pkg", "missing")
+    local lg "`c(tmpdir)'dash_env31_`pkg'.log"
+    capture erase "`lg'"
+    quietly log using "`lg'", replace text name(e31l)
+    capture noisily dash scatter mpg weight, saving("`e31'_`pkg'_i.html") replace
+    local e31i_`pkg' = _rc
+    capture noisily dash scatter mpg weight, name(e31r)
+    local e31r_`pkg' = _rc
+    capture noisily dash build, saving("`e31'_`pkg'.html") replace nobrowser
+    local e31b_`pkg' = _rc
+    capture noisily dash build, saving("`e31'_`pkg'.py") server replace
+    local e31s_`pkg' = _rc
+    capture noisily dash serve, port(5932) timeout(1) nobrowser
+    local e31v_`pkg' = _rc
+    quietly log close e31l
+    python: dep_block.stata_restored()
+    local e31c_`pkg' "`rg_clean'"
+    local e31w_`pkg' 0
+    foreach sfx in "_i.html" ".html" ".py" {
+        capture confirm file "`e31'_`pkg'`sfx'"
+        if _rc == 0 local e31w_`pkg' = `e31w_`pkg'' + 1
+    }
+    local e31s1_`pkg' ""
+    foreach nd in "`pkg'" "dash_setup" "`c(python_exec)'" "not installed" "Traceback" "starting Bokeh Server" {
+        cert_log_has "`lg'", needle(`"`nd'"') lower
+        local _e31h = r(found)
+        local e31s1_`pkg' "`e31s1_`pkg'' `_e31h'"
+    }
+    capture erase "`lg'"
+    display "ENV-31 measured: `pkg' rc `e31i_`pkg'' `e31r_`pkg'' `e31b_`pkg'' `e31s_`pkg'' `e31v_`pkg'' written `e31w_`pkg'' said`e31s1_`pkg'' clean `e31c_`pkg''"
+}
+
+// ENV-32: numpy installed but broken.
+tempfile e32
+capture erase "`e32'.html"
+python: dep_block.block("numpy", "broken")
+local lg32 "`c(tmpdir)'dash_env32.log"
+capture erase "`lg32'"
+quietly log using "`lg32'", replace text name(e32l)
+capture noisily dash scatter mpg weight, saving("`e32'.html") replace
+local e32rc = _rc
+quietly log close e32l
+python: dep_block.stata_restored()
+local e32c "`rg_clean'"
+capture confirm file "`e32'.html"
+local e32w = (_rc == 0)
+local e32s ""
+foreach nd in "could not import numpy" "cannot be imported" "dash_setup" "Traceback" {
+    cert_log_has "`lg32'", needle(`"`nd'"') lower
+    local _e32h = r(found)
+    local e32s "`e32s' `_e32h'"
+}
+capture erase "`lg32'"
+display "ENV-32 measured: rc `e32rc' written `e32w' said`e32s' clean `e32c'"
+
+// ENV-33: a Python below the floor.
+tempfile e33
+capture erase "`e33'.html"
+python: dep_block.fake_version((3, 6, 15, "final", 0))
+local lg33 "`c(tmpdir)'dash_env33.log"
+capture erase "`lg33'"
+quietly log using "`lg33'", replace text name(e33l)
+capture noisily dash scatter mpg weight, saving("`e33'.html") replace
+local e33rc = _rc
+quietly log close e33l
+python: dep_block.stata_restored()
+local e33c "`rg_clean'"
+capture confirm file "`e33'.html"
+local e33w = (_rc == 0)
+local e33s ""
+foreach nd in "Python 3.6.15" "Python `rg_floor' or later" "dash_setup" {
+    cert_log_has "`lg33'", needle(`"`nd'"') lower
+    local _e33h = r(found)
+    local e33s "`e33s' `_e33h'"
+}
+capture erase "`lg33'"
+display "ENV-33 measured: rc `e33rc' written `e33w' said`e33s' clean `e33c'"
+
+// ENV-34: a Python that cannot start (sfi cannot be imported).
+tempfile e34
+capture erase "`e34'.html"
+python: dep_block.block("sfi", "missing")
+local lg34 "`c(tmpdir)'dash_env34.log"
+capture erase "`lg34'"
+quietly log using "`lg34'", replace text name(e34l)
+capture noisily dash scatter mpg weight, saving("`e34'.html") replace
+local e34rc = _rc
+quietly log close e34l
+python: dep_block.stata_restored()
+local e34c "`rg_clean'"
+capture confirm file "`e34'.html"
+local e34w = (_rc == 0)
+local e34s ""
+foreach nd in "could not be started" "`c(python_exec)'" "Apple Silicon" "dash_setup" "Traceback" {
+    cert_log_has "`lg34'", needle(`"`nd'"') lower
+    local _e34h = r(found)
+    local e34s "`e34s' `_e34h'"
+}
+capture erase "`lg34'"
+display "ENV-34 measured: rc `e34rc' written `e34w' said`e34s' clean `e34c' machine `c(machine_type)'"
+
+// ENV-35: a first start that fails is tried once more.
+python: dep_block.sfi_flaky()
+capture noisily dash scatter mpg weight, name(e35)
+local e35rc = _rc
+python: dep_block.stata_hits()
+local e35h "`rg_hits'"
+python: dep_block.stata_restored()
+local e35c "`rg_clean'"
+local e35j = (`"${dash_json_e35}"' != "")
+display "ENV-35 measured: rc `e35rc' registered `e35j' hits `e35h' clean `e35c'"
+
+// ENV-36: numpy below dash_setup's minimum is a note, once per load.
+tempfile e36
+capture erase "`e36'a.html"
+capture erase "`e36'b.html"
+python: dep_block.fake_package_version("numpy", "2.1.3")
+python: dep_block.forget_renderer()
+local lg36 "`c(tmpdir)'dash_env36.log"
+local lg36b "`c(tmpdir)'dash_env36b.log"
+capture erase "`lg36'"
+capture erase "`lg36b'"
+quietly log using "`lg36'", replace text name(e36l)
+capture noisily dash scatter mpg weight, saving("`e36'a.html") replace
+local e36rc = _rc
+quietly log close e36l
+quietly log using "`lg36b'", replace text name(e36l)
+capture noisily dash scatter mpg weight, saving("`e36'b.html") replace
+local e36rc2 = _rc
+quietly log close e36l
+python: dep_block.stata_restored()
+local e36c "`rg_clean'"
+capture confirm file "`e36'a.html"
+local e36w = (_rc == 0)
+cert_log_has "`lg36'", needle("numpy 2.1.3")
+local e36n = r(count)
+cert_log_has "`lg36'", needle("(note:")
+local e36note = r(found)
+cert_log_has "`lg36b'", needle("numpy 2.1.3")
+local e36n2 = r(count)
+capture erase "`lg36'"
+capture erase "`lg36b'"
+capture erase "`e36'a.html"
+capture erase "`e36'b.html"
+display "ENV-36 measured: rc `e36rc' `e36rc2' written `e36w' note `e36note' first `e36n' second `e36n2' clean `e36c'"
+
+// ENV-37: dash clear prunes with numpy missing.
+tempfile e37
+quietly dash scatter mpg weight, saving("`e37'.html") replace
+capture erase "`e37'.html"
+local tmp "`c(tmpdir)'"
+python: dep_block.stata_plant_run()
+local e37run "`rg_run'"
+mata: st_local("e37had", strofreal(direxists(st_local("e37run"))))
+python: dep_block.block("numpy", "missing")
+local lg37 "`c(tmpdir)'dash_env37.log"
+capture erase "`lg37'"
+quietly log using "`lg37'", replace text name(e37l)
+capture noisily dash clear
+local e37rc = _rc
+quietly log close e37l
+python: dep_block.stata_restored()
+local e37c "`rg_clean'"
+mata: st_local("e37left", strofreal(direxists(st_local("e37run"))))
+cert_log_has "`lg37'", needle("registry cleared") lower
+local e37said = r(found)
+capture erase "`lg37'"
+display "ENV-37 measured: planted `e37had' rc `e37rc' said `e37said' left `e37left' clean `e37c'"
+
+// ENV-38: the served child lacks pandas.
+quietly dash scatter mpg weight, name(e38)
+python: dep_block.child_stub()
+local lg38 "`c(tmpdir)'dash_env38.log"
+capture erase "`lg38'"
+quietly log using "`lg38'", replace text name(e38l)
+capture noisily dash serve, port(5931) timeout(5) nobrowser
+local e38rc = _rc
+quietly log close e38l
+python: dep_block.stata_restored()
+local e38c "`rg_clean'"
+local e38s ""
+foreach nd in "run dash_setup" "pandas" "Traceback" {
+    cert_log_has "`lg38'", needle(`"`nd'"') lower
+    local _e38h = r(found)
+    local e38s "`e38s' `_e38h'"
+}
+capture erase "`lg38'"
+display "ENV-38 measured: rc `e38rc' said`e38s' clean `e38c'"
+
+// ENV-39: dash clear is spared by the guard (no Python can start).
+python: dep_block.block("sfi", "missing")
+local lg39 "`c(tmpdir)'dash_env39.log"
+capture erase "`lg39'"
+quietly log using "`lg39'", replace text name(e39l)
+capture noisily dash clear
+local e39rc = _rc
+quietly log close e39l
+python: dep_block.stata_restored()
+local e39c "`rg_clean'"
+cert_log_has "`lg39'", needle("registry cleared") lower
+local e39said = r(found)
+capture erase "`lg39'"
+display "ENV-39 measured: rc `e39rc' said `e39said' clean `e39c'"
+
+// The asserts, in id order.
+foreach pkg in numpy pandas bokeh {
+    assert `e31i_`pkg'' == 198 & `e31r_`pkg'' == 198 & `e31b_`pkg'' == 198 & `e31s_`pkg'' == 198 & `e31v_`pkg'' == 198
+    assert `e31w_`pkg'' == 0
+    assert "`e31s1_`pkg''" == " 1 1 1 1 0 0"
+    assert "`e31c_`pkg''" == "1"
+}
+display "ENV-31 PASS: with numpy, pandas or bokeh missing every route stops r(198) naming the package, the Python and dash_setup, writing and announcing nothing"
+assert `e32rc' == 198 & `e32w' == 0
+assert "`e32s'" == " 1 1 1 0"
+assert "`e32c'" == "1"
+display "ENV-32 PASS: a package that will not import is refused r(198) with its reason and dash_setup"
+assert `e33rc' == 198 & `e33w' == 0
+assert "`e33s'" == " 1 1 1"
+assert "`e33c'" == "1"
+display "ENV-33 PASS: a Python below the floor is refused r(198) naming its version, the floor and dash_setup"
+assert `e34rc' == 198 & `e34w' == 0
+assert "`e34s'" == " 1 1 1 1 0"
+assert "`e34c'" == "1"
+display "ENV-34 PASS: a Python that cannot start is refused r(198) naming the Python, the processor rule and dash_setup"
+assert `e35rc' == 0 & `e35j' == 1
+assert "`e35h'" == "1"
+assert "`e35c'" == "1"
+display "ENV-35 PASS: a first start that fails is tried once more and the command runs"
+assert `e36rc' == 0 & `e36rc2' == 0 & `e36w' == 1
+assert `e36note' == 1 & `e36n' == 1 & `e36n2' == 0
+assert "`e36c'" == "1"
+display "ENV-36 PASS: numpy below dash_setup's minimum is one note per load and the page is written"
+assert `e37had' == 1 & `e37rc' == 0 & `e37said' == 1 & `e37left' == 0
+assert "`e37c'" == "1"
+display "ENV-37 PASS: dash clear prunes dash's temporary files with numpy missing"
+assert `e38rc' == 198
+assert "`e38s'" == " 1 1 0"
+assert "`e38c'" == "1"
+display "ENV-38 PASS: dash serve's child lacking pandas ends r(198) with its one line naming dash_setup"
+assert `e39rc' == 0 & `e39said' == 1
+assert "`e39c'" == "1"
+display "ENV-39 PASS: dash clear clears the registry when no Python can start"
+capture dash clear
 
 display ""
 display "All environment guard tests PASSED."

@@ -454,9 +454,12 @@ class TestTheWeightedSample:
 # ---------------------------------------------------------------------------
 
 def _panel(r, title):
-    keys = [k for k, f in r.figures.items()
-            if f.title is not None and f.title.text == title]
-    assert len(keys) == 1, (title, [f.title.text for f in r.figures.values()])
+    # Flipped (WP-30 P1.15a): a panel was found by its title, which held
+    # its label; twoway draws the label as a row of its own.
+    from by_panel_probe import panel_label
+    keys = [k for k, f in r.figures.items() if panel_label(f) == title]
+    assert len(keys) == 1, (title, [panel_label(f)
+                                    for f in r.figures.values()])
     return keys[0]
 
 
@@ -757,7 +760,9 @@ class TestTheFrozenTag:
                            {"filter": "foreign, type(dropdown)"},
                            {"by": "foreign"}))
         for k, f in r3.figures.items():
-            want = 0.0 if f.title.text == "Domestic" else 1.0
+            # Flipped (WP-30 P1.15a): the panel's label row, not its title.
+            from by_panel_probe import panel_label
+            want = 0.0 if panel_label(f) == "Domestic" else 1.0
             src = f.renderers[0].data_source
             ids = [int(i) for i, fo in zip(src.data[dr._ROW_ID_COLUMN],
                                            src.data["foreign"])
@@ -863,8 +868,11 @@ class TestTheTitlePlacement:
                            "legend": "position(12)"}))
         f = r.figures["g1"]
         _one_cue(r)
+        # Flipped (WP-30 P1.2a): the subtitle was a Label, which was wrong
+        # because twoway places it by the scheme's clock; S15 draws it as a
+        # side-panel Title, still outside the legend.
         assert [type(m).__name__ for m in f.above] == ["Title", "Legend",
-                                                       "Label"]
+                                                       "Title"]
         assert f.above[0].tags == ["dash_stale_cue"]
 
     def test_no_marked_figure_has_its_toolbar_above(self):

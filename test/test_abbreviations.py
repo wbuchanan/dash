@@ -373,6 +373,12 @@ _SHARED_SPELLINGS = {
     "xla": ("xlabel", "xla2"),            "yla": ("ylabel", "yla2"),
     "xsc": ("xscale", "xsc2"),            "ysc": ("yscale", "ysc2"),
     "sort": ("sort", "sort1"),
+    # WP-30 P1.6 part 2: dash's axis-2 spellings of the time-axis options,
+    # as XLABEL2 is; a repeat is merged before -syntax- (TA-02's
+    # tlabel(2001m1) tlabel(2003m1)).
+    "tlabel": ("tlabel", "tlabel2"),      "ttick": ("ttick", "ttick2"),
+    "tline": ("tline", "tline2"),         "tscale": ("tscale", "tscale2"),
+    "ttitle": ("ttitle", "ttitle2"),
 }
 
 
@@ -497,7 +503,14 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # colorvarmin and zs refused, rc 198).  Markup that
     # stopped matching the pattern -- {opt}, say -- would leave the loop
     # nothing to check.
-    assert len(seen) == 59, (
+    # 68 since WP-30 P1.14a documented the named styles' minimums: psty,
+    # mst, mls, ls, cls, ast, al, bst and bl (twoway's, A01-A10 of
+    # test/fixtures/named_style_truth.json).
+    # 68 -> 69: WP-30 P1.24 documented mlabv:position(), twoway's minimum.
+    # 69 -> 70: and mlabt:extstyle() (part 2).
+    # 70 -> 77: WP-30 P1.6 documented the seven time-axis minimums, tl,
+    # ttic, tml, tmt, tt, tsc and tli (twoway's, taxis_truth.json ab_*).
+    assert len(seen) == 77, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -602,17 +615,25 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # (WP-29 P0.1): _dash_sort_names declares SORT1(namelist), the check
     # twoway makes of sort()'s names; 15 since WP-29 P0.12b, P0.14:
     # _dash_tmp_preview and _dash_tmp_close, the private temporary
-    # folder's programs, take opened()/noted() and dir().
+    # folder's programs, take opened()/noted() and dir().  16 at WP-30
+    # batch 4, whose list includes _dash_browser_wanted (P1.27) and
+    # _dash_stylelist_bind, the probe that binds a quoted stylelist value.
     with_syntax = sorted(p for p, b in _bodies().items() if _syntax_options(b))
     assert len(with_syntax) >= 6
-    assert len(with_syntax) == 15, with_syntax
+    # 16 -> 17: WP-30 P1.24's _dash_mlabv_parse declares MLABVposition(name),
+    # twoway's own reading of mlabvposition().
+    # 17 -> 18: WP-30 P1.10's _dash_at_opts reads a text() copy's
+    # sub-options with twoway's own syntax statements.
+    assert len(with_syntax) == 18, with_syntax
+    assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
     # The comment lines the duplicate-block scan reads, per parser: 108
     # in the plot parser and 71 in the graph parser (measured 24sep2026,
     # after the S3 batch's notes on the fitarea options and on log and
     # logit; 95 after the note on why the text options are declared
-    # asis).  It
+    # asis; and 114 after P1.1a's note on the style options' quotes,
+    # 03oct2026).  It
     # was ">= 20", for the plot parser alone, and the plot parser split in
     # two -- its second half moved into a program of its own, a pasted
     # duplicate comment block with it -- still showed the scan 38 comment
@@ -621,8 +642,24 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     comments = {prog: sum(1 for ln in body.split("\n")
                           if ln.strip().startswith("//"))
                 for prog, body in bodies.items()}
-    assert comments == {"_dash_parse_plot_opts": 108,
-                        "_dash_parse_graph_opts": 71}, comments
+    # 108 -> 114: P1.1a explains the asis style options and their
+    # normalisation.  114 -> 117: P1.5 names xvarformat()'s measured
+    # minimum.
+    # 117 -> 120: P1.14a's note on the named styles in the sreturn
+    # block and the fitarea comment's rewording.
+    # 120 -> 124: P1.14b's notes on dstyle/dlstyle/bmlinestyle (pending
+    # three lines, sreturn one).
+    # 124 -> 125: P1.24's pending comment is one line shorter (two), and
+    # the mlabvposition sreturn gains two.  125 -> 124: part 2 drops the
+    # pending comment (two) and gives the mlabtextstyle sreturn one.
+    # 124 -> 130: P1.8a's notes on cmissings() (three) and on the
+    # cmissing and connect pending lines (three).
+    # 130 -> 132: P1.8b's note on recast(), recastas() and type() in the
+    # sreturn block (two).
+    # 132 -> 134 and 71 -> 73: P1.6's note on the tmlabel and tmtick
+    # pending lines (two, in each parser).
+    assert comments == {"_dash_parse_plot_opts": 134,
+                        "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below
