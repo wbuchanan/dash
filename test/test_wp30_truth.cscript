@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7
+    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11691,10 +11691,81 @@ if inlist("`only'", "", "S53") & `: list posof "S53" in w30_run' {
 }
 * ==== end S53 ====
 
+python:
+# S54 (WP-30 P1.28b): the Save as SVG actions a saved page carries, read
+# from the document it embeds.  The page path is the local sva_page; the
+# counts come back as locals.  No Stata command, no shell, no eval, and no
+# page text is echoed.
+def _sva_actions():
+    import html as _h, json as _j, re as _r, warnings as _w
+    from bokeh.document import Document as _D
+    from sfi import Macro as _M
+    page = open(_M.getLocal("sva_page"), encoding="utf-8").read()
+    # file_html: a script element of type application/json, HTML-escaped;
+    # components() (layout(bs)): a JS string that also doubles each
+    # backslash (test_bug_regressions.cscript's _br_saved).
+    blocks = _r.findall(r'<script type="application/json" id="[^"]*">(.*?)</script>', page, _r.S)
+    bs = chr(92)
+    blocks += [m.replace(bs + bs, bs) for m in _r.findall(r"const docs_json = '(.*?)';", page, _r.S)]
+    n, desc, names, saves = 0, [], [], []
+    for b in blocks:
+        for dj in _j.loads(_h.unescape(b)).values():
+            with _w.catch_warnings():
+                _w.simplefilter("ignore")
+                doc = _D.from_json(dj)
+            for m in doc.models:
+                tb = getattr(m, "toolbar", None)
+                if tb is None or getattr(m, "toolbar_location", None) is None:
+                    continue
+                for t in tb.tools:
+                    k = type(t).__name__
+                    if k == "SaveTool" and t.filename:
+                        saves.append(t.filename)
+                    if k == "CustomAction" and "dash_svg_save" in (t.tags or ()):
+                        n += 1
+                        desc.append(t.description)
+                        names.append(str(t.callback.args.get("name")))
+    _M.setLocal("sva_n", str(n))
+    _M.setLocal("sva_desc", "|".join(sorted(set(desc))))
+    _M.setLocal("sva_name", "|".join(sorted(names)))
+    _M.setLocal("sva_save", "|".join(sorted(saves)))
+end
+
 * ==== S54 P1.28b: Client-side Save as SVG ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S54") & `: list posof "S54" in w30_run' {
     display as text "S54 start " c(current_date) " " c(current_time)
+    quietly sysuse auto, clear
+    quietly graph drop _all
+    dash clear
+    // SVA-01: a one-line dashboard's grid carries one Save as SVG action,
+    // named as its PNG save, dashboard.
+    dash scatter mpg weight, saving("`w30_work'/sva1.html", replace)
+    local sva_fn `"`r(filename)'"'
+    local sva_page "`w30_work'/sva1.html"
+    python: _sva_actions()
+    _w30_expect SVA-01 "`sva_n' == 1" "`sva_n' actions"
+    _w30_expect SVA-01 `"("`sva_desc'" == "Save as SVG")"' "description `sva_desc'"
+    _w30_expect SVA-01 `"("`sva_name'" == "dashboard" & "`sva_save'" == "dashboard")"' "name `sva_name', save `sva_save'"
+    _w30_done SVA-01 "one Save as SVG action beside the save button, named dashboard"
+    // SVA-02: under layout(bs), the graph's own toolbar carries one,
+    // named g1; the KPI card none.
+    dash clear
+    dash scatter mpg weight, name(g1)
+    dash kpi mean(mpg), title(Mean mpg) name(k1)
+    dash build, layout(bs) saving("`w30_work'/sva2.html", replace)
+    local sva_page "`w30_work'/sva2.html"
+    python: _sva_actions()
+    _w30_expect SVA-02 "`sva_n' == 1" "`sva_n' actions"
+    _w30_expect SVA-02 `"("`sva_name'" == "g1" & "`sva_save'" == "g1")"' "name `sva_name', save `sva_save'"
+    _w30_done SVA-02 "layout(bs): one action on g1, none on the KPI card"
+    // SVA-03 (guard): r(filename) names the page SVA-01 read.
+    mata: st_local("sva_same", strofreal(pathbasename(st_local("sva_fn")) == "sva1.html" & fileexists(st_local("sva_fn"))))
+    _w30_expect SVA-03 "`sva_same' == 1" `"r(filename) `sva_fn'"'
+    _w30_done SVA-03 "r(filename) names the page that carries the action"
+    dash clear
+    capture erase "`w30_work'/sva1.html"
+    capture erase "`w30_work'/sva2.html"
     display as text "S54 end " c(current_date) " " c(current_time)
 }
 * ==== end S54 ====

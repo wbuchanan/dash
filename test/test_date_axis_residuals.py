@@ -588,16 +588,18 @@ def _digest(model):
 # Re-derived for WP-30 P1.21b: the finish code carries dash_refline_extent
 # (the filter callback's text only; a plain figure draws no Arrow).
 # Re-derived on the merged batch-18 tree: P1.18b's axis plan key (xnr)
-# and finish code.
+# and finish code.  Re-derived for WP-30 P1.28b: the grid's toolbar holds
+# the Save as SVG action (the saved digest with the old _dash_name_save
+# patched back in is the batch-18 one).
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "3221d260c5e5e37d62df7e437bf93dfa3a7301fe99e9d885d436fbbf5b9d20f3",
+        "92134bce6d58ce05bac985e4092f7cb62743744387b6407adf9a74df60720fdd",
     ("saved", "yaxis2"):
-        "3221d260c5e5e37d62df7e437bf93dfa3a7301fe99e9d885d436fbbf5b9d20f3",
+        "92134bce6d58ce05bac985e4092f7cb62743744387b6407adf9a74df60720fdd",
     ("served", "plain"):
-        "436cf84b5b6528719de2566e2dd60743059bdb83466635e2943303029f1cf254",
+        "86c17f7e45566169302c0d7985256ad886ed68f171d49a496d274181a33f4fe7",
     ("served", "yaxis2"):
-        "436cf84b5b6528719de2566e2dd60743059bdb83466635e2943303029f1cf254",
+        "86c17f7e45566169302c0d7985256ad886ed68f171d49a496d274181a33f4fe7",
 }
 
 

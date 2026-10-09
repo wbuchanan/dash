@@ -730,6 +730,7 @@ def _tools(fig):
             hovers.append(e)
         else:
             out.append(e)
+            _svg_action(t, e)
     return out + sorted(hovers, key=lambda d: json.dumps(d, sort_keys=True,
                                                          default=str))
 
@@ -742,8 +743,25 @@ def _grid_toolbar(grid):
     a by() graph's cell on the saved layout(bs) page kept its toolbar on
     the right while the served cell's sat above."""
     return (grid.toolbar_location,
-            [(type(t).__name__, getattr(t, "filename", None))
+            [_svg_action(t, (type(t).__name__, getattr(t, "filename", None)))
              for t in grid.toolbar.tools if not isinstance(t, ToolProxy)])
+
+
+def _svg_action(tool, entry):
+    """*entry* with, for a ``CustomAction`` (WP-30 P1.28b: the Save as SVG
+    action), its description, tags, callback arg names but the model, and
+    the file name it writes, so a drift between modes is seen.  A dict
+    *entry* gains them as keys; a tuple is returned extended."""
+    if type(tool).__name__ != "CustomAction":
+        return entry
+    args = dict(getattr(tool.callback, "args", None) or {})
+    extra = {"description": tool.description, "tags": list(tool.tags),
+             "args": sorted(k for k in args if k != "grid"),
+             "name": args.get("name")}
+    if isinstance(entry, dict):
+        entry.update(extra)
+        return entry
+    return entry + tuple(sorted(extra.items(), key=lambda kv: kv[0]))
 
 
 def _axes(fig):

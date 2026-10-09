@@ -1315,7 +1315,8 @@ it is no longer in memory, and no note is printed.
 
 {pstd}
 {ul:Images.}  The toolbar's save button writes the figures as a PNG image at
-the screen's resolution.  A do-file cannot write an image of a dashboard:
+the screen's resolution.  Its Save as SVG button writes them as a vector
+SVG file.  A do-file cannot write an image of a dashboard:
 that needs a web browser driven from Stata, which {cmd:dash} does not ship.
 A do-file finds the page in {cmd:r(filename)} (see
 {help dash##results:Stored results}).  {cmd:saving()} always writes HTML
@@ -1582,6 +1583,8 @@ Every figure carries the same tools, in both render modes:
 {synopt:Reset}return to the extent the last filter move gave the axes, and clear the
     selection and what Undo would step back through.{p_end}
 {synopt:Save}write the figures to a PNG image; see below.{p_end}
+{synopt:Save as SVG}write the same figures as a vector SVG file; see
+    below.{p_end}
 {synoptline}
 
 {pstd}
@@ -1605,7 +1608,10 @@ serves as one PNG file.  A grid -- the dashboard's, a tab's, or a
 {cmd:by()} graph's panels -- is saved as {cmd:dashboard.png}.  A graph that
 {cmd:layout(bs)} places on its own, with its {cmd:by()} panels if it has
 any, is saved under its name: {cmd:g1.png} for the graph registered as
-{cmd:g1}.  Your browser decides where the file goes.  The image holds only
+{cmd:g1}.  Save as SVG writes the same figures as a vector image,
+{cmd:dashboard.svg} or {cmd:g1.svg}, drawn from what is on screen, after
+any filter you moved; a figure with more than 10,000 points makes a large
+file.  Your browser decides where the file goes.  The image holds only
 the figures: a KPI card in a grid is left blank, and the title, the filters
 and the tab strip, which sit outside every grid, are not in it.
 
@@ -1881,6 +1887,7 @@ it.  The saved page and the served app differ as follows:
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
+{col 5}Toolbar, save as SVG{col 38}Yes{col 59}Yes
 {col 5}{cmd:scheme()}, {cmd:theme()}{col 38}Yes{col 59}Yes
 {col 5}{cmd:layout()}, {cmd:tabs()} and{col 38}Yes{col 59}Yes
 {col 7}{cmd:filterposition()}

@@ -779,3 +779,42 @@ class TestOffDateAxesInTheBrowser:
                 p.wait_change(_TICKS_JS, before, timeout=20)
                 _check_off_date(p, name)
                 assert p.violations() == [] and p.js_errors() == []
+
+
+# ---------------------------------------------------------------------------
+# WP-30 P1.28b (section 54): the Save as SVG action under each policy
+# ---------------------------------------------------------------------------
+
+class TestSaveAsSvgUnderThePolicy:
+    """Each Save as SVG action runs under the saved page's hashed policy
+    and the served page's nonced one with no violation, and the policy
+    still blocks an injection afterwards: the action is a CustomJS, never
+    an inline script, so it needs no hash, no nonce and no new source."""
+
+    @pytest.mark.parametrize("name", [
+        "auto", "bs", "rich",
+        pytest.param("served", marks=pytest.mark.serve)])
+    def test_the_action_runs_with_no_violation(self, servers, name):
+        from test_export_svg import (_CAPTURE_JS, _CLICK_JS, _DONE_JS,
+                                     _N_ACTIONS_JS)
+        url = (_served_url(servers("launcher", "rich")) if name == "served"
+               else _url(_saved_page(name)))
+        with _CspProbe(url) as p:
+            assert p.violations() == [], p.violations()
+            n = p.read(_N_ACTIONS_JS)
+            assert n >= 1, f"{name}: no Save as SVG action on the page"
+            for i in range(n):
+                p._eval(_CAPTURE_JS)
+                p.in_task(_CLICK_JS % i)
+                end = time.time() + 30
+                while time.time() < end and not p.read(_DONE_JS):
+                    time.sleep(0.2)
+                types = p.read("JSON.stringify(window.__svg.map(e => "
+                               "e.type))")
+                assert types == ["image/svg+xml"], (name, i, types,
+                                                    p.js_errors())
+            assert p.violations() == [], p.violations()
+            assert p.js_errors() == [], p.js_errors()
+            p.inject()
+            assert p.ran() == [False, False], p.ran()
+            assert set(p.violations()) == _INJECTED, p.violations()

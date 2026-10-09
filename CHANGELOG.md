@@ -581,7 +581,7 @@ and now matches Stata.
   what `graph export`, printing and the toolbar can and cannot do.
   (WP-30, P1.28a)
 
-<!-- WP-30 P1.28b -->
+- Every dashboard toolbar, saved and served, has a Save as SVG button beside the PNG save: it downloads a vector SVG of the same figures (dashboard.svg, or g1.svg for a layout(bs) item), drawn from what is on screen after any filter move. Before, the only image was a PNG at the screen's resolution. dash draws no figure with an SVG backend, which would break the PNG save. (WP-30, P1.28b)
 
 - `dash serve` takes `maxsessions(#)` (default 20) and `idletimeout(#)` minutes (default 60, 0 = never), and a served app takes `--max-sessions` and `--idle-timeout` (or `DASH_MAX_SESSIONS` and `DASH_IDLE_TIMEOUT` under `bokeh serve`); the app prints "preparing the dashboard (N rows, ...)" and builds once before it listens, so no reader pays the first build. (WP-30, P1.31a)
 

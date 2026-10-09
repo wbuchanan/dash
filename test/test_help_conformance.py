@@ -698,9 +698,10 @@ class TestTheParsersFoundSomething:
         # five axis-2 rows (part 2).
         # 396 -> 402: P1.15c's six by() rows (iyaxes ixaxes, noedgelabel,
         # noytitles noxtitles, legend(), ilegends, clegend(on)).
-        assert len(defs) == 402, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 402 "
-            f"measured 08oct2026")
+        # WP-30 P1.28b: 402 -> 403, the toolbar's Save as SVG row.
+        assert len(defs) == 403, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 403 "
+            f"measured 09oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (

@@ -63,6 +63,7 @@ Version: 1.0.0  25mar2026
 from __future__ import annotations  # dash needs Python 3.11 or later: link a newer Python, then run dash_setup
 
 import argparse
+import base64
 import collections
 import contextlib
 import datetime as _dt
@@ -278,6 +279,18 @@ _DASH_BOKEH_INTERNALS = (
      "_dash_cap_auth (checks the hook at build)",
      "test/test_served_resources.py::TestSessionsAreCapped"
      "::test_a_keyless_client_gets_403_not_503"),
+    # WP-30 P1.28b: the Save as SVG action's BokehJS calls.
+    ("BokehJS Bokeh.index.find_one(model) (S54's _DASH_SVG_SAVE_JS)",
+     "browser test",
+     "test/test_export_svg.py::TestInChrome::test_a_failure_is_said_once"),
+    ("BokehJS LayoutDOMView.export('svg') (S54's _DASH_SVG_SAVE_JS)",
+     "browser test",
+     "test/test_export_svg.py::TestInChrome"
+     "::test_saved_page_before_and_after_a_move"),
+    ("BokehJS CanvasLayer.to_blob() (S54's _DASH_SVG_SAVE_JS)",
+     "browser test",
+     "test/test_export_svg.py::TestTheBundle"
+     "::test_the_calls_exist_in_the_shipped_bokehjs"),
 )
 
 
@@ -35150,6 +35163,49 @@ _DASH_SAVE_NAME = "dashboard"
 #: ceiling for a name, and anything else falls back to _DASH_SAVE_NAME.
 _DASH_SAVE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,31}")
 
+#: The Save as SVG action's callback (WP-30 P1.28b; M8, register P1.28.2,
+#: research p1-28 section 3).  ``_dash_name_save`` puts it beside every save
+#: button.  It asks BokehJS for a vector SVG of the model whose toolbar
+#: holds it (``grid``: the whole grid, a tab's grid, a by() graph's panels
+#: or one layout(bs) item, as the PNG save writes) and downloads it as
+#: ``<name>.svg``, from what is on screen.  A figure drawn with an SVG
+#: backend instead breaks the grid's PNG save (BokehJS drawImage TypeError,
+#: bokeh 3.8.0 and 3.9.0).  The stem is held to a Stata name again here; no
+#: page data reaches the code.  A Bokeh that cannot export says so once.
+#: The three BokehJS calls are on _DASH_BOKEH_INTERNALS.
+_DASH_SVG_SAVE_JS = r"""
+const stem = (typeof name === "string"
+              && /^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)) ? name : "dashboard";
+const say = () => window.alert("dash: this browser could not write an SVG "
+  + "of these figures; use the save button for a PNG.");
+try {
+  const view = Bokeh.index.find_one(grid);
+  if (view == null) { say(); return; }
+  view.export("svg").to_blob().then((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = stem + ".svg";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }, say);
+} catch (e) {
+  say();
+}
+"""
+
+#: The Save as SVG button's icon (WP-30 P1.28b): a page outline holding
+#: "SVG", 18 by 18, as a data: URI both policies' img-src admit.
+_DASH_SVG_SAVE_ICON = "data:image/svg+xml;base64," + base64.b64encode(
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" '
+    b'viewBox="0 0 18 18"><path d="M3.5 1.5h7l4 4v11h-11z" fill="none" '
+    b'stroke="#666" stroke-width="1.2"/><text x="9" y="13.5" '
+    b'font-family="sans-serif" font-size="5.5" font-weight="bold" '
+    b'text-anchor="middle" fill="#666">SVG</text></svg>').decode("ascii")
+
 
 def _dash_save_filename(name=None):
     """The file name, without extension, a save button writes.
@@ -35175,13 +35231,35 @@ def _dash_name_save(model, name=None):
     ``prompt()`` for one, with ``bokeh_plot`` filled in.  The name is
     ``_dash_save_filename(name)``.  Returns *model*, so a call can wrap the
     ``gridplot()`` it names.
+
+    Beside a save button it also puts ONE Save as SVG action (WP-30
+    P1.28b): a ``CustomAction`` tagged ``dash_svg_save`` whose callback,
+    ``_DASH_SVG_SAVE_JS``, exports *model* as a vector SVG named
+    ``<name>.svg``.  An action, not an SVG backend, because a grid of SVG
+    figures cannot be saved as a PNG.  A model named twice (a by() graph's
+    sub-grid) keeps one action, whose name is the last one given, as its
+    save button's file name is.
     """
-    from bokeh.models import SaveTool
+    from bokeh.models import CustomAction, CustomJS, SaveTool
     filename = _dash_save_filename(name)
     toolbar = getattr(model, "toolbar", None)
+    saved = False
     for tool in (getattr(toolbar, "tools", None) or ()):
         if isinstance(tool, SaveTool):
             tool.filename = filename
+            saved = True
+    if not saved:
+        return model
+    for tool in toolbar.tools:
+        if isinstance(tool, CustomAction) and "dash_svg_save" in tool.tags:
+            tool.callback.args = {**tool.callback.args, "grid": model,
+                                  "name": filename}
+            return model
+    toolbar.tools = list(toolbar.tools) + [CustomAction(
+        description="Save as SVG", icon=_DASH_SVG_SAVE_ICON,
+        tags=["dash_svg_save"],
+        callback=CustomJS(args={"grid": model, "name": filename},
+                          code=_DASH_SVG_SAVE_JS))]
     return model
 
 
@@ -46334,9 +46412,11 @@ class ServerAppBuilder:
                       "_DASH_JS_MS_LIMIT",
                       # The toolbar every figure carries and the names its
                       # save button writes (WP-21), read by the figure
-                      # block and by _dash_save_filename.
+                      # block and by _dash_save_filename, and the SVG
+                      # action beside it (WP-30 P1.28b).
                       "_DASH_FIGURE_TOOLS", "_DASH_SAVE_NAME",
                       "_DASH_SAVE_NAME_RE",
+                      "_DASH_SVG_SAVE_JS", "_DASH_SVG_SAVE_ICON",
                       # layout(bs): the automatic rows' KPI count, and the
                       # served grid's columns, track and gutter (WP-21).
                       "_MAX_KPIS_PER_ROW", "_DASH_BS_COLUMNS",

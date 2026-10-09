@@ -344,8 +344,10 @@ def test_n_plots_draw_n_distinct_series_colours(wide_df, n_series):
 #               glyphs, an inserted "line_width":1.5 (s2color's linewidth
 #               p); nothing else.  Intended.
 _SINGLE_Y_BASELINE_SHA256 = (
-    "0ee9beb4e809e62c8d97791a1ad6022aa9ffd97ba7d1c24a1e4326feab76aef8"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5) -> 4b4e77b5 -> 68b474a5 (P1.5 axis formats on P1.2b, merged batch 6) -> b11518da (P1.3a) -> 369c5e1a (merged batch 7) -> e8872e93 (merged batch 9) -> b7398dd3 (P1.23a) -> 33cae67d (P1.3b: the filter callback carries the date model's JS port) -> fd92af37 (batch-15 gate: a default date axis's ticks leave out range()) -> c1e8c7e1 (P1.20b: the axis plan carries margin pairs and box indexes, the finish code pads per side and moves the inner box) -> 533ab561 (P1.21b: the finish code carries dash_refline_extent; finish JS text only) -> 0ee9beb4 (merged batch 18)
+    "9e48e06ef4c5d3bf2d8bc85f38f3d1465ed6aca4291ea7c83efdb7e208c4ebdc"  # 634f532a -> 12cea7d0 (P1.12b line widths) -> 150011f2 (P1.2a scheme chrome, merged batch 5) -> 4b4e77b5 -> 68b474a5 (P1.5 axis formats on P1.2b, merged batch 6) -> b11518da (P1.3a) -> 369c5e1a (merged batch 7) -> e8872e93 (merged batch 9) -> b7398dd3 (P1.23a) -> 33cae67d (P1.3b: the filter callback carries the date model's JS port) -> fd92af37 (batch-15 gate: a default date axis's ticks leave out range()) -> c1e8c7e1 (P1.20b: the axis plan carries margin pairs and box indexes, the finish code pads per side and moves the inner box) -> 533ab561 (P1.21b: the finish code carries dash_refline_extent; finish JS text only) -> 0ee9beb4 (merged batch 18) -> 9e48e06e (P1.28b)
     # 533ab561 -> 0ee9beb4: P1.18b's axis plan key (xnr) and finish code.
+    # 0ee9beb4 -> 9e48e06e: P1.28b's Save as SVG action on the grid's
+    # toolbar.
     # 369c5e1a -> e8872e93: P1.17b's axis plan key (autobase) and finish code.
     # e8872e93 -> b7398dd3: P1.23a's code text only (the plan's "units"
     # key, the date-units JS in the finish code, dash_stata_number_of in
