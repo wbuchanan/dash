@@ -26,6 +26,8 @@ holds every probe.
 Part a (section 35, P1.23a) appends its classes below section 17's.
 """
 
+import base64
+import gzip
 import hashlib
 import json
 import os
@@ -556,15 +558,25 @@ class TestTheKeyHelpers:
 # A figure with no colour key and no computed layer is unchanged
 # ===========================================================================
 
+def _gunzip(v):
+    """A gzipped base64 array buffer as its raw bytes' hex: the gzip header's
+    XFL byte follows the zlib build, not the model (WP-30 S58: Stata's Python
+    writes 02 where the development one writes 00)."""
+    if isinstance(v, str) and v.startswith("H4sI"):
+        return gzip.decompress(base64.b64decode(v)).hex()
+    return v
+
+
 def _digest(model):
-    """sha256 of *model*'s page JSON with every id removed."""
+    """sha256 of *model*'s page JSON with every id removed and every gzipped
+    buffer decompressed."""
     def strip(o):
         if isinstance(o, dict):
             return {k: strip(v) for k, v in o.items() if k != "id"}
         # A map's entries are tuples (P1.3a's range callbacks hold ids).
         if isinstance(o, (list, tuple)):
             return [strip(v) for v in o]
-        return o
+        return _gunzip(o)
     item = json_item(model)
     doc = strip(item["doc"]["roots"])
     return hashlib.sha256(
@@ -596,10 +608,12 @@ _PLAIN_DIGESTS = {
         "92134bce6d58ce05bac985e4092f7cb62743744387b6407adf9a74df60720fdd",
     ("saved", "yaxis2"):
         "92134bce6d58ce05bac985e4092f7cb62743744387b6407adf9a74df60720fdd",
+    # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
+    # the same under bokeh 3.8 (Stata's Python) and 3.9.
     ("served", "plain"):
-        "86c17f7e45566169302c0d7985256ad886ed68f171d49a496d274181a33f4fe7",
+        "6e81bc9e0d59d8368b51b62ffb1a4b0e9d0d6ab61f2dad1fab5bd818de61c1af",
     ("served", "yaxis2"):
-        "86c17f7e45566169302c0d7985256ad886ed68f171d49a496d274181a33f4fe7",
+        "6e81bc9e0d59d8368b51b62ffb1a4b0e9d0d6ab61f2dad1fab5bd818de61c1af",
 }
 
 

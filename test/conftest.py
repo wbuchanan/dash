@@ -5,6 +5,7 @@ Centralises commonly-used fixtures so individual test files don't each
 define their own copy of auto_df, make_spec, make_dr, etc.
 """
 import __future__
+import contextlib
 import importlib.util
 import itertools
 import sys
@@ -252,6 +253,27 @@ def pytest_collection_modifyitems(config, items):
         name = params.get("name")
         if name:
             item.add_marker(pytest.mark.xdist_group(name="parity:" + str(name)))
+
+# ============================================================
+# subtests under pytest 8
+# ============================================================
+# pytest 9 ships the subtests fixture; Stata's Python (make test) carries
+# pytest 8.4 without the pytest-subtests plugin, and every test taking
+# the fixture errored there.  The stand-in runs each subtest inline, so
+# the first failing subtest fails its test.
+
+class _InlineSubtests:
+
+    def test(self, msg=None, **kwargs):
+        return contextlib.nullcontext()
+
+
+if (importlib.util.find_spec("_pytest.subtests") is None
+        and importlib.util.find_spec("pytest_subtests") is None):
+    @pytest.fixture
+    def subtests():
+        return _InlineSubtests()
+
 
 # ============================================================
 # An empty global Bokeh document for every test

@@ -826,10 +826,10 @@ class TestTheStackHook:
             assert not plain
         else:
             _r, _n, doc = _build(mode, spec)
-            hooks = doc.callbacks.js_event_callbacks.get("document_ready", [])
+            hooks = doc.callbacks._js_event_callbacks.get("document_ready", [])
             assert [h.name for h in hooks] == ["dash_by_stack"]
             _r, _n, doc = _build(mode, plain)
-            assert not doc.callbacks.js_event_callbacks.get("document_ready")
+            assert not doc.callbacks._js_event_callbacks.get("document_ready")
 
 
 class TestTheSchemeKeys:

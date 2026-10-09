@@ -63,12 +63,12 @@ def test_the_fixture_clears_an_apps_document_callbacks(tmp_path, auto_df):
     document file_html() makes, so a later test's saved page carried the
     hook; the fixture clears them too."""
     _exec_generated_app(tmp_path, auto_df, {"by": "foreign"})
-    assert curdoc().callbacks.js_event_callbacks.get("document_ready")
+    assert curdoc().callbacks._js_event_callbacks.get("document_ready")
     gen = _clear_bokeh_curdoc.__wrapped__()
     next(gen)
     with pytest.raises(StopIteration):
         next(gen)
-    assert not curdoc().callbacks.js_event_callbacks.get("document_ready")
+    assert not curdoc().callbacks._js_event_callbacks.get("document_ready")
 
 
 def test_clearing_is_idempotent_on_an_empty_document():
