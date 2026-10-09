@@ -115,6 +115,10 @@ def _qs_models(roots):
         for fig in root.select({"type": Plot}):
             hit = False
             for r in fig.renderers:
+                # WP-30 P1.15c: the by() legend cell's swatch clones (one NaN
+                # row, named _clegend_by_*) are keys, not a layer.
+                if str(r.name or "").startswith("_clegend_"):
+                    continue
                 if isinstance(r, GlyphRenderer) and type(r.glyph).__name__ == "Scatter":
                     hit = True
                     xs = [float(v) for v in r.data_source.data["rowid"]]
@@ -221,6 +225,10 @@ def _qs_page():
             g = ref(rr)
             a = g.get("attributes", {})
             if g.get("name") != "GlyphRenderer" or ref(a.get("glyph", {})).get("name") != "Scatter":
+                continue
+            # WP-30 P1.15c: the by() legend cell's swatch clones (one NaN
+            # row, named _clegend_by_*) are keys, not a layer.
+            if str(a.get("name") or "").startswith("_clegend_"):
                 continue
             hit = True
             data = dict((k, v) for k, v in ref(a.get("data_source", {})).get("attributes", {}).get("data", {}).get("entries", []))

@@ -38,6 +38,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 
 import dash_render as dr  # noqa: E402
+from by_panel_probe import grid_cells, side_title  # noqa: E402
 from conftest import load_app  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
@@ -97,6 +98,20 @@ def _saved_figs(tmp, spec, dp, tag):
     return list(r.figures.values())
 
 
+def _saved_root(tmp, spec, dp, tag):
+    """The saved page's layout root.  WP-30 P1.15c: a by() grid's legend
+    and axis-title cells are not in ``r.figures``; the probes read every
+    cell of the layout."""
+    sp = str(tmp / f"spec_{tag}.json")
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        render_models(r)
+    return r._last_layout_root
+
+
 def _note_of(fig):
     for m in list(fig.below) + list(fig.above) + list(fig.center):
         t = getattr(m, "text", None)
@@ -109,9 +124,13 @@ def _summary(figs):
     """``{"keys": [...], "y1": ..., "y2": ..., "x1": ..., "x2": ...}`` over
     *figs*: the sorted keys of the visible series legend (one list, ``[]``
     when none is shown; distinct lists joined when panels differ) and the
-    distinct non-empty axis titles on each side, joined by ``;``."""
+    distinct non-empty axis titles on each side, joined by ``;``.  A by()
+    grid's title cells (WP-30 P1.15c) title its first y and x axes."""
     keys, sides = set(), dict((k, set()) for _a, k in _SIDES)
     for f in figs:
+        st = side_title(f)
+        if st is not None and st[1]:
+            sides[st[0] + "1"].add(st[1])
         for lg in f.select({"type": Legend}):
             if (getattr(lg, "name", "") == dr._COLORVAR_LEGEND_NAME
                     or lg.visible is False or not lg.items):
@@ -160,16 +179,24 @@ def _probe_summaries(mode):
                 spec["function_points"] = points
             tag = f"{mode}_{ds}_{c}"
             if mode == "saved":
-                figs = _saved_figs(tmp, spec, dp, tag)
+                roots = [_saved_root(tmp, spec, dp, tag)]
             else:
-                doc = _served_doc(tmp, spec, dp, tag)
-                figs = [m for root in doc.roots
-                        for m in root.select({"type": Plot})]
+                roots = list(_served_doc(tmp, spec, dp, tag).roots)
+            figs = [m for root in roots for m in root.select({"type": Plot})
+                    if isinstance(m, Plot)]
             by_pid = {}
             for f in figs:
                 pid = _note_of(f)
                 if pid is not None and f not in by_pid.setdefault(pid, []):
                     by_pid[pid].append(f)
+            # WP-30 P1.15c: a by() graph's legend and axis titles are drawn
+            # once, in cells of its grid that carry no note.
+            for cells in grid_cells(roots):
+                tags = {_note_of(c) for c in cells} - {None}
+                if len(tags) == 1:
+                    tag_ = tags.pop()
+                    by_pid[tag_] += [c for c in cells
+                                     if c not in by_pid[tag_]]
             for pid in chunk:
                 out[pid] = _summary(by_pid.get(pid, []))
     _CACHE[mode] = out

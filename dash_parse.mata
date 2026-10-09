@@ -4914,7 +4914,7 @@ void _dash_item_globals(string scalar nm, string scalar out_macro)
     real scalar      i, j
 
     fld = _dash_kpi_fields()
-    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tunit_" + nm,
+    own = ("dash_json_" + nm, "dash_spec_" + nm, "dash_fpts_" + nm, "dash_tu_" + nm,
            "dash_kpi_" + nm)
     for (j = 1; j <= length(fld); j++) {
         own = own, "dash_kpi_" + nm + "__" + fld[j]

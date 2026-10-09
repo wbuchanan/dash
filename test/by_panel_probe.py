@@ -48,6 +48,38 @@ def is_side(model):
     return getattr(model, "name", None) in SIDE_NAMES
 
 
+def side_title(cell):
+    """``(letter, text)`` of a by() title cell (WP-30 P1.15c: twoway's
+    l1title and b1title, drawn once left of and below the panels, in
+    ``dash_by_ytitle`` and ``dash_by_xtitle``): *letter* is ``"y"`` or
+    ``"x"``; None for any other model."""
+    letter = {"dash_by_ytitle": "y", "dash_by_xtitle": "x"}.get(
+        getattr(cell, "name", None))
+    if letter is None:
+        return None
+    side = "left" if letter == "y" else "below"
+    texts = [str(m.text or "") for m in getattr(cell, side)
+             if type(m).__name__ == "Title"]
+    return letter, (texts[0] if texts else "")
+
+
+def grid_cells(roots):
+    """Every by() grid under *roots* (a ``GridPlot`` with a labelled
+    panel; a dashboard's own grid is not one) as the list of its cells'
+    models -- panels, chrome and side cells -- in child order."""
+    from bokeh.models import GridPlot
+    out, seen = [], set()
+    for root in roots:
+        for m in root.references():
+            if not isinstance(m, GridPlot) or m.id in seen:
+                continue
+            seen.add(m.id)
+            cells = [c[0] for c in m.children]
+            if any(panel_label_title(c) is not None for c in cells):
+                out.append(cells)
+    return out
+
+
 def chrome_texts(cell):
     """A chrome cell's text rows in reading order: its title, its above
     rows from the outermost in, its in-band Labels, then its below rows."""

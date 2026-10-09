@@ -32,7 +32,7 @@
 *! the global with Stata's bare "dash_spec_<name> invalid name".  The limits
 *! are now what the globals allow: 22 for a graph, 18 for a KPI.
 *!
-*! Tests: CV-01 through CV-11
+*! Tests: CV-01 through CV-12
 *!
 *! Usage:  do test/test_caller_version.cscript
 *! Version: 1.0  23sep2026
@@ -157,6 +157,34 @@ assert _rc == 0
 cert_file_has "`out5'.html", needle("eighteen")
 assert r(found) == 1
 display "CV-11 PASS: the longest graph and KPI names build a dashboard"
+
+// CV-12 (WP-30 P1.6): a graph holding a t-option's date keeps the unit it
+// was read in, in a global named within Stata's 32 characters at the
+// longest graph name, and builds.  dash_tunit_<name> was 33 characters.
+preserve
+quietly {
+    clear
+    set obs 24
+    generate t = tm(2001m1) + _n - 1
+    format t %tm
+    generate y = _n
+    tsset t
+}
+dash clear
+capture noisily dash tsline y, tline(2002m1) name(`g22')
+assert _rc == 0
+mata: _dash_item_globals("`g22'", "_left")
+assert "`_left'" != ""
+assert `"${dash_tu_`g22'}"' != ""
+tempfile out12
+capture erase "`out12'.html"
+capture noisily dash build, saving("`out12'.html") replace nobrowser
+assert _rc == 0
+dash clear
+mata: _dash_item_globals("`g22'", "_left")
+assert "`_left'" == ""
+restore
+display "CV-12 PASS: the longest graph name keeps its t-options' unit and builds"
 
 // ================================================================
 // CV-06 — the grammar still refuses what it refused

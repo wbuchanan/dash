@@ -2270,7 +2270,9 @@ def _s11_app():
     figs = []
     for root in doc.roots:
         for p in root.references():
-            if not isinstance(p, Plot):
+            # WP-30 P1.15c: a by() grid's legend cell (dash_by_legend) holds
+            # swatch clones of panel 1's glyphs; it is not a panel.
+            if not isinstance(p, Plot) or str(p.name or "").startswith("dash_by_"):
                 continue
             items = [(type(r.glyph).__name__, lambda k, g=r.glyph: getattr(g, k, None))
                      for r in p.renderers if isinstance(r, GlyphRenderer)]
@@ -4782,6 +4784,15 @@ def _s19_summary(models, by_id):
     for m in models:
         # A served figure's class is bokeh.plotting's lower-case "figure".
         if m.kind in ("Figure", "figure", "Plot"):
+            # WP-30 P1.15c: a by() grid draws its y and x titles once, as a
+            # Title in a cell of its own (dash_by_ytitle, dash_by_xtitle).
+            cell = {"dash_by_ytitle": ("left", "y1"),
+                    "dash_by_xtitle": ("below", "x1")}.get(m.get("name"))
+            if cell is not None:
+                for ref in (m.get(cell[0]) or []):
+                    t = by_id(ref)
+                    if t is not None and t.kind == "Title" and t.get("text") not in (None, ""):
+                        sides[cell[1]].add(str(t.get("text")))
             for attr, k in _S19_SIDES:
                 for ref in (m.get(attr) or []):
                     a = by_id(ref)
@@ -5435,9 +5446,10 @@ def _s21_key(f):
 def _s21_figs(doc):
     from bokeh.models import Plot
     # WP-30 P1.15a: the by() grid's head and foot cells are bare Plots
-    # holding the overall text, not panels.
+    # holding the overall text, not panels.  WP-30 P1.15c: nor are its
+    # title, legend, colour-key and ruler cells; every such cell is dash_by_*.
     return sorted([m for m in doc.select(dict(type=Plot))
-                   if m.name not in ("dash_by_head", "dash_by_foot")],
+                   if not str(m.name or "").startswith("dash_by_")],
                   key=_s21_key)
 
 
@@ -6807,7 +6819,8 @@ if inlist("`only'", "", "S28") & `: list posof "S28" in w30_run' {
         cert_file_has "`w30_work'/s28a.html", needle(`"`t'"')
         _w30_expect BP-02 "(r(found) == 0)" `"the page still holds `t'"'
     }
-    _s28_count using "`w30_work'/s28a.html", needle("dash_by_label")
+    // WP-30 P1.15c: the name quoted, so the label boxes (dash_by_label_box) are not counted.
+    _s28_count using "`w30_work'/s28a.html", needle(`"`q'dash_by_label`q'"')
     _w30_expect BP-02 "(r(n) == 10)" "panel labels: `r(n)'"
     _w30_done BP-02 "dash labels every panel and draws the note as twoway does"
 
@@ -6816,7 +6829,8 @@ if inlist("`only'", "", "S28") & `: list posof "S28" in w30_run' {
     generate str4 s = cond(foreign, "F", "")
     replace s = "D" in 1/40
     quietly dash scatter mpg weight, by(s, total) saving("`w30_work'/s28b.html", replace)
-    _s28_count using "`w30_work'/s28b.html", needle("dash_by_label")
+    // WP-30 P1.15c: the name quoted, so the label boxes (dash_by_label_box) are not counted.
+    _s28_count using "`w30_work'/s28b.html", needle(`"`q'dash_by_label`q'"')
     _w30_expect BP-03 "(r(n) == 3)" "panels: `r(n)' (twoway: D, F, Total)"
     cert_file_has "`w30_work'/s28b.html", needle(`"`q'text`q':`q'Graphs by s`q'"')
     _w30_expect BP-03 "(r(found) == 1)" "no Graphs by s note"
@@ -7395,9 +7409,16 @@ def _axl_saved(page_path):
             warnings.simplefilter("ignore")
             figs += _axl_plots(Document.from_json(dj).roots)
     sides = ("left", "right", "below", "above")
-    return [f for f in figs
+    figs = [f for f in figs
             if any(type(a).__name__.endswith("Axis")
                    for s in sides for a in getattr(f, s))]
+    # WP-30 P1.15c: by() panels draw different axes (the outer-axes rule),
+    # so two builds' panels are compared in label order, not in the
+    # document's unordered one.
+    def label(f):
+        return [str(m.text or "") for m in list(f.above) + list(f.below)
+                if type(m).__name__ == "Title" and m.name == "dash_by_label"]
+    return sorted(figs, key=label)
 
 def _axl_profile(fig):
     out = {}

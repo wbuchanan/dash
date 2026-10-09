@@ -34,7 +34,8 @@ from conftest import load_app, render_models  # noqa: E402
 import test_by_grid as tg  # noqa: E402
 import test_by_text as tbt  # noqa: E402
 import test_mode_parity as tp  # noqa: E402
-from by_panel_probe import by_grid, panel_label, panel_label_title  # noqa: E402
+from by_panel_probe import (by_grid, panel_label,  # noqa: E402
+                            panel_label_title, side_title)
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "by_chrome_truth.json")
 _SCHEME_FIXTURE = os.path.join(_HERE, "fixtures", "scheme_truth.json")
@@ -587,11 +588,7 @@ class TestAxisTitlesOnce:
             for name, want in (("dash_by_ytitle", p["l1title"]),
                                ("dash_by_xtitle", p["b1title"])):
                 c = _cell(grid, name)
-                text = ""
-                if c is not None:
-                    text = [m.text for m in list(c[0].left)
-                            + list(c[0].below)
-                            if type(m).__name__ == "Title"][0]
+                text = side_title(c[0])[1] if c is not None else ""
                 if pid in ("p27", "p28") and name == "dash_by_ytitle":
                     want = want  # the y title is mpg's in both
                 if text != want:

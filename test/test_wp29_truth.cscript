@@ -3622,9 +3622,10 @@ def _s10_key(p):
 
 def _s10_figs(plots):
     # WP-30 P1.15a: the by() grid's head and foot cells are bare Plots
-    # holding the overall text, not panels.
+    # holding the overall text, not panels.  WP-30 P1.15c: nor are its
+    # title, legend, colour-key and ruler cells; every such cell is dash_by_*.
     return sorted((p for p in plots
-                   if p.name not in ("dash_by_head", "dash_by_foot")),
+                   if not str(p.name or "").startswith("dash_by_")),
                   key=_s10_key)
 
 

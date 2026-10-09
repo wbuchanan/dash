@@ -27,7 +27,7 @@ import warnings
 import pytest
 from bokeh.document import Document
 from bokeh.models import (Axis, ColorBar, CustomJS, HoverTool, Legend,
-                          RangeSlider, Select, Slider)
+                          Plot, RangeSlider, Select, Slider)
 from bokeh.plotting import figure as _FIG
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +35,7 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_HERE, ".."))
 
 import dash_render as dr  # noqa: E402
+from by_panel_probe import side_title  # noqa: E402
 from conftest import load_app  # noqa: E402
 from test_string_value_export import FakeSfi  # noqa: E402
 from test_served_linked_views import _fire  # noqa: E402
@@ -402,7 +403,14 @@ class TestBothModesNameAnUnlabelledVariable:
         obj = _build(mode, tmp_path, _one([_sc()], by="g"))
         titles = {t for p in _profile(mode, obj)
                   for t in p["x"] + p["y"] if t}
-        assert titles == {"x", "y"}
+        # WP-30 P1.15c: twoway draws the titles once, beside and below the
+        # panels, so they are read on the grid's title cells too.
+        roots = [obj._last_layout_root] if mode == "saved" else obj.roots
+        sides = dict(st for root in roots for m in root.references()
+                     if isinstance(m, Plot)
+                     and (st := side_title(m)) is not None)
+        assert sides == {"y": "y", "x": "x"}
+        assert titles | set(sides.values()) == {"x", "y"}
 
     @pytest.mark.parametrize("mode", MODES)
     def test_a_date_axis_is_titled_by_name(self, mode, tmp_path):
@@ -498,7 +506,17 @@ class TestAfterAFilterMove:
         # never writes a title, axis label or tooltip, and no other write
         # is allowed anywhere.
         cue = "// ---- Marks on the layers a saved page does not recompute"
+        # WP-30 P1.15c: the by() grid's stacked view (_DASH_BY_STACK_JS)
+        # is a layout change, not a filter move: it writes each axis's
+        # build-time label back from its JSON data, and nothing else.
+        stack_write = "axes[i].axis_label = stacked ? r[2] : r[1];"
         for code in codes + module_js:
+            if code.strip() == dr._DASH_BY_STACK_JS.strip():
+                assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(code)] \
+                    == [".axis_label ="], code
+                assert stack_write in code
+                assert "const restore = JSON.parse(labels_json);" in code
+                continue
             if cue in code:
                 head, block = code.split(cue, 1)
                 assert [m.group(0) for m in _JS_TITLE_WRITE.finditer(block)] \

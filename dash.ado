@@ -8519,11 +8519,13 @@ program define _dash_register_graph
     }
     // The unit the t-options' dates were read in (WP-30 P1.6,
     // _dash_taxis_fold), for dash build's note when it has changed.
+    // dash_tu_<name> is 8 + 22 characters, within a global's 32
+    // (dash_tunit_<name> was 33 at the longest name).
     mata: st_local("_tu_reg", st_global("dash__tunit"))
     if `: length local _tu_reg' {
-        mata: st_global("dash_tunit_" + st_local("name"), st_global("dash__tunit"))
+        mata: st_global("dash_tu_" + st_local("name"), st_global("dash__tunit"))
     }
-    else capture macro drop dash_tunit_`name'
+    else capture macro drop dash_tu_`name'
     capture macro drop dash__tunit
 
     // Update registry
@@ -9034,7 +9036,7 @@ program define _dash_clear
     capture macro drop dash_opts_*
     capture macro drop dash_kpi_*
     capture macro drop dash_fpts_*
-    capture macro drop dash_tunit_*
+    capture macro drop dash_tu_*
 
     capture macro drop dash_graph_registry
     // Leading-underscore globals, if any command ever sets one.
@@ -9795,7 +9797,7 @@ program define _dash_prepare_spec, rclass
             // The t-options' unit (WP-30 P1.6): read at registration; a
             // date format of the axis variable changed since is noted
             // once, and the registered values are drawn.
-            mata: st_local("_tu", st_global("dash_tunit_" + st_local("gname")))
+            mata: st_local("_tu", st_global("dash_tu_" + st_local("gname")))
             local _tu_said 0
             foreach _tu_t of local _tu {
                 tokenize "`_tu_t'", parse(":")

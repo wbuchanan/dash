@@ -37590,6 +37590,10 @@ def _dash_by_cell(scheme, name, frame=(1, 1)):
     ``(width, height)`` px; a 1-px dimension fits its content, the other
     fills the grid track."""
     cell = _dash_by_text_cell(scheme, name)
+    # Built after the canvas-text pass: the cell's own empty title is
+    # finished as it stands (it holds no text to finish).
+    if cell.title is not None:
+        setattr(cell.title, _DASH_GRAPH_TEXT_DONE, True)
     fw, fh = frame
     if fw:
         cell.frame_width = int(fw)
