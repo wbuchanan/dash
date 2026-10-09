@@ -1266,10 +1266,14 @@ def _colour_layouts(opts):
         ("linked graph if", dict(graphs=[
             ("g1", [lay], None, {"if_expr": "foreign == 1"}),
             ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
+        # Flipped (WP-30 P1.15c): twoway draws no colour key under by()
+        # unless by(, clegend(on)), then one, the first panel's
+        # (by_chrome_truth.json q06, q07), so the by() layouts ask for it.
         ("linked by()", dict(graphs=[
-            ("g1", [lay], {"by": "foreign"}),
+            ("g1", [lay], {"by": "foreign, clegend(on)"}),
             ("g2", [plot_for("scatter")])], bo={"link": "g1 g2"})),
-        ("unlinked by()", dict(plots=[lay], go={"by": "foreign"})),
+        ("unlinked by()", dict(plots=[lay],
+                               go={"by": "foreign, clegend(on)"})),
     ]
 
 

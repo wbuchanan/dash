@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 4 S52 3
+    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -11432,10 +11432,240 @@ if inlist("`only'", "", "S52") & `: list posof "S52" in w30_run' {
 }
 * ==== end S52 ====
 
+// S53 (WP-30 P1.15c): by()'s shared chrome, twoway against dash's saved
+// page.  _s53_check kind html want reads the page's panels (by their
+// dash_by_label Title, in label order) and compares: kind "axes" -- want
+// is "label:y,x,y2;..." twoway's per-panel draw_view (y2 "." without
+// one) against each panel's axes' visibility, and no panel draws an
+// axis-2 title; kind "legend" -- want is twoway's legend side
+// (rightof, below, ...): one dash_by_legend cell on that side of the
+// panels, no panel legend visible; kind "clegend" -- one dash_by_clegend
+// cell holding one ColorBar, no panel colour key; kind "box" -- want is
+// twoway's SVG, whose rects written just before the "Domestic" label are
+// its box: every panel's dash_by_label_box palette colour and outline
+// equal its fill and stroke, case-insensitive.  Globals S53_OK, S53_MSG.
+capture program drop _s53_check
+program define _s53_check
+    version 19
+    args kind html want
+    global S53_ARGS `"`kind'|`html'|`want'"'
+    python: __import__("sys").modules["_dash_s53"].check()
+end
+python:
+def _s53_check():
+    import json, html as _h, re, warnings
+    from sfi import Macro
+    kind, page, want = Macro.getGlobal("S53_ARGS").split("|", 2)
+
+    def doc_of(path):
+        from bokeh.document import Document
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for blob in re.findall('<script type="application/json"[^>]*>(.*?)</script>', text, re.S):
+            try:
+                d = json.loads(_h.unescape(blob))
+            except ValueError:
+                continue
+            if isinstance(d, dict) and d:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    return Document.from_json(list(d.values())[0])
+        return None
+
+    def label_of(fig):
+        for m in list(fig.above) + list(fig.below):
+            if type(m).__name__ == "Title" and m.name == "dash_by_label":
+                return str(m.text)
+        return None
+
+    from bokeh.models import ColorBar, GridPlot, Legend
+    doc = doc_of(page)
+    grid, panels = None, {}
+    for root in doc.roots:
+        for g in root.references():
+            if isinstance(g, GridPlot):
+                for ch in g.children:
+                    if type(ch[0]).__name__ == "figure" and label_of(ch[0]):
+                        panels[label_of(ch[0])] = (ch[0], int(ch[1]), int(ch[2]))
+                        grid = g
+    bad = []
+    if grid is None:
+        bad.append("no by() grid")
+    def cell(name):
+        for ch in grid.children:
+            if getattr(ch[0], "name", None) == name:
+                return tuple(ch) + ((1, 1) if len(ch) == 3 else ())
+        return None
+    def side_of(c):
+        rows = [p[1] for p in panels.values()]
+        cols = [p[2] for p in panels.values()]
+        if (c[3], c[4]) == (1, 1) and min(cols) <= c[2] <= max(cols) and c[1] <= max(rows) + 1:
+            return "on"
+        if c[2] > max(cols):
+            return "rightof"
+        if c[2] < min(cols):
+            return "leftof"
+        return "above" if c[1] < min(rows) else "below"
+    if grid is not None and kind == "axes":
+        for item in want.split(";"):
+            lab, flags = item.split(":")
+            f = panels.get(lab)
+            if f is None:
+                bad.append("no panel %s" % lab)
+                continue
+            f = f[0]
+            prim = [a for a in f.yaxis if a.y_range_name == "default"]
+            sec = [a for a in f.yaxis if a.y_range_name != "default"]
+            xs = [a for a in f.xaxis if a.x_range_name == "default"]
+            got = [any(a.visible for a in prim), any(a.visible for a in xs),
+                   any(a.visible for a in sec) if sec else None]
+            for k, (w, g) in enumerate(zip(flags.split(","), got)):
+                if w != "." and g is not None and (w == "1") != g:
+                    bad.append("%s %s: twoway %s, dash %s" % (lab, ("y", "x", "y2")[k], w, g))
+            if any(a.axis_label for a in sec):
+                bad.append("%s draws an axis-2 title" % lab)
+    elif grid is not None and kind == "legend":
+        c = cell("dash_by_legend")
+        if c is None or side_of(c) != want:
+            bad.append("legend cell %s, twoway %s" % (side_of(c) if c else None, want))
+        for lab, (f, _r, _c) in panels.items():
+            if any(lg.visible for lg in f.legend if lg.name != "_dash_clegend"):
+                bad.append("panel %s draws a legend" % lab)
+    elif grid is not None and kind == "clegend":
+        c = cell("dash_by_clegend")
+        bars = [m for s in ("left", "right", "above", "below") for m in getattr(c[0], s)
+                if isinstance(m, ColorBar)] if c else []
+        if len(bars) != 1:
+            bad.append("%d colour keys in the cell" % len(bars))
+        for lab, (f, _r, _c) in panels.items():
+            for s in ("left", "right", "above", "below", "center"):
+                for m in getattr(f, s):
+                    if (isinstance(m, ColorBar) and m.name != "dash_by_label_box") or (
+                            isinstance(m, Legend) and m.name == "_dash_clegend"):
+                        bad.append("panel %s draws a key" % lab)
+    elif grid is not None and kind == "box":
+        with open(want, encoding="utf-8") as fh:
+            svg = fh.read()
+        head = svg[:svg.index(">Domestic</text>")]
+        rects = re.findall(r"<rect[^>]*>", head)[-2:]
+        fill = outline = None
+        for r in rects:
+            mf = re.search(r"fill:(#[0-9A-Fa-f]{6})", r)
+            ms = re.search(r"stroke:(#[0-9A-Fa-f]{6})", r)
+            fill = fill or (mf.group(1).lower() if mf else None)
+            outline = ms.group(1).lower() if ms else outline
+        for lab, (f, _r, _c) in panels.items():
+            boxes = [m for m in f.above if isinstance(m, ColorBar) and m.name == "dash_by_label_box"]
+            if len(boxes) != 1:
+                bad.append("panel %s: %d boxes" % (lab, len(boxes)))
+                continue
+            b = boxes[0]
+            got = (b.color_mapper.palette[0].lower(), str(b.bar_line_color).lower())
+            if got != (fill, outline):
+                bad.append("panel %s box %s, twoway %s" % (lab, got, (fill, outline)))
+    Macro.setGlobal("S53_OK", "0" if bad else "1")
+    Macro.setGlobal("S53_MSG", "; ".join(bad)[:400] or "ok")
+# A Stata program's python: line sees only modules, not these names.
+import sys as _s53_sys
+_s53_sys.modules["_dash_s53"] = type(_s53_sys)("_dash_s53")
+_s53_sys.modules["_dash_s53"].check = _s53_check
+end
+
+// _s53_flags: twoway's per-panel axis draw flags of graph _s53, as
+// _s53_check's "axes" want ("label:y,x,y2;...").
+capture program drop _s53_flags
+program define _s53_flags
+    version 19
+    local np `.Graph.graphs.arrnels'
+    local out ""
+    forvalues k = 1/`np' {
+        local lab `"`.Graph.graphs[`k'].subtitle.text[1]'"'
+        local y `.Graph.graphs[`k'].yaxis1.draw_view.istrue'
+        local x `.Graph.graphs[`k'].xaxis1.draw_view.istrue'
+        local y2 `.Graph.graphs[`k'].yaxis2.draw_view.istrue'
+        if "`y2'" == "" local y2 "."
+        local out `"`out';`lab':`y',`x',`y2'"'
+    }
+    global S53_WANT = substr(`"`out'"', 2, .)
+end
+
 * ==== S53 P1.15c: Shared axes and keys under by() ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S53") & `: list posof "S53" in w30_run' {
     display as text "S53 start " c(current_date) " " c(current_time)
+    local s53log "`w30_work'/s53.log"
+    local s53pg "`w30_work'/zbya.html"
+    local s53svg "`w30_work'/zbya.svg"
+    // BYA-01: by(foreign, total) -- three panels in a 2 x 2 grid -- draws
+    // twoway's outer axes (by_chrome_truth.json p06).
+    quietly sysuse auto, clear
+    _s36_run `"twoway scatter mpg weight, by(foreign, total) scheme(stcolor) name(Graph, replace)"' "`s53log'"
+    _s53_flags
+    _s36_run `"dash scatter mpg weight, by(foreign, total) scheme(stcolor) saving("`s53pg'", replace)"' "`s53log'"
+    local drc = r(rc)
+    capture _s53_check axes "`s53pg'" "${S53_WANT}"
+    local prc = _rc
+    _w30_expect BYA-01 "(`drc' == 0 & `prc' == 0 & ${S53_OK} == 1)" "rc `drc'/`prc', ${S53_MSG}"
+    _w30_done BYA-01 "by(foreign, total): each panel's axes are twoway's"
+    // BYA-02: a second y axis on the rightmost panel only, no axis-2 title.
+    _s36_run `"twoway (scatter mpg weight) (scatter price weight, yaxis(2)), by(foreign) ytitle("Price", axis(2)) scheme(stcolor) name(Graph, replace)"' "`s53log'"
+    _s53_flags
+    _s36_run `"dash (scatter mpg weight) (scatter price weight, yaxis(2)), by(foreign) ytitle("Price", axis(2)) scheme(stcolor) saving("`s53pg'", replace)"' "`s53log'"
+    local drc = r(rc)
+    capture _s53_check axes "`s53pg'" "${S53_WANT}"
+    local prc = _rc
+    _w30_expect BYA-02 "(`drc' == 0 & `prc' == 0 & ${S53_OK} == 1)" "rc `drc'/`prc', ${S53_MSG}"
+    _w30_done BYA-02 "axis 2 on the rightmost panel, no axis-2 title"
+    // BYA-03: one legend for two layers, on twoway's side, under stcolor
+    // and s2color.
+    foreach s in stcolor s2color {
+        _s36_run `"twoway (scatter mpg weight) (lfit mpg weight), by(foreign) scheme(`s') name(Graph, replace)"' "`s53log'"
+        local s53side `.Graph.style.legend_position.relative_position'
+        _s36_run `"dash (scatter mpg weight) (lfit mpg weight), by(foreign) scheme(`s') saving("`s53pg'", replace)"' "`s53log'"
+        local drc = r(rc)
+        capture _s53_check legend "`s53pg'" "`s53side'"
+        local prc = _rc
+        _w30_expect BYA-03 "(`drc' == 0 & `prc' == 0 & ${S53_OK} == 1)" "`s': rc `drc'/`prc', ${S53_MSG}"
+    }
+    _w30_done BYA-03 "one legend on twoway's side (stcolor, s2color)"
+    // BYA-04: by(foreign, clegend(on)) draws one colour key, as twoway's
+    // one clegend.
+    _s36_run `"twoway scatter mpg weight, colorvar(price) by(foreign, clegend(on)) scheme(stcolor) name(Graph, replace)"' "`s53log'"
+    local s53cl `.Graph.clegend.draw_view.istrue'
+    _s36_run `"dash scatter mpg weight, colorvar(price) by(foreign, clegend(on)) scheme(stcolor) saving("`s53pg'", replace)"' "`s53log'"
+    local drc = r(rc)
+    capture _s53_check clegend "`s53pg'" ""
+    local prc = _rc
+    _w30_expect BYA-04 "(`drc' == 0 & `prc' == 0 & `s53cl' == 1 & ${S53_OK} == 1)" "rc `drc'/`prc', twoway `s53cl', ${S53_MSG}"
+    _w30_done BYA-04 "clegend(on): one colour key"
+    // BYA-05: ixt is ixticks in twoway, and dash draws it without a note.
+    _s36_run `"twoway scatter mpg weight, by(foreign, ixt) scheme(stcolor) name(Graph, replace)"' "`s53log'"
+    local s53tk `.Graph.style.indiv_xticks.istrue'
+    local s53tt `.Graph.style.indiv_xtitles.istrue'
+    _s36_run `"dash scatter mpg weight, by(foreign, ixt) scheme(stcolor) saving("`s53pg'", replace)"' "`s53log'"
+    local drc = r(rc)
+    _s36_count "`s53log'" "sub-option"
+    local s53n = r(n)
+    _w30_expect BYA-05 "(`drc' == 0 & `s53tk' == 1 & `s53tt' == 0 & `s53n' == 0)" "rc `drc', ixticks `s53tk', ixtitles `s53tt', notes `s53n'"
+    _w30_done BYA-05 "ixt reads as ixticks, silently"
+    // BYA-06: each panel label's box in twoway's fill and outline, from
+    // its SVG, under s2color and stcolor.
+    foreach s in s2color stcolor {
+        _s36_run `"twoway scatter mpg weight, by(foreign) scheme(`s') name(Graph, replace)"' "`s53log'"
+        quietly graph export "`s53svg'", name(Graph) replace
+        _s36_run `"dash scatter mpg weight, by(foreign) scheme(`s') saving("`s53pg'", replace)"' "`s53log'"
+        local drc = r(rc)
+        capture _s53_check box "`s53pg'" "`s53svg'"
+        local prc = _rc
+        _w30_expect BYA-06 "(`drc' == 0 & `prc' == 0 & ${S53_OK} == 1)" "`s': rc `drc'/`prc', ${S53_MSG}"
+    }
+    _w30_done BYA-06 "the panel label's box in twoway's fill and outline"
+    capture graph drop _all
+    capture dash clear
+    foreach f in s53log s53pg s53svg {
+        capture erase "``f''"
+    }
+    macro drop S53_*
     display as text "S53 end " c(current_date) " " c(current_time)
 }
 * ==== end S53 ====

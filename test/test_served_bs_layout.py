@@ -700,7 +700,9 @@ def _panels(grid):
     chrome = [(m.name, chrome_texts(m), tuple(rest)) for m, *rest in kids
               if is_chrome(m)]
     base = 1 if any(n == "dash_by_head" for n, _, _ in chrome) else 0
-    return ([(panel_label(f), r - base, c) for f, r, c, *_ in kids
+    # WP-30 P1.15c: the y-axis title's column sits left of the panels.
+    cbase = min((c for f, _r, c, *_ in kids if not is_chrome(f)), default=0)
+    return ([(panel_label(f), r - base, c - cbase) for f, r, c, *_ in kids
              if not is_chrome(f)], chrome,
             grid.toolbar_location,
             [t.filename for t in grid.toolbar.tools

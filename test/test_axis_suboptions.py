@@ -54,6 +54,11 @@ def _figs(mode, go, plots=None, scheme="s2color"):
            if any(isinstance(a, Axis) for side in ("left", "right", "below",
                                                   "above")
                   for a in getattr(p, side))]
+    # WP-30 P1.15c: by() panels draw different axes (twoway's outer-axes
+    # rule), so two builds' panels are paired in label order, not in
+    # select()'s unordered one.
+    from by_panel_probe import panel_label
+    out.sort(key=panel_label)
     return out, caught
 
 

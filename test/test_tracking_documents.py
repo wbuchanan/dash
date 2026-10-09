@@ -1550,7 +1550,6 @@ class TestWp29Tracking:
 WP30_OPEN = {
     "P1.9b": "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move",
     "P1.10": "text() and ttext() annotations are not drawn",
-    "P1.15c": "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored",
     "P1.28b": "Neither mode offers a vector export: the toolbar saves only a PNG at the screen's resolution",
     "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
 }

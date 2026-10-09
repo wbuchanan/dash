@@ -90,8 +90,10 @@ from conftest import render_models  # noqa: E402
 
 def _renderers(root):
     """Every GlyphRenderer under a saved page's root or a served Document
-    (both answer ``select``)."""
-    return list(root.select({"type": GlyphRenderer}))
+    (both answer ``select``), a legend's swatch left out: WP-30 P1.15c's
+    by() legend draws panel 1's keys from swatch clones on one NaN row."""
+    return [r for r in root.select({"type": GlyphRenderer})
+            if not dr._dash_is_swatch(r)]
 
 
 def _both(tmp_path, plots, tag, df=_AUTO, graph_options=None):

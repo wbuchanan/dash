@@ -539,8 +539,10 @@ class TestAnUnimplementedBySuboptionIsNamed:
         # draws it; shrink (twoway's SHRink) is still named.
         ("foreign, title(\"By origin\") shrink", ["shrink"]),
         # Flipped (WP-29 P0.2): norescale is twoway's default and is
-        # honoured, so only noixlabel is named.
-        ("foreign, norescale noixlabel", ["noixlabel"]),
+        # honoured, so only noixlabel is named.  Flipped (WP-30 P1.15c):
+        # noixlabel is drawn too now (by_chrome_truth.json), so shrink is
+        # the word still named.
+        ("foreign, norescale noixlabel shrink", ["shrink"]),
         ("foreign, cols(2) total shrink", ["shrink"]),
     ])
     def test_each_unimplemented_sub_option_is_named(self, by_raw, names):

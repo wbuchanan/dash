@@ -359,8 +359,16 @@ class TestTheGrid:
                    and any(c[0] is r.head for c in m.children)]
         kids = {getattr(c[0], "name", None): tuple(c[1:])
                 for c in grid.children}
-        assert kids["dash_by_head"] == (0, 0, 1, 2)
-        assert kids["dash_by_foot"] == (2, 0, 1, 2)
+        # Flipped (WP-30 P1.15c): the axis titles are drawn once, the y
+        # title in a column of its own left of the panels and the x title
+        # in a row under them (twoway's l1title and b1title, probe p01), so
+        # the head and foot span four columns (the stacked view's
+        # one-pixel ruler takes the last) and the foot is one row lower.
+        assert kids["dash_by_head"] == (0, 0, 1, 4)
+        assert kids["dash_by_ytitle"] == (1, 0, 1, 1)
+        assert kids["dash_by_xtitle"] == (2, 1, 1, 2)
+        assert kids["dash_by_ruler"] == (1, 3, 1, 1)
+        assert kids["dash_by_foot"] == (3, 0, 1, 4)
         assert type(r.head).__name__ == "Plot"
         saves = [t for t in grid.toolbar.tools if isinstance(t, SaveTool)]
         assert len(saves) == 1

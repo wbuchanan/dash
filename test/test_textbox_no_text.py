@@ -294,11 +294,17 @@ class TestSubOptionsKeepTheDefault:
                            _spec(_ONE, {"by": "g", "ytitle": ", size(large)"}))
         ys = [a for f in _figs(mode, obj) for a in _axes(f.left)]
         assert ys
+        # Flipped (WP-30 P1.15c): twoway draws the y title once, beside
+        # the panels (its l1title, by_chrome_truth.json p01), not on each
+        # panel, so the merged text and size are the title cell's; it is
+        # not a panel, so it takes no by() multiplier.
         for a in ys:
-            assert a.axis_label == "y1"
-            # WP-30 P1.15b: panel text takes twoway's by() multiplier, 0.85
-            # for two panels (14pt large is 11.9pt).
-            assert a.axis_label_text_font_size == "11.9pt"
+            assert a.axis_label is None
+        root = obj._last_layout_root if mode == "saved" else obj.roots[0]
+        (cell,) = [m for m in root.references()
+                   if getattr(m, "name", None) == "dash_by_ytitle"]
+        (t,) = [m for m in cell.left if type(m).__name__ == "Title"]
+        assert (t.text, t.text_font_size) == ("y1", LARGE)
 
     @pytest.mark.parametrize("mode", MODES)
     def test_merged_values(self, mode, tmp_path):

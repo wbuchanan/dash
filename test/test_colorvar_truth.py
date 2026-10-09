@@ -335,12 +335,27 @@ class TestTheKeyIsDrawnFromTheLayersRows:
             n = len(p["qual_obs"])
             assert len(drawn) == n
             assert _canonical(drawn) == _canonical(p["fills"][:n]), pid
+        # Flipped (WP-30 P1.15c): a colour bar on every panel was wrong;
+        # twoway draws no colour key under by() unless by(, clegend(on))
+        # (by_chrome_truth.json q06), then one, showing panel 1's mapping
+        # (q07).  Each panel's own mapping, above, is unchanged.
         spec = _linked_spec([plot_for("scatter", {"colorvar": "price"})],
                             go={"by": "foreign"}, linked=linked)
-        bars = [cb.colour_bars(f)[0]
-                for f in _colour_figs(_render(spec, mode))]
-        assert bars == [(probes[k]["summ_min"], probes[k]["summ_max"])
-                        for k in ("by_lv4_p0", "by_lv4_p1")]
+        assert [cb.colour_bars(f) for f in
+                _colour_figs(_render(spec, mode))] == [[], []]
+        spec = _linked_spec([plot_for("scatter", {"colorvar": "price"})],
+                            go={"by": "foreign, clegend(on)"}, linked=linked)
+        root = _render(spec, mode)
+        roots = list(getattr(root, "roots", None) or [root])
+        cells = [m for r in roots for m in r.references()
+                 if getattr(m, "name", None) == "dash_by_clegend"]
+        assert len(cells) == 1
+        bars = [(a.color_mapper.low, a.color_mapper.high)
+                for side in ("left", "right", "above", "below")
+                for a in getattr(cells[0], side)
+                if type(a).__name__ == "ColorBar"]
+        assert bars == [(probes["by_lv4_p0"]["summ_min"],
+                         probes["by_lv4_p0"]["summ_max"])]
 
     def _one_cut(self, mode, linked, ptype, y, x, pid):
         p = _qtruth()["probes"][pid]

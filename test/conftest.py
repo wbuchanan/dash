@@ -261,6 +261,10 @@ def pytest_collection_modifyitems(config, items):
 # process-global document.  Nothing cleared it, Bokeh walks it on every
 # later operation, and the served render path slowed from 0.19 s to about
 # 1.8 s per test over a run.  See test_bokeh_document_hygiene.py.
+# Its document callbacks go too (WP-30 P1.15c): a by() app attaches its
+# stacked view to document_ready, and Bokeh copies the global document's
+# callbacks into every document file_html() makes (embed.util._new_doc),
+# so a later test's saved page carried another app's hook.
 
 @pytest.fixture(autouse=True)
 def _clear_bokeh_curdoc():
@@ -268,6 +272,7 @@ def _clear_bokeh_curdoc():
     try:
         from bokeh.io import curdoc
         curdoc().clear()
+        curdoc().callbacks._js_event_callbacks.clear()
     except Exception:
         pass
 

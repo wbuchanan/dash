@@ -9,9 +9,15 @@ apart: a panel is found by its label ``Title`` (named ``dash_by_label``),
 and the graph's overall text lives in two chrome cells of the panel grid
 (bare ``Plot`` models named ``dash_by_head`` and ``dash_by_foot``), which
 are not panels.  Every test that looks for a panel uses these helpers.
+
+WP-30 P1.15c adds the side cells -- the axis-title cells, the overall
+legend, the colour key and the stacked view's ruler -- also bare
+``Plot``s named ``dash_by_*``; none is a panel.
 """
 
 CHROME_NAMES = ("dash_by_head", "dash_by_foot")
+SIDE_NAMES = ("dash_by_ytitle", "dash_by_xtitle", "dash_by_legend",
+              "dash_by_clegend", "dash_by_ruler")
 
 
 def panel_label_title(fig):
@@ -31,8 +37,15 @@ def panel_label(fig):
 
 
 def is_chrome(model):
-    """Whether *model* is a by() grid's head or foot cell."""
-    return getattr(model, "name", None) in CHROME_NAMES
+    """Whether *model* is a by() grid's chrome cell: its head or foot, or
+    (WP-30 P1.15c) a title, legend or key cell beside the panels."""
+    return getattr(model, "name", None) in CHROME_NAMES + SIDE_NAMES
+
+
+def is_side(model):
+    """Whether *model* is a by() grid's title, legend or key cell
+    (WP-30 P1.15c)."""
+    return getattr(model, "name", None) in SIDE_NAMES
 
 
 def chrome_texts(cell):
@@ -52,8 +65,8 @@ def chrome_texts(cell):
 
 def by_grid(root):
     """``(panels, head, foot)`` of the one by() GridPlot under *root*:
-    ``panels`` is ``[(row, col, fig)]`` re-based so the first panel row is
-    0, sorted by place; *head*/*foot* the chrome cells or None."""
+    ``panels`` is ``[(row, col, fig)]`` re-based so the first panel row and
+    column are 0 (the side cells skipped), sorted by place; *head*/*foot* the chrome cells or None."""
     from bokeh.models import GridPlot
     grids = [m for m in root.references() if isinstance(m, GridPlot)
              and any(type(c[0]).__name__ == "figure" for c in m.children)]
@@ -66,10 +79,13 @@ def by_grid(root):
             head = model
         elif getattr(model, "name", None) == "dash_by_foot":
             foot = model
+        elif is_side(model):
+            continue
         else:
             panels.append((row, col, model))
     base = min((r for r, _, _ in panels), default=0)
-    panels = sorted(((r - base, c, f) for r, c, f in panels),
+    cbase = min((c for _, c, _ in panels), default=0)
+    panels = sorted(((r - base, c - cbase, f) for r, c, f in panels),
                     key=lambda t: (t[0], t[1]))
     return panels, head, foot
 

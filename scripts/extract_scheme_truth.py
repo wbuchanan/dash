@@ -1501,6 +1501,57 @@ def extract(stata_base: str, scheme: str) -> dict:
         provenance[out_key] = prov
         return conv(tok) if tok is not None else None
 
+    def by_chrome_truth():
+        """WP-30 P1.15c: the keys twoway's by() reads for its shared axes,
+        legend and colour key (bygraph_g.class parse_settings, SetLegend,
+        SetClegend; bygraphstyle-default.style) and for the panel label's
+        box (bygraphstyle-default.style draws the label as
+        ``subtitle(, astextbox box blcolor(scheme bylabel_outline))``).
+        A key the #include chain does not set is left unset."""
+        res = {}
+        tok_name = lambda t: t.strip().strip('"')
+        for k in ("by_legend_position", "zyx2legend_position"):
+            res[k] = scalar(k, "clockdir", [k],
+                            lambda t: _as_number(t.strip()),
+                            class_default=False, required=False)
+        for k in ("by_legend_ring", "zyx2legend_ring"):
+            res[k] = scalar(k, "gridringstyle", [k],
+                            lambda t: _as_number(t.strip()),
+                            class_default=False, required=False)
+        for k in BY_YESNO_KEYS:
+            res[k] = scalar(k, "yesno", [k],
+                            lambda t: tok_name(t).lower() == "yes",
+                            class_default=False, required=False)
+        res["by_indiv_margin"] = scalar(
+            "by_indiv_margin", "margin", ["by_indiv"], tok_name,
+            class_default=False, required=False)
+        res["margin_subheading"] = scalar(
+            "margin_subheading", "margin", ["subheading"], tok_name,
+            class_default=False, required=False)
+        res["bylabel_outline_color"] = color_of(
+            "bylabel_outline_color", ["bylabel_outline"], required=False)
+        # The label box's fill: the scheme's `textboxstyle subtitle' names a
+        # style file whose `set fillcolor scheme <key>' names the colour
+        # (textboxstyle-subheading.style: textbox; -subheading_gs.style:
+        # bylabel_outline).
+        res["by_label_fill"] = None
+        sty = r.get("textboxstyle", "subtitle", class_default=False)
+        sty = tok_name(sty) if sty else None
+        fill = (r.style("textboxstyle", sty) or {}).get("fillcolor", "") \
+            if sty else ""
+        if fill.startswith("scheme "):
+            ck = fill[len("scheme "):].strip()
+            tok = r.get("color", ck, class_default=False)
+            if tok is not None:
+                res["by_label_fill"] = c.resolve(tok)
+                sources["by_label_fill"] = f"color {ck}"
+                provenance["by_label_fill"] = prov_entry(
+                    "inferred", "color", ck, rule=(
+                        f"dash's derived key: `textboxstyle subtitle {sty}', "
+                        f"style/textboxstyle-{sty}.style `set fillcolor "
+                        f"scheme {ck}', then `{spelled('color', ck)}'"))
+        return res
+
     def chrome_truth():
         tok_name = lambda t: t.strip().strip('"')
         res = {
@@ -1840,6 +1891,7 @@ def extract(stata_base: str, scheme: str) -> dict:
                               class_default=False),
     }
     out["margin_twoway_rs"] = resolve_margin_rs(r, out.get("margin_twoway"))
+    out.update(by_chrome_truth())
     out.update(xyline_truth())
     out.update(plotregion_line_truth())
     out.update(note_truth())
@@ -2338,6 +2390,23 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
          ("symbolsize_default", None)),
     ], optional=True)
 
+    # WP-30 P1.15c: by()'s shared axes, legend and colour key, and the
+    # panel label's box.
+    group(["by() axes and keys (WP-30 P1.15c): the legend's and colour key's",
+           "clock position and ring under by(), the outer- and individual-axis",
+           "switches, the space between panels, and the panel label's box:",
+           "`color by_label_fill' is dash's derived key, the fillcolor of the",
+           "style `textboxstyle subtitle' names, resolved."], [
+        scalar("clockdir", "by_legend_position", "by_legend_position"),
+        scalar("gridringstyle", "by_legend_ring", "by_legend_ring"),
+        scalar("clockdir", "zyx2legend_position", "zyx2legend_position"),
+        scalar("gridringstyle", "zyx2legend_ring", "zyx2legend_ring"),
+        *[scalar("yesno", k, k) for k in BY_YESNO_KEYS],
+        scalar("margin", "by_indiv", "by_indiv_margin"),
+        scalar("margin", "subheading", "margin_subheading"),
+        scalar("color", "bylabel_outline", "bylabel_outline_color"),
+        scalar("color", "by_label_fill", "by_label_fill"),
+    ])
     # WP-30 P1.14b: the keys Stata's style files read for the named styles,
     # as the scheme declares them along scheme.class's chain; last, so a key
     # an earlier group carries is not carried twice.
@@ -2686,6 +2755,15 @@ def _drop_undeclared_stubs(lines: list[str], groups) -> list[str]:
 #: The scheme keys the shipped textboxstyle files read that no other
 #: directive group carries (WP-30 P1.24; test/fixtures/
 #: mlabtextstyle_truth.json's _meta.table).
+#: WP-30 P1.15c: the yesno keys twoway's by() reads for its axes and
+#: titles (scheme-s2color.scheme:2191-2210; bygraph_g.class).
+BY_YESNO_KEYS = (
+    "by_edgelabel", "by_outer_xaxes", "by_outer_yaxes", "by_outer_xtitles",
+    "by_outer_ytitles", "by_indiv_xaxes", "by_indiv_yaxes",
+    "by_indiv_xlabels", "by_indiv_ylabels", "by_indiv_xticks",
+    "by_indiv_yticks", "by_indiv_xtitles", "by_indiv_ytitles",
+    "by_indiv_as_whole")
+
 TEXTBOX_KEYS = (
     "label", "small_label", "filled_text", "text_option", "reverse_big",
     "reverse_big_text", "matrix_label", "matrix_marklbl", "minortick_label",

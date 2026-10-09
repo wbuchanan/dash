@@ -328,7 +328,11 @@ def hostile_inputs(payload):
         graph("g3", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "rep", "colordiscrete": "yes"}},
-        ]),
+        ],
+            # WP-30 P1.15c: g2's by() panels draw their axis titles once,
+            # in the grid's title cells; a plain graph still carries them
+            # on its axes.
+            xtitle=textbox("xtitle"), ytitle=textbox("ytitle")),
         graph("g4", [
             {"type": "scatter", "yvar": "mpg", "xvar": "weight",
              "options": {"colorvar": "price"}},
@@ -559,6 +563,9 @@ CLASSIFIED = {
     ("DatetimeAxis", "axis_label"): CANVAS,
     ("LinearAxis", "major_label_overrides"): CANVAS,
     ("ColorBar", "title"): CANVAS,
+    # WP-30 P1.15c: a by() panel label's box draws the label as its one
+    # tick label.
+    ("ColorBar", "major_label_overrides"): CANVAS,
     ("LegendItem", "label"): TEXT_NODE,
     ("Legend", "title"): TEXT_NODE,
     ("TabPanel", "title"): TEXT_NODE,
@@ -635,6 +642,12 @@ SINKS = (
     Sink("by_note", "bnote", ("Title",), "text", "text"),
     Sink("by_caption", "bcap", ("Title",), "text", "text"),
     Sink("by_note_from_variable_label", "vlrep", ("Title",), "text", "text"),
+    # WP-30 P1.15c: the axis titles drawn once beside and below by()'s
+    # panels, and each panel label drawn in its box.
+    Sink("by_ytitle_cell", "ytitle", ("Title",), "text", "text"),
+    Sink("by_xtitle_cell", "xtitle", ("Title",), "text", "text"),
+    Sink("by_label_box_from_value_label", "vlo0", ("ColorBar",),
+         "major_label_overrides", "text"),
     Sink("colorbar_title_from_variable_label", "vlprice", ("ColorBar",),
          "title", "text"),
     # WP-28 X2: ztitle() is a second source for the same (model, property)

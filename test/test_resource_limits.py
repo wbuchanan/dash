@@ -1130,7 +1130,11 @@ class TestByColsCannotOutgrowThePanels:
             [g] = [g for g in grids
                    if any(type(c[0]).__name__ == "figure"
                           for c in g.children)]
-            return [(c[1], c[2]) for c in g.children if not is_chrome(c[0])]
+            # WP-30 P1.15c: columns from the first panel column, past the
+            # y-axis title's.
+            got = [(c[1], c[2]) for c in g.children if not is_chrome(c[0])]
+            c0 = min((c for _, c in got), default=0)
+            return [(r, c - c0) for r, c in got]
 
         r, _, _ = _standalone(tmp_path, spec, _frame(12, groups=4))
         assert panels(r._last_layout_root.select({"type": GridPlot})) == want

@@ -7932,6 +7932,24 @@ class SchemeParser:
         "axisstyle vertical_nogrid": "vertical_nogrid",
         "yesno alt_xaxes": "no",
         "yesno alt_yaxes": "no",
+        # by() axes and keys (WP-30 P1.15c; scheme-s2color.scheme:338,
+        # :729, :737, :1925-1954, :2191-2210).
+        "clockdir by_legend_position": "6",
+        "gridringstyle by_legend_ring": "3",
+        "clockdir zyx2legend_position": "3",
+        "gridringstyle zyx2legend_ring": "4",
+        "yesno by_edgelabel": "yes",
+        "yesno by_outer_xaxes": "yes", "yesno by_outer_yaxes": "yes",
+        "yesno by_outer_xtitles": "yes", "yesno by_outer_ytitles": "yes",
+        "yesno by_indiv_xaxes": "no", "yesno by_indiv_yaxes": "no",
+        "yesno by_indiv_xlabels": "yes", "yesno by_indiv_ylabels": "yes",
+        "yesno by_indiv_xticks": "yes", "yesno by_indiv_yticks": "yes",
+        "yesno by_indiv_xtitles": "no", "yesno by_indiv_ytitles": "no",
+        "yesno by_indiv_as_whole": "no",
+        "margin by_indiv": "small",
+        "margin subheading": "vsmall",
+        "color bylabel_outline": "#d9e6eb",
+        "color by_label_fill": "#d9e6eb",
         "horizontal heading": "center",
         "horizontal subheading": "center",
         "horizontal body": "center",
@@ -10359,6 +10377,42 @@ class SchemeParser:
             "yesno xyline_extend_low", True)
         self.xyline_extend_high: bool = self._yesno(
             "yesno xyline_extend_high", True)
+        # by()'s shared chrome (WP-30 P1.15c): where the one legend and the
+        # one colour key go (bygraph_g.class SetLegend/SetClegend read
+        # by_legend_* and zyx2legend_*), which panels draw axes and titles
+        # (parse_settings, set_outer_axes: the by_* yesno keys), and the
+        # panel label's box (bygraphstyle-default.style: the subtitle as a
+        # textbox in the fill of `textboxstyle subtitle', outlined in
+        # `color bylabel_outline' at the foreground width, with the
+        # subheading margins).
+        self.by_legend_position: int = self._bounded_int(
+            "clockdir by_legend_position", 6, 0, 12, "by_legend_position")
+        self.by_legend_ring: int = self._bounded_int(
+            "gridringstyle by_legend_ring", 3, 0, 100, "by_legend_ring")
+        self.zyx2_position: int = self._bounded_int(
+            "clockdir zyx2legend_position", 3, 0, 12, "zyx2legend_position")
+        self.zyx2_ring: int = self._bounded_int(
+            "gridringstyle zyx2legend_ring", 4, 0, 100, "zyx2legend_ring")
+        self.by_flags: dict = {
+            k: self._yesno("yesno by_" + k, v)
+            for k, v in _DASH_BY_FLAG_DEFAULTS.items()}
+        self.by_label_fill: str = self._color("color by_label_fill",
+                                              "#d9e6eb")
+        self.by_label_outline: str = self._color("color bylabel_outline",
+                                                 "#d9e6eb")
+        try:
+            _blw = OptionTranslator.resolve_size(
+                str(self._props.get("linewidth foreground", "") or "thin"),
+                "line", 0.576)
+        except ValueError:
+            _blw = 0.2 * OptionTranslator.PT_PER_RS
+        self.by_label_line_pt: float = max(0.0, float(_blw))
+        _bm = self.margin_sides(str(self._props.get(
+            "margin subheading", "") or "vsmall").strip()) or \
+            self.margin_sides("vsmall")
+        _bm = [float(v[1]) / OptionTranslator.PT_PER_RS
+               if isinstance(v, tuple) else float(v) for v in _bm]
+        self.by_label_margin_rs: tuple = (_bm[3], _bm[2])
 
         # The plot region's border, EFFECTIVE (plotregionstyle twoway ->
         # areastyle twoway_plotregion -> its linestyle), as the shipped
@@ -25892,6 +25946,74 @@ _DASH_BY_SUPPORTED = {
 _DASH_BY_RESCALE_KEYS = ("rescale", "norescale", "xrescale", "yrescale",
                          "noxrescale", "noyrescale")
 
+#: by()'s axis, title, edge-label and legend words (WP-30 P1.15c): each
+#: key to every spelling from twoway's minimum to the full name, lower
+#: case, transcribed from bygraph_g.class parse_settings :266-283
+#: (IXaxes IYaxes IXLabels IYLabels IXTicks IYTicks IXTitles IYTitles
+#: XTitles YTitles EDGElabel INDividual ILEGends and their NO forms) with
+#: syntax's first-declared rule: ``ixt`` and ``ixti`` are ixticks, which
+#: parse_settings declares before ixtitles, and ixtitles starts at
+#: ``ixtit`` (measured: by_chrome_truth.json ``abbrev``).
+_DASH_BY_AXES_SPELLINGS = {
+    'ixaxes': ('ix', 'ixa', 'ixax', 'ixaxe', 'ixaxes'),
+    'iyaxes': ('iy', 'iya', 'iyax', 'iyaxe', 'iyaxes'),
+    'ixlabels': ('ixl', 'ixla', 'ixlab', 'ixlabe', 'ixlabel', 'ixlabels'),
+    'iylabels': ('iyl', 'iyla', 'iylab', 'iylabe', 'iylabel', 'iylabels'),
+    'ixticks': ('ixt', 'ixti', 'ixtic', 'ixtick', 'ixticks'),
+    'iyticks': ('iyt', 'iyti', 'iytic', 'iytick', 'iyticks'),
+    'ixtitles': ('ixtit', 'ixtitl', 'ixtitle', 'ixtitles'),
+    'iytitles': ('iytit', 'iytitl', 'iytitle', 'iytitles'),
+    'xtitles': ('xt', 'xti', 'xtit', 'xtitl', 'xtitle', 'xtitles'),
+    'ytitles': ('yt', 'yti', 'ytit', 'ytitl', 'ytitle', 'ytitles'),
+    'edgelabel': ('edge', 'edgel', 'edgela', 'edgelab', 'edgelabe',
+                  'edgelabel'),
+    'individual': ('ind', 'indi', 'indiv', 'indivi', 'individ', 'individu',
+                   'individua', 'individual'),
+    'ilegends': ('ileg', 'ilege', 'ilegen', 'ilegend', 'ilegends'),
+    'noixaxes': ('noix', 'noixa', 'noixax', 'noixaxe', 'noixaxes'),
+    'noiyaxes': ('noiy', 'noiya', 'noiyax', 'noiyaxe', 'noiyaxes'),
+    'noixlabels': ('noixl', 'noixla', 'noixlab', 'noixlabe', 'noixlabel',
+                   'noixlabels'),
+    'noiylabels': ('noiyl', 'noiyla', 'noiylab', 'noiylabe', 'noiylabel',
+                   'noiylabels'),
+    'noixticks': ('noixt', 'noixti', 'noixtic', 'noixtick', 'noixticks'),
+    'noiyticks': ('noiyt', 'noiyti', 'noiytic', 'noiytick', 'noiyticks'),
+    'noixtitles': ('noixtit', 'noixtitl', 'noixtitle', 'noixtitles'),
+    'noiytitles': ('noiytit', 'noiytitl', 'noiytitle', 'noiytitles'),
+    'noxtitles': ('noxt', 'noxti', 'noxtit', 'noxtitl', 'noxtitle',
+                  'noxtitles'),
+    'noytitles': ('noyt', 'noyti', 'noytit', 'noytitl', 'noytitle',
+                  'noytitles'),
+    'noedgelabel': ('noedge', 'noedgel', 'noedgela', 'noedgelab',
+                    'noedgelabe', 'noedgelabel'),
+    'noindividual': ('noind', 'noindi', 'noindiv', 'noindivi', 'noindivid',
+                     'noindividu', 'noindividua', 'noindividual'),
+}
+
+#: The by() style flag each word of ``_DASH_BY_AXES_SPELLINGS`` sets (its
+#: ``no`` form clears it), as parse_settings' ``_set_xor`` calls name them.
+_DASH_BY_AXES_FLAG = {
+    "ixaxes": "indiv_xaxes", "iyaxes": "indiv_yaxes",
+    "ixlabels": "indiv_xlabels", "iylabels": "indiv_ylabels",
+    "ixticks": "indiv_xticks", "iyticks": "indiv_yticks",
+    "ixtitles": "indiv_xtitles", "iytitles": "indiv_ytitles",
+    "xtitles": "outer_xtitles", "ytitles": "outer_ytitles",
+    "edgelabel": "edgelabel", "individual": "indiv_as_whole",
+    "ilegends": "indiv_legends",
+}
+
+#: s2color's by() style flags (scheme-s2color.scheme:2191-2210), the
+#: default of each ``yesno by_<flag>`` key SchemeParser reads.
+_DASH_BY_FLAG_DEFAULTS = {
+    "edgelabel": True, "outer_xaxes": True, "outer_yaxes": True,
+    "outer_xtitles": True, "outer_ytitles": True,
+    "indiv_xaxes": False, "indiv_yaxes": False,
+    "indiv_xlabels": True, "indiv_ylabels": True,
+    "indiv_xticks": True, "indiv_yticks": True,
+    "indiv_xtitles": False, "indiv_ytitles": False,
+    "indiv_as_whole": False,
+}
+
 #: twoway's whole by() grammar (WP-30 P1.15b, D-48g): name -> (minimum,
 #: takes_args, stage, repeat_ok), in declaration order, transcribed from
 #: bygraph_g.class parse_make :74-81 (stage 1), parse_settings :266-285
@@ -26062,9 +26184,11 @@ def _dash_parse_by(by_raw, warn=True):
     Stata's by() takes some thirty sub-options; dash implements cols(),
     total, missing, the rescale words, rows(), holes(), colfirst,
     compact, style(compact), iscale() and imargin() (laid out by
-    ``_dash_layout_cell``, WP-30 P1.15b) and, drawn by ``_dash_by_chrome``
-    (WP-30 P1.15a), title(), subtitle(), note() and caption(), each in
-    twoway's lower-case spellings (``_DASH_BY_GRAMMAR``).  The
+    ``_dash_layout_cell``, WP-30 P1.15b), drawn by ``_dash_by_chrome``
+    (WP-30 P1.15a), title(), subtitle(), note() and caption(), and, drawn
+    by ``_dash_by_side`` (WP-30 P1.15c), the i*/noi* axis and title
+    words, edgelabel, individual, ilegends, legend() and clegend(), each
+    in twoway's lower-case spellings (``_DASH_BY_GRAMMAR``).  The
     rest used to be matched by nothing and discarded by everything --
     ``by(foreign, rows(2) compact)`` faceted as though the user had typed
     ``by(foreign)``, and nothing said so.  They are named here, once, in
@@ -26130,6 +26254,12 @@ def _dash_parse_by(by_raw, warn=True):
         elif _dash_by_text_key(tok) is not None:
             # title(), subtitle(), note(), caption(): drawn by
             # _dash_by_chrome (WP-30 P1.15a).
+            pass
+        elif (_row in _DASH_BY_AXES_SPELLINGS and "(" not in tok) or (
+                _row in ("legend", "clegend") and "(" in tok):
+            # The i*/no* axis and title words, edgelabel, individual,
+            # ilegends, legend() and clegend(): drawn by `_dash_by_side`
+            # (WP-30 P1.15c).
             pass
         elif name == "style" and arg.strip() in ("rescale", "combine"):
             # style(rescale|combine): its separate scales are drawn
@@ -35081,6 +35211,12 @@ def _dash_reflow(grid, stack=True):
     stacked without ``flex: 0 0 auto`` the grid collapsed to 0 px tall.
     Nothing here reads user input: the CSS is built from integers.
 
+    A by() grid's side cells (WP-30 P1.15c: ``dash_by_ytitle``,
+    ``dash_by_legend``, ``dash_by_clegend``, each in a column of its own)
+    get a ``max-content`` track, so a title or legend column is as wide as
+    what it holds rather than a panel's share, and only the columns that
+    hold panels count towards the stacking width.
+
     A ``layout(bs)`` GridBox gets one more stylesheet after this: WP-28
     E14's ``_dash_bs_grid`` appends ``_dash_bs_grid_css()`` to the stacking
     rule this function adds, so the grid takes the saved page's md half
@@ -35098,13 +35234,38 @@ def _dash_reflow(grid, stack=True):
                     "column !important; height: auto !important; } "
                     ":host > * { flex: 0 0 auto; } }" % below)
     else:
-        ncols = 1
+        ncols, total, side_cols, panel_cols = 1, 1, set(), set()
+        ruler_cols = set()
         for child in (getattr(grid, "children", None) or ()):
             try:
-                ncols = max(ncols, int(child[2]) + 1)
+                col = int(child[2])
+                span = int(child[4]) if len(child) >= 5 else 1
             except (TypeError, ValueError, IndexError):
                 continue
-        grid.cols = _DASH_BS_TRACK
+            total = max(total, col + span)
+            nm = str(getattr(child[0], "name", "") or "")
+            if nm in ("dash_by_ytitle", "dash_by_legend",
+                      "dash_by_clegend") and span == 1:
+                side_cols.add(col)
+            elif nm == "dash_by_ruler":
+                ruler_cols.add(col)
+            elif not nm.startswith("dash_by_"):
+                panel_cols.add(col)
+                ncols = max(ncols, col + 1)
+        side_cols -= panel_cols
+        ruler_cols -= panel_cols | side_cols
+        if side_cols or ruler_cols:
+            # A by() grid's own title, legend and key columns (WP-30
+            # P1.15c) are as wide as what they hold; only the panel
+            # columns share the width and decide when it stacks.
+            # The stacked view's ruler (_DASH_BY_STACK_JS) keeps a 1 px
+            # track, so its width never follows what it was stacked.
+            grid.cols = ["max-content" if c in side_cols else
+                         "1px" if c in ruler_cols else _DASH_BS_TRACK
+                         for c in range(total)]
+            ncols = len(panel_cols)
+        else:
+            grid.cols = _DASH_BS_TRACK
         if ncols < 2:
             return grid
         css = (":host { container-type: inline-size; } "
@@ -35575,14 +35736,27 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         # imargin(), and -- without aspectratio() -- proportioned so the
         # whole array has the graph's xsize()/ysize() ratio.
         go = gopts_of(name) or {}
-        opts = _dash_by_grid_options(go.get("by"))
-        if not opts["cols"] and not opts["rows"]:
-            try:
-                opts["cols"] = max(0, int(go.get("by_cols", "0") or 0))
-            except (ValueError, TypeError):
-                opts["cols"] = 0
-        _cells, _r, _c, extra = _dash_by_positions(len(figs), opts)
+        opts = _dash_by_layout_options(go)
+        # by()'s shared chrome (WP-30 P1.15c): its legend's and colour
+        # key's at() holes count in twoway's full_n, so they move the
+        # panels and the size multiplier.
+        side = getattr(figs[0], "_dash_by_side", None)
+        side = side if isinstance(side, dict) else None
+        _cells, _r, _c, extra = _dash_by_positions(
+            len(figs), opts,
+            legend_at=(side or {}).get("legend_at", 0),
+            clegend_at=(side or {}).get("clegend_at", 0))
         cells, nr, nc = extra["drawn"]
+        if side is not None:
+            # The holes' cells on the drawn grid (no empty row or column).
+            used = list(_cells) + [extra[k] for k in ("legend", "clegend")
+                                   if k in extra]
+            rmap = {v: i for i, v in enumerate(sorted({p[0] for p in used}))}
+            cmap = {v: i for i, v in enumerate(sorted({p[1] for p in used}))}
+            side["at_cells"] = {k: (rmap[extra[k][0]], cmap[extra[k][1]])
+                                for k in ("legend", "clegend") if k in extra}
+            nr = max(nr, len(rmap))
+            nc = max(nc, len(cmap))
         m = _dash_by_size_mult(go.get("by"), extra["full_n"])
         own_ar = str(go.get("aspectratio", "") or "").strip()
         for f in figs:
@@ -35594,9 +35768,20 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         grid = gridplot([figs], sizing_mode="stretch_width")
         grid.children = [(f, r, c) for f, (r, c) in zip(figs, cells)]
         grid.spacing = _dash_by_spacing(figs[0], opts)
+        # The axis titles, legend and colour key beside the panels (WP-30
+        # P1.15c); the overall text then spans every column.
+        cn = _dash_by_side_grid(grid, side, nr, nc) if side else nc
+        if side and side.get("hook") is not None:
+            # The stacked view's ruler, a column of its own (see
+            # _DASH_BY_STACK_JS).
+            ruler = side["hook"].args.get("ruler")
+            if getattr(ruler, "name", None) == "dash_by_ruler":
+                grid.children = list(grid.children) + [
+                    (ruler, 0, cn, 1, 1)]
+                cn += 1
         # by()'s overall text above and below the panels (WP-30 P1.15a).
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
-                            nc)
+                            cn)
         return _dash_name_save(_dash_reflow(grid))
     if name in figures:
         return figures[name]
@@ -37208,6 +37393,755 @@ def _dash_by_chrome_figures(figures, facet_map):
             if chrome.get(part) is not None:
                 out[f"{name}__by__{part}"] = chrome[part]
     return out
+
+
+# ---- by()'s shared axes and keys (WP-30 P1.15c) ------------------------------
+
+def _dash_by_axes_options(by_raw, scheme=None):
+    """``{"flags", "legend", "clegend", "compact"}``: what a by() string
+    asks of the shared axes, titles and keys (WP-30 P1.15c), as
+    bygraph_g.class parse_settings reads it.
+
+    ``flags`` starts from the scheme's ``yesno by_*`` keys
+    (``SchemeParser.by_flags``, s2color's ``_DASH_BY_FLAG_DEFAULTS``
+    without one) plus ``indiv_legends`` (no); ``compact`` and
+    ``style(compact)`` clear ``edgelabel`` (bygraphstyle-compact.style);
+    then each word of ``_DASH_BY_AXES_SPELLINGS`` sets its flag and its
+    ``no`` form clears it, a positive word winning over its ``no`` form
+    whatever their order (yesno.class ``set_xor``; probes ``iyaxes
+    noiyaxes`` and ``noiyaxes iyaxes``).  ``legend``/``clegend`` are the
+    merged arguments of every ``legend()``/``clegend()`` copy, in order.
+    Case-sensitive, through ``_dash_by_word``; linear; never raises."""
+    base = getattr(scheme, "by_flags", None) or _DASH_BY_FLAG_DEFAULTS
+    flags = {k: bool(base.get(k, v)) for k, v in
+             _DASH_BY_FLAG_DEFAULTS.items()}
+    flags["indiv_legends"] = False
+    out = {"flags": flags, "legend": "", "clegend": "", "compact": False}
+    try:
+        text = by_raw if isinstance(by_raw, str) else str(by_raw or "")
+    except Exception:  # noqa: BLE001 -- any object at all
+        return out
+    _, comma, subs = text.partition(",")
+    if not comma:
+        return out
+    yes, no, legs, clegs = set(), set(), [], []
+    for tok in _dash_by_tokens(subs.strip()):
+        row, _typed, paren, arg = _dash_by_word(tok)
+        if row is None:
+            continue
+        if paren:
+            if row == "legend":
+                legs.append(arg)
+            elif row == "clegend":
+                clegs.append(arg)
+            elif row == "style" and arg.strip() == "compact":
+                out["compact"] = True
+            continue
+        if row == "compact":
+            out["compact"] = True
+        elif row in _DASH_BY_AXES_SPELLINGS:
+            if row.startswith("no") and row[2:] in _DASH_BY_AXES_FLAG:
+                no.add(_DASH_BY_AXES_FLAG[row[2:]])
+            elif row in _DASH_BY_AXES_FLAG:
+                yes.add(_DASH_BY_AXES_FLAG[row])
+    if out["compact"]:
+        flags["edgelabel"] = False
+    for k in no - yes:
+        flags[k] = False
+    for k in yes:
+        flags[k] = True
+    out["legend"] = " ".join(a.strip() for a in legs if a.strip())
+    out["clegend"] = " ".join(a.strip() for a in clegs if a.strip())
+    return out
+
+
+def _dash_by_axis_flags(positions, opts):
+    """Per panel, which of its axes, labels, ticks and titles twoway draws
+    (WP-30 P1.15c; bygraph_g.class set_axes_shown, set_axes_titles,
+    set_axes_labels, set_axes_ticks, set_outer_axes :916-992 and
+    set_outer_axes_edges_only :999-).
+
+    *positions* maps each panel index to its drawn ``(row, col)``.  An
+    axis on a side (``left``, ``right``, ``below``, ``above``) is drawn
+    on every panel when its letter's ``indiv_*axes`` is on or the letter
+    is rescaled (``opts["rescaled"]``; parse_settings turns indiv_*axes on
+    for it); otherwise, unless ``indiv_as_whole``, by the outer rule: with
+    ``edgelabel``, the left axis on the leftmost panel of each row, the
+    right one on the rightmost, the bottom axis on the lowest panel of
+    each column and the top one on the highest (probe p06: a panel above
+    a hole keeps its x axis); without it, only the panels on the grid's
+    outer edge (p23, p24).  ``ylab``/``ytick``/``xlab``/``xtick`` are the
+    ``indiv_*labels``/``indiv_*ticks`` flags, which twoway sets on every
+    axis; ``ytitle``/``xtitle`` whether a drawn axis keeps its title
+    (``indiv_*titles``).  ``y``/``y2``/``x``/``x2`` alias the left, right,
+    bottom and top sides.  Pure; never raises."""
+    opts = opts or {}
+    fl = dict(_DASH_BY_FLAG_DEFAULTS, indiv_legends=False)
+    fl.update(opts.get("flags") or {})
+    resc = set(opts.get("rescaled") or ())
+    pos = {}
+    for k, rc in dict(positions or {}).items():
+        try:
+            pos[k] = (int(rc[0]), int(rc[1]))
+        except (TypeError, ValueError, IndexError):
+            continue
+    whole = bool(fl.get("indiv_as_whole"))
+    indiv = {d: bool(fl.get("indiv_%saxes" % d)) or d in resc
+             for d in ("x", "y")}
+    out = {}
+    if not pos:
+        return out
+    rows = [r for r, _ in pos.values()]
+    cols = [c for _, c in pos.values()]
+    rmin, rmax, cmin, cmax = min(rows), max(rows), min(cols), max(cols)
+    edge = bool(fl.get("edgelabel"))
+    for k, (r, c) in pos.items():
+        if edge:
+            in_row = [cc for rr, cc in pos.values() if rr == r]
+            in_col = [rr for rr, cc in pos.values() if cc == c]
+            left, right = c == min(in_row), c == max(in_row)
+            below, above = r == max(in_col), r == min(in_col)
+        else:
+            left, right = c == cmin, c == cmax
+            below, above = r == rmax, r == rmin
+        f = {}
+        for side, d, outer in (("left", "y", left), ("right", "y", right),
+                               ("below", "x", below), ("above", "x", above)):
+            f[side] = indiv[d] or (
+                not whole and bool(fl.get("outer_%saxes" % d)) and outer)
+        f["y"], f["y2"], f["x"], f["x2"] = (f["left"], f["right"],
+                                            f["below"], f["above"])
+        for d in ("x", "y"):
+            f[d + "lab"] = bool(fl.get("indiv_%slabels" % d))
+            f[d + "tick"] = bool(fl.get("indiv_%sticks" % d))
+            f[d + "title"] = bool(fl.get("indiv_%stitles" % d))
+        out[k] = f
+    return out
+
+
+def _dash_by_axis_side(fig, axis):
+    """The side list of *fig* (``left``, ``right``, ``below``, ``above``)
+    that holds *axis*, or None."""
+    for side in ("left", "right", "below", "above"):
+        if any(m is axis for m in (getattr(fig, side, None) or ())):
+            return side
+    return None
+
+
+def _dash_by_outer_axes(figs, positions, opts):
+    """Draw each by() panel's axes as twoway does (WP-30 P1.15c): hide the
+    axes ``_dash_by_axis_flags`` does not draw, take labels and ticks off
+    a drawn axis whose flags say so, and clear every per-panel axis title
+    twoway does not draw, an axis-2 title included unless ``i*titles``
+    keeps it (probe p27).  Ranges and tickers are never touched.
+
+    Returns ``{"y", "x", "hidden", "restore"}``: panel 1's primary y and x
+    titles, read before clearing (the text twoway puts in l1title and
+    b1title, ``.graphs[1].get_axis_title``); and, for the stacked view,
+    every axis changed, each with ``(axis, visible, label)`` as drawn when
+    wide, and ``restore`` its title as built."""
+    flags = _dash_by_axis_flags(positions, opts)
+    out = {"y": "", "x": "", "hidden": [], "restore": []}
+    if not figs:
+        return out
+    for d, attr in (("y", "y_range_name"), ("x", "x_range_name")):
+        prim = _dash_primary_axes(getattr(figs[0], d + "axis"), attr)
+        if prim:
+            out[d] = str(prim[0].axis_label or "")
+    for i, fig in enumerate(figs):
+        f = flags.get(i)
+        if f is None:
+            continue
+        for d in ("y", "x"):
+            for ax in list(getattr(fig, d + "axis") or ()):
+                side = _dash_by_axis_side(fig, ax)
+                if side is None:
+                    continue
+                label = ax.axis_label
+                was = bool(ax.visible)
+                drawn = bool(f[side]) and was
+                keep_title = drawn and bool(f[d + "title"])
+                if not drawn and ax.visible:
+                    ax.visible = False
+                if drawn:
+                    if not f[d + "lab"]:
+                        ax.major_label_text_font_size = "0px"
+                    if not f[d + "tick"]:
+                        ax.major_tick_in = 0
+                        ax.major_tick_out = 0
+                        ax.minor_tick_in = 0
+                        ax.minor_tick_out = 0
+                if not keep_title and label:
+                    ax.axis_label = None
+                if ax.visible is not True or ax.axis_label != label:
+                    out["hidden"].append(ax)
+                    out["restore"].append(
+                        [bool(ax.visible), ax.axis_label,
+                         None if label is None else str(label), was])
+    return out
+
+
+def _dash_by_cell(scheme, name, frame=(1, 1)):
+    """One side cell of a by() grid (WP-30 P1.15c): a bare ``Plot`` built
+    as S28's ``_dash_by_text_cell`` builds one (no axis, grid, tool or
+    toolbar, the scheme's region fill), named *name* -- one of
+    ``dash_by_ytitle``, ``dash_by_xtitle``, ``dash_by_legend``,
+    ``dash_by_clegend`` -- with a frame of
+    ``(width, height)`` px; a 1-px dimension fits its content, the other
+    fills the grid track."""
+    cell = _dash_by_text_cell(scheme, name)
+    fw, fh = frame
+    if fw:
+        cell.frame_width = int(fw)
+        cell.width_policy = "fit"
+        cell.height_policy = "max" if fh is None else "fit"
+    if fh:
+        cell.frame_height = int(fh)
+    return cell
+
+
+def _dash_by_title_cell(scheme, name, text, side, axis):
+    """A title cell holding *text* on *side*, styled as panel 1's axis
+    title *axis* was (its finished font, size, colour and style)."""
+    from bokeh.models import Title
+    cell = _dash_by_cell(scheme, name,
+                         (1, None) if side == "left" else (None, 1))
+    kw = {}
+    for src, dst in (("axis_label_text_font_size", "text_font_size"),
+                     ("axis_label_text_color", "text_color"),
+                     ("axis_label_text_font_style", "text_font_style"),
+                     ("axis_label_text_font", "text_font"),
+                     ("axis_label_text_alpha", "text_alpha")):
+        v = getattr(axis, src, None) if axis is not None else None
+        if v is not None:
+            kw[dst] = v
+    title = Title(text=str(text), align="center", name=name + "_text", **kw)
+    setattr(title, _DASH_GRAPH_TEXT_DONE, True)
+    cell.add_layout(title, side)
+    return cell
+
+
+def _dash_by_glyph_fields(glyph):
+    """The data fields *glyph*'s own dataspecs name (never user input)."""
+    out = []
+    for _k, v in glyph.properties_with_values(include_defaults=False).items():
+        f = getattr(v, "field", None) if type(v).__name__ == "Field" else (
+            v.get("field") if isinstance(v, dict) else None)
+        if isinstance(f, str) and f and f not in out:
+            out.append(f)
+    return out
+
+
+def _dash_by_clone_renderers(renderers, tag):
+    """Swatch clones of *renderers* for a legend in a chrome cell: each a
+    ``GlyphRenderer`` of a copy of its glyph over a one-row NaN source,
+    named ``_DASH_SWATCH_PREFIX + "by_<tag>_<i>"`` (``_dash_is_swatch``),
+    so no filter, brush or redraw path reaches it."""
+    from bokeh.models import ColumnDataSource, GlyphRenderer
+    out = []
+    for j, r in enumerate(renderers or ()):
+        g = getattr(r, "glyph", None)
+        if g is None:
+            continue
+        try:
+            glyph = type(g)(**{k: getattr(g, k) for k in
+                               g.properties_with_values(
+                                   include_defaults=False)})
+        except Exception:  # noqa: BLE001 -- an unusual glyph: no swatch
+            continue
+        src = ColumnDataSource({f: [float("nan")]
+                                for f in _dash_by_glyph_fields(g)})
+        out.append(GlyphRenderer(data_source=src, glyph=glyph,
+                                 name="%sby_%s_%d" % (_DASH_SWATCH_PREFIX,
+                                                      tag, j)))
+    return out
+
+
+def _dash_by_clock_side(clock, default):
+    """A clock position's side of the panels (``_DASH_CLOCK_SIDE``), else
+    *default*'s."""
+    try:
+        c = int(str(clock).strip())
+    except (TypeError, ValueError):
+        c = None
+    if c in _DASH_CLOCK_SIDE:
+        return _DASH_CLOCK_SIDE[c]
+    return _DASH_CLOCK_SIDE.get(default, "below")
+
+
+def _dash_by_legend_cell(scheme, name, side, legend, items, tag):
+    """A legend cell on *side* of the panels: clones of *items*' renderers
+    in one ``Legend`` styled as *legend*, on the cell's side facing them."""
+    from bokeh.models import Legend, LegendItem
+    vertical = side in ("left", "right")
+    cell = _dash_by_cell(scheme, name, (1, None) if vertical else (None, 1))
+    new_items = []
+    for i, it in enumerate(items):
+        clones = _dash_by_clone_renderers(it.renderers, "%s%d" % (tag, i))
+        if not clones:
+            continue
+        cell.renderers += clones
+        new_items.append(LegendItem(label=it.label, renderers=clones))
+    kw = {}
+    for prop in ("orientation", "ncols", "nrows", "label_text_font_size",
+                 "label_text_color", "label_text_font", "label_text_font_style",
+                 "background_fill_color", "background_fill_alpha",
+                 "border_line_color", "border_line_alpha", "border_line_width",
+                 "glyph_width", "glyph_height", "spacing", "padding",
+                 "label_standoff", "title", "title_text_font_size",
+                 "title_text_color"):
+        if legend is not None and prop in legend.properties():
+            kw[prop] = getattr(legend, prop)
+    leg = Legend(items=new_items, click_policy="none", name=name + "_key",
+                 location="center", **kw)
+    setattr(leg, _DASH_GRAPH_TEXT_DONE, True)
+    for it in new_items:
+        setattr(it, _DASH_GRAPH_TEXT_DONE, True)
+    facing = {"right": "left", "left": "right", "above": "below",
+              "below": "above"}[side]
+    cell.add_layout(leg, facing)
+    return cell
+
+
+def _dash_by_keys(figs, opts, scheme):
+    """by()'s one legend and one colour key (WP-30 P1.15c; bygraph_g.class
+    SetLegend :569-626, SetClegend :628-).
+
+    Panel legends are hidden unless ``ilegends`` or the graph's own
+    ``legend(on)`` (``opts["own_legend_on"]``; probes p32, p34).  Unless
+    ``ilegends``, one overall legend cloned from panel 1's keys is drawn
+    when ``by(, legend(on|draw))`` or panel 1's legend holds more than one
+    key, and not under ``off``/``nodraw`` (p01-p03); it sits on the side
+    of ``by(, legend(position()))`` else the scheme's
+    ``by_legend_position`` (stcolor right, s2color below, economist
+    above), or in grid hole ``at()``.  Every panel's colour key
+    (``ColorBar``, the discrete ``_COLORVAR_LEGEND_NAME`` legend) is taken
+    off it, the label boxes (``dash_by_label_box``) excepted; unless
+    ``ilegends``, ``by(, clegend(on|draw))`` draws one key from panel 1
+    (the same mapper model, so a move that updates panel 1's mapper
+    updates it), placed by ``clegend(position() at())`` else the scheme's
+    ``zyx2legend_position`` (q06, q07).
+
+    Returns ``{"legend", "legend_side", "legend_at", "clegend",
+    "clegend_side", "clegend_at", "ring0"}`` (cells or None)."""
+    from bokeh.models import ColorBar, Legend
+    out = {"legend": None, "legend_side": "", "legend_at": 0,
+           "clegend": None, "clegend_side": "", "clegend_at": 0,
+           "ring0": False}
+    if not figs:
+        return out
+    fl = (opts or {}).get("flags") or {}
+    ilegends = bool(fl.get("indiv_legends"))
+
+    def series_legends(fig):
+        return [m for m in (getattr(fig, "legend", None) or ())
+                if isinstance(m, Legend)
+                and getattr(m, "name", None) != _COLORVAR_LEGEND_NAME]
+
+    def colour_keys(fig):
+        res = []
+        for side in ("center", "left", "right", "above", "below"):
+            for m in list(getattr(fig, side, None) or ()):
+                if (isinstance(m, ColorBar) and getattr(m, "name", None)
+                        != "dash_by_label_box") or (
+                        isinstance(m, Legend) and getattr(m, "name", None)
+                        == _COLORVAR_LEGEND_NAME):
+                    res.append((side, m))
+        return res
+
+    own_on = bool((opts or {}).get("own_legend_on"))
+    first = series_legends(figs[0])
+    items = list(first[0].items) if first else []
+    if not ilegends and not own_on:
+        for fig in figs:
+            for lg in series_legends(fig):
+                lg.visible = False
+    keys1 = colour_keys(figs[0])
+    if not ilegends:
+        for fig in figs:
+            for side, m in colour_keys(fig):
+                lst = list(getattr(fig, side))
+                setattr(fig, side, [x for x in lst if x is not m])
+
+    def place(arg, default_clock):
+        words, calls = _dash_legend_parts(arg)
+        # at() is SetLegend's and SetClegend's own (`AT(integer 0)'), not
+        # a legend() sub-option: read here, the first copy.
+        at = 0
+        for tok in _dash_by_tokens(str(arg or "")):
+            m = re.fullmatch(r"at\(\s*([0-9]{1,9})\s*\)", tok.strip())
+            if m:
+                at = int(m.group(1))
+                break
+        pos = _dash_legend_arg(calls, ("position",))
+        ring = _dash_legend_arg(calls, ("ring",))
+        side = _dash_by_clock_side(pos if pos is not None else default_clock,
+                                   default_clock)
+        return words, max(0, at), side, ring
+
+    if not ilegends and items:
+        words, at, side, ring = place(
+            opts.get("legend", ""), getattr(scheme, "by_legend_position", 6))
+        drawn = len(items) > 1
+        if words & {"off", "nodraw"}:
+            drawn = False
+        if words & {"on", "draw"}:
+            drawn = True
+        if drawn:
+            out["legend"] = _dash_by_legend_cell(
+                scheme, "dash_by_legend", side if not at else "right",
+                first[0], items, "l")
+            out["legend_side"], out["legend_at"] = side, at
+            try:
+                out["ring0"] = ring is not None and float(ring) == 0
+            except ValueError:
+                out["ring0"] = False
+    if not ilegends and keys1:
+        words, at, side, _ring = place(opts.get("clegend", ""),
+                                       getattr(scheme, "zyx2_position", 3))
+        if words & {"on", "draw"} and not words & {"off", "nodraw"}:
+            _kside, key = keys1[0]
+            vertical = (side if not at else "right") in ("left", "right")
+            if isinstance(key, ColorBar):
+                cell = _dash_by_cell(scheme, "dash_by_clegend",
+                                     (1, None) if vertical else (None, 1))
+                kw = key.properties_with_values(include_defaults=False)
+                kw.pop("name", None)
+                kw["orientation"] = "vertical" if vertical else "horizontal"
+                bar = ColorBar(name="dash_by_clegend_key", **kw)
+                setattr(bar, _DASH_GRAPH_TEXT_DONE, True)
+                cell.add_layout(bar, "left" if vertical else "above")
+            else:
+                cell = _dash_by_legend_cell(scheme, "dash_by_clegend",
+                                            side if not at else "right", key,
+                                            list(key.items), "c")
+            out["clegend"] = cell
+            out["clegend_side"], out["clegend_at"] = side, at
+    return out
+
+
+def _dash_by_label_box(fig, scheme, mult=1.0):
+    """Draw *fig*'s by() panel label in twoway's filled box (WP-30
+    P1.15c, ratification row 36); returns the box ``ColorBar`` or None.
+
+    twoway draws each panel's label as ``subtitle(, astextbox box
+    blcolor(scheme bylabel_outline))`` (bygraphstyle-default.style): a
+    box exactly as wide as the panel's plot region, on its top edge,
+    filled in the fill of the scheme's ``textboxstyle subtitle`` and
+    outlined in ``bylabel_outline`` at the foreground width, as tall as
+    the label plus the subheading margins, all at by()'s size multiplier
+    (by_chrome_truth.json ``label_box``: s2color #D9E6EB on #D9E6EB,
+    s1color #E5DAA5 outlined black, stcolor #F0F0F0; the Total panel
+    boxed too).  Bokeh 3.9 has one model that draws that (measured in
+    headless Chrome): a ``Title``'s background covers its text only, a
+    ``BoxAnnotation`` outside the frame is clipped away and an extra
+    axis outlines one edge, while a horizontal ``ColorBar`` with no
+    padding spans the frame and outlines all four edges.  So the box is
+    a one-colour ``ColorBar`` named ``dash_by_label_box`` whose one tick
+    label is the label's text, put where S28's ``dash_by_label`` Title
+    is; that Title is hidden (it takes no space) and stays the label's
+    text record.  Built after the canvas-text pass, so the text copied is
+    final.  A panel with no label, or an empty one, gets no box.  Never
+    raises; colours are the scheme's and names constants."""
+    from bokeh.models import ColorBar, FixedTicker, LinearColorMapper, Title
+    title, where = None, None
+    for side in ("above", "below", "left", "right"):
+        for m in list(getattr(fig, side, None) or ()):
+            if isinstance(m, ColorBar) and m.name == "dash_by_label_box":
+                return m
+            if title is None and isinstance(m, Title) and \
+                    getattr(m, "name", None) == "dash_by_label":
+                title, where = m, side
+    if title is None or not str(title.text or ""):
+        return None
+    try:
+        mult = float(mult)
+        if not math.isfinite(mult) or mult < 0:
+            mult = 1.0
+    except (TypeError, ValueError):
+        mult = 1.0
+    px = OptionTranslator.PX_PER_PT
+    try:
+        f_pt = OptionTranslator.css_to_pt(title.text_font_size)
+    except Exception:  # noqa: BLE001
+        f_pt = None
+    font = (float(f_pt) * px if f_pt else 13.0) * mult
+    top, bottom = getattr(scheme, "by_label_margin_rs", (0.6, 0.6))
+    unit = OptionTranslator.PT_PER_RS * px
+    h = int(round(font + (float(top) + float(bottom)) * unit * mult))
+    h = max(1, min(h, 2000))
+    align = str(title.align or "center")
+    t = 0.0 if align == "left" else 0.5
+    line = float(getattr(scheme, "by_label_line_pt", 0.576)) * px * mult
+    fill = getattr(scheme, "by_label_fill", "#d9e6eb")
+    outline = getattr(scheme, "by_label_outline", "#d9e6eb")
+    fpx = "%gpx" % round(font, 2)
+    box = ColorBar(
+        name="dash_by_label_box", orientation="horizontal", padding=0,
+        margin=0, height=h,
+        color_mapper=LinearColorMapper(palette=[fill], low=0, high=1),
+        bar_line_color=outline, bar_line_width=round(line, 3),
+        border_line_color=None, background_fill_alpha=0,
+        major_tick_line_color=None, minor_tick_line_color=None,
+        ticker=FixedTicker(ticks=[t]),
+        major_label_overrides={t: str(title.text)},
+        major_label_text_align=("left" if t == 0 else "center"),
+        major_label_text_baseline="middle",
+        major_label_text_font_size=fpx,
+        major_label_text_color=title.text_color,
+        major_label_text_font_style=title.text_font_style,
+        major_label_text_font=title.text_font,
+        label_standoff=int(-(h + font) // 2 - 2))
+    if title.text_alpha is not None:
+        box.major_label_text_alpha = title.text_alpha
+    setattr(box, _DASH_GRAPH_TEXT_DONE, True)
+    lst = list(getattr(fig, where))
+    idx = next(i for i, m in enumerate(lst) if m is title)
+    lst.insert(idx, box)
+    setattr(fig, where, lst)
+    title.visible = False
+    return box
+
+
+#: The stacked view of a by() grid (WP-30 P1.15c, D3 a, register
+#: P1.15.3): when the grid stacks into one column (``_dash_reflow``'s
+#: container query), every panel shows its axes and titles again and the
+#: outer title cells hide; wide again, twoway's layout returns.  The
+#: ruler is a one-pixel cell in a column of its own: in the grid it is a
+#: pixel wide, stacked it takes the whole width like every cell (measured
+#: in headless Chrome: a cell spanning columns reports one column's
+#: width, and GridPlot keeps none).  Run on the document's ready event and
+#: on window resizes, as the layout settles, and once a second (BokehJS
+#: writes the widths with no change event).  Constant code: titles reach it as JSON data in
+#: ``labels_json``.
+_DASH_BY_STACK_JS = """
+const restore = JSON.parse(labels_json);
+let tries = 0;
+let state = null;
+function check() {
+  let rw = 0;
+  let pw = 0;
+  try {
+    rw = ruler.outer_width || 0;
+    pw = panels[0].outer_width || 0;
+  } catch (e) {
+    rw = 0;
+  }
+  if (!(rw > 0 && pw > 0)) {
+    if (tries < 120) {
+      tries += 1;
+      setTimeout(check, 500);
+    }
+    return;
+  }
+  const stacked = panels.length > 1 && rw > 0.5 * pw;
+  if (stacked === state) {
+    return;
+  }
+  state = stacked;
+  for (let i = 0; i < axes.length; i++) {
+    const r = restore[i];
+    axes[i].visible = stacked ? r[3] : r[0];
+    axes[i].axis_label = stacked ? r[2] : r[1];
+  }
+  for (const c of cells) {
+    c.visible = !stacked;
+  }
+}
+let queued = false;
+window.addEventListener("resize", function () {
+  if (queued) {
+    return;
+  }
+  queued = true;
+  requestAnimationFrame(function () {
+    queued = false;
+    // BokehJS lays the grid out again after the resize, asynchronously:
+    // look at it as it settles.
+    setTimeout(check, 50);
+    setTimeout(check, 300);
+    setTimeout(check, 800);
+  });
+});
+check();
+// A layout that settles after those looks (a slow page, a container that
+// changes width without a window resize) is caught within a second.
+setInterval(check, 1000);
+"""
+
+
+def _dash_by_stack_hook(figs, axes, restore, cells, ruler):
+    """The one ``CustomJS`` (named ``dash_by_stack``) that runs
+    ``_DASH_BY_STACK_JS`` for a by() grid, or None for fewer than two
+    panels.  *restore* is ``[[visible, wide_label, full_label], ...]``
+    for *axes*, passed as JSON data."""
+    from bokeh.models import CustomJS
+    if len(figs or ()) < 2 or ruler is None:
+        return None
+    return CustomJS(
+        name="dash_by_stack",
+        args={"panels": list(figs), "axes": list(axes),
+              "labels_json": json.dumps(restore, allow_nan=False),
+              "cells": list(cells), "ruler": ruler},
+        code=_DASH_BY_STACK_JS)
+
+
+def _dash_by_stack_hooks(models):
+    """The stacked-view hooks (``CustomJS`` named ``dash_by_stack``) of
+    every by() grid under *models*: each grid's first panel carries its
+    side record (``_dash_by_side``), whose ``hook`` it is."""
+    out, seen = [], set()
+    for root in models or ():
+        refs = root.references() if hasattr(root, "references") else ()
+        for m in refs:
+            side = getattr(m, "_dash_by_side", None)
+            hook = side.get("hook") if isinstance(side, dict) else None
+            if hook is not None and getattr(hook, "name", "") == \
+                    "dash_by_stack" and hook.id not in seen:
+                seen.add(hook.id)
+                out.append(hook)
+    return out
+
+
+def _dash_by_layout_options(graph_opts):
+    """The grid options ``_dash_layout_cell`` places a by() graph's panels
+    with: ``_dash_by_grid_options`` and, without rows() or cols(), the
+    spec's ``by_cols``."""
+    go = graph_opts or {}
+    opts = _dash_by_grid_options(go.get("by"))
+    if not opts["cols"] and not opts["rows"]:
+        try:
+            opts["cols"] = max(0, int(go.get("by_cols", "0") or 0))
+        except (ValueError, TypeError):
+            opts["cols"] = 0
+    return opts
+
+
+def _dash_by_side(figs, graph_opts, scheme, seen=None, key=""):
+    """by()'s shared chrome for one graph's panels *figs* (WP-30 P1.15c);
+    returns the side record ``_dash_layout_cell`` places, also stored on
+    the first panel as ``_dash_by_side``.
+
+    Run after the canvas-text pass in both modes, so every text it copies
+    is final.  It reads the options (``_dash_by_axes_options``), places
+    the panels as the layout will (S48's ``_dash_by_positions`` with the
+    legend's and colour key's ``at()`` holes, which count in twoway's
+    ``full_n``), draws the outer axes and clears the per-panel titles
+    (``_dash_by_outer_axes``), builds the y- and x-title cells
+    (``dash_by_ytitle``, ``dash_by_xtitle``) unless ``noytitles`` or
+    ``noxtitles``, the one legend and colour key (``_dash_by_keys``),
+    each panel label's box (``_dash_by_label_box``) at by()'s size
+    multiplier, and the stacked view's hook.  ``legend(ring(0))`` under
+    by() is drawn beside the panels and named once."""
+    go = graph_opts or {}
+    if not figs:
+        return None
+    opts = _dash_by_axes_options(go.get("by"), scheme)
+    opts["rescaled"] = _dash_by_rescale(str(go.get("by", "") or ""))
+    own_words, _c = _dash_legend_parts(go.get("legend", ""))
+    opts["own_legend_on"] = bool(own_words & {"on"}) and \
+        "off" not in own_words
+    keys = _dash_by_keys(figs, opts, scheme)
+    mark = ("by_legend_ring0", str(key))
+    if keys.get("ring0") and (seen is None or mark not in seen):
+        if seen is not None:
+            seen.add(mark)
+        _dash_warn_once(mark, "dash: graph %r: by(, legend(ring(0))) is "
+                        "drawn beside the panels." % str(key))
+    gopts = _dash_by_layout_options(go)
+    _cells, _r, _c2, extra = _dash_by_positions(
+        len(figs), gopts, legend_at=keys["legend_at"],
+        clegend_at=keys["clegend_at"])
+    cells, nr, nc = extra["drawn"]
+    positions = {i: rc for i, rc in enumerate(cells)}
+    titles = _dash_by_outer_axes(figs, positions, opts)
+    fl = opts["flags"]
+    side = {"legend_at": keys["legend_at"], "clegend_at": keys["clegend_at"],
+            "cells": [], "hook": None}
+    tcells = []
+    for d, name, where, flag in (("y", "dash_by_ytitle", "left",
+                                  "outer_ytitles"),
+                                 ("x", "dash_by_xtitle", "below",
+                                  "outer_xtitles")):
+        if fl.get(flag) and titles[d]:
+            prim = _dash_primary_axes(getattr(figs[0], d + "axis"),
+                                      d + "_range_name")
+            cell = _dash_by_title_cell(scheme, name, titles[d], where,
+                                       prim[0] if prim else None)
+            side["cells"].append((d + "title", cell, ""))
+            tcells.append(cell)
+    for k in ("legend", "clegend"):
+        if keys.get(k) is not None:
+            side["cells"].append((k, keys[k], keys[k + "_side"]))
+    m = _dash_by_size_mult(go.get("by"), extra["full_n"])
+    for fig in figs:
+        _dash_by_label_box(fig, scheme, m)
+    if nc > 1:
+        ruler = _dash_by_cell(scheme, "dash_by_ruler", (None, 1))
+        ruler.min_width = 1
+        ruler.min_border = 0
+        side["hook"] = _dash_by_stack_hook(figs, titles["hidden"],
+                                           titles["restore"], tcells, ruler)
+    figs[0]._dash_by_side = side
+    return side
+
+
+def _dash_by_side_grid(grid, side, nrows, ncols):
+    """Place a by() grid's side cells around its panels (WP-30 P1.15c);
+    returns the grid's column count.
+
+    The y-title cell takes a column of its own left of the panels and the
+    x-title cell a row below them, over the panel columns; a legend or
+    colour-key cell sits right of, left of (before the y-title column),
+    above or below everything, spanning it, or, placed with ``at()``, in
+    its hole's cell (``side["at_cells"]``).  Every side child is a 5-tuple; panel children keep
+    their form."""
+    if not side or not side.get("cells"):
+        return ncols
+    kids = [tuple(c) for c in (grid.children or [])]
+    kinds = {k: (cell, where) for k, cell, where in side["cells"]}
+    at_cells = side.get("at_cells") or {}
+    left_cols = int("ytitle" in kinds)
+    for k in ("legend", "clegend"):
+        if k in kinds and k not in at_cells and kinds[k][1] == "left":
+            left_cols += 1
+    top_rows = sum(1 for k in ("legend", "clegend") if k in kinds
+                   and k not in at_cells and kinds[k][1] == "above")
+    kids = [(c[0], int(c[1]) + top_rows, int(c[2]) + left_cols) + c[3:]
+            for c in kids]
+    p0r, p0c = top_rows, left_cols
+    out = list(kids)
+    for k in ("legend", "clegend"):
+        if k in at_cells and k in kinds:
+            r, c = at_cells[k]
+            out.append((kinds[k][0], p0r + int(r), p0c + int(c), 1, 1))
+    if "ytitle" in kinds:
+        out.append((kinds["ytitle"][0], p0r, p0c - 1, nrows, 1))
+    row = p0r + nrows
+    if "xtitle" in kinds:
+        out.append((kinds["xtitle"][0], row, p0c, 1, ncols))
+        row += 1
+    total = p0c + ncols
+    lc, tr = 0, 0
+    for k in ("legend", "clegend"):
+        if k not in kinds or k in at_cells:
+            continue
+        cell, where = kinds[k]
+        if where == "right":
+            out.append((cell, p0r, total, nrows, 1))
+            total += 1
+        elif where == "left":
+            out.append((cell, p0r, lc, nrows, 1))
+            lc += 1
+        elif where == "above":
+            out.append((cell, tr, 0, 1, -1))
+            tr += 1
+        else:
+            out.append((cell, row, 0, 1, -1))
+            row += 1
+    grid.children = [c if len(c) < 5 or c[4] != -1 else
+                     (c[0], c[1], c[2], c[3], total) for c in out]
+    return total
 
 
 #: xscale()/yscale() sub-options dash honours.
@@ -43078,6 +44012,22 @@ class DashRenderer:
         _dummy_html = file_html(_dummy_col, INLINE, title=title_text or "dash")
         _extracted_head = self._head_of_file_html(_dummy_html)
 
+        # The stacked view of every by() grid (WP-30 P1.15c): a document
+        # callback, which components() serialises only when the models
+        # are that document's roots.  A page with no by() grid is
+        # serialised as before.
+        _by_hooks = _dash_by_stack_hooks(all_models)
+        if _by_hooks:
+            from bokeh.document import Document as _HookDoc
+            # file_html() left the models in _dummy_col's document.
+            if _dummy_col.document is not None:
+                _dummy_col.document.remove_root(_dummy_col)
+            _dummy_col.children = []
+            _hook_doc = _HookDoc()
+            for _m in all_models:
+                _hook_doc.add_root(_m)
+            _hook_doc.js_on_event("document_ready", *_by_hooks)
+
         # ---- Get individual Bokeh component divs ----
         script_tag, div_list = components(all_models)
         name_to_div: dict[str, str] = dict(zip(model_keys, div_list))
@@ -43811,6 +44761,25 @@ class DashRenderer:
         _dash_finish_graph_text(self.figures)
         _dash_finish_graph_text(
             _dash_by_chrome_figures(self.figures, self._facet_map))
+
+        # ---- 3f. by()'s shared axes and keys (WP-30 P1.15c) ----
+        # After the text pass, so the titles, keys and panel labels the
+        # side cells and label boxes copy are final; carried by the first
+        # panel to _dash_layout_cell.
+        for g in graphs:
+            _go = g.get("graph_options", {})
+            _nm = _go.get("name", "")
+            if _nm not in self._facet_map:
+                continue
+            _gs = str(_go.get("scheme", "") or "").strip()
+            _sch = self.scheme if not _gs else self._scheme_for(
+                _dash_scheme_choice(_gs, "graph",
+                                    getattr(self, "_scheme_dirs", ())),
+                f"graph {_nm or '(unnamed)'}")
+            _dash_by_side(
+                [self.figures[fk] for fk, _ in self._facet_map[_nm]
+                 if fk in self.figures], _go, _sch,
+                getattr(self, "_reported_subopts", None), _nm)
 
 
 
@@ -44709,6 +45678,14 @@ class DashRenderer:
         # again on its way into the embedded JSON, which is correct and
         # would otherwise read as a double escape.
         self._last_layout_root = layout_root
+        # The stacked view of every by() grid (WP-30 P1.15c), as a
+        # callback of the document file_html() serialises.
+        _by_hooks = _dash_by_stack_hooks([layout_root])
+        if _by_hooks:
+            from bokeh.document import Document as _HookDoc
+            _hook_doc = _HookDoc()
+            _hook_doc.add_root(layout_root)
+            _hook_doc.js_on_event("document_ready", *_by_hooks)
         html_str = file_html(layout_root, INLINE, title=title_text or "dash")
         # Every script on this page is Bokeh's, hashed here, before the
         # head below is spliced in (WP-30 P1.29).
@@ -45759,6 +46736,16 @@ class ServerAppBuilder:
                          "_dash_save_filename", "_dash_name_save",
                          # Every grid's fit to its width (TR-27.2).
                          "_dash_reflow",
+                         # by() axes and keys (WP-30 P1.15c).
+                         "_dash_by_axes_options", "_dash_by_axis_flags",
+                         "_dash_by_axis_side", "_dash_by_outer_axes",
+                         "_dash_by_cell", "_dash_by_title_cell",
+                         "_dash_by_glyph_fields", "_dash_by_clone_renderers",
+                         "_dash_by_clock_side", "_dash_by_legend_cell",
+                         "_dash_by_keys", "_dash_by_layout_options",
+                         "_dash_by_side", "_dash_by_side_grid",
+                         "_dash_by_stack_hook", "_dash_by_stack_hooks",
+                         "_dash_by_label_box",
                          # The columns a layer's options name.
                          "_dash_mlabel_names", "_dash_option_columns",
                          "_dash_mlabvpos_name",
@@ -48251,6 +49238,15 @@ class ServerAppBuilder:
             "    # as the saved renderer's _build_sources_and_figures ends.",
             "    _dash_finish_graph_text(figures)",
             "    _dash_finish_graph_text(_dash_by_chrome_figures(figures, _facet_map))",
+            "    # by()'s shared axes and keys (WP-30 P1.15c), after the text",
+            "    # pass, in each graph's own scheme, as saved.",
+            "    for _g53 in graphs:",
+            "        _go53 = _g53.get('graph_options', {})",
+            "        _n53 = _go53.get('name', '')",
+            "        if _n53 in _facet_map:",
+            "            _f53 = [figures[_f] for _f, _ in _facet_map[_n53] if _f in figures]",
+            "            _dash_under_graph_scheme(_g53, lambda _f53=_f53, _go53=_go53, _n53=_n53:",
+            "                _dash_by_side(_f53, _go53, _DASH_SCHEME, _reported_subopts, _n53))",
             "    # WP-30 P1.3a: a zoom or pan re-ticks a counted axis by natscale",
             "    # (one CustomJS for the document); a move re-finishes in Python.",
             "    _dash_axis_plan(figures, _facet_map, zoom=True)",
@@ -48982,6 +49978,10 @@ class ServerAppBuilder:
             "                        layout, sizing_mode='stretch_width')",
             '',
             '    doc.add_root(layout)',
+            "    # The stacked view of every by() grid (WP-30 P1.15c).",
+            "    _by_hooks = _dash_by_stack_hooks([layout])",
+            "    if _by_hooks:",
+            "        doc.js_on_event('document_ready', *_by_hooks)",
             "    doc.title = title_text or 'dash'",
             "    # ---- The idle close (WP-30 P1.31a) ----",
             "    # Only a served session: its document is cleared, says why,",

@@ -627,7 +627,16 @@ def _annotations(fig):
                         "tick_color": r.major_tick_line_color,
                         "tick_in": r.major_tick_in,
                         "tick_out": r.major_tick_out,
-                        "background_alpha": r.background_fill_alpha})
+                        "background_alpha": r.background_fill_alpha,
+                        # WP-30 P1.15c: a by() panel label's box -- its
+                        # fill, outline and text.
+                        "name": r.name,
+                        "box": ((list(getattr(m, "palette", []) or [])[:1],
+                                 r.bar_line_color,
+                                 sorted((str(k), str(v)) for k, v in
+                                        (r.major_label_overrides or {})
+                                        .items()))
+                                if r.name == "dash_by_label_box" else None)})
         elif isinstance(r, BoxAnnotation):
             out.append({"kind": "BoxAnnotation",
                         "left": _num(r.left), "right": _num(r.right),
@@ -1015,6 +1024,18 @@ def _layout_tree(m, figures):
             (type(x).__name__, x.text, x.text_font_size, x.text_color,
              getattr(x, "align", None)) for x in rows
             if type(x).__name__ in ("Title", "Label")])
+    if tn == "Plot" and str(getattr(m, "name", None) or "").startswith(
+            "dash_by_"):
+        # A by() grid's side cell (WP-30 P1.15c): the axis-title text, the
+        # overall legend's labels and the colour key's mapper, both modes.
+        side = [x for s in ("left", "right", "above", "below", "center")
+                for x in getattr(m, s)]
+        return ("side", m.name, [
+            (type(x).__name__, getattr(x, "text", None),
+             [str(i.label) for i in getattr(x, "items", None) or []],
+             type(getattr(x, "color_mapper", None)).__name__)
+            for x in side if type(x).__name__ in ("Title", "Legend",
+                                                  "ColorBar")])
     kids = getattr(m, "children", None)
     return (tn, _layout_tree(kids, figures) if kids is not None else [])
 
@@ -1723,6 +1744,15 @@ CORPUS = [
     _case("pcspike under by()", [plot_for("pcspike")], None,
           {"by": "foreign"}),
     _case("by(, total cols(1))", [_sc()], None, {"by": "foreign, total cols(1)"}),
+    # WP-30 P1.15c: by()'s shared axes, one legend and one colour key.
+    _case("WP-30 P1.15c: two layers under by()", [_sc(), plot_for("lfit")],
+          None, {"by": "foreign"}),
+    _case("WP-30 P1.15c: colorvar() under by(, clegend(on))",
+          [_sc(colorvar="price")], None, {"by": "foreign, clegend(on)"}),
+    _case("WP-30 P1.15c: a second axis under by()",
+          [_sc(), plot_for("scatter", yvar="price", xvar="weight",
+                           options={"yaxis": "2"})], None,
+          {"by": "foreign", "ytitle2": '"Price"'}),
     _case("by() on two variables", [_sc()], None, {"by": "foreign rep"}),
     # Flipped (WP-30 P1.15b): rows(2) compact are drawn now.
     _case("by() with an unimplemented sub-option", [_sc()], None,
@@ -2943,6 +2973,9 @@ MOVE_CORPUS = [
                {"by": "rep"}),
     _move_case("lfit under by(), range", _MOVES[1], [plot_for("lfit")],
                {"by": "foreign"}),
+    # WP-30 P1.15c: the shared chrome holds after a move.
+    _move_case("WP-30 P1.15c: two layers under by(), range", _MOVES[1],
+               [_sc(), plot_for("lfit")], {"by": "foreign"}),
     _move_case("a KPI, dropdown", _MOVES[0], [_sc()], kpis=[_kpi()]),
     _move_case("a KPI with its own if, range", _MOVES[1], [_sc()],
                kpis=[_kpi(if_expr="foreign == 0")]),

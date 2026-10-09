@@ -2549,6 +2549,18 @@ included, as in {cmd:twoway} -- are left out unless {cmd:missing} is given.
     given, the rescale wins, as in {cmd:twoway}{p_end}
 {synopt:{opt by(varlist, style(rescale))}}and style(combine): only
     their separate scales are drawn, with a note{p_end}
+{synopt:{opt by(varlist, iyaxes ixaxes)}}draw every panel's y or x axis;
+    {cmd:iylabels}, {cmd:iyticks}, {cmd:iytitles} and their x and
+    {cmd:no} forms, {cmd:individual}{p_end}
+{synopt:{opt by(varlist, noedgelabel)}}draw x axes on the bottom row and y
+    axes on the left column only; {cmd:edgelabel}{p_end}
+{synopt:{opt by(varlist, noytitles noxtitles)}}leave out the axis titles
+    drawn beside and below the panels{p_end}
+{synopt:{opt by(varlist, legend())}}place the one legend:
+    {cmd:position()}, {cmd:at()}, {cmd:on}, {cmd:off}{p_end}
+{synopt:{opt by(varlist, ilegends)}}a legend on each panel instead{p_end}
+{synopt:{opt by(varlist, clegend(on))}}one colour key, the first
+    panel's; {cmd:position()}, {cmd:at()}{p_end}
 {synoptline}
 
 {pstd}
@@ -2560,8 +2572,37 @@ panel moves the others; a filter move spans the axes again over the rows kept.  
 data on that axis; there {cmd:yscale(range())} and {cmd:xscale(range())},
 those of the second axis included, are not applied, as in {cmd:twoway},
 and a note says so; labels and ticks still widen each panel, and reverse
-and log are kept.  {cmd:twoway} draws only the outer axes of shared panels,
-where {cmd:dash} draws every panel's.
+and log are kept.
+
+{pstd}
+The panels share their axes and keys as {cmd:twoway}'s do, in both modes and
+after every filter move.  A y axis is drawn on the leftmost panel of each
+row, an x axis under the lowest panel of each column (a panel above an
+empty cell keeps its own), and a second y axis on the rightmost panel; with
+{cmd:noedgelabel} or {cmd:compact} only the panels on the outer edge of the
+grid draw them.  {cmd:iyaxes} and {cmd:ixaxes} draw every panel's axis, as
+a rescaled axis is drawn, {cmd:noiylabels} and {cmd:noiyticks} (and their x
+forms) take the labels or ticks off every axis, {cmd:individual} draws
+none, and a word and its {cmd:no} form given together read as the word, as
+in {cmd:twoway}.  The y and x axis titles are drawn once, beside and below
+the panels, from the first panel, unless {cmd:noytitles} or
+{cmd:noxtitles}; {cmd:iytitles} and {cmd:ixtitles} keep them on each
+drawn axis too; no panel draws a second axis's title.  One legend, of the
+first panel's keys as {cmd:legend()} orders and labels them, is drawn when
+the first panel has more than one key or with {cmd:by(, legend(on))}, and
+not with {cmd:by(, legend(off))}; it is placed by
+{cmd:by(, legend(position()))}, in the cell {cmd:at(}{it:#}{cmd:)} names
+(which counts as a cell of the grid, as in {cmd:twoway}), or else where the
+scheme puts it (s2color below, stcolor right, economist above).
+{cmd:ilegends} draws each panel's legend instead; {cmd:legend(on)} outside
+{cmd:by()} draws both, and {cmd:legend(off)} outside {cmd:by()} changes
+nothing, as {cmd:twoway} ignores it.  {cmd:by(, legend(ring(0)))} is drawn
+beside the panels and a note says so.  The overall legend is not clickable.
+Under {cmd:colorvar()} no colour key is drawn unless
+{cmd:by(, clegend(on))}, which draws one, the first panel's, placed by
+{cmd:clegend(position() at())} else the scheme's position.  On a narrow
+screen, where the panels stack into one column, every panel shows its axes
+and titles again, and {cmd:twoway}'s layout returns when the page widens.
 
 {pstd}
 The Total panel draws the observations of every group, as {cmd:twoway}'s
@@ -2601,7 +2642,11 @@ row under the graph's {cmd:title()}, which every panel keeps.  A graph's
 {cmd:subtitle()} replaces the label, leads it with {cmd:prefix}, follows
 it with {cmd:suffix}, and {cmd:subtitle("")} removes it.  A value label
 holding double quotes stays one line, where {cmd:twoway} splits it.
-{cmd:twoway} draws the label in a filled box; {cmd:dash} does not yet.
+As in {cmd:twoway}, the label is drawn in the scheme's filled box across
+the top of the panel's plot region (s2color bluish gray, stcolor light gray,
+s1color khaki outlined in black), the Total panel's too; {cmd:subtitle()}'s
+{cmd:fcolor()}, {cmd:lcolor()} and {cmd:nobox} do not restyle it in
+{cmd:dash} and are named in a note.
 {cmd:by()}'s own {cmd:title()}, {cmd:subtitle()}, {cmd:note()} and
 {cmd:caption()} are drawn once over the panels, and under them the note
 "Graphs by" names the variables as {cmd:twoway} does: their labels,
@@ -2613,9 +2658,11 @@ a note names the limit and the global that raises it (see
 {help dash##limits:Resource limits}).
 {cmd:cols()}, {cmd:rows()}, {cmd:holes()}, {cmd:colfirst},
 {cmd:compact}, {cmd:style(compact)}, {cmd:iscale()}, {cmd:imargin()},
-{cmd:total}, {cmd:missing}, the rescale forms above and {cmd:title()},
-{cmd:subtitle()}, {cmd:note()} and {cmd:caption()} are the {cmd:by()}
-sub-options {cmd:dash} implements.  Any other sub-option of Stata's
+{cmd:total}, {cmd:missing}, the rescale forms above, {cmd:title()},
+{cmd:subtitle()}, {cmd:note()} and {cmd:caption()}, the axis and title
+words above, {cmd:edgelabel}, {cmd:individual}, {cmd:ilegends},
+{cmd:legend()} and {cmd:clegend()} are the {cmd:by()} sub-options
+{cmd:dash} implements.  Any other sub-option of Stata's
 {cmd:by()} -- for example {cmd:subtitleformat()} or {cmd:shrink} -- is
 accepted, named in a warning, and ignored.
 {cmd:by()} combines with {cmd:link()}: a faceted graph inside a link group
@@ -4089,10 +4136,9 @@ observation whose y or x is missing counts too.  So in {cmd:sysuse auto}, a
 scatter of {cmd:mpg} on {cmd:weight} with its own {cmd:if foreign==1} and
 {cmd:colorvar(price)}, drawn beside a scatter of the domestic cars, spans
 3,748 to 12,990, the prices of the foreign cars.  Under {cmd:by()}
-each panel colours its own observations, as {cmd:twoway} does; {cmd:dash}
-draws each panel's key, where {cmd:twoway} draws none unless
-{cmd:by(, clegend(on))} asks for the first panel's, and its note names
-{cmd:clegend()}.  A filter move keeps the colours and the key chosen when
+each panel colours its own observations, as {cmd:twoway} does, and, as in
+{cmd:twoway}, no panel draws a key: {cmd:by(, clegend(on))} draws one,
+the first panel's.  A filter move keeps the colours and the key chosen when
 the dashboard was built, in both the saved page and the served app.
 {cmd:rconnected} draws one key for both ends.  A plot whose {cmd:if}
 selects no observation draws no key ({cmd:twoway} stops with r(3001)), and
@@ -4767,7 +4813,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 260 to 330 directives (more for the monochrome schemes, whose
+scheme: 280 to 350 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}

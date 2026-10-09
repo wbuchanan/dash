@@ -696,8 +696,10 @@ class TestTheParsersFoundSomething:
         # Unsupported entry it replaces stays, as "Bar labels and positions").
         # 384 -> 391: P1.6's seven time-axis option rows; 391 -> 396: its
         # five axis-2 rows (part 2).
-        assert len(defs) == 396, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 396 "
+        # 396 -> 402: P1.15c's six by() rows (iyaxes ixaxes, noedgelabel,
+        # noytitles noxtitles, legend(), ilegends, clegend(on)).
+        assert len(defs) == 402, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 402 "
             f"measured 08oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

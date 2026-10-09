@@ -121,7 +121,7 @@ def _lines(root):
     ends' mismatch with the scale or frame, or None)."""
     out = []
     for p in root.select({"type": Plot}):
-        if p.name in ("dash_by_head", "dash_by_foot"):
+        if str(p.name or "").startswith("dash_by_"):
             continue                    # by()'s cells carry no axes
         for a in p.center:
             if isinstance(a, Span):

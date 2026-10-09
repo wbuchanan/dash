@@ -548,6 +548,16 @@ class TestReflowAdversarial:
                 assert "display:none" not in s.css
 
 
+def _shares_the_width(cols):
+    """Every column an equal share of the grid -- or, in a by() grid,
+    every panel column, its axis-title, legend and key columns as wide as
+    they hold and its stacking ruler's one pixel (WP-30 P1.15c)."""
+    if cols == dr._DASH_BS_TRACK:
+        return True
+    return (isinstance(cols, list) and dr._DASH_BS_TRACK in cols
+            and set(cols) <= {dr._DASH_BS_TRACK, "max-content", "1px"})
+
+
 class TestEveryGridIsReflowed:
     """Every grid, the filter bar and the sidebar go through _dash_reflow,
     in both modes."""
@@ -568,7 +578,7 @@ class TestEveryGridIsReflowed:
         grids = _all_models(root, GridPlot)
         assert grids
         for g in grids:
-            assert g.cols == dr._DASH_BS_TRACK
+            assert _shares_the_width(g.cols), g.cols
         rows = _all_models(root, Row)
         assert all("flex-wrap: wrap" in _css(x) for x in rows)
 
@@ -580,7 +590,7 @@ class TestEveryGridIsReflowed:
         models = [m for root in doc.roots for m in root.references()]
         grids = [m for m in models if isinstance(m, GridPlot)]
         for g in grids:
-            assert g.cols == dr._DASH_BS_TRACK
+            assert _shares_the_width(g.cols), g.cols
         boxes = [m for m in models if type(m) is GridBox]
         for b in boxes:
             assert "@media (max-width: 767.98px)" in _css(b)

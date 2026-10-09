@@ -354,7 +354,10 @@ def _panel_cells(html: str) -> list:
             if byid.get(fid, {}).get("name") == "Figure":
                 out.append((labels.get(fid), child[1], child[2]))
     base = min((r for _, r, _ in out), default=0)
-    return [(t, r - base, c) for t, r, c in out]
+    # WP-30 P1.15c: the y-axis title's column sits left of the panels, so
+    # columns are counted from the first panel column too.
+    cbase = min((c for _, _, c in out), default=0)
+    return [(t, r - base, c - cbase) for t, r, c in out]
 
 
 def _text_homes(html: str, needle: str) -> list:

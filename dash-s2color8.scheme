@@ -531,6 +531,43 @@ yesno xyline_extend_low   yes
 yesno xyline_extend_high  yes
 
 * ---------------------------------------------------------------------------
+* Added 08oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s2color8); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* by() axes and keys (WP-30 P1.15c): the legend's and colour key's
+* clock position and ring under by(), the outer- and individual-axis
+* switches, the space between panels, and the panel label's box:
+* `color by_label_fill' is dash's derived key, the fillcolor of the
+* style `textboxstyle subtitle' names, resolved.
+clockdir by_legend_position   6
+gridringstyle by_legend_ring       3
+clockdir zyx2legend_position  3
+gridringstyle zyx2legend_ring      4
+yesno by_edgelabel         yes
+yesno by_outer_xaxes       yes
+yesno by_outer_yaxes       yes
+yesno by_outer_xtitles     yes
+yesno by_outer_ytitles     yes
+yesno by_indiv_xaxes       no
+yesno by_indiv_yaxes       no
+yesno by_indiv_xlabels     yes
+yesno by_indiv_ylabels     yes
+yesno by_indiv_xticks      yes
+yesno by_indiv_yticks      yes
+yesno by_indiv_xtitles     no
+yesno by_indiv_ytitles     no
+yesno by_indiv_as_whole    no
+margin by_indiv             small
+margin subheading           vsmall
+color bylabel_outline      #d2d7e4
+color by_label_fill        #d2d7e4
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -699,6 +736,28 @@ yesno xyline_extend_high  yes
 * provenance: clockdir note_position -- transcribed from scheme-s2color.scheme:1923 `clockdir note_position 7'
 * provenance: clockdir caption_position -- transcribed from scheme-s2color.scheme:1922 `clockdir caption_position 7'
 * provenance: system naturally_white -- transcribed from scheme-s2color.scheme:28 `system naturally_white 1'
+* provenance: clockdir by_legend_position -- transcribed from scheme-s2color.scheme:1926 `clockdir by_legend_position 6'
+* provenance: gridringstyle by_legend_ring -- transcribed from scheme-s2color.scheme:1954 `gridringstyle by_legend_ring 3'
+* provenance: clockdir zyx2legend_position -- transcribed from scheme-s2color.scheme:1925 `clockdir zyx2legend_position 3'
+* provenance: gridringstyle zyx2legend_ring -- transcribed from scheme-s2color.scheme:1952 `gridringstyle zyx2legend_ring 4'
+* provenance: yesno by_edgelabel -- transcribed from scheme-s2color.scheme:2191 `yesno by_edgelabel yes'
+* provenance: yesno by_outer_xaxes -- transcribed from scheme-s2color.scheme:2198 `yesno by_outer_xaxes yes'
+* provenance: yesno by_outer_yaxes -- transcribed from scheme-s2color.scheme:2199 `yesno by_outer_yaxes yes'
+* provenance: yesno by_outer_xtitles -- transcribed from scheme-s2color.scheme:2196 `yesno by_outer_xtitles yes'
+* provenance: yesno by_outer_ytitles -- transcribed from scheme-s2color.scheme:2197 `yesno by_outer_ytitles yes'
+* provenance: yesno by_indiv_xaxes -- transcribed from scheme-s2color.scheme:2200 `yesno by_indiv_xaxes no'
+* provenance: yesno by_indiv_yaxes -- transcribed from scheme-s2color.scheme:2201 `yesno by_indiv_yaxes no'
+* provenance: yesno by_indiv_xlabels -- transcribed from scheme-s2color.scheme:2204 `yesno by_indiv_xlabels yes'
+* provenance: yesno by_indiv_ylabels -- transcribed from scheme-s2color.scheme:2205 `yesno by_indiv_ylabels yes'
+* provenance: yesno by_indiv_xticks -- transcribed from scheme-s2color.scheme:2206 `yesno by_indiv_xticks yes'
+* provenance: yesno by_indiv_yticks -- transcribed from scheme-s2color.scheme:2207 `yesno by_indiv_yticks yes'
+* provenance: yesno by_indiv_xtitles -- transcribed from scheme-s2color.scheme:2202 `yesno by_indiv_xtitles no'
+* provenance: yesno by_indiv_ytitles -- transcribed from scheme-s2color.scheme:2203 `yesno by_indiv_ytitles no'
+* provenance: yesno by_indiv_as_whole -- transcribed from scheme-s2color.scheme:2210 `yesno by_indiv_as_whole no'
+* provenance: margin by_indiv -- transcribed from scheme-s2color.scheme:729 `margin by_indiv small'
+* provenance: margin subheading -- transcribed from scheme-s2color.scheme:737 `margin subheading vsmall'
+* provenance: color bylabel_outline -- transcribed from scheme-s2color8.scheme:39 `color bylabel_outline bluishgray8'
+* provenance: color by_label_fill -- inferred: dash's derived key: `textboxstyle subtitle subheading', style/textboxstyle-subheading.style `set fillcolor scheme textbox', then `color textbox bluishgray8' (scheme-s2color8.scheme:33)
 * provenance: color ci2_symbol -- transcribed from scheme-s2color.scheme:359 `color ci2_symbol khaki'
 * provenance: color ci_symbol -- transcribed from scheme-s2color.scheme:355 `color ci_symbol gs8'
 * provenance: color clegend_line -- transcribed from scheme-s2color.scheme:417 `color clegend_line black'

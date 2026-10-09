@@ -1082,9 +1082,11 @@ class TestTheShippedFiles:
         # outward to ten).
         # WP-30 P1.20b: the margin ladder (gsize *margin) is read now:
         # 250..320 -> 260..330 (262 to 322, rounded outward to ten).
-        assert 260 <= n <= 330, (name, n)
+        # Flipped (WP-30 P1.15c): 260..330 -> 280..350: P1.15c by() keys
+        # (286 to 346, rounded outward to ten).
+        assert 280 <= n <= 350, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"260\s+to\s+330\s+directives", help_text)
+        assert re.search(r"280\s+to\s+350\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1202,8 +1204,12 @@ class TestTheShippedFiles:
                 and re.search(r"pie|\bdot|matrix|tick", k)}, named
         bad = sorted(k for k in keys if re.search(
             # WP-30 P1.3a: `margin twoway' is drawn now (the plot-region
-            # margin), so it is no longer in this list.
-            r"(?<!text)box|pie|\bdot|matrix|margin(?! twoway)|barlabel|"
+            # margin), so it is no longer in this list.  Flipped (WP-30
+            # P1.15c): `margin by_indiv' (the space between by() panels)
+            # and `margin subheading' (the panel label's box) are drawn
+            # too, by the "by() axes and keys (WP-30 P1.15c)" group.
+            r"(?<!text)box|pie|\bdot|matrix|"
+            r"margin(?! twoway| by_indiv| subheading)|barlabel|"
             r"barstyle|bar_",
             k))
         assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn

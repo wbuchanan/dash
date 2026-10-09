@@ -79,8 +79,14 @@ def drawn():
 def _split(rects):
     """(head, panels, foot): a chrome cell is one text row tall, a panel
     is not; the head is the first rect and the foot the last."""
-    short = [r for r in rects if r[3] < 120]
-    panels = [r for r in rects if r[3] >= 120]
+    # Flipped (WP-30 P1.15c): the grid also holds the axis-title cells --
+    # a narrow column for the y title and one text row for the x title,
+    # hidden when the panels stack -- so a cell is told apart by its size:
+    # the head and foot are as wide as the grid.
+    short = [r for r in rects if r[3] < 120 and r[2] >= 120]
+    panels = [r for r in rects if r[3] >= 120 and r[2] >= 120]
+    wide = max(r[2] for r in short)
+    short = [r for r in short if r[2] >= wide - 2]
     assert len(short) == 2 and panels, rects
     return short[0], panels, short[1]
 
@@ -95,7 +101,9 @@ class TestInChrome:
         bottom = max(p[1] + p[3] for p in panels)
         width = max(p[0] + p[2] for p in panels) - min(p[0] for p in panels)
         assert head[1] + head[3] <= top + 1 and foot[1] >= bottom - 1
-        assert abs(head[2] - width) < 2 and abs(foot[2] - width) < 2
+        # Flipped (WP-30 P1.15c): the head and foot also span the y-title
+        # column left of the panels.
+        assert abs(head[2] - foot[2]) < 2 and head[2] >= width - 2
 
     def test_stacked_in_reading_order(self, drawn, mode):
         """375 px: head, panels, foot top to bottom, no sideways scroll."""

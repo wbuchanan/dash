@@ -1094,6 +1094,26 @@ FUNCTIONS = {
  # WP-30 S52 (P1.18b): The add sub-option (P1.18 part b)
  '_dash_axis_add': 'test/test_axis_add.py::TestTheUnitFunctions::test_axis_add',
  # WP-30 S53 (P1.15c): Shared axes and keys under by() (P1.15 part c)
+ '_dash_by_axes_options': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_axes_options',
+ '_dash_by_axis_flags': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_axis_flags',
+ '_dash_by_axis_side': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_axis_side',
+ '_dash_by_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_cell',
+ '_dash_by_clock_side': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_clock_side',
+ '_dash_by_clone_renderers': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_clone_renderers',
+ '_dash_by_glyph_fields': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_glyph_fields',
+ '_dash_by_keys': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_keys',
+ '_dash_by_keys.<locals>.colour_keys': 'test/test_by_axes_keys.py::TestColourKeyUnderBy::test_key',
+ '_dash_by_keys.<locals>.place': 'test/test_by_axes_keys.py::TestOneLegend::test_probe',
+ '_dash_by_keys.<locals>.series_legends': 'test/test_by_axes_keys.py::TestOneLegend::test_probe',
+ '_dash_by_label_box': 'test/test_by_axes_keys.py::TestTheLabelBox::test_unit',
+ '_dash_by_layout_options': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_layout_options',
+ '_dash_by_legend_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_legend_cell',
+ '_dash_by_outer_axes': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_outer_axes',
+ '_dash_by_side': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_side',
+ '_dash_by_side_grid': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_side_grid',
+ '_dash_by_stack_hook': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_stack_hook',
+ '_dash_by_stack_hooks': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_stack_hooks',
+ '_dash_by_title_cell': 'test/test_by_axes_keys.py::TestTheUnitFunctions::test__dash_by_title_cell',
  # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
  # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
  # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
