@@ -346,7 +346,7 @@ COVERAGE = {
         "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),
         "_dash_recast_named": ("test_twoway_option_parity.cscript:RC-07",),
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
-        "_dash_by_check": ("test_by_suboptions.cscript:BYG-01", "test_by_suboptions.cscript:BYG-17"),
+        "_dash_by_check": ("test_by_suboptions.cscript:BYG-01", "test_by_suboptions.cscript:BYG-17", "test_by_suboptions.cscript:BYG-19"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)
         "_dash_hz_check": ("test_option_validation.cscript:HZ-03",),
         # WP-30 S51 (P1.6): tsline time-axis options (P1.6)
@@ -745,6 +745,7 @@ COVERAGE = {
         "_dash_tsop_reset": ("test_parser.cscript:TSO-01",),
         "_dash_tsop_rewrite": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-11"),
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
+        "_dash_by_clamp": ("test_by_suboptions.cscript:BYG-19",),
         "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),
         "_dash_by_scan": ("test_by_suboptions.cscript:BYG-07", "test_by_suboptions.cscript:BYG-13"),
         # WP-30 S49 (P1.9a): horizontal drawn (P1.9 part a, M5)

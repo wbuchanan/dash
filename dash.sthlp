@@ -2697,7 +2697,9 @@ otherwise in as many columns as the square root of the panels and
 {cmd:holes()} rounded up, filled along the rows ({cmd:colfirst}: down the
 columns), a hole's cell skipped.  As in {cmd:twoway}, a row or column that
 holds no panel is not drawn, so {cmd:cols()} of more columns than there
-are panels puts them all in one row.  Panel text, markers and lines are
+are panels puts them all in one row; a {cmd:cols()} or {cmd:rows()} above
+the {cmd:$dash_max_by_groups} limit is drawn at the limit, with a note.
+Panel text, markers and lines are
 drawn at {cmd:twoway}'s {cmd:by()} size -- 0.85 of the plain graph's for
 2 to 4 panels, 0.6 for 10 to 16 -- or at {cmd:iscale()}; the overall
 title, subtitle, note and caption are not scaled.  The space between the
