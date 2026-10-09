@@ -3706,7 +3706,7 @@ rule over Stata's milliseconds.  A {cmd:%td}, {cmd:%tw}, {cmd:%tm},
 (days, weeks, the first days of months, quarters and years) by
 {cmd:twoway}'s time-series rule, also compiled; {cmd:dash} follows a model
 of it fitted to 12,000 of Stata's answers, which agrees exactly with 98% of
-{cmd:%ty} ranges and with 52% to 66% of the others, and where it differs
+{cmd:%ty} ranges and with 58% to 66% of the others, and where it differs
 it picks another calendar step or end tick.  A {cmd:by()} graph's panels
 are ticked on one scale, over all the panels' data and every layer, fits
 included, as {cmd:twoway} ticks them; with {cmd:by(, yrescale)} each panel is
@@ -3727,7 +3727,7 @@ with no rule, and a second date axis with none, is ticked as {cmd:#5} (the
 scheme's tick count) by {cmd:twoway}'s calendar rule as {cmd:dash} models
 it, with no minor ticks: {cmd:line close date} on {cmd:sp500} labels
 01jan2001 01apr2001 01jul2001 01oct2001 01jan2002, as {cmd:twoway} does.
-The model agrees with Stata on about 52-66% of daily to half-yearly ranges
+The model agrees with Stata on about 58-66% of daily to half-yearly ranges
 and 98% of yearly ones; otherwise it chooses another calendar step or end
 tick.  A date that shares an axis with a plain number is ticked on the
 date's calendar in its Stata values, by default and under {cmd:#}{it:N}

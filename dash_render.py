@@ -29684,12 +29684,18 @@ function dash_ts_week_day(w) {
     if (y < 1 || y > 9999) throw new RangeError("no date");
     return dash_days_from_civil(y, 1, 1) + 3653 + 7 * wk;
 }
+function dash_ts_day_week(td) {
+    const fd = Math.floor(td);
+    const c = dash_civil_from_days(fd - 3653);
+    const yday0 = fd - 3653 - dash_days_from_civil(c[0], 1, 1);
+    return (c[0] - 1960) * 52 + Math.min(Math.floor(yday0 / 7), 51);
+}
 function dash_ts_daily(unit, lo, hi, n) {
     const params = DASH_TS_PARAMS.m;
     const kcap = Math.trunc(params[1][0]);
     const r = hi - lo;
     let best = null;
-    const own = unit === "d" ? [1, 2, 3, 7, 14, 21] : [1, 2, 4];
+    const own = unit === "d" ? [1, 2, 3] : [1, 2, 4];
     const kmax = Math.min(DASH_TS_MAXT + 1, n + kcap);
     for (const d of own) {
         if (r / d > kmax + 1) continue;
@@ -29704,6 +29710,24 @@ function dash_ts_daily(unit, lo, hi, n) {
                         for (let i = 0; i < k; i++) t.push(t0 + i * d);
                         best = [cst, t];
                     }
+                }
+            }
+        }
+    }
+    if (unit === "d") {
+        const w = dash_ts_day_week(lo), wh = dash_ts_day_week(hi);
+        for (const s of [1, 2, 3]) {
+            const d = 7.0 * s;
+            if (r / d > kmax + 1) continue;
+            for (const w0 of (dash_ts_week_day(w) < lo ? [w, w + 1] : [w])) {
+                const m = Math.floor((wh - w0) / s);
+                for (const k of [m + 1, m + 2]) {
+                    if (!(2 <= k && k <= kmax)
+                        || 1960 + Math.floor((w0 + (k - 1) * s) / 52.0) > @@DASH_TS_YMAX@@) continue;
+                    const t = [];
+                    for (let i = 0; i < k; i++) t.push(dash_ts_week_day(w0 + i * s));
+                    const cst = dash_ts_cost(lo, hi, n, d, t[0], t[k - 1], k, 0.0, params);
+                    if (cst !== null && (best === null || cst < best[0] - 1e-12)) best = [cst, t];
                 }
             }
         }
@@ -29984,15 +30008,27 @@ def _dash_ts_week_day(w):
                  + 7 * wk)
 
 
+def _dash_ts_day_week(td):
+    """The %tw week holding %td day *td* (WP-30 P1.17b)."""
+    import datetime
+    x = datetime.date(1960, 1, 1) + datetime.timedelta(
+        days=int(math.floor(td)))
+    return float((x.year - 1960) * 52
+                 + min((x.timetuple().tm_yday - 1) // 7, 51))
+
+
 def _dash_ts_daily(unit, lo, hi, n):
-    """%td and %tw: steps of days (1, 2, 3, 7, 14, 21) or weeks (1, 2, 4)
-    from *lo*, and the monthly ladder on fractional months mapped to the
-    months' first days, under the monthly weights."""
+    """%td and %tw: steps of days (1, 2, 3) or weeks (1, 2, 4) from *lo*;
+    on %td, steps of 1, 2 and 3 weeks on %tw week starts (Stata's weeks,
+    from 1 January; every weekly answer of the fixture's 190 is one), from
+    the week holding *lo* or the next; and the monthly ladder on
+    fractional months mapped to the months' first days, under the monthly
+    weights."""
     params = _DASH_TS_PARAMS["m"]
     kcap = int(params[1][0])
     r = hi - lo
     best = None
-    own = (1, 2, 3, 7, 14, 21) if unit == "d" else (1, 2, 4)
+    own = (1, 2, 3) if unit == "d" else (1, 2, 4)
     kmax = min(_MAX_AXIS_TICKS + 1, n + kcap)
     for d in own:
         d = float(d)
@@ -30008,6 +30044,25 @@ def _dash_ts_daily(unit, lo, hi, n):
                     if cst is not None and (best is None
                                             or cst < best[0] - 1e-12):
                         best = (cst, [t0 + i * d for i in range(k)])
+    if unit == "d":
+        # WP-30 P1.17b: weekly steps sit on %tw week starts.
+        w, wh = _dash_ts_day_week(lo), _dash_ts_day_week(hi)
+        for s in (1, 2, 3):
+            d = 7.0 * s
+            if r / d > kmax + 1:
+                continue
+            for w0 in ((w, w + 1) if _dash_ts_week_day(w) < lo else (w,)):
+                m = math.floor((wh - w0) / s)
+                for k in (m + 1, m + 2):
+                    if not 2 <= k <= kmax or 1960 + math.floor(
+                            (w0 + (k - 1) * s) / 52.0) > _STATA_YEAR_MAX:
+                        continue
+                    ticks = [_dash_ts_week_day(w0 + i * s) for i in range(k)]
+                    cst = _dash_ts_cost(lo, hi, n, d, ticks[0], ticks[-1], k,
+                                        0.0, params)
+                    if cst is not None and (best is None
+                                            or cst < best[0] - 1e-12):
+                        best = (cst, ticks)
     if unit == "d":
         flo, fhi = _dash_ts_frac_month(lo), _dash_ts_frac_month(hi)
         tomap, per_step = _dash_ts_month_day, 30.436875
@@ -30052,7 +30107,7 @@ def _dash_tsnatscale_ticks(lo, hi, n, unit):
     weeks) and centred fallbacks, the cost weighing the data left uncovered
     and the axis past the data at each end and the count's distance from
     *n*; %ty is natscale with the step floored at a year.  Exact agreement
-    with Stata over 2,000 random ranges each: %td 52%, %tw 58%, %tm 65%,
+    with Stata over 2,000 random ranges each: %td 58%, %tw 58%, %tm 65%,
     %tq 60%, %th 66%, %ty 98% (held-out halves within two points of the
     fitted ones); a miss differs in step or in an end tick.  Pure
     arithmetic, bounded: at most ``_MAX_AXIS_TICKS + 1`` ticks.
@@ -47014,7 +47069,7 @@ class ServerAppBuilder:
                          "_dash_ts_calendar", "_dash_ts_yearly",
                          "_dash_ts_frac_month", "_dash_ts_month_day",
                          "_dash_ts_month_week", "_dash_ts_week_day",
-                         "_dash_ts_daily",
+                         "_dash_ts_day_week", "_dash_ts_daily",
                          "_dash_count_axes", "_dash_place_count_ticks",
                          "_dash_common_count_ticks",
                          "_dash_share_by_scales", "_dash_share_repoint",

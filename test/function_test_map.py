@@ -471,6 +471,7 @@ FUNCTIONS = {
  '_dash_ts_month_day': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_calendar_conversions',
  '_dash_ts_month_week': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_calendar_conversions',
  '_dash_ts_week_day': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_calendar_conversions',
+ '_dash_ts_day_week': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_calendar_conversions',
  '_dash_ts_daily': 'test/test_natscale_axes.py::TestDateAxisTicks::test_the_calendar_conversions',
  '_dash_keep_primary_ranges': 'test/test_help_claims_7.py::TestTheSecondAxisIsItsOwn::test_the_first_axis_is_scaled_to_its_own_layers',
  '_dash_kpi_card_html': 'test/test_scheme_review_fixes.py::test_the_carried_name_is_escaped',

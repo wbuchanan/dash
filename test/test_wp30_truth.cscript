@@ -6734,8 +6734,9 @@ if inlist("`only'", "", "S27") & `: list posof "S27" in w30_run' {
     }
     capture dash clear
     _w30_done DB-07 "after a served move to x1<=3 the base is twoway's if (12); moved back, 10"
-    // DB-08: %td -- the base is dash's own scale's low end (S44 gives the
-    // scale twoway's 14997), never 0 ms; twoway's value is shown.
+    // DB-08: %td -- the base is twoway's (14997, its scale's low end, in
+    // ms, read to %g's six digits, so within half a day), never 0 ms
+    // (WP-30 P1.17b, after S44's date ticks).
     _db_frame
     capture graph drop _all
     quietly twoway bar d x1, name(g, replace)
@@ -6751,13 +6752,13 @@ if inlist("`only'", "", "S27") & `: list posof "S27" in w30_run' {
         gettoken b rest : v, parse("@")
         gettoken at rest : rest, parse("@")
         gettoken lo hi : rest, parse(",")
-        _w30_expect DB-08 "(`b' == `lo' & `b' != 0 & `b' > -315619200000)" "`m': base `b', scale from `lo'"
+        _w30_expect DB-08 "(abs(`b' - (`tb' * 86400000 - 315619200000)) < 43200000 & `b' == `lo')" "`m': base `b', scale from `lo', twoway `tb' days"
     }
     foreach x in sd.json dd.json ad.py {
         capture erase "${DB_WORK}/`x'"
     }
     capture dash clear
-    _w30_done DB-08 "on a %td axis the base is the scale's low end, not 01jan1970 (twoway's 14997 waits for S44)"
+    _w30_done DB-08 "on a %td axis the base is twoway's 14997, the scale's low end, not 01jan1970"
     macro drop DB_*
     display as text "S27 end " c(current_date) " " c(current_time)
 }

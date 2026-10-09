@@ -141,10 +141,12 @@ def _ts_agreement(unit, rows):
 #: The model's agreement with _tsnatscale over the 2,000 random ranges per
 #: unit (test/fixtures/natscale_axes_truth.json "tsnatscale"), measured when
 #: the model was fitted; a change to the model may not lower it.
-_TS_FLOOR = {"d": 1042, "w": 1162, "m": 1298, "q": 1194, "h": 1320,
+#: WP-30 P1.17b: %td 1042 -> 1161 and its sweeps 1939 -> 2038 when weekly
+#: steps moved onto %tw week starts.
+_TS_FLOOR = {"d": 1161, "w": 1162, "m": 1298, "q": 1194, "h": 1320,
              "y": 1955}
 #: ... and over the sweeps (ts sweeps of hi from a fixed lo, n 3 to 11).
-_TS_SWEEP_FLOOR = {"d": 1939, "w": 1466, "m": 5314, "q": 1677, "h": 701}
+_TS_SWEEP_FLOOR = {"d": 2038, "w": 1466, "m": 5314, "q": 1677, "h": 701}
 
 
 class TestDateAxisTicks:
@@ -193,6 +195,12 @@ class TestDateAxisTicks:
         assert dr._dash_ts_month_day(492) == 14976.0
         assert dr._dash_ts_month_week(492) == 2132.0
         assert dr._dash_ts_week_day(2600) == 18263.0
+        # WP-30 P1.17b: 25jan2001 is in %tw week 2135 (2001w4), which
+        # starts on 22jan2001, the first of twoway's weekly ticks over
+        # 15000 to 15028 (default_base_truth.json bases.bar_td).
+        assert dr._dash_ts_day_week(15000) == 2135.0
+        assert dr._dash_ts_week_day(2135) == 14997.0
+        assert dr._dash_ts_day_week(18263 + 364) == 2651.0
         assert dr._dash_ts_month_day(10 ** 7) is None
         # `_tsnatscale 12869 12989 4, d': 1995m4 to 1995m8's first days.
         assert dr._dash_ts_daily("d", 12869, 12989, 4) == [

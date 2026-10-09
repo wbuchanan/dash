@@ -602,18 +602,20 @@ def _digest(model):
 # Re-derived on the merged batch-18 tree: P1.18b's axis plan key (xnr)
 # and finish code.  Re-derived for WP-30 P1.28b: the grid's toolbar holds
 # the Save as SVG action (the saved digest with the old _dash_name_save
-# patched back in is the batch-18 one).
+# patched back in is the batch-18 one).  Re-derived for WP-30 P1.17b: the
+# finish code's date model puts %td weekly steps on %tw week starts
+# (dash_ts_day_week; finish JS text only).
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "92134bce6d58ce05bac985e4092f7cb62743744387b6407adf9a74df60720fdd",
+        "228ed963122490d992bae6dfefe52c9060fae8e58aa23b5b69b8f28cbb16b3bd",
     ("saved", "yaxis2"):
-        "92134bce6d58ce05bac985e4092f7cb62743744387b6407adf9a74df60720fdd",
+        "228ed963122490d992bae6dfefe52c9060fae8e58aa23b5b69b8f28cbb16b3bd",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     ("served", "plain"):
-        "6e81bc9e0d59d8368b51b62ffb1a4b0e9d0d6ab61f2dad1fab5bd818de61c1af",
+        "1b348e29bc8ebd32dd79f78008474b225a157704d38c34efae385e940f700090",
     ("served", "yaxis2"):
-        "6e81bc9e0d59d8368b51b62ffb1a4b0e9d0d6ab61f2dad1fab5bd818de61c1af",
+        "1b348e29bc8ebd32dd79f78008474b225a157704d38c34efae385e940f700090",
 }
 
 

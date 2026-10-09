@@ -765,16 +765,21 @@ class TestTheBaseOnADateAxis:
     @pytest.mark.parametrize("mode", _MODES)
     def test_the_default_base_is_1960_clamped(self, mode, tmp_path):
         """%td: the base is Stata's 0 (01jan1960) clamped into the scale --
-        the scale's low end, never 0 ms (01jan1970).  twoway's 14997 waits
-        for S44's tsnatscale scale."""
-        zero = float(dr._dash_units_to_axis(np.array([0.0]), "td")[0])
+        twoway's scale low end, 14997 (bases.bar_td, dropline_td), on the
+        ticks twoway draws; never 0 ms (01jan1970).  WP-30 P1.17b: S44's
+        hand-off, tightened from dash's own scale end."""
+        def ms(v):
+            return float(dr._dash_units_to_axis(np.array([v]), "td")[0])
+        want = {t: _DB["bases"]["%s_td" % t]
+                for t in ("bar", "dropline")}
         bad = []
         for t in ("bar", "spike", "dropline", "area"):
+            row = want.get(t, want["bar"])
             [f] = _db_figs(mode, tmp_path, [_db_p(t, "d")])
             [r] = _db_based(f)
             got, sc = _db_base(r), _db_scale(f)
-            if sc is None or got != pytest.approx(sc[0]) or got <= zero \
-                    or got == 0.0:
+            if sc is None or got != pytest.approx(ms(row["drawn_base"])) \
+                    or sc[0] != pytest.approx(ms(row["curmin"])):
                 bad.append((t, got, sc))
         assert not bad, bad
 

@@ -311,7 +311,9 @@ class TestTheServedCopy:
             assert s.count("function dash_tsnatscale(") == 1
             assert "__DASH_" not in s and "@@DASH" not in s
         js = dr._DASH_TSNATSCALE_JS
-        assert len(js) <= 16000
+        # WP-30 P1.17b: 15,682 -> 16,798 with %td weekly steps on %tw week
+        # starts (dash_ts_day_week).
+        assert len(js) <= 17000
         for word in ("eval(", "Function(", "document", "window"):
             assert word not in js, word
 
@@ -322,6 +324,6 @@ class TestTheHelp:
                   encoding="utf-8") as fh:
             text = " ".join(fh.read().split())
         assert "DatetimeTicker" not in text
-        for words in ("calendar rule", "52-66%", "98%",
+        for words in ("calendar rule", "58-66%", "98%",
                       "re-ticks after a filter move and on zoom"):
             assert words in text, words
