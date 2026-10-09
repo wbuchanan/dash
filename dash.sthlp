@@ -2523,10 +2523,9 @@ default 60, 0 never) is closed: its page says so and frees its place, so a
 tab that was only being looked at can need a reload.  The data is decoded
 once per app process and shared, read-only, by every session, and the
 lowess, fpfit and lpoly fits are kept for reuse within 64 MB per process.
-Each session adds at most about 80 MB at 200,000 rows by 3 layers (measured
-by the test suite, not checked at run time); at the default cap of 20 that
-is up to about 1.9 GB with the server's own 221 MB and the 64 MB of fits, so
-set {cmd:maxsessions()} to fit the machine.  Before it listens the app
+Each session's memory grows with the rows and layers it draws, and dash sets
+no bound on it (about 70 MB at 200,000 rows and one scatter, about 150 MB
+with three), so set {cmd:maxsessions()} to fit the machine and the data.  Before it listens the app
 prints {cmd:preparing the dashboard (}{it:N} {cmd:rows, }...{cmd:)} and
 draws the dashboard once, so a long start is not a failure and no reader
 pays for the first drawing.  Opening a session still runs on the server's

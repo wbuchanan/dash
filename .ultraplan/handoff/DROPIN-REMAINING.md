@@ -304,7 +304,7 @@ Five kinds of gap remain:
 
 56. **`dash twoway` alone refused.** twoway draws an empty graph. Effort S. Sources: WP-30 register P1.27.8; WP-30-S12.
 
-57. **A served session's make_document runs on the event loop.** 1.6-4.6 s at 100-200k rows (register); S57 measured session open at 100k rows; the 200k and three-session latencies not measured. Effort M. Sources: WP-30 register P1.31.11; WP-30-S46, S57. [WP-30 note (S58, corrected by the follow-up): the 80 MB per-session growth bound is pinned by test_served_resources.py::TestPerSessionMemory::test_growth_at_most_80_mb (release tier) over 200k rows of 3 variables, one scatter and a dropdown (research m2): 63.9 MB under bokeh 3.9, 70.5 MB under 3.8; with three scatter layers growth is 150.7 MB per session, above the bound (the per-session lists, P2.41)]
+57. **A served session's make_document runs on the event loop.** 1.6-4.6 s at 100-200k rows (register); S57 measured session open at 100k rows; the 200k and three-session latencies not measured. Effort M. Sources: WP-30 register P1.31.11; WP-30-S46, S57. [WP-30 note (S58, corrected by the follow-up): no per-session memory bound; the 80 MB bound was removed on 09oct2026 by the maintainer's decision, since the rows a reader serves are not known. Measured: 63.9-70.5 MB per session at 200k rows by 3 variables with one scatter, about 150 MB with three scatter layers (the per-session lists, P2.41)]
 
 58. **`$name` in drawn labels.** twoway macro-expands `$name` in a variable or value label it draws (value label `$$f$$` drawn `$$$`); dash draws the stored text. Effort S. Sources: WP-30-S09.
 

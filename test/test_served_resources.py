@@ -451,52 +451,6 @@ class TestTheLauncherFlags:
 
 
 # ===========================================================================
-@pytest.mark.serve
-@pytest.mark.release
-class TestPerSessionMemory:
-
-    def test_growth_at_most_80_mb(self, tmp_path):
-        """BR-46.5: a live ``python app.py`` at 200k rows by 3 variables,
-        one scatter, six held sessions; the mean RSS growth of sessions 2-6
-        is at most 80 MB (a regression guard: about 72 MB at c96facd,
-        research m2, whose "200k rows x 3, one scatter" this repeats)."""
-        import contextlib
-        import subprocess
-        import pandas as pd
-        from bokeh.client import pull_session
-        rng = np.random.default_rng(46)
-        n = 200_000
-        df = pd.DataFrame({"mpg": rng.uniform(10, 40, n).round(1),
-                           "weight": rng.uniform(1500, 5000, n).round(0),
-                           "foreign": rng.integers(0, 2, n).astype(float)})
-        _app_source(tmp_path, make_spec(
-            [dict(_SCATTER)],
-            filters=[{"varname": "foreign", "type": "dropdown"}]), df)
-        port = _free_port()
-        url = "http://127.0.0.1:%d/" % port
-
-        def rss_mb(pid):
-            return int(subprocess.run(["ps", "-o", "rss=", "-p", str(pid)],
-                                      capture_output=True, text=True,
-                                      check=True).stdout) / 1024.0
-        rss = []
-        with _Proc(_app_cmd(str(tmp_path / "app.py"), port,
-                            "--max-sessions", "8"), port=port,
-                   env={"DASH_SERVE_TOKEN": TEST_TOKEN}) as p, \
-                contextlib.ExitStack() as held, warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            for _ in range(6):
-                s = held.enter_context(pull_session(
-                    url=url, arguments={"token": TEST_TOKEN}))
-                assert s.document.roots, p.said()[-2000:]
-                rss.append(rss_mb(p.proc.pid))
-        growth = (rss[-1] - rss[0]) / 5.0
-        print("per-session RSS growth, sessions 2-6: mean %.1f MB "
-              "(rss %s MB)" % (growth, ", ".join("%.0f" % r for r in rss)))
-        assert growth <= 80.0, rss
-
-
-# ===========================================================================
 class TestTheSavedPageIsUnchanged:
 
     def test_digest(self, tmp_path):
