@@ -650,6 +650,14 @@ LIVE_VALUES = {
           "at_xaxis": 1, "at_lines": ["hi"], "at_opts": ""}],
         [{"at_kind": "text", "at_y": 25, "at_x": 2500, "at_yaxis": 1,
           "at_xaxis": 1, "at_lines": ["yo"], "at_opts": ""}])),
+    # WP-30 P1.10 part 2: ttext() writes the same records (at_kind ttext),
+    # its x converted by dash.ado.
+    "ttext": ({}, {}, "scatter", (
+        "added_text",
+        [{"at_kind": "ttext", "at_y": 20, "at_x": 3000, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["hi"], "at_opts": ""}],
+        [{"at_kind": "ttext", "at_y": 25, "at_x": 2500, "at_yaxis": 1,
+          "at_xaxis": 1, "at_lines": ["yo"], "at_opts": ""}])),
     "yscale": ({}, {}, "scatter", ("yscale", "log", "reverse")),
     "yscale2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
                 ("yscale2", "log", "reverse")),
@@ -710,8 +718,9 @@ class TestEveryDeclaredOptionIsClassified:
         # 183 -> 190 and 72 -> 79: P1.6 the seven time-axis options
         # declared in both blocks; 190 -> 195 and 79 -> 84: part 2's five
         # axis-2 forms
-        assert len(_declared_plot()) == 195, len(_declared_plot())
-        assert len(_declared_graph()) == 84, len(_declared_graph())
+        # 195 -> 196 and 84 -> 85: P1.10 ttext declared
+        assert len(_declared_plot()) == 196, len(_declared_plot())
+        assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

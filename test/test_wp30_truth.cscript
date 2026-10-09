@@ -12129,6 +12129,42 @@ if inlist("`only'", "", "S56") & `: list posof "S56" in w30_run' {
 }
 * ==== end S56 ====
 
+* ==== S56 P1.10: ttext() ====
+local only : env WP30_ONLY
+if inlist("`only'", "", "S56") & `: list posof "S56" in w30_run' {
+    display as text "S56 start " c(current_date) " " c(current_time)
+    global S56_REPO "`c(pwd)'/.."
+    local s56log "`w30_work'/s56t.log"
+    local s56pg "`w30_work'/s56t.html"
+    // AT-25: tsline y, ttext(12 2001m1 "TT1"): the Label at 2001m1, read
+    // back in the %tm axis's unit, where twoway draws it.
+    clear
+    quietly set obs 120
+    quietly generate t = tm(1995m1) + _n - 1
+    format t %tm
+    quietly generate double y = 10 + mod(_n, 7)
+    quietly tsset t
+    _s36_run `"dash tsline y, ttext(12 2001m1 "TT1") saving("`s56pg'", replace)"' "`s56log'"
+    local drc = r(rc)
+    capture _s56_labels "`s56pg'"
+    local prc = _rc
+    local ok = (`drc' == 0 & `prc' == 0)
+    if `ok' local ok = (${S56_N} == 1)
+    local xm ""
+    if `ok' {
+        python: import sys as _y; from sfi import Macro as _M; _y.path.insert(0, _M.getGlobal("S56_REPO")); import dash_render as _d; _M.setLocal("xm", "%g" % round(_d._dash_unix_ms_to_unit(float(_M.getGlobal("S56_X1")), "m"), 6))
+        local ok = ("`xm'" == "492" & ${S56_Y1} == 12)
+    }
+    _w30_expect AT-25 "`ok'" "rc `drc'/`prc', ${S56_N} Labels, x `xm' (2001m1 is 492), y ${S56_Y1}"
+    _w30_done AT-25 "ttext() places a month literal at that month"
+    capture dash clear
+    capture erase "`s56log'"
+    capture erase "`s56pg'"
+    macro drop S56_*
+    display as text "S56 end " c(current_date) " " c(current_time)
+}
+* ==== end S56 ====
+
 * ==== S57 P1.31b: Served recompute off the event loop ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S57") & `: list posof "S57" in w30_run' {

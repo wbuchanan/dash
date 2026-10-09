@@ -610,6 +610,18 @@ pair no plot draws ({cmd:text() option invalid, specified axis pair (2 1)}
 its {help dash##graph_text:graph-text markup} is read, and nothing in it
 is run.
 
+{phang}{opt ttext(# # "string" ...)} is {opt text()} whose {it:x} may
+also be a date literal, quoted or not, read in the x axis's time format as
+{cmd:twoway} reads it: the first {cmd:%t} or {cmd:%d} format among the
+axis's label, minor label, tick and minor tick formats, each the first
+plot's {it:x} variable's format unless that option's {opt format()}
+replaces it.  {cmd:tsline y, ttext(12 2001m1 "event")} draws the text at
+2001m1 on a monthly axis.  A literal that format cannot read -- a month
+on a daily or numeric axis, {cmd:2001m13}, a missing value -- is refused
+as {cmd:twoway} refuses it, {cmd:2001m13 is not a number},
+{cmd:r(198)}, and a date function, which {cmd:twoway} does not read
+there, is an invalid point.  The literal is read as data and never run.
+
 
 {marker differences}
 {title:Differences from twoway}

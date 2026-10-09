@@ -390,7 +390,7 @@ COVERAGE = {
         # WP-30 S54 (P1.28b): Client-side Save as SVG (P1.28 part b, M8)
         # WP-30 S55 (P1.9b): horizontal after a filter move (P1.9 part b)
         # WP-30 S56 (P1.10): text() and ttext() annotations (P1.10)
-        "_dash_added_text": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-04"),
+        "_dash_added_text": ("test_twoway_option_parity.cscript:AT-01", "test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-33"),
         "_dash_added_text_cap": ("test_resource_limits.cscript:AT-40", "test_resource_limits.cscript:AT-42"),
         "_dash_at_opts": ("test_twoway_option_parity.cscript:AT-05", "test_twoway_option_parity.cscript:AT-06"),
         # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
@@ -843,6 +843,7 @@ COVERAGE = {
         "_dash_at_json": ("test_twoway_option_parity.cscript:AT-04", "test_wp30_truth.cscript:AT-20"),
         "_dash_at_records": ("test_twoway_option_parity.cscript:AT-04",),
         "_dash_at_canon": ("test_twoway_option_parity.cscript:AT-04", "test_twoway_option_parity.cscript:AT-05"),
+        "_dash_at_dates": ("test_twoway_option_parity.cscript:AT-30", "test_twoway_option_parity.cscript:AT-31"),
         # WP-30 S57 (P1.31b): Served recompute off the event loop (P1.31 part b)
     },
 }

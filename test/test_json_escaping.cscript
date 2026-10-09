@@ -4181,7 +4181,31 @@ if `at_r16' | "`at_ok16'" != "1" | `at_n16' != 1 | `at_rb16' | "`at_dr16'" != "1
     display as error "AT-16 FAIL: rc `at_r16', stored `at_ok16', records `at_n16', build `at_rb16', drawn `at_dr16'"
 }
 else display "AT-16 PASS: a char(30) in a line is the line's own, one record, not drawn"
+// AT-15: a $global as ttext()'s date is no date of the axis (refused,
+// shown as typed); the month J6_D holds would be read if it were expanded.
+preserve
+clear
+quietly set obs 24
+quietly generate t = tm(2000m1) + _n - 1
+format t %tm
+quietly generate double y = _n
+quietly tsset t
+global J6_D "2001m1"
+local at_l15 "`c(tmpdir)'dash_at15.log"
+_jg_log_on "`at_l15'"
+capture noisily dash tsline y, ttext(12 \$J6_D "x") name(at15)
+local at_r15 = _rc
+_jg_log_off
+cert_log_has "`at_l15'", needle("J6_D is not a number")
+local at_w15 = r(count)
+capture erase "`at_l15'"
+restore
+if `at_r15' != 198 | `at_w15' != 1 {
+    display as error "AT-15 FAIL: rc `at_r15', shown `at_w15'"
+}
+else display "AT-15 PASS: a global as a ttext() date is refused as typed, never expanded"
 assert `at_r13' == 0 & "`at_ok13'" == "11" & `at_ran' == 0
+assert `at_r15' == 198 & `at_w15' == 1
 assert `at_r14a' == 198 & `at_w14' == 1 & `at_r14b' == 0 & "`at_ok14'" == "1"
 assert `at_r16' == 0 & "`at_ok16'" == "1" & `at_n16' == 1 & `at_rb16' == 0 & "`at_dr16'" == "1"
 capture dash clear

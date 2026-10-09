@@ -539,8 +539,10 @@ class TestTheParsersFoundSomething:
         # 173 -> 178: P1.6's tlabel2() .. ttitle2() rows.
         # 178 -> 177: P1.10 text() drawn, its Unsupported entry gone (the
         # Added text paragraph is prose under Plot types).
-        assert len(found) == 177, (
-            f"{len(found)} options parsed out of dash.sthlp, 177 measured "
+        # 177 -> 179: P1.10 part 2's ttext() entry defines ttext() and
+        # text().
+        assert len(found) == 179, (
+            f"{len(found)} options parsed out of dash.sthlp, 179 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -612,7 +614,8 @@ class TestTheParsersFoundSomething:
         # P1.31a declared maxsessions() and idletimeout().
         # 196 -> 203: P1.6 declared the seven time-axis options.
         # 203 -> 208: P1.6 part 2 declared tlabel2() .. ttitle2().
-        assert len(_ado_declarations()) == 208
+        # 208 -> 209: P1.10 part 2 declared ttext().
+        assert len(_ado_declarations()) == 209
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -704,8 +707,9 @@ class TestTheParsersFoundSomething:
         # noytitles noxtitles, legend(), ilegends, clegend(on)).
         # WP-30 P1.28b: 402 -> 403, the toolbar's Save as SVG row.
         # 403 -> 404: P1.10's Added text paragraph under Plot types.
-        assert len(defs) == 404, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 404 "
+        # 404 -> 405: P1.10 part 2's ttext() entry.
+        assert len(defs) == 405, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 405 "
             f"measured 09oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

@@ -461,7 +461,7 @@ program define _dash_require_mata
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
-        _dash_at_parse _dash_at_copy _dash_at_place _dash_at_orient _dash_at_canon _dash_at_records _dash_json_first_num ///
+        _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed ///
@@ -943,7 +943,7 @@ program define _dash_parse_graph_opts, sclass
         XLABEL2(string asis)      YSCALE2(string asis)      XSCALE2(string asis) ///
         XSIZe(string)             YSIZe(string)             FXSIZE(string) ///
         FYSIZE(string)            SCALE(string)             TEXT(string asis) ///
-        HOVer(string)             ///
+        HOVer(string)             TTEXT(string asis) ///
         XTICk(string asis)        YTICk(string asis)        XMTick(string asis) ///
         YMTick(string asis)       XMLabel(string asis)      YMLabel(string asis) ///
         T1title(string asis)      T2title(string asis)      B1title(string asis) ///
@@ -1084,6 +1084,7 @@ program define _dash_parse_graph_opts, sclass
     sreturn local scale        : copy local scale
     sreturn local hover        : copy local hover
     sreturn local text         : copy local text
+    sreturn local ttext        : copy local ttext
     sreturn local xtick        : copy local xtick
     sreturn local ytick        : copy local ytick
     sreturn local xmtick       : copy local xmtick
@@ -1215,7 +1216,7 @@ program define _dash_parse_plot_opts, sclass
         XSCALE2(string asis)      XSIZe(string)             YSIZe(string) ///
         FXSIZE(string)            FYSIZE(string)            SCALE(string) ///
         TEXT(string asis)         XTICk(string asis)        YTICk(string asis) ///
-        HOVer(string)             ///
+        HOVer(string)             TTEXT(string asis) ///
         XMTick(string asis)       YMTick(string asis)       XMLabel(string asis) ///
         YMLabel(string asis)      T1title(string asis)      T2title(string asis) ///
         B1title(string asis)      B2title(string asis)      L1title(string asis) ///
@@ -1569,6 +1570,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_scale        : copy local scale
     sreturn local g_hover        : copy local hover
     sreturn local g_text         : copy local text
+    sreturn local g_ttext        : copy local ttext
     sreturn local g_xtick        : copy local xtick
     sreturn local g_ytick        : copy local ytick
     sreturn local g_xmtick       : copy local xmtick
@@ -5763,7 +5765,7 @@ program define _dash_process_segment, rclass
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-            scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+            scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
             subtitle2 zlabel ztitle zscale nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
@@ -6700,7 +6702,7 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+          scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
         local g_`gk' ""
@@ -6734,7 +6736,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
@@ -6835,7 +6837,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
@@ -6910,7 +6912,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
             if !`: length local _sg_`gk'' continue
@@ -6942,7 +6944,7 @@ program define _dash_plot
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-              scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+              scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
               subtitle2 zlabel ztitle zscale nodraw play replace {
         if `: length local _gafter_`gk'' {
@@ -7325,12 +7327,12 @@ program define _dash_plot
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
-          scale text hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
+          scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
           subtitle2 zlabel ztitle zscale nodraw play replace {
-        // text() is written as added_text records below (WP-30 P1.10),
-        // never as its raw value.
-        if "`gk'" == "text" continue
+        // text() and ttext() are written as added_text records below
+        // (WP-30 P1.10), never as their raw values.
+        if inlist("`gk'", "text", "ttext") continue
         local gv : copy local g_`gk'
         if `: length local gv' {
             _dash_json_str `"`macval(gv)'"' _gjv
@@ -7346,9 +7348,48 @@ program define _dash_plot
     local _at_cnt 0
     local _at_all ""
     if `: length local g_text' {
-        _dash_added_text text "`_g_ys'" "`_g_xs'" `"`macval(g_text)'"'
+        _dash_added_text text "`_g_ys'" "`_g_xs'" "" "" `"`macval(g_text)'"'
         local _at_all `"`_at_json'"'
         local _at_cnt = `_at_total'
+    }
+    // ttext() (WP-30 P1.10): its x is a number or a date literal of the x
+    // axis's time format, read as twoway reads it (get_time_format): the
+    // first %t or %d among the axis's label, minor label, tick and minor
+    // tick formats, each the first plot's x variable's format on that axis
+    // unless its option's format() replaces it.  The literal is converted
+    // by S51's gated converter (_dash_tdate_value), never run.
+    if `: length local g_ttext' {
+        local _at_num "lfit qfit lfitci qfitci lpoly lpolyci kdensity function scatteri pci pcarrowi"
+        forvalues a = 1/2 {
+            local s2 = cond(`a' == 2, "2", "")
+            local _at_f ""
+            local _at_seen 0
+            foreach s of local _tx_list {
+                tokenize "`s'", parse(":")
+                if "`5'" != "`a'" | `_at_seen' continue
+                local _at_seen 1
+                if `: list 1 in _at_num' | "`3'" == "." continue
+                capture confirm variable `3', exact
+                if !_rc local _at_f : format `3'
+            }
+            local _at_tf ""
+            foreach ts in label mlabel tick mtick {
+                local _at_ff : copy local _at_f
+                if !(`a' == 2 & inlist("`ts'", "mlabel", "mtick")) {
+                    mata: st_local("_at_x", _dash_taxis_fmt(st_local("g_x`ts'`s2'")))
+                    if `: length local _at_x' local _at_ff : copy local _at_x
+                }
+                mata: st_local("_at_ok", strofreal(st_local("_at_tf") == "" & ///
+                    anyof(("%t", "%d"), substr(st_local("_at_ff"), 1, 2))))
+                if `_at_ok' local _at_tf : copy local _at_ff
+            }
+            mata: st_local("_at_u`a'", _dash_taxis_unit(st_local("_at_tf"), 1))
+        }
+        _dash_added_text ttext "`_g_ys'" "`_g_xs'" "`_at_u1'" "`_at_u2'" `"`macval(g_ttext)'"'
+        if `_at_total' {
+            mata: st_local("_at_all", st_local("_at_all") + (st_local("_at_all") != "" ? "," : "") + st_local("_at_json"))
+            local _at_cnt = `_at_cnt' + `_at_total'
+        }
     }
     if `_at_cnt' > 0 {
         _dash_limit, name(by_groups)
@@ -7826,10 +7867,13 @@ program define _dash_at_opts
 end
 
 // ----------------------------------------------------------------
-// _dash_added_text <kind> "<ys>" "<xs>" `"<copies>"'  -- a graph's text()
-// or ttext() copies as added_text records (WP-30 P1.10)
+// _dash_added_text <kind> "<ys>" "<xs>" "<u1>" "<u2>" `"<copies>"'  -- a
+// graph's text() or ttext() copies as added_text records (WP-30 P1.10)
 //
 // <kind> is text or ttext; <ys> and <xs> the axes the graph's layers use;
+// <u1> and <u2> the date units of x axes 1 and 2 (ttext(); "" for none,
+// _dash_taxis_unit), its literals converted by _dash_at_dates and refused
+// "<x> is not a number" as twoway refuses one the axis cannot read;
 // <copies> the option's value, its copies joined by char(30)
 // (_dash_rep_merge), read by value (_dash_text_args).  Mata reads every
 // copy's points and lines (_dash_at_parse); each copy's sub-options are
@@ -7842,10 +7886,12 @@ end
 // ----------------------------------------------------------------
 program define _dash_added_text
     version 19
-    mata: _dash_text_args(3, 0, 0)
+    mata: _dash_text_args(5, 0, 0)
     local _kind `_dash_a1'
     local _ys `_dash_a2'
     local _xs `_dash_a3'
+    local _u1 `_dash_a4'
+    local _u2 `_dash_a5'
     mata: st_local("_at_rc", strofreal(_dash_at_parse(st_local("_dash_txt"), st_local("_kind") == "ttext")))
     local _noted ""
     forvalues k = 1/`_at_k' {
@@ -7866,6 +7912,14 @@ program define _dash_added_text
             local _nl "`_nl' `_n'()"
         }
         mata: _dash_note("dash: `_kind'() draws no", st_local("_nl"), "; see help dash##added_text")
+    }
+    // ttext()'s date literals, in the unit of each record's x axis.
+    if "`_kind'" == "ttext" {
+        mata: st_local("_at_rc", strofreal(_dash_at_dates(st_local("_u1"), st_local("_u2"))))
+        if `_at_rc' {
+            mata: _dash_say("err", "", st_local("_at_err"), " is not a number")
+            exit 198
+        }
     }
     mata: _dash_at_records(st_local("_kind"))
     c_local _at_json `"`_at_json'"'

@@ -4907,6 +4907,13 @@ program define _zat_run
     if "`zat_ds'" == "auto" {
         sysuse auto, clear
     }
+    else if "`zat_ds'" == "daily" {
+        clear
+        quietly set obs 100
+        quietly generate d = td(01jan2001) + 5 * (_n - 1)
+        format d %td
+        quietly generate double y = 5 + mod(_n, 9)
+    }
     else {
         clear
         quietly set obs 120
@@ -4963,6 +4970,7 @@ program define _zat_records
     c_local _zat_nr `_zat_nr'
 end
 capture mata: mata drop _zat_recs()
+capture mata: mata drop _zat_x()
 mata:
 void _zat_recs(string scalar js)
 {
@@ -4986,6 +4994,18 @@ void _zat_recs(string scalar js)
     }
     st_local("_zat_recs", out)
     st_local("_zat_nr", strofreal(n))
+}
+// The first record's at_x, as written, or "".
+string scalar _zat_x(string scalar js)
+{
+    string scalar q, rest
+    real scalar   p
+
+    q = char(34)
+    p = strpos(js, q + "at_x" + q + ":")
+    if (!p) return("")
+    rest = substr(js, p + 7, .)
+    return(substr(rest, 1, strpos(rest, ",") - 1))
 }
 end
 preserve
@@ -5122,6 +5142,83 @@ if `"`_zat_bad'"' != "" {
     display as error `"AT-08 FAIL:`_zat_bad'"'
 }
 else display as text "AT-08 PASS: text() is not named in the ignoring note"
+
+// AT-30: ttext() refuses what twoway refuses: text() takes no date, a
+// function form is no point, and a literal the axis's format cannot read
+// -- 2001m13, a month on a numeric or daily axis, a missing value, a
+// month where the first plot's x is unformatted -- is "<x> is not a
+// number"; y is a number.
+_zat_same tt_text tt_fn tt_m13 tt_auto tt_dot tt_dm tt_two1 tt_rev
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-30"
+    display as error `"AT-30 FAIL:`_zat_bad'"'
+}
+else display as text "AT-30 PASS: ttext()'s date refusals are twoway's"
+
+// AT-31..AT-36: each drawn ttext() at twoway's x in the axis's unit (the
+// fixture's measured point, rounded): a month and a quoted month, a
+// quarter on a %tm axis, a day on a %td axis, the first plot's format
+// deciding (twoway (line y t) (line y tn)), an xlabel() format() on an
+// unformatted x and a number format on a %tm x, and a number as text()
+// reads it.  _zat_draw "<probe> <x> ...": _zat_bad says what differed.
+capture program drop _zat_draw
+program define _zat_draw
+    local c `"`0'"'
+    local bad ""
+    while `"`c'"' != "" {
+        gettoken pid c : c
+        gettoken want c : c
+        _zat_run `pid'
+        mata: st_local("x", _zat_x(st_global("dash_json_zat")))
+        if `_zat_drc' | `_zat_trc' | "`x'" != "`want'" | `_zat_named' {
+            local bad `"`bad' [`pid': rc `_zat_drc' (twoway `_zat_trc'), at_x `x' not `want', named `_zat_named']"'
+        }
+    }
+    c_local _zat_bad : copy local bad
+end
+_zat_draw tt_m 492 tt_mq 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-31"
+    display as error `"AT-31 FAIL:`_zat_bad'"'
+}
+else display as text "AT-31 PASS: ttext(12 2001m1) and its quoted form at 492"
+_zat_draw tt_q 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-32"
+    display as error `"AT-32 FAIL:`_zat_bad'"'
+}
+else display as text "AT-32 PASS: a quarter on a %tm axis at its first month"
+_zat_draw tt_d 15127
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-33"
+    display as error `"AT-33 FAIL:`_zat_bad'"'
+}
+else display as text "AT-33 PASS: a day on a %td axis"
+_zat_draw tt_two2 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-34"
+    display as error `"AT-34 FAIL:`_zat_bad'"'
+}
+else display as text "AT-34 PASS: the first plot's x format decides"
+_zat_draw tt_xl 492 tt_xl9 492
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-35"
+    display as error `"AT-35 FAIL:`_zat_bad'"'
+}
+else display as text "AT-35 PASS: xlabel()'s format() read as twoway reads the time format"
+_zat_draw tt_num 3000
+if `"`_zat_bad'"' != "" {
+    local nfail = `nfail' + 1
+    local faillist "`faillist' AT-36"
+    display as error `"AT-36 FAIL:`_zat_bad'"'
+}
+else display as text "AT-36 PASS: a number is a number"
 
 restore
 capture erase "$zta_log"

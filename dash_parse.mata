@@ -243,6 +243,10 @@
 *!       reads it: points through _dash_at_isnum, lines unquoted by
 *!       _dash_at_unq, into the caller's _at_* locals (WP-30 P1.10).
 *!
+*!   _dash_at_dates(u1, u2)
+*!       ttext()'s date literals converted in their x axis's unit by
+*!       _dash_tdate_value, or 198 and the token in _at_err.
+*!
 *!   _dash_at_place(p)
 *!       twoway's compass direction for placement(p), "" for a name twoway
 *!       notes.
@@ -6164,7 +6168,7 @@ string scalar _dash_rep_cat(string scalar key)
                "tscale2"), k)) return("S")
     if (k == "by") return("B")
     if (anyof(("xline", "yline", "xline2", "yline2", "tline", "tline2"), k)) return("X")
-    if (k == "text") return("A")
+    if (anyof(("text", "ttext"), k)) return("A")
     if (k == "p") return("F")
     return("R")
 }
@@ -9143,6 +9147,33 @@ void _dash_at_copy(real scalar k)
     st_local("_at_o", _dash_at_C[k, 1])
     st_local("_at_s", _dash_at_C[k, 2])
     st_local("_at_e", _dash_at_C[k, 3])
+}
+
+// _dash_at_dates(u1, u2) -- each record of the last _dash_at_parse whose x
+// is a date literal (ttext()) converted in the unit of its x axis, u1 or
+// u2 (_dash_taxis_unit; the axis is the caller's local _at_xa<copy>), by
+// S51's gated converter (_dash_tdate_value), the token read as data and
+// never run.  Returns 0, or 198 with the token in the caller's local
+// _at_err when it is no date of that unit, or a missing value, which
+// twoway refuses: "<x> is not a number".
+real scalar _dash_at_dates(string scalar u1, string scalar u2)
+{
+    external string matrix _dash_at_R
+    real scalar    i, rc, val
+
+    for (i = 1; i <= rows(_dash_at_R); i++) {
+        if (_dash_at_R[i, 5] != "1") continue
+        val = .
+        rc = _dash_tdate_value(_dash_at_R[i, 2],
+                               st_local("_at_xa" + _dash_at_R[i, 4]) == "2" ? u2 : u1,
+                               val)
+        if (rc != 1 | val >= .) {
+            st_local("_at_err", _dash_at_R[i, 2])
+            return(198)
+        }
+        _dash_at_R[i, 2] = strofreal(val, "%21.0g")
+    }
+    return(0)
 }
 
 // _dash_at_place(p) -- the compass direction twoway draws placement(p) in

@@ -426,7 +426,8 @@ class TestTheSpec:
         plot = ado[ado.index("program define _dash_plot\n"):]
         loop = plot[plot.index("// ---- Assemble graph_options JSON ----"):]
         loop = loop[:loop.index("local gv : copy local g_`gk'")]
-        assert 'if "`gk\'" == "text" continue' in loop
+        # Flipped (WP-30 P1.10 part 2): the loop skips ttext() too.
+        assert 'if inlist("`gk\'", "text", "ttext") continue' in loop
         assert "_dash_added_text text" in plot
 
 
@@ -472,3 +473,23 @@ class TestTheHelp:
                          r"\s+100,000", hlp, re.S)
         unsupported = hlp[hlp.index("{marker unsupported}"):]
         assert "{opt text(" not in unsupported
+
+
+class TestTtext:
+    def test_it_is_declared(self):
+        """ttext() is declared beside text() in both syntax blocks, set in
+        s(), carried by every graph-option list (and written only as
+        records), and merged copy by copy as text() is (WP-30 P1.10)."""
+        ado = _read(_ADO)
+        assert ado.count("TTEXT(string asis)") == 2
+        assert "sreturn local ttext " in ado and "sreturn local g_ttext " in ado
+        lists = re.findall(r"foreach (?:gk|gkey) in ((?:[^{]|\n)*?)\{", ado)
+        assert len(lists) == 7 and all(" text ttext " in " ".join(
+            x.replace("///", " ").split()) + " " for x in lists)
+        assert 'if inlist("`gk\'", "text", "ttext") continue' in ado
+        assert "_dash_added_text ttext" in ado
+        mata = _read(_MATA)
+        cat = mata[mata.index("string scalar _dash_rep_cat("):]
+        cat = cat[:cat.index("\n}\n")]
+        assert 'if (anyof(("text", "ttext"), k)) return("A")' in cat
+

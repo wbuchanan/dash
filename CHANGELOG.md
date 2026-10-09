@@ -569,7 +569,7 @@ and now matches Stata.
 
 - Time-series operators in plot varlists are drawn, as twoway draws them: `dash line D.close date`, `dash tsline D.close`, `dash lfit close L.close` and `dash scatter L(1/2).close t` were refused r(101) and now draw in both modes on scatter, line, connected, area, bar, spike, dropline, dot, the lfit/qfit/mspline/mband fits, the range and paired types, tsline and tsrline; each series is computed by Stata at build under tsset, titles and keys read "Closing price, D", and the CSV column is headed D.close. (WP-30, P1.7)
 
-<!-- WP-30 P1.10 -->
+- `text()` and `ttext()` are drawn in both modes and after filter moves: `dash scatter mpg weight, text(30 3000 "AAA")` named `text()` as unsupported and drew nothing, and now draws AAA at that data point as twoway does, with placement, justification, orientation, size, colour, box, axis 2, date axes and every by() panel; repeated copies keep their own options; `ttext(12 2001m1 "event")` places a date literal in the x axis's own units. A new limit, `$dash_max_added_text` (default 1,000 texts times panels), bounds them. (WP-30, P1.10)
 
 - Six more StataCorp schemes, twenty-six in all: meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta and stgcolor_mv. scheme(meta) and the others were refused r(198), and a session set to one of them (set scheme stcolor_meta) was drawn as s2color with a warning; each is now drawn as twoway draws it in both modes (stcolor_meta's solid #c10534 yline(), stgcolor_meta's 3.987 x 2.392 proportions, meta's 8-point tick labels and legend at 4 o'clock), and an #include of one of them in a scheme file of yours resolves. stcoloralias is drawn as stcolor: its zyx2rule colorvar is not read, and twoway draws a colorvar() scatter the same under both. (WP-30, P1.25a)
 
@@ -749,7 +749,7 @@ and now matches Stata.
 
 - `horizontal` and `vertical` are refused where twoway refuses them, in its words (both were accepted with a note): `horizontal vertical` together (`may not combine options horizontal and vertical`, r(198)); `horizontal` on scatter, line, connected, the fits and smoothers, scatteri and tsline, and `vertical` on those and on kdensity and function (`option horizontal not allowed`, r(198), naming the flag as typed), judged after `recast()` as twoway judges it. (WP-30, P1.9a)
 
-<!-- WP-30 P1.10 -->
+- `text()` and `ttext()` are refused where twoway refuses them, r(198) in twoway's words, where dash accepted them with a note: a malformed point (`invalid point, BAD 30`), an axis pair the graph lacks (`text() option invalid, specified axis pair (2 1) not in graph`), an unknown sub-option (`option nosuch() not allowed`) and a ttext() date the axis cannot read (`2001m13 is not a number`); more than `$dash_max_added_text` texts times panels is refused r(134). (WP-30, P1.10)
 
 - A number in `msize()`, `mlabsize()`, `mlabgap()`, `size()`, `labsize()` or `legend(size())` is in Stata's relative units (1 = 3.84px), not pixels: `msize(10)` draws 38.4px where it drew 10px, and `mlabgap(5)` leaves 19.2px of gap where it left 5. A do-file written for dash's pixel reading needs its sizes divided by 3.84 or written as keywords. (WP-30, P1.12a)
 
