@@ -451,7 +451,7 @@ Attaching the `CDSView` to the returned renderer would therefore do nothing.
 >   the *default* scheme was among the fourteen that could not resolve. The
 >   crux question was measured: Python `UserWarning`s **do** reach the Stata
 >   console (and survive `quietly`, though not `capture`), so the current
->   behaviour is loud — just raw.
+>   behaviour is loud — just raw. [WP-30 P1.26a, commit dd7c165: notes now take twoway's `(note: …)` channel; UserWarnings no longer reach the console raw]
 > * **TR-05.6** landed with its premise corrected — see GAPS B4. `v 2` was
 >   wrong twice over.
 > * **TR-05.7** closed as a documented limitation, with its rationale
@@ -701,7 +701,7 @@ should land:
 ### Business requirements
 
 - **BR-07.1** Every external dependency is verified before use, with a
-  message naming the remedy (CLAUDE.md rule 15).
+  message naming the remedy (CLAUDE.md rule 15). [WP-30 P1.32, commit 9dc17da: met for the Python version and numpy, pandas and bokeh; BR-07.2 still holds]
 - **BR-07.2** Python availability is probed without running Python.
 
 ### Technical requirements
@@ -1526,7 +1526,7 @@ protected nothing and refused real labels.
   parity profile records a Label's position, and the corpus carries each.
 - Not covered, and said so: `plotregion()`, `graphregion()`, the `*2` axis
   options, `colorcuts()` and `tabs()` still drop their sub-options in
-  silence.
+  silence. [WP-30 P1.20a, commit 2207ddb: plotregion()/graphregion() sub-options are drawn or named; margins by P1.20b, commit 6e2af0c]
 
 ### Verification, measured 22sep2026
 
@@ -1564,7 +1564,7 @@ and graph value went to JSON verbatim. Forty probes through Stata,
 thirteen Python warnings then rc 0 with a substituted value (`degree(x)`,
 `bwidth(-1)`, `bin(0|abc)`, `width(-1)`, `kernel(bogus)`, `n(-5)`,
 `xsize(abc)`, `ysize(-2)`, `aspectratio(abc)`, `scheme(nonsense)`,
-`xscale(bogus)`, `barwidth(abc)`); one note (`connect(bogus)`, pending);
+`xscale(bogus)`, `barwidth(abc)`); one note (`connect(bogus)`, pending); [WP-30 P1.8a, commit fa52891: connect() is drawn; connect(bogus) is refused as twoway refuses it]
 twenty-one silent rc 0, four of them good values rightly silent
 (`msize(huge)`, `malpha(2)`, `fmt(%9.2f)`, `fmt(%-12.0gc)`) and seventeen
 bad (`msize(abc)`, `msymbol(nonsense)`, `mcolor(notacolour)`,
@@ -2047,10 +2047,10 @@ one-mode change there would have been invisible.
   corrected it to the resolution order above.
 - The linewidth keyword ladder `_LWIDTH_MAP` keeps ratios that are not
   Stata's (dash thin .533 of medium, Stata .667; dash vthick 2.33, Stata
-  4.667). Not fixed here; recorded as a follow-up.
+  4.667). Not fixed here; recorded as a follow-up. [WP-30 P1.12b, commit 37e9fa4: closed: line widths use Stata's ladder in Stata's units]
 - s1rcolor's bar alpha 0.8 is scheme-driven (`intensity bar inten80`), not
   a defect; `p_mark_colors` equals `p_colors` in all 14 shipped schemes,
-  so TR-16.5 exists for user schemes only.
+  so TR-16.5 exists for user schemes only. [WP-30 P1.2b, commit 870e778: s1rcolor's bar intensity (`intensity p#bar` through the p chain, inten80) is drawn as twoway draws it, an opaque blend towards black (`#cccc00`); the former alpha 0.8 read graph bar's `intensity bar`, which twoway's bar ignores, and compounded where bars overlap]
 - The visual delta the risk table asks to state: every dashboard loses
   its minor grid; s1color, s1mono, s1rcolor and stmono1 lose every grid
   line; economist's title grows from 7pt to 17.28pt and its lines from
@@ -3036,7 +3036,7 @@ dash's own classes, with bokeh 3.9.0 (the test suite's Python) and 3.8.0
 | Saved page under `default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'` | renders; no violation; the dropdown's CustomJS ran (KPI -0.07 → 0.04); hover drawn.  The same for `layout(bs)` |
 | Served policy on a minimal Bokeh server (template meta + Tornado transform) | headers on `/`; the websocket opens under `connect-src 'self'`; a server callback round-trips; CustomJS runs; no violation |
 | Variable label `<img src=x onerror="document.title='PWNED'">` on y | axis title, legend and tooltip show the text; no `<img>` in the document or any shadow root; title unchanged -- saved and served |
-| The BokehJS sink walk | text nodes and canvas text everywhere except a slider-family title holding a TeX pair (`innerHTML` after `process_tex`, which copies the text around the TeX raw), a Div's MathJax pass (`\href{javascript:}` a live link), and a tooltip field `@{name}` (parsed as HTML after filling) |
+| The BokehJS sink walk | text nodes and canvas text everywhere except a slider-family title holding a TeX pair (`innerHTML` after `process_tex`, which copies the text around the TeX raw), a Div's MathJax pass (`\href{javascript:}` a live link), and a tooltip field `@{name}` (parsed as HTML after filling) [WP-30 P1.11a, commit 3bdffb5: canvas text sinks carry TeX pairs inert in both modes (`_dash_finish_graph_text`), so the saved page no longer loads MathJax for user text] |
 | `dash_setup` | a crafted version string reached `Version("...")` as code and created a marker file; a renderer directory whose name closed `r"..."` ran `sfi.Macro.setGlobal` |
 
 ### Technical requirements, as delivered
@@ -3066,7 +3066,7 @@ dash's own classes, with bokeh 3.9.0 (the test suite's Python) and 3.8.0
   field is built only for a plain Stata name.  The text sinks -- legend
   labels, dropdown options, facet titles, tick labels, colour-bar titles --
   get the raw text, which they had shown as entities, and tick labels travel
-  in the formatter's `args`, not its code.
+  in the formatter's `args`, not its code. [WP-30 P1.11a, commit 3bdffb5: the same sinks now finish TeX inert]
 - **TR-20.4** `dash_setup` reads every value inside Python with
   `sfi.Macro.getLocal` (the version gate, the scheme probe, the metadata
   query), and keeps a version read back only when it is made of version
@@ -4552,7 +4552,7 @@ commands, output and the resolved state of every `GAPS.md` finding — in
 - **BR-29.14** Stale and redraw: after a move that removed a row of a
   frozen layer's estimation sample the layer shows a visible cue, cleared
   when the move is undone; the served app recomputes bar and rbar widths
-  and an emptied layer's style as the saved build does (P0.17, P0.18).
+  and an emptied layer's style as the saved build does (P0.17, P0.18). [WP-30 P1.17a, commit 624837e: spacing machinery removed: a bar is one x unit or barwidth(), never derived from the rows a filter keeps]
 - **BR-29.15** Setup: on a PEP 668 Python `dash_setup` starts no pip
   process, names the reason and the `venv()` route, never suggests
   `--break-system-packages` and ends r(198); `venv(path)` creates,
@@ -4657,7 +4657,7 @@ and the release gate once each.
 | P0.15 | saved filter registers per-plot rows, not the intersection | S1 | 07 | 3cff164 |
 | P0.16 | colorvar range ignores qualifiers | S1 | 07 | 85dc7d2 |
 | P0.17 | saved fits stale after a filter move, no cue | S1 | 12 | b242b99 |
-| P0.18 | served redraw keeps build-time bar widths | S1 | 12 | 2d52fbe |
+| P0.18 | served redraw keeps build-time bar widths | S1 | 12 | 2d52fbe [WP-30 P1.17a, commit 624837e: spacing machinery removed] |
 | P0.19 | dash_setup fails on PEP 668 Pythons | S2 | 09 | 4d74922 |
 | P0.20 | KPI sd/var/iqr/cv/sum of a date in ms | S1 | 05 | 529875d |
 
@@ -4700,7 +4700,7 @@ and the release gate once each.
   its panel after a saved move. P0.16 (85dc7d2): the colour key is drawn
   from the rows each colorvar layer draws. P0.17 (b242b99): the saved page
   marks layers it does not recompute after a move. P0.18 (2d52fbe): the
-  served redraw follows bar widths and keeps an emptied layer's style.
+  served redraw follows bar widths and keeps an emptied layer's style. [WP-30 P1.17a, commit 624837e: spacing machinery removed]
   P0.19 (4d74922): dash_setup works on externally managed Pythons and
   adds venv(). P0.20 (529875d): KPI statistics of a date are taken in its
   Stata units.
@@ -4752,11 +4752,338 @@ and the release gate once each.
   for cmd.exe and POSIX shells only; GUI Break was verified through a
   patched pollstd only. Commits cd210ea (P0.8) and 529875d (P0.20) open
   with their failure text but carry no Regression: line in the formal
-  form (recorded, history not rewritten).
+  form (recorded, history not rewritten). [WP-30 P1.35, commit 1f05b63: Stata before 19 is refused]
 - **AGENTS.md** carries "Invariants introduced by WP-29", 20 paragraphs,
   each with its guarding test.
 - **Merge.** `git checkout main && git merge --no-ff wp29-p0` -- reported,
   not run.
+
+---
+
+## WP-30 · Close the drop-in P1 gaps — DONE
+
+**GAPS2 closed:** A3, A13, B12, B14, B16, B18, B20, B22, B23, B25, B31, D2, D3, D7, D8, D9, D10, D11, D12, D18, D19, F3, F5, G4, G10, H4, H6, I12, I14, K1, X4, X5 · **Severity:** S1 (9), S2 (38), S3 (9) · **Effort:** XL · **Depends on:** WP-29
+
+As a Stata user who pastes a twoway command or do-file into dash, I want the common twoway options, the default look of every shipped scheme, twoway's errors and silences, and a served app and installation that hold under real use, so that a dashboard reads as the Stata graph it came from (US-30.1 to US-30.26, .ultraplan/wp30/PLAN.md section 5).
+
+### Business requirements
+
+Each requirement holds in **both modes** and **after any filter move** unless it says otherwise (BR-30.38). "Refused as twoway" means: with twoway's return code and message text as measured in StataNow 19.5, in twoway's order where the order was measured. "Noted" means one `(note: …)` line (BR-30.26).
+
+- **BR-30.1** Stylelists and value lists (P1.1):
+  - A style option given a list over an expanded varlist styles the k-th y with the k-th element. A lone value or a short list styles only the leading series; the rest keep their defaults, silently (twoway's padding).
+  - The shorthands `.`, `=`, `..` and `...` resolve as twoway resolves them. A misplaced `..` is refused r(198) `<opt>(<value>):  invalid syntax`. A used quoted element of only blanks (`" "`) is refused r(198) `dash: <opt>() element <j> is blank; use . for the default (got: <value>)`; an unused one is not checked, and an empty `""` element is `.`, as in twoway.
+  - A quoted or compound element is one element (`"hsv 240 1 1"`, `*.5`, `navy*.5%50`); an unquoted `255 0 0` is three elements. Single-y types take the first element. An unknown element draws twoway's default attributes, noted with the element named.
+  - `malpha()`, `lalpha()`, `falpha()` and `jseed()` stay scalars applied to every series, as documented.
+  - `mlabel(varlist)` is positional; `.` omits that series' labels; `..` is refused r(198) `.. not allowed in option mlabel()` and `=` r(101) `=exp not allowed`; every named variable must exist (r(111)).
+  - `jitter()`, `base()`, `barwidth()` and `mlabposition()` are checked per element after the shorthands resolve, so `jitter(2 ..)` and `base(10 =)` draw. Elements past the number of y are ignored silently. rbar `barwidth()` lists and lowess `bwidth()` lists stay refused as twoway refuses them.
+- **BR-30.2** Scheme chrome and intensity (P1.2), for each of the 26 shipped schemes:
+  - the title is centred and not bold (economist: left); axis titles are upright; subtitle, note and caption are placed by the scheme's justification; economist's note sits in the title band;
+  - no minor ticks unless asked; tick length, side, colour and width come from the scheme in Stata units; s2color's y labels are vertical (`ylabel(, angle(0))` is the escape); stcolor's grid is dashed; s1rcolor's ticks are visible; economist's axis sides, lines and ticks are the scheme's;
+  - markers are opaque unless `%NN`, `sttrans` or `malpha()` asks otherwise (rconnected's markers included);
+  - bar, area and histogram fills and the CI band blend the scheme's p#bar/p#area intensity opaquely, user colours included; `fintensity()` is an opaque blend; above 1 it darkens with twoway's measured clamp (navy at 6000 and above is #010304); it is never refused; negatives read as 0;
+  - a user scheme's `intensity bar` and `intensity area` are not read, silently (twoway ignores both).
+- **BR-30.3** Default ticks and padding (P1.3):
+  - Default numeric, log and `%tc` axes, and y2/x2 axes without their own labels, take twoway's natscale choice with the scheme's tick count, and draw no minor ticks.
+  - An axis range is the hull of every drawn layer, fits included, plus twoway's plot-region margin (r × min(W,H), r = 0.022; economist 0.006), placed within about 0.8% of the width of twoway's. Shared by() panels share one range over the union hull.
+  - After every filter move, default and `#N` axes re-tick and re-range over the kept rows, y2/x2 included. An explicit-value axis re-hulls its data part and keeps its label positions (the help's "holds across filter moves" is rewritten). Zoom and pan re-tick by natscale over the visible range.
+  - Budget: the served re-finish adds at most 0.2 s per figure per move at 500k rows; 100 saved by() panels settle within 1 s of WP-29's measured time.
+  - `%td`, `%tw`, `%tm`, `%tq`, `%th` and `%ty` default axes take the fitted tsnatscale model. Its agreement with twoway is pinned at the measured floors (52-66% of `%td`-`%th` ranges, 98% of `%ty`) and stated in the help. The saved page and the served app give the same ticks on every one of the fixture's 12,000 answers.
+- **BR-30.4** Scheme keys on every layer (P1.4):
+  - `sttrans` opacity reaches fits, spikes, ranges, pc types and immediates; rarea follows area's rule (opaque; 0.2 under `sttrans`).
+  - Histograms take the scheme's histogram colour, intensity, line colour and line width, and so does an empty histogram's key.
+  - The scheme's hollow and `sm*` p# symbols are drawn hollow and at 0.707 size, and so is a user's `msymbol(sm*)`, after `msize()` (IR-4). The p# symbol cycle reaches scatteri, rscatter, pcscatter, dropline and rcapsym. Markers read p#markfill/p#markline, not p#mark. `msymbol(Oh)` with `malpha()` stays hollow.
+  - The default marker-label size and colour come from the scheme's label keys in Stata text units, the same in both modes. The colour key's title, labels and ticks come from the scheme.
+  - Every directive of a user, PLUS, third-party or shipped scheme is kept in the parsed scheme (none discarded), so later versions can draw it; a directive dash does not draw is not noted, in either mode.
+- **BR-30.5** Axis formats (P1.5):
+  - Default tick labels use the axis variable's display format (`weight` `%9.0fc` writes `2,000`), with twoway's `%g`/`%gc` fallback, on second axes, on range and pc first layers and in the text-label formatter. `xvarformat()`/`yvarformat()` are read.
+  - Narrow `%g`, `%e` and `%f` fallbacks write what Stata writes (its own entry, P1.5.7).
+  - `xlabel(, format(%td…))` is honoured. A numeric `format()` on a date axis writes the stored value.
+  - `format(bogus)` is refused r(198) `invalid format, bogus`. A format twoway accepts but dash cannot write exactly (such as `%12s` on a numeric axis) draws `%9.0g`, noted. The help's log example is corrected.
+- **BR-30.6** The `t*` options (P1.6):
+  - `tlabel()`, `ttick()`, `tmlabel()`, `tmtick()`, `ttitle()`, `tscale()` and `tline()` are accepted on every twoway graph and apply to x axis 1 under twoway's base-format rule, with date literals in Stata units. The `axis(2)` forms route to the second axis. `tmlabel()`/`tmtick()` are accepted and named as not drawn until minor ticks are (P2.2). `tline()` is drawn under BR-30.21.
+  - Refused as twoway: date literals where twoway's x axis is numeric (r(198), r(198), r(121) as measured), and where the first plot is lfit, kdensity or another type twoway refuses them for; a too-short `tm()` or `ts()` (r(198)); the left-aligned `%-t` form in `tline()` and `tscale(range())` (it is accepted in `tlabel()`/`ttick()`). A `format()` given with date literals is accepted or refused exactly as twoway's tickset format rules decide.
+  - A date token is evaluated without ever running user text as a Stata command. `tscale(log)` on a date axis stays noted. The help lists every option.
+- **BR-30.7** Time-series operators (P1.7):
+  - `L.`, `F.`, `D.`, `S.` and their combinations, including `L(1/2).x`, are accepted in plot varlists on every type twoway accepts them on (measured; the line family, tsline and the lfit family), and drawn.
+  - Titles, keys, notes and the CSV header show the expression as typed (`D.close`). `D.`/`S.` of a `%t` variable carry its format.
+  - Refused as twoway: no `tsset` r(111) `time variable not set`; a string variable r(109); a factor variable r(101) `factor-variable operators not allowed`; operators on types twoway refuses them on r(101); `by()` with an operated variable r(5) `not sorted` (one hint line may follow); a bare `sort` with an operated x r(198).
+  - Weights with operators stay refused (P2.14).
+- **BR-30.8** `connect()`, `cmissing()` and `recast()` (P1.8):
+  - `connect()` (`l`, `L`, `J`, `stairstep`, `stepstair`, `i`/`none`) and `cmissing()` are drawn on scatter, the line family, scatteri and the fits, per the measured truth: scatter `c(l)` draws the line; `J`, `stairstep` and `stepstair` draw stairs and keep today's tooltips (IR-3); `L` breaks where x drops; `cmissing(n)` breaks at missing values. `function` bridges interior missing regions by default and breaks under `cmissing(n)`.
+  - Per-y lists follow BR-30.1; `cmissings()` is accepted; an unknown connect name is drawn direct, noted as twoway notes it; an unknown `cmissing()` value is refused r(101) in twoway's words.
+  - `recast()` redraws base and range types as the target, with twoway's out-of-group fallbacks and notes (a yx type falls back to scatter, a range type to rspike, a pc type to pcspike; a range type cast to a yx name draws its first bound; `function` and `dot` ignore it). A derived type (fit, kdensity, function, histogram) keeps its computation and is drawn as the target. The key keeps the original series label. `recast(bar)` uses the one-x-unit width (BR-30.17).
+  - `recast()` on lfitci, qfitci, lpolyci and fpfitci is refused r(198) `recastas() option not allowed`. Where twoway draws the same picture, dash is silent.
+  - `cmissing(n)` on area/rarea and `connect()` on rarea stay noted (P2.42).
+- **BR-30.9** `horizontal` (P1.9):
+  - It is drawn on bar, rbar, spike, rspike, rcap, rcapsym, dropline, area, rarea, histogram, kdensity and function, with the axis variables, default titles, date kinds and y2 swapped and rcap caps perpendicular. Mixed orientation with a date axis matches twoway's truth.
+  - `horizontal vertical` together is refused r(198) `may not combine options horizontal and vertical`. `horizontal` or `vertical` on a type twoway refuses them for is refused r(198) in twoway's words, judged on the type after `recast()` (`recast(bar) horizontal` is rc 0). `vertical` alone is accepted silently. The unsupported-option list and notes stop naming them.
+  - After saved and served moves, turned layers keep their geometry; hover fields and the hover line follow the orientation; by() and `yaxis(2)` hold.
+- **BR-30.10** `text()` and `ttext()` (P1.10):
+  - Each copy is drawn at its position with its placement, orientation, size (Stata units), colour (BR-30.13), box and axis, on numeric and date axes (Stata units), on every by() panel with `iscale()`, after a move. Labels never extend the axis. Repeated copies keep their own sub-options. The scheme's text defaults apply. SMCL in the text follows BR-30.11.
+  - Refused r(198) in twoway's words: a malformed point (`invalid point, BAD 30`), a missing axis pair, an unknown sub-option. A textbox sub-option that cannot be drawn is noted and listed in the help. Notes are raised once, in Stata, for both modes.
+  - `ttext()` converts date literals under the first-plot or `xlabel()` format rule, with twoway's date refusals.
+  - Limit `added_text`: default 1,000, ceiling 100,000, `$dash_max_added_text`; it counts texts × by() panels over the dashboard, and beyond it the command is refused r(134).
+- **BR-30.11** SMCL and TeX (P1.11):
+  - TeX delimiters (`$$…$$`, `\(…\)`) in any user text on the canvas are drawn as typed, never interpreted. The saved page ships no MathJax (a TeX title's page drops from about 3.1 MB to about 1.3 MB), and no user text reaches a TeX parser.
+  - The graph-text tags `{bf:}`, `{it:}`, `{sup:}`, `{sub:}`, `{&name}`, `{c #}`, `{c name}` and the font tags (`{stSans}`, `{stSerif}`, `{stMono}`, `{stSymbol}`, `{fontface}`) are drawn as twoway draws them, in Unicode, with whole-string style and font set only where SMCL asks, at every canvas sink (titles, axis titles, tick labels, keys, panel labels, colour key) and in marker labels. A run Unicode cannot express gives one note per graph and sink kind. Other SMCL is drawn as typed and listed in the help (P2.47).
+  - `{c 0}` empties the text and C0/C1 control codes are kept, as twoway does; every sink carries them escaped (`\uXXXX` in JSON/JS, HTML-escaped where HTML is written). dash-only page text translates characters and symbols and strips style tags; KPI and dashboard titles, `tabs()` and data-borne text (string tooltips, value-label columns, the CSV) stay raw, as the help states.
+  - Hostile text (100,000 `{`, deep nesting) is handled in under one second.
+- **BR-30.12** Size units (P1.12):
+  - Numbers and keywords are Stata's relative units: one unit for every class at the 4-inch reference (rs = 2.88 pt; IR-1). The default marker goes from 8 to 5.87 px and the default line from 1.5 to 1.15 px.
+  - `#pt`, `#in`, `#cm` and `#rs` convert at min(xsize, ysize) (graphsize when given); `*#` is relative; the full keyword ladder holds, `vhuge` included. Line widths follow Stata's linear ladder, `vvvthin` and `none` included, with a 0.3 pt hairline floor.
+  - This holds for `msize()`, textbox `size()`, `labsize()`, `mlabsize()`, legend `size()`, title and axis-title sizes, colour-key label sizes and every line width (`lwidth()`, `mlwidth()`, `clwidth()`, `alwidth()`, region and reference-line widths, colour-key lines). `mlabgap()` is measured from the marker's edge.
+  - An unknown size name draws the class's medium, noted as twoway notes it. Negative unit and multiplier forms are refused as twoway refuses them.
+  - Brushed-away (nonselection) and muted copies of a glyph follow the option appliers: their size, width, colour, marker and dash are the drawn glyph's, with dash's nonselection alpha kept, in both modes (S08; later appliers reach them through S08's sync). P2.49 is not filed.
+- **BR-30.13** Colour grammar (P1.13):
+  - `colour*#` (with the clamp above 1), CMYK, HSV, quoted forms with intensity, `%` and `*` in either order, and `bg`/`fg`/`background`/`foreground` from the scheme are read in options and in scheme files. Invalid multipliers are ignored as twoway ignores them.
+  - A bare `*#` or `%#` at any colour site (markers, lines, fills, CI bands, marker labels, titles, subtitles, notes, captions, axis titles, label and axis-line colours, graph and plot regions, the KPI, reference lines, `colormissing()`) takes the site's own base colour before intensity, composed with the intensity blend and a named style's base colour.
+  - Colour names are case-sensitive, in options and in scheme files. An unknown or out-of-range colour draws black (bars #333333), noted, at every site. `grey`, `dimgrey`, `bluishgrey` and `ltbluishgrey` become unknown names (IR-6). `"255,0,128"` is refused r(198) in twoway's words. A short or invalid hex draws the default, silently. An unreadable scheme value draws #000000 for that key where twoway does.
+  - The KPI keeps its case-insensitive Stata lookup ahead of CSS colour names.
+- **BR-30.14** Named styles (P1.14):
+  - `pstyle()` (and its `p()` alias: its own key, the first copy wins, applied last), `lstyle()`, `clstyle()`, `mstyle()`, `mlstyle()`, `astyle()`, `alstyle()`, `bstyle()` and `blstyle()` take `p1`-`p15` on every type, in twoway's factor order: explicit options win.
+  - Every linestyle name of Stata's 76 shipped linestyle files resolves, and a table of the other Stata names (ci, ci2, histogram, foreground, background, grid, major_grid, minor_grid, refline, none and the p#line/bar/area/other/mark/box/dot/arrow forms) resolves (IR-14). `pstyle(ci)` and `ci2` work on non-CI types.
+  - An unknown name draws twoway's default attributes for its class, noted once per layer.
+  - `dstyle()`, `dlstyle()` and `bmlinestyle()` are accepted, kept in the spec and named as not drawn (P2.9, P2.8). Area and rarea outlines and pc arrowheads stay noted (P2.12, P2.8).
+- **BR-30.15** by() (P1.15):
+  - Panel labels are drawn as a centred panel title, not appended to the graph title. Composite labels are joined with ", ". Missing panels read "(missing)", and a string `""` group counts as missing in group panels and in Total. Date panel titles keep dash's date text.
+  - `by(, title() subtitle() note() caption())` are drawn once over the array. The "Graphs by <label>" note uses the variable's label, else its name, and `by(, note(""))` removes it. `by(, graphregion() plotregion())` stay named, not drawn (IR-9).
+  - `rows()`, `cols()`, `holes()` and `colfirst` place panels as twoway does. `cols()` beyond the panel count is honoured up to the by() groups limit (100, ceiling 1,000), then clamped, noted. `iscale()`, `imargin()` and `compact` act in Stata units; `xsize()`/`ysize()` size the whole array.
+  - Refused as twoway: `rows()` with `cols()` r(198) `may not specify both rows() and cols()`; out-of-range `rows()`, `cols()` or `holes()` r(125); capitalised forms (`YRESCALE`) and a repeated `style()` r(198).
+  - Shared panels show outer axes and edge labels only, with the `i*`/`noi*` options and `noedgelabel`. Axis titles are drawn once, and no panel draws an axis-2 title. There is one legend, governed by `by(, legend())` (with `at()`) and the scheme's by-legend position. There is one colour key, only under `by(, clegend(on))`, showing panel 1's mapping, silently; a level has the same colour in every panel.
+  - Each panel label is drawn in twoway's filled box from the scheme (S53, Q-28.1; ratification row 36, changed).
+  - On a narrow screen the panels stack and every panel's axis labels show. Forms twoway ignores under by() are silent.
+- **BR-30.16** Keys and default titles (P1.16):
+  - lowess, lpoly, mband, mspline and function layers are keyed in twoway's text (for example "lowess mpg weight", "Median bands"); the pc family, scatteri and pci are keyed as twoway keys them; a function name may be any Unicode identifier of at most 32 characters.
+  - Default axis titles follow twoway's first-equals-last rule per axis: no title when the layers' labels differ. Range types get a y title. `yaxis(2)` is titled by its own layers' variables. There is no opt-out.
+  - Merged keys, histogram-only legends and first-used-axis placement stay open (P2.50-P2.52).
+- **BR-30.17** Bar and range geometry (P1.17):
+  - bar and rbar default to one x unit wide (in the variable's units on a date axis); rbar honours `barwidth()`; widths do not change after a move.
+  - rcap's cap length follows `msize()`, defaulting to the scheme's p# symbol size; rcapsym draws no caps and sizes its end markers from the scheme. rcap `barwidth()` is refused r(198) `option barwidth() not allowed`.
+  - The default base of bar, area, spike and dropline is twoway's: clamped into the axis scale (under by() the common minimum; per panel under `yrescale`; never 0 on a log axis), so a 0 outside the data no longer extends the axis. An explicit `base()` stays inside the range. On a date axis the default base is 01jan1960.
+- **BR-30.18** Axis sub-options (P1.18):
+  - `nolabels`/`labels`, `noticks`, `labcolor()`, `tlength()`, `tposition()`, the anglestyle names (`rvertical`, `stacked`, …), `xscale(off)`/`on`, `noline`/`line`, the axis line's colour, width and pattern, `alt` and `titlegap()` are drawn on every axis, second axes included. Tick-only positions honour `noticks`, `tlength()` and `tposition()`.
+  - An anglestyle name is matched case-sensitively: `angle(Vertical)` is noted and drawn at 0, as twoway does (IR-5). Out-of-bound angles (`angle(400)`) and capitalised `NOLABELS`, `OFF` and `Alt` are refused r(198) in twoway's words. Under by() the `scale(off)`, `nolabels`, `noticks` and `titlegap()` that twoway ignores are silent.
+  - `add` adds to the default ticks (date ticks included) and survives every re-tick after a move; an `axis(2)` label with `add` is drawn; a repeated `add` is kept; `a(b)c` rules and `norescale` on a lone rule draw as twoway draws them.
+- **BR-30.19** Sub-option abbreviations (P1.19):
+  - Legend, axis-label and tick, `xline`/`yline` and textbox sub-options accept twoway's abbreviations (`c()`, `r()`, `lab()`, `posi()`; `labs()`, `glc()`, `ang()`, `for()`, `g`, `nog`, `val`, `labc()`, `tl()`, `tp()`, `nolab`, `noli`, `titleg()`; `lc()`, `lp()`, `lw()`, `lst()`, `noex`, `la()`, `st()`; textbox `s()` is size).
+  - Names match in lower case only. Capitalised names and spellings twoway refuses are refused r(198) in twoway's words. A sub-option dash honours, given a bad value, is refused with twoway's code (`legend(c(red))` r(121) `cols() invalid`).
+  - Repeated copies merge by full name, the last copy winning; `rows()` beats `cols()`; quoted label text is never read as a sub-option. A note names the sub-option as the user typed it.
+- **BR-30.20** `plotregion()` and `graphregion()` (P1.20):
+  - Their sub-options and abbreviations (`fc()`, `lc()`, `c()`, `lw()`, `lp()`, `ls()`, `sty()`, `col()`, `fcol()`, `mar()`) are drawn: `color()` sets fill and outline; `none` paints nothing; `%NN` opacity; `style(none)`, `lstyle(none)` and the area-style names; `lpattern()`; the graph outline; widths on Stata's ladder. Repeated copies merge and margins add up.
+  - Typos and a sub-option repeated within one copy are refused r(198) in twoway's words. Valid forms dash cannot draw (`lalign()`, `ilalign()`, `graphregion(margin())`, the graphregion `i*` options) are named in one note.
+  - `bgcolor()` paints under the graph region, as twoway does: a region `none` shows `bgcolor()` if given, else the scheme's background, and a lone `bgcolor(red)` no longer shows (IR-2).
+  - `plotregion(margin())` sets the plot-region margin (exact for zero; within BR-30.3's tolerance otherwise). The plotregion `i*` inner box is drawn at the finished range and follows it after a move.
+  - Region styling writes only computed numbers and sanitised colours into the page.
+
+- **BR-30.21** `xline()` and `yline()` (P1.21):
+  - Numlist positions (`2000(500)3000`, `a/b`) are drawn; duplicates are dropped.
+  - Refused as twoway, in twoway's order, r(198)/r(100)/r(123): invalid positions (including `nan`, `inf`, `1e400` and `1_000`, `invalid line argument`), more than 2,500 positions in one copy, and unknown, short, repeated or capitalised sub-options (`NOEXTEND`, `LSTYLE()`).
+  - Abbreviations follow BR-30.19. `lstyle()` takes every linestyle name (BR-30.14). `lalign()` is accepted silently. Lines are drawn above the grid and below the glyphs, and never extend the axis.
+  - `extend`/`noextend` and `style()` follow the scheme's xyline extend keys, over the finished axis and again after every move; under `margin(zero)`, `noextend` equals `extend`.
+  - Limit `reflines`: default 10,000, ceiling 100,000, `$dash_max_reflines`; it counts positions × by() panels over the dashboard, and beyond it the command is refused r(134).
+  - A line outside the range is clipped at the frame (P2.54).
+- **BR-30.22** `function` without Stata's points (P1.22, closed by disposition under M12):
+  - A Stata-built spec draws Stata's own points (WP-29 P0.6, unchanged).
+  - The points-free fallback keeps its ten functions. Any other function draws nothing and gives one neutral note, in both modes, that reaches Stata: it says the layer needs Stata's points, lists what the fallback knows and names the function it met (true for `pi`, `e` and `sin (x)`).
+  - The help states the rule and no longer promises a draw from the expression.
+- **BR-30.23** Dates on every axis (P1.23):
+  - Range and pc plots with a date y (or a pc date x) get a date axis. An `axis(2)` layer keeps the primary date axis. y2/x2 date axes show dates, take their own options and `#N` ticks, and range in date units.
+  - scatteri, pci and pcarrowi coordinates, `function range()` and an explicit `base(#)` are placed in date units. A literal outside 0100-9999 on a date axis is drawn at its number as twoway draws it, with no note; only one past the browser's dates (|ms| > 8.64e15) is left out with one note.
+  - A date layer beside a numeric layer on one axis is drawn in Stata units, labelled in the first layer's date format, and `xlabel(minmax)` reads Stata units there. The mixed axis renders under the page's CSP.
+  - A date colour variable's key, ticks and `colorcuts()`/levels boundaries are in Stata units; key text uses twoway's comma general format; `zlabel(, format(%t*))` is honoured.
+  - Fallback tooltips (histogram, fits, kdensity) use the variable's display format. The histogram tooltip names its measure (Density, Frequency, Fraction or Percent), not "Count".
+- **BR-30.24** `mlabvposition()` and `mlabtextstyle()` (P1.24):
+  - `mlabvposition(varname)` places each row's label in both modes and after saved and served moves. One variable applies to every y and is never split. Offsets stay physical under `horizontal`.
+  - A repeated `mlabvposition()` and the types twoway refuses it on are refused r(103) in twoway's words (naming the label variable when `mlabel()` is given), judged on the type after `recast()`.
+  - `mlabtextstyle()` is a per-y list (BR-30.1) resolved from Stata's 37 shipped textboxstyle names on the scheme's marker-label defaults. A user textboxstyle file is noted (P2.55).
+  - No declared plot option is silently dropped: each reaches the spec or the list of options named as not drawn.
+- **BR-30.25** Scheme resolution (P1.25):
+  - The six StataCorp schemes dash refused (meta, stcolor_meta, stcolor_mv, stcoloralias, stgcolor_meta, stgcolor_mv) are shipped and drawn as twoway draws them: 26 schemes in all. stcoloralias draws as stcolor (its `zyx2rule` is unread, documented).
+  - `scheme(NAME)` and an inherited `c(scheme)` resolve along Stata's whole ado-path in Stata's order, as `scheme-NAME.scheme` then `NAME.scheme`, with the shipped StataCorp names first, so a working-directory `s2color.scheme` no longer overrides the shipped one. `#include` follows the same walk. An inherited `c(scheme)` always walks; an explicit theme alias loses to a file of that name and works when none exists.
+  - A path, separator, `..` or quote in `scheme()` is refused. A file that is not regular, that resolves outside its directory, or that exceeds the size limit is refused. A scheme file is read as data and never run. The refusal lists the 26 names and the themes, and the help's remedy is corrected.
+  - A served dashboard whose graphs use different schemes draws each graph with its own scheme, as the saved page does (its own entry, P1.25.6).
+- **BR-30.26** Notes (P1.26):
+  - A note is one `(note: …)` line in text colour, shown under `quietly` and `set output error`, hidden by `capture`, SMCL-escaped, and free of internal paths and source lines. A session `warnings` filter neither hides a note nor turns it into an error (no r(7102)). A repeated note prints once.
+  - `dash build, server` prints the saved build's option and empty-layer notes, from one trial render. `dash serve` relays the child's notes, ERROR lines and tracebacks (redacted, at most 200 lines, de-duplicated against the build's), from the child's warm-up, never rendering twice. A trial that raises stops `dash serve` with r(198) and is noted under `dash build, server`. Access-log lines stay out.
+  - A layer whose own if/in keeps no row is silent in both modes, as in twoway.
+- **BR-30.27** Command form and `saving()` (P1.27):
+  - Batch mode and `set graphics off` open no browser and print the path; interactive console Stata still opens one. A temporary preview is still written, and its line says it is temporary and names `saving()`.
+  - A `twoway`, `tw`, `two` or `graph twoway` prefix is accepted. `twow`, `twowa`, `gra` and `grap` are refused r(199) `command X is unrecognized`, as twoway refuses them.
+  - `saving(f, replace)` and `saving(f, asis)` are read as twoway reads them, on the one-line form, `dash build` (HTML and server) included. An unknown `saving()` sub-option is refused r(198) `option X not allowed`; an unquoted `saving(my file.html)` is refused as twoway refuses it.
+  - Under M11 `saving()` accepts `..` and `; & | < >`, and keeps refusing a double quote, backquote, `$`, control characters and a leading `-`. The served "To launch" line is single-quoted on Mac and Unix.
+  - `dash twoway` with nothing after it stays refused (P2.56).
+- **BR-30.28** Export (P1.28):
+  - dash returns `r(filename)`: the absolute path of what it wrote, set last, never holding the served key, empty when the command is refused, and documented as transient for previews. No other internal `r()` leaks from any subcommand.
+  - One note per dash command, only when Stata holds a graph in memory, says that `graph export` would write that graph. A `saving()` name with an image extension writes `.html`, noted.
+  - The help documents the export limit and that printing prints the active tab.
+  - Every grid toolbar in both modes gains a "Save as SVG" action that runs under the page's CSP. There is no SVG backend, so the PNG save keeps working.
+- **BR-30.29** Page security (P1.29):
+  - The saved page's script policy lists a hash for every inline script and no `'unsafe-inline'`. An inline script without its hash stops the build with a named error and writes nothing.
+  - The served page carries a per-document nonce: nonce-only if the browser test is clean, otherwise also `'self'` with the reason recorded. The `python app.py` header keeps its policy and the page's own policy governs. `'unsafe-eval'` and inline styles stay (BokehJS needs them) and are documented. The empty and redirect pages carry `default-src 'none'`.
+  - In a browser, in both modes, an injected inline script or handler is blocked, and the page still renders, filters and exports. A browser that supports only CSP level 1 shows a blank page.
+  - On Windows a path holding a cmd metacharacter (`% ! ^ & | < > ;`) is written but never opened through the shell: the path is printed, `r(opened)` is 0, `r(why)` says why, and the command ends rc 0 (tested as a pure function and a dry run).
+  - The help states the `saving()` character rule and what the CSP does and does not protect.
+- **BR-30.30** The bokeh window (P1.30):
+  - `dash_setup` installs `bokeh>=3.8,<3.10` (`<3.11` only if bokeh 3.10 is verified inside WP-30) into an environment dash created. A Python or environment dash did not create is never downgraded: above the window it is reported "outside the verified range" with rc 0; a managed Python gets the managed guidance, never a pip line.
+  - At run time, in both modes: above the window one note and the run continues; below 3.8 the command is refused, and so is the served app at start (`python app.py`, `bokeh serve`). "Verified" means major.minor.
+  - The text-sink injection checks run for every version in the window.
+  - If a Bokeh release changes an internal dash relies on (host matching, the page template's blocks, the origin check, the auth hook, the BokehJS calls the ticker, the date transform and Save as SVG use), the server refuses to start with a named error.
+- **BR-30.31** Served capacity (P1.31):
+  - The dataset is decoded once per app process. At most `maxsessions()` sessions run at once (default 20; 0 refused) under `dash serve`, `python app.py` and `bokeh serve`. Beyond the cap a static busy page answers (HTTP 503 with Retry-After, no auto-refresh).
+  - A session with no filter, brush or CSV activity closes after `idletimeout()` minutes (default 60; 0 never), with a reload message.
+  - The app warms up before it listens and first prints "preparing the dashboard (N rows, …)".
+  - Per-session memory growth stays at or below 80 MB at 200k rows × 3 layers (60.7 MB today, so the test is a regression guard). The estimator memo holds at most 64 MB per process and never runs in Stata's process.
+  - A filter-move recompute never blocks other sessions or `/health`: one worker; the latest request per session wins; stale results are dropped; the session shows an "updating" cue. The worst wait (about 3 min at 20 × 8.7 s for lowess at 100k) is documented.
+  - Opening a session still runs on the event loop (P2.57).
+- **BR-30.32** Dependency guards (P1.32):
+  - A missing or unimportable numpy, pandas or bokeh, or a Python below the floor, gives one message naming `dash_setup`, from `dash` and from the generated app, never a bare `ModuleNotFoundError` or `SyntaxError`. bokeh below 3.8 is refused (BR-30.30). numpy or pandas below `dash_setup`'s minimums is noted, not refused.
+  - dash checks availability without running Python as a program, before it renders.
+  - `dash_setup`'s first Python call is captured and summarised with the architecture hint.
+  - `dash clear` still prunes with the packages missing.
+- **BR-30.33** The Python floor (P1.33):
+  - The declared floor is the lowest of 3.11 and 3.12 at which both pytest suites (with the dev pins and with the Stata pins), a fresh resolve as `dash_setup` installs, the Stata venv-link leg and one full certification run pass. `dash.pkg`, both help files, `dash_setup` and the version messages state it, and code that needs a newer Python has a fallback or guard.
+  - `dash_setup` with a Python below the floor says to link Python <floor> or later and never suggests `venv()`.
+  - The floor is measured once, in WP-30, by S05; the release gate gains no floor-Python leg, and the manual re-measure procedure is written in `scripts/floor_matrix.sh`'s header. Downloads go only into scratch environments (M10).
+- **BR-30.34** Portable runners (P1.34, closed under M4):
+  - Every runner (`scripts/stata_slot.sh`, `run_cert_suite.sh`, `run_release_gate.sh`, `stata_python_exec.sh`, the Makefile, the header of `test/run_all_cscripts.do`, `measure_stata_coverage.py`, every extractor, `test/fixtures/twoway_corpus.do`) uses `STATA_BIN` if set, else `/usr/local/bin/stata-mp`, with an architecture prefix only when the binary's own architecture needs one (right under Rosetta). No runner selects a Stata 14-18.5 binary.
+  - The repository root is `DASH_REPO`, else the current folder when it holds `dash.ado` and `test/run_all_cscripts.do`, else r(601).
+  - No file under `scripts/`, `test/` or the Makefile holds `arch -arm64` or the maintainer's path (a guard test, no exemption list). The two option generators are retired and refuse to run.
+  - On this Mac the effective command is unchanged (the console binary in batch mode).
+- **BR-30.35** The Stata floor (P1.35, closed under M2):
+  - `dash` and `dash_setup` refuse a Stata below 19 as their first act, with `dash requires Stata 19 or later; this is Stata X.Y` and r(9).
+  - Every program declares `version 19`; no `version 16.0` remains in dash.ado, dash_setup.ado or the generators that write one.
+  - `dash.pkg` and both help files say "Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64" and "Measured on MP only".
+  - Function points are unchanged by the new language level, and a full certification run is green after the sweep.
+- **BR-30.36** Refusals (M5): every form WP-30 newly refuses (the register's 26 M5 rows and those of IR-17) is refused with twoway's return code and message text as measured in StataNow 19.5, has a test asserting both, and has a CHANGELOG line under "Changed behaviour (may need your do-files changed)". A valid twoway option dash cannot draw is noted, never refused. Outside the areas WP-30 touches, nothing is newly refused.
+- **BR-30.37** Silence (M6): where twoway draws the same picture and prints nothing (the register's 11 M6 rows, among them a layer whose own if/in keeps no row, the by()-ignored axis forms, a lone style value over several y, the levels the single by() colour key leaves out, a user scheme's `intensity bar`/`intensity area`, and a short or invalid hex), dash prints nothing in either mode.
+- **BR-30.38** Both modes: every behaviour in BR-30.1 to BR-30.35 that concerns drawing holds on the saved page and in the served app, before and after a filter move, and the two modes draw the same. No saved/served difference is allowed for in the parity test.
+- **BR-30.39** Announced changes (M1, M5): every look change has a CHANGELOG line under "Results that change" naming the command, the old value and the new; every newly refused form has one under "Changed behaviour"; every new capability under "New"; the floors and the bokeh window under "Requirements"; every closed threat under "Security".
+- **BR-30.40** Tracking: every WP-30 BUGS.md entry is closed with a Resolution naming tests that exist; every CHANGELOG marker is replaced; ROADMAP WP-30 is DONE; the GAPS2 ids it closes are marked with commits that exist; the manifest's residuals and P2.42-P2.57 are filed.
+
+### Technical requirements
+
+The technical requirements of each entry are its section's TR-NN.k in .ultraplan/wp30/index.md and the section files it lists (plain text, not a link).
+
+### Acceptance criteria
+
+- **AC-30.1** The 56 entries S01 opened are closed, each with a Resolution `(WP-30, P1.<n>[abc])` naming tests that exist; `WP30_OPEN` is empty and pinned so. The extra entries are in place: P1.5.7 and P1.25.6 closed in their sections' fix commits; P2.49 is not filed, because S08 fixes it under P1.12a. BUGS.md holds exactly 3 open entries.
+- **AC-30.2** Red first: each fix commit body opens with its saved failure text and a `Regression:` line per regression test (G1); every flipped test has a `Flipped:` line; guard tests are listed apart; there is no test-only commit; the collected test count never falls.
+- **AC-30.3** Truth: `test/test_wp30_truth.cscript` runs all 57 blocks with every case `PASS` and no SKIP on a machine with Python; every new fixture carries the D12 `_meta` stamp with `stata_version` and is committed; no fixture is hand-patched.
+- **AC-30.4** Parity: `test/test_mode_parity.py` is green with every drawing section's CORPUS cases; `ALLOWED` is unchanged; `_MUST_WARN` entries were edited only by the sections whose fixes silenced them.
+- **AC-30.5** Served names: `TestTheServedAppCarriesEveryName` (with `test_every_listed_name_exists`) and `TestTheServedAppDefinesEveryNameItReads` are green.
+- **AC-30.6** Refusals and silences: every M5 refusal row has a test asserting twoway's return code and message text as measured in 19.5, and a CHANGELOG "Changed behaviour" line; every M6 row has a test asserting no note in either mode.
+- **AC-30.7** Look: each shipped scheme's look truth passes (BR-30.2, BR-30.4); the size defaults are pinned (markers 5.87 px, lines 1.15 px); the tsnatscale floors and the 12,000-answer parity hold; the timed budgets of pass.
+- **AC-30.8** Security (G9): green, each named in its commit body:
+  - the browser test of both modes (an injected inline script or handler is blocked; the page renders, filters, exports and saves as SVG); an unhashed inline script fails the build; `default-src 'none'` on the empty and redirect pages;
+- **AC-30.9** Floors: `grep -c 'version 16.0' dash.ado dash_setup.ado` prints 0 and 0; the Stata guard's refusal and the guard order are pinned; the declared Python floor equals the matrix's lowest pass; the bokeh window is declared once and checked at run time; the dependency guards are green; the runner path guard is green with no exemption list.
+- **AC-30.10** CHANGELOG.md holds no `<!-- WP-30` marker; every WP-30 line ends `(WP-30, P1.<n>[abc])`; each Results line names the command, the old value and the new.
+- **AC-30.11** Tracking documents: ROADMAP's WP-30 is headed DONE with §6's requirements and these criteria; every id in its `**GAPS2 closed:**` has a `Closed in WP-30` Tracked line with a commit that exists; partly closed ids say what is open; the 22 residuals (as amended) and P2.42-P2.57 are filed; DROPIN-REMAINING.md's P1 rows carry their commits; `test_tracking_documents.py` is green.
+- **AC-30.12** Release: `make test`, `make test-dev`, `make cert` and `make gate` are each green once on `wp30-p1`, through the queue; the certification time and its change from the step-0b baseline, the page sizes, render times and served memory and latency are recorded (S58.7).
+- **AC-30.13** Messages and scope: index G7's message check prints 0 on every commit message in `main..wp30-p1` and on the added lines of BUGS.md, CHANGELOG.md, dash.sthlp and dash_setup.sthlp; no commit, entry, CHANGELOG line or help line names a tool or vendor; the project instructions file, `.gitignore` and (outside index E7's rule) `AGENTS.md` are in no WP-30 commit.
+- **AC-30.14** GitNexus: impact ran at every batch base, every HIGH or CRITICAL result was reported before its edit and the approval recorded, every `UNKNOWN` was confirmed by grep; `detect-changes` at every landing named only the section's symbols; the final compare against `main` is recorded.
+- **AC-30.15** The merge command into `main` is reported and not run; every worktree and `wp30-s<NN>` branch is removed.
+
+#### P1 traceability
+
+| P1 | Entry (BUGS.md) | Grade | Section | Commit |
+|---|---|---|---|---|
+| P1.1a | A style list over several y variables, such as mcolor(red blue), is given whole to ... | S2 | S11 | e8953d4, a001fd6, 099a242 |
+| P1.1b | Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and ... | S2 | S20 | 8bd6b5a |
+| P1.2a | The default chrome differs from every scheme: a bold left-aligned title, italic axis ... | S3 | S15 | 6a777a3 |
+| P1.2b | Markers are drawn at alpha 0.8, and fintensity() and the schemes' bar and area ... | S3 | S16 | 870e778 |
+| P1.3a | Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ... | S3 | S21 | bde085e, 90ad393 |
+| P1.3b | Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks | S3 | S44 | 8573347 |
+| P1.4a | The scheme's opacity, histogram colour, intensity and width, and its hollow and sm ... | S3 | S24 | 638970a |
+| P1.4b | Marker-label size and colour are fixed, the colour key has no scheme chrome, and ... | S3 | S33 | c0518a7 |
+| P1.5 | Default tick labels ignore the variable's display format, xlabel(, format(%td)) is ... | S1 | S18 | 34832ad |
+| P1.6 | The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline ... | S2 | S51 | 9a72553, c565897 |
+| P1.7 | Time-series operators in plot varlists, such as line D.close date and lfit y L.x, are ... | S2 | S42 | d69005d, acd868f |
+| P1.8a | connect() and cmissing() are not honoured: scatter y x, c(l) draws no line, stairsteps ... | S2 | S40 | fa52891 |
+| P1.8b | recast() is not honoured, and recast() on lfitci, qfitci, lpolyci and fpfitci is ... | S2 | S45 | f20751d |
+| P1.9a | horizontal is not drawn on any plot type, and vertical is named as unsupported | S2 | S49 | 7229a0c, 169130d |
+| P1.9b | The filter-move redraws of both modes write vertical geometry only, so a horizontal ... | S2 | S55 | a5e3757 |
+| P1.10 | text() and ttext() annotations are not drawn | S2 | S56 | 1a5edf1, 56b3597 |
+| P1.11a | TeX delimiters in titles, labels and keys are typeset as mathematics through MathJax ... | S2 | S09 | 3bdffb5 |
+| P1.11b | SMCL in graph text, such as {bf:}, {it:}, {sup:}, {&beta} and {c #}, is drawn literally | S2 | S29 | a0224b5, 66c51ca |
+| P1.12a | Marker, text and gap sizes are read as pixels on a private ladder, and #pt, *# and ... | S2 | S08 | a1dcb2f |
+| P1.12b | Line widths use a private ladder without vvvthin or none and read numbers as pixels, ... | S2 | S13 | 37e9fa4 |
+| P1.13a | Stata colour forms such as navy*.5, CMYK, HSV, bg and fg are refused, and an unknown ... | S2 | S30 | d680274 |
+| P1.13b | A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default ... | S2 | S43 | f3a0403 |
+| P1.14a | pstyle() works only on the four CI fits, and lstyle, mstyle, mlstyle, astyle, alstyle, ... | S2 | S32 | f4216a8 |
+| P1.14b | Style names other than p1-p15, such as ci, histogram, refline and p1bar, are not read ... | S2 | S36 | 38bbb05, 98109fc |
+| P1.15a | by() panel labels are appended to the graph title, there is no Graphs by note, ... | S2 | S28 | e7c6ed3 |
+| P1.15b | by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad ... | S2 | S48 | 1326b97 |
+| P1.15c | Under by() every panel draws a legend and repeats both axes, and by(, legend()) and ... | S2 | S53 | 52d5b6a, 2f51a50 |
+| P1.16 | Legend keys and default axis titles do not follow twoway: fits are keyed Fitted ... | S1 | S19 | 3f172a9, ace9c19 |
+| P1.17a | bar and rbar default to 0.8 of the smallest x gap, rbar ignores barwidth() without a ... | S1 | S14 | 624837e |
+| P1.17b | bar, area, spike and dropline draw from 0 rather than twoway's default base, and a 0 ... | S1 | S27 | b3fc476 |
+| P1.18a | The axis look sub-options nolabels, noticks, off, noline, line colour, width and ... | S2 | S31 | ebde0e9 |
+| P1.18b | The add sub-option replaces the default ticks instead of adding to them, and an ... | S1 | S52 | a34192b |
+| P1.19 | Sub-option abbreviations such as legend(c(2) posi(6)), ylabel(, labs(small)) and ... | S2 | S10 | ecb8aec, 4ab91c7, e64c136 |
+| P1.20a | plotregion() and graphregion() styling sub-options such as style(none), lcolor(), ... | S1 | S38 | 2207ddb |
+| P1.20b | plotregion(margin()) and graphregion(margin()) have no effect and no note, and the ... | S1 | S47 | 6e2af0c |
+| P1.21a | xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() ... | S2 | S39 | 78f9045 |
+| P1.21b | xline() and yline() noextend, extend and style() are only named, so every line spans ... | S2 | S50 | 10ab4ce |
+| P1.22 | The points-free function fallback knows ten functions and draws any other in silence | S3 | S26 | 47677f8 |
+| P1.23a | Dates on range, pc, immediate and second axes are drawn at raw or millisecond ... | S1 | S35 | 7aa8875 |
+| P1.23b | A date colour key shows epoch milliseconds, fallback tooltips ignore display formats, ... | S1 | S17 | cc3c900 |
+| P1.24 | mlabvposition(varname) and mlabtextstyle() are declared and pending but never ... | S2 | S37 | b79db35, 390d964 |
+| P1.25a | Six StataCorp schemes, among them meta and stcolor_mv, are refused r(198) where twoway ... | S2 | S07 | 438d27e |
+| P1.25b | scheme(NAME) is looked for in two places only, never along Stata's ado-path or under ... | S2 | S34 | 15c4f7b |
+| P1.26a | Notes print as raw Python warnings with internal paths, a warnings filter of ignore ... | S2 | S06 | dd7c165 |
+| P1.26b | dash build, server and dash serve report no option or empty-layer notes, and the ... | S2 | S23 | 824e0be |
+| P1.27 | The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes ... | S2 | S12 | 6906236, 8346679, 10f1c58 |
+| P1.28a | dash returns no r(filename), and graph export after dash fails r(601) or silently ... | S2 | S22 | eea99ce |
+| P1.28b | Neither mode offers a vector export: the toolbar saves only a PNG at the screen's ... | S3 | S54 | fd4fff0 |
+| P1.29 | Both content security policies allow inline scripts, and percent and exclamation signs ... | S2 | S04 | 0e8fbaf |
+| P1.30 | The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals ... | S2 | S41 | 621c477, 61f5c21 |
+| P1.31a | The served app has no session cap or idle lifetime and decodes the whole dataset again ... | S2 | S46 | 842e1d9 |
+| P1.31b | One reader's filter-move recompute blocks the served event loop for every other reader | S2 | S57 | e371f8d |
+| P1.32 | A missing numpy, pandas or bokeh or an old Python fails with a bare ... | S2 | S25 | 9dc17da |
+| P1.33 | The Python floor of 3.13 turns away 3.11 and 3.12 users, and dash_setup reports ... | S2 | S05 | b3153d0, dcbca5d |
+| P1.34 | The certification runners hard-code arch -arm64 and the maintainer's paths, so they ... | S3 | S02 | 44f8ab0 |
+| P1.35 | dash declares Stata 16.0, but only StataNow 19.5 has ever run it or made its truth ... | S2 | S03 | 1f05b63 |
+
+### Deferred: the platform package (P1.34.6)
+
+- Linux, Windows (the `/e` batch flag, cmd.exe, `Scripts\python.exe` venvs), Intel macOS and GUI Stata, with WP-29's private-file, lifecycle, served-key and PEP 668 paths there (M4; manifest item 34; S02).
+- Stata 16-18.5 certified (version-parametrised runners, version-keyed truth, a Break fallback below 18.5, version-dependent heatmap/rpcap advice), and Stata 19.0, BE and SE measured (M2; manifest item 35; S03).
+- A scripted image export: `dash export using file.png|pdf|svg` driven by a browser found on the machine, at a chosen size, `r(filename)` its output (P1.28 B3, GAPS2-E10c; M8; manifest item 28; S22, S54).
+- Python 3.10 and older, and Windows patch levels of 3.11 without CPython's os.mkdir 0o700 fix (CVE-2024-4030; dash_render.py relies on it) (manifest item 33; S05).
+- S02's critic list: `release_gate_venv.do`'s `gatevenv/bin/python`, the `/tmp/dash-stata-slot-N.d` locks, the Makefile's `STATA_BIN` default, the `W29_REPO` extractors' POSIX `capture shell cd … && git rev-parse`.
+- S04: whether cmd.exe expands `%` and `!` in a page path; opening such a page without cmd.exe (option B, `os.startfile`); Firefox and Safari runs of the CSP browser test.
+- S12: `c(mode)`/`c(graphics)` under Windows `/e`, `/b` and GUI Stata, and the Windows `To launch:` line.
+- S25: the processor hint off Apple Silicon. S34: Windows and Linux path and case rules for the scheme walk.
+- S41, S44, S46, S54, S57: Linux, Windows and Intel runs of the bokeh window, date-tick zoom, session lifetimes and 503 path, the Save as SVG action and the recompute worker; browsers other than Chrome.
+- Every section's "Stata 14-18.5 not run (M2)".
+
+### Scope changes of existing items
+
+- P2.11: the sm* sizes closed by P1.4a for the scheme and `msymbol()` (IR-4); the `x`/`smx`, `v`/`smv` geometry measured; the lower-case shorthands stay.
+- P2.12: `lwidth(none)` closed by P1.12b; `mlabtextstyle` closed by P1.24.
+- P2.13: the graphsize reference closed by P1.12a; `xsize()`/`ysize()` stay (S08 Q1).
+- P2.14: gains `fintensity(1e400)` (S16), `[aw=L.x]` reusing `_dash_tsop_gen` (S42), and S20's value-list bounds.
+- P3.2 loses `xvarformat()`/`yvarformat()` (P1.5). P3.7 loses its extractor-path part (IR-8, P1.34). P3.9 gains the two requirements files and the bokeh window comment (P1.33, P1.30). P3.11 gains the beforeprint layout and the SVG's omissions (P1.28).
+
+### Done, measured (<to be dated in 58-21>)
+
+- **Entries.** 56 P1 entries closed test first (S1 9, S2 38, S3 9), with P1.5.7 and P1.25.6 closed in their sections' commits; P2.49 not filed (S08 fixed it under P1.12a, ratification row 27). BUGS.md holds 3 open entries (none S1 or S2). `WP30_OPEN = {}` behind `TestWp30Tracking::test_no_wp30_entry_remains_open` (S58.1).
+- **Per entry.** One clause each from the traceability table.
+- **GAPS2.** Closed: A3, A13, B12, B14, B16, B18, B20, B22, B23, B25, B31, D2, D3, D7, D8, D9, D10, D11, D12, D18, D19, F3, F5, G4, G10, H4, H6, I12, I14, K1, X4, X5. Partly closed: A4, B11, B17, B21, B26, B27, D5, D16, D17, E10, G14, J7, J8, K3, K5. Annotated: A6, E3, K2. The H intro (platforms, GUI, Stata version), the I summary and the C intro served-cost sentence are recorded on the DROPIN rows (R58-6).
+- **Residuals.** DROPIN P2.42-P2.92 (P2.46 and P2.49 written closed), the notes on existing items, and the platform package above.
+- **Documented differences.** tsnatscale floors; the plot-margin tolerance (a build-time fraction, up to ~0.8%% of the width); date panel titles in dash's date text; the CSP level 1 blank page; date literals and bases past the browser's dates (|ms| > 8.64e15) left out with a note (those outside 0100-9999 are drawn, ratification row 12; control codes mirror twoway, row 8); zyx2rule drawn as stcolor; twoway's split of quoted value labels into lines; S12's three error-code differences; S34's `scheme(NAME.scheme)`, cwd-only `dash-` names, refused paths, unfollowed links.
+- **Python floor (K15) and bokeh window.** Python 3.11 (measured by the floor matrix, S05; no gate leg, ratification row 25); bokeh 3.8 to <3.10, verified on 3.8 and 3.9 (3.10 not verified, S41).
+- **Fixtures.** 49 files changed, 699,687 insertions, 21,859 deletions under test/fixtures (c96facd..HEAD).
+- **Tests flipped.** 565 `Flipped:` lines; every node, or its renamed successor, collects.
+- **Security.** <G9 tests by name, from AC-30.8>.
+- **Runs.** make test <to be measured in 58-21>; make test-dev <to be measured in 58-21>; make cert 68 of 68, <wall time> against baseline not measured and WP-29's 907 s (67 scripts); slowest blocks <to be measured in 58-21>; make gate <to be measured in 58-21>.
+- **Measurements.** <58-19 table: to be measured in 58-21>.
+- **Compare against main.** <58-20: to be measured in 58-21>.
+- **Not measured.** Linux, Windows, Intel Mac and GUI Stata (M4); Stata below 19 (M2).
+- **AGENTS.md.** 38 invariants under "Invariants introduced by WP-30".
+- **Excluded from the message check.** Commit 8a874b1 ("Updated CLAUDE.md to try to deal with the test suite issues.") is the maintainer's own commit on wp30-p1; it stages CLAUDE.md and names it, and the maintainer accepted it, so the E13 check excludes it. History is not rewritten.
+- **Merge.** `git checkout main && git merge --no-ff wp30-p1` -- reported, not run.
 
 ---
 

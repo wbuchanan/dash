@@ -169,7 +169,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
      - rcapsym with no cap lines
      - the base when every y is above 0
      - a %td x axis
-- **Tracked:** BUGS.md:504 (bar default width recorded as a divergence, not acted on); rbar `barwidth()`, rcap `msize()` and rcapsym caps are new.
+- **Tracked:** Closed in WP-30, BUGS.md "bar, area, spike and dropline draw from 0 rather than twoway's default base, and a 0 outside the data extends the axis to it", commit b3fc476; with BUGS.md "bar and rbar default to 0.8 of the smallest x gap, rbar ignores barwidth() without a note, rcap caps ignore msize(), and rcapsym draws caps twoway does not", commit 624837e; bar widths, rbar barwidth(), rcap/rcapsym caps (a, b, d, e; P1.17a) and twoway's default base and extent (c, f; P1.17b); BUGS.md:504's recorded divergence acted on by P1.17a; was: BUGS.md:504 (bar default width recorded as a divergence, not acted on); rbar `barwidth()`, rcap `msize()` and rcapsym caps are new.
 
 <a id="a4"></a>
 ### A4. Many type-specific twoway options are named in the note and not drawn, and most are missing from the help's unsupported list (also reported as C3, C9)
@@ -193,7 +193,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   3. Compute `estcmd()`/`estopts()`/`predopts()` in Stata at registration, and name them on filter moves.
   4. Generate dash.sthlp's unsupported list from `_dash_rep_und_tab`, the pending list and the undeclared type options. Extend test_help_conformance.py to check it in both directions.
   5. Test each option against live twoway in test_twoway_option_parity.cscript, in both modes.
-- **Tracked:** Partly closed in WP-29 (P0.1, commit b0d170d): sort(varlist) is honoured; open: nofit, fitplot(), ciplot(), atobs, estcmd()/estopts()/predopts(), kdensity area()/boundary, histogram gap(), function droplines() and yvarformat()/xvarformat(), baroffset(), nodropbase, connect(), cmissing(), recast(), mlabvposition(), the tsline t-options and pc headlabel, and the help unsupported list; was: GAPS.md E1 (`connect`, `cmissing`, `recast`, `sort`, `mlabvposition` deferred by WP-27); the others are new.
+- **Tracked:** Partly closed in WP-30 (P1.6, commit c565897; P1.8b, commit f20751d; P1.8a, commit fa52891; P1.24, commit 390d964): connect() and cmissing() (A4-l, A4-m; P1.8a), recast() (A4-n; P1.8b), mlabvposition() (A4-p; P1.24), the tsline t-options (A4-q; P1.6); x/yvarformat() read since P1.5; open: nofit, fitplot(), ciplot(), atobs, estcmd()/estopts()/predopts(), kdensity area()/boundary, histogram gap() (P2.6); function droplines(), baroffset(), nodropbase (P2.7); pc headlabel (P2.8); the help unsupported list (P3.2); WP-29 (P0.1, commit b0d170d) closed sort(varlist) is honoured; was: GAPS.md E1 (`connect`, `cmissing`, `recast`, `sort`, `mlabvposition` deferred by WP-27); the others are new.
 
 <a id="a5"></a>
 ### A5. Six twoway plot types and Mata-matrix plots are not drawn (contour, contourline, heatmap, rpcap, rpspike, sunflower; matamatrix())
@@ -225,7 +225,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Store the (x, y) pairs as literal records, as scatteri's values are, within the `n()` cap. `map_function` draws them, and the expression evaluator stays only for hand-written specs.
   3. Use the same route for `range(varname)`, `droplines()` and `horizontal`.
   4. Test the stored points against `twoway__function_gen` in a cscript over this corpus: `normalden`, `ln`, `_pi`, `c(pi)`, `cond`, comparisons, `min`/`max`, `int`/`round`, `invlogit`, `chi2den`, `_b[]` after regress, `scalar()`, `2^3^x`, `1/0` and sqrt of negatives. Add pytest in both modes and adversarial cases: the RNG state is unchanged, 10,000 points, and backticks or `$` in the expression.
-- **Tracked:** Closed in WP-29, BUGS.md "function evaluates ^ from the right and accepts pi and e, which twoway refuses", commit 96aa267; residual deferred (WP-29): under by() the function is evaluated once where twoway evaluates it per panel, the points-free fallback for hand-written specs knows ten functions, and range(varname), droplines() and horizontal stay refused or ignored; was: new (the empty-layer note is documented at dash.sthlp:327-328).
+- **Tracked:** Closed in WP-29, BUGS.md "function evaluates ^ from the right and accepts pi and e, which twoway refuses", commit 96aa267; residual deferred (WP-29): under by() the function is evaluated once where twoway evaluates it per panel, the points-free fallback for hand-written specs knows ten functions, and range(varname), droplines() and horizontal stay refused or ignored; WP-30 (P1.22, commit 47677f8): the points-free fallback keeps its ten functions by design and names what it needs (carries C5); was: new (the empty-layer note is documented at dash.sthlp:327-328).
 
 **A7. `horizontal` is not drawn on any plot type** -- same gap as B12; see there.
 
@@ -303,7 +303,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Replace `_DASH_FIT_TYPES` with a per-type key rule built from the variable labels.
   3. In `_dash_axis_labels`, join range and pc y labels with "/", and draw no y title when the layers' labels differ.
   4. Update the label assertion in test_immediate_dashboards.py (:512-523), and test both modes against the fixture.
-- **Tracked:** Partly closed in WP-29 (P0.3, commit 8d3593e): histogram and kdensity keys and titles name the variable as twoway does; open: the fit, lowess, lpoly and mband keys, the pc and immediate keys, no y title when the layers labels differ, and y1/y2 range titles; was: new.
+- **Tracked:** Closed in WP-30, BUGS.md "Legend keys and default axis titles do not follow twoway: fits are keyed Fitted values, pc and immediate types by their type name, the y title follows the first layer, and range types get none", commit ace9c19; carries C10; every layer keyed in twoway's text; default axis titles by twoway's first-equals-last rule, y1/y2 range titles; WP-29 (P0.3, commit 8d3593e) closed histogram and kdensity keys and titles name the variable as twoway does; was: new.
 
 <a id="a14"></a>
 ### A14. `dot` is drawn as a plain scatter: no dot rows, and dotextend(), ndots() and the d-options are not drawn
@@ -470,7 +470,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** twoway takes `pstyle(p#)`/`lstyle()`/`mstyle()`/`mlstyle()` from the scheme, draws `mlpattern()` on marker outlines, and colours `colorvar()` levels from `colorlist()`. In dash all of these are on the plot pending list (dash.ado:1025-1080) and named, except `pstyle` on the four ci types, which works; dash.sthlp Unsupported documents this. The gap is S2 because GAPS.md E1 grades accepted-but-inert options that way, and `pstyle(p#)`/`lstyle()` are common in published do-files.
 - **Closable:** partly -- `coloruseplegend` (legend keys in a contour-line style) has no Bokeh counterpart beyond an ordinary discrete legend.
 - **Plan:** 1. Resolve `pstyle(p#)` to the p# chain dash already builds from the parsed scheme; map `lstyle`/`mstyle`/`mlstyle` to their scheme sub-chains. 2. `mlpattern`: set `line_dash` on Scatter markers. 3. `colorlist`: use it as the palette for the `colorvar()` levels. 4. pytest in both modes; cscript comparing twoway's SVG styles.
-- **Tracked:** GAPS.md E1 (deferred).
+- **Tracked:** Partly closed in WP-30 (P1.14b, commit 38bbb05; P1.14a, commit f4216a8): pstyle(p#)/lstyle()/mstyle()/mlstyle() and every Stata style name drawn (B11-a, b, c; D6); open: mlpattern() drawn solid (P2.12); colorlist() and coloruseplegend (P2.10); carries D6; was: GAPS.md E1 (deferred).
 
 <a id="b12"></a>
 ### B12. Plot-level deferred options: `horizontal`/`vertical`, `recast()`, `connect()`, `cmissing(n)`, `sort(varlist)` (also reported as A7, G15)
@@ -485,7 +485,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   All are on dash's plot pending list (dash.ado:1025-1080) and named. dash.sthlp Unsupported documents that dash draws every plot upright, joins in x order and drops missing values.
 - **Closable:** yes -- Bokeh has hbar/harea/Step glyphs and breaks lines at NaN.
 - **Plan:** 1. `recast()`: re-dispatch the layer to the named type's mapper after checking that type's variables. 2. `cmissing(n)`: insert NaN rows at missing values. 3. `connect()`: map l/L/J/stairstep/stepstair/none to Line or Step glyphs. 4. `sort(varlist)`: stable sort by the varlist before joining. 5. `horizontal`: swap coordinates in the bar/spike/range/dropline mappers (hbar/harea); check each against twoway's SVG in a cscript.
-- **Tracked:** Partly closed in WP-29 (P0.1, commit b0d170d): sort(varlist) sets the join order; open: horizontal/vertical, recast(), connect() and cmissing(n); was: GAPS.md E1 (deferred).
+- **Tracked:** Closed in WP-30, BUGS.md "The filter-move redraws of both modes write vertical geometry only, so a horizontal layer cannot keep its orientation after a move", commit a5e3757; with BUGS.md "horizontal is not drawn on any plot type, and vertical is named as unsupported", commit 7229a0c; with BUGS.md "recast() is not honoured, and recast() on lfitci, qfitci, lpolyci and fpfitci is accepted where twoway refuses it", commit f20751d; with BUGS.md "connect() and cmissing() are not honoured: scatter y x, c(l) draws no line, stairsteps and connect(L) cannot be drawn, and cmissing(n) never breaks a line", commit fa52891; carries A7, G15; horizontal/vertical drawn and refused as twoway does (P1.9a), kept after filter moves (P1.9b); connect()/cmissing(n) (P1.8a); recast() (P1.8b); WP-29 (P0.1, commit b0d170d) closed sort(varlist) sets the join order; was: GAPS.md E1 (deferred).
 
 **B13. SMCL markup in graph text (`{bf:}`, `{it:}`, `{sup:}`, `{&beta}`) is drawn literally** -- same gap as D3; see there.
 
@@ -499,7 +499,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   dash.sthlp:515 calls its Unsupported section "the full list". None of the t* or var* options is declared (dash.ado:699-717), so they get only the generic "ignoring unsupported option(s)" note, and none appears in dash.sthlp. `pcycle()` is only counted as a graph-wide option (dash.ado:3937, dash.sthlp:473) and is not drawn. dash draws tsline/tsrline, so options like `tline(2001m1)` are ordinary usage.
 - **Closable:** yes.
 - **Plan:** 1. Declare the t* options in dash.ado; for tsline/tsrline, fold them onto x* after converting datelists with Stata's own date functions. 2. Implement `yvarlabel`/`xvarlabel` (legend and axis-title defaults), `yvarformat`/`xvarformat` (axis format fallback) and `pcycle` (style index modulus). 3. List anything left in dash.sthlp Unsupported and test_help_conformance.py. 4. cscript running tsline with `tline`/`tlabel` in twoway and dash and comparing positions.
-- **Tracked:** REMAINING.md:128-131 (planning doc).
+- **Tracked:** Closed in WP-30, BUGS.md "The tsline time-axis options tlabel, ttick, tmlabel, tmtick, ttitle, tscale and tline are undeclared and only named in the note", commit c565897; tlabel/ttick/tline/ttitle/tmlabel/tmtick and the help's full t-option list; was: REMAINING.md:128-131 (planning doc).
 
 <a id="b15"></a>
 ### B15. `axis(#)` is not read, more than two axes are refused, and `yaxis(1 2)` is refused
@@ -522,7 +522,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   dash.sthlp:1676-1679 documents this.
 - **Closable:** partly -- a Bokeh `Legend` belongs to one figure, so a single `by()` legend must sit on one panel or on a legend-only figure; `compact`/`imargin`/`iscale` can only be approximated with borders and font scaling.
 - **Plan:** 1. `rows(#)` sets cols = ceil(n/rows); `holes()` inserts `None` cells in `gridplot`; `colfirst` reorders the panels. 2. Draw `by(title/subtitle/note/caption)` once above or below the grid via `_dash_textbox`. 3. i*/noi* options set panel axis visibility (default: edge axes only); `yrescale`/`xrescale` unshare the ranges (see B4). 4. `by(, legend())` places the one common legend. 5. pytest in both modes; cscript comparing twoway's `.Graph.graphs[k]` layout and SVG.
-- **Tracked:** Partly closed in WP-29 (P0.2, commit ab53f25): yrescale/xrescale are honoured; open: rows(), holes(), colfirst, compact, iscale(), imargin(), the i*/noi* axis options, noedgelabel, style(), and title()/subtitle()/note()/caption()/legend() inside by(); was: GAPS.md E3 (named remainder); dash.sthlp:1676-1679.
+- **Tracked:** Closed in WP-30, BUGS.md "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored", commit 52d5b6a; with BUGS.md "by() rows, holes, colfirst, compact, iscale and imargin are named and ignored, bad by() arguments are accepted, and faceted graphs miss the automatic layout", commit 1326b97; with BUGS.md "by() panel labels are appended to the graph title, there is no Graphs by note, composite and missing panels are titled differently, and by(, title()) is ignored", commit e7c6ed3; by() text (b; P1.15a), rows/holes/colfirst, compact, iscale(), imargin() (a, e; P1.15b), shared axes and one legend and key (c, d; P1.15c); WP-29 (P0.2, commit ab53f25) closed yrescale/xrescale are honoured; was: GAPS.md E3 (named remainder); dash.sthlp:1676-1679.
 
 <a id="b17"></a>
 ### B17. `legend()`: Stata's abbreviations and most sub-options are named but not drawn
@@ -541,7 +541,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
      - textbox `color()`/`size()` -> `label_text_*`
   3. `holes()` via placeholder items; `colfirst` by reordering items; `bplacement()` with `ring(0)` to the inside location.
   4. pytest in both modes; cscript measuring twoway's legend geometry and colours from SVG exports.
-- **Tracked:** GAPS.md E3 (named remainder); abbreviations new.
+- **Tracked:** Partly closed in WP-30 (P1.19, commit ecb8aec): Stata's legend sub-option abbreviations read and refused as twoway does (B17-a); open: holes(), colfirst, textfirst, stack, key gaps, symbol sizes, textwidth, region(), bplacement(), span and legend titles still named (P2.5); was: GAPS.md E3 (named remainder); abbreviations new.
 
 <a id="b18"></a>
 ### B18. `plotregion()`/`graphregion()` sub-options, including Stata's abbreviations, are dropped with no note
@@ -552,7 +552,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `plotregion(c(red))`, `graphregion(fc(red))`, `plotregion(lstyle(none))` and `plotregion(lc(red))`
 - **Closable:** partly -- Bokeh has no border line around the whole canvas and no separate inner/outer graph region, so `graphregion` `lcolor`/`lwidth` and the i* options can only be approximated with CSS on the figure element.
 - **Plan:** 1. Parse region sub-options with `_dash_by_tokens` and an abbreviation table. 2. Map `color`/`fcolor`/`lcolor`/`lwidth`/`lpattern` for both regions, `margin()` to `min_border_*` (Stata marginstyles in % of the graph), and `style(none)`/`lstyle(none)` to no fill or outline. 3. Name the rest through `_dash_report_suboptions`. 4. pytest in both modes; cscript comparing twoway's SVG.
-- **Tracked:** GAPS.md E3 ("plotregion(), graphregion() ... still drop their sub-options in silence").
+- **Tracked:** Closed in WP-30, BUGS.md "plotregion(margin()) and graphregion(margin()) have no effect and no note, and the plot region's inner box is not drawn", commit 6e2af0c; with BUGS.md "plotregion() and graphregion() styling sub-options such as style(none), lcolor(), lwidth(), fc() and lc() are dropped with no note", commit 2207ddb; region colours, lines, styles and abbreviations (b-f; P1.20a); the plot-region margin and inner box (a; P1.20b); every other region sub-option named, none dropped silently; Closable 'no border around the canvas' stale (S38 E5); exact graphregion margin and the i* options named, not drawn: P2.53; was: GAPS.md E3 ("plotregion(), graphregion() ... still drop their sub-options in silence").
 
 <a id="b19"></a>
 ### B19. `t1title()` .. `r2title()` are not drawn
@@ -573,7 +573,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
    - `yaxis/xaxis(2)` on the second ranges, and date values on date axes
 
    3. pytest in both modes, including escaping; cscript comparing twoway's SVG text positions.
-- **Tracked:** GAPS.md E1 (deferred).
+- **Tracked:** Closed in WP-30, BUGS.md "text() and ttext() annotations are not drawn", commit 56b3597; text() and ttext() drawn in both modes; was: GAPS.md E1 (deferred).
 
 <a id="b21"></a>
 ### B21. `xlabel`/`ylabel`/`xtick` sub-options beyond `format`/`labsize`/`angle`/`grid` are not drawn (`valuelabel`, `nolabels`, colours, tick lengths...)
@@ -589,7 +589,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
    - tick and grid line colour/width/pattern, `gmin`/`gmax`
 
    4. pytest in both modes; cscript comparing twoway's SVG for each sub-option.
-- **Tracked:** GAPS.md E3 (named remainder); REMAINING.md:2459.
+- **Tracked:** Partly closed in WP-30 (P1.18b, commit a34192b; P1.18a, commit ebde0e9; P1.19, commit ecb8aec): abbreviations and quoted label text (P1.19); nolabels, noticks, labcolor, tlength, tposition, axis scale words (P1.18a); add (B21-f; P1.18b); open: labgap, label and tick styles, grid colour/pattern/styles, gmin/gmax, custom, alternate (P2.20); was: GAPS.md E3 (named remainder); REMAINING.md:2459.
 
 <a id="b22"></a>
 ### B22. `xline()`/`yline()`: numlist forms, Stata's abbreviations, `axis(2)`, `lstyle`/`style`/`noextend` are not drawn
@@ -601,7 +601,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `lstyle()` and `noextend` are named.
 - **Closable:** yes.
 - **Plan:** 1. Expand numlists in dash.ado with `numlist`, shared with the B1 fix. 2. Accept the abbreviations; map `lstyle`/`style` through the scheme's linestyle and addedlinestyle. 3. `axis(2)`: draw the `Span` with `y_range_name` 'y2'. 4. `noextend`: draw a `Segment` within the frame (an approximation, since a `Span` always spans the frame). 5. pytest in both modes; cscript comparing twoway's SVG line positions and styles.
-- **Tracked:** Partly closed in WP-29 (P0.5, commit 3208b2b): yline(5000, axis(2)) is drawn on the second axis; open: numlist positions, the lc/lp/lw abbreviations, lstyle()/style() and noextend; was: GAPS.md E3 (named remainder).
+- **Tracked:** Closed in WP-30, BUGS.md "xline() and yline() noextend, extend and style() are only named, so every line spans the whole frame", commit 10ab4ce; with BUGS.md "xline() and yline() numlists such as xline(2000(500)3000) draw nothing, and lstyle() and lalign() are only named", commit 78f9045; with BUGS.md "Sub-option abbreviations such as legend(c(2) posi(6)), ylabel(, labs(small)) and xline(5, lc(red)) are not recognised", commit ecb8aec; lc()/lp()/lw() read (b; P1.19); numlist positions, refusals and lstyle (a, d; P1.21a); extend, noextend and style() (d, e; P1.21b); WP-29 (P0.5, commit 3208b2b) closed yline(5000, axis(2)) is drawn on the second axis; was: GAPS.md E3 (named remainder).
 
 <a id="b23"></a>
 ### B23. `xscale`/`yscale` sub-options other than `log`/`reverse`/`range` are not drawn
@@ -617,7 +617,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
    - `alt` -> move the axis to the right or above
 
    3. Route `axis(2)` to `yscale2`/`xscale2`. 4. pytest in both modes; cscript comparing twoway's SVG.
-- **Tracked:** GAPS.md E3 (named remainder); REMAINING.md:2447.
+- **Tracked:** Closed in WP-30, BUGS.md "The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently", commit ebde0e9; off/on, alt, noline/line, titlegap(), line style, axis(#), r()/rev and yscale(log axis(2)) drawn; fill, outergap(), extend/noextend/fextend and the axis lstyle()/style() stay named (Closable: partly; P2.72); was: GAPS.md E3 (named remainder); REMAINING.md:2447.
 
 <a id="b24"></a>
 ### B24. `#N` ticks on %td-%th date axes follow a fitted model (about 60% agreement)
@@ -639,7 +639,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - `anglestyle vertical_tick` has no consumer, so y labels are horizontal.
 - **Closable:** yes.
 - **Plan:** 1. Port `_dash_natscale_ticks` (and the date-unit rule) to a `CustomJSTicker` on every axis without `xlabel()`/`ylabel()`, so the initial view matches twoway and zoom/pan still re-ticks (a `FixedTicker`, as the `#N` path uses at dash_render.py:17281-17291, would not). 2. Set the initial `Range1d` to the hull of the data and the outermost default ticks, with no 10% padding. 3. Transcribe `anglestyle vertical_tick`/`horizontal_tick` into the shipped schemes via scripts/extract_scheme_truth.py and apply them to tick-label orientation. 4. Update the tests that pin Bokeh's defaults; assert against test/fixtures/natscale_truth.json plus new default-axis cases measured from twoway SVG exports, and a headless check that zooming still shows ticks.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "Default %td to %ty date axes keep Bokeh's DatetimeTicker, not twoway's tsnatscale ticks", commit 8573347; with BUGS.md "Default numeric axes use Bokeh's ticker and 10 percent padding, not twoway's natscale ticks and plot-region margin, and fit lines are left out of the axis range", commit bde085e; with BUGS.md "The default chrome differs from every scheme: a bold left-aligned title, italic axis titles, Bokeh's minor ticks and tick geometry, and the schemes' tick angles, grid patterns, tick colours and economist axes missing", commit 6a777a3; s2color's vertical y labels (c; P1.2a); natscale ticks and twoway's margin on numeric, log, %tc and second axes (a, b; P1.3a); tsnatscale on %td-%ty (P1.3b); was: new.
 
 <a id="b26"></a>
 ### B26. Legend placement differs from twoway's (explicit position, corners, `pos(0)`, `by()` graphs)
@@ -651,7 +651,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - Each `by()` panel carries its own legend.
 - **Closable:** yes.
 - **Plan:** 1. Keep the scheme's `legend_cols`/`rows` when `position()` is given without `cols()`/`rows()`. 2. Set the side-panel location from the clock: 11/1 at the ends of 'above', 7/5 at the ends of 'below', 2/4 and 8/10 at the ends of the sides; `pos(0) ring(0)` -> 'center'. 3. For `by()` graphs, draw the legend once (on the last panel or a legend-only figure) and read `by(, legend())`. 4. pytest per clock position in both modes; cscript comparing legend bounding boxes from twoway SVG exports for pos 0-12, ring 0/1, with and without `by()`.
-- **Tracked:** new.
+- **Tracked:** Partly closed in WP-30 (P1.15c, commit 52d5b6a): a by() graph gets one legend (B26-d); open: scheme cols with position(), corner clocks, pos(0) ring(0) (B26-a..c; P2.5); was: new.
 
 <a id="b27"></a>
 ### B27. Marker-label remainders: `headlabel`, pc* first-point labels, `mlabvposition`, `mlabtextstyle`, extended missing, value-labelled dates
@@ -663,7 +663,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - A date variable's value label is ignored.
 - **Closable:** yes -- dash.ado can pass a decoded string column.
 - **Plan:** 1. `mlabvposition`: a per-row clock column mapped to per-row `text_align`/`text_baseline` and offsets in the `LabelSet`. 2. `headlabel`: label the (y2,x2) point. 3. pc*: keep the first point and its label when only the second is missing. 4. dash.ado passes a decoded string column for an mlabel variable holding extended missing values or value-labelled dates. 5. cscript comparing twoway's SVG labels for each case.
-- **Tracked:** dash.sthlp:1747-1778 (documented); GAPS.md E1 (`mlabvposition`, `mlabtextstyle`).
+- **Tracked:** Partly closed in WP-30 (P1.24, commit 390d964): mlabvposition() and mlabtextstyle() drawn (B27-c); open: headlabel (P2.8); pc* first-point labels when the second point is missing and value-labelled dates (P2.12); extended missing values (P2.18); Gap anchor dash.ado:1049-1050 stale (1078-1079 at c96facd); was: dash.sthlp:1747-1778 (documented); GAPS.md E1 (`mlabvposition`, `mlabtextstyle`).
 
 <a id="b28"></a>
 ### B28. Options twoway refuses (`title2`, `subtitle2`, `mlabwidth`, `ciopts`, `blabel`, `at`, `xreverse`...) and unknown lower-case words are noted instead of refused
@@ -696,7 +696,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - The missing panel reads "Missing" and joined labels read "Domestic / 3" (documented, dash.sthlp:1654-1673).
 - **Closable:** yes.
 - **Plan:** 1. Draw the panel label as the panel's subtitle (a `Title` in the scheme's by-subtitle style), honouring `subtitle()`'s text, suffix and position. 2. Add the "Graphs by <label>" note, suppressible with `by(, note(""))`. 3. Hide inner axes and titles by default. 4. Use "(missing)" and ", ". 5. pytest in both modes; cscript comparing twoway's SVG text.
-- **Tracked:** new (documented in part in dash.sthlp:1654-1673).
+- **Tracked:** Closed in WP-30, BUGS.md "Under by() every panel draws a legend and repeats both axes, and by(, legend()) and the i* axis options are named and ignored", commit 52d5b6a; with BUGS.md "by() panel labels are appended to the graph title, there is no Graphs by note, composite and missing panels are titled differently, and by(, title()) is ignored", commit e7c6ed3; panel labels, the Graphs by note, missing/composite text (P1.15a); repeated axes and legends (c; P1.15c); was: new (documented in part in dash.sthlp:1654-1673).
 
 <a id="b33"></a>
 ### B33. `scale()`, `fxsize()`, `fysize()`, `xoverhangs` and `yoverhangs` are not applied
@@ -860,7 +860,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   3. Replace the `_LWIDTH_MAP` ratios with Stata's, keeping medium = 1.5 px as the anchor and adding vvvthin.
   4. Restate the px pins in test/test_options.py (:158, :190). Add a property test that an explicit keyword equals the scheme default of the same name.
   5. Compare size ratios with Stata's SVG export, as truth.json does, for `msize(1.52778)`, `msize(4pt)`, `lwidth(.3)`, `lwidth(1pt)`, `title(,size(12pt))` and `labsize(5)`.
-- **Tracked:** GAPS.md G5 follow-up and ROADMAP.md:2048 (the `_LWIDTH_MAP` ratios only); the rest is new.
+- **Tracked:** Closed in WP-30, BUGS.md "Line widths use a private ladder without vvvthin or none and read numbers as pixels, and negative widths twoway refuses are accepted", commit 37e9fa4; with BUGS.md "Marker, text and gap sizes are read as pixels on a private ladder, and #pt, *# and vhuge are refused, where twoway reads Stata's relative size units", commit a1dcb2f; carries B9; marker, text and gap sizes in Stata's units (a, b, d, e; P1.12a); line widths, vvvthin and none, refused negatives (a, b, c, e; P1.12b); was: GAPS.md G5 follow-up and ROADMAP.md:2048 (the `_LWIDTH_MAP` ratios only); the rest is new.
 
 <a id="d3"></a>
 ### D3. Graph-text markup: SMCL tags are drawn literally, while TeX delimiters are typeset as maths (also reported as B13, J2, J5)
@@ -875,7 +875,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Convert inline `{sup:}`/`{sub:}`/`{bf:}`/`{it:}` to TeX where MathJax is acceptable. Otherwise strip the tags and say so in a note.
   3. Break TeX delimiters (the word-joiner trick) in all other text.
   4. Test each sink and mode, including hostile tags. Compare with the text runs and font-weight in Stata's SVG.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "SMCL in graph text, such as {bf:}, {it:}, {sup:}, {&beta} and {c #}, is drawn literally", commit a0224b5; with BUGS.md "TeX delimiters in titles, labels and keys are typeset as mathematics through MathJax where twoway draws them as typed, and the saved page carries the TeX engine", commit 3bdffb5; carries B13, J2, J5; TeX delimiters inert on every canvas sink (P1.11a); SMCL graph text (P1.11b); Gap anchor _dash_inert_tex (dash_render.py:17456) stale (24012 at c96facd); was: new.
 
 <a id="d4"></a>
 ### D4. Line patterns: Stata's formula grammar is refused, mlpattern() is ignored, and dot geometry is off
@@ -910,7 +910,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   3. Have `SchemeParser` keep the hollow flag and size factor for each p#, and have every marker mapper apply `fill_alpha` 0 and the factor.
   4. Test p1-p15 under the nine mono schemes, every symbolstyle name, and a custom-marker figure in test/responsive_probe.py.
   5. Set the size factors and glyph geometry from a Stata SVG of each symbol, measured as truth.json measures markers.
-- **Tracked:** new.
+- **Tracked:** Partly closed in WP-30 (P1.4a, commit 638970a): hollow and sm* p# symbols, and msymbol(sm*) sizes (D5-g, D5-h; P1.4a); open: arrow, arrowf, pipe, point, V, the lower-case shorthands and the refusals (P2.11); was: new.
 
 **D6. Named styles pstyle()/mstyle()/lstyle()/mlstyle() are not honoured, although dash already resolves every p# chain** -- same gap as B11; see there.
 
@@ -925,7 +925,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   3. Map bg/background and fg/foreground to the scheme's `color background`/`color foreground`.
   4. In `SchemeParser._color`, fall back to the included scheme's value, not #000000.
   5. Test each form in both modes against a fixture of Stata SVG fill values.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "A bare *# or %# colour, such as mcolor(*.5), is refused or loses the site's default colour, where twoway adjusts that default", commit f3a0403; with BUGS.md "Stata colour forms such as navy*.5, CMYK, HSV, bg and fg are refused, and an unknown colour is drawn in the scheme's default where twoway draws it black with a note", commit d680274; colour*#, CMYK, HSV, bg/fg (a, c, d, e; P1.13a); bare *# (b; P1.13b); plan step 4 (fall back to the scheme's value) not taken: twoway draws black (S30 D-30h); was: new.
 
 <a id="d8"></a>
 ### D8. Style lists (msymbol(O D), mcolor(red blue), lpattern(solid dash)) are not split across y variables
@@ -942,7 +942,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
      - extra elements are ignored.
   3. Keep a note only for an unknown element, naming it.
   4. Check with a cscript against twoway's SVG: `scatter mpg price weight, msymbol(O D) mcolor(red blue)`, `mcolor("255 0 0" =)`, `mcolor(red ..)`, and `line` with `lpattern(solid dash)`.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "Per-series value lists such as mlabel(make rep78), jitter(2 3), base(10 20) and barwidth(1 2) are refused r(198), where twoway applies them series by series", commit 8bd6b5a; with BUGS.md "A style list over several y variables, such as mcolor(red blue), is given whole to every series and refused, where twoway gives each series its own element", commit e8953d4; style options per series (a-e; P1.1a); value lists per series (P1.1b); was: new.
 
 <a id="d9"></a>
 ### D9. Tick-label angle() drops Stata's anglestyle names other than horizontal/vertical without a note
@@ -954,7 +954,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Name an unknown value in the note, as `mlabangle` does.
   3. Test every anglestyle name on the x/y labels and the second axes in both modes.
   4. Confirm with a cscript that twoway refuses wrongly cased names.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "The axis look sub-options nolabels, noticks, off, noline, line colour, width and pattern, alt, titlegap, labcolor, tlength and tposition are not honoured, and anglestyle names are dropped silently", commit ebde0e9; every anglestyle name drawn; angle(Vertical) refused as twoway does (a, b); was: new.
 
 <a id="d10"></a>
 ### D10. A user scheme's directives that dash does not read are ignored without a word
@@ -966,7 +966,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. For a non-shipped scheme, warn once, naming the unread twoway directives. Cap the list and show it as plain text, not SMCL.
   3. Consume the marker-label keys (`color label`, `gsize label`, `clockdir p#label`) in both modes.
   4. Test with Stata's own scheme files copied in as user schemes: the note must list exactly the unconsumed twoway keys. Test that s1rcolor's marker labels are white.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "Marker-label size and colour are fixed, the colour key has no scheme chrome, and unread user-scheme directives are ignored silently", commit c0518a7; marker-label size and colour from the scheme, colour-key chrome (a); unread directives kept in the parsed scheme, not noted (b; by disposition, ratification row 4); plan item 4 corrected by measurement: s1rcolor's marker labels are #ffff00 (p1); was: new.
 
 <a id="d11"></a>
 ### D11. Markers are drawn at 80% opacity where Stata draws them opaque, and intensity is treated as alpha
@@ -978,7 +978,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Implement intensity for fills (`intensity p#bar`, `fintensity()`, ci_area) as an opaque blend toward white, reusing `_blend_intensity` (:5747). Keep alpha for declared opacity.
   3. Assert rendered alpha and colour for p1-p3 of the four measured schemes in test_scheme_visual_truth.py.
   4. Check against Stata's SVG fill-opacity for scatter, bar and area under s2color, stcolor and economist.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "Markers are drawn at alpha 0.8, and fintensity() and the schemes' bar and area intensities are applied as transparency, where Stata blends them opaquely", commit 870e778; markers opaque and intensity an opaque blend (a, b); was: new.
 
 <a id="d12"></a>
 ### D12. Scheme axis/grid directives are not carried: y tick-label rotation, dashed grid lines, tick colours
@@ -1001,7 +1001,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
      Explicit `ylabel(,angle())` and grid options still win.
   4. Pin each scheme in test_scheme_rendered_output.py in both modes.
   5. Add label rotation, grid dasharray and tick colour to the Stata SVG measurement in test/fixtures/scheme_visual for all 20 schemes.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "The default chrome differs from every scheme: a bold left-aligned title, italic axis titles, Bokeh's minor ticks and tick geometry, and the schemes' tick angles, grid patterns, tick colours and economist axes missing", commit 6a777a3; scheme titles, ticks and grid (a-c); was: new.
 
 <a id="d14"></a>
 ### D14. Text and marker sizes are fixed at a 4-inch reference and do not scale with the figure; scale() is ignored
@@ -1039,7 +1039,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
      - `alt_yaxes yes` sets `y_axis_location` to 'right'.
   4. Set the legend `glyph_width`/`glyph_height` from `gsize legend_key_xsize/ysize`.
   5. Test the Bokeh models per scheme in both modes against Stata's SVG and economist.png, and restate dash.sthlp:2736-2740 and :2897-2899.
-- **Tracked:** minor ticks and tick geometry are documented in dash.sthlp:2736 and :2897-2899; the rest is new.
+- **Tracked:** Partly closed in WP-30 (P1.3a, commit bde085e; P1.2a, commit 6a777a3): tick geometry and economist's axis (c, d; P1.2a); minor ticks (a; P1.3a); open: xmtick() (D16-b; P2.2); legend key size (D16-e; P2.5); was: minor ticks and tick geometry are documented in dash.sthlp:2736 and :2897-2899; the rest is new.
 
 <a id="d17"></a>
 ### D17. Titles are bold and left-aligned, axis titles italic, and title/note positions ignore the scheme (also reported as B29)
@@ -1051,7 +1051,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. In `apply_to_figure`, set `title.align` from the justification, and `text_font_style` and `axis_label_text_font_style` to 'normal'. Place the subtitle, note and caption by the scheme's justification and clock position.
   3. Honour `just()` and `position()` on title, subtitle, note and caption.
   4. Pin each scheme in both modes, and measure title anchor and weight from Stata's SVG for s2color, stcolor and economist.
-- **Tracked:** new.
+- **Tracked:** Partly closed in WP-30 (P1.2a, commit 6a777a3): D17-a..d drawn (P1.2a); open: D17-e (P2.4); carries B29; was: new.
 
 <a id="d18"></a>
 ### D18. sttrans's %20 opacity reaches only some layer types
@@ -1063,7 +1063,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Keep the precedence of the user's %NN and `malpha()`.
   3. Extend test_scheme_resolution.py's sttrans rows to every plot type in both modes.
   4. Remove the 'not yet' sentence from dash.sthlp.
-- **Tracked:** BUGS.md:907 (the WP-17 follow-up: routing each layer through `default_alpha`).
+- **Tracked:** Closed in WP-30, BUGS.md "The scheme's opacity, histogram colour, intensity and width, and its hollow and sm symbols do not reach fits, spikes, ranges, immediates, histograms or rarea", commit 638970a; sttrans opacity on every layer (a-d); was: BUGS.md:907 (the WP-17 follow-up: routing each layer through `default_alpha`).
 
 <a id="d19"></a>
 ### D19. twoway histogram ignores the scheme's histogram style (fill, outline, intensity, width)
@@ -1075,7 +1075,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Have `map_histogram` use them in both modes, with explicit `fcolor()`/`lcolor()`/`color()` still winning.
   3. Pin them for each scheme.
   4. Measure a `twoway histogram mpg` SVG under s2color, stcolor, s1mono and economist into the scheme_visual fixture.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "The scheme's opacity, histogram colour, intensity and width, and its hollow and sm symbols do not reach fits, spikes, ranges, immediates, histograms or rarea", commit 638970a; histogram colour, intensity and line width from the scheme (a, b); was: new.
 
 ## E. Dashboard features and interactivity
 
@@ -1143,7 +1143,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
      - slider labels
   3. For %tw/%tm/%tq/%th/%ty filters, use a numeric slider over the Stata period number (step 1) with this formatter instead of DateRangeSlider. The served app shares the functions.
   4. Record Stata truth: `display %tm 480`, `display %tq 160`, `display %tdDD/NN/CCYY 15000`, a %tC value, `display %9.0fc 4099`, and the twoway axis labels of a %tm variable. Compare the Python and node output, and the widget, card, axis and tooltip text, in both modes.
-- **Tracked:** Closed in WP-28, BUGS.md "Dates and formatted numbers on date axes, filter widgets, KPI cards and tooltips ignore the variable's Stata display format", commit be6bee4; was: new (planned in REMAINING.md:1057, 1076, 2220 and phases/PHASE-12; not in BUGS.md or GAPS.md)
+- **Tracked:** Closed in WP-28, BUGS.md "Dates and formatted numbers on date axes, filter widgets, KPI cards and tooltips ignore the variable's Stata display format", commit be6bee4; WP-30 (P1.5, commit 34832ad): B8-b (an explicit format() on a date axis, %t pictures, numeric formats) closed (carries B8); was: new (planned in REMAINING.md:1057, 1076, 2220 and phases/PHASE-12; not in BUGS.md or GAPS.md)
 
 **E4. The saved page does not re-estimate computed layers after a filter move (fits stay fitted to all rows; histogram bins and kdensity grid are frozen)** -- same gap as C4; see there.
 
@@ -1218,7 +1218,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
      - The svg backend is set.
      - Export is gated by the dependency probe.
      - The PNG's pixel size equals width x scale, and the PDF has one page (under a 'browser' marker).
-- **Tracked:** documented at dash.sthlp:1082-1087; ROADMAP.md WP-21
+- **Tracked:** Partly closed in WP-30 (P1.28b, commit fd4fff0; P1.28a, commit eea99ce): Save as SVG on every toolbar (E10b; P1.28b); open: KPI cards and header in the image (E10a; P3.11); scripted export at a chosen size (E10c; the platform package); was: documented at dash.sthlp:1082-1087; ROADMAP.md WP-21
 
 <a id="e11"></a>
 ### E11. Saved-page callbacks fail silently
@@ -1327,7 +1327,7 @@ Served mode runs the registry as a live Bokeh Server app. There are two routes. 
 - **Gap:** AGENTS.md rules 3 and 18 and dash.sthlp:1440-1484 imply bounded resource use. `make_document` decodes the whole payload and builds a new DataFrame per session (dash_render.py:25846, `_load_spec_and_data()`). Probe at 200k x 3: a 17.8 MB app, 0.5-0.6 s and about 70 MB RSS per session (298 -> 380 -> 449 -> 519 MB). A live server showed about 130 MB and 1 s per session, and 1.15-1.53 s per dropdown move with the loop serving nothing else. The limiter bounds session creation (60 per client per minute), not open sessions. Bokeh discards only unconnected sessions (dash sets no `unused_session_lifetime`), so held websockets pile up without bound.
 - **Closable:** partly. Model changes must be applied on the document's single event loop, and GIL-bound Python recomputation cannot be parallelized. `num_procs>1` forks (no Windows support) and copies the data into every process.
 - **Plan:** 1. Decode the spec, frame and metadata once at import into a read-only module cache. 2. Add `--max-sessions N` (default about 20), counted in `make_document` and `on_session_destroyed`, with a "server busy" page past the cap, a per-client concurrent cap, and the option exposed on `dash serve`. 3. Set `unused_session_lifetime`/`check_unused_sessions` explicitly, and add a global recompute budget. 4. Optionally recompute in a `ThreadPoolExecutor` under `without_document_lock` and apply the result with `doc.add_next_tick_callback`. 5. Tests: N `pull_session`s grow RSS by much less than the data size per session, and the (N+1)th is refused. /health answers within 1 s during a 200k recompute.
-- **Tracked:** new (BUGS.md "lowess and fpfit cost more than they need to..." closed only estimator cost and the per-session throttle)
+- **Tracked:** Closed in WP-30, BUGS.md "One reader's filter-move recompute blocks the served event loop for every other reader", commit e371f8d; with BUGS.md "The served app has no session cap or idle lifetime and decodes the whole dataset again for every session", commit 842e1d9; carries I4; a shared read-only payload, a session cap and lifetimes (a-c; P1.31a); recomputes off the event loop (d; P1.31b); plan item 4's without_document_lock not used, on purpose (S57 E5); was: new (BUGS.md "lowess and fpfit cost more than they need to..." closed only estimator cost and the per-session throttle)
 
 <a id="f4"></a>
 ### F4. In the Stata GUI, Break cannot stop `dash serve` and Stata's interface is never polled while it blocks (also reported as H2)
@@ -1343,7 +1343,7 @@ Served mode runs the registry as a live Bokeh Server app. There are two routes. 
 - **Gap:** GAPS.md E2/E3/D6 (closed) and BUGS.md:1737-1741 require that ignored options and empty layers are reported. dash.sthlp:1403-1408 says the app reports `BOKEH_ALLOW_WS_ORIGIN` at start. The probe spec had `mcolor(notacolor)`, `msymbol(weird)`, `xlabel(0(1)10, nosuchsub)` and an empty `lfit`. On it, `DashRenderer.render()` gives 4 notes, but `ServerAppBuilder.build()` gives 0 (dash_render.py:24937-25015). The same 4 appear only per browser session inside the server. `dash serve` starts the child with inherited file descriptors (dash_render.py:27701), so the URL, limits, env warnings, refusals and tracebacks bypass Stata's Results window. Unflushed banner prints (27406-27411) were lost under a pipe plus SIGTERM.
 - **Closable:** yes.
 - **Plan:** 1. In `ServerAppBuilder.build`, run `make_document` once on a throwaway Document under `warnings.catch_warnings` and re-issue its notes in the building process. 2. Start the child with `stdout/stderr=PIPE`. A reader thread queues the lines, and the F4 poll loop prints them through `sys.stdout`. 3. Print the URL and /health URL from Stata once /health answers, and flush every banner print. 4. Tests: build-time warnings match `DashRenderer`'s across the `test_mode_parity` corpus. A cscript greps the `dash build, server` log (as HC5-08 does). A launcher test checks that a child line reaches `sys.stdout`.
-- **Tracked:** new (related: GAPS.md D6 closed only in-process; closed BUGS.md entry "dash build, server never named the by() sub-options it ignores" fixed only `by()`)
+- **Tracked:** Closed in WP-30, BUGS.md "dash build, server and dash serve report no option or empty-layer notes, and the served child's stderr never reaches Stata", commit 824e0be; served notes and the child's stderr reach Stata (a, b); c closed at c96facd (banner, server line, link path); was: new (related: GAPS.md D6 closed only in-process; closed BUGS.md entry "dash build, server never named the by() sub-options it ignores" fixed only `by()`)
 
 **F7. A served brush dims unselected points to Bokeh's 10% instead of dash's 15%**: same gap as E14; see there.
 
@@ -1419,7 +1419,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** dash.sthlp:135-142 promises twoway's syntax. twoway takes `varlist(numeric ts)` for yxview, zyx2view and the lfit/qfit/fpfit families (twoway_yxview_parse.class:120,123; twoway_lfit.sthlp:60), and `tsline` passes its varlist on to line. dash's varpart parsers (dash.ado:1273, 1298, 1329, 1358) declare `syntax varlist` without `ts`. So `dash line D.gdp year`, `dash tsline D.gdp` and `dash lfit y L.x` stop with r(101). This is `syntax`'s documented behaviour; it was not run in Stata.
 - **Closable:** yes.
 - **Plan:** 1. Declare `varlist(ts)` wherever twoway does, checking each parse class including mspline, mband and pc*. Keep histogram, kdensity, lowess and lpoly refusing. 2. Store each operator expression in the spec. At export, next to `_dash_qual_gen`, generate `double __dashts<k> = <expr>` under the current tsset/xtset, export it, drop it, and reserve the prefix. 3. In the renderer, map each column back to its expression for axis titles, tooltips and legend keys, using the text twoway shows (measure it). 4. cscript on sp500 (tsset) and grunfeld (xtset): L., F., D., S. and L2. across panel boundaries, plus `tsline D.x` and `lfit y L.x`, match twoway's serset/SVG, and `histogram D.x` stays r(101).
-- **Tracked:** new
+- **Tracked:** Closed in WP-30, BUGS.md "Time-series operators in plot varlists, such as line D.close date and lfit y L.x, are refused r(101)", commit acd868f; time-series operators in plot variables; the plan's claim that the fpfit family takes ts is wrong (S42 E2); was: new
 
 <a id="g5"></a>
 ### G5. Unicode variable names are refused by filter() and dash kpi
@@ -1454,7 +1454,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** twoway labels default ticks in the variable's format (auto's price, `%8.0gc`, gives 5,000 10,000 15,000), a picture dash.sthlp:2349 cites. `_dash_apply_axis_options` applies a format only `if raw:` (dash_render.py:16981-16990), that is, only when `xlabel()`/`ylabel()` is given. In the probe, `%9.0fc`, `%9.2f` and `%8.0gc` with no `ylabel()` all got BasicTickFormatter, and `%8.0gc` never gets a pattern. Related drift: dash.sthlp:2349's `yscale(log) ylabel(#5)` example gets LogTickFormatter, with no comma format.
 - **Closable:** yes.
 - **Plan:** 1. Call `_dash_apply_axis_spec` with a default spec when `numeric_formats` holds the axis variable. 2. Add `%gc` through G6's formatter. 3. Compare twoway's SVG tick text for auto's price, weight and gear_ratio, in both modes.
-- **Tracked:** new
+- **Tracked:** Closed in WP-30, BUGS.md "Default tick labels ignore the variable's display format, xlabel(, format(%td)) is ignored silently, and a numeric format() on a date axis writes epoch milliseconds", commit 34832ad; every numeric axis written in Stata's display format; formats twoway refuses refused; Gap anchors dash_render.py:16981-16990, dash.sthlp:2349 stale (23019, 2865 at c96facd); was: new
 
 **G11. Dates are shown in fixed Bokeh patterns, not Stata's date text or the variable's own picture** -- same gap as E3; see there.
 
@@ -1479,7 +1479,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
   - Nothing measures browser load at 1M, 5M or 20M values.
 - **Closable:** partly. Browser/V8 string and heap limits bound any page, and every scatter point must be embedded unless dash downsamples, which changes what is drawn.
 - **Plan:** 1. Send numeric columns as float64 numpy arrays (Bokeh's binary encoding), and adapt the saved filter JS to typed arrays. 2. Measure load time and JS heap at 1M, 5M and 20M values with test/responsive_probe.py, and set the ceiling where a page still opens. 3. Cut peak memory inside Stata's Python: build sources from numpy without `tolist()`, read the data file in binary, and free the pandas frame before serialising. Keep to `python:` blocks only; any child process is started from inside the `python:` block and tested under Stata's interpreter. 4. Check binary strL in one Mata pass, and have the served app decode the data once per process, not per session. 5. Test page bytes per value, peak RSS per value, and mode parity.
-- **Tracked:** new
+- **Tracked:** Partly closed in WP-30 (P1.31a, commit 842e1d9): G14-d (P1.31a); open: G14-a..c (P2.28); was: new
 
 **G15. Panel (xtset) line idioms connect(L) and sort(id t) are not honoured** -- same gap as B12; see there.
 
@@ -1531,7 +1531,7 @@ This area promises a one-command setup: `dash_setup` finds Stata's Python, insta
 - **Gap:** `dash.pkg:17`, `dash.sthlp:3133-3134` and `dash_setup.ado:145-150` declare Python>=3.8, bokeh>=3.0, numpy>=1.23 and pandas>=2.0. Only two stacks were ever run: py3.13/bokeh 3.8 and py3.14/bokeh 3.9 (`test/conftest.py:207-212`). Both need Python 3.10+, so no tested stack covers Python 3.8-3.10 or bokeh 3.0-3.7. The security guards depend on Bokeh internals: text-sink XSS safety is pinned to `VERIFIED_BOKEH={'3.8.0','3.9.0'}` inside a test only (`test/test_label_sinks.py:153`), and the origin check replaces `match_host` (`dash_render.py:2283-2301`). There is no run-time `bokeh.__version__` check, and pip gets `bokeh>=3.0` with no upper bound (`dash_setup.ado:163`). Bokeh 3.8 and 3.9 already differed on websocket-origin admission.
 - **Closable:** yes.
 - **Plan:** 1. Pick a supported window and state it: raise the minimums to what is tested (e.g. Python>=3.10, bokeh>=3.8,<3.10), or add a nox/CI matrix over the minimums. 2. At renderer start, warn with a `UserWarning` when `bokeh.__version__` is outside the verified range. 3. Pass the upper bound to pip in `dash_setup`, and have `_dash_setup_gate` report "unverified" outside the range. 4. Run `test_label_sinks`, `test_csp`, the origin-check tests and `test_mode_parity` on each supported bokeh. 5. Update `dash.pkg`, both help files and CHANGELOG, then run `make gate` against each supported environment.
-- **Tracked:** new.
+- **Tracked:** Closed in WP-30, BUGS.md "The bokeh dependency has no ceiling or run-time version check, and the Bokeh internals dash's security relies on are not checked", commit 61f5c21; with BUGS.md "The Python floor of 3.13 turns away 3.11 and 3.12 users, and dash_setup reports failure although dash may render", commit dcbca5d; carries I7; the measured Python floor (H4g; P1.33); the verified bokeh window, its run-time check and pip ceiling, internals failing closed (H4b-e; P1.30); dash_render.py's docstring 'Version: 1.0.0' stays P3.3's (REM-01-03-version); was: new.
 
 <a id="h6"></a>
 ### H6. dash starts without checking that Python can start or that its packages are installed
@@ -1539,7 +1539,7 @@ This area promises a one-command setup: `dash_setup` finds Stata's Python, insta
 - **Gap:** ROADMAP WP-07 BR-07.1 (`ROADMAP.md:703`) requires every dependency to be checked before use, with a message that names the fix. `_dash_python_ok` (`dash.ado:184-189`) checks only that `c(python_exec)` is non-empty. The renderer imports numpy, pandas and bokeh with no guard (`dash_render.py:73-107`), through uncaptured `python:` lines (`dash.ado:4196-4212`). Probe: under Python 3.8 without numpy you get `ModuleNotFoundError` and r(7102) with no mention of `dash_setup`. Python 3.6 gives a `SyntaxError`. `dash_setup`'s first Python call (`dash_setup.ado:76`) is uncaptured too, so setup stops before its summary.
 - **Closable:** yes.
 - **Plan:** 1. In `dash_render.py`, check `sys.version_info` first. Wrap the third-party imports in `try/except ImportError` and raise `SystemExit('dash: <pkg> is not installed for <sys.executable>; run dash_setup')`. 2. Add `_dash_require_deps` to `dash.ado`, run once per session and cached in a global on success. It sets a local from `importlib.util.find_spec` and `sys.version_info`. On failure it exits 198 through `_dash_say`, naming `c(python_exec)` and `dash_setup`. 3. Capture `dash_setup.ado:76`, retry it once, then report `c(python_exec)`, `c(machine_type)` and an architecture hint in `_dash_setup_summary`. 4. Tests: a pytest that runs the renderer under an interpreter without numpy and checks the message. A cscript that sets `sys.modules['bokeh']=None` and expects r(198) with the `dash_setup` remedy.
-- **Tracked:** new (GAPS J4/WP-07 closed only the no-Python case).
+- **Tracked:** Closed in WP-30, BUGS.md "A missing numpy, pandas or bokeh or an old Python fails with a bare ModuleNotFoundError or SyntaxError, and dash_setup's first Python call is uncaptured", commit 9dc17da; render-time dependency guards (research H6a-d); was: new (GAPS J4/WP-07 closed only the no-Python case).
 
 <a id="h7"></a>
 ### H7. dash_setup cannot install into PEP 668 'externally managed' Pythons, and the fixes it prints fail too
@@ -1686,7 +1686,7 @@ Outside the served app, a saved page silently carries the rows its `if`/`in` exc
   4. Tests (no Stata counterpart):
      - test_csp.py asserts that script-src contains no `'unsafe-inline'` and that every inline script's hash is listed
      - a headless-browser test that an injected `<img onerror>` is blocked. The suite has no headless-browser harness yet, so this adds a dependency.
-- **Tracked:** GAPS.md I3 (closed by WP-20 with `'unsafe-inline'` retained); BUGS.md:1337.
+- **Tracked:** Closed in WP-30, BUGS.md "Both content security policies allow inline scripts, and percent and exclamation signs in a saving path reach the Windows shell", commit 0e8fbaf; no 'unsafe-inline' in script-src: hashes on the saved page, a nonce on the served page (a-c); was: GAPS.md I3 (closed by WP-20 with `'unsafe-inline'` retained); BUGS.md:1337.
 
 <a id="i14"></a>
 ### I14. saving() character checks are both too strict for twoway parity and too loose for the Windows opener
@@ -1702,7 +1702,7 @@ Outside the served app, a saved page silently carries the rows its `if`/`in` exc
   4. Tests:
      - a cscript comparing dash's rc with twoway's rc for `saving("../x.gph")` and `saving("R&D.gph")` against their `.html` equivalents
      - `%` cases added to test_path_validation.cscript and to the SB-13..20 dry runs in test_serve_browser.cscript
-- **Tracked:** GAPS.md E7 (closed by WP-08; the over-refusal and the Windows `%` case remain).
+- **Tracked:** Closed in WP-30, BUGS.md "The drop-in command form fails: a twoway prefix is refused, saving(name, asis) writes a file named after the whole argument, dash build, saving(f, replace) is refused, and batch mode opens a browser", commit 6906236; with BUGS.md "Both content security policies allow inline scripts, and percent and exclamation signs in a saving path reach the Windows shell", commit 0e8fbaf; the .. and ; & | < > over-refusals removed (a, b; P1.27); the Windows % and ! opener (c, d; P1.29); was: GAPS.md E7 (closed by WP-08; the over-refusal and the Windows `%` case remain).
 
 ## J. Documentation, accessibility, browser and offline claims
 
@@ -1749,7 +1749,7 @@ This area covers the claims about where and how a dashboard can be opened (offli
   3. Make `dash` rclass, returning `r(filename)`. Document iframe embedding, and optionally add a frame-ancestors allow-list to the served launcher.
   4. Add a print stylesheet that expands every tab.
   5. Tests: a cscript that `dash ..., twoway` + `graph export x.svg` is byte-identical to `twoway <same>` + `graph export`, plus pytest for the SVG backend and `r(filename)`.
-- **Tracked:** new (GAPS.md H1, closed by WP-21, delivered only PNG and CSV)
+- **Tracked:** Partly closed in WP-30 (P1.28a, commit eea99ce): r(filename) and the stale-graph note (J7-c, J7-a's r(601) part); the SVG step answered by the toolbar action (J7-b, P1.28b); the companion not taken (M8); open: the iframe sentence (J7-d; P3.4); a print stylesheet (J7-e; P3.11); was: new (GAPS.md H1, closed by WP-21, delivered only PNG and CSV)
 
 <a id="j8"></a>
 ### J8. Package documentation for distribution is incomplete: no author, README, install command, licence or minimum Stata version, and 13 help sections missing from Jump To
@@ -1761,7 +1761,7 @@ This area covers the claims about where and how a dashboard can be opened (offli
   2. Add README.md (the install command with its `from()` URL, `dash_setup`, requirements, a quick example) and a LICENSE.
   3. Run the cert suite under Stata 16, 17 and 18, or raise `version` in dash.ado and dash_setup.ado to the oldest one tested. State the minimum in dash.sthlp's Dependencies and in dash.pkg.
   4. Add a viewerjumpto entry for every `{title:}`. Extend `test/test_help_claims_1.py` (:187) to assert that every title has a Jump To entry with an existing marker, and that the Author marker precedes a title naming an author.
-- **Tracked:** new
+- **Tracked:** Partly closed in WP-30 (P1.35, commit 1f05b63): version statements declare the measured floor (J8-e); open: author, README, licence and Jump To (P2.29, P3.3, P3.4); was: new
 
 <a id="j10"></a>
 ### J10. The examples leave out 10 of the 40 plot types, csv, weights and server mode, and feature_tour.do's header is stale
@@ -1805,7 +1805,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   3. Give `scripts/extract_*.do` the same root argument, and drop their StataJSON adopaths.
   4. Add a pytest guard that fails on any absolute `/Users/` path in test/*.do, *.cscript, scripts/*.do and scripts/*.sh.
   5. Copy the tree to a scratch directory, break its `dash.ado`, and run `make cert`: it must go red. A clean copy must go green.
-- **Tracked:** new
+- **Tracked:** Closed in WP-30, BUGS.md "The certification runners hard-code arch -arm64 and the maintainer's paths, so they run on no other machine", commit 44f8ab0; runners test their own tree; the arch prefix only where it applies (a, b); extractor paths and guard (c, d); was: new
 
 <a id="k2"></a>
 ### K2. The declared minimums (Python 3.8, bokeh 3.0) are false: every render needs Bokeh 3.6+, hence Python 3.10+, and the served app also crashes at import on 3.8/3.9 (also reported as H1, J3)
@@ -1823,7 +1823,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   3. Emit `from __future__ import annotations` as the first statement of the generated app. Add a pytest that ast-scans a generated app for annotations evaluated at import (`X | Y` or builtin generics).
   4. Check `_proc.returncode` in the launcher and raise a dash error naming the exit status. Add a pytest with an app that exits non-zero.
   5. Against Stata: `python set exec` a 3.10 venv at the floor, then run dash_setup, `dash scatter mpg weight, saving(a.html)` and `dash serve, timeout(1)`, and check /health. Downgrade to bokeh 3.5 and confirm dash_setup refuses it.
-- **Tracked:** Closed in WP-28, BUGS.md "The declared minimums (Python 3.8, bokeh 3.0) are false: every render needs bokeh 3.6+, and the served app crashes at import on 3.8/3.9", commit b6f274f; residual deferred (WP-28): no interpreter or bokeh below the floor is run by any test (DISCOVERY Q8: no venv matrix); was: new
+- **Tracked:** Closed in WP-28, BUGS.md "The declared minimums (Python 3.8, bokeh 3.0) are false: every render needs bokeh 3.6+, and the served app crashes at import on 3.8/3.9", commit b6f274f; residual deferred (WP-28): no interpreter or bokeh below the floor is run by any test (DISCOVERY Q8: no venv matrix); WP-30 (P1.30, commit 61f5c21; P1.33, commit dcbca5d): the residual 'no interpreter or bokeh below the floor is run' closed: the Python floor matrix (P1.33) and the bokeh run-time refusal tests (P1.30); was: new
 
 <a id="k3"></a>
 ### K3. 15 of 22 Stata truth fixtures cannot be regenerated from the repository
@@ -1838,7 +1838,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   2. Add a `make truth` target that regenerates all of them through the console binary into a scratch directory.
   3. Add a pytest guard that every fixture's metadata names a committed generator and contains no absolute paths.
   4. Regenerate under StataNow 19.5 and diff against the committed fixtures. Then run under Stata 18.0 and 17 to find the version-dependent truths.
-- **Tracked:** new
+- **Tracked:** Partly closed in WP-30 (P1.35, commit 1f05b63): the help states the tested platform (K3-d); open: the generator parts (P3.7); was: new
 
 <a id="k4"></a>
 ### K4. BOKEH_* environment variables change the output silently (rule 15)
@@ -1872,7 +1872,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   2. Add a nox/tox matrix (`make matrix`) over the floors (after K2: Python 3.10, bokeh 3.6, pandas 2.0, numpy 1.23) and the newest versions (bokeh 3.10, pandas 3.x, numpy 2.x). Raise the floors where they fail, and update `dash_setup.ado` and dash.pkg to match.
   3. Add requirements-dev.txt (pytest, pytest-xdist, packaging, scipy), and document node and Chrome in the Makefile help.
   4. Run `dash_setup` into fresh venvs at the floor and at the ceiling, `python set exec` each, and re-run `make gate` and `make cert`.
-- **Tracked:** new
+- **Tracked:** Partly closed in WP-30 (P1.30, commit 61f5c21): K5-a..c (P1.30); open: K5-d (P3.9); was: new
 
 <a id="k10"></a>
 ### K10. Renderer structure: 27.7k lines in one file, about 2.4k lines of code written as strings, parallel Python and JS logic, and no linting
@@ -1987,7 +1987,7 @@ This area collects gaps that no single feature area covered: dropdown filters, `
   2. Print each recorded `dash:` note through `sfi.SFIToolkit.displayln` as Stata text, de-duplicated as `_DASH_NOTED` does, falling back to stderr outside Stata. Re-emit other libraries' warnings unchanged.
   3. Add pytests that run `main()` after `filterwarnings('ignore')` and after `simplefilter('error')`. Each asserts the note text appears, rc is 0, and neither `UserWarning` nor `dash_render.py:` is printed.
   4. Write a cscript that sets `warnings.simplefilter("error")`, runs `dash scatter ..., mcolor(bogus)`, and asserts rc 0 and the note. Compare the wording with twoway's "named style ... not found" note.
-- **Tracked:** new
+- **Tracked:** Closed in WP-30, BUGS.md "Notes print as raw Python warnings with internal paths, a warnings filter of ignore hides them, and one of error turns a note into r(7102)", commit dd7c165; notes take twoway's channel (a-d); X4-d's evidence is 58-17's certification log (0 raw UserWarning lines; 87 in wp29-run_all_cscripts.log); was: new
 
 <a id="x5"></a>
 ### X5. Third-party and personal schemes are not found where Stata finds them, or under Stata's own file name `scheme-NAME.scheme`
@@ -2003,7 +2003,7 @@ This area collects gaps that no single feature area covered: dropdown filters, `
   2. Extend `_resolve_path`'s allowlist to the ado-path directories Stata reports, read-only, size-capped, with realpath checks and no symlink escape. Resolve `#include` by the same search.
   3. Apply the same lookup to an inherited `c(scheme)` and update dash.sthlp:2796-2832.
   4. Write a cscript that puts `scheme-dashtest.scheme` in PERSONAL with distinctive colours, runs `set scheme dashtest` and `twoway scatter`, and exports `.svg`. It asserts that dash's colours equal the SVG's for both `scheme(dashtest)` and the inherited scheme. pytest keeps the traversal, symlink and size guards.
-- **Tracked:** new
+- **Tracked:** Closed in WP-30, BUGS.md "scheme(NAME) is looked for in two places only, never along Stata's ado-path or under Stata's scheme-NAME.scheme file name, and its refusal does not list the valid names", commit 15c4f7b; with BUGS.md "Six StataCorp schemes, among them meta and stcolor_mv, are refused r(198) where twoway draws them", commit 438d27e; the six StataCorp schemes (c's six; P1.25a); scheme-NAME.scheme along the ado-path, inherited c(scheme), the error naming the set (a, c, d; P1.25b); PLUS by design (b; M7); was: new
 
 <a id="x7"></a>
 ### X7. dash puts unprefixed functions in the global Mata namespace and drops same-named functions of other packages, and leaves its state in the user's Python session

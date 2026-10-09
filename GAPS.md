@@ -1033,6 +1033,8 @@ caption's position. Not covered, and said so: `plotregion()`,
 `graphregion()`, `xlabel2()`/`ylabel2()`/`xscale2()`/`yscale2()`,
 `colorcuts()` and `tabs()` still drop their sub-options in silence.
 
+**Since WP-30 (P1.20a, commit 2207ddb; P1.20b, commit 6e2af0c).** `plotregion()` and `graphregion()` sub-options, Stata's abbreviations included, are drawn or named; none is dropped in silence. The plot-region margin and inner box are drawn (P1.20b).
+
 ### E4. `bw()` silently changes meaning — S2, CLOSED by WP-13
 
 `dash.ado:560` folds `bw` → `barwidth` unconditionally. Real Stata accepts
@@ -1245,6 +1247,8 @@ written, as `twoway`'s own `saving()` writes it.  One consequence belongs
 elsewhere: `_validate_output_path` requires `.py` in server mode, which the
 extension-less path `dash serve` passes never has -- see C1.
 
+**Since WP-30 (P1.29, commit 0e8fbaf; P1.27, commit 6906236).** The Windows `%` and `!` opener case is closed: a page path holding a cmd metacharacter is written but never passed to the shell (P1.29). The over-refusal of `..` and `; & | < >` is removed; `saving()` accepts them as twoway does and keeps the sink-tied checks (P1.27).
+
 ---
 
 ## F. `twoway` parity
@@ -1306,6 +1310,8 @@ triple), `addplot()`, `margin()`, `region()`, `bargap()`, `xreverse`
 `mlabvposition()`, `mlabtextstyle()`, `ddensity`, and `sort(varname)` — dash
 declares `SORT` as a flag, so the twoway `sort(x)` form is *unknown* rather
 than merely ignored.
+
+**Since WP-30 (P1.24, commit 390d964).** `mlabvposition()` and `mlabtextstyle()` are drawn in both modes, finishing WP-22's partial fix for the marker-label options; with E1, they are no longer accepted and inert.
 
 ### F4. Documented capabilities that do not work as described — S2, CLOSED by WP-23; bare-name row CLOSED by WP-17
 
@@ -1945,6 +1951,8 @@ function.  Tests: `test_csp.py`, `test_label_sinks.py`,
 `test_security_surface.py`, `test_adversarial_matrix.py`,
 `test_setup_injection.cscript`, `test_echo_text.cscript`,
 `test_adversarial.cscript` P20.
+
+**Since WP-30 (P1.29, commit 0e8fbaf).** script-src `'unsafe-inline'` is removed: hashes on the saved page, a per-page nonce on the served page, and a Chrome test of both modes. The `'unsafe-inline'` retained above no longer holds for scripts.
 
 ---
 
