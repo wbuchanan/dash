@@ -587,15 +587,17 @@ def _digest(model):
 # and each panel names its inner box; the finish code pads per side.
 # Re-derived for WP-30 P1.21b: the finish code carries dash_refline_extent
 # (the filter callback's text only; a plain figure draws no Arrow).
+# Re-derived on the merged batch-18 tree: P1.18b's axis plan key (xnr)
+# and finish code.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "a2150c7d60f43522adf5954c4aa071243e1bee48d46c5bffa1f098fcd0b4a6ee",
+        "3221d260c5e5e37d62df7e437bf93dfa3a7301fe99e9d885d436fbbf5b9d20f3",
     ("saved", "yaxis2"):
-        "a2150c7d60f43522adf5954c4aa071243e1bee48d46c5bffa1f098fcd0b4a6ee",
+        "3221d260c5e5e37d62df7e437bf93dfa3a7301fe99e9d885d436fbbf5b9d20f3",
     ("served", "plain"):
-        "d4c37df060748a86bb78f4e234bf2829657677840f5783819938b06f1088b53b",
+        "436cf84b5b6528719de2566e2dd60743059bdb83466635e2943303029f1cf254",
     ("served", "yaxis2"):
-        "d4c37df060748a86bb78f4e234bf2829657677840f5783819938b06f1088b53b",
+        "436cf84b5b6528719de2566e2dd60743059bdb83466635e2943303029f1cf254",
 }
 
 
