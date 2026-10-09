@@ -8,7 +8,8 @@ at 1400 px the right panel's y axis is hidden and the axis titles are in
 their cells; when the grid narrows to one column (the page body is set to
 375 px and a resize is dispatched) every panel's axes and titles show and
 the cells hide; widened again, twoway's layout returns -- with no CSP
-violation.  The label box: each panel's ``dash_by_label_box`` spans its
+violation.  Each width change lays the grid out at once and waits for the
+hook to flip the title cells, since virtual time renders no frames.  The label box: each panel's ``dash_by_label_box`` spans its
 frame and ends on its top edge, drawn in the scheme's fill (s2color), and
 under s1color its outline is black.  The save button writes one file.
 Without Chrome these tests skip, as test_by_scales_chrome.py's do.
@@ -47,20 +48,31 @@ function state() {
           titled: ax.filter(a => a.visible && a.axis_label).length,
           cells: cells.map(c => c.visible)};
 }
-// Each step waits for the layout to settle: up to 2.5 s for the axes'
-// state to change, polled every 250 ms.
+// A new body width: BokehJS lays the roots out from a ResizeObserver,
+// which fires only when a frame renders -- and Chrome's virtual time runs
+// timers without rendering frames.  after_resize() is that observer's
+// handler, so calling it lays the grid out at once; the resize event is
+// the one the stacking hook listens for.
+function width(w) {
+  document.body.style.width = w;
+  for (const v of Object.values(Bokeh.index)) v.after_resize();
+  dispatchEvent(new Event('resize'));
+}
+// Each step waits for the stacking hook to act -- the title cells, which
+// only the hook shows and hides, flip -- polled every 250 ms for up to
+// 2.5 s.
 function settle(from, then, left) {
   const now = state();
-  if (now.vis !== from.vis || left <= 0) { then(now); return; }
+  if (now.cells.join() !== from.cells.join() || left <= 0) {
+    then(now); return;
+  }
   setTimeout(() => settle(from, then, left - 250), 250);
 }
 addEventListener('load', () => setTimeout(() => {
   const wide = state();
-  document.body.style.width = '375px';
-  dispatchEvent(new Event('resize'));
+  width('375px');
   settle(wide, (narrow) => {
-    document.body.style.width = '';
-    dispatchEvent(new Event('resize'));
+    width('');
     settle(narrow, (again) => {
       parent.postMessage('DASHPROBE' + JSON.stringify(
         {W: innerWidth, wide, narrow, again, V}), '*');
