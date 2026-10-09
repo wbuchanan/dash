@@ -514,12 +514,14 @@ class TestTheSavedPageIsUnchanged:
             warnings.simplefilter("ignore")
             r = dr.DashRenderer(sp, dp, str(tmp_path / "o.html"))
             render_models(r)
-        # Taken at af9676f (ids stripped, gzipped buffers decompressed).
+        # Taken at af9676f (ids stripped, gzipped buffers decompressed);
+        # re-derived at 3d28881, whose %tw week-start tick port changes only
+        # the page's two date-tick CustomJS code strings.
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "df15a153c0355225f2fcb7abeac49727d2f87e16dc160c51be723476837a65f6")
+    "7e7425124a2a782ca8ff4bdd9084db1dd1305c34ee5da360b0bc9a2ce27a81c5")
 
 
 # ===========================================================================
