@@ -114,7 +114,7 @@ local w30_secs ///
     S01 1 S04 4 S06 4 S07 19 S08 11 S09 1 S10 10 S11 24 S12 2 S13 15 ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
-    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
+    S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 7 ///
     S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3 S56 3 S57 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
@@ -5463,6 +5463,9 @@ def _s21_axes(fig):
     for k in ("xsize", "ysize"):
         if _s21_M.getGlobal("S21_" + k.upper()):
             go[k] = _s21_M.getGlobal("S21_" + k.upper())
+    # WP-30 P1.20b: S21_PLOTREGION, a case's plotregion() options (RM-24).
+    if _s21_M.getGlobal("S21_PLOTREGION"):
+        go["plotregion"] = _s21_M.getGlobal("S21_PLOTREGION")
     g = int(_s21_M.getGlobal("S21_G") or "1")
     m = dr._dash_plot_margin(sch, go, panels=g)
     out = {}
@@ -10555,6 +10558,15 @@ program define _s47_check
     global S47_HTML `"`html'"'
     python: __import__("sys").modules["_dash_s47"].check()
 end
+// _s47_after probe -- RM-24's check of the case _s21_case just built
+// (S21_PAGE, S21_APP, S21_MOVE, twoway's S21_TW_x/y): see _s47_after().
+capture program drop _s47_after
+program define _s47_after
+    version 19
+    args probe
+    global S47_PROBE `"`probe'"'
+    python: __import__("sys").modules["_dash_s47"].after()
+end
 python:
 def _s47_check():
     import json, math, os, re
@@ -10625,9 +10637,59 @@ def _s47_check():
     Macro.setGlobal("S47_OK", "0" if bad else "1")
     Macro.setGlobal("S47_MSG", "; ".join(bad)[:400] or "ok")
 # A Stata program's python: line sees only modules, not these names.
+def _s47_after():
+    """RM-24: S47_PROBE's page (S21_PAGE) and app (S21_APP) after the
+    filter move S21_MOVE, against twoway's if graph (S21_TW_x, S21_TW_y):
+    each side's margin_rel as the fixture's within 0.0005, and the inner
+    box, if any, at twoway's scale ends (0.2% of the span)."""
+    import __main__ as mn
+    import json, os
+    from bokeh.models import BoxAnnotation
+    from sfi import Macro
+    probe = Macro.getGlobal("S47_PROBE")
+    fx = os.path.join(Macro.getGlobal("S47_REPO"), "test", "fixtures",
+                      "margin_truth.json")
+    with open(fx, encoding="utf-8") as fh:
+        row = json.load(fh)["probes"][probe]
+    bad = []
+    for mode, reader, path in (("saved", mn._s21_doc_of_page, Macro.getGlobal("S21_PAGE")),
+                               ("served", mn._s21_doc_of_app, Macro.getGlobal("S21_APP"))):
+        doc = reader(path)
+        if doc is None or not mn._s21_move(doc, mode):
+            bad.append("%s: no document or the move did not fire" % mode)
+            continue
+        fig = mn._s21_figs(doc)[0]
+        cur = {}
+        for letter, ext in (("x", 5.5), ("y", 4.0)):
+            tw = [mn._s21_num(v) for v in Macro.getGlobal("S21_TW_" + letter).split()]
+            lo, hi = cur[letter] = (tw[3], tw[4])
+            r = getattr(fig, letter + "_range")
+            s, e = float(r.start), float(r.end)
+            span = abs(e - s)
+            got = [(lo - s) / span * ext / 4.0, (e - hi) / span * ext / 4.0]
+            want = row[letter]["margin_rel"]
+            if abs(got[0] - want["lo"]) > 5e-4 or abs(got[1] - want["hi"]) > 5e-4:
+                bad.append("%s %s %s %.4f/%.4f twoway %.4f/%.4f" % (
+                    mode, probe, letter, got[0], got[1], want["lo"], want["hi"]))
+        if row.get("inner") is None:
+            continue
+        boxes = [m for m in doc.select(dict(type=BoxAnnotation))
+                 if "dash_inner_box" in (m.tags or [])]
+        if len(boxes) != 1:
+            bad.append("%s %s boxes %d" % (mode, probe, len(boxes)))
+            continue
+        b = boxes[0]
+        for k, letter, i in (("left", "x", 0), ("right", "x", 1),
+                             ("bottom", "y", 0), ("top", "y", 1)):
+            lo, hi = cur[letter]
+            if abs(float(getattr(b, k)) - cur[letter][i]) > 0.002 * (hi - lo):
+                bad.append("%s %s %s %r twoway %r" % (mode, probe, k, getattr(b, k), cur[letter][i]))
+    Macro.setGlobal("S47_OK", "0" if bad else "1")
+    Macro.setGlobal("S47_MSG", "; ".join(bad)[:400].replace('"', "'") or "ok")
 import sys as _s47_sys
 _s47_sys.modules["_dash_s47"] = type(_s47_sys)("_dash_s47")
 _s47_sys.modules["_dash_s47"].check = _s47_check
+_s47_sys.modules["_dash_s47"].after = _s47_after
 end
 
 * ==== S47 P1.20b: Plot-region margin and inner box ====
@@ -10676,6 +10738,30 @@ if inlist("`only'", "", "S47") & `: list posof "S47" in w30_run' {
     local nn = r(n)
     _w30_expect RM-25 "(`drc' == 0 & `nn' == 1)" "rc `drc', notes `nn'"
     _w30_done RM-25 "plotregion(margin(bogus)) prints twoway's note once"
+    // RM-24: after a served move and a saved (node) move, the margins
+    // and the inner box follow the kept rows as twoway's if graph draws them.
+    global S21_WORK "`w30_work'/s47m"
+    capture mkdir "${S21_WORK}"
+    global S21_SEQ 0
+    foreach row in "L10|margin(l+10)" "I1|ifcolor(red)" {
+        gettoken pid opt : row, parse("|")
+        local opt = substr(`"`opt'"', 2, .)
+        global S21_PLOTREGION "`opt'"
+        global S21_TWIF "scatter mpg weight if price <= 7075.5, plotregion(`opt')"
+        _s21_case RM-24 auto "s2color" "scatter mpg weight, plotregion(`opt')" "range 3291 7075.5"
+        global S47_OK 0
+        capture _s47_after "`pid'"
+        local prc = _rc
+        _w30_expect RM-24 "(`prc' == 0 & ${S47_OK} == 1)" "`pid': rc `prc', ${S47_MSG}"
+    }
+    _w30_done RM-24 "L10 and I1: margins and the inner box after a served and a saved move are twoway's if graph's"
+    forvalues i = 1/$S21_SEQ {
+        capture erase "${S21_WORK}/ns`i'.html"
+        capture erase "${S21_WORK}/ns`i'_app.py"
+    }
+    capture rmdir "${S21_WORK}"
+    global S21_PLOTREGION ""
+    global S21_TWIF ""
     capture dash clear
     capture erase "`s47log'"
     capture erase "`s47pg'"
