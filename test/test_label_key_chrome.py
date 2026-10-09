@@ -55,6 +55,10 @@ USER = {"w33a": W33A, "w33b": W33B, "w33c": W33C, "w33d": W33D,
 _LABELLED = {"mlabel": "mpg"}
 
 
+# Headless Chrome: the release tier (WP-30 D), never the batch gate.
+pytestmark = pytest.mark.release
+
+
 def _s33():
     with open(FIXTURE, encoding="utf-8") as fh:
         return json.load(fh)

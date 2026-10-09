@@ -28,6 +28,7 @@ from bokeh.plotting import figure
 # Helpers
 # ================================================================
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
 
 

@@ -50,6 +50,10 @@ _FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures",
                         "chrome_truth.json")
 
 
+# Headless Chrome: the release tier (WP-30 D), never the batch gate.
+pytestmark = pytest.mark.release
+
+
 def _spec(scheme, graph_opts=None, plots=None):
     """A one-graph spec of the parity corpus's auto-like frame, a scatter
     layer unless *plots* says otherwise."""

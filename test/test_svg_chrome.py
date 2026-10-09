@@ -9,6 +9,8 @@ import os
 import sys
 import time
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 import svg_chrome as sc  # noqa: E402
@@ -17,6 +19,10 @@ _HEAD = '<svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">\n'
 # The region: 100..900 x 100..700 once grown by half the stroke (W=4).
 _SENT = ('<rect x="102" y="102" width="796" height="596" '
          'style="fill:none;stroke:#010203;stroke-width:4"/>\n')
+
+
+# Headless Chrome: the release tier (WP-30 D), never the batch gate.
+pytestmark = pytest.mark.release
 
 
 def _svg(tmp_path, body, name="g.svg"):

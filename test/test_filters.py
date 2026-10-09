@@ -27,6 +27,7 @@ from bokeh.models import ColumnDataSource, Select, Slider, RangeSlider
 # Fixtures
 # ================================================================
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conftest import render_models  # noqa: E402
 
 
@@ -404,7 +405,9 @@ class TestFilterSecurity:
         import dash_render as _dr
         assert sorted({m["attributes"]["code"]
                        for m in _named(models, "CustomJS")}) == sorted(
-            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS})
+            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
+             # WP-30 P1.28b: the Save as SVG action, fixed code too.
+             _dr._DASH_SVG_SAVE_JS})
         assert [m["attributes"]["title"]
                 for m in _named(models, "Select")] == [malicious_varname]
 
@@ -459,7 +462,9 @@ class TestFilterSecurity:
         import dash_render as _dr
         assert sorted({m["attributes"]["code"]
                        for m in _named(models, "CustomJS")}) == sorted(
-            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS})
+            {_FILTER_JS, _dr._DASH_AXIS_FINISH_JS + _dr._DASH_AXIS_ZOOM_JS,
+             # WP-30 P1.28b: the Save as SVG action, fixed code too.
+             _dr._DASH_SVG_SAVE_JS})
         assert [m["attributes"]["options"]
                 for m in _named(models, "Select")] == [[
                     ["__all__", "All"],

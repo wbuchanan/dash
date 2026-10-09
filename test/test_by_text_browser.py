@@ -50,6 +50,10 @@ _SPEC = bt._spec({"title": '"T"',
                   "by": 'foreign rep78, total title("X") note("N")'})
 
 
+# Headless Chrome: the release tier (WP-30 D), never the batch gate.
+pytestmark = pytest.mark.release
+
+
 def _page(mode):
     if mode == "saved":
         _tag, sp, dp = bt._write(_SPEC)

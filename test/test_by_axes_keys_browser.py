@@ -111,6 +111,10 @@ addEventListener('load', () => setTimeout(() => {
 """
 
 
+# Headless Chrome: the release tier (WP-30 D), never the batch gate.
+pytestmark = pytest.mark.release
+
+
 def _page(mode, spec):
     if mode == "saved":
         tag = next(bk._SEQ)
