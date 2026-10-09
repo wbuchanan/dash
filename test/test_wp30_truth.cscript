@@ -115,7 +115,7 @@ local w30_secs ///
     S14 13 S15 11 S16 14 S17 4 S18 7 S19 21 S20 15 S21 57 S22 2 S23 11 ///
     S24 17 S26 4 S27 12 S28 6 S29 1 S30 22 S31 7 S32 9 S33 5 S34 7 ///
     S35 14 S36 6 S37 6 S38 3 S39 3 S40 16 S41 4 S42 3 S43 7 S44 11 S45 3 S47 4 ///
-    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3 S56 3
+    S48 11 S49 4 S50 5 S51 4 S52 3 S53 7 S54 3 S55 3 S56 3 S57 3
 local w30_sh : environment DASH_CERT_SHARD
 mata: st_local("w30_ok", strofreal(st_local("w30_sh") == "" | ustrregexm(st_local("w30_sh"), "^[1-4]/[1-4]$")))
 if !`w30_ok' {
@@ -12165,10 +12165,101 @@ if inlist("`only'", "", "S56") & `: list posof "S56" in w30_run' {
 }
 * ==== end S56 ====
 
+python:
+def _wk_threads():
+    import threading
+    from sfi import Macro
+    Macro.setGlobal("S57_THREADS", str(threading.active_count()))
+    Macro.setGlobal("S57_WORKER", str(sum(
+        t.name == "dash-recompute" for t in threading.enumerate())))
+def _wk_app_lowess():
+    # The served app built in process (no server session: the inline
+    # path), its dropdown moved to 0, and the redrawn lowess compared
+    # with Stata's over the same x.
+    import warnings
+    from sfi import Data, Macro
+    from bokeh.document import Document
+    from bokeh.models import ColumnDataSource, Select
+    with open(Macro.getGlobal("S57_APP"), encoding="utf-8") as fh:
+        src = fh.read()
+    src = src.replace("if __name__ != '__main__':\n    make_document(curdoc())",
+                      "if False:\n    pass")
+    ns = {"__name__": "_wk_app_s57"}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src, "wk_app.py", "exec"), ns)
+        doc = Document()
+        ns["make_document"](doc)
+        sel = next(iter(doc.select({"type": Select})))
+        val = None
+        for o in sel.options:
+            v, lab = (o if isinstance(o, (tuple, list)) else (o, o))[:2]
+            if str(lab).strip() in ("0", "0.0") or str(v).strip() in ("0", "0.0"):
+                val = v
+        sel.value = val
+    fit = {}
+    for s in doc.select({"type": ColumnDataSource}):
+        if "y_lw" in s.data:
+            for x, y in zip(s.data["x_lw"], s.data["y_lw"]):
+                fit[round(float(x), 9)] = float(y)
+    xs, ss, gs = (Data.get(v) for v in ("x", "wk_s", "g"))
+    worst, n = 0.0, 0
+    for x, s_, g in zip(xs, ss, gs):
+        if g == 0:
+            n += 1
+            y = fit.get(round(float(x), 9))
+            worst = max(worst, float("inf") if y is None else abs(y - s_))
+    Macro.setGlobal("S57_N", str(n))
+    Macro.setGlobal("S57_FITN", str(len(fit)))
+    Macro.setGlobal("S57_DIFF", "%.3g" % worst)
+import sys as _s57_sys
+_s57_sys.modules["_dash_s57"] = type(_s57_sys)("_dash_s57")
+_s57_sys.modules["_dash_s57"].app = _wk_app_lowess
+_s57_sys.modules["_dash_s57"].threads = _wk_threads
+end
+capture program drop _s57_app
+program define _s57_app
+    version 19
+    python: __import__("sys").modules["_dash_s57"].app()
+end
 * ==== S57 P1.31b: Served recompute off the event loop ====
 local only : env WP30_ONLY
 if inlist("`only'", "", "S57") & `: list posof "S57" in w30_run' {
     display as text "S57 start " c(current_date) " " c(current_time)
+    // WK-01: a served move recomputes twoway's lowess.  The app the build
+    // writes, built in process (the inline path), its dropdown moved to
+    // g == 0: the redrawn lowess equals Stata's lowess y x if g == 0.
+    python: __import__("sys").modules["_dash_s57"].threads()
+    local wk_threads0 "${S57_THREADS}"
+    clear
+    quietly set obs 2000
+    set seed 57
+    quietly generate double x = runiform()
+    quietly generate double y = sin(4*x) + rnormal()/4
+    quietly generate byte g = mod(_n, 2)
+    quietly lowess y x if g == 0, generate(wk_s) nograph
+    global S57_APP "`w30_work'/wk01_app.py"
+    capture erase "${S57_APP}"
+    capture noisily {
+        dash clear
+        dash (scatter y x) (lowess y x), name(wk01)
+        dash build, saving("${S57_APP}") server replace filter(g, type(dropdown))
+    }
+    local brc = _rc
+    capture _s57_app
+    local prc = _rc
+    local ok = (`brc' == 0 & `prc' == 0)
+    if `ok' local ok = ("${S57_N}" == "1000" & "${S57_FITN}" == "1000" & real("${S57_DIFF}") < 1e-6)
+    _w30_expect WK-01 "`ok'" "rc `brc'/`prc', `=0${S57_N}' rows, `=0${S57_FITN}' fitted, largest difference ${S57_DIFF}"
+    _w30_done WK-01 "a filter move redraws twoway's lowess"
+    // WK-02: nothing on that path starts a thread in Stata's process.
+    python: __import__("sys").modules["_dash_s57"].threads()
+    local ok = ("${S57_WORKER}" == "0" & "${S57_THREADS}" == "`wk_threads0'")
+    _w30_expect WK-02 "`ok'" "${S57_WORKER} recompute threads, `wk_threads0' -> ${S57_THREADS} threads"
+    _w30_done WK-02 "Stata's process starts no recompute thread"
+    capture dash clear
+    capture erase "${S57_APP}"
+    macro drop S57_*
     display as text "S57 end " c(current_date) " " c(current_time)
 }
 * ==== end S57 ====

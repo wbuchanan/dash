@@ -2261,8 +2261,14 @@ In each browser session, each filter widget and each brushed data source
 then recomputes at most 10 times in a burst and twice a second after that;
 changes that arrive faster are folded into one recomputation with the
 latest values.  A script that moves a widget in a loop is therefore held to
-that rate, and the server -- one process, one event loop -- runs one
-recomputation at a time for every session together.
+that rate.  Recomputations run on one worker thread per server process,
+one at a time and in the order sessions asked; meanwhile the page shows
+"Updating..." and keeps its drawing, and other sessions and {cmd:/health}
+keep answering.  A newer move replaces a session's waiting one, and a
+result a newer move overtook is discarded.  The longest wait is about the
+session limit times one recomputation: about 3 minutes with 20 sessions
+for {cmd:lowess} at 100,000 observations.  Opening a session still pauses
+the server while its page is built.
 
 {pstd}
 {ul:What still differs.}  The two pages are laid out alike: both declare a

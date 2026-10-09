@@ -1627,8 +1627,9 @@ class TestUnderBokehServe:
 
 
 class TestOneRecomputationAtATime:
-    """The launcher's server is one process with one event loop, so the
-    recomputations of every session run one at a time."""
+    """The launcher's server is one process with one recompute worker, so
+    the recomputations of every session run one at a time, off the event
+    loop."""
 
     def test_the_launcher_asks_for_one_process(self, tmp_path, truth):
         from test_adversarial_matrix import _app_source

@@ -1548,7 +1548,6 @@ class TestWp29Tracking:
 #: on a key whose entry is missing, closed or not in the WP-30 open form, so
 #: the allowance cannot outlive its reason.  The closeout (S58.1) leaves it {}.
 WP30_OPEN = {
-    "P1.31b": "One reader's filter-move recompute blocks the served event loop for every other reader",
 }
 
 #: Every WP-30 entry, permanently, and the CHANGELOG.md lists of the current
