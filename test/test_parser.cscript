@@ -548,14 +548,12 @@ display "P1A-57 PASS: pccapsym and pcarrowi expand by their full names only, as 
 mata:
 bs = char(92)
 q  = char(34)
-// _dash_undrawn_plottype: the five names, any case, and nothing else.
+// _dash_undrawn_plottype: the four names, any case, and nothing else.
 assert(_dash_undrawn_plottype("contour") == "contour")
 assert(_dash_undrawn_plottype(" CONTOURLINE ") == "contourline")
-assert(_dash_undrawn_plottype("heatmap") == "heatmap")
 assert(_dash_undrawn_plottype("RPCAP") == "rpcap")
 assert(_dash_undrawn_plottype("rpspike") == "rpspike")
 assert(_dash_undrawn_plottype("contourl") == "")
-assert(_dash_undrawn_plottype("heatma") == "")
 assert(_dash_undrawn_plottype("rpca") == "")
 assert(_dash_undrawn_plottype("scatter") == "")
 assert(_dash_undrawn_plottype("") == "")
@@ -597,20 +595,15 @@ end
 display "P1A-58 PASS: the Mata helpers read, escape and number immediate values as twoway does"
 
 // ================================================================
-// P1A-59 -- heatmap, rpcap and rpspike: twoway plot types in StataNow 19.5
-// that dash does not draw, refused by name with what to use instead
+// P1A-59 -- rpcap and rpspike: twoway plot types in StataNow 19.5 that
+// dash does not draw, refused by name with what to use instead
 // ================================================================
-// Measured 23sep2026: twoway heatmap z y x and twoway rpcap / rpspike
-// y ylow yhigh x run (rc 0) and take no abbreviation -- heat .. heatma,
-// rpc .. rpca and rpsp .. rpspik are not twoway plot types -- and dash
-// answered each as an unrecognised plot type (BR-22.1).
+// Measured 23sep2026: twoway rpcap / rpspike y ylow yhigh x run (rc 0)
+// and take no abbreviation -- rpc .. rpca and rpsp .. rpspik are not
+// twoway plot types -- and dash answered each as an unrecognised plot
+// type (BR-22.1).
 sysuse auto, clear
 dash clear
-_p1a_logrun "dash heatmap price mpg weight, name(p1a59a)"
-assert r(rc) == 198
-local lg59a "`r(log)'"
-cert_file_has "`lg59a'", needle("dash: 'heatmap' is a twoway plot type dash does not draw: it colours the cells of a grid by z. Use Stata's own twoway heatmap, or dash scatter y x, colorvar(z) to colour each point by z.")
-assert r(found) == 1
 foreach p159 in rpcap rpspike {
     local p159r = cond("`p159'" == "rpcap", "rcap", "rspike")
     _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59b)"
@@ -619,7 +612,7 @@ foreach p159 in rpcap rpspike {
     cert_file_has "`lg59b'", needle("dash: '`p159'' is a twoway plot type dash does not draw: it marks a point on a range. Use Stata's own twoway `p159', or draw the two together: dash (`p159r' ylow yhigh x) (scatter y x).")
     assert r(found) == 1
 }
-foreach p159 in heatma rpca rpspik {
+foreach p159 in rpca rpspik {
     _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59c)"
     assert r(rc) == 198
     local lg59c "`r(log)'"
@@ -627,7 +620,7 @@ foreach p159 in heatma rpca rpspik {
     assert r(found) == 1
 }
 assert "${dash_graph_registry}" == ""
-display "P1A-59 PASS: heatmap, rpcap and rpspike are refused, r(198), as twoway plot types dash does not draw; their prefixes stay unrecognised"
+display "P1A-59 PASS: rpcap and rpspike are refused, r(198), as twoway plot types dash does not draw; their prefixes stay unrecognised"
 
 // ================================================================
 // P1A-60..67 -- scatteri and pci read their immediate values as twoway

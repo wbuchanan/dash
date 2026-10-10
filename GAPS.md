@@ -1255,7 +1255,7 @@ extension-less path `dash serve` passes never has -- see C1.
 
 ### F1. Four real `twoway` plot types are rejected outright — S2, MEASURED, CLOSED by WP-22
 **Closed by WP-22.**  `pcarrowi` and `pccapsym` are drawn in both modes.
-`contour` and `contourline` -- and `heatmap`, `rpcap` and `rpspike`, which
+`contour` and `contourline` -- and `rpcap` and `rpspike`, which
 StataNow 19.5 added -- are refused by name, r(198), each with what to use
 instead, and the help's Plot types section names them.  Tests:
 `test_pccapsym_pcarrowi.py`, `test_help_plot_types.py`,

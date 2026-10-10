@@ -111,7 +111,7 @@
 *!
 *!   _dash_undrawn_plottype(name)
 *!       name, lower case, when it is a twoway plot type dash refuses by
-*!       name -- contour, contourline, heatmap, rpcap, rpspike -- else "".
+*!       name -- contour, contourline, rpcap, rpspike -- else "".
 *!
 *!   _dash_kernel_full(word)
 *!       The full kernel name, lower case, for a word twoway's kernel()
@@ -1764,7 +1764,7 @@ string scalar _expand_plottype_str(string scalar name) {
     // TR-26.6, measured 24sep2026 at 480159f): each of the 186 prefixes of
     // the 40 names reached at most one row.  Nor has twoway an ambiguous
     // plot type to refuse.  Of the 209 prefixes of the 45 plot-type names
-    // probed (these 40 and the five dash refuses by name) it took each as
+    // probed (these 40 and the four dash refuses by name) it took each as
     // the one type whose minimum it reaches, or refused it, "s is not a
     // twoway plot type", r(198) -- s, r, pc, rc and every other prefix of
     // two names that reaches neither minimum among them -- which is what
@@ -1791,20 +1791,19 @@ void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
 // contour and contourline are twoway plot types (graph_twoway.sthlp) that
 // draw a surface interpolated over a grid of z values -- a data model no
 // dash plot has (twoway builds them on zyx2view_g, measured from the .gph).
-// heatmap (z y x, a grid of rectangles coloured by z), rpcap and rpspike
-// (y ylow yhigh x, a range drawn with a point on it) are twoway plot types
-// in StataNow 19.5 that dash does not draw either.  dash.ado refuses each
-// by name, with what to use instead, rather than as an unrecognised plot
-// type (WP-22 TR-22.1, BR-22.1).  twoway takes no abbreviation of any of
-// them -- measured 23sep2026: cont .. contou, contourl .. contourlin,
-// heat .. heatma, rpc .. rpca and rpsp .. rpspik are "not a twoway plot
-// type", and con is connected -- so only the full names match.  Returns
-// the name, lower case, or "".
+// rpcap and rpspike (y ylow yhigh x, a range drawn with a point on it)
+// are twoway plot types in StataNow 19.5 that dash does not draw either.
+// dash.ado refuses each by name, with what to use instead, rather than as
+// an unrecognised plot type (WP-22 TR-22.1, BR-22.1).  twoway takes no
+// abbreviation of any of them -- measured 23sep2026: cont .. contou,
+// contourl .. contourlin, rpc .. rpca and rpsp .. rpspik are "not a twoway
+// plot type", and con is connected -- so only the full names match.
+// Returns the name, lower case, or "".
 string scalar _dash_undrawn_plottype(string scalar name) {
     string scalar s
 
     s = strlower(strtrim(name))
-    if (anyof(("contour", "contourline", "heatmap", "rpcap", "rpspike"), s)) {
+    if (anyof(("contour", "contourline", "rpcap", "rpspike"), s)) {
         return(s)
     }
     return("")

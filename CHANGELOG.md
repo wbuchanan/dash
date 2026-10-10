@@ -499,7 +499,7 @@ and now matches Stata.
   `c(scheme)` is the default scheme, and `dash build` accepts `scheme()`
   (S11).
 - New plot types `pcarrowi` and `pccapsym`. `contour`, `contourline`,
-  `heatmap`, `rpcap` and `rpspike` are refused by name, with what to use
+  `rpcap` and `rpspike` are refused by name, with what to use
   instead. (WP-22)
 - Weights `[aw= fw= pw=]` work on the statistical layers, with twoway's
   per-type rules. (WP-18)

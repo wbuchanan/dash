@@ -23,7 +23,7 @@ pins:
 * "abbreviated as twoway allows": dash refused twoway's own spellings
   mbands and fn, and took twenty-nine shorter ones twoway refuses without
   the help saying so.
-* "the two twoway plot types it refuses": there are five.
+* "the two twoway plot types it refuses": there are four.
 * "a command copy-pasted from a do-file runs whenever dash draws its plot
   type": yaxis(3), degree(4) and bin(2000) run in twoway and are refused.
 * "scheme() is fully supported", beside a scheme section that says the
@@ -414,11 +414,11 @@ class TestThePlotTypeSpellings:
 
 class TestThePlotTypesSection:
 
-    def test_it_says_five_types_are_refused_and_so_does_item_5(self):
-        refused = ("contour", "contourline", "heatmap", "rpcap", "rpspike")
-        assert "Five {cmd:twoway} plot types are not drawn" in _plot_types()
+    def test_it_says_four_types_are_refused_and_so_does_item_5(self):
+        refused = ("contour", "contourline", "rpcap", "rpspike")
+        assert "Four {cmd:twoway} plot types are not drawn" in _plot_types()
         diff = _prose(_differences())
-        assert "the five twoway plot types it refuses" in diff
+        assert "the four twoway plot types it refuses" in diff
         assert "the two twoway plot types" not in diff
         for name in refused:
             assert name not in dr._dash_plot_type_names()

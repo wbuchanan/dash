@@ -596,7 +596,7 @@ FUNCTIONS = {
  '_dash_pc_dispatch': 'test/test_server.py::TestTheServerDispatchesThroughTheSharedTable::test_every_shipped_plot_type_has_a_mapper',
  '_dash_pc_source': 'test/test_pccapsym_pcarrowi.py::TestTheServedPcSourceCarriesTheLabel::test_a_label_the_data_lacks_is_ignored',
  '_dash_placement_map': 'test/test_server_layer_defects.py::TestLayoutPlacementMeansOneThing::test_an_unknown_name_is_not_placed',
- '_dash_plot_type_names': 'test/test_help_claims_1.py::TestThePlotTypesSection::test_it_says_five_types_are_refused_and_so_does_item_5',
+ '_dash_plot_type_names': 'test/test_help_claims_1.py::TestThePlotTypesSection::test_it_says_four_types_are_refused_and_so_does_item_5',
  '_dash_plot_type_names.<locals>._Probe.__getattr__': 'test/test_help_claims_1.py::TestThePlotTypeSpellings::test_the_synonyms_are_the_spellings_only_dash_takes',
  '_dash_port_value': 'test/test_serve_launcher.py::TestPortRefusals::test_port_value_accepts_the_range_and_refuses_the_rest',
  '_dash_primary_axes': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_primary_axes_keeps_the_list_type',

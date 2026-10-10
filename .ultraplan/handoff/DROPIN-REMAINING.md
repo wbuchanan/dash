@@ -224,7 +224,6 @@ Five kinds of gap remain:
     - rpcap and rpspike: M
     - sunflower: M (also falls to the generic "unrecognised" message)
     - matamatrix: M (gives a misleading r(101))
-    - heatmap: L
     - contour and contourline: XL
 
     Effort XL. Sources: GAPS2-A5-a, GAPS2-A5-b, GAPS2-A5-c, GAPS2-A5-d, GAPS2-A5-e, AUDIT-01, AUDIT-02, AUDIT-03, AUDIT-04, AUDIT-05.

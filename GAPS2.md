@@ -78,7 +78,7 @@ Each gap below says what is intended and what dash does, with evidence; whether 
 ## A. Plot types and twoway parity per type
 
 dash is meant to draw every twoway plot type with twoway's syntax, type-specific options and picture (dash.sthlp Plot types; the PRD calls it a "drop-in replacement"). It draws 40 types in both modes, with twoway's names, abbreviations, variable counts and empty-sample answers. Most computed statistics match Stata at a given bandwidth: the fits and their stdp/stdf/stdr bands, lowess, mspline, mband, fpfit/fpfitci, kdensity, histogram and lpoly. Several things are missing:
-- Six twoway types and Mata-matrix plots are refused.
+- Five twoway types and Mata-matrix plots are refused.
 - `function` evaluates only 10 math functions.
 - Nothing can be drawn horizontal.
 - Line and area types are joined in x order instead of the data's order.
@@ -95,7 +95,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
 | A2 | pcarrow/pcbarrow/pcarrowi arrowheads ignore the marker options; pcbarrow's heads are filled black | S2 | yes | M |
 | A3 | Bar and cap geometry: rbar ignores `barwidth()`; bar/rbar widths, rcap cap width and rcapsym caps are not twoway's | S2 | yes | M |
 | A4 | Many type-specific options are named in the note and not drawn; most are missing from the help's unsupported list | S2 | partly | L |
-| A5 | Six twoway types and `matamatrix()` plots are not drawn | S2 | partly | L |
+| A5 | Five twoway types and `matamatrix()` plots are not drawn | S2 | partly | L |
 | A6 | `function` draws nothing for most Stata expressions | S2 | yes | M |
 | A7 | `horizontal` is not drawn on any plot type | S2 | see B12 | - |
 | A8 | `colorvar()` is drawn on 4 types; `jitter()` is not drawn on rscatter, rcapsym, pcscatter, pccapsym | S2 | yes | L |
@@ -196,16 +196,16 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
 - **Tracked:** Partly closed in WP-30 (P1.6, commit c565897; P1.8b, commit f20751d; P1.8a, commit fa52891; P1.24, commit 390d964): connect() and cmissing() (A4-l, A4-m; P1.8a), recast() (A4-n; P1.8b), mlabvposition() (A4-p; P1.24), the tsline t-options (A4-q; P1.6); x/yvarformat() read since P1.5; open: nofit, fitplot(), ciplot(), atobs, estcmd()/estopts()/predopts(), kdensity area()/boundary, histogram gap() (P2.6); function droplines(), baroffset(), nodropbase (P2.7); pc headlabel (P2.8); the help unsupported list (P3.2); WP-29 (P0.1, commit b0d170d) closed sort(varlist) is honoured; was: GAPS.md E1 (`connect`, `cmissing`, `recast`, `sort`, `mlabvposition` deferred by WP-27); the others are new.
 
 <a id="a5"></a>
-### A5. Six twoway plot types and Mata-matrix plots are not drawn (contour, contourline, heatmap, rpcap, rpspike, sunflower; matamatrix())
+### A5. Five twoway plot types and Mata-matrix plots are not drawn (contour, contourline, rpcap, rpspike, sunflower; matamatrix())
 
-- **Gap:** graph_twoway.sthlp:60-61 and 78-80 list contour, contourline, heatmap, rpcap and rpspike as twoway plot types. `twoway sunflower` and `matamatrix()` plots have help files but are Stata-undocumented. dash handles them as follows:
-  - The five listed types are refused by name, r(198) (dash.ado:3200-3222, `_dash_undrawn_plottype`), as documented at dash.sthlp:343-353.
+- **Gap:** graph_twoway.sthlp:60-61 and 78-80 list contour, contourline, rpcap and rpspike as twoway plot types. `twoway sunflower` and `matamatrix()` plots have help files but are Stata-undocumented. dash handles them as follows:
+  - The four listed types are refused by name, r(198) (dash.ado:3200-3222, `_dash_undrawn_plottype`), as documented at dash.sthlp:343-353.
   - `sunflower` reaches the generic "unrecognised plot type" message (dash.ado:3223-3230) and is missing from the help's Not drawn list.
   - `matamatrix` appears nowhere in the code or help (grep 0), so it is read as a varlist and refused.
 - **Closable:** partly -- contour and contourline interpolate in compiled Mata with no shipped source (twoway__contour_gen.ado:35-45). dash can take twoway's exact output at registration, but those layers stay static on filter moves. The other types have no such limit.
 - **Plan:**
   1. rpcap/rpspike: parse them as a 4-variable family in `_dash_plottype_families`, using the variable roles twoway_y3xview_parse assigns (measured). Draw with `map_rcap`/`map_rspike` plus `map_scatter`.
-  2. heatmap and sunflower: port twoway__heatmap_gen.ado (`calc_xy_lev`) and twoway__sunflower_gen.ado to a shared Python/JS helper. Draw heatmap as rect/quad with a ColorBar, and sunflower petals as segments.
+  2. sunflower: port twoway__sunflower_gen.ado to a shared Python/JS helper and draw the petals as segments.
   3. contour/contourline: call `twoway__contour_gen` under preserve, export the polygons and lines as literal records, draw them with patches/multi_line, and say in a note that the layer is static under filters.
   4. `matamatrix()`: read the matrix columns by value in Mata into reserved export columns. Until then, refuse `sunflower` and `matamatrix()` by name.
   5. Test with a cscript comparing each generator's output and serset with live twoway, pytest in both modes, and a time bound for contour over 1e6 rows.

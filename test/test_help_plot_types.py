@@ -23,9 +23,9 @@ sys.path.insert(0, _ROOT)
 import dash_render as dr
 
 #: twoway plot types dash does not draw: a surface interpolated over a grid
-#: (contour, contourline), a grid of coloured cells (heatmap) and a point on
-#: a range (rpcap, rpspike) -- the last three new in StataNow 19.5.
-_REFUSED = ("contour", "contourline", "heatmap", "rpcap", "rpspike")
+#: (contour, contourline) and a point on a range (rpcap, rpspike) -- the
+#: last two new in StataNow 19.5.
+_REFUSED = ("contour", "contourline", "rpcap", "rpspike")
 
 
 def _help():

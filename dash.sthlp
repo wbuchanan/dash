@@ -569,14 +569,13 @@ and is refused without them, as {cmd:twoway} refuses it:
 {cmd:varlist required}, {cmd:r(100)}.
 
 {pstd}
-{ul:Not drawn.}  Five {cmd:twoway} plot types are not drawn by {cmd:dash}:
+{ul:Not drawn.}  Four {cmd:twoway} plot types are not drawn by {cmd:dash}:
 {cmd:contour} and {cmd:contourline}, which interpolate a surface over a
-grid from their three variables; {cmd:heatmap}, which colours the cells of
-a grid by {it:z}; and {cmd:rpcap} and {cmd:rpspike}, which mark a point on
-a range.  Each is refused with {cmd:r(198)} and a message naming what to
-use instead: {cmd:twoway} itself, {cmd:dash scatter} {it:y x}{cmd:,}
-{cmd:colorvar(}{it:z}{cmd:)} for the first three, or a range plot and a
-{cmd:scatter} of the point in one graph for the last two.  Any other word
+grid from their three variables; and {cmd:rpcap} and {cmd:rpspike}, which
+mark a point on a range.  Each is refused with {cmd:r(198)} and a message
+naming what to use instead: {cmd:twoway} itself, {cmd:dash scatter}
+{it:y x}{cmd:,} {cmd:colorvar(}{it:z}{cmd:)} for the first two, or a range
+plot and a {cmd:scatter} of the point in one graph for the last two.  Any other word
 that is not a plot type is refused too, and the message lists the plot
 types above.  A plot type cannot be handled as an unknown option is --
 named in a note and drawn around -- because it is what would be drawn.
@@ -801,7 +800,7 @@ there, is an invalid point.  The literal is read as data and never run.
     does {cmd:dash} (see {it:Where a graph-level option may be written}
     under 3. above) -- so a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
-    names the five {cmd:twoway} plot types it refuses -- and can draw the
+    names the four {cmd:twoway} plot types it refuses -- and can draw the
     values it is given: a few values {cmd:twoway} accepts, such as
     {cmd:yaxis(3)}, are more than {cmd:dash} draws and are refused (see
     {help dash##validation:Option values} below).  Anything {cmd:dash}

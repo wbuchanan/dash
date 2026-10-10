@@ -42,7 +42,7 @@
       "depends_on": [
         1
       ],
-      "notes": "Only /usr/local/bin/stata-mp (19.5) is ever run; the guard's refusal is tested as a pure function. Guard order at the top of dash for later sections: Stata guard (S3), Mata guard, S25's dependency guard, S12's prefix strip, S22's rclass dispatch. Every later section writes `version 19` in new programs. The heatmap/rpcap advice and Break-below-18.5 findings are moot at this floor and are recorded so in the BUGS entry."
+      "notes": "Only /usr/local/bin/stata-mp (19.5) is ever run; the guard's refusal is tested as a pure function. Guard order at the top of dash for later sections: Stata guard (S3), Mata guard, S25's dependency guard, S12's prefix strip, S22's rclass dispatch. Every later section writes `version 19` in new programs. The rpcap/rpspike advice and Break-below-18.5 findings are moot at this floor and are recorded so in the BUGS entry."
     },
     {
       "num": 4,
@@ -1396,7 +1396,7 @@
     },
     {
       "item": 35,
-      "what": "P1.35b: certifying Stata 16-18.5 (version-parametrised runners, version-keyed truth fixtures, a Break fallback below 18.5, version-dependent heatmap/rpcap advice), and any measurement of Stata 19.0 (non-Now) or BE/SE.",
+      "what": "P1.35b: certifying Stata 16-18.5 (version-parametrised runners, version-keyed truth fixtures, a Break fallback below 18.5, version-dependent rpcap/rpspike advice), and any measurement of Stata 19.0 (non-Now) or BE/SE.",
       "why": "M2 sets the floor at 19 and forbids running the 14-18.5 binaries; 19.0 is declared, not measured (the GAPS2-K3-d single-release caveat stays in the help)."
     },
     {

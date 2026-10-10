@@ -75,7 +75,7 @@
 *!   HC1-18  link(), filter(), layout() and theme() are dash's own: twoway
 *!           refuses each, dash build takes each.
 *!   HC1-19  A word that is no plot type is refused, r(198), with a list of
-*!           the plot types; the five twoway types dash does not draw are
+*!           the plot types; the four twoway types dash does not draw are
 *!           refused by name, each r(198).
 *!   HC1-20  A graph-level option is honoured inside a segment or after the
 *!           comma, in both forms, and the one that wins is twoway's: after
@@ -945,7 +945,7 @@ else display as text "HC1-18 PASS: twoway refuses link(), filter(), layout(), th
 dash clear
 
 // ================================================================
-// HC1-19 -- no plot type: r(198) with the list; the five by name
+// HC1-19 -- no plot type: r(198) with the list; the four by name
 // ================================================================
 _hc_logged 19 dash zqnotaplottype mpg weight, name(hc19)
 local rc = r(rc)
@@ -963,7 +963,7 @@ local extra19 : list _hc_sup - want19
 local miss19 "`miss19' `extra19'"
 local miss19 = strtrim("`miss19'")
 local bad19 ""
-foreach t in contour contourline heatmap rpcap rpspike {
+foreach t in contour contourline rpcap rpspike {
     local a "mpg weight turn"
     if inlist("`t'", "rpcap", "rpspike") local a "mpg lo hi weight"
     graph drop _all
@@ -983,7 +983,7 @@ if _rc {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-19"'
 }
-else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 40 plot types listed; the five undrawn twoway types are refused by name"
+else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 40 plot types listed; the four undrawn twoway types are refused by name"
 dash clear
 
 // ================================================================

@@ -3414,7 +3414,7 @@ last below.
 | Question | Measured |
 |---|---|
 | `contour`, `contourline`, `pcarrowi`, `pccapsym` | `twoway` draws all four (rc 0) and takes no abbreviation of any; dash refused each with "unrecognised plot type", r(198), and its Supported: list |
-| Every `twoway` plot type | `graph_twoway.sthlp` links 41; beyond the four above, `heatmap` (z y x), `rpcap` and `rpspike` (y ylow yhigh x) are new in StataNow 19.5, run with rc 0, take no abbreviation, and were "unrecognised" to dash |
+| Every `twoway` plot type | `graph_twoway.sthlp` links 41; beyond the four above, `rpcap` and `rpspike` (y ylow yhigh x) are new in StataNow 19.5, run with rc 0, take no abbreviation, and were "unrecognised" to dash |
 | Plot types in the help | dash drew 38; `dash.sthlp` listed none of them anywhere, and nine were not named at all: `pcarrow pcbarrow pci pcscatter pcspike rconnected rscatter tsline tsrline` |
 | F3's options | `clcolor() clpattern() clwidth()` are not plain aliases: `twoway_yxview_parse.class` applies them after the l-options whatever the order, to the connecting line only (lcolor() also outlines areas and bars); `mlabangle()`, `mlabformat()`, `sort(varlist)`, `mlabvposition()`, `mlabtextstyle()` and `xoverhangs`/`yoverhangs` are real `twoway` options; `xreverse`, `yreverse`, `xalternate`, `yalternate`, `xcommon`, `ycommon`, `lockaspect`, `zoom()`, `ddensity`, `altaxis`, `addplot()`, `margin()` and `region()` are refused by `twoway` at the level they were written (r(198)) -- sub-options of `xscale()`, `plotregion()`, `legend()`, `clegend()`, or options of `graph combine`, `histogram` or no command at all |
 | The `inlist()` ceiling | ten plot-type tests in dash.ado were string `inlist()` calls; the range types' held nine literals and `ptype`, Stata's limit of ten, so a tenth range type could not be added |
@@ -3429,8 +3429,8 @@ last below.
   dash_parse.mata that runs in linear time), refuses with r(198) what
   `twoway` refuses, drops an incomplete last arrow with a note, and draws
   through pcarrow's own mapper with its labels at the tails
-  (`map_pcarrowi`).  Five `twoway` plot types dash does not draw --
-  `contour`, `contourline`, `heatmap`, `rpcap`, `rpspike` -- are refused by
+  (`map_pcarrowi`).  Four `twoway` plot types dash does not draw --
+  `contour`, `contourline`, `rpcap`, `rpspike` -- are refused by
   name, r(198), each with what to use instead (`_dash_undrawn_plottype`),
   instead of as "unrecognised plot type".
 - **TR-22.2** `dash.sthlp` has a Plot types section: every type dash draws,
@@ -3484,9 +3484,9 @@ last below.
   unchecked, so a malformed one fails the build with a JSON traceback;
   dash draws marker labels on plot types `twoway` never labels, shows a
   value-labelled `mlabel()` as codes, and styles marker borders with line
-  options; `dash build` of immediate graphs alone fails; `heatmap`, `rpcap`
-  and `rpspike` could be drawn later (the last two are siblings of `rcap`
-  and `rspike`).  Separate tasks carry the first several.
+  options; `dash build` of immediate graphs alone fails; `rpcap` and
+  `rpspike` could be drawn later (they are siblings of `rcap` and
+  `rspike`).  Separate tasks carry the first several.
 
 ### Verification, measured
 
@@ -3496,7 +3496,7 @@ fixes committed after WP-21 (`f92ef65`, `dbe24bc`, `0744eb6`, `99d5bed`;
 in worktrees cut from `9f48cf7`, each writing its tests first against that
 code; their diffs were merged by three-way apply, with one conflict --
 `test_adversarial.cscript`'s P20-33 beside P22-01..03, both kept.  The
-refusals of `heatmap`, `rpcap` and `rpspike` came after: P1A-58's new
+refusals of `rpcap` and `rpspike` came after: P1A-58's new
 checks failed on the merged code without them (r(3498)).
 
 - `test/run_all_cscripts.do` with the console binary: **50 passed, 0
@@ -5057,7 +5057,7 @@ The technical requirements of each entry are its section's TR-NN.k in .ultraplan
 ### Deferred: the platform package (P1.34.6)
 
 - Linux, Windows (the `/e` batch flag, cmd.exe, `Scripts\python.exe` venvs), Intel macOS and GUI Stata, with WP-29's private-file, lifecycle, served-key and PEP 668 paths there (M4; manifest item 34; S02).
-- Stata 16-18.5 certified (version-parametrised runners, version-keyed truth, a Break fallback below 18.5, version-dependent heatmap/rpcap advice), and Stata 19.0, BE and SE measured (M2; manifest item 35; S03).
+- Stata 16-18.5 certified (version-parametrised runners, version-keyed truth, a Break fallback below 18.5, version-dependent rpcap/rpspike advice), and Stata 19.0, BE and SE measured (M2; manifest item 35; S03).
 - A scripted image export: `dash export using file.png|pdf|svg` driven by a browser found on the machine, at a chosen size, `r(filename)` its output (P1.28 B3, GAPS2-E10c; M8; manifest item 28; S22, S54).
 - Python 3.10 and older, and Windows patch levels of 3.11 without CPython's os.mkdir 0o700 fix (CVE-2024-4030; dash_render.py relies on it) (manifest item 33; S05).
 - S02's critic list: `release_gate_venv.do`'s `gatevenv/bin/python`, the `/tmp/dash-stata-slot-N.d` locks, the Makefile's `STATA_BIN` default, the `W29_REPO` extractors' POSIX `capture shell cd … && git rev-parse`.

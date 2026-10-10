@@ -4882,17 +4882,14 @@ program define _dash_process_segment, rclass
         // a data model no dash plot has.  They were answered "unrecognised
         // plot type", as if twoway had no such type; they are named for
         // what they are now, with what to use instead (WP-22 TR-22.1).
-        // heatmap, rpcap and rpspike, twoway plot types since Stata 19
+        // rpcap and rpspike, twoway plot types since Stata 19
         // (whatsnew18to19), so the advice holds on every Stata dash runs on,
-        // are refused the same way, each with its own reason (BR-22.1).
-        // _pt_nodraw is one of those five names or "": never user text.
+        // are refused the same way, with their own reason (BR-22.1).
+        // _pt_nodraw is one of those four names or "": never user text.
         mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
         if "`_pt_nodraw'" != "" {
             if "`_pt_nodraw'" == "contour" | "`_pt_nodraw'" == "contourline" {
                 local _pt_why "it needs a surface interpolated over a grid. Use Stata's own twoway `_pt_nodraw', or dash scatter y x, colorvar(z) to colour each point by z."
-            }
-            else if "`_pt_nodraw'" == "heatmap" {
-                local _pt_why "it colours the cells of a grid by z. Use Stata's own twoway heatmap, or dash scatter y x, colorvar(z) to colour each point by z."
             }
             else {
                 local _pt_rng = cond("`_pt_nodraw'" == "rpcap", "rcap", "rspike")
