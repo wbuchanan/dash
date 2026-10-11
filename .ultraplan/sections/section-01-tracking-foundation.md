@@ -1,645 +1,1020 @@
 # Section 01: Tracking foundation
 
-> Part of: WP-28 · Gaps: all 22 (tracked here, closed elsewhere) · Risk: green · Batch: 1 · Depends on: none · Blocks: 19 · Tasks: 3, one commit (S01)
-
-
-## Review amendments (Phase 4, 2026-09-25) — binding; they override any conflicting text below
-
-> Batch **1** · Depends on **none** · Blocks **19** · Risk **green** · Commits: one commit (S01), made by task 01-03
-
-- D2 (as corrected in the fixer pass): task 01-03 places 23 `<!-- WP-28 <ID> -->` markers **in the release's existing top-level list where each gap's entry belongs** -- a `**WP-28 (GAPS2 audit, 25sep2026)**` group at the end of `### Results that change` (B1 B2 B3 B5 B6 B7 C2 D1 E1 E2 E3 E14 G6 G16 X1 X2), the end of `### Changed behaviour` (G1 G2), the end of `### Requirements` (K2), and a new `### Fixed in WP-28` heading above `### Fixed after WP-27` (`E14 served`, F1, G3, G5) -- never all under one heading (see `index.md` Gap coverage; E14 gets two).
-- D3: the BUGS.md template's field name stays exactly `- Resolution:`; the text form is `Fixed <ddmonyyyy> (WP-28, <ID>). <what changed>. Pinned by test/<file>::<Class>::<test>.` (verified against `_FIELD` in test/test_tracking_documents.py:101: the regex tolerates an optional parenthetical after the field name, but the qualifier is written inside the text so every reader sees one form).
-- D1: this section is ONE commit. 01-01 writes the failing tests and does not commit; 01-02 turns them green and stages GAPS2.md without committing; 01-03 writes ROADMAP.md and CHANGELOG.md, runs the full suite once and makes the commit on the worktree branch `wp28-s01`, subject ending `(WP-28 S01)`; the merger lands it on `s3-bugs` (`index.md` step 1).
-- Q24: the commit convention records the failing test's output at 91d97be as the opening paragraph of the fix commit's body; CHANGELOG quotes it as the old value.
-
-Applies to every section:
-- D1 (binding): tasks are work steps; commits are per gap (S01-S04: one each). The failing regression tests are written first and run against the unmodified tree; their output at 91d97be is recorded in the fix commit's message (Q24) and they are committed together with the fix, never alone (CLAUDE.md rule 4).
-- D3 (binding): each gap's BUGS.md entry is appended at the END of BUGS.md in the closed form with `- Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). <what changed>. Pinned by test/<file>::<Class>::<test>.`
-- D2 (binding): each closing task replaces the gap's `<!-- WP-28 <ID> -->` marker(s) that S01 placed in the CHANGELOG list named above; it does not add a new line elsewhere.
-- D6 (binding): every Stata run is `scripts/stata_slot.sh <scratch-dir> <file>.do` (see `index.md` step 0); no section launches the full cert suite or the release gate.
-- D5 (binding): shared files follow merge rules R1-R6 in `index.md` (cscript registration and hygiene pins, copy lists and maps, help/CHANGELOG/BUGS.md, graph-key lists, fixtures, parity corpus).
-- D7: XML fields holding `&`, `<` or `>` are CDATA-wrapped (done mechanically); task names over 8 words are shortened and `done` fields put in the past tense during the detailed fixer pass.
-
-Detailed edits from `../review/consistency.md`, `../review/requirements-security.md` and `../review/feasibility.md` (as adjusted by `../review/DECISIONS.md`) were applied to this file in the fixer pass (2026-09-25); the text below conforms to this block.
+> Part of: WP-31 · GAPS3 rows: §6 (register corrections), §9 (new: Tracking) · Risk: green · Batch: 0 · Depends on: -- · Blocks: all · Tasks: 9, 1 commit · Case-id prefix: U01
 
 ## Overview
 
-Nothing in the repository can yet record WP-28 truthfully. `GAPS2.md`, the audit the whole
-package answers, is untracked (`??` in `git status`), and `test/test_packaging.py:411` refuses
-any file at the package root that is neither shipped nor on `_ROOT_ALSO`, so it cannot be
-committed as it stands. `test/test_tracking_documents.py` knows one audit, `GAPS.md` of 21
-September: `_parse_roadmap` (623-645) reads a package's `**Gaps closed:**` ids and, once the
-package is headed `— DONE`, `test_every_gap_a_done_package_lists_is_closed_by_it` (765-790)
-looks each id up in **GAPS.md**. GAPS2's ids reuse GAPS.md's letters (`B1`, `E1`, `G1` name
-different gaps in the two audits), so a DONE WP-28 listing its gaps under that field would be
-judged against the wrong document and fail; and the `X1`/`X2` ids match no reader at all.
-`_matrix_gaps`/`_matrix_rows` (532-548) split ROADMAP.md on the literal text
-`## Traceability matrix`, so that text may not appear anywhere in WP-28's section. And the
-BUGS.md guard `TestNoOpenEntryBlocksARelease` (476-505) turns pytest red on any open S1 or S2
-entry, which is why DISCOVERY's amended Q4 has every entry land **closed, in its fix commit**:
-22 open entries opened up front would break every full run until the last closed.
+**What is wrong today.** GAPS3.md (411 lines at `6370ca4`) is a register of tables: every row of sections 4.A-4.K is a `| <id> | <gap> | <sev> | <register> | <evidence> | <task> |` line and nothing in the repository tracks a row's state. `test/test_tracking_documents.py` reads GAPS2.md's `### <id>. <title>` headings and `- **Tracked:**` lines (`_GAPS2_HEADING`, `_GAPS2_TRACKED`, :731-734) and WP-30's `WP30_OPEN`/`WP30_LISTS`/`WP30_SECTION` maps (:1580-1710), but knows nothing of GAPS3. BUGS.md ends at :3197 with three open entries (:2559, :2595, :2601, all S3) and none for the 110 WP-31 entries the manifest derives from GAPS3's rows. CHANGELOG.md's 0.1.0 release has the lists `### Results that change` (:10), `### Changed behaviour (may need your do-files changed)` (:609), `### Requirements` (:744) and `### Fixed in WP-30` (:800), and no `<!-- WP-31 ... -->` marker. The certification suite has 68 scripts (`test_cscript_hygiene.py:299`, `test_cert_shards.py:45`), the last registered as runner block `// 69.` (`test/run_all_cscripts.do:3077-3121`); there is no `test/test_wp31_truth.cscript`. GAPS3 §6 names register text that no longer matches the code: GAPS2 C14 is still `- **Tracked:** new.` (GAPS2.md:807) though `b06b662` closed it; DROPIN P3.1 (`.ultraplan/handoff/DROPIN-REMAINING.md:380`) asks to retire a script `44f8ab0` retired; P2.1, P2.12, P2.14, P2.25, P2.29, P2.48 and P3.9 describe more than is open. (GAPS3 §6 also lists GAPS2 G4 as "closed now, mark closed"; its Tracked line at GAPS2.md:1422 already reads `Closed in WP-30, ... commit acd868f`, so no edit is needed there.)
 
-After this section: WP-28 is open in `ROADMAP.md` in the WP-27 style, listing all 22 gaps
-with severity, effort and the section that closes each in its own `#### GAPS2 traceability`
-table; the tracking tests read a `**GAPS2 closed:**` field and resolve it against GAPS2.md's
-`### <ID>.` headings, and once a package is DONE they require each listed entry's
-`- **Tracked:**` line to name that package, a closed BUGS.md entry and a commit that exists;
-`GAPS2.md` is committed and allowed at the root; `CHANGELOG.md` carries one marker per gap in
-the release's existing list where that gap's line belongs -- a WP-28 group at the end of
-`### Results that change`, the ends of `### Changed behaviour` and `### Requirements` -- plus
-a new `### Fixed in WP-28` heading for the rest (D2); and the two conventions every later section copies, the BUGS.md entry form
-(D3) and the commit-message form (D1, Q24), are written down here.
+**After this section** every WP-31 entry is open in BUGS.md in the WP-31 form, graded, naming the section that closes it; GAPS3.md has a `## 9. Tracking` section with one `- **<id> Tracked:** Open (WP-31 section NN).` line per entry; `test_tracking_documents.py` reads those lines and the entries through `WP31_OPEN`, `WP31_LISTS`, `WP31_SECTION` and `TestWp31Tracking`, and the release guard exempts exactly the open WP-31 titles; CHANGELOG.md carries one `<!-- WP-31 <id> -->` marker per entry in each list the entry belongs to, under a new `### Fixed in WP-31` heading where no existing list fits; `test/test_wp31_truth.cscript` exists with S01's smoke block TF-01, is registered as runner block `// 70.`, has one row in the shard table, and is guarded by `TestTheWp31TruthScript`; the pins read 69 and 51; and the GAPS3 §6 corrections are applied to GAPS2.md and DROPIN-REMAINING.md as data edits, after which both are read-only (M23, A6).
 
-These belong together because they are the guards every later commit must pass. They run in
-batch 1 with no dependency: sections 02 to 18 need only the *text* of the conventions below,
-which they read from this file, and section 19 needs the readers to prove closure.
+**Why one section.** Every later section closes its entry, rewrites its Tracked line, replaces its markers and appends its truth block in place; those forms must exist before batch 1 is cut (M13, Q24), and only one section may create or register a cscript (R1) or edit GAPS2.md and DROPIN-REMAINING.md (A6).
 
-**Test order (CLAUDE.md rule 7) and commit rule (D1): task 01-01 writes the failing tests for
-this section**, runs them against the unmodified tree and saves the failure text to
-`<scratch>/01-01-failure.txt`; it does not commit (a red tree is never committed, rule 4).
-01-02 turns them green and stages GAPS2.md, still without committing; 01-03 writes ROADMAP.md
-and CHANGELOG.md, runs the full suite once and makes this section's ONE commit on the
-worktree branch `wp28-s01`, subject ending `(WP-28 S01)`, whose body opens with the saved
-failure text; the merger lands it onto `s3-bugs` with that message (`index.md` step 1). That
-is the convention every closing task of sections 02 to 18 follows (Q24): the failing tests'
-recorded output at 91d97be opens the fix commit's body and is the old value its CHANGELOG
-line quotes. No shipped file changes here.
+**Test order and commit rule (rule 7, BRIEF).** One cycle, one commit `(WP-31 S01)`: 01-01 writes the failing tracking and hygiene tests, runs them against the unmodified tree and saves `<scratch>/01-01-failure.txt`, never committing; 01-02 to 01-08 turn them green; 01-09 runs the section's tests and the truth script through the slot, and commits. No full suite inside the section (M9); the merger runs it at batch end.
 
-## Risk: [green] — one test module extended, one allowlist entry, three documents; every existing assertion kept verbatim
+### Section decisions (binding on the executor)
 
-- **Why.** No renderer or ado code moves. The new readers are additive functions and a
-  separate fixture key; `_parse_roadmap`'s output is unchanged, so `test_the_roadmap_reader`
-  (815-829), which asserts exact dictionaries, passes untouched.
-- **Risk factors.** (1) A `**Gaps closed:**` line written into WP-28 by habit would be read
-  by the old parser and, once DONE, judged against GAPS.md. (2) The text
-  `## Traceability matrix` inside WP-28 would move the matrix reader's split point. (3) A line
-  beginning `# ` or `## ` inside WP-28, even in a fenced code block, ends the section for
-  `_parse_roadmap` (630-631). (4) Parallel batch-1 sections all append to BUGS.md and
-  CHANGELOG.md, so `patch -p1` of their diffs may reject hunks at end-of-file.
-- **Mitigation.** (1)-(3) are pinned mechanically: a new test counts the matrix heading once,
-  and the WP-28 text in TR-01.6 uses the `**GAPS2 closed:**` field and `###`/`####` headings
-  only. (4) is an executor note below.
+- **D-01.a Entry ids.** One entry per manifest row id (A4): 110 entries (DECISIONS A12: A3, the abbreviation-truth fixture, is S08's entry). B5 is split, like C8 and C10, into `B5a` (S03: `base()` on dot read, `recast()` on dot noted or honoured) and `B5b` (S18: dot rows, the d-options), the ids the manifest already uses (index.md rows 03 and 18). E12 joins S40 and E13 joins S41, as the index's coverage check says. H5 and K1 have no entry (the index: design residuals; flips inside each fix section).
+- **D-01.b Section name in an entry** is the manifest slug with each hyphen read as a space (`option-applicability` → `option applicability`), so an executor builds it mechanically.
+- **D-01.c Grades** are GAPS3's Sev column: S1 for C1, C2, C3; S3 where the row says S3; S2 otherwise. A row graded "S2 (by decision)" or "S2 (recast part S1 unverified)" is S2 in every part.
+- **D-01.d CHANGELOG lists.** Each entry's lists are in Appendix A's `Lists` column: `RC` = Results that change, `CB` = Changed behaviour (may need your do-files changed), `RQ` = Requirements, `FX` = Fixed in WP-31. Every entry has at least one list. The H2 parts go to `FX` (ratification item 3: the release also has a `### New` list the BRIEF does not name).
+- **D-01.e The truth script carries no stubs.** Unlike WP-30, S01 writes only its own S01 block; each later section appends its blocks above the marker, one block per row it measures (R1), so `_wp31_blocks` requires one row id per header and non-decreasing section order, and does not require every section to own a block.
+- **D-01.f Empty shard parts pass.** The script reads `DASH_CERT_SHARD` (so cert_shards.py marks it `*`) and balances its blocks longest first, every unlisted block counting 1 s (WP-30 counted 0). When `w31_N > 1`, `WP31_ONLY` is unset and part k has no block, the script prints `test_wp31_truth: part k/N has no block to run` and exits 0; with one part or `WP31_ONLY` set, no case run is still r(9). The `w31_secs` table holds `S01 1` until S61 writes the measured seconds.
+- **D-01.g Shard table by hand.** `scripts/cert_shards.py write` needs a timed log naming every script, which no run has for the new script, so 01-07 adds the one row `test_wp31_truth.cscript  1.0 0  * * *` by hand; a `*` row adds its share to every shard before the others are placed, so no other assignment changes and `python3 scripts/cert_shards.py check` exits 0.
+- **D-01.h GAPS3 reader forms** are exactly the BRIEF's three Tracked forms plus a row reader over the tables (`_GAPS3_ROW`), so a Tracked line naming an id no table row carries fails.
+
+## Risk: [green] -- tests, documents and one certification scaffold; no shipped file changes
+
+**Why.** Nothing drawn changes; the risk is a mistyped form that every later section then copies.
+
+**Risk factors.** 1. A title with a `"` or shared by two entries breaks the reader. 2. A marker in the wrong list is caught only by `_wp31_list_problems`. 3. An unbalanced shard table or a split script with empty parts fails `make cert` at batch 1's end. 4. The GAPS2/DROPIN edits are read by `TestNoResidualNamesAClosedRow` and `_parse_gaps2`.
+
+**Mitigation.** 1. `_wp31_open_problems` and `test_the_wp31_problem_readers` (unit-tested both directions). 2. The list check runs in 01-01's regression tests. 3. D-01.f and D-01.g; 01-08 runs the script through the slot with `DASH_CERT_SHARD` unset and `=3/3`. 4. The appended text keeps every regex the readers use (01-05 runs `test_tracking_documents.py` after the edits).
 
 ## Dependencies
 
-- Depends on: none.
-- Blocks: section 19 (the closeout proves closure through the readers added here).
-- Parallel batch: 1. Can run with sections 02, 03, 06, 07, 08, 09 and 10; none touches
-  `test_tracking_documents.py`, `test_packaging.py`, `ROADMAP.md` or the CHANGELOG heading this
-  section adds. S01 is merged first in its batch (`index.md` step 1, C3) so the CHANGELOG
-  stub and the conventions exist before any gap section's commit.
-- Why: every other section's final task writes a BUGS.md entry and a CHANGELOG line in the
-  forms recorded here, and section 19 updates GAPS2.md's Tracked lines in the form the new
-  parser reads.
+- **Depends on:** nothing; batch 0, alone.
+- **Blocks:** every section (S02-S61): the entry, Tracked line, marker, truth script and pins they rewrite in place exist only after S01 lands on `s3-bugs`.
+- **Parallel batch:** 0; can run with nothing.
 
 ## Evidence
 
-### The BUGS.md parser and the release guard (research report C §7)
+Anchors at `6370ca4`.
 
-`test/test_tracking_documents.py:98-102`, the entry and field readers:
-
-```python
-  98	_ENTRY = re.compile(r"^- \[(?P<mark>[ x])\] Title: (?P<title>\S.*)$")
-  99	_FIELDS = ("File Names and Line Numbers", "Description", "Suggested fix",
- 100	           "Resolution")
- 101	_FIELD = re.compile(r"^  - (?P<name>File Names and Line Numbers|Description|"
- 102	                    r"Suggested fix|Resolution)(?P<qual> \([^()\n]*\))?: \S")
-```
-
-`_format_problems` (154-161) requires the four fields once each, in that order; a line inside
-an entry that is neither a field, a `  - ` note nor a four-space continuation is a problem
-(145-148). `_references` (295-325) turns every `test_*.py|cscript|do` name (`_FILE_REF`, 285),
-every `test_x.py::Class[::test]` node (`_NODE_REF`, 287), every `Test[A-Z]\w+` word
-(`_CLASS_REF`, 288) and every `AB-12`-shaped case id (`_CASE_ID`, 207) in an entry into a
-reference that must exist on disk, unless the entry says "`X` no longer exists"
-(`_acknowledged_gone`, 291). `TestNoOpenEntryBlocksARelease` (476-505):
-
-```python
- 487	    _GRADE = re.compile(r"\bGraded (S[1-3]) \(WP-\d{2}\): \S")
- ...
- 498	    def test_no_open_entry_is_s1_or_s2(self, bugs):
- 499	        bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
- 500	               for e in entries if not e["closed"]
- 501	               for g in self._GRADE.findall(e["fields"].get("Resolution", ""))
- 502	               if g in ("S1", "S2")]
-```
-
-BUGS.md today (report C §7): 2605 lines, 428 closed and 4 open entries (2523, 2559, 2595,
-2601), all four graded S3. A closed entry's shape, `BUGS.md:2571-2576`:
-
-```
-- [x] Title: Under by(), a qualifier holding _n or a subscript selects its rows in the data's order, where twoway selects them after sorting on the by() variables
-  - File Names and Line Numbers: dash.ado: `_dash_qual_gen' (the qualifier columns, filled in the data's order); the by() panel counts (`_dash_by_panels')
-  - Description: Found 24sep2026 by the S3 batch's by() total-panel fix: twoway draws ...
-  - Suggested fix: For a by() graph, evaluate its qualifiers ...
-  - Resolution: Not fixed yet: ... **Fixed 24sep2026 (S3 batch).** ... Pinned by test/test_qualifier_in_stata.cscript QS-16 (...) and test/test_qualifier_columns.py::TestATotalPanelReadsItsOwnColumn (13 tests, all failing on the unfixed code).
-```
-
-### The ROADMAP readers and their GAPS.md lookup
-
-`test/test_tracking_documents.py:623-645`:
-
-```python
- 623	def _parse_roadmap(text):
- 624	    """{WP-nn: {'done': bool, 'gaps': {gap: qualified?}}}."""
- 626	    parts = re.split(r"^(?=## WP-\d{2} )", text, flags=re.M)
- ...
- 630	        section = re.split(r"^# ", part, flags=re.M)[0]
- 631	        section = re.split(r"^## (?!WP-)", section, flags=re.M)[0]
- 632	        done = (head.rstrip().endswith("— DONE")
- 633	                or re.search(r"^> \*\*DONE\b", section, re.M) is not None)
- 635	        m = re.search(r"^\*\*Gaps closed:\*\* (.+?)(?: · |$)", section,
- 636	                      re.M)
- 639	                g = re.match(r"^(?:and\s+)?([A-N]\d{0,2})(?![A-Za-z0-9-])"
-```
-
-The `docs` fixture (648-654) reads GAPS.md alone: `gaps, dupes = _parse_gaps(_read("GAPS.md"),
-matrix)`. `test_every_gap_a_done_package_lists_is_closed_by_it` (765-790) then says, for a
-DONE package, `"%s lists %s, which GAPS.md lacks"` or `"... GAPS.md says %r"`. The matrix
-readers (532-548):
-
-```python
- 533	    part = roadmap.split("## Traceability matrix", 1)[1]
- 534	    part = part.split("\n## ", 1)[0]
- 535	    return {m.group(1) for m in re.finditer(r"^\| ([A-N]\d{0,2}) \|", part,
-```
-
-`test_the_roadmap_reader` (815-829) asserts `_parse_roadmap(text) == {"done": …, "gaps": …}`
-dictionaries **exactly**, so the new field must not be added to that dictionary.
-
-### ROADMAP.md, CHANGELOG.md and GAPS2.md as they stand
-
-`ROADMAP.md:4131-4133` (WP-27's head) and the matrix at 4243, separated by a `---` at 4241:
-
-```
-4131	## WP-27 · Release closeout — DONE
-4133	**Gaps closed:** M2, B4 (verification) · **Severity:** S3 · **Effort:** S · **Depends on:** all
-4135	> **User story.** As the maintainer, I want one command sequence that proves
-4138	### Business requirements
-4145	### Technical requirements
-4163	### Acceptance criteria — release gate
-4173	### Test plan
-4180	### Done, measured (24sep2026)
-4241	---
-4243	## Traceability matrix
-```
-
-WP-25 (3835-3990) also carries `#### The plan in detail` with `**US-25.1** As a maintainer, …`
-user stories. `CHANGELOG.md` headings: `## 2.0, 24sep2026 (release candidate)` (3),
-`### Results that change` (10), `### Security` (142), `### New` (178), `### Fixed` (219),
-`### Changed behaviour (may need your do-files changed)` (280), `### Removed` (321),
-`### Requirements` (330), `### Fixed after WP-27 (the S3 batch, 24sep2026)` (338),
-`### Fixed in WP-27` (383). The newer of the last two sits above the older; each line ends
-with its package in parentheses, `(WP-27)`. No test checks the CHANGELOG's structure.
-`GAPS2.md` (2,070 lines) heads each gap `<a id="b1"></a>` then `### B1. <title>`, and each
-entry ends with a `- **Tracked:** …` line (for example `- **Tracked:** new.` at 393); the
-merged duplicates (`**B8. …** -- same gap as E3; see there.`, 455) are bold lines, not
-headings. Severity and effort per gap come from the area tables (`| ID | Gap | Sev | Closable
-| Effort |`, e.g. 1088, 1379, 1786) and the S1 table at 40-62. `git check-ignore GAPS2.md`
-returns 1: it is untracked, not ignored, so a plain `git add` takes it.
-
-`test/test_packaging.py:411-415`:
-
-```python
- 411	_ROOT_ALSO = frozenset({
- 412	    "dash.pkg", "stata.toc", ".gitignore", "Makefile", "pyproject.toml",
- 413	    "AGENTS.md", "BUGS.md", "CHANGELOG.md", "CLAUDE.md", "GAPS.md", "REMAINING.md",
- 414	    "ROADMAP.md",
- 415	})
-```
-
-`test_the_package_root_holds_only_what_ships_and_the_repositorys_own` (418-434) reads
-`git ls-files`, so a staged GAPS2.md fails it until the allowlist names it.
-
-### Existing tests that pin today's behaviour
-
-None flips. Every test in `test/test_tracking_documents.py` and `test/test_packaging.py` keeps
-its assertion; the new tests are additive. `test_tracking_documents.py::TestTodoAndPlanAreRetired::test_nothing_links_them`
-scans every `.md` in the repository for Markdown links to `TODO.md`/`PLAN.md`; GAPS2.md holds
-none (measured: `grep -n 'PLAN\.md\|TODO\.md' GAPS2.md` is empty), so committing it is safe.
+- **GAPS2 reader**, `test/test_tracking_documents.py:731-775`: `_GAPS2_HEADING`, `_GAPS2_TRACKED = ^- \*\*Tracked:\*\* (?P<text>\S.*)$`, `_GAPS2_CLOSED = ^Closed in (WP-\d{2}), BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40})\b`, `_GAPS2_DEFERRED`; `_parse_gaps2` returns `({id: {...}}, dupes)`; `_git(*args)` at :811 runs `git -C _ROOT`.
+- **WP-30 machinery**, :1580-1870: `WP30_OPEN = {}`, `WP30_LISTS`, `WP30_SECTION`, `WP30_ALL`, `_WP30_MARKER = <!-- WP-30 (P1\.\d{1,2}[abc]?) -->`, `_WP30_OPEN_FORM`, `_wp30_markers`, `_wp30_open_problems`, `_wp30_marker_problems`, `_wp30_closure_problems`, `_wp30_list_problems`, `TestWp30Tracking` (7 tests, the last `test_no_wp30_entry_remains_open` at :1934). `_changelog_lists`/`_changelog_list` at :1339/:1350 are shared. The file ends at :1953.
+- **Release guard**, :551-560: `allowed = set(WP29_OPEN.values()) | set(WP30_OPEN.values())` with the comment at :553-556. Module docstring items 1-9 at :1-59.
+- **DROPIN reader**, :500-528: rows `^(\d+)\. (.*)$` under `### P2:`; a row holding `Written closed` or `[Closed in` is closed.
+- **BUGS.md** 3197 lines, ends `SP-17.\n` (`tail -c 2 | xxd -p` → `2e0a`); open entries at :2559, :2595, :2601; `_parse_bugs` (:129) requires the four fields in order.
+- **CHANGELOG.md** 991 lines: `### Results that change` :10 (last item :376, blank :377, `### Security` :378); `### Changed behaviour (may need your do-files changed)` :609 (last item ends :733, blank :734, `### Removed` :735); `### Requirements` :744 (last item :798, blank :799, `### Fixed in WP-30` :800).
+- **Runner**, `test/run_all_cscripts.do` 3147 lines: shard table :75-156 (`local _cert_shards ///` :87, last row :155 `    test_wp30_truth.cscript             316.9 0  * * *`, `// ---- shards: end ----` :156); block `// 69.` :3077-3121 (its closing `}` at :3121, blank :3122, `// ----` :3123, `// Summary` :3124).
+- **Pins:** `test_cscript_hygiene.py:299` `assert len(_CSCRIPTS) == 68`, :319 `assert len(names) == 50`, :328 `assert len(with_probes) == 13` (unchanged: no captured python import probe); `test_cert_shards.py:45` `assert len(names) == len(set(names)) == 68`. Hygiene reader for WP-30: `_WP30_TRUTH`..`_W30_HEAD` :1080-1084, `_wp30_blocks` :1087-1145, `TestTheWp30TruthScript` :1148-1215.
+- **`scripts/cert_shards.py`**: `_SPLITS` matches `local <name> : env[ironment] DASH_CERT_SHARD`; `check()` applies `wp30_check` to the WP-30 script only; `assign()` shares a `*` script's seconds over all shards first.
+- **`test/test_wp30_truth.cscript`** :1-200: header; `cscript "WP-30 truth: twoway comparisons" adodir ".."`; timer; `c(python_exec)` SKIP exit 222; `do "cert_helpers.do"`, `quietly do "cert_svg.do"`, `qui do "../dash_parse.mata"`, `qui do "../dash.ado"`, `global dash_nobrowser 1`; `_w30_expect`/`_w30_done`; work directory from `tempfile w30_base`; the parts section :99-189 (`w30_secs`, `_w30_part` Mata); S01 block :191-221; summary from :12352.
+- **GAPS3 §6 targets:** GAPS2.md:807 `- **Tracked:** new.` (C14, closed by `b06b662`, BUGS.md:2650 "A continuous histogram dropped the observation at its last edge, and the rows a tolerated start() lies above"); GAPS2.md:1566 (H10) `- **Tracked:** new.`; DROPIN-REMAINING.md:173 (P2.1), :202-209 (P2.12), :211-218 (P2.14), :246 (P2.25), :262 (P2.29), :288 (P2.48), :380 (P3.1), :433 (P3.9).
+- **Existing tests that pin today's state** (flipped by moving the count, never deleted): `test_cscript_hygiene.py::TestTheChecksReachEveryScript::test_the_glob_finds_every_script` (68), `::test_every_script_that_skips_for_python_is_read` (50), `test_cert_shards.py::TestTheRealTable::test_every_registered_script_has_one_row` (68).
 
 ## User stories
 
-- **US-01.1** As the maintainer, I want WP-28 listed in `ROADMAP.md` with every gap, its
-  severity, effort and the section that closes it, before the first fix lands, so that the
-  plan is visible and its closure can be measured against a written list.
-- **US-01.2** As the maintainer, I want the tracking tests to read GAPS2.md, so that a claim
-  that WP-28 closed a gap is checked against the audit, a closed BUGS.md entry and a commit,
-  not taken on trust.
-- **US-01.3** As the maintainer, I want GAPS2.md committed on `s3-bugs`, so that the audit and
-  the commits that answer it share one history.
-- **US-01.4** As the developer or agent of any later section, I want one written form for a
-  BUGS.md entry, a CHANGELOG line and a commit message, so that every section's records are
-  uniform, parseable by the guards, and need no re-editing at closeout.
+- **US-01.1** As the maintainer, I want every WP-31 entry open in BUGS.md, graded, naming its section, with a GAPS3 Tracked line, so the tracking documents state what is not yet fixed.
+- **US-01.2** As the release manager, I want the release guard to exempt an S1/S2 entry only while it is open in the WP-31 form, so the allowance cannot hide a defect.
+- **US-01.3** As a fix section's agent, I want one fixed edit (box, Resolution, Tracked line, `WP31_OPEN` key, markers) checked by a test, so I cannot half-close my entry.
+- **US-01.4** As a fix section's agent, I want one truth script with a gated, timed block form, runnable alone with `WP31_ONLY=S<NN>`, so I measure against Stata without touching another section's lines.
 
 ## Business requirements
 
-- **BR-01.1** `ROADMAP.md` holds WP-28 in the same shape as WP-27, listing all 22 gaps of
-  PRD §4 with severity, effort and closing section, and is not marked DONE.
-- **BR-01.2** The full pytest suite stays green at every commit of WP-28 without any BUGS.md
-  entry being opened; the release guard (no open S1/S2) is untouched.
-- **BR-01.3** A GAPS2 gap a DONE package claims is provably closed: the audit entry names the
-  package, a BUGS.md entry that is closed, and a commit that exists, and a test checks all
-  three both ways (package → entry, entry → package).
-- **BR-01.4** `GAPS2.md` is committed and the packaging test allows it at the root.
-- **BR-01.5** `CHANGELOG.md` has a place for WP-28's lines, one marker per gap, in the
-  release's existing lists (plus one new `### Fixed in WP-28` heading) under the current
-  release heading.
-- **BR-01.6** Every existing assertion of `test_tracking_documents.py` and `test_packaging.py`
-  passes unchanged.
-- **BR-01.7** The BUGS.md entry form, the CHANGELOG line form and the commit-message form are
-  written down once, here, and every later section (02 to 19) follows them verbatim.
+- **BR-01.1** BUGS.md holds one open entry per Appendix A row (110), in the BRIEF's open form, each title quote-free and unique.
+- **BR-01.2** GAPS3.md §9 holds exactly one Tracked line per entry, each `Open (WP-31 section NN)` with NN = the entry's section.
+- **BR-01.3** A stale allowance key, a missing or duplicated title, an entry not in the open form or naming another section, an open entry with no marker, a closed entry with a marker or without `(WP-31, <id>)`, a marker outside its list, a Tracked line out of step with BUGS.md: each fails a named test.
+- **BR-01.4** CHANGELOG.md carries one marker per (entry, list) pair of Appendix A; `### Fixed in WP-31` sits directly above `### Fixed in WP-30`.
+- **BR-01.5** The truth script runs under the runner as block 70, SKIPs r(222) only without Python, runs alone under `WP31_ONLY`, fails r(9) when no case ran in a single-part run, passes an empty part under a split run, and leaves no file behind.
+- **BR-01.6** The GAPS3 §6 corrections are in GAPS2.md and DROPIN-REMAINING.md, and every tracking test stays green.
+- **BR-01.7** No shipped file changes.
 
 ## Technical requirements
 
-- **TR-01.1 The field.** A work package may carry, on its header line beside `**Severity:**`,
-  a `**GAPS2 closed:** <ids>` field. Ids match `[A-NX]\d{1,2}`, comma-separated, optionally
-  qualified in parentheses as `**Gaps closed:**` items are. The old `**Gaps closed:**` regex
-  (635) does not match this text, so `_parse_roadmap` ignores it.
-- **TR-01.2 The GAPS2 reader.** Add `_parse_gaps2(text)` to `test_tracking_documents.py`
-  returning `({id: entry}, dupes)`. A heading is `^### (?P<id>[A-NX]\d{1,2})\. (?P<title>\S.*)$`
-  (`_GAPS2_HEADING`); the entry's Tracked line is the first `^- \*\*Tracked:\*\* (?P<text>\S.*)$`
-  (`_GAPS2_TRACKED`) after it and before the next heading or `## ` line. The entry records
-  `title`, `line`, `tracked` (the text), and its classification: `closed = (wp, bugs_title, sha)`
-  when the text matches `_GAPS2_CLOSED = ^Closed in (WP-\d{2}), BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40})\b`;
-  `deferred = wp` when it matches `_GAPS2_DEFERRED = ^Deferred \((WP-\d{2})\): \S`; else
-  `open`. Text after the first `;` is commentary (residuals, the original audit text) and is
-  not read.
-- **TR-01.3 The package reader.** Factor `_parse_roadmap`'s splitting (626-631) into
-  `_wp_sections(text)` yielding `(wp, head, section, done)`, used by `_parse_roadmap` (whose
-  return value is unchanged, so `test_the_roadmap_reader` passes verbatim) and by a new
-  `_parse_roadmap_gaps2(text)` returning `{wp: {"done": bool, "gaps2": {id: qualified?}}}`
-  from the `**GAPS2 closed:**` field, reusing `_split_items`. Extend the `docs` fixture with
-  `"gaps2"`, `"gaps2_dupes"` and `"wps2"` keys; keep the existing keys.
-- **TR-01.4 The tests**, in a new class `TestGaps2AndRoadmapAgree`:
-  `test_every_gaps2_id_a_package_declares_has_a_heading` (every declared id resolves, DONE or
-  not; no duplicate headings); `test_every_gaps2_id_a_done_package_lists_is_closed_by_it`
-  (for each DONE package, each id's Tracked line is the Closed form naming that package);
-  `test_every_closed_gaps2_entry_is_listed_by_its_package` (the reverse: the named package
-  exists, is DONE, and lists the id); `test_every_closed_gaps2_entry_names_a_closed_bugs_entry_and_a_commit`
-  (the quoted title equals exactly one BUGS.md entry's title and that entry is closed and its
-  Resolution text holds `(<wp>, <id>)`, i.e. `"(%s, %s)" % (wp, gid)`; the commit resolves with
-  `git cat-file -e <sha>^{commit}`, skipping only when `rev-parse --git-dir` fails, as
-  `test_a_closing_commit_exists` does); `test_a_deferred_gaps2_entry_names_its_package_and_a_reason`
-  (a Tracked line beginning `Deferred` matches `_GAPS2_DEFERRED` and its package exists in
-  ROADMAP.md); `test_the_traceability_matrix_heading_appears_once`
-  (`roadmap.count("## Traceability matrix") == 1`); and `test_the_gaps2_readers`, a unit test
-  of both readers on inline text that also asserts `_parse_roadmap` of a section holding only
-  `**GAPS2 closed:**` returns `gaps == {}`.
-- **TR-01.5 The allowlist.** Add `"GAPS2.md"` to `_ROOT_ALSO` (`test_packaging.py:411`),
-  between `"GAPS.md"` and `"REMAINING.md"`, and `git add GAPS2.md` (no `-f`: it is not
-  ignored).
-- **TR-01.6 WP-28 in ROADMAP.md.** Insert after the `---` at 4241 and before
-  `## Traceability matrix` (4243), ending with its own `---`. Heading `## WP-28 · Close the
-  GAPS2 audit's 22 gaps` (no `— DONE`; section 19 appends it). Header line:
-  `**GAPS2 closed:** B1, B2, B3, B5, B6, B7, C2, D1, E1, E2, E3, E14, F1, G1, G2, G3, G5, G6, G16, K2, X1, X2 · **Severity:** S1 (15), S2 (4), S3 (3) · **Effort:** L · **Depends on:** WP-27`.
-  Then `> **User story.** As the Stata user pasting twoway syntax, I want the numbers, text
-  and colours twoway draws, and twoway's refusals; as the maintainer, I want each of the 22
-  audited defects closed by a regression test that failed before its fix.`, then
-  `### Business requirements` BR-28.1..k, `### Technical requirements` TR-28.1..k,
-  `### Acceptance criteria` AC-28.1..k, `### Test plan`, and `#### GAPS2 traceability` with a
-  table `| Gap | Title | Sev | Effort | Closable | Section |` of 22 rows (titles shortened
-  from GAPS2's headings; Sev/Effort/Closable from GAPS2's area tables: B1 S1 M yes S14; B2 S1
-  M yes S18; B3 S1 S yes S13; B5 S1 M yes S15; B6 S1 S yes S13; B7 S1 S yes S13; C2 S1 S yes
-  S05; D1 S1 S yes S06; E1 S1 M yes S04+S11; E2 S1 M yes S17; E3 S2 L yes S04+S11+S12; E14 S3
-  M yes S10; F1 S1 S yes S09; G1 S1 M yes S07; G2 S2 S yes S08; G3 S2 M partly S08; G5 S2 S
-  yes S07; G6 S3 M yes S04+S12; G16 S3 S yes S14; K2 S2 S yes S09; X1 S1 S yes S17; X2 S1 M
-  partly S16). The BRs come from PRD §4-§5 (one per component group: display formats, axis
-  labels and scales, textbox grammar, legend, histogram, schemes, colorvar, filters,
-  presentation parity, serve and floor, data handling, silent-when-honoured, refusals with
-  twoway's codes); the TRs from RESEARCH.md "Key architecture decisions" 1-6 and the
-  cross-cutting mechanisms (copy lists, `function_test_map.py`, fixtures with `git add -f`,
-  the node runner, the SVG helper); the ACs from PRD §8 (a failing-then-passing test per gap in
-  both modes; the fixtures listed; both suites green under both interpreters with no skips;
-  the gate green from an installed package; no open S1/S2; 22 closed entries naming tests;
-  every Tracked line in scope naming its commit; CHANGELOG complete); the test plan names
-  `test/test_tracking_documents.py::TestGaps2AndRoadmapAgree` as the closure check and the
-  section files as the per-gap plans. **Inside WP-28 no line may begin with `# ` or `## `,
-  and the text `## Traceability matrix` and the field `**Gaps closed:**` may not appear.**
-- **TR-01.7 CHANGELOG stub (D2, as corrected in the fixer pass).** The markers go into the
-  release's EXISTING top-level lists, plus one new heading; nothing sits in a sub-heading of
-  its own. Four insertions in `CHANGELOG.md`, line numbers at 91d97be:
-  1. Under `### Results that change` (10), at the END of that section -- after the last item
-     of its last group, `**Colours, schemes and appearance**` (113-140, ending with the
-     "(S09)" legend item), and before `### Security` (142) -- a new bold group line and its 16
-     markers, in this order:
+Both modes: S01 draws nothing; no copy list, JS or parity entry applies. No function is added to `function_test_map.py` or `program_coverage_map.py`.
 
-     ```
-     **WP-28 (GAPS2 audit, 25sep2026)**
-
-     <!-- WP-28 B1 -->
-     <!-- WP-28 B2 -->
-     <!-- WP-28 B3 -->
-     <!-- WP-28 B5 -->
-     <!-- WP-28 B6 -->
-     <!-- WP-28 B7 -->
-     <!-- WP-28 C2 -->
-     <!-- WP-28 D1 -->
-     <!-- WP-28 E1 -->
-     <!-- WP-28 E2 -->
-     <!-- WP-28 E3 -->
-     <!-- WP-28 E14 -->
-     <!-- WP-28 G6 -->
-     <!-- WP-28 G16 -->
-     <!-- WP-28 X1 -->
-     <!-- WP-28 X2 -->
-     ```
-  2. Under `### Changed behaviour (may need your do-files changed)` (280), at the end of that
-     list (after the `saving()` item ending "(WP-23)" at 319, before `### Removed` at 321):
-     `<!-- WP-28 G1 -->` and `<!-- WP-28 G2 -->`.
-  3. Under `### Requirements` (330), at the end of that list (after the jsonio item at
-     335-336, before the blank line above 338): `<!-- WP-28 K2 -->` (S09 also rewrites the
-     floor items above it for K2; that rewrite is not a WP-28 line).
-  4. A new heading `### Fixed in WP-28` directly above `### Fixed after WP-27 (the S3 batch,
-     24sep2026)` (338), holding one sentence ("Failures the GAPS2 audit of 25sep2026 found
-     that WP-28 fixed without changing a drawn result; the results that changed are the WP-28
-     group under Results that change, the behaviour changes and the floor sit in their own
-     lists.") and the markers `<!-- WP-28 E14 served -->`, `<!-- WP-28 F1 -->`,
-     `<!-- WP-28 G3 -->`, `<!-- WP-28 G5 -->`.
-
-  That is 23 markers (22 gaps; E14 twice; C4/E4 none). The rules every closing task follows
-  (D2): a gap's closing task replaces only its own marker(s), in place, with line(s) ending
-  `(WP-28, <ID>)`, and adds nothing anywhere else; E14 replaces both of its markers (the saved
-  `layout(bs)` filter bar move in the Results group, the four served items under `### Fixed
-  in WP-28`); a Results line names the command, the old value (the failing test's recorded
-  output at 91d97be, Q24) and the new value (DISCOVERY Q20); S04's shared-component lines go
-  under `### Fixed in WP-28`, after the four markers, ending `(WP-28 S04)`. Section 19
-  verifies `grep -c '<!-- WP-28 ' CHANGELOG.md` prints 0 and, inside each list's awk range
-  (`/^### Results that change/,/^### Security/`; `/^### Changed behaviour/,/^### Removed/`;
-  `/^### Requirements/,/^### Fixed in WP-28/`; `/^### Fixed in WP-28/,/^### Fixed after WP-27/`),
-  `grep -c '(WP-28, <ID>)'` is at least 1 for every id that belongs there (E14 in two ranges);
-  it moves or completes a line, never rewords its fact.
-- **TR-01.8 The BUGS.md entry form** (every section's final task; parsed by `_ENTRY`,
-  `_FIELD`, `_references`):
-
+- **TR-01.1 BUGS.md.** Append, after :3197 and one blank line, one entry per Appendix A row in Appendix A's order, one blank line between entries, the file ending with one newline:
   ```
-  - [x] Title: <what was wrong, one sentence, no double-quote character>
-    - File Names and Line Numbers: <file>: `<function>' (<lines at 91d97be>)[; <file>: ...]
-    - Description: GAPS2 <ID>. <the measured symptom: the command, what dash drew, what twoway draws, with the Stata rule's help/ado citation>
-    - Suggested fix: <GAPS2's plan in one or two sentences>
-    - Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). <what changed, in which functions, in both renderers>. Pinned by test/<file>.py::<Class>::<test>[, test/<script>.cscript <CASE-ID>][; fixture test/fixtures/<name>.json]. [Residual, deferred (WP-28): <what and why>.]
+  - [ ] Title: <Appendix A Title>
+    - File Names and Line Numbers: <GAPS3 row's Evidence column, verbatim>
+    - Description: GAPS3.md <row id>, re-verified at 6370ca4: <GAPS3 row's Gap column, verbatim; for a split row, the part Appendix A names in parentheses after the title, then "; the whole row reads: " and the Gap column>
+    - Suggested fix: WP-31 section NN (<section name, D-01.b>): <Appendix A Suggested fix>
+    - Resolution: Not fixed because WP-31 section NN has not landed. Graded S<n> (WP-31): <Appendix A Why>.
   ```
+  `<row id>` in the Description is the GAPS3 table id (`B5`, not `B5a`). Backticks in the Gap column are kept; a `"` in the Gap column is kept in the Description (only the Title is quote-free). Build the entries with the script of TR-01.9 (`python3 <scratch>/s01/s01_entries.py bugs`), never by hand.
+- **TR-01.2 GAPS3.md §9.** Append after :411 (one blank line, then):
+  ```
+  ## 9. Tracking
 
-  Rules: appended at the END of BUGS.md with one blank line before it (never mid-file; D3);
-  the four fields once each, in this order, each on one line or continued on lines indented
-  four spaces; the field name is exactly `- Resolution:` with the WP and gap id inside the
-  text, never as a parenthetical on the field name (D3, C11); no other line begins `- `
-  inside the entry; the title holds no `"` (section 19 quotes it in GAPS2.md) and is unique;
-  every `test_*.py`/`.cscript` name, `test_x.py::Class::test` node, `Test…` word and `AB-12`
-  case id in the entry must exist on disk when the entry is committed (a cert case id must be
-  displayed by its script); the entry lands closed, in the gap's fix commit; no `Graded` line
-  (that is for open entries). The `(WP-28, <ID>)` text inside the Resolution field is what
-  section 19 counts (`grep -c '^  - Resolution: Fixed .*(WP-28, ' BUGS.md` prints 22) and what
-  `_GAPS2_CLOSED`'s cross-check reads (`_FIELD` at test_tracking_documents.py:101 tolerates an
-  optional parenthetical qualifier after the field name, but the qualifier is written inside
-  the text so every reader sees one form).
-- **TR-01.9 The commit-message form.** Subject: what now happens, as a sentence, ending with
-  the gap id in parentheses, `… (GAPS2 B1)` (a commit that closes two gaps through one code
-  path names both, `… (GAPS2 E3, G6)`: section 12 only); a shared-component commit (S01, S02, S03, S04)
-  ends with its section, `… (WP-28 S02)`, and so does each of section 19's closeout commits,
-  `… (WP-28 S19)`. Body: it OPENS with the failing tests' recorded output at 91d97be (the
-  `<scratch>/NN-01-failure.txt` task 1 saved; Q24, D1), which is also the old value the gap's
-  CHANGELOG line quotes; then the measured defect before the change (command, drawn value,
-  twoway's value, the rule's citation); what changed and where (functions, both renderers,
-  the copy lists); then one line each: `Regression: test/<file>.py::<Class>::<test> -- failed
-  at 91d97be with <the wrong number or assertion text>`, `Flipped: <node> -- <old expectation>
-  was wrong because <why>` (one per flipped test), `Fixture: test/fixtures/<name>.json
-  (scripts/<extract script>)`, `BUGS.md: "<title>" (closed)`. No AI reference anywhere, no
-  trailer naming a model or vendor (CLAUDE.md rule 6 governs; grep the message for
-  `claude|anthropic` before and after committing). Commits are one per gap, one per shared
-  component S01-S04 and one per S19 step (D1, C13); tasks are steps, never commits. A section
-  with several gaps commits once per gap (S07 G1, G5; S08 G2, G3; S09 F1, K2; S13 B3, B6, B7;
-  S14 B1, G16; S17 E2, X1); S10 commits once (E14). A red tree is never committed (rule 4):
-  the regression tests are written and run first, their failure text saved to the scratch
-  directory, and they land in the fix commit that turns them green; no test-only commit ever
-  exists. Before each commit: `git merge --no-edit main` (expected `Already up to date`), then
-  the full suite once, `python3 -m pytest test/ -q` (rule 11).
-- **TR-01.10 Security (rule 1).** Nothing here reaches HTML, JS, a Bokeh field or `exec`;
-  the readers use anchored regular expressions and `git cat-file -e` with a hex-validated
-  argument, and `subprocess.run` with a list, never `shell=True`.
+  One line per WP-31 entry (.ultraplan/sections/index.md, A4), rewritten in place by the entry's closing commit; test/test_tracking_documents.py::TestWp31Tracking reads exactly these forms:
+  `Open (WP-31 section NN).`, `Closed in WP-31, BUGS.md "<title>", commit <sha>.`, or
+  `Partly closed in WP-31 (section NN, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").`
+  A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha on s3-bugs (DECISIONS A11).
+
+  - **A1 Tracked:** Open (WP-31 section 08).
+  ...
+  ```
+  then the 110 lines of Appendix B in id order.
+- **TR-01.3 Readers** (`test/test_tracking_documents.py`, appended after :1953 with two blank lines before; Appendix C block `tracking-wp31`): `WP31_OPEN` (110 keys, id to title, one per line, Appendix A order), `WP31_LISTS` (id to a tuple of list names, from the `Lists` column: `RC`→`"Results that change"`, `CB`→`"Changed behaviour"`, `RQ`→`"Requirements"`, `FX`→`"Fixed in WP-31"`), `WP31_SECTION` (id to int), `WP31_ALL = tuple(WP31_LISTS)`, the regexes `_WP31_ID = r"[A-K]\d{1,2}[a-gkltx]?"`, `_WP31_MARKER`, `_WP31_OPEN_FORM`, `_GAPS3_ROW`, `_GAPS3_TRACKED`, `_GAPS3_OPEN`, `_GAPS3_CLOSED`, `_GAPS3_PARTLY`, the functions `_wp31_markers`, `_wp31_open_problems`, `_wp31_marker_problems`, `_wp31_closure_problems`, `_wp31_list_problems` (each a copy of its WP-30 twin with `30`→`31`, `P1 entries`→`entries`, and `WP31_SECTION`), `_parse_gaps3(text)` and `_gaps3_problems(tracked, open_ids, entries)`, and `class TestWp31Tracking` with `test_every_allowed_title_is_an_open_entry`, `test_an_open_entry_keeps_its_marker`, `test_a_closed_entry_has_no_marker_and_a_resolution`, `test_each_entry_sits_in_its_changelog_lists` (also `len(WP31_ALL) == 110`, `tuple(WP31_SECTION) == WP31_ALL`, `set(WP31_SECTION.values()) == set(range(2, 61))`), `test_the_marker_reader`, `test_the_wp31_problem_readers`, `test_every_entry_has_one_gaps3_tracked_line`, `test_the_gaps3_readers`.
+- **TR-01.4 Release guard.** :557 becomes `allowed = (set(WP29_OPEN.values()) | set(WP30_OPEN.values()) | set(WP31_OPEN.values()))`; the comment at :553-556 gains `, and WP-31's entries do the same (WP31_OPEN; TestWp31Tracking)`. Module docstring: item 10 after :59 (Appendix C `docstring-item-10`).
+- **TR-01.5 CHANGELOG.md** (bottom-up so the anchors hold): above :800 insert Appendix C `fixed-in-wp31` and the `FX` markers; after :798 a blank line and the `RQ` markers (none in Appendix A; insert nothing); after :733 a blank line and the `CB` markers; after :376 a blank line, the group line `**WP-31 (drop-in GAPS3, 10oct2026)**`, a blank line and the `RC` markers. Markers are `<!-- WP-31 <id> -->`, Appendix A order within a list, one blank line between consecutive markers.
+- **TR-01.6 The truth script** `test/test_wp31_truth.cscript`: copy `test/test_wp30_truth.cscript` lines 1-221 (header through `* ==== end S01 ====`) and lines 12352-12385 (from the blank line before `* ==== append new blocks above this line ====` to the end), then apply, in order: `sed -e 's/wp30/wp31/g' -e 's/WP30/WP31/g' -e 's/WP-30/WP-31/g' -e 's/w30_/w31_/g' -e 's/_w30_/_w31_/g'`; replace the header comment lines 1-28 with Appendix C `truth-header`; replace the `w30_secs` table (:112-118 of the original, now `w31_secs`) with the two lines `local w31_secs ///` / `    S01 1`; in the Mata `_w31_part` change `sec = J(rows(ids), 1, 0)` to `sec = J(rows(ids), 1, 1)` (D-01.f); in the S01 block change the header to `* ==== S01 scaffold: the helpers load and a twoway SVG is read ====` (unchanged text), case id `TF-01` to `U01-1` (four `_w31_expect` lines, one `_w31_done`), `w30s01` to `w31s01` (three places); in the summary, directly after `if \`ncase' == 0 {`, insert Appendix C `empty-part` as the first statement inside that brace. The `.ultraplan/wp30/index.md A142` citation in the header becomes `.ultraplan/sections/index.md A5`.
+- **TR-01.7 Runner, pins, shard table.** Runner: after :3121 insert a blank line and block `// 70.` = lines 3077-3121 with `sed -e 's/69\./70./' -e 's/wp30/wp31/g' -e 's/WP-30: the one certification script for/WP-31: the one certification script for/' -e 's#.ultraplan/wp30/index.md A142#.ultraplan/sections/index.md A5#' -e "s/S01's scaffold and one block for each of S02-S57,/S01's scaffold and the blocks S02-S60 append,/"`. Shard table: :155 gains ` ///` at its end and a new :156 `    test_wp31_truth.cscript               1.0 0  * * *` (same column widths as :155). Pins: `test_cscript_hygiene.py:299` `68`→`69` with the comment line `# ... so 68 now.` extended `; plus WP-31's test_wp31_truth (.ultraplan/sections/index.md A5), so 69.`; :319 `50`→`51` with `; WP-31's test_wp31_truth gates the same way, so 51.`; `test_cert_shards.py:45` `68`→`69` with a trailing comment `# 68 -> 69: test_wp31_truth.cscript (WP-31 S01)`. Hygiene reader: Appendix C `hygiene-wp31` inserted after :1215 (the end of `TestTheWp30TruthScript`).
+- **TR-01.8 Register corrections (A6)**, exact edits, Appendix D.
+- **TR-01.9 Generator** `<scratch>/s01/s01_entries.py` (Appendix E): reads this file's Appendix A table and GAPS3.md's tables, and prints, by sub-command, `bugs` (the 110 entries), `tracking` (the §9 lines), `readers` (the three dict literals), `markers <list>` (the marker lines of one list). It uses `re` and `sys` only, no shell, no network, no `eval`.
+- **TR-01.10 Security (rule 1).** Readers are anchored regexes over repository text; nothing runs user text; the generator writes nothing (its output is redirected by the task); the truth script writes only under a directory it creates.
 
 ## Boundaries
 
-- Do not open any BUGS.md entry (DISCOVERY Q4, amended): every entry lands closed in its
-  fix commit. Do not touch BUGS.md at all in this section.
-- Do not mark WP-28 DONE, do not write a `### Done, measured` block, and do not update any
-  GAPS2.md `- **Tracked:**` line: those are section 19's.
-- Do not edit GAPS.md, the `## Traceability matrix`, WP-01..27, or `_parse_roadmap`'s return
-  value; do not rename or delete any test.
-- Do not change `dash_render.py`, `dash.ado`, `dash_parse.mata`, `dash.sthlp`, `dash.pkg`
-  or any shipped file; GAPS2.md is not shipped and is not added to `dash.pkg`.
-- Do not renumber sections or edit `.ultraplan/sections/index.md`.
-- Do not add C4/E4 to WP-28 (PRD §7); the CHANGELOG stub has no marker for them.
-- Do not put any marker under a heading of its own other than `### Fixed in WP-28`, and do
-  not write a WP-28 line: only markers (the lines are the closing tasks').
+- No shipped file (`dash.ado`, `dash_parse.mata`, `dash_render.py`, `dash_setup.*`, `dash.sthlp`, `dash.pkg`, `stata.toc`, scheme files).
+- Not edited: ROADMAP.md, GAPS.md, REMAINING.md, TWOWAY_COVERAGE_AUDIT.md, `test/function_test_map.py`, `test/program_coverage_map.py`, `test/test_mode_parity.py`, WP-29's and WP-30's constants and classes (mirrored, not changed), the import-probe pin (:328), `scripts/cert_shards.py`.
+- GAPS2.md and DROPIN-REMAINING.md: only the lines Appendix D names; after S01 both are read-only (M23).
+- No existing BUGS.md entry is closed, reworded or regraded. No test is renamed or deleted. No `make cert`, `make gate` or full suite.
 
 ## Stata truth
 
-None. This section runs no Stata and adds no fixture or extract script.
+None added. The truth script's one case **U01-1** is the WP-30 TF-01 smoke renamed: `sysuse auto`, `twoway scatter mpg weight, name(w31s01, replace)`, `cert_svg_export` to `` `w31_work'/w31s01.svg ``, `cert_svg_texts` (`r(n) > 0`), `_dash_serve` loaded. Driver (BRIEF "Running one cscript"), `<W>` the worktree:
+```sh
+X=<scratch>/s01; mkdir -p "$X/only" "$X/shard3"
+printf 'global dash_nobrowser 1\ncd "%s/test"\ndo "%s/test/test_wp31_truth.cscript"\n' "<W>" "<W>" > "$X/run_test_wp31_truth.do"
+cp "$X/run_test_wp31_truth.do" "$X/only/"; cp "$X/run_test_wp31_truth.do" "$X/shard3/"
+scripts/stata_slot.sh "$X" "$X/run_test_wp31_truth.do"
+WP31_ONLY=S99 scripts/stata_slot.sh "$X/only" "$X/only/run_test_wp31_truth.do"
+DASH_CERT_SHARD=3/3 scripts/stata_slot.sh "$X/shard3" "$X/shard3/run_test_wp31_truth.do"
+```
 
 ## TDD test stubs
 
-All in `test/test_tracking_documents.py`, class `TestGaps2AndRoadmapAgree`, written by task
-01-01. Each fails at `91d97be` for the reason given.
+Regression tests (01-01; red at `6370ca4`):
+- Test: `test/test_tracking_documents.py::TestWp31Tracking::test_every_allowed_title_is_an_open_entry` -- `NameError: name '_wp31_open_problems' is not defined`, then `A1: 0 BUGS.md entries are titled ...`.
+- Test: `...::TestWp31Tracking::test_an_open_entry_keeps_its_marker` -- NameError, then `A1 is open and CHANGELOG.md holds no marker for it`.
+- Test: `...::TestWp31Tracking::test_a_closed_entry_has_no_marker_and_a_resolution` -- NameError; vacuous once all are open.
+- Test: `...::TestWp31Tracking::test_each_entry_sits_in_its_changelog_lists` -- NameError, then `CHANGELOG.md has no single '### Fixed in WP-31' list`.
+- Test: `...::TestWp31Tracking::test_the_marker_reader`, `::test_the_wp31_problem_readers`, `::test_the_gaps3_readers` -- NameError.
+- Test: `...::TestWp31Tracking::test_every_entry_has_one_gaps3_tracked_line` -- NameError, then `A1: GAPS3.md has 0 Tracked lines`.
+- Test: `test/test_cscript_hygiene.py::TestTheWp31TruthScript::test_the_scaffold_is_in_order`, `::test_every_block_is_gated_timed_closed_and_in_section_order`, `::test_the_block_reader` -- `NameError: name '_WP31_TRUTH' is not defined`.
+- Test: `test/test_cscript_hygiene.py::TestTheChecksReachEveryScript::test_the_glob_finds_every_script` -- `assert 68 == 69`; `::test_every_script_that_skips_for_python_is_read` -- `assert 50 == 51`.
+- Test: `test/test_cert_shards.py::TestTheRealTable::test_every_registered_script_has_one_row` -- `assert 68 == 69`.
 
-- **Test: `test_the_gaps2_readers`** — inline text with two headings, a Closed line, a
-  Deferred line and an open `new.` line; asserts the dict shapes, and that `_parse_roadmap`
-  of a `**GAPS2 closed:**`-only section returns `{"done": False, "gaps": {}}`. Pre-fix
-  failure: `NameError: name '_parse_gaps2' is not defined`.
-- **Test: `test_every_gaps2_id_a_package_declares_has_a_heading`** — after task 01-03,
-  every id of WP-28's field has a heading in GAPS2.md. Pre-fix failure: `NameError` on
-  `_parse_roadmap_gaps2`.
-- **Test: `test_every_gaps2_id_a_done_package_lists_is_closed_by_it`** — vacuous until
-  section 19 writes `— DONE`; then every id's Tracked line must be `Closed in WP-28, …`.
-  Assert on inline text as well, so the test has a failing case at 91d97be: a DONE package
-  listing an id whose Tracked line is `new.` must be reported.
-- **Test: `test_every_closed_gaps2_entry_is_listed_by_its_package`** — the reverse direction,
-  on the documents and on inline text.
-- **Test: `test_every_closed_gaps2_entry_names_a_closed_bugs_entry_and_a_commit`** — on the
-  documents (no Closed line exists yet, so it passes vacuously on the documents) and on inline
-  text with a title no entry has, which must be reported.
-- **Test: `test_a_deferred_gaps2_entry_names_its_package_and_a_reason`** — inline
-  `Deferred (WP-28): out of scope` passes; `Deferred: x` (no package) is reported.
-- **Test: `test_the_traceability_matrix_heading_appears_once`** — `roadmap.count(...) == 1`;
-  passes at 91d97be and pins hazard (2) for every later edit.
-- **Test: `test_packaging.py::test_the_package_root_holds_only_what_ships_and_the_repositorys_own`**
-  (existing) — fails at 91d97be once `git add GAPS2.md` is run: `stray: GAPS2.md`. This is
-  the regression record for TR-01.5.
-
-Pinned tests to flip: none.
+cscript case: `test/test_wp31_truth.cscript U01-1` (green once the script exists). Pinned tests to flip: the three count pins above (moved, R10). Parity corpus: none.
 
 ## Test plan
 
 | What | How | Fixture | Both modes? |
 |---|---|---|---|
-| The readers parse headings, Tracked lines and the new field | pytest, `TestGaps2AndRoadmapAgree::test_the_gaps2_readers` | inline text | n/a |
-| WP-28's 22 ids resolve in GAPS2.md | pytest, `…::test_every_gaps2_id_a_package_declares_has_a_heading` | ROADMAP.md, GAPS2.md | n/a |
-| A DONE package's ids are closed by it, both directions | pytest, the two `…_is_closed_by_it` / `…_is_listed_by_its_package` tests | inline + documents | n/a |
-| A Closed line names a real closed BUGS.md entry and a real commit | pytest, `…::test_every_closed_gaps2_entry_names_a_closed_bugs_entry_and_a_commit` | inline + documents, git | n/a |
-| The matrix split point is unique | pytest, `…::test_the_traceability_matrix_heading_appears_once` | ROADMAP.md | n/a |
-| GAPS2.md is allowed at the root | pytest, `test_packaging.py::test_the_package_root_holds_only_what_ships_and_the_repositorys_own` | git ls-files | n/a |
-| Nothing existing changed | `python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q`, then the full suite before each commit | — | n/a |
+| 110 open entries in form, titles unique, sections right | pytest `TestWp31Tracking::test_every_allowed_title_is_an_open_entry` | BUGS.md | n/a |
+| Release guard exempts the three allowances only | pytest `TestNoOpenEntryBlocksARelease` | BUGS.md | n/a |
+| Markers present/absent/in place | pytest `test_an_open_entry_keeps_its_marker`, `test_a_closed_entry_has_no_marker_and_a_resolution`, `test_each_entry_sits_in_its_changelog_lists` | CHANGELOG.md | n/a |
+| GAPS3 Tracked lines agree with BUGS.md | pytest `test_every_entry_has_one_gaps3_tracked_line` | GAPS3.md | n/a |
+| Readers both directions | pytest `test_the_marker_reader`, `test_the_wp31_problem_readers`, `test_the_gaps3_readers` | inline | n/a |
+| Truth script layout, registration, pins | pytest `TestTheWp31TruthScript`, `test_cscript_hygiene.py`, `test_cert_verdict.py`, `test_cert_shards.py`; `python3 scripts/cert_shards.py check` | the script, the runner | n/a |
+| Script runs; gate; empty part | the three driver runs of "Stata truth" | auto | Stata |
+| Register edits keep readers green | pytest `test_tracking_documents.py` | GAPS2.md, DROPIN | n/a |
 
-Acceptance criteria:
-
-- **AC-01.1** `git ls-files GAPS2.md` prints the file, and the packaging root test passes.
-- **AC-01.2** `ROADMAP.md` has one `## WP-28 · …` section before `## Traceability matrix`,
-  not headed DONE, with a `**GAPS2 closed:**` field of 22 ids, no `**Gaps closed:**` field,
-  and a `#### GAPS2 traceability` table of 22 rows; `grep -c '## Traceability matrix' ROADMAP.md`
-  prints 1.
-- **AC-01.3** `python3 -m pytest test/test_tracking_documents.py -q` passes with 7 more tests
-  than at 91d97be (26 → 33 test functions in the file), none skipped.
-- **AC-01.4** `CHANGELOG.md` holds 23 `<!-- WP-28 … -->` markers (22 gaps, E14 twice, C4/E4
-  none): 16 in the WP-28 group at the end of `### Results that change`, 2 at the end of
-  `### Changed behaviour`, 1 at the end of `### Requirements`, 4 under the new
-  `### Fixed in WP-28` heading.
-- **AC-01.5** The full suite is green under `python3 -m pytest test/ -q` once, before the
-  section's one commit (made by 01-03 on the worktree branch `wp28-s01`, subject ending
-  `(WP-28 S01)`); no test-only commit exists; no commit message mentions an AI.
+Acceptance criteria: **AC-01.1** `grep -c '^- \[ \] Title:' BUGS.md` → 113; `grep -c 'Not fixed because WP-31 section' BUGS.md` → 110. **AC-01.2** `grep -c '^- \*\*[A-K][0-9]*[a-z]* Tracked:\*\* Open (WP-31 section [0-9][0-9])\.$' GAPS3.md` → 110. **AC-01.3** `grep -c '<!-- WP-31 ' CHANGELOG.md` equals the number of (entry, list) pairs of Appendix A (the generator prints it: `python3 <scratch>/s01/s01_entries.py count`); `grep -c '^### Fixed in WP-31$' CHANGELOG.md` → 1. **AC-01.4** `grep -c 'do "test_wp31_truth.cscript"' test/run_all_cscripts.do` → 1; `python3 scripts/cert_shards.py check` exits 0; the driver prints `U01-1 PASS` and `test_wp31_truth: ALL CHECKS PASSED`; `WP31_ONLY=S99` ends r(9); `DASH_CERT_SHARD=3/3` prints `part 3/3 has no block to run` and no `r(`. **AC-01.5** `grep -Eic 'claude|anthropic'` on the commit message → 0.
 
 ## Tasks
 
-Commit boundary: **one commit (S01)** holding 01-01 to 01-03, made by 01-03, subject ending
-`(WP-28 S01)`, body per TR-01.9 opening with `<scratch>/01-01-failure.txt`; the full pytest
-suite runs green once before it (CLAUDE.md rules 4 and 11). 01-01 and 01-02 do not commit.
-No Stata runs in this section. No AI references anywhere.
+**Commit boundary.** Tasks 01-01 to 01-08 form the one S01 commit, subject `Open the WP-31 entries, Tracked lines, markers and truth script (WP-31 S01)`, made by 01-09 on `wp31-s01` in `<W>` = `/Users/billy/Desktop/Programs/StataPrograms/d/dash-wt/wp31-s01` (cut by the orchestrator from `s3-bugs` at `6370ca4`). The body opens with `<scratch>/01-01-failure.txt`, then what changed and where, then one `Regression:` line per red node of "TDD test stubs" (`-- failed at 6370ca4 with <text>`), one `Flipped:` line per moved count pin (`-- 68 was right before test_wp31_truth.cscript existed`), `Truth: test/test_wp31_truth.cscript U01-1 PASS`. No `Fixture:`, no `BUGS.md: ... (closed)` line (S01 closes nothing), no `GAPS3:` line. Every command runs as `cd <W> && ...`. `<SF>` = `/Users/billy/Desktop/Programs/StataPrograms/d/dash/.ultraplan/sections/section-01-tracking-foundation.md`.
 
 <task type="auto" id="01-01">
-  <name>Write the failing tracking tests</name>
-  <files>test/test_tracking_documents.py</files>
-  <action><![CDATA[
-    In `/Users/billy/Desktop/Programs/StataPrograms/d/dash/test/test_tracking_documents.py`,
-    append the class `TestGaps2AndRoadmapAgree` with the seven tests named under "TDD test
-    stubs", exactly those names, using the fixture keys `docs["gaps2"]`, `docs["gaps2_dupes"]`
-    and `docs["wps2"]` and the reader names `_parse_gaps2` and `_parse_roadmap_gaps2` (not
-    yet defined). Give each document-level test an inline-text case too, so it has a failure
-    to show on a tree where the documents are still vacuous. Extend the module docstring's
-    numbered list with item 7: "GAPS2.md (the audit of 91d97be) and ROADMAP.md agree: a
-    package's **GAPS2 closed:** ids have headings; a DONE package's ids carry a Tracked line
-    'Closed in WP-nn, BUGS.md "title", commit sha' naming it, a closed BUGS.md entry and a
-    commit that exists, and every such Tracked line is listed by its package." Do not define
-    the readers in this task. Run `python3 -m pytest test/test_tracking_documents.py -q -k
-    Gaps2 2>&1 | tail -15` against the unmodified readers and save the output to
-    `<scratch>/01-01-failure.txt`; every test in the class must fail with NameError. Do not
-    commit: a red tree is never committed (CLAUDE.md rule 4); this text becomes the opening
-    paragraph of the section's one commit, made by 01-03 (TR-01.9). The same rule is the
-    convention every closing task of sections 02 to 18 follows (Q24): the failing test's
-    recorded output at 91d97be opens the fix commit's body and is the old value its
-    CHANGELOG line quotes.
-  ]]></action>
-  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py -q -k Gaps2 2>&1 | tail -3` reports 7 failed, 0 passed; `python3 -m pytest test/test_tracking_documents.py -q -k "not Gaps2" 2>&1 | tail -1` still reports every existing test passing; `<scratch>/01-01-failure.txt` exists and holds `NameError`; `git status --porcelain` shows only `test/test_tracking_documents.py` modified and no new commit (`git log -1 --format=%s` is unchanged).]]></verify>
-  <done>Seven new tests existed under `TestGaps2AndRoadmapAgree`, all failed with NameError on the unmodified readers, every pre-existing test in the file still passed, the failure text was saved to the scratch directory, and nothing was committed.</done>
+  <name>Write the failing tracking and hygiene tests</name>
+  <files>test/test_tracking_documents.py, test/test_cscript_hygiene.py, test/test_cert_shards.py</files>
+  <action><![CDATA[Check `git -C <W> rev-parse HEAD` prints 6370ca4's full sha and `git -C <W> branch --show-current` prints wp31-s01; `mkdir -p <scratch>/s01`. Extract Appendix E to `<scratch>/s01/s01_entries.py` with `python3 -c "import re,sys; t=open(sys.argv[1]).read(); m=re.search(r'^~~~~python s01-entries\n(.*?)\n~~~~$', t, re.M|re.S); open(sys.argv[2],'w').write(m.group(1)+'\n')" <SF> <scratch>/s01/s01_entries.py`. Append Appendix C block `tracking-wp31` to test/test_tracking_documents.py after its last line (:1953) with two blank lines before it, replacing its three `@@WP31_OPEN@@`, `@@WP31_LISTS@@`, `@@WP31_SECTION@@` lines by the output of `python3 <scratch>/s01/s01_entries.py readers <SF>`. Insert Appendix C block `hygiene-wp31` into test/test_cscript_hygiene.py after :1215 (the last line of TestTheWp30TruthScript) with two blank lines before it; change :299 `== 68` to `== 69` and :319 `== 50` to `== 51`, extending their comments as TR-01.7 says. In test/test_cert_shards.py:45 change `== 68` to `== 69` and append the TR-01.7 comment. Run `python3 -m pytest test/test_tracking_documents.py test/test_cscript_hygiene.py test/test_cert_shards.py -q -n0 -p no:cacheprovider -rf 2>&1 | grep -E '^(FAILED|E   )|passed|failed' > <scratch>/01-01-failure.txt` and put the line `S01 tests at 6370ca4:` first. Do not commit.]]></action>
+  <verify><![CDATA[`grep -c '^FAILED' <scratch>/01-01-failure.txt` prints 14: the eight TestWp31Tracking nodes, the three TestTheWp31TruthScript nodes, test_the_glob_finds_every_script, test_every_script_that_skips_for_python_is_read and test_every_registered_script_has_one_row; the file holds `assert 68 == 69` twice and `assert 50 == 51` once; `grep -c '^    "' test/test_tracking_documents.py` grew by 330 (110 keys in each of three maps). `git -C <W> status --porcelain` shows only ` M` for the three files.]]></verify>
+  <done>The fourteen new or moved tests existed and failed for their recorded reasons, and nothing was committed.</done>
 </task>
 
 <task type="auto" id="01-02">
-  <name>Teach the guards GAPS2.md and stage the audit</name>
-  <files>test/test_tracking_documents.py, test/test_packaging.py, GAPS2.md</files>
-  <action><![CDATA[
-    Implement TR-01.2 and TR-01.3 in `test/test_tracking_documents.py` immediately after
-    `_parse_roadmap` (645): `_GAPS2_HEADING`, `_GAPS2_TRACKED`, `_GAPS2_CLOSED`,
-    `_GAPS2_DEFERRED`, `_parse_gaps2(text)`, `_wp_sections(text)` and `_parse_roadmap_gaps2(text)`;
-    rewrite `_parse_roadmap` to iterate `_wp_sections` so its returned dictionaries are
-    byte-for-byte what they were (run `test_the_roadmap_reader` to prove it). Extend the `docs`
-    fixture (648-654) with `gaps2`, `gaps2_dupes` (from `_parse_gaps2(_read("GAPS2.md"))`) and
-    `wps2`. The BUGS.md cross-check reuses the `bugs` fixture's entries: match the quoted title
-    to exactly one entry, require `e["closed"]` and `"(%s, %s)" % (wp, gid)` in
-    `e["fields"]["Resolution"]` (the text of the field, whose name is exactly `Resolution`;
-    D3). The commit check calls `_git("cat-file", "-e", sha + "^{commit}")` only after
-    `re.fullmatch(r"[0-9a-f]{7,40}", sha)`. Add `"GAPS2.md"` to `_ROOT_ALSO` in
-    `test/test_packaging.py:413`, between `"GAPS.md"` and `"REMAINING.md"`, and run
-    `git add GAPS2.md` (no `-f`: it is not ignored) so `git ls-files` lists it for the
-    packaging test. Run `python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q`.
-    Do not commit: the section's one commit is made by 01-03 after ROADMAP.md and CHANGELOG.md
-    are written (D1); GAPS2.md and the two test files stay staged or modified until then.
-  ]]></action>
-  <verify><![CDATA[`python3 -m pytest test/test_tracking_documents.py test/test_packaging.py -q 2>&1 | tail -2` passes with no skip (the seven new tests included, `test_the_roadmap_reader` untouched); `git ls-files GAPS2.md` prints `GAPS2.md`; `git status --porcelain -- GAPS2.md` prints `A  GAPS2.md`; `git log -1 --format=%s` is unchanged (no commit was made).]]></verify>
-  <done>The readers existed, the seven tests passed, `_parse_roadmap`'s output was unchanged, GAPS2.md was staged and allowed at the root, and nothing was committed.</done>
+  <name>Widen the release guard and the docstring</name>
+  <files>test/test_tracking_documents.py</files>
+  <action><![CDATA[In test_no_open_entry_is_s1_or_s2 (:551) replace the statement at :557 `allowed = set(WP29_OPEN.values()) | set(WP30_OPEN.values())` by `allowed = (set(WP29_OPEN.values()) | set(WP30_OPEN.values()) | set(WP31_OPEN.values()))` and extend the comment ending at :556 with the sentence `WP-31's entries do the same until theirs land (WP31_OPEN; TestWp31Tracking).` Insert Appendix C block `docstring-item-10` after :59 (the docstring line `   keeps every P1 entry closed with no marker left.`). Run `python3 -m pytest test/test_tracking_documents.py -q -n0 -p no:cacheprovider`.]]></action>
+  <verify><![CDATA[The run reports exactly these failures: test_every_allowed_title_is_an_open_entry, test_an_open_entry_keeps_its_marker, test_each_entry_sits_in_its_changelog_lists, test_every_entry_has_one_gaps3_tracked_line; TestNoOpenEntryBlocksARelease's three tests pass; `grep -c 'WP31_OPEN.values()' test/test_tracking_documents.py` prints 1; `grep -c '^10. WP-31' test/test_tracking_documents.py` prints 1.]]></verify>
+  <done>The release guard exempted exactly the three allowances' titles, the reader unit tests passed, and only the four document checks still failed.</done>
 </task>
 
 <task type="auto" id="01-03">
-  <name>Open WP-28, stub the CHANGELOG and commit</name>
-  <files>ROADMAP.md, CHANGELOG.md</files>
-  <action><![CDATA[
-    Insert the WP-28 section of TR-01.6 into
-    `/Users/billy/Desktop/Programs/StataPrograms/d/dash/ROADMAP.md` after the `---` at 4241
-    and before `## Traceability matrix` at 4243, ending with `---` and a blank line; write the
-    user story, BR-28.1..k, TR-28.1..k, AC-28.1..k and the test plan from the sources TR-01.6
-    names, and the `#### GAPS2 traceability` table with the 22 rows given there. Check the
-    hazards before saving: no line of the new text begins `# ` or `## ` except its own
-    heading; the strings `Gaps closed` and `## Traceability matrix` do not occur in it; the
-    heading has no `— DONE`. Make TR-01.7's four CHANGELOG insertions, bottom-up so the line
-    numbers hold: the `### Fixed in WP-28` heading with its sentence and four markers above
-    line 338; `<!-- WP-28 K2 -->` at the end of `### Requirements` (after 336); `<!-- WP-28 G1 -->`
-    and `<!-- WP-28 G2 -->` at the end of `### Changed behaviour (may need your do-files
-    changed)` (after 319); the `**WP-28 (GAPS2 audit, 25sep2026)**` group with its 16 markers
-    in TR-01.7's order at the end of `### Results that change` (after the "(S09)" item at 140,
-    before `### Security`). Run `python3 -m pytest test/test_tracking_documents.py -q`, then the
-    section's one full run, `python3 -m pytest test/ -q` (rule 11, in this worktree), and
-    commit the five files of this section (`test/test_tracking_documents.py`,
-    `test/test_packaging.py`, `GAPS2.md`, `ROADMAP.md`, `CHANGELOG.md`) as ONE commit on the
-    worktree branch `wp28-s01` with the subject `Track WP-28: teach the guards GAPS2.md, commit
-    the audit, open the package and place its CHANGELOG markers (WP-28 S01)`; the body opens
-    with `<scratch>/01-01-failure.txt`, then the two directions the guard now checks, then
-    `Regression: test/test_tracking_documents.py::TestGaps2AndRoadmapAgree -- failed at 91d97be with NameError: name '_parse_gaps2' is not defined`,
-    then the 22 ids by severity and the conventions this section file records (TR-01.7,
-    TR-01.8, TR-01.9). Grep the message for `claude|anthropic` before committing. The merger
-    lands it onto `s3-bugs` with this message, first in batch 1 (`index.md` step 1).
-  ]]></action>
-  <verify><![CDATA[`grep -c '^## WP-28 ' ROADMAP.md` prints 1 and `grep -c '## Traceability matrix' ROADMAP.md` prints 1; `awk '/^## WP-28 /,/^## Traceability matrix/' ROADMAP.md | grep -c 'Gaps closed'` prints 0; `awk '/^## WP-28 /,/^## Traceability matrix/' ROADMAP.md | grep -c '^| [A-KX][0-9]* |'` prints 22; `grep -c '<!-- WP-28 ' CHANGELOG.md` prints 23; `awk '/^### Results that change/,/^### Security/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 16 and the same range holds `**WP-28 (GAPS2 audit, 25sep2026)**` once; `awk '/^### Changed behaviour/,/^### Removed/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 2; `awk '/^### Requirements/,/^### Fixed in WP-28/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 1; `awk '/^### Fixed in WP-28/,/^### Fixed after WP-27/' CHANGELOG.md | grep -c '<!-- WP-28 '` prints 4; `grep -c '^### Fixed in WP-28' CHANGELOG.md` prints 1; `python3 -m pytest test/test_tracking_documents.py -q 2>&1 | tail -1` passes; the full run's tail reports no failures; `git log -1 --format=%s | grep -c '(WP-28 S01)'` prints 1; `git log -1 --format=%B | grep -ci 'claude\|anthropic'` prints 0; `git status --porcelain -- test GAPS2.md ROADMAP.md CHANGELOG.md` is empty.]]></verify>
-  <done>WP-28 was open in ROADMAP.md with its 22-row GAPS2 traceability table and no DONE mark, the CHANGELOG held one marker per gap in the release's existing lists plus the new `### Fixed in WP-28` heading, the tracking tests read them, and the section's one green commit on the worktree branch `wp28-s01` carried the readers, the allowlist, GAPS2.md and the two documents for the merger to land on `s3-bugs`.</done>
+  <name>Open the entries and the Tracked lines</name>
+  <files>BUGS.md, GAPS3.md</files>
+  <action><![CDATA[Check `tail -c 2 BUGS.md | xxd -p` prints 2e0a and `wc -l < BUGS.md` prints 3197. Run `python3 <scratch>/s01/s01_entries.py bugs <SF> >> BUGS.md` (the script prints one blank line, then the 110 entries of TR-01.1 in Appendix A order, one blank line between entries, a final newline). Check `tail -3 GAPS3.md` ends with the line `still contain the word from earlier runs; they are regenerated by \`make cert\`.`; run `python3 <scratch>/s01/s01_entries.py tracking <SF> >> GAPS3.md` (prints one blank line, the TR-01.2 heading and introduction, one blank line, the 110 lines of Appendix B). Run `python3 -m pytest test/test_tracking_documents.py -q -n0 -p no:cacheprovider`.]]></action>
+  <verify><![CDATA[`grep -c '^- \[ \] Title:' BUGS.md` prints 113; `grep -c 'Not fixed because WP-31 section' BUGS.md` prints 110; `grep -c '^- \*\*[A-K][0-9]*[a-z]* Tracked:\*\* Open (WP-31 section [0-9][0-9])\.$' GAPS3.md` prints 110; `grep -c '^## 9. Tracking$' GAPS3.md` prints 1; the pytest run fails only test_an_open_entry_keeps_its_marker and test_each_entry_sits_in_its_changelog_lists, and TestEveryBugsEntryIsWellFormed, TestEveryOpenEntrySaysWhyItIsOpen, TestNoOpenEntryBlocksARelease pass.]]></verify>
+  <done>BUGS.md held the 110 WP-31 entries open, graded and well formed, and GAPS3.md tracked each as Open at its section.</done>
+</task>
+
+<task type="auto" id="01-04">
+  <name>Place the CHANGELOG markers</name>
+  <files>CHANGELOG.md</files>
+  <action><![CDATA[Assert the anchors: :376 ends `(WP-30, P1.25b)`, :377 blank, :378 `### Security`; :733 ends `(WP-30, P1.35)`, :734 blank, :735 `### Removed`; :798 ends `(WP-30, P1.35)`, :799 blank, :800 `### Fixed in WP-30`. If any fails, stop and report (the base is not 6370ca4's CHANGELOG). Edit bottom-up: (1) above :800 insert Appendix C block `fixed-in-wp31`, one blank line, the output of `python3 <scratch>/s01/s01_entries.py markers FX <SF>`, one blank line; (2) after :733 insert one blank line and the output of `... markers CB <SF>`; (3) after :376 insert one blank line, the line `**WP-31 (drop-in GAPS3, 10oct2026)**`, one blank line and the output of `... markers RC <SF>`. Appendix A has no RQ entry, so nothing goes after :798. Run `python3 -m pytest test/test_tracking_documents.py test/test_version_floor.py -q -n0 -p no:cacheprovider`.]]></action>
+  <verify><![CDATA[`grep -c '<!-- WP-31 ' CHANGELOG.md` equals `python3 <scratch>/s01/s01_entries.py count <SF>`; `awk '/^### Results that change/,/^### Security/' CHANGELOG.md | grep -c '<!-- WP-31 '` equals the RC count the script prints, likewise CB between `### Changed behaviour` and `### Removed`, and FX between `### Fixed in WP-31` and `### Fixed in WP-30`; `grep -c '^### Fixed in WP-31$' CHANGELOG.md` prints 1; the pytest run reports 0 failed.]]></verify>
+  <done>CHANGELOG.md held one WP-31 marker per entry and list, under the group line and the new Fixed in WP-31 heading, and every tracking and floor test passed.</done>
+</task>
+
+<task type="auto" id="01-05">
+  <name>Apply the register corrections</name>
+  <files>GAPS2.md, .ultraplan/handoff/DROPIN-REMAINING.md</files>
+  <action><![CDATA[Make exactly the edits of Appendix D, each after asserting the line's current text as Appendix D quotes it (stop and report on a mismatch). Then run `python3 -m pytest test/test_tracking_documents.py -q -n0 -p no:cacheprovider`.]]></action>
+  <verify><![CDATA[`sed -n 807p GAPS2.md` starts `- **Tracked:** Closed in WP-28, BUGS.md "A continuous histogram dropped the observation at its last edge, and the rows a tolerated start() lies above", commit b06b662`; `grep -c 'Written closed' .ultraplan/handoff/DROPIN-REMAINING.md` grew by 1; `grep -c 'Narrowed 10oct2026 (GAPS3 §6)' .ultraplan/handoff/DROPIN-REMAINING.md` prints 7; `grep -c ' GAPS3: ' GAPS2.md` prints 36; the pytest run reports 0 failed.]]></verify>
+  <done>GAPS2.md and DROPIN-REMAINING.md said what the code does, pointed their open rows at GAPS3, and the tracking tests stayed green.</done>
+</task>
+
+<task type="auto" id="01-06">
+  <name>Create the truth script</name>
+  <files>test/test_wp31_truth.cscript</files>
+  <action><![CDATA[Build the file as TR-01.6 says: `sed -n '1,221p;12352,12385p' test/test_wp30_truth.cscript | sed -e 's/wp30/wp31/g' -e 's/WP30/WP31/g' -e 's/WP-30/WP-31/g' -e 's/w30_/w31_/g' > test/test_wp31_truth.cscript`; replace lines 1-28 (the `*!` header) by Appendix C `truth-header`; replace the `local w31_secs ///` block (seven lines) by `local w31_secs ///` and `    S01 1`; change `sec = J(rows(ids), 1, 0)` to `sec = J(rows(ids), 1, 1)`; in the S01 block replace `TF-01` by `U01-1` (five places) and `w30s01` by `w31s01` (three); insert Appendix C `empty-part` as the first statement after `if \`ncase' == 0 {` in the summary. Check `grep -c 'w30\|WP30\|WP-30\|TF-01' test/test_wp31_truth.cscript` prints 0 and `grep -c 'capture python' test/test_wp31_truth.cscript` prints 0. Run `python3 -m pytest test/test_cscript_hygiene.py test/test_cert_verdict.py -q -n0 -p no:cacheprovider`.]]></action>
+  <verify><![CDATA[`grep -c '^\* ==== S01 scaffold: ' test/test_wp31_truth.cscript` prints 1; `grep -c '^\* ==== append new blocks above this line ====$'` prints 1; `grep -c 'has no block to run'` prints 1; the hygiene run fails only `TestEveryCscriptIsWiredIntoTheRunner::test_the_runner_calls_it[test_wp31_truth.cscript]` and TestTheWp31TruthScript passes; test_cert_verdict.py fails only `test_the_real_runner_registers_every_script_in_test`.]]></verify>
+  <done>The truth script existed in WP-30's frame with S01's U01-1 block, its parts machinery and the empty-part rule, and every hygiene rule held except its registration.</done>
+</task>
+
+<task type="auto" id="01-07">
+  <name>Register block 70 and the shard row</name>
+  <files>test/run_all_cscripts.do</files>
+  <action><![CDATA[Assert :3121 is `}` (block 69's close), :3122 blank, :3124 `// Summary`. Insert after :3121 one blank line and the block `sed -n '3077,3121p' test/run_all_cscripts.do | sed -e 's/69\./70./' -e 's/wp30/wp31/g' -e 's/WP-30:/WP-31:/' -e 's#.ultraplan/wp30/index.md A142#.ultraplan/sections/index.md A5#' -e "s/S01's scaffold and one block for each of S02-S57,/S01's scaffold and the blocks S02-S60 append,/"` (generate it to <scratch>/s01/block70.do first, then insert). In the shard table append ` ///` to :155 and insert after it `    test_wp31_truth.cscript               1.0 0  * * *` (the name padded to the same width as :155's). Run `python3 scripts/cert_shards.py check` and `python3 -m pytest test/test_cscript_hygiene.py test/test_cert_verdict.py test/test_cert_shards.py -q -n0 -p no:cacheprovider`.]]></action>
+  <verify><![CDATA[`grep -c 'do "test_wp31_truth.cscript"' test/run_all_cscripts.do` prints 1; `grep -c '^// 70\. test_wp31_truth' test/run_all_cscripts.do` prints 1; `python3 scripts/cert_shards.py check` prints nothing and exits 0; `python3 scripts/cert_shards.py show` prints the same N=2,3,4 loads as at the base plus 0.5, 0.3 and 0.25 s; the pytest run reports 0 failed.]]></verify>
+  <done>The runner ran the WP-31 script as block 70 in every shard, the shard table balanced unchanged, and the hygiene, verdict and shard tests passed.</done>
+</task>
+
+<task type="auto" id="01-08">
+  <name>Run the script in Stata three ways</name>
+  <files>none</files>
+  <action><![CDATA[Run the three driver runs of "Stata truth" through scripts/stata_slot.sh only (never the GUI, never a bare -b do). If the first run SKIPs (r(222)), python_exec was dropped from ~/.stata19/console/stata19.rc: a skip is not a pass; restore the link and rerun.]]></action>
+  <verify><![CDATA[In <scratch>/s01/run_test_wp31_truth.log: `grep -c '^U01-1 PASS'` 1, `grep -c '^S01 start '` 1, `grep -c '^S01 end '` 1, `grep -c 'test_wp31_truth: ALL CHECKS PASSED'` 1, `grep -c '^r([0-9]*);'` 0; `ls -A <scratch>/s01/tmp` prints nothing. In <scratch>/s01/only/run_test_wp31_truth.log: `grep -c 'no case ran'` at least 1 and `grep -c '^r(9);'` at least 1. In <scratch>/s01/shard3/run_test_wp31_truth.log: `grep -c 'part 3/3 has no block to run'` 1 and `grep -c '^r([0-9]*);'` 0.]]></verify>
+  <done>U01-1 passed in StataNow, a gate naming no block failed with r(9), and an empty shard part ended cleanly.</done>
+</task>
+
+<task type="auto" id="01-09">
+  <name>Run the section tests and commit S01</name>
+  <files>none</files>
+  <action><![CDATA[Run `python3 -m pytest test/test_tracking_documents.py test/test_cscript_hygiene.py test/test_cert_verdict.py test/test_cert_shards.py test/test_version_floor.py test/test_packaging.py test/test_test_integrity.py test/test_fixtures_are_committed.py -q -n0 -p no:cacheprovider`. Stage by name: `git add BUGS.md GAPS3.md GAPS2.md CHANGELOG.md .ultraplan/handoff/DROPIN-REMAINING.md test/test_tracking_documents.py test/test_cscript_hygiene.py test/test_cert_shards.py test/run_all_cscripts.do test/test_wp31_truth.cscript`; `git diff --cached --name-only` lists exactly those ten. Write <scratch>/s01/01-commit-msg.txt per the Commit boundary paragraph, opening with <scratch>/01-01-failure.txt; `grep -Eic 'claude|anthropic'` on it prints 0; `git commit -F <scratch>/s01/01-commit-msg.txt`; record the sha in <scratch>/s01/01-sha.txt for the merger.]]></action>
+  <verify><![CDATA[The pytest run reports 0 failed; `git log -1 --format=%s` ends `(WP-31 S01)`; `git show --name-only --format= HEAD | wc -l` prints 10; `git log -1 --format=%B | grep -Eic 'claude|anthropic'` prints 0; `git log -1 --format=%b | head -1` prints `S01 tests at 6370ca4:`.]]></verify>
+  <done>One green commit on wp31-s01 held the entries, Tracked lines, readers, markers, register corrections, truth script and runner block, with a message free of tool names.</done>
 </task>
 
 ## Section completion criteria
 
-- One commit, made by 01-03 on the worktree branch `wp28-s01` (subject ending `(WP-28 S01)`)
-  after one green full run, holding the readers, the allowlist, GAPS2.md, ROADMAP.md and
-  CHANGELOG.md, landed on `s3-bugs` by the merger first in batch 1; no test-only commit
-  exists (D1); no commit message mentions an AI.
-- `test/test_tracking_documents.py` has `TestGaps2AndRoadmapAgree` (7 tests) and every
-  previous test unchanged; `test/test_packaging.py` allows `GAPS2.md`; `GAPS2.md` is tracked.
-- `ROADMAP.md` has WP-28 (not DONE) with `**GAPS2 closed:**` of 22 ids and a 22-row
-  `#### GAPS2 traceability` table; `CHANGELOG.md` has 23 markers in the four places TR-01.7
-  shows (16 + 2 + 1 + 4).
-- The BUGS.md entry form (TR-01.8), the CHANGELOG line rule (TR-01.7) and the commit form
-  (TR-01.9) are recorded here for sections 02 to 19 to copy.
+- One commit on `wp31-s01` ending `(WP-31 S01)`, exactly ten files, no test-only commit, no tool names.
+- BUGS.md: 110 WP-31 entries open; GAPS3.md §9: 110 Open lines; `WP31_OPEN` has 110 keys; `TestWp31Tracking` (8) green; release guard widened.
+- CHANGELOG.md: markers per Appendix A, group line, `### Fixed in WP-31`.
+- `test/test_wp31_truth.cscript` registered as block 70, one `*` shard row, U01-1 PASS, empty-part rule proven; pins 69 and 51; `TestTheWp31TruthScript` (3) green; `cert_shards.py check` exits 0.
+- GAPS2.md and DROPIN-REMAINING.md corrected per Appendix D.
 
 ## Notes
 
-- **Never write `**Gaps closed:**` in WP-28.** Once section 19 writes `— DONE`, the old
-  reader would look those ids up in GAPS.md and fail with "GAPS.md says …". Only
-  `**GAPS2 closed:**`.
-- **No `# ` or `## ` at the start of any line inside WP-28**, including inside fenced code:
-  `_parse_roadmap` (630-631) ends the section there, and the field would go unread.
-- **`_CASE_ID` matches `WP-28`** (`[A-Z]{1,6}-\d{1,3}`); that is harmless (an unknown case id
-  is neither found nor dangling), so `(WP-28, B1)` in a Resolution is safe. A `Test…` word or
-  a `test_*.py` name that does not exist is *not* harmless: `test_no_entry_names_a_test_that_does_not_exist`
-  fails. Sections must name only tests that exist in the same commit.
-- **A BUGS.md title with a `"` cannot be quoted in a Tracked line** (`[^"]+`); use Stata's
-  `\`x'` quoting or plain words in titles (S13's B6 title spells empty text as `given empty
-  text`).
-- **Commit bodies** (every section, consistency #30) use TR-01.9's line forms verbatim:
-  the body opens with the saved failure text, then `Regression: test/<file>.py::<Class>::<test>
-  -- failed at 91d97be with <text>`, `Flipped: <node> -- <old expectation> was wrong because
-  <why>` (one per flip), `Fixture: test/fixtures/<name>.json (scripts/<extract script>)`,
-  `BUGS.md: "<title>" (closed)`. Section 19 reads the `Flipped:` lines into ROADMAP.md.
-- **Shared files follow merge rules R1-R6** in `index.md` (D5); every section's Notes cite
-  them by number for the shared files it touches. This section touches CHANGELOG.md (R3: it
-  places the markers and creates the `### Fixed in WP-28` heading; every later section
-  replaces only its own markers, in place) and no registry, copy list, fixture or corpus.
-- **Parallel merges.** Batch-1 sections append to BUGS.md and replace CHANGELOG markers
-  concurrently, so `patch -p1` of a worktree's diff may reject those hunks (`.rej` files).
-  Apply them by hand: BUGS.md entries in section order at the end of the file (R3), CHANGELOG
-  lines in place of their markers. Never resolve by dropping an entry. S01 is merged first in
-  batch 1 (`index.md` step 1) so the markers exist before any gap section's diff. This section
-  runs in its own worktree on branch `wp28-s01`; the merger lands its commit onto `s3-bugs`
-  with `format-patch | patch -p1` and the recorded message.
-- **The CHANGELOG markers are HTML comments** so they render as nothing; section 19 fails the
-  closeout if any `<!-- WP-28 ` marker survives. The group line `**WP-28 (GAPS2 audit,
-  25sep2026)**` follows the bold-group convention of `### Results that change` (16, 60, 83,
-  96, 113); no other heading is added besides `### Fixed in WP-28`.
-- **GAPS2.md needs no `git add -f`** (`git check-ignore` returns 1); fixtures under
-  `test/fixtures/*.json` do (`.git/info/exclude` hides `*.json`).
-- **One full run in this section**, before the single commit, in 01-03. The PreToolUse hook
-  allows two free full launches per session; a second is needed only if the first is red and
-  a fix follows; a third needs `FULL_SUITE_RERUN=1` and a reason in the report. Never launch
-  a full run while one is executing; read its log.
+- **Forms later sections follow** (binding; R1, R4, R5): close an entry by flipping `- [ ]` to `- [x]` and rewriting only its Resolution line in the BRIEF's closed form; delete its own `WP31_OPEN` line (check: `grep -c '^    "<id>": "' test/test_tracking_documents.py` → 0; `WP31_LISTS` and `WP31_SECTION` rows are `"<id>": (` and `"<id>": <int>,` and stay); rewrite its GAPS3 §9 line to the Closed or Partly form with `commit pending` in the sha position (a Partly line names an open BUGS.md entry whose title is the residual's); the merger's step k.3b rewrites every `pending` of the batch to the landed sha on `s3-bugs` in one tracking commit, so no section ever runs `git commit --amend` (DECISIONS A11; G2 forbids `pending` after k.3b and S61.3 fails on any); replace each `<!-- WP-31 <id> -->` in place with lines ending `(WP-31, <id>)`; append truth blocks above the marker, one block per GAPS3 row (A14; a section's task 01 appends only its first row's block), as `* ==== S<NN> <id>: <what> ====` with `local only : env WP31_ONLY` / `if inlist("\`only'", "", "S<NN>") & \`: list posof "S<NN>" in w31_run' {` / `display as text "S<NN> start " c(current_date) " " c(current_time)` as the first code line / `display as text "S<NN> end " c(current_date) " " c(current_time)` as the last before `}` (the exact forms `_wp31_blocks` requires) / `* ==== end S<NN> ====`, helpers above the header, case ids `U<NN>-<k>`, `_w31_expect`/`_w31_done`, files only under `` `w31_work' ``. A section does not edit `w31_secs` (S61 writes it from the closeout log).
+- **Merging (R1, R4, R5).** Entries, Tracked lines, markers and blocks are separated by blank lines, so hunks apply three-way; adjacent `WP31_OPEN` deletions conflict in context only; the merger applies both by hand, never dropping a line.
+- **Python linkage.** Many concurrent Stata sessions can drop `python_exec` from `~/.stata19/console/stata19.rc`; `stata_slot.sh` caps sessions at three.
+- **For S61:** empty `WP31_OPEN` to `{}`, add `test_no_wp31_entry_remains_open` (copy of :1934-1953 with WP-31 names), write `w31_secs` from the closeout cert log's `S<NN> start/end` lines, and file residuals per M12.
+- **Decisions for maintainer ratification:** (1) the H2 parts under Fixed in WP-31 rather than `### New` (D-01.d); (2) the empty-part exit 0 (D-01.f); (3) the hand-added shard row (D-01.g). (The former items on `B5a`/`B5b` and on 109 versus "93" are moot: the index uses the ids and the count is 110, REVIEW-1 R1-14, R1-01.)
+
+## Appendix A: the 110 entries (TR-01.1; read by `s01_entries.py`)
+
+Columns: Id · S (closing section) · Grade · Lists (RC, CB, RQ, FX) · Title (quote-free, unique) · Suggested fix (the sentence after `WP-31 section NN (<name>): `). The Description's Gap text and the File Names come from GAPS3.md's row `<id without suffix>`; the part a split entry covers is the parenthesis after its title (the generator writes it before the Gap text).
+
+| Id | S | Grade | Lists | Title | Suggested fix |
+|---|---|---|---|---|---|
+| C1 | 02 | S1 | RC | pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped | size and colour the heads from the marker options and the scheme, fill pcbarrow heads with the line colour, declare mangle(), barbsize() and headlabel, keep a one-point row as a marker, and rewrite P4-18 and P4-20. |
+| C2 | 03 | S1 | RC | rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth | read msize() with mwidth on rbar, or name both in the note. |
+| B5a | 03 | S2 | RC | base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts) | read base() on dot and note or honour recast() on dot after measuring twoway dot, recast(line). |
+| C3 | 04 | S1 | CB | Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence | add a per-type applicability column to _dash_option_rules and refuse each inapplicable option with twoway's measured words. |
+| C10a | 05 | S2 | FX | range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit) | relax each rule to twoway's bound and cscript each against twoway's rc. |
+| C10b | 06 | S2 | FX | degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing) | accept degree 4-7 with the ROT constants, several variables in one mlabel() element, the scatteri division and yaxis(1 2). |
+| C18 | 06 | S3 | FX | scatteri refuses a 2/2 numlist element where twoway divides | evaluate the division in the immediate forms. |
+| F4 | 06 | S3 | FX | _LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule | accept degree 4-7 with C10b. |
+| A5 | 07 | S2 | FX | Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression | evaluate the expression into a __dash column at registration and pin the values against summarize [aw=]. |
+| A6 | 07 | S3 | FX CB | Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code | route option varlists through _dash_tsop_gen where twoway draws and copy twoway's rc where it refuses. |
+| A7 | 07 | S3 | RC | hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list | merge the two lists and pin the tooltip. |
+| A8 | 07 | S3 | CB | Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198) | extend the date-literal refusal loop to the y options. |
+| A1 | 08 | S3 | FX | dash twoway with nothing after it is refused r(198) where twoway draws an empty graph | draw an empty figure with axes only for the bare prefix and pin it with a cscript. |
+| A2 | 08 | S3 | CB | Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's | refuse the extra abbreviations with twoway's not-a-twoway-plot-type r(198) and pin with test_parser.cscript. |
+| A3 | 08 | S3 | FX | Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts | regenerate the fixture after A2 and pin every option minimum live both ways. |
+| A4 | 08 | S2 | CB | mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable | declare MLAlign() so the longer minimum wins and cscript both spellings. |
+| C10c | 09 | S2 | FX | Axes 3 to 9 are refused where twoway draws them (the axes part) | draw axes 3-9 with Bokeh extra ranges in both modes and cscript against twoway. |
+| F1a | 10 | S2 | RC | The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins) | generalise the _FILTER_JS prelude to xvar, yvar and wvar, add dash_fit_grid, dash_wls and dash_t_ppf, and refit lfit and qfit pinned to their Python twins. |
+| C4 | 11 | S2 | RC | Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn | honour nofit, ciplot() and fitplot(), run estcmd(), estopts() and predopts() through Stata at build time, and read atobs as a grid rule. |
+| C5 | 12 | S2 | RC | kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn | draw each with its direct Bokeh form in both modes. |
+| F1b | 13 | S2 | RC | The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins) | port the lfitci and qfitci bands to JavaScript on the S10 prelude, pinned to their Python twins. |
+| C6 | 14 | S2 | RC | cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn | split the patch or band at missing points as twoway does. |
+| C7 | 14 | S3 | RC | recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them | extend _dash_recast_opt to those forms. |
+| C8a | 15 | S2 | RC | colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts) | route every glyph through _apply_colorvar and jitter the four range types. |
+| F1c | 16 | S2 | RC | The saved page does not refit lowess after a filter move (the lowess twin) | port lowess to JavaScript, pinned to its Python twin. |
+| C8b | 17 | S2 | RC | colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder) | alias colorformissing(), declare and draw the remaining colorvar options. |
+| B5b | 18 | S2 | RC | dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options) | draw twoway's dot rows and declare and draw the d-options in both modes. |
+| F1d | 19 | S2 | RC | The saved page does not refit lpoly after a filter move (the lpoly twin) | port lpoly with its rule-of-thumb bandwidth to JavaScript, pinned to its Python twin. |
+| C9 | 20 | S2 | RC | Weighted scatter markers are not sized by [aw] | scale marker area by weight as twoway does and pin against twoway's .gph marker sizes. |
+| B1 | 21 | S2 | FX | rpcap and rpspike are refused by name | parse the four-variable family, draw map_rcap or map_rspike plus the point marker in both modes, and cscript against the .gph serset. |
+| B2 | 21 | S2 | FX | sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list | refuse sunflower by name with advice and list it in the help. |
+| B3 | 21 | S2 | FX | matamatrix() is read as a varlist and refused r(101) or r(111) | refuse matamatrix() by name with advice and list it in the help. |
+| F1e | 22 | S2 | RC | The saved page does not refit lpolyci after a filter move (the lpolyci twin) | port the lpolyci analytic band to JavaScript on S19's lpoly, pinned to its Python twin. |
+| B4a | 23 | S2 | FX | contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor) | implement twoway's thin-plate and Shepard interpolation in numpy with the unique-x by unique-y grid, the 1,000-point cap and an extract script of twoway__contour_gen truth. |
+| D1 | 24 | S2 | RC | xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read | draw minor ticks as Bokeh minor ticks and minor labels as a second LabelSet along the axis. |
+| F1f | 25 | S2 | RC | The saved page does not refit mband and mspline after a filter move (the mband and mspline twins) | port mband and mspline to JavaScript, pinned to their Python twins. |
+| B4b | 26 | S2 | FX | contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes) | register the two types, draw with Bokeh contour fills and lines from S23's grid with the colour options and key, and tag the layer frozen above the cap. |
+| D2 | 27 | S2 | RC CB | t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them | draw the eight edge titles on each side and refuse title2() and subtitle2() with twoway's r(198). |
+| F1g | 28 | S2 | RC | The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins) | port fpfit's power search and fpfitci's band to JavaScript, pinned to their Python twins. |
+| B4c | 29 | S2 | FX | contour and contourline are refused by name (the JavaScript twin) | port marching squares and isobands to the saved page so contours refit within the cap. |
+| D3 | 30 | S2 | RC | Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only | wire user position() and ring() through _dash_textbox_place and draw box, margin and justification. |
+| D13 | 30 | S3 | RC | Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label | route tstyle() through SchemeParser.textbox_style and expand globals at registration. |
+| D4 | 31 | S2 | RC | Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged | implement the geometry sub-options on the Bokeh Legend with a clock table, a blank key for label(#) and merged identical keys. |
+| C13 | 31 | S3 | RC | A histogram-only graph draws a legend where twoway draws none | exempt histogram-only graphs from the legend. |
+| D5 | 32 | S2 | RC | scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement() | apply scale() to every size, honour fxsize and fysize in the grid, compute the plot-region ratio from the frame and accept placement(). |
+| E11 | 32 | S2 | RC | Sizes are relative to a 4-inch reference and scale() is pending | scale every size with D5. |
+| D6 | 33 | S2 | RC CB | Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn | draw the stylable sub-options, apply the ##N minor rule and refuse twoway's refusals. |
+| D7 | 33 | S3 | RC | Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back | draw extend, fextend and outergap() and toggle alt. |
+| E6 | 33 | S3 | RC | Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn | apply the floor after the multiply and draw tick and grid widths. |
+| D8 | 34 | S2 | RC | yvarlabel() and xvarlabel() are undeclared, noted and absent from the help | declare them and use them as axis title and legend key text. |
+| C17 | 34 | S3 | RC | mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on | declare and draw prefix and suffix, declare lalign() and measure headlabel's type set. |
+| E3 | 34 | S2 | RC | msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared | use _dash_anglestyle_degrees for msangle and declare the three options. |
+| C14 | 34 | S3 | CB | rscatter y y2 x, mlabel(y) draws where twoway refuses r(102) | count mlabel variables toward the range check. |
+| C15 | 34 | S3 | RC | Bar marker labels default to 3 o'clock where twoway's bar default is 12 | give each type its default clock. |
+| D9 | 35 | S2 | RC | The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis | recompute the extra ranges in the move callback in both modes and apply the first-used side rule. |
+| D10 | 36 | S3 | RC | by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn | apply the stage-3 grammar rows and hide emptied panels after a move. |
+| D11 | 37 | S3 | RC | graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white | parse every marginstyle form, draw intensity and shade and honour shadestyle plotregion none. |
+| D12 | 38 | S3 | RC | An out-of-range xline() or yline() is clipped to the frame where twoway draws it outside | draw reference lines with a Segment in screen units beyond the frame. |
+| D14 | 39 | S3 | CB FX | tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout() | name unknown tab members, refuse same-cell collisions in Mata and add per-tab layout. |
+| D16 | 39 | S3 | CB FX | legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked | match twoway's order and message. |
+| E1 | 40 | S2 | RC CB | Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted | add the arrow marker, vertical pipe, 1 px point, hollow V and small shorthands, and refuse the non-Stata names. |
+| E2 | 40 | S2 | RC | Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending | parse the formula grammar into dash arrays scaled by width, copy the style files' ratios and draw mlpattern(). |
+| E12 | 40 | S3 | CB | translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive | measure twoway and match its case rule. |
+| E4 | 41 | S3 | CB | Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element | tokenise = inside elements and refuse the parenthesised form. |
+| E5 | 41 | S3 | RC CB | A comma colour inside a structured sub-option is drawn black where twoway refuses r(198) | read comma RGB in every context and refuse where twoway does. |
+| E7 | 41 | S3 | RC | A pstyle(p#) CI band under a scheme intensity above full is clamped to full | pass clamp=False on the band reader. |
+| E8 | 41 | S3 | RC | rarea and rbar outlines are not stroked where twoway strokes them from the scheme | stroke from the scheme's area line style. |
+| E13 | 41 | S3 | FX | _SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified | drop the dead map and constant and verify histogram opacity with a test. |
+| E9 | 42 | S3 | RC | Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed | split a text into runs drawn as several Label objects, or document the limit with a measured example. |
+| G1 | 43 | S2 | RC | Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips | carry the missing code through export and the label writer. |
+| G2 | 43 | S3 | RC | set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read | read c(dp), embed Stata's leap-second table and read graph set. |
+| G3 | 43 | S3 | FX | Working columns are generated in the user's data, user variables named x, y, top, count or density are shadowed in hover() and mlabel(), numbers are embedded as JSON text and the cell count counts every exported row | reserve derived names by prefix, use binary arrays and count planned rows. |
+| G4 | 43 | S3 | FX | Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists | keep numeric carried columns as arrays. |
+| G5 | 43 | S3 | FX | One format-writer model is emitted per distinct tick format and per tooltip kind | share one writer per page. |
+| E10 | 44 | S3 | RC | User and third-party style files are not read, 57 Stata style names draw default attributes with a note, and a scheme cannot redefine a linestyle or areastyle | add a general resolver over the 161 style files and the scheme's own class directives. |
+| D15 | 45 | S3 | RC | Date #N ticks agree with _tsnatscale on 52 to 98 percent of ranges, xtick(#N) and xlabel(minmax) are held after a move, and the margin is a build-time fraction | fit more measured ranges or embed Stata's ticks and re-place after a move. |
+| C11 | 46 | S3 | RC | lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if | measure twoway, then match or document. |
+| C12 | 46 | S3 | RC | function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed | evaluate per panel. |
+| C16 | 46 | S3 | FX | A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted | tag the recast renderer for the recount. |
+| G6 | 46 | S3 | RC | Fractional %t values are floored on load and join-order edge cases differ | measure twoway and match. |
+| G7 | 46 | S3 | RC CB | %d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses | write business dates and copy twoway's error. |
+| F5 | 46 | S3 | FX | The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists | fix the three comments. |
+| F2 | 47 | S3 | RC | The function points-free fallback evaluates ten math names only | extend the fallback to comparisons, cond(), n-ary min and max, round, int, ln, normal, normalden, c(pi) and missing codes. |
+| F3 | 47 | S3 | FX | Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values | extract and pin each. |
+| H2t | 48 | S3 | FX | No per-graph data table shows the rows a graph draws (the data table) | add a folded, toggled per-graph DataTable of the drawn rows in Stata display formats and value labels, virtual scrolling, sortable, row-capped, in both modes. |
+| H2f | 49 | S3 | FX | Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets) | add the four widgets in both modes. |
+| H2k | 50 | S3 | FX | KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics) | add weights and the three statistics in both modes. |
+| H2l | 51 | S3 | FX | One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush) | add several link groups, brush-as-filter, bin and bar selection to rows, and intersected brushes in both modes. |
+| H1 | 52 | S3 | FX | Saved-page JavaScript errors fail silently and saved sliders fire on every drag step | add an error banner through the nonce path and value_throttled on the saved page. |
+| H2x | 53 | S3 | FX | No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts) | add a print stylesheet and a composite PNG and SVG export. |
+| K6 | 54 | S3 | FX | One aria-live region, no alt text and English-only interface | add keyboard-reachable widgets, ARIA labels on every filter, KPI card, tab and figure, and contrast checks, verified with axe-core. |
+| H3 | 55 | S3 | FX | The served make_document builds on the event loop, catch_warnings can swap filters, a brush made during a move is cleared, and the bundle ships bokeh-mathjax | build off-loop and drop the mathjax component from the served resources. |
+| H4 | 55 | S3 | CB | BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read | reject or report each variable, deepen /health and read _op_rc. |
+| H7 | 55 | S3 | FX | Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__ | prefix the functions, save and restore argv and delete the names. |
+| J1 | 56 | S3 | FX | The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note | generate the list from the pending blocks, _dash_rep_und_tab and the catch-all probes, and pin both ways. |
+| J2 | 56 | S3 | FX | Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs | fix each sentence with its test. |
+| J3 | 57 | S3 | FX | Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists | add a plot-types tour and a serve example and a coverage test. |
+| J4 | 58 | S3 | FX | Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings | one reconciliation pass and tracking-document count checks. |
+| J5 | 58 | S3 | FX | The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted | fix each. |
+| J6 | 58 | S3 | FX | REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix | mark the two documents historical and add the suffixes. |
+| I2 | 59 | S3 | FX | No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short | write the README, the pkg lines, the install line and the help fixes. |
+| I3 | 59 | S3 | FX | A failed dash_setup leaves installed packages in place and does not say what it installed, the served child is sys.executable, Unmet lists warnings beside a failure, and a dash_setup_lib.py in the working directory is found first | record installs, offer the uninstall line, and fix the four reporting and path defects. |
+| I4 | 59 | S3 | FX | _dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser | print the note from the renderer's and the app's main and accept the SyntaxError. |
+| I5 | 59 | S3 | FX | Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines | renumber every header and extend the pin to every file and header. |
+| I7 | 59 | S3 | FX | The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind | wrap the renderer load in the dont_write_bytecode guard and pin with test_installed_layout.py. |
+| K2 | 60 | S3 | FX | Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line, a served build from an installed tree, per-type by() parity, an inspect.getsource fallback | add each. |
+| K3 | 60 | S3 | FX | Sixteen truth fixtures have no committed generator, nine carry absolute paths, there is no make truth and no metadata guard | add generators, a target and a guard. |
+| K4 | 60 | S3 | FX | The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails | fix the leak and add the guards. |
+| H6 | 60 | S3 | FX | The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS | extend the move profile and add a saved-JS move oracle. |
+| I6 | 60 | S3 | FX | No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally | add a CI workflow, a lint target and a secrets test, and track or document the hooks. |
+
+`Why` (the Graded clause) is, by grade: S1 `a value the user gave is dropped or drawn wrong with no note`; S2 `a twoway form is refused, named and not drawn, or fails visibly`; S3 `fidelity, hygiene, coverage or documentation drift`.
+
+## Appendix B: the 110 Tracked lines (TR-01.2; id order)
+
+`- **<id> Tracked:** Open (WP-31 section NN).` for: A1 08, A2 08, A3 08, A4 08, A5 07, A6 07, A7 07, A8 07, B1 21, B2 21, B3 21, B4a 23, B4b 26, B4c 29, B5a 03, B5b 18, C1 02, C2 03, C3 04, C4 11, C5 12, C6 14, C7 14, C8a 15, C8b 17, C9 20, C10a 05, C10b 06, C10c 09, C11 46, C12 46, C13 31, C14 34, C15 34, C16 46, C17 34, C18 06, D1 24, D2 27, D3 30, D4 31, D5 32, D6 33, D7 33, D8 34, D9 35, D10 36, D11 37, D12 38, D13 30, D14 39, D15 45, D16 39, E1 40, E2 40, E3 34, E4 41, E5 41, E6 33, E7 41, E8 41, E9 42, E10 44, E11 32, E12 40, E13 41, F1a 10, F1b 13, F1c 16, F1d 19, F1e 22, F1f 25, F1g 28, F2 47, F3 47, F4 06, F5 46, G1 43, G2 43, G3 43, G4 43, G5 43, G6 46, G7 46, H1 52, H2f 49, H2k 50, H2l 51, H2t 48, H2x 53, H3 55, H4 55, H6 60, H7 55, I2 59, I3 59, I4 59, I5 59, I6 60, I7 59, J1 56, J2 56, J3 57, J4 58, J5 58, J6 58, K2 60, K3 60, K4 60, K6 54. (The generator prints them; A3 is S08's entry per the manifest row 08 and DECISIONS A12.)
+
+## Appendix C: code and text blocks
+
+**`tracking-wp31`** (01-01; appended to test/test_tracking_documents.py):
+
+~~~~python tracking-wp31
+# ===========================================================================
+# WP-31's entries (item 10 of the module docstring)
+# ===========================================================================
+
+#: WP-31 (.ultraplan/sections/index.md A4): the BUGS.md entries S01 opened,
+#: one per manifest row id, by id, with their exact titles, one key per line
+#: in Appendix A order.  A section's closing commit closes the entry in place
+#: and deletes its own key line.  S61 leaves it {}.
+@@WP31_OPEN@@
+
+#: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
+#: release its line belongs in (section-01 Appendix A).
+@@WP31_LISTS@@
+
+#: The section that closes each entry (index.md "Section manifest").
+@@WP31_SECTION@@
+
+WP31_ALL = tuple(WP31_LISTS)
+
+_WP31_ID = r"[A-K]\d{1,2}[a-gkltx]?"
+_WP31_MARKER = re.compile(r"<!-- WP-31 (%s) -->" % _WP31_ID)
+_WP31_OPEN_FORM = re.compile(
+    r"^  - Resolution: Not fixed because WP-31 section (\d{2}) has not landed\."
+    r" Graded S[1-3] \(WP-31\): \S")
+_GAPS3_ROW = re.compile(r"^\| (?P<id>[A-K]\d{1,2}) \| (?P<gap>.+?) \| (?P<sev>S[1-3][^|]*)\| ")
+_GAPS3_TRACKED = re.compile(r"^- \*\*(?P<id>%s) Tracked:\*\* (?P<text>\S.*)$" % _WP31_ID)
+_GAPS3_OPEN = re.compile(r"^Open \(WP-31 section (\d{2})\)\.$")
+#: A closing commit writes "commit pending"; the merger's step k.3b rewrites
+#: it to the landed sha on s3-bugs (DECISIONS A11), so the reader accepts
+#: both and the batch-end gate (G2) and S61.3 forbid "pending".
+_GAPS3_CLOSED = re.compile(
+    r'^Closed in WP-31, BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
+_GAPS3_PARTLY = re.compile(
+    r'^Partly closed in WP-31 \(section (\d{2}), commit ([0-9a-f]{7,40}|pending)\): '
+    r'(\S.*); open: (\S.*) \(BUGS\.md "([^"]+)"\)\.$')
+
+
+def _wp31_markers(text):
+    return _WP31_MARKER.findall(text)
+
+
+def _wp31_open_problems(open_map, entries):
+    """As _wp30_open_problems, for WP-31 (WP31_ALL, _WP31_OPEN_FORM,
+    WP31_SECTION)."""
+    bad = []
+    unknown = sorted(set(open_map) - set(WP31_ALL))
+    if unknown:
+        bad.append("ids WP-31 does not have: %s" % unknown)
+    titles = list(open_map.values())
+    if len(set(titles)) != len(titles):
+        bad.append("two ids share one title")
+    for pid, title in open_map.items():
+        if '"' in title:
+            bad.append("%s: the title holds a double quote" % pid)
+        match = [e for e in entries if e["title"] == title]
+        if len(match) != 1:
+            bad.append("%s: %d BUGS.md entries are titled %r"
+                       % (pid, len(match), title))
+            continue
+        e = match[0]
+        if e["closed"]:
+            bad.append("%s: %r is closed; delete its WP31_OPEN key"
+                       % (pid, title))
+            continue
+        form = _WP31_OPEN_FORM.match(e["fields"].get("Resolution", ""))
+        if not form:
+            bad.append("%s: %r's Resolution is not 'Not fixed because WP-31 "
+                       "section NN has not landed. Graded S1|S2|S3 (WP-31): "
+                       "...'" % (pid, title))
+        elif int(form.group(1)) != WP31_SECTION.get(pid):
+            bad.append("%s: its Resolution names section %s, not %s"
+                       % (pid, form.group(1), WP31_SECTION.get(pid)))
+    return bad
+
+
+def _wp31_marker_problems(open_ids, markers):
+    bad = ["a marker names %s, which WP-31 does not have" % m
+           for m in sorted(set(markers) - set(WP31_ALL))]
+    bad += ["%s is open and CHANGELOG.md holds no marker for it" % pid
+            for pid in WP31_ALL if pid in open_ids and pid not in markers]
+    return bad
+
+
+def _wp31_closure_problems(open_ids, markers, entries):
+    bad = []
+    for pid in WP31_ALL:
+        if pid in open_ids:
+            continue
+        if pid in markers:
+            bad.append("%s is closed and CHANGELOG.md still holds its "
+                       "marker" % pid)
+        tag = "(WP-31, %s)" % pid
+        if not [e for e in entries if e["closed"]
+                and tag in e["fields"].get("Resolution", "")]:
+            bad.append("%s is closed and no closed BUGS.md entry's "
+                       "Resolution holds %s" % (pid, tag))
+    return bad
+
+
+def _wp31_list_problems(lists_map, changelog):
+    lists = _changelog_lists(changelog)
+    bad = []
+    names = sorted({n for ls in lists_map.values() for n in ls})
+    bodies = {n: _changelog_list(lists, n) for n in names}
+    for n in names:
+        if bodies[n] is None:
+            bad.append("CHANGELOG.md has no single '### %s' list" % n)
+    for pid, wanted in lists_map.items():
+        mark, line = "<!-- WP-31 %s -->" % pid, "(WP-31, %s)" % pid
+        for n in wanted:
+            body = bodies.get(n)
+            if body is not None and mark not in body and line not in body:
+                bad.append("%s: '### %s' holds neither its marker nor a line "
+                           "ending %s" % (pid, n, line))
+        for h, body in lists.items():
+            if any(h == n or h.startswith(n + " (") for n in wanted):
+                continue
+            if mark in body:
+                bad.append("%s: its marker sits under '### %s'" % (pid, h))
+            if line in body:
+                bad.append("%s: a line ending %s sits under '### %s'"
+                           % (pid, line, h))
+    return bad
+
+
+def _parse_gaps3(text):
+    """(rows, tracked, dupes): rows {table id: gap text}, tracked
+    {entry id: text of its Tracked line}, dupes the entry ids with two
+    Tracked lines.  Only GAPS3.md's table rows and its section 9 lines are
+    read."""
+    rows, tracked, dupes = {}, {}, []
+    for ln in text.split("\n"):
+        m = _GAPS3_ROW.match(ln)
+        if m:
+            rows[m.group("id")] = m.group("gap")
+        t = _GAPS3_TRACKED.match(ln)
+        if t:
+            if t.group("id") in tracked:
+                dupes.append(t.group("id"))
+            tracked[t.group("id")] = t.group("text")
+    return rows, tracked, dupes
+
+
+def _gaps3_problems(rows, tracked, dupes, open_ids, entries, sha_exists):
+    """Every WP-31 id has one Tracked line whose table row exists; an Open
+    line names the id's section and the id is open; a Closed line names a
+    closed entry's title and a commit that exists (or "pending", before the
+    merger's step k.3b), and the id is not open; a Partly line names an
+    existing commit (or "pending") and an open residual entry."""
+    bad = ["%s has two Tracked lines" % d for d in dupes]
+    bad += ["a Tracked line names %s, which WP-31 does not have" % t
+            for t in sorted(set(tracked) - set(WP31_ALL))]
+    for pid in WP31_ALL:
+        if pid not in tracked:
+            bad.append("%s: GAPS3.md has 0 Tracked lines" % pid)
+            continue
+        if re.sub(r"[a-z]$", "", pid) not in rows:
+            bad.append("%s: GAPS3.md has no table row for it" % pid)
+        text = tracked[pid]
+        o, c, p = (_GAPS3_OPEN.match(text), _GAPS3_CLOSED.match(text),
+                   _GAPS3_PARTLY.match(text))
+        if o:
+            if int(o.group(1)) != WP31_SECTION[pid]:
+                bad.append("%s: Open names section %s, not %s"
+                           % (pid, o.group(1), WP31_SECTION[pid]))
+            if pid not in open_ids:
+                bad.append("%s: Tracked Open but its entry is closed" % pid)
+        elif c:
+            title, sha = c.group(1), c.group(2)
+            if pid in open_ids:
+                bad.append("%s: Tracked Closed but its entry is open" % pid)
+            if not [e for e in entries if e["closed"] and e["title"] == title]:
+                bad.append("%s: no closed BUGS.md entry is titled %r"
+                           % (pid, title))
+            if sha != "pending" and not sha_exists(sha):
+                bad.append("%s: commit %s does not exist" % (pid, sha))
+        elif p:
+            if p.group(2) != "pending" and not sha_exists(p.group(2)):
+                bad.append("%s: commit %s does not exist" % (pid, p.group(2)))
+            if not [e for e in entries if not e["closed"]
+                    and e["title"] == p.group(5)]:
+                bad.append("%s: no open BUGS.md entry is titled %r"
+                           % (pid, p.group(5)))
+        else:
+            bad.append("%s: Tracked line %r is in none of the three forms"
+                       % (pid, text))
+    return bad
+
+
+def _sha_exists(sha):
+    return _git("cat-file", "-e", sha + "^{commit}").returncode == 0
+
+
+class TestWp31Tracking:
+    """WP-31's entries (index.md A4; section-01): open in BUGS.md naming
+    their section, tracked Open in GAPS3.md section 9, with a marker in each
+    CHANGELOG list they belong to, until their section lands; then closed,
+    tracked Closed or Partly, with no marker left and a Resolution naming
+    (WP-31, <id>)."""
+
+    def test_every_allowed_title_is_an_open_entry(self, bugs):
+        entries, _p = bugs
+        assert not _wp31_open_problems(WP31_OPEN, entries), "\n".join(
+            _wp31_open_problems(WP31_OPEN, entries))
+
+    def test_an_open_entry_keeps_its_marker(self):
+        bad = _wp31_marker_problems(set(WP31_OPEN),
+                                    _wp31_markers(_read("CHANGELOG.md")))
+        assert not bad, "\n".join(bad)
+
+    def test_a_closed_entry_has_no_marker_and_a_resolution(self, bugs):
+        entries, _p = bugs
+        bad = _wp31_closure_problems(
+            set(WP31_OPEN), set(_wp31_markers(_read("CHANGELOG.md"))),
+            entries)
+        assert not bad, "\n".join(bad)
+
+    def test_each_entry_sits_in_its_changelog_lists(self):
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 110
+        assert tuple(WP31_SECTION) == WP31_ALL
+        assert set(WP31_SECTION.values()) == set(range(2, 61))
+        bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))
+        assert not bad, "\n".join(bad)
+
+    def test_every_entry_has_one_gaps3_tracked_line(self, bugs):
+        entries, _p = bugs
+        rows, tracked, dupes = _parse_gaps3(_read("GAPS3.md"))
+        bad = _gaps3_problems(rows, tracked, dupes, set(WP31_OPEN), entries,
+                              _sha_exists)
+        assert not bad, "\n".join(bad)
+
+    def test_the_marker_reader(self):
+        text = ("### Results that change\n\n<!-- WP-31 C1 -->\n"
+                "### Changed behaviour (may need your do-files changed)\n\n"
+                "<!-- WP-31 C10a --><!-- WP-31 H2t -->\n"
+                "### Fixed in WP-31\n\n<!-- WP-31 F1g -->\n")
+        assert _wp31_markers(text) == ["C1", "C10a", "H2t", "F1g"]
+        assert _wp31_markers("<!-- WP-30 P1.1a --> <!-- WP-31 C1-->") == []
+        assert _wp31_markers("<!-- WP-31 B5a --><!-- WP-31 B5b -->") == [
+            "B5a", "B5b"]
+
+    def test_the_wp31_problem_readers(self):
+        def entry(title, closed, res):
+            return {"title": title, "closed": closed,
+                    "fields": {"Resolution": "  - Resolution: " + res}}
+        open_form = ("Not fixed because WP-31 section 02 has not landed. "
+                     "Graded S1 (WP-31): dropped.")
+        good = [entry("T1", False, open_form),
+                entry("T2", True, "Fixed 01nov2026 (WP-31, C2). Done.")]
+        assert _wp31_open_problems({"C1": "T1"}, good) == []
+        for open_map, entries, says in (
+                ({"C1": "T2"}, good, "is closed"),
+                ({"C1": "T9"}, good, "0 BUGS.md entries"),
+                ({"C1": "T1"}, [entry("T1", False, open_form.replace(
+                    "02", "03"))], "names section 03, not 2"),
+                ({"Z9": "T1"}, good, "does not have"),
+                ({"C1": 'a "q"'}, [entry('a "q"', False, open_form)],
+                 "double quote")):
+            assert any(says in b for b in _wp31_open_problems(
+                open_map, entries)), (says, open_map)
+        assert _wp31_marker_problems({"C1"}, []) == [
+            "C1 is open and CHANGELOG.md holds no marker for it"]
+        others = set(WP31_ALL) - {"C2"}
+        assert _wp31_closure_problems(others, others, good) == []
+        assert _wp31_closure_problems(others, others, good[:1]) == [
+            "C2 is closed and no closed BUGS.md entry's Resolution holds "
+            "(WP-31, C2)"]
+        log = ("## 1.0\n\n### Results that change\n\n<!-- WP-31 C1 -->\n"
+               "### Fixed in WP-31\n\n- x. (WP-31, J1)\n")
+        assert _wp31_list_problems({"C1": ("Results that change",),
+                                    "J1": ("Fixed in WP-31",)}, log) == []
+        assert _wp31_list_problems({"J1": ("Results that change",)}, log) == [
+            "J1: '### Results that change' holds neither its marker nor a "
+            "line ending (WP-31, J1)",
+            "J1: a line ending (WP-31, J1) sits under '### Fixed in WP-31'"]
+
+    def test_the_gaps3_readers(self):
+        text = ("| ID | Gap | Sev | Register | Evidence | Task |\n"
+                "|---|---|---|---|---|---|\n"
+                "| C1 | heads are fixed | S1 | P2.8 | r.py:1 | fix |\n"
+                "| C8 | colorvar on 4 types | S2 | P2.10 | d.ado:2 | route |\n"
+                "## 9. Tracking\n\n- **C1 Tracked:** Open (WP-31 section 02).\n"
+                '- **C8a Tracked:** Closed in WP-31, BUGS.md "T2", commit '
+                "0123abc.\n- **C8b Tracked:** Partly closed in WP-31 (section "
+                '17, commit 0123abc): aliases; open: pcycle (BUGS.md "R1").\n')
+        rows, tracked, dupes = _parse_gaps3(text)
+        assert rows == {"C1": "heads are fixed", "C8": "colorvar on 4 types"}
+        assert sorted(tracked) == ["C1", "C8a", "C8b"] and dupes == []
+        entries = [{"title": "T2", "closed": True, "fields": {}},
+                   {"title": "R1", "closed": False, "fields": {}}]
+        tracked_all = {pid: "Open (WP-31 section %02d)." % WP31_SECTION[pid]
+                       for pid in WP31_ALL}
+        tracked_all.update(tracked)
+        bad = _gaps3_problems(rows, tracked_all, dupes,
+                              set(WP31_ALL) - {"C8a"}, entries,
+                              lambda s: s == "0123abc")
+        assert bad == [], bad
+        bad = _gaps3_problems(rows, tracked_all, dupes, set(WP31_ALL),
+                              entries, lambda s: False)
+        assert "C8a: Tracked Closed but its entry is open" in bad
+        assert "C8a: commit 0123abc does not exist" in bad
+        assert "C8b: commit 0123abc does not exist" in bad
+        rows2 = dict(rows)
+        rows2.pop("C1")
+        assert "C1: GAPS3.md has no table row for it" in _gaps3_problems(
+            rows2, tracked_all, dupes, set(WP31_ALL), entries, lambda s: True)
+        assert "C1: GAPS3.md has 0 Tracked lines" in _gaps3_problems(
+            rows, {}, [], set(WP31_ALL), entries, lambda s: True)
+        # "commit pending" (DECISIONS A11) passes without a sha check.
+        pend = dict(tracked_all)
+        pend["C8a"] = 'Closed in WP-31, BUGS.md "T2", commit pending.'
+        pend["C8b"] = ("Partly closed in WP-31 (section 17, commit pending): "
+                       'aliases; open: pcycle (BUGS.md "R1").')
+        assert _gaps3_problems(rows, pend, dupes, set(WP31_ALL) - {"C8a"},
+                               entries, lambda s: False) == []
+        # Split-row ids (B5a/B5b, C10a..c, F1a..g, H2f/k/l/t/x) parse.
+        for pid in ("B5a", "B5b", "C10c", "F1g", "H2t"):
+            m = _GAPS3_TRACKED.match(
+                "- **%s Tracked:** Open (WP-31 section 03)." % pid)
+            assert m and m.group("id") == pid, pid
+~~~~
+
+**`docstring-item-10`** (01-02; after :59):
+
+~~~~text docstring-item-10
+10. WP-31's entries (.ultraplan/sections/index.md A4) are open in BUGS.md
+   in the form "Not fixed because WP-31 section NN has not landed. Graded
+   S1|S2|S3 (WP-31): ...", NN being the section WP31_SECTION names, listed
+   in WP31_OPEN, which with WP29_OPEN and WP30_OPEN exempts them from the
+   release guard, tracked "Open (WP-31 section NN)." in GAPS3.md section 9,
+   with a "<!-- WP-31 <id> -->" marker in each CHANGELOG list WP31_LISTS
+   names, until their section lands; then the key is gone, the Tracked
+   line reads Closed or Partly closed, no marker is left, each list holds a
+   line ending "(WP-31, <id>)", and a closed Resolution holds it too.
+~~~~
+
+**`fixed-in-wp31`** (01-04; above :800):
+
+~~~~text fixed-in-wp31
+### Fixed in WP-31
+
+Gaps the drop-in audit of 10oct2026 (GAPS3.md) recorded that WP-31 fixed
+without changing a drawn result; the results that changed are the WP-31
+group under Results that change, and the newly refused forms sit under
+Changed behaviour.
+~~~~
+
+**`truth-header`** (01-06; replaces lines 1-28 of the copied script):
+
+~~~~text truth-header
+*! test_wp31_truth.cscript
+*! WP-31's ONE new certification script (.ultraplan/sections/index.md A5):
+*! every comparison with twoway's drawing or with Stata's own values that
+*! WP-31's sections need lives here, one block per GAPS3 row, appended
+*! above the "append new blocks above this line" marker in section order,
+*! so the certification suite grows by one script.  Refusal, message and
+*! return-code checks join the EXISTING script for their area (merge rule
+*! R1); this script never gains one of those.
+*!
+*! S01 is the scaffold smoke (U01-1).  A section appends its blocks
+*! `* ==== S<NN> <row>: <what> ====` ... `* ==== end S<NN> ====`, its
+*! helper programs directly above its first header, and writes only inside
+*! its own blocks.  Case ids are U<NN>-<k>.
+*!
+*! Usage: via run_all_cscripts.do (registered as its block 70).  One
+*! block alone: WP31_ONLY=S<NN> in the driver's environment; a section with
+*! no block then ends "no case ran" and r(9).  Each block prints "S<NN>
+*! start" and "S<NN> end" with the date and time, so S61 can time it.  The
+*! suite runs it in every session; DASH_CERT_SHARD=k/N runs part k of N of
+*! the blocks (the "parts" section below); a part with no block ends 0.
+~~~~
+
+**`empty-part`** (01-06; first statement inside the summary's `if \`ncase' == 0 {`):
+
+~~~~text empty-part
+    if `w31_N' > 1 & `"`macval(only)'"' == "" & "`w31_run'" == "" {
+        display as text "test_wp31_truth: part `w31_k'/`w31_N' has no block to run"
+        display as text "============================================================"
+        exit 0
+    }
+~~~~
+
+(`w31_k`, `w31_N` and `w31_run` are the parts section's locals, which are still in scope in the summary; `only` is the summary's own local.)
+
+**`hygiene-wp31`** (01-01; after test_cscript_hygiene.py:1215):
+
+~~~~python hygiene-wp31
+# ---------------------------------------------------------------------------
+# WP-31's truth script: S01's scaffold and the blocks sections append
+# ---------------------------------------------------------------------------
+
+_WP31_TRUTH = os.path.join(_HERE, "test_wp31_truth.cscript")
+_W31_OPEN = re.compile(r"^\* ==== (S\d{2}) (.+) ====$")
+_W31_CLOSE = re.compile(r"^\* ==== end (S\d{2}) ====$")
+_W31_MARK = "* ==== append new blocks above this line ===="
+_W31_HEAD = re.compile(r"^(scaffold|[A-K]\d{1,2}[a-gkltx]?): \S")
+
+
+def _wp31_blocks(src):
+    """As _wp30_blocks, with WP31_ONLY and w31_run, a header naming one
+    GAPS3 row id (a section may own several blocks, one per row), and
+    section order non-decreasing."""
+    lines = src.split("\n")
+    bad = []
+    marks = [n for n, ln in enumerate(lines, 1) if ln.rstrip() == _W31_MARK]
+    if len(marks) != 1:
+        bad.append("the line %r appears %d times" % (_W31_MARK, len(marks)))
+    mark = marks[0] if marks else len(lines) + 1
+    blocks, cur = [], None
+    for n, ln in enumerate(lines, 1):
+        o, c = _W31_OPEN.match(ln.rstrip()), _W31_CLOSE.match(ln.rstrip())
+        if o:
+            if cur:
+                bad.append("%s (line %d) is not closed before line %d"
+                           % (cur[0], cur[1], n))
+            cur = (o.group(1), n, o.group(2))
+        elif c:
+            if cur is None or c.group(1) != cur[0]:
+                bad.append("line %d closes %s, which is not the open block"
+                           % (n, c.group(1)))
+            else:
+                blocks.append((cur[0], cur[1], n))
+                if not _W31_HEAD.match(cur[2]):
+                    bad.append("%s (line %d) names no GAPS3 row ('<id>: "
+                               "<what>')" % (cur[0], cur[1]))
+            cur = None
+    if cur:
+        bad.append("%s (line %d) is never closed" % cur[:2])
+    for k, (sec, first, last) in enumerate(blocks):
+        code = [ln.strip() for ln in lines[first:last - 1]
+                if ln.strip() and not ln.strip().startswith(("//", "*"))]
+        if code[:2] != ["local only : env WP31_ONLY",
+                        'if inlist("`only\'", "", "%s") & `: list posof '
+                        '"%s" in w31_run\' {' % (sec, sec)]:
+            bad.append("%s (line %d) is not gated by WP31_ONLY=%s"
+                       % (sec, first, sec))
+        timed = ['display as text "%s %s " c(current_date) " " '
+                 'c(current_time)' % (sec, w) for w in ("start", "end")]
+        if code[2:3] != timed[:1] or code[-2:] != [timed[1], "}"]:
+            bad.append("%s (line %d) does not print its start line first and "
+                       "its end line last" % (sec, first))
+        if last > mark:
+            bad.append("%s (line %d) is below the marker" % (sec, first))
+        if k and sec < blocks[k - 1][0]:
+            bad.append("%s (line %d) follows %s: blocks go in section order"
+                       % (sec, first, blocks[k - 1][0]))
+    return blocks, bad
+
+
+class TestTheWp31TruthScript:
+
+    def test_the_scaffold_is_in_order(self):
+        text = _read(_WP31_TRUTH)
+        order = ['cscript "WP-31 truth', "SKIP: Python not available.",
+                 'do "cert_helpers.do"', 'do "cert_svg.do"',
+                 "// ---- parts: begin", "local w31_sh : environment "
+                 "DASH_CERT_SHARD", "// ---- parts: end", "* ==== S01 ",
+                 "local only : env WP31_ONLY", "* ==== end S01 ====",
+                 _W31_MARK, "has no block to run",
+                 "test_wp31_truth: ALL CHECKS PASSED"]
+        positions = [text.find(s) for s in order]
+        assert -1 not in positions, dict(zip(order, positions))
+        assert positions == sorted(positions), (order, positions)
+        assert "capture python:" not in text
+
+    def test_every_block_is_gated_timed_closed_and_in_section_order(self):
+        blocks, bad = _wp31_blocks(_read(_WP31_TRUTH))
+        assert not bad, "\n".join(bad)
+        assert blocks and blocks[0][0] == "S01", blocks
+
+    def test_the_block_reader(self):
+        def block(sec, head, body=""):
+            return ("* ==== %s %s ====\nlocal only : env WP31_ONLY\n"
+                    'if inlist("`only\'", "", "%s") & `: list posof "%s" '
+                    'in w31_run\' {\n'
+                    '    display as text "%s start " c(current_date) " " '
+                    "c(current_time)\n%s"
+                    '    display as text "%s end " c(current_date) " " '
+                    "c(current_time)\n}\n* ==== end %s ====\n"
+                    % (sec, head, sec, sec, sec, body, sec, sec))
+        good = ('cscript "x"\n' + block("S01", "scaffold: smoke", "    // a\n")
+                + "\n" + block("S14", "C6: cmissing") + "\n"
+                + block("S14", "C7: recast") + _W31_MARK + "\nexit 9\n")
+        blocks, bad = _wp31_blocks(good)
+        assert bad == [], bad
+        assert [b[0] for b in blocks] == ["S01", "S14", "S14"], blocks
+        for text, says in (
+                (good.replace('"S14") &', '"S01") &'), "not gated"),
+                (good.replace("* ==== end S14 ====\n", "", 1), "not closed"),
+                (good.replace("C7: recast", "nothing"), "names no GAPS3 row"),
+                (good.replace("S14", "S00"), "section order"),
+                (good.replace(_W31_MARK + "\n", ""), "appears 0 times")):
+            assert any(says in b for b in _wp31_blocks(text)[1]), (says,)
+~~~~
+
+## Appendix D: register corrections (TR-01.8; 01-05)
+
+Each edit asserts the quoted current text first.
+
+1. GAPS2.md:807, currently `- **Tracked:** new.` (under `### C14.` at :802) → `- **Tracked:** Closed in WP-28, BUGS.md "A continuous histogram dropped the observation at its last edge, and the rows a tolerated start() lies above", commit b06b662; GAPS3 §6: the histogram edge rule is pinned by test/test_histogram_edge_rule.py; was: new`.
+2. GAPS2.md:1566, currently `- **Tracked:** new.` (under `### H10.` at :1561) → `- **Tracked:** new; half closed (GAPS3 §6): the dash_setup_lib load is guarded (dash.ado:6296-6299, dash_setup.ado:1080-1083, PYTHONDONTWRITEBYTECODE in dash_setup_lib.py:43), the renderer load at dash.ado:6118-6133 is not. GAPS3: I7.`
+3. GAPS2.md, the `- **Tracked:**` line under each of these headings gains the suffix ` GAPS3: <rows>.` (one space, then the text; appended after the line's last character): A2 `C1`; A5 `B1, B2, B3, B4`; A8 `C8`; A11 `(BUGS.md:2559, kept by WP-30 M6)`; A12 `C3`; A14 `B5`; A15 `C10`; B10 `D1`; B19 `D2`; B24 `D15`; B28 `D2`; B30 `D5`; B33 `D5`; D4 `E2`; D14 `D5, E11`; E5 `H1, H2l`; E6 `D9`; E7 `H2k`; E9 `H2l`; E11 `H1`; E12 `H1`; E13 `H2f`; E15 `D14`; G7 `G2`; G12 `G1`; G17 `A5`; G18 `C9`; H8 `I3`; I1 `H4`; I9 `I6`; J1 `G2`; J10 `J3`; K4 `H4`; K10 `K5 (out of scope, PRD §7)`; K11 `J4`; X7 `H7`. (36 lines; C14 and H10 are items 1-2.)
+4. DROPIN-REMAINING.md:380 (`1. **Retire or fix \`scripts/regen_option_surface.py\`.** ...` under `### P3:`) gains the suffix ` [Written closed: retired by a hard sys.exit (scripts/regen_option_surface.py:17), commit 44f8ab0 (WP-30 P1.34).]`.
+5. DROPIN-REMAINING.md, each of these rows gains the suffix ` [Narrowed 10oct2026 (GAPS3 §6): <text>]` at the end of its last line: :173 P2.1 `unknown layout() names are refused now (dash_parse.mata:1650-1668); only the served same-cell collision and tabs() stay silent (GAPS3 D14)`; :209 P2.12 (the `Effort M. Sources:` line) `lwidth(none) and mlabtextstyle are closed; the rest is GAPS3 E2, E3`; :218 P2.14 (the row's last line) `msize(1e400) and per-series mlabel(make rep78) are closed; one element naming several variables remains (GAPS3 C10)`; :246 P2.25 `a brushed histogram is drawn at full intensity, not dimmed (dash.sthlp:4418); drives nothing stands (GAPS3 H1)`; :262 P2.29 `dash.pkg states Requires: Stata 19 or later and a version; the .pyc leg is GAPS3 I7; README, Author, KW and rollback remain (GAPS3 I2, I3)`; :288 P2.48 `the saved page ships no mathjax (three tests assert it); the served bundle still does (GAPS3 H3)`; :433 P3.9 `dev dependencies are declared in test/requirements-*.txt; CI, lint, bandit and secrets remain (GAPS3 I6)`.
+
+## Appendix E: `s01_entries.py` (TR-01.9; 01-01)
+
+~~~~python s01-entries
+"""S01's entry generator: reads section-01's Appendix A and GAPS3.md's
+tables; prints by sub-command.  Usage:
+  python3 s01_entries.py bugs|tracking|readers|count <section file>
+  python3 s01_entries.py markers RC|CB|RQ|FX <section file>
+Nothing is written; the task redirects the output."""
+import os
+import re
+import sys
+
+LISTS = {"RC": "Results that change", "CB": "Changed behaviour",
+         "RQ": "Requirements", "FX": "Fixed in WP-31"}
+WHY = {"S1": "a value the user gave is dropped or drawn wrong with no note",
+       "S2": "a twoway form is refused, named and not drawn, or fails visibly",
+       "S3": "fidelity, hygiene, coverage or documentation drift"}
+SLUG = re.compile(r"^\| (\d{2}) \| ([a-z][a-z0-9-]*) \|")
+ROW = re.compile(r"^\| ([A-K]\d{1,2}[a-gkltx]?) \| (\d{2}) \| (S[1-3]) \| "
+                 r"([A-Z ]+) \| (.+?) \| (.+?) \|$")
+G3 = re.compile(r"^\| ([A-K]\d{1,2}) \| (.+?) \| (S[1-3][^|]*)\| ([^|]*)\| "
+                r"([^|]*)\| ([^|]*)\|$")
+
+
+def read(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def appendix_a(text):
+    sect = text.split("## Appendix A", 1)[1].split("## Appendix B", 1)[0]
+    rows = []
+    for ln in sect.split("\n"):
+        m = ROW.match(ln)
+        if m:
+            rows.append(dict(id=m.group(1), sec=int(m.group(2)),
+                             grade=m.group(3), lists=m.group(4).split(),
+                             title=m.group(5), fix=m.group(6)))
+    assert len(rows) == 110, len(rows)
+    return rows
+
+
+def names(root):
+    idx = read(os.path.join(root, ".ultraplan", "sections", "index.md"))
+    # Only the manifest table: the batch table's rows (`| 21 | 61 |`) would
+    # otherwise match a digits-only slug (REVIEW-1 R1-08).
+    idx = idx.split("## Section manifest", 1)[1]
+    idx = idx.split("## Batch execution order", 1)[0]
+    out = {}
+    for ln in idx.split("\n"):
+        m = SLUG.match(ln)
+        if m:
+            out[int(m.group(1))] = m.group(2).replace("-", " ")
+    assert len(out) == 61, len(out)
+    return out
+
+
+def gaps3(root):
+    out = {}
+    for ln in read(os.path.join(root, "GAPS3.md")).split("\n"):
+        m = G3.match(ln)
+        if m:
+            out[m.group(1)] = (m.group(2).strip(), m.group(5).strip())
+    return out
+
+
+def part(title):
+    m = re.search(r" \((the [^()]+)\)$", title)
+    return m.group(1) if m else ""
+
+
+def main(argv):
+    cmd, sf = argv[1], argv[-1]
+    root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(sf))))
+    rows, nm, g3 = appendix_a(read(sf)), names(root), gaps3(root)
+    if cmd == "bugs":
+        out = [""]
+        for r in rows:
+            gap, evid = g3[re.sub(r"[a-z]$", "", r["id"])]
+            p = part(r["title"])
+            desc = ("%s; the whole row reads: %s" % (p, gap)) if p else gap
+            out += ["- [ ] Title: %s" % r["title"],
+                    "  - File Names and Line Numbers: %s" % evid,
+                    "  - Description: GAPS3.md %s, re-verified at 6370ca4: %s"
+                    % (re.sub(r"[a-z]$", "", r["id"]), desc),
+                    "  - Suggested fix: WP-31 section %02d (%s): %s"
+                    % (r["sec"], nm[r["sec"]], r["fix"]),
+                    "  - Resolution: Not fixed because WP-31 section %02d has "
+                    "not landed. Graded %s (WP-31): %s."
+                    % (r["sec"], r["grade"], WHY[r["grade"]]), ""]
+        print("\n".join(out[:-1]))
+    elif cmd == "tracking":
+        key = lambda r: (r["id"][0], int(re.sub(r"\D", "", r["id"])),
+                         re.sub(r"^[A-K]\d+", "", r["id"]))
+        out = ["", "## 9. Tracking", "",
+               "One line per WP-31 entry (.ultraplan/sections/index.md, A4), "
+               "rewritten in place by the entry's closing commit; "
+               "test/test_tracking_documents.py::TestWp31Tracking reads "
+               "exactly these forms:",
+               "`Open (WP-31 section NN).`, `Closed in WP-31, BUGS.md "
+               "\"<title>\", commit <sha>.`, or",
+               "`Partly closed in WP-31 (section NN, commit <sha>): <what is "
+               "closed>; open: <what remains> (BUGS.md \"<residual "
+               "title>\").`",
+               "A closing commit writes `commit pending`; the merger's step "
+               "k.3b replaces it with the landed sha on s3-bugs (DECISIONS "
+               "A11).", ""]
+        out += ["- **%s Tracked:** Open (WP-31 section %02d)." % (r["id"], r["sec"])
+                for r in sorted(rows, key=key)]
+        print("\n".join(out))
+    elif cmd == "readers":
+        print("WP31_OPEN = {")
+        for r in rows:
+            print('    "%s": "%s",' % (r["id"], r["title"]))
+        print("}\n\nWP31_LISTS = {")
+        for r in rows:
+            print('    "%s": (%s,),' % (r["id"], ", ".join(
+                '"%s"' % LISTS[k] for k in r["lists"])))
+        print("}\n\nWP31_SECTION = {")
+        for r in rows:
+            print('    "%s": %d,' % (r["id"], r["sec"]))
+        print("}")
+    elif cmd == "markers":
+        want = argv[2]
+        print("\n\n".join("<!-- WP-31 %s -->" % r["id"]
+                          for r in rows if want in r["lists"]))
+    elif cmd == "count":
+        print(sum(len(r["lists"]) for r in rows))
+        for k in LISTS:
+            print(k, sum(1 for r in rows if k in r["lists"]))
+    else:
+        sys.exit(__doc__)
+
+
+if __name__ == "__main__":
+    main(sys.argv)
+~~~~

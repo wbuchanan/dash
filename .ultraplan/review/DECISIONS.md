@@ -1,94 +1,50 @@
-# Review decisions (Phase 4, 2026-09-25)
+# WP-31 Phase 4 decisions (binding; a decision here wins over any section text)
 
-Three review reports sit beside this file: `consistency.md` (36 findings), `requirements-security.md` (24), `feasibility.md` (51). This file records how each contested point is resolved so five fixer agents apply one rule. Where a report's proposed edit conflicts with a decision here, the decision wins; otherwise apply the report's edit as written.
+Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passes (REVIEW-3b..3e). "Maintainer" = answered by the maintainer in Phase 4c; "Architect" = a process ruling within the maintainer's decisions.
 
-## D1. Commits versus tasks (fixes consistency #4, requirements F-01, feasibility critical 1)
+## Maintainer decisions
 
-Tasks are work steps. Commits are **one per gap** (DISCOVERY Q18, PRD §9), or one per shared component for S01-S04. **A red tree is never committed** (CLAUDE.md rule 4): the failing regression tests are written first (rule 7), run against the unmodified tree, and their failure is recorded in the fix commit's message, but they are committed together with the fix that turns them green. Sections with several gaps (S07, S08, S09, S13, S14, S17) therefore have as many fix commits as gaps; S09 has two (F1, K2), S10 one (E14), S01 one, S02 one, S03 one, S04 one.
+| Id | Decision | Applies to |
+|---|---|---|
+| D1 | **Arrowheads are drawn as a custom rotated head** (triangle/patch at the tip per `_gr_arrowhead.ado` geometry: angle default 28.64°, `mangle()` and `barbsize()` honoured; barbsize 0 = two open strokes). Bokeh's ArrowHead is not used for pcarrow/pcbarrow/pcarrowi. D-02.b is reversed. | S02 |
+| D2 | **mlabel's minimum becomes twoway's `mlab`; `mla()` is `mlalign()`**; `ml()` answers as twoway does (unknown option). A CHANGELOG "Changed behaviour" line records it; test_abbreviations' live pin follows. D-08.d resolved. | S08 (declares), S34 (draws mlalign) |
+| D3 | **estopts()/predopts()/estcmd() layers are frozen in both modes** with the existing stale cue after a move; no sfi call at move time. D-11b/c confirmed. | S11 |
+| D4 | **Contour above the cap**: seeded random subsample of 1,000 de-duplicated points for the spline fit, 100×100 evaluation grid, stale cue on the saved page and a note naming the subsample. D-23c confirmed. | S23, S26, S29 |
+| D5 | **tabs() with an unknown graph name is refused r(198)**, as layout() is; a Changed-behaviour line records it (dash's own option). D-39.a confirmed. | S39 |
+| D6 | **A by() graph gets one data table under the grid** holding every panel's drawn rows with a panel column (the by() variable values). D-48d is reversed; no residual. | S48 |
+| D7 | **BUGS.md "Not fixed because ..." preambles on closed entries are rewritten in place**; an entry whose closing commit cannot be found is reopened as S3. D-58.b confirmed. | S58 |
+| D8 | **CHANGELOG.md:3 drops "(release candidate)"** at closeout; 0.1.0 dated at S61 is the release. D-61.a resolved. | S61 |
 
-Edit everywhere: `BRIEF.md` ("each task = one commit" → this rule); every section's Overview "Test order" paragraph, every task whose `<verify>`/`<done>` says the failing tests are committed alone, and every "Section completion criteria" line about commits.
+## Architect rulings (process and feasibility; from the reviews)
 
-## D2. CHANGELOG convention (fixes consistency #1, requirements F-04, feasibility critical 6)
+| Id | Ruling | Source |
+|---|---|---|
+| A11 | **Tracked-line sha.** A closing task writes `commit pending` in the GAPS3 Tracked line; the merger's step k.3b rewrites every `pending` of the batch to the landed sha on `s3-bugs` in one tracking commit per batch; S01's reader accepts `pending`; G2 forbids `pending` after k.3b; S61.3 fails on any `pending`. The commit-then-amend routine is deleted everywhere. | R1-02, R4-01 |
+| A12 | **A3 is an entry** (S08, S3, FX marker); S01's Appendix A/B and `WP31_ALL` carry 110 entries; every `109` becomes `110`. | R1-01 |
+| A13 | **`<files>` lists the primary files** a task edits; the tracking documents (BUGS.md, GAPS3.md, CHANGELOG.md, TWOWAY_COVERAGE_AUDIT.md, dash.sthlp's Unsupported list), the test maps and the flipped tests of a closing task are implied and need not be counted. BRIEF.md says so. | R1, R2, R3d-F20, R3e-F24, R4 |
+| A14 | **One truth block per GAPS3 row** (`* ==== S<NN> <row>: ... ====`), appended by the row's closing task, so no commit stages red cases of a later row; a section's task 01 appends only its first row's block. Multi-row sections write one regression test file per row. | R3c-F3/F4, R1 D-01.e |
+| A15 | **Batch-11 rules editor is S32**; S33's `lwidth` bound and S34's `lalign/mlalign` enum tokens are handed to S32's rules edit as disjoint tokens (S32 adds them; S33/S34 read them). Owner table updated. | R3-02, R3b-F1, R3c-F2 |
+| A16 | **S32 D-32.c is replaced**: no `inner_width` CustomJS (BokehJS sets it with `no_change`); with xsize/ysize the frame is sized in Python (`frame_width`/`frame_height` from the figure size minus the scheme border estimate, `min_border_*` from `placement()`); without sizes the figure ratio stays, documented under M17. `_DASH_ASPECT_JS`, `_dash_aspect_callback`, `TestAspectJs`, `::test_sealed` are deleted. D-32.b: `fxsize` via CSS `flex-grow` keeps its Chrome check with the `max_width` fallback. | R3c-F1 |
+| A17 | **S38 is one path**: every extended reference line is an Arrow with `low=high=True` through `_dash_refline_extents`; the Span branch, `_dash_refline_outside`, `_dash_refline_draw_arrows`, `_DASH_REFLINE_ZOOM_JS` and the template line are deleted; the zoom re-extent is one statement at the end of `_DASH_AXIS_ZOOM_JS` (:31412, not an R11 constant) and `zoom_ranges` includes every range a `lines` entry names. | R3d-F1..F4 |
+| A18 | **S37's `_dash_graph_margin`** returns early when no margin is given, skips `add == 0`, and reads `fig.min_border` when the side is None; a guard test pins that figures without a margin keep `min_border_* is None`. | R3b-F17 |
+| A19 | **S29 segment orientation**: interior segments are pushed reversed (`segs.push([b[0],b[1],a[0],a[1],cell])`), boundary edges unreversed, so rings chain (0 open rings under node); S29 reuses S10's `dash_solve`; inserts before `// DASH_FIT_HELPERS_END` / `// DASH_FIT_BRANCHES_END`; one cache key for fill and line. | R2-01..R2-04 |
+| A20 | **S26 does not edit `_FROZEN`** (S28 owns the line in batch 9); S28's `test_every_fit_type_is_refit` compares to the explicit eleven; S28 keeps `_DASH_STALE_SUFFIX["fit"]` for S11's points layers and S29's above-cap contour, and the status text keeps "(unfiltered)" for those. S11's points layers get kind "fit" forced and no `_dash_agg_*` tags. | R2-05..R2-08 |
+| A21 | **Ids**: S18 uses `B5b`, S03 `B5a`; S23/S26/S29 close `B4a/B4b/B4c` each; S51 drops its `H1b` clauses (S52's H1 covers the banner/throttle; H2l's text covers the selection clauses). | R2-09, R2-10, R4-10 |
+| A22 | **S13 and S16 swap batches** (S16 js-lowess in batch 4, S13 js-lfitci-qfitci in batch 5) so S13's `map_lfitci`/`map_qfitci` edits do not share S11's batch; S28's dependency on S13 still precedes batch 9. **S12's saved-page refit of gap()/area()/boundary** is done in batch 4 by S16 (that batch's `_FILTER_JS` owner) reading S12's new config keys; no residual. | R2-12, R2-13 |
+| A23 | **S14 D-14b and S20 D-20e** (saved-page fill bridging after a move; weighted marker sizes after a move) are fixed by S52 in batch 17, not filed; M8 forbids a silent difference. | R2 |
+| A24 | **S44 on a host without the style files**: the resolved style rows are embedded at registration in `build_options["_style_rows"]` and read first in both modes; the reader call passes `expect=` and the caps as keywords and catches `ValueError` once per file name; a module-level memo keyed on (realpath, dev, inode, size, mtime). | R3e-F11..F13 |
+| A25 | **S45 uses the `__dashq<k>` marker columns** (`summarize v if __dashq<k>, meanonly`), never re-substitutes qualifier text; anchors renamed per R3e-F15/F16; `horizontal` word mapping added. | R3e-F15..F17 |
+| A26 | **S46 owns its `_FILTER_JS` substitution** (`_FILTER_JS = _FILTER_JS.replace(...)` before :31459); `_LPOLY_WEIGHT_EPS` applied at both `pos = kw > 0` sites (:17025 and :22079) with an lpolyci probe. | R3e-F18, F19 |
+| A27 | **S43**: no hover-writer args; display text for coded variables travels as a carried text column (`__dasht_<v>`); G5 closes by measurement and documentation (one tick and one tooltip formatter per distinct format), the help sentence says so; G3 gains residual `G3d` (working columns in the user's data); fonts: S42 makes `_dash_gt_head` emit the tag name and S43 maps it in `_dash_graph_text_style`; S43's graph-text help sentence is handed to S42; S43's new tests go in a new file. | R3e-F1..F8 |
+| A28 | **S52** wraps `_FILTER_JS` at the :31459 assembly; the error-HTML constant is emitted as a JS string literal; the reset JS (S49) also sets `value_throttled`; a `dash_bin_members` JS twin recomputes `__dash_bin_rows` in the refit branch; a `_hooks` list for `document_ready` scripts that S53/S54 append to. Batch 17 keeps S50, S51, S52 with recorded disjoint hunks, merge order 50→51→52. | R4-02..R4-07, R4-11, R4-12 |
+| A29 | **S48** caps by the first N drawn rows (`flatnonzero(mask)[:cap]`) and its view is rewritten by S51's brush(filter); **S49** escapes MultiChoice labels and probes Choices.js's `allowHTML`; **S47** compares missing codes by a two-key (m, v) pair. | R4-05, R4-08, R4-09 |
+| A30 | **S61-04 runs axe-core over the example pages** (G3 wording stands); export toolbar keeps three controls (PNG, SVG, composite); `/health` omits `rows`. | R4-13, R4 minors |
+| A31 | **S30/S31 scheme regeneration**: S30 adds the four title rings in a new generator group; S31 owns `legend_ring` in the legend group; S31's diff excludes the generated files and the generator is run once after the batch-10 merge. S33's `axis_title_gap` stub goes through the generator (default `minuscule`); `min_border_below` → `min_border_bottom`; the twin-axis label geometry is measured before coding. S31's `_dash_move_legend` skips `ring=<n>` models with n ≤ 3. | R3-07, R3-08, R3c-F5..F9 |
+| A32 | **S05/S06 in batch 2 edit the same lines**: S06 is cut after S05 lands (sequential inside the batch, both still in batch 2); S09 is written against S06's `axes` kind (`yaxis(1 2)` list) and depends on 06; S02 adds its `barbsize` rules token itself. | R1-03..R1-06 |
+| A33 | **Count pins** (test_unsupported_report_is_true.py, hygiene) are written as "current value at the section's base → new", re-read at the base, never as fixed numbers planned from other sections. | R1-07, R2 |
+| A34 | S41 reads outline styles from `p_other_band_styles[color_idx % 15]` (`line`, `line_alpha`, `line_width`, `line_dash`); S41's comma-colour check reads `s(g_<host>)`; `mlpattern` is already in the JSON key list (S40 only edits :1343 and the stylelist keys). | R3d-F11, F14, F15 |
 
-S01 task 01-03 places one marker `<!-- WP-28 <ID> -->` per gap **in the list where that gap's entry belongs**, not all under one heading: `### Results that change` for B1, B2, B3, B5, B6, B7, C2, D1, E1, E2, E3, E14 (bar move), G6, G16, X1, X2; `### Changed behaviour (may need your do-files changed)` for G1 (r(110)) and G2 (r(109)); `### Requirements` for K2; `### Fixed in WP-28` for F1, G3, G5 and E14's other four items (E14 has two markers: 23 markers in all). Each gap's closing task **replaces its marker(s)** with the entry text (command, old value, new value for a changed result). S19 19-01 verifies `grep -c '<!-- WP-28 ' CHANGELOG.md` prints 0.
+## Deltas to BRIEF.md and index.md made by this pass
 
-## D3. BUGS.md Resolution field (fixes consistency #2, requirements F-03)
-
-The field name stays exactly `- Resolution:` (the parser `_FIELD` in `test/test_tracking_documents.py:98-101` must keep matching; fixer A verifies this against the regex and adjusts if the regex tolerates a parenthetical). The WP and gap id go in the text: `- Resolution: Fixed <ddmonyyyy> (WP-28, <ID>). <what changed>. Pinned by test/<file>::<Class>::<test>.` A residual adds `Residual, deferred (WP-28): <what and why>.` at the end. Entries are **appended at the end of BUGS.md** (the file has no headings; S05's mid-file insertion is wrong).
-
-## D4. Batches and dependencies (fixes consistency #5-#9, feasibility critical 2-3)
-
-```
-Batch 1: 01 02 03 06 07 08 09 10
-Batch 2: 04 (03)   05 (03)   13 (02)   14 (02, 07)   16 (02)   17 (03, 07)
-Batch 3: 11 (04, 17)   12 (03, 04, 14, 16, 17)   15 (02, 13)   18 (02, 14)
-Batch 4: 19 (all)
-```
-Reasons: S04 and S05 use `test/js_runner.py` (S03 deletes `_NODE`/`_run_filter_js_block` from their old homes); S14 uses S07's Unicode name check (not `_DASH_VARNAME_RE`); S17 renames nothing but relies on S07's `ROW_ID` fill; S15 adds probes to S13's `scripts/extract_text_truth.do` and regenerates `text_truth.json`; S12 builds on S14's `_dash_build_hover`/`_dash_hover_row` signatures, S16's colorvar key labels and S17's `_dash_filter_widget` values; S11 changes `dash_apply_kpis` after S17's per-group call (S11 must keep the brush slice marker `dash_apply_kpis(new_data,` at dash_render.py:14650/23485 working, or update the slice in the same task); S18 consumes S14's tokenizer. Update every section header, `index.md` (manifest, batches, graph, gap coverage) and `PLAN.md` (index, graph, batch groups, execution order, risk distribution).
-
-## D5. Merge rules within a batch (fixes consistency shared-file table)
-
-Add to `index.md` "How to execute" and `BRIEF.md`:
-- **R1 cscripts.** Each section registers its cscript(s) in `test/run_all_cscripts.do` as the LAST block and bumps `test/test_cscript_hygiene.py`'s count pins by its own delta; the merger renumbers blocks and sets the pins to the final count after the batch. S13 and S15 must register theirs (they did not).
-- **R2 copy lists and maps.** Each section appends its own names to the served copy lists (dash_render.py 24326-24428, 24466-24687), `test/function_test_map.py` and `test/program_coverage_map.py`; the merger resolves the append conflicts textually.
-- **R3 dash.sthlp, CHANGELOG.md, BUGS.md.** Each section edits only the paragraphs GAPS2 cites for its gaps, replaces only its own CHANGELOG markers, and appends its own BUGS.md entries; S12 edits dash.sthlp 1109-1128 after S17 (batch order enforces it).
-- **R4 dash.ado graph-key lists.** Only S16 adds graph keys (z options) in its batch; S14 adds none (its numlist expansion uses `_dash_option_rules`).
-- **R5 fixtures.** A regenerated fixture is never patched by hand; the section that last touches an extract script regenerates the JSON once (S15 for `text_truth.json`, S18 for `axis_truth.json`, S05 for `stat_truth.json`'s histogram records, S17 for its filter records).
-- **R6 parity corpus.** Sections append `CORPUS` cases; only S10 edits `ALLOWED`; only S18 edits `MUST_WARN`.
-
-## D6. Stata concurrency (feasibility "no mechanism")
-
-`index.md` "How to execute" gains step 0: the orchestrator creates `scripts/stata_slot.sh` before batch 1 — a wrapper that acquires one of three `flock` slots (`/tmp/dash-stata-slot-{1,2,3}.lock`, non-blocking retry loop) and then runs `cd "$1" && STATATMP="$1/tmp/" arch -arm64 /usr/local/bin/stata-mp -b do "$2"`. Every section's Stata invocation is written as `scripts/stata_slot.sh <scratch-dir> <file>.do`. S02 task 02-07's `make cert` moves to S19 (a full cert run is never launched inside a section).
-
-> Orchestrator note (2026-09-25, fixer pass): the wrapper is implemented with three atomic `mkdir` slot directories as written in `sections/index.md` step 0, which supersedes the `flock` wording above; sections only call `scripts/stata_slot.sh`.
-
-## D7. XML task schema (feasibility schema violations)
-
-- Any `<action>`, `<verify>` or `<done>` containing `&`, `<` or `>` (shell `&&`, `2>&1`, `<scratch>` placeholders) is wrapped in `<![CDATA[ … ]]>`; text stays readable, never entity-escaped.
-- `<name>` is 3-8 words and starts with a verb.
-- `<files>` lists paths only, comma-separated, at most 3; the "(new)" suffix moves into the action ("create …"); the seven tasks with a hidden fourth file (02-04, 07-06, 12-04, 12-05, 14-05, 17-04, 17-07) are split as feasibility.md proposes. 19-05's six version files stay (justified).
-- `<done>` is one past-tense sentence.
-- The 20 oversized tasks named in feasibility.md are split using its XML; ids are renumbered sequentially within the section afterwards, and every cross-reference to a renumbered id (in the same file, in `index.md`, in `PLAN.md`) is updated.
-
-## D8. Checkpoints
-
-Remove 14-12 (S19 runs the suites; the labels are pinned by tests). Keep 18-12. Add a `type="checkpoint"` task at the end of S10 (the one deliberate picture change: the bs filter bar) and one in S19 immediately before the task that marks the residuals deferred in GAPS2.md (approve the deferred list).
-
-## D9. Risk ratings
-
-S09 → red (child-process plumbing, three refusal sites, twelve tasks, inverted tests). S14 → red (tokenizer plus ado numlist expansion plus hover column across both twins). Update the header line, `index.md` and `PLAN.md` (risk distribution becomes 4 green, 9 yellow, 6 red).
-
-## D10. Specific corrections
-
-- S05 imports `run_filter_js_block` from `test/js_runner.py` (S03), not `_NODE`/`_run_filter_js_block` from `test_statistical_helpers.py`.
-- S14 uses S07's Unicode-aware check by S07's final name (read S07 §Technical requirements), never `_DASH_VARNAME_RE`; S14's boundary claim of "no overlap" with S12/S17 is replaced by the D4 ordering.
-- S14's probe table gains the E3 `%tm` axis-label probe (`twoway line … , xlabel(, format(%tm))` on a %tm variable, recording the tick label texts) that S12 consumes; S12's hand-off note points at that probe id.
-- S13 reads `size` from `svg_texts`, not `font_size`; S13's B6 BUGS.md title contains no `"`: use `An empty xtitle() or ytitle() does not remove the axis title`.
-- S13 and S15 register `test_textbox_grammar.cscript` and `test_legend_order.cscript` (R1).
-- S08 runs the full pytest suite once, at the end (CLAUDE.md rule 11), not four times.
-- 04-04's verify arithmetic is recomputed (feasibility critical 4: 14977.0, not 15341.0) — fixer B re-derives and states the derivation in the verify.
-- 16-03/16-04 drop the phantom "rebuild the Mata library" step (no `.mlib` exists; dash_parse.mata is `run` from dash.ado).
-- S18 rewires `scripts/extract_axis_truth.do`'s private SVG code onto `scripts/svg_truth.py` when it regenerates `axis_truth.json` (S02 deferred this to S18).
-- Security minors: S04 adds a unit test for `dash_html_escape` (and its Python twin); S06 bounds the scheme file name in warnings (basename, ≤ 80 characters); S09 bounds forwarded child stdout (last 20 lines, ≤ 4 KB) and stderr likewise; S14 states that a numeric run holding `` ` `` or `$` never reaches `numlist` (it is treated as text and named).
-- Edge-case minors from requirements-security.md §4 become TDD stubs in the named sections (NaN precondition in `_histogram_counts`; period sliders on empty and single-value columns; `valuelabel` under by() panels; `label(0)`; `%tC` tooltip keeps its time; compound-quoted `ytitle2`; width-1 formats; `numlist` 1,600-element cap vs the 2,000 bound).
-- D1 residual (CMYK/hsv/`*#` colour forms) is added to PRD §7 and S19's deferred list (requirements F-11).
-
-## What fixers must NOT do
-
-Do not change any decision in `DISCOVERY.md`; do not add or remove gaps; do not alter the fixed public names of S02, S03, S04, S07, S14; do not edit files outside your assignment.
-
-## D11. Certification-suite budget (refinement Q28: cap the growth at about five minutes)
-
-New cert work is consolidated so the whole certification suite grows by at most about five minutes of wall time. Rule: **only comparisons with twoway's drawing or Stata's own values get new cscript code, and all of it goes into ONE new script, `test/test_gaps2_truth.cscript`** (registered once, by S02, which also puts its helper smoke checks there; every later section appends a block to it — merge rule R1 applies to the block order, not to new files). Refusal, message, return-code and setup checks join the existing script for their area: F1 → `test_serve_launch.cscript` (stub-renderer style); K2 → `test_setup_honesty.cscript` and `test_setup_python_gate.cscript`; G1 and G5 → `test_qualifier_in_stata.cscript` (QS-06) and `test_statistical_options.cscript`; G2 → `test_adversarial.cscript`; G3 → `test_adversarial.cscript` with the lowered-limit knob (no 6M-row build); C2's page-sum check and the X1/E2 row counts → `test_e2e_filters.cscript` unless they compare with twoway, in which case they are blocks in `test_gaps2_truth.cscript`; E14 has no cscript (pytest and Chrome). Sections that had planned their own new cscript (`test_cert_svg.cscript`, `test_textbox_grammar.cscript`, `test_legend_order.cscript`, the S05/S06/S07/S08/S09/S16/S17 scripts) rewrite those tasks accordingly. S19 measures the cert suite's wall time before and after the package (the runner log's start and end lines) and records it in WP-28's "Done, measured" block; if the growth exceeds five minutes, the slowest blocks are folded before the gate.
-
-## D12. Fixture provenance stamp (refinement Q31)
-
-Every new or regenerated Stata-measured fixture carries in `_meta`: `stata_version` (`c(stata_version)`), `born_date` (`c(born_date)`), `dash_commit` (the `git rev-parse HEAD` at extraction, written by the extract script's python block from a value the do-file passes in), and `extracted` (date). A test reads the keys exist; nothing compares them. Applies to S02, S04, S05, S13, S14, S15, S16, S17, S18.
-
-## D13. Third-party scheme files are out of scope (refinement Q30)
-
-The maintainer excluded every third-party scheme file. S06 drops the PLUS sweep (the env-gated task), the copied `scheme-d3colors.scheme` fixture and the "127 of 129" claims. D1's tests pin quoted values with a scheme file the test writes itself (a copy of a shipped scheme with `color background "255 0 0"`, `color p1 "26 71 111 %20"`, `color p2 "0 255 0%50"`, an unclosed quote, a `label "…"` line and a tab-separated line). GAPS2 D1 plan step 4's third-party parts are marked excluded by decision in S19's GAPS2 Tracked line and in PRD §7.
-
-## D14. Invariants for future agents (refinement Q29)
-
-S19 appends an "Invariants introduced by WP-28" section to `AGENTS.md` (not CLAUDE.md): the `__dash` column prefix and its guard test; the served copy lists and `TestTheServedAppCarriesEveryName`; the Python/JavaScript twins (`_dash_fmt`/`dash_fmt`, the filter mask, the histogram recount) and their node parity tests; `scripts/stata_slot.sh`; the CHANGELOG marker convention; the BUGS.md Resolution form; the fixture `_meta` stamp. One paragraph each, naming the guarding test.
+- BRIEF.md: `<files>` rule (A13); Tracked `pending` form (A11); one block per row (A14).
+- index.md: owner table entries for batches 11-17 (A15, A22, A28); manifest rows 40/41 (E12, E13, Blocks), 13/16 batch swap, 09 depends on 06, 18 `B5b`; step k.3b (A11); A2 R12 exceptions recorded.
