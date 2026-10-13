@@ -3256,11 +3256,11 @@
   - Suggested fix: WP-31 section 07 (weights operators hover dates): route option varlists through _dash_tsop_gen where twoway draws and copy twoway's rc where it refuses.
   - Resolution: Fixed 13oct2026 (WP-31, A6). twoway draws none of the forms (measured: mlabel(L.make) and mlabel(L.rep78) "variable L not found", r(111); colorvar(L.mpg) and by(L.foreign) "factor-variable and time-series operators not allowed", r(101); mlabvposition(L.pos) "L.pos invalid name", r(198); with or without tsset), so nothing is routed to a column: _dash_validate_value's var/varlist/byvarlist branch refuses an operator token in mlabel() and in colorvar() and by() with twoway's line and code, whatever the tsset (it said r(198) "not a time-series expression" on tsset data and r(111) naming the whole token otherwise), and tests the token with ustrregexm, whose engine does not follow the caller's version; mlabvposition() already answered as twoway; hover(), dash's own, is unchanged. Pinned by test/test_option_operators.py::TestOperatorForms::test_each_refusal_is_twoways, test/test_wp31_truth.cscript U07-4, test/test_option_validation.cscript U07-9; fixture test/fixtures/weight_operator_truth.json. Closes GAPS3 A6 (WP-31, A6).
 
-- [ ] Title: hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list
+- [x] Title: hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list
   - File Names and Line Numbers: dash.ado:1085, :1571
   - Description: GAPS3.md A7, re-verified at 6370ca4: `hover()` written inside a layer's parentheses and again after the comma keeps only the rightmost list.
   - Suggested fix: WP-31 section 07 (weights operators hover dates): merge the two lists and pin the tooltip.
-  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 13oct2026 (WP-31, A7). _dash_rep_cat gives hover() its own category "H" and _dash_rep_merge joins two lists, blank-separated, in the order written, so the segment merge, the after-comma merge and a repeat in one option list (_dash_rep_merge_locals, _dash_rep_reduce) keep every list; the readers of the merged text (_dash_extract_hover_vars, the renderers' tooltip builder) keep each variable once, so the tooltip shows x, y and every hover() variable once, in both renderers. Pinned by test/test_hover_merge.py::TestHoverIsMerged::test_category_and_branch, test/test_wp31_truth.cscript U07-5. Closes GAPS3 A7 (WP-31, A7).
 
 - [ ] Title: Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)
   - File Names and Line Numbers: dash.ado:7546-7563 (x options only)

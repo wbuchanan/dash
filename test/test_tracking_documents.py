@@ -1976,7 +1976,6 @@ WP31_OPEN = {
     "C10b": "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)",
     "C18": "scatteri refuses a 2/2 numlist element where twoway divides",
     "F4": "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule",
-    "A7": "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list",
     "A8": "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)",
     "A1": "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph",
     "A2": "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's",

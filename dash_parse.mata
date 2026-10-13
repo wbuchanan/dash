@@ -6347,7 +6347,9 @@ string scalar _dash_rep_bare(string scalar key)
 // implicit, range() the union), "B" by() (the last varlist, every copy's
 // sub-options), "X" xline()/yline() (each copy a line of its own), "A"
 // text() (each copy added), "F" p() (the first copy: twoway draws
-// mcolor(red) p(p3) p(bogus) in p3, WP-30 P1.14a), "R" everything else
+// mcolor(red) p(p3) p(bogus) in p3, WP-30 P1.14a), "H" hover() (dash's
+// own: the lists joined, blank-separated, in the order written; its
+// reader keeps each variable once, WP-31 A7), "R" everything else
 // (the last copy).  The t-options take their x twins' categories (WP-30
 // P1.6): tlabel() ttick() tmlabel() tmtick() "L", ttitle() "T", tscale()
 // "S", tline() "X", and their axis-2 forms alike.
@@ -6371,6 +6373,7 @@ string scalar _dash_rep_cat(string scalar key)
     if (anyof(("xline", "yline", "xline2", "yline2", "tline", "tline2"), k)) return("X")
     if (anyof(("text", "ttext"), k)) return("A")
     if (k == "p") return("F")
+    if (k == "hover") return("H")
     return("R")
 }
 
@@ -9042,6 +9045,7 @@ string scalar _dash_rep_merge(string scalar key, string scalar v1,
     // Each copy kept apart by a record separator; _dash_at_lex splits
     // only outside quotes (WP-30 P1.10).
     if (cat == "A") return(v1 + char(30) + v2)
+    if (cat == "H") return(strtrim(v1) + " " + strtrim(v2))
     if (cat == "X") return(v1 + ", " + v2)
     if (cat == "I" | cat == "S") {
         return(_dash_rep_subs(v1, v2, cat, J(1, 0, ""), key))

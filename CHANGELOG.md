@@ -383,7 +383,7 @@ and now matches Stata.
 
 - dot ..., base(#) widens the y axis to include # as twoway does and no longer sits unread in the spec: dash dot mpg weight, base(50) drew the axis to 41, and now reaches 50 with the ticks unchanged and the dots where they were; recast() on dot is named in the note, as twoway reads it and draws the dot graph unchanged (it was dropped in silence). (WP-31, B5a)
 
-<!-- WP-31 A7 -->
+- hover() given inside a layer and again after the comma kept only the rightmost list: dash (scatter mpg weight, hover(make)), hover(price) showed price alone in the tooltip, and now shows make and price, in the order written, each variable once, saved and served. (WP-31, A7)
 
 <!-- WP-31 F1a -->
 

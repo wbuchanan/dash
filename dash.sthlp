@@ -4169,7 +4169,10 @@ to the tooltip of every layer whose marks are observations --
 {cmd:rline}, {cmd:tsrline}, {cmd:rconnected}, {cmd:rscatter}) and every
 paired-coordinate type drawn from variables ({cmd:pcspike},
 {cmd:pcarrow}, {cmd:pcbarrow}, {cmd:pcscatter}, {cmd:pccapsym}) -- in the
-saved dashboard and the served app alike.  Each point shows the values of
+saved dashboard and the served app alike.  {cmd:hover()} given more than
+once -- inside a layer's parentheses and again after the comma, or twice
+in one option list -- shows every list's variables, in the order written,
+each once.  Each point shows the values of
 its own observation; both points of an {cmd:rscatter} or a
 {cmd:pcscatter} show the same one.  A computed layer's points are not
 observations -- {cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci},
