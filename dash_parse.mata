@@ -5282,7 +5282,7 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // _dash_connect_opt canonicalises before the per-y writer splits them.
 string scalar _dash_stylelist_keys()
 {
-    return("mcolor msymbol msize barbsize msangle mfcolor mlcolor mlwidth " +
+    return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
            "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
            "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
            "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +

@@ -612,7 +612,9 @@ capture erase "`c6d'"
 capture noisily dash pcarrowi 41 2200 41 2060 (3) "VW Diesel" 31 3460 28 3280 (9) "Plymouth Arrow", saving("`c6b'") replace
 assert _rc == 0
 confirm file "`c6b'"
-foreach nd in Segment Arrow OpenHead LabelSet {
+// Flipped (WP-31 C1): an Arrow with an OpenHead was the old head; twoway's
+// head is _gr_arrowhead's geometry, a MultiLine the page's script fills.
+foreach nd in Segment MultiLine LabelSet {
     cert_file_has "`c6b'", needle(`""name":"`nd'""')
     assert r(found) == 1
 }

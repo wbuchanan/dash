@@ -92,14 +92,19 @@ class TestSttransReachesEveryLayer:
         assert not bad, bad
 
     def test_the_arrow_heads(self, mode):
+        # Flipped (WP-31 C1): an Arrow annotation and its ArrowHeads at 0.2
+        # was the old picture; twoway's head is _gr_arrowhead's geometry,
+        # drawn as a head glyph, still at sttrans's 0.2 with its shaft.
         for t in ("pcarrow", "pcbarrow"):
             fig = _fig([plot_for(t)], "sttrans", mode)
-            arrows = fig.select({"type": Arrow})
-            assert arrows, t
-            for a in arrows:
-                heads = [h for h in (a.end, a.start) if h is not None]
-                assert [a.line_alpha] + [h.line_alpha for h in heads] == \
-                    pytest.approx([0.2] * (1 + len(heads))), t
+            assert not fig.select({"type": Arrow}), t
+            heads = [r for r in fig.renderers
+                     if "dash-arrowhead" in (r.tags or [])]
+            shafts = [r for r in fig.renderers
+                      if type(r.glyph).__name__ == "Segment"]
+            assert heads and shafts, t
+            assert [r.glyph.line_alpha for r in heads + shafts] == \
+                pytest.approx([0.2] * (len(heads) + len(shafts))), t
 
     def test_the_empty_fit_line(self, mode):
         """A fit with no rows still keys its line at the declared opacity."""

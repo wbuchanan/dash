@@ -1235,7 +1235,7 @@ program define _dash_parse_plot_opts, sclass
         TLIne(string asis) ///
         TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
         TSCALE2(string asis)      TTITLE2(string asis) ///
-        MANGle(string asis) BARBSize(string asis) HEADlabel ///
+        MANGle(string) BARBSize(string) HEADlabel ///
         MWidth ///
         * ///
     ]

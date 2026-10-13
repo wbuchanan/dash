@@ -273,11 +273,12 @@ this file says so under the option concerned.
 {ul:Arrowheads.}  {cmd:pcarrow}, {cmd:pcbarrow} and {cmd:pcarrowi} draw
 their heads as {cmd:twoway}'s {cmd:_gr_arrowhead} draws them, in the saved
 page and the served app, at every zoom and after a filter move: two open
-strokes from the tip, {cmd:msize()} long (the scheme's {cmd:symbolsize
-parrow}, {cmd:medium}, by default), stroked in {cmd:mlcolor()} or
-{cmd:mcolor()} (the shaft's colour by default) at {cmd:mlwidth()};
-{cmd:pcbarrow} draws one at each end.  The marker labels' gap is measured
-from the head's size.
+strokes from the tip, {cmd:msize()} long (by default the scheme's
+{cmd:symbolsize parrow}, {cmd:medium}), stroked in {cmd:mlcolor()} or
+{cmd:mcolor()} at {cmd:mlwidth()} (by default the series colour at the
+scheme's arrow line width: {cmd:lcolor()} and {cmd:lwidth()} style the
+shaft alone, as in {cmd:twoway}); {cmd:pcbarrow} draws one at each end.
+The marker labels' gap is measured from the head's size.
 
 {phang2}{opt mangle(anglestyle)} sets the head's half-angle, an
 anglestyle name or a number of degrees ({cmd:stdarrow}, 28.64 degrees, by

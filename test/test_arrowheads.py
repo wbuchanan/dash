@@ -123,9 +123,9 @@ const view = {frame: {x_scales: new Map([["default", xsc]]),
                       y_scales: new Map([["default", ysc]]),
                       x_scale: xsc, y_scale: ysc},
               canvas_view: {el: {}}};
-const Bokeh = {index: {find_one: () => view}};
+const Bokeh = {index: {find_one: () => ({plot_view: view})}};
 const heads = {tags: [], data: {xs: [], ys: [], row: []}};
-const args = {fig: {}, src: {data: %s}, heads: heads,
+const args = {src: {data: %s}, heads: heads,
               hr: {x_range_name: "default", y_range_name: "default"},
               x1: "x1", y1: "y1", x2: "x2", y2: "y2", hpx: "__dash_head_px",
               ends: %d, barb: %r, ang: %r};
@@ -308,6 +308,22 @@ class TestTheHeadJs:
         assert cb.args["ends"] == _ENDS[ptype]
 
 
+class TestTheScriptHoldsNoFigure:
+    def test_no_figure_reaches_another(self, tmp_path):
+        """The head script holds the head renderer, never the figure: a
+        derived source the page's filter script lists carries it, so a
+        figure there made every figure of a page reachable from every
+        other (test_bare_intensity.py read other graphs' colours)."""
+        from test_server_layer_defects import make_spec, plot_for, standalone
+        spec = make_spec([plot_for("pcarrow")],
+                         build_options={"filter": "foreign, type(dropdown)"})
+        figs, _, _ = standalone(tmp_path, spec)
+        for cb in _head_cbs(figs[0]):
+            assert "fig" not in cb.args
+            assert not [m for m in cb.references()
+                        if hasattr(m, "x_range") and hasattr(m, "renderers")]
+
+
 class TestBarbsize:
     @pytest.mark.parametrize("ptype", TYPES)
     def test_open_by_default(self, ptype):
@@ -370,7 +386,7 @@ class TestMangle:
         assert "_dash_pending' mangle" not in ado
         assert "mangle barbsize headlabel" in ado
 
-        assert "MANGle(string asis) BARBSize(string asis) HEADlabel" in ado
+        assert "MANGle(string) BARBSize(string) HEADlabel" in ado
 
 
 class TestHeadColours:
@@ -411,6 +427,16 @@ class TestHeadColours:
         [r] = _head_renderers(fig)
         assert r.glyph.line_color == gm.scheme.default_color(0, "pcarrow")
         assert r.glyph.line_width == gm.scheme.plot_line_width(0, "arrowline")
+
+    @pytest.mark.parametrize("ptype", ["pcarrow", "pcbarrow"])
+    def test_a_relative_lcolor_is_applied_once(self, ptype):
+        """lcolor(*.5) is twoway's #8da3b7 on s2color's #1a476f shaft
+        (test_bare_intensity.py P17); it was applied twice, #c6d1db,
+        hidden while the head drew the once-applied colour."""
+        fig, _ = _draw(ptype, {"lcolor": "*.5"})
+        [seg] = [g for g in fig.renderers
+                 if type(g.glyph).__name__ == "Segment"]
+        assert seg.glyph.line_color == "#8da3b7"
 
     @pytest.mark.parametrize("ptype", TYPES)
     def test_nothing_is_black(self, ptype):
@@ -562,7 +588,7 @@ window.addEventListener('load', () => setTimeout(() => {
     for (const doc of Bokeh.documents) {
       for (const m of doc._all_models.values()) {
         if (m.type !== 'CustomJS' || m.name !== 'dash_arrow_head') continue;
-        const a = m.args, view = Bokeh.index.find_one(a.fig);
+        const a = m.args, view = Bokeh.index.find_one(a.hr).plot_view;
         const xs = view.frame.x_scale, ys = view.frame.y_scale;
         const d = a.src.data, h = a.heads.data;
         out.heads.push({

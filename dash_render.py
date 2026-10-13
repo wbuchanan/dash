@@ -19943,7 +19943,7 @@ class GlyphMapper:
                 kw["fill_alpha"] = line_alpha
             r = fig.patches(fill_color=fill, **kw)
         r.tags = ["dash-arrowhead"]
-        cb = _CJS(args=dict(fig=fig, src=pc_source, heads=heads, hr=r,
+        cb = _CJS(args=dict(src=pc_source, heads=heads, hr=r,
                             x1=x1var, y1=y1var, x2=x2var, y2=y2var,
                             hpx=self._HEAD_PX, ends=int(ends),
                             barb=float(barb_px), ang=float(angle)),
@@ -20000,17 +20000,14 @@ class GlyphMapper:
             source, dict(ColumnDataSource(clean).data),
             clean.index.to_numpy()))
 
+        # The shaft is built in the series colour; _apply_line_opts below
+        # applies lcolor()/color() to it once (a bare *#/%# on that colour,
+        # %# kept, an unknown name black and noted, P1.13b).  Applying it
+        # here as well put lcolor(*.5) on the shaft twice (WP-31 C1:
+        # #c6d1db where twoway draws #8da3b7; the head, at *.5 once, had
+        # hidden it in test_bare_intensity.py P17).
         color = self.scheme.default_color(color_idx, "pcarrow")
-        # A bare *#/%# takes the arrow's own colour and a %# is kept; an
-        # unknown name is black, noted (P1.13b).
         _pca_alpha = None
-        for _k in ("lcolor", "color"):
-            if _k in options:
-                _c, _pca_alpha = self.tr.parse_color_alpha(
-                    options[_k], _k, base=color)
-                if _c:
-                    color = _c
-                break
 
         _pca_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
@@ -20111,17 +20108,14 @@ class GlyphMapper:
             source, dict(ColumnDataSource(clean).data),
             clean.index.to_numpy()))
 
+        # The shaft is built in the series colour; _apply_line_opts below
+        # applies lcolor()/color() to it once (a bare *#/%# on that colour,
+        # %# kept, an unknown name black and noted, P1.13b).  Applying it
+        # here as well put lcolor(*.5) on the shaft twice (WP-31 C1:
+        # #c6d1db where twoway draws #8da3b7; the head, at *.5 once, had
+        # hidden it in test_bare_intensity.py P17).
         color = self.scheme.default_color(color_idx, "pcbarrow")
-        # A bare *#/%# takes the arrow's own colour and a %# is kept; an
-        # unknown name is black, noted (P1.13b).
         _pcb_alpha = None
-        for _k in ("lcolor", "color"):
-            if _k in options:
-                _c, _pcb_alpha = self.tr.parse_color_alpha(
-                    options[_k], _k, base=color)
-                if _c:
-                    color = _c
-                break
 
         _pcb_seg_kwargs: dict = dict(x0=x1var, y0=y1var, x1=x2var, y1=y2var,
                                       source=pc_source, line_color=color, line_width=self.scheme.plot_line_width(color_idx, "arrowline"),
@@ -31776,7 +31770,11 @@ _DASH_ARROW_ANGLE_DEG = 28.64
 #: draws no head (_gr_arrowhead.ado exits).  One script for both modes.
 _DASH_ARROW_HEAD_JS = r"""
 const dash_heads = () => {
-    const view = Bokeh.index.find_one(fig);
+    // The plot view through the head renderer's own view: the script holds
+    // no reference to the figure, so a source it hangs on (a derived
+    // source the page's filter script lists) never reaches other figures.
+    const rv = Bokeh.index.find_one(hr);
+    const view = rv != null ? rv.plot_view : null;
     if (view == null || view.frame == null) return;
     if (typeof ResizeObserver !== "undefined" && !heads.tags.includes("dash-ro")) {
         const cv = view.canvas_view;
@@ -38870,18 +38868,25 @@ def _dash_arrow_head_hooks(models):
     ``_dash_by_stack_hooks``'.  Each is also put on ``start`` and ``end`` of
     every range its figure holds now, once: pan, zoom and reset keep the
     head's pixel size.  Both modes call it on the finished layout."""
-    out, seen = [], set()
+    out, seen, cbs, fig_of = [], set(), [], {}
     for root in models or ():
         refs = root.references() if hasattr(root, "references") else ()
         for m in refs:
+            # The figure each head renderer is drawn on: the script holds
+            # the renderer, not the figure (WP-31 C1).
+            for r in (getattr(m, "renderers", None) or []) \
+                    if hasattr(m, "x_range") else ():
+                fig_of.setdefault(getattr(r, "id", None), m)
             if getattr(m, "name", "") != "dash_arrow_head" or \
                     type(m).__name__ != "CustomJS" or m.id in seen:
                 continue
             seen.add(m.id)
-            out.append(m)
-            fig = (m.args or {}).get("fig")
-            if fig is None:
-                continue
+            cbs.append(m)
+    for m in cbs:
+        out.append(m)
+        hr = (m.args or {}).get("hr")
+        fig = fig_of.get(getattr(hr, "id", None))
+        if fig is not None:
             rngs = [fig.x_range, fig.y_range]
             rngs += list((fig.extra_x_ranges or {}).values())
             rngs += list((fig.extra_y_ranges or {}).values())

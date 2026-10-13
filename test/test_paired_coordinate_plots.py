@@ -107,8 +107,14 @@ class TestEveryPairedCoordinateTypeDraws:
     #: one Segment, a segment per observation; pcscatter one Scatter, a
     #: marker at each end of each, four.  ">= 1" renderer passed a layer
     #: drawn twice, or drawn from no rows.
-    DRAWN = {"pcspike": [("Segment", 2)], "pcarrow": [("Segment", 2)],
-             "pcbarrow": [("Segment", 2)], "pcscatter": [("Scatter", 4)]}
+    #: Flipped (WP-31 C1): pcarrow and pcbarrow drew their heads as Arrow
+    #: annotations, outside fig.renderers, which was wrong because twoway's
+    #: head is _gr_arrowhead's geometry: a MultiLine head glyph whose
+    #: source the page's script fills in the browser (0 rows here).
+    DRAWN = {"pcspike": [("Segment", 2)],
+             "pcarrow": [("Segment", 2), ("MultiLine", 0)],
+             "pcbarrow": [("Segment", 2), ("MultiLine", 0)],
+             "pcscatter": [("Scatter", 4)]}
 
     @pytest.mark.parametrize("ptype", ["pcspike", "pcarrow", "pcbarrow",
                                        "pcscatter"])
