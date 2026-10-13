@@ -5,12 +5,12 @@
 ## Overview
 
 - **Total sections:** 61: S01 tracking foundation, S02-S60 (59 fix sections), S61 closeout. "Sn" means section n.
-- **GAPS3 rows in scope:** every row of GAPS3 4.A-4.G, 4.J, 4.K (less K5), 4.H (H1-H7 as narrowed below), 4.I (I2-I7; I1 the platform package is out), section 5's half-finished code, section 6's register corrections, plus one new requirement, the per-graph data table (DISCOVERY Q35, Q38-Q40). The manifest yields 109 entries (rows, with a split row counted once per part), tracked as 109 BUGS.md entries that S01 opens; S01's Appendix A is the binding list.
+- **GAPS3 rows in scope:** every row of GAPS3 4.A-4.G, 4.J, 4.K (less K5), 4.H (H1-H7 as narrowed below), 4.I (I2-I7; I1 the platform package is out), section 5's half-finished code, section 6's register corrections, plus one new requirement, the per-graph data table (DISCOVERY Q35, Q38-Q40). The manifest yields 110 entries (rows, with a split row counted once per part; A3 counted per DECISIONS A12), tracked as 110 BUGS.md entries that S01 opens; S01's Appendix A is the binding list.
 - **Out of scope (PRD §7):** I1 the platform package; K5 the module split; a LICENSE; sunflower/matamatrix drawing (refused by name instead); contour exact beyond the cap; legend text-before-symbol; scheme-file colour spaces beyond RGB/RGBA.
 - **Parallel batches:** 22, numbered 0-21. Batch 0 is S01 alone; batches 1-20 hold two or three sections; batch 21 is the closeout alone. Every dependency lies in an earlier batch. At most one JavaScript (`_FILTER_JS`) editor, one `_generate_app_source` editor, one `_make_figure_body` editor and one `_dash_option_rules` editor per batch (R12).
 - **Order (DISCOVERY Q6):** silent drops (S1) first, then values twoway accepts, then named-not-drawn options, then fidelity, then the dashboard extensions, then documents and tests. The JavaScript estimator ports run one per batch from batch 3 so the offline page gains refits steadily without two sections editing the saved filter script at once.
 - **Commit units:** one commit per GAPS3 row (BRIEF), so a section with two rows lands as two commits; plus the plan commit (S00), S01's commit and S61's steps.
-- **Risk:** 11 red, 36 yellow, 14 green (table below). **Effort:** 13 S, 40 M, 8 L. **Tasks:** 239 across the 61 section files (manifest column = planned; the files are binding).
+- **Risk:** 11 red, 36 yellow, 14 green (table below). **Effort:** 12 S, 41 M, 8 L. **Tasks:** 249 across the 61 section files (manifest column = planned; the files are binding).
 - **Full-suite runs planned:** one per batch end (22) plus one per section worktree before the merger lands it is NOT required (DISCOVERY Q19); `make cert` at every batch end; `make gate` at S61.
 
 ## Decision record (binding; from DISCOVERY.md and RESEARCH.md)
@@ -62,15 +62,15 @@
 
 | # | Slug | GAPS3 rows | Batch | Depends on | Blocks | Risk | Effort | Tasks |
 |---|---|---|---|---|---|---|---|---|
-| 01 | tracking-foundation | §6, §9 (new) | 0 | -- | all | green | M | 4 |
+| 01 | tracking-foundation | §6, §9 (new) | 0 | -- | all | green | M | 9 |
 | 02 | arrowheads | C1 (B27 arrow part) | 1 | 01 | -- | yellow | M | 4 |
 | 03 | rbar-msize-dot-recast | C2, B5a (base/recast parts) | 1 | 01 | 18 | green | S | 3 |
 | 04 | option-applicability | C3 (A12; BUGS kernel() entry) | 1 | 01 | 05, 06 | yellow | M | 4 |
 | 05 | value-bounds | C10a (range(varname), range(# .), bwidth(0), lowess bwidth≥1→.8, n(1), per-type level bounds) | 2 | 04 | -- | green | S | 3 |
-| 06 | parsed-values | C10b (degree 4-7 with ROT constants, several vars in one mlabel() element, scatteri 2/2, yaxis(1 2)), C18, F4 | 2 | 04 | -- | yellow | M | 4 |
-| 07 | weights-operators-hover-dates | A5, A6, A7, A8 | 2 | 01 | -- | yellow | M | 4 |
-| 08 | abbreviations-prefix-mlalign | A1, A2, A3, A4 | 3 | 01 | -- | green | S | 4 |
-| 09 | axes-three-to-nine | C10c (axes 3-9) | 3 | 06 | 35 | red | L | 4 |
+| 06 | parsed-values | C10b (degree 4-7 with ROT constants, several vars in one mlabel() element, scatteri 2/2, yaxis(1 2)), C18, F4 | 2 | 04, 05 | 09 | yellow | M | 5 |
+| 07 | weights-operators-hover-dates | A5, A6, A7, A8 | 2 | 01 | -- | yellow | M | 5 |
+| 08 | abbreviations-prefix-mlalign | A1, A2, A3, A4 | 3 | 01 | -- | green | S | 5 |
+| 09 | axes-three-to-nine | C10c (axes 3-9) | 3 | 01, 06 | 35 | red | L | 4 |
 | 10 | js-prelude-lfit-qfit | F1a | 3 | 01 | 13, 16, 19, 22, 25, 28, 29 | red | M | 4 |
 | 11 | fit-options | C4 | 4 | 04 | -- | yellow | M | 4 |
 | 12 | distribution-area-odds | C5 | 4 | 04 | -- | yellow | M | 4 |
@@ -82,12 +82,12 @@
 | 18 | dot-rows | B5b (dot rows, d-options) | 6 | 03 | -- | yellow | M | 4 |
 | 19 | js-lpoly | F1d | 6 | 10 | 22 | red | M | 3 |
 | 20 | weighted-markers | C9 | 7 | 01 | -- | yellow | S | 3 |
-| 21 | rpcap-rpspike-refusals | B1, B2, B3 | 7 | 01 | -- | yellow | M | 4 |
+| 21 | rpcap-rpspike-refusals | B1, B2, B3 | 7 | 01 | 57 | yellow | M | 4 |
 | 22 | js-lpolyci | F1e | 7 | 19 | -- | red | M | 3 |
-| 23 | contour-interpolation | B4a (TPS/Shepard numpy, grid rule, cap, truth extractor) | 8 | 01 | 26 | red | L | 4 |
+| 23 | contour-interpolation | B4a (TPS/Shepard numpy, grid rule, cap, truth extractor) | 8 | 01 | 26, 29 | red | L | 4 |
 | 24 | minor-ticks-labels | D1 | 8 | 01 | 33 | yellow | M | 4 |
 | 25 | js-mband-mspline | F1f | 8 | 10 | -- | yellow | M | 3 |
-| 26 | contour-drawing | B4b (type registration, options, colour rules, colour key, both modes) | 9 | 23 | 29 | red | L | 4 |
+| 26 | contour-drawing | B4b (type registration, options, colour rules, colour key, both modes) | 9 | 23 | 29, 57 | red | L | 4 |
 | 27 | edge-titles | D2 | 9 | 01 | -- | yellow | M | 3 |
 | 28 | js-fpfit-fpfitci | F1g | 9 | 13 | -- | red | M | 3 |
 | 29 | js-contour | B4c (marching squares, isobands, refit within the cap) | 10 | 26, 10 | -- | red | L | 4 |
@@ -112,17 +112,17 @@
 | 48 | data-table | H2t (new) | 16 | 01 | 53, 54 | yellow | L | 4 |
 | 49 | filter-widgets | H2f (E13; multi-select, "(missing)", slider direction, reset) | 16 | 01 | 54 | yellow | M | 4 |
 | 50 | kpi-weights-stats | H2k (E7) | 17 | 01 | -- | green | M | 3 |
-| 51 | link-groups-brush | H2l (E5, E9: several link groups, brush-as-filter, brush on bars/histograms, concurrent brushes intersected) | 17 | 01 | -- | red | L | 4 |
-| 52 | saved-page-errors-throttle | H1 (E11, E12) | 17 | 10 | -- | green | S | 3 |
+| 51 | link-groups-brush | H2l (E5, E9: several link groups, brush-as-filter, brush on bars/histograms, concurrent brushes intersected) | 17 | 01, 48 | 52, 60 | red | L | 4 |
+| 52 | saved-page-errors-throttle | H1 (E11, E12), S14's and S20's after-move residuals (A23) | 17 | 10, 14, 20, 49 | 53, 54 | yellow | M | 5 |
 | 53 | export-print | H2x (E10, J7: composite PNG/SVG, print stylesheet) | 18 | 48 | -- | yellow | M | 4 |
 | 54 | accessibility | K6 | 18 | 48, 49 | -- | yellow | M | 4 |
 | 55 | served-hygiene | H3, H4, H7 | 18 | 01 | -- | green | S | 4 |
-| 56 | help-reconciliation | J1, J2 | 19 | 02-55 | -- | yellow | M | 4 |
+| 56 | help-reconciliation | J1, J2 | 19 | 02-55 | -- | yellow | M | 6 |
 | 57 | examples | J3 | 19 | 21, 26 | -- | green | S | 3 |
-| 58 | register-drift | J4, J5, J6 | 19 | 01 | -- | green | S | 4 |
-| 59 | readme-package-versions | I2, I3, I4, I5, I7 | 20 | 01 | -- | green | S | 4 |
-| 60 | test-harness-fixtures | K2, K3, K4, H6, I6 | 20 | 10, 51 | -- | yellow | M | 4 |
-| 61 | closeout | -- | 21 | all | -- | green | M | 6 |
+| 58 | register-drift | J4, J5, J6 | 19 | 01 | -- | green | S | 7 |
+| 59 | readme-package-versions | I2, I3, I4, I5, I7 | 20 | 01 | -- | green | S | 8 |
+| 60 | test-harness-fixtures | K2, K3, K4, H6, I6 | 20 | 10, 51 | -- | yellow | M | 8 |
+| 61 | closeout | -- | 21 | all | -- | green | M | 7 |
 
 Row coverage check: A1-A8 (S08: A1 A2 A3 A4; S07: A5 A6 A7 A8), B1-B5 (S21, S23/26/29, S18, S03), C1-C18 (S02, S03, S04, S11, S12, S14, S14, S15/17, S20, S05/06/09, S46, S46, S31, S34, S34, S46, S34, S06), D1-D16 (S24, S27, S30, S31, S32, S33, S33, S34, S35, S36, S37, S38, S30, S39, S45, S39), E1-E13 (S40, S40, S34, S41, S41, S33, S41, S41, S42, S44, S32, S40-? E12 is a NEW item; E13 S41/S55), F1-F5 (S10..S28, S47, S47, S06, S46), G1-G7 (S43, S43, S43, S43, S43, S46, S46), H1-H7 (S52, S48-S53, S55, S55, design residuals noted in S55, S60, S55), I2-I7 (S59, S59, S59, S59, S60, S59), J1-J6 (S56, S56, S57, S58, S58, S58), K1-K6 (flips inside each fix section; S60; S60; S60; out; S54). E12 (case folding of symbol/pattern names, `_INTENSITY` max) joins S40; E13 (dead `_SIZE_MAP`, duplicate constants, histogram opacity test) joins S41. H5 (served-key and private-file design residuals) stays documented, no section (GAPS3 says design residuals).
 
@@ -134,8 +134,8 @@ Each batch: (k.0) record the base sha; (k.1) cut one worktree per section (`git 
 |---|---|---|
 | 0 | 01 | all (alone) |
 | 1 | 04, 02, 03 | rules table: 04; GlyphMapper pc mappers: 02; map_rbar/map_dot: 03 |
-| 2 | 05, 07, then 06 | rules table and dash.ado:2998/:3147-3163, dash.sthlp:944/:996: 05 first, 06 cut after 05 lands (A32); dash.ado parsers: 07 |
-| 3 | 10, 08, 09 | `_FILTER_JS`: 10; Mata abbreviation table: 08; `_dash_add_secondary_axes`: 09 |
+| 2 | 05, 07, then 06 | rules table and dash.ado:2998/:3147-3163, dash.sthlp:944/:996: 05 lands, then 06 is cut (A32); 07 runs in parallel with both; dash.ado parsers: 07 |
+| 3 | 10, 08, 09 | `_FILTER_JS`: 10; Mata abbreviation table and the `_make_figure_body`/`_dash_figure_for` empty-list guards (R1-22): 08; `_dash_add_secondary_axes`: 09 |
 | 4 | 16, 11, 12 | `_FILTER_JS`: 16 (and S12's gap/area/boundary refit keys, A22); fit mappers: 11; histogram/kdensity/function/area/bar mappers: 12 |
 | 5 | 13, 14, 15 | `_FILTER_JS` and `map_lfitci`/`map_qfitci`: 13; `_dash_connect_opt`/`_dash_recast_opt`: 14 (merged before 15); `_apply_colorvar`/`_dash_fold_typed`: 15 |
 | 6 | 19, 17, 18 | `_FILTER_JS`: 19; colorvar option readers: 17; map_dot: 18 |

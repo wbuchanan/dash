@@ -245,7 +245,7 @@ Acceptance criteria: **AC-01.1** `grep -c '^- \[ \] Title:' BUGS.md` → 113; `g
 - **Merging (R1, R4, R5).** Entries, Tracked lines, markers and blocks are separated by blank lines, so hunks apply three-way; adjacent `WP31_OPEN` deletions conflict in context only; the merger applies both by hand, never dropping a line.
 - **Python linkage.** Many concurrent Stata sessions can drop `python_exec` from `~/.stata19/console/stata19.rc`; `stata_slot.sh` caps sessions at three.
 - **For S61:** empty `WP31_OPEN` to `{}`, add `test_no_wp31_entry_remains_open` (copy of :1934-1953 with WP-31 names), write `w31_secs` from the closeout cert log's `S<NN> start/end` lines, and file residuals per M12.
-- **Decisions for maintainer ratification:** (1) the H2 parts under Fixed in WP-31 rather than `### New` (D-01.d); (2) the empty-part exit 0 (D-01.f); (3) the hand-added shard row (D-01.g). (The former items on `B5a`/`B5b` and on 109 versus "93" are moot: the index uses the ids and the count is 110, REVIEW-1 R1-14, R1-01.)
+- **Decisions for maintainer ratification:** (1) the H2 parts under Fixed in WP-31 rather than `### New` (D-01.d); (2) the empty-part exit 0 (D-01.f); (3) the hand-added shard row (D-01.g). (The former items on `B5a`/`B5b` and on the entry count are moot: the index uses the ids and the count is 110 with A3, REVIEW-1 R1-14, R1-01.)
 
 ## Appendix A: the 110 entries (TR-01.1; read by `s01_entries.py`)
 

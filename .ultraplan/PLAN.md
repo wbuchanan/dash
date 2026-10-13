@@ -1,7 +1,7 @@
 # UltraPlan: dash WP-31 -- Master Technical Plan
 
 > Generated: 2026-10-10 | Phase 3/6 - PLAN (Step 3b)
-> Sections: 61 | Tasks: 239 | Parallel batches: 22 (0-21)
+> Sections: 61 | Tasks: 249 | Parallel batches: 22 (0-21)
 > Base: branch `s3-bugs` at `6370ca4` (= `main` 1a78bb9 plus the heatmap removal and GAPS3.md)
 > For the plain-English requirements see PRD.md; for the per-section briefs see sections/.
 

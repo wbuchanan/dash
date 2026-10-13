@@ -82,7 +82,7 @@
           const n = fx.length;
           const empty = () => dash_ci_write(src, ac, [], [], [], []);
           if (n < 2) { empty(); continue; }
-          const xg = dash_fit_grid(fx, ac.n, ac.range);
+          const xg = dash_fit_grid(fx, ac.n, ac.range, ac.atobs);
           let X, Xg;
           if (ac.type === 'lfitci') {
               const ww = dash_weight_norm(fw, ac.wtype, n);
@@ -98,8 +98,8 @@
           const t = (fit.df >= 1) ? dash_t_ppf(0.5 + ac.level / 200, fit.df) : NaN;
           dash_ci_write(src, ac, xg, yg, yg.map((v, i) => v - t * se[i]), yg.map((v, i) => v + t * se[i]));
   ```
-  (`fit.df` is `N - kk` with N the weight sum: for fw the frequency total, as `_dash_wls`.)
-- **TR-13.5 js_runner**: `run_fit_js_block` already finds the branch by `"} else if (ac.type === 'lfitci' || ac.type === 'qfitci') {"`? No -- it searches `"} else if (ac.type === '%s') {" % type`. Change the runner (S13 owns js_runner this batch) to try `"} else if (ac.type === '%s') {"` first, then `"} else if (ac.type === '%s' || "` as a prefix match (`js.find`), then the `"|| ac.type === '%s') {"` suffix form, taking the first found; document in its docstring.
+  (`fit.df` is `N - kk` with N the weight sum: for fw the frequency total, as `_dash_wls`.) `dash_fit_grid`'s fourth argument is S16's TR-16.11 `atobs` read (batch 4): S11's `atobs` applies to lfitci/qfitci too (`atobs@lfit|qfit|lfitci|qfitci|fpfitci`), and `_fit_agg_config` carries the key; absent or false it leaves the grid unchanged.
+- **TR-13.5 js_runner**: at the batch-5 base `run_fit_js_block` finds a branch only by `"} else if (ac.type === '%s') {" % type`, which never matches the shared two-type head of TR-13.4. S13 (batch 5's js_runner owner) changes the search to three forms, taking the earliest match: `"} else if (ac.type === '%s') {"`, the prefix `"} else if (ac.type === '%s' || "`, and the suffix `"|| ac.type === '%s') {"` (the code is in 13-02); the docstring names the three forms.
 - **TR-13.6 Flips**: `_FROZEN` loses the two; `_REFIT` gains them; `test_every_renderer_of_a_ci_layer_is_dimmed_and_both_keys_marked` (:226) re-pointed from lfitci to fpfitci (still frozen) with a `Flipped:` line.
 - **TR-13.7 Help**: dash.sthlp:1946 column 2 (after S16: `lfit, qfit, lowess; others marked`) becomes `lfit, qfit, lfitci, qfitci, lowess; others marked`; the paragraph's "does not refit" list loses `{cmd:lfitci}, {cmd:qfitci},`; S16's lowess sentence stays where it is; the S10 sentence becomes `A straight or quadratic fit and its confidence band ({cmd:lfit}, {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}) are refitted from the rows that pass the filter...`.
 - **TR-13.8 Timing**: `TestTheJsTwinsAreBounded::test_lfitci_and_qfitci_under_node_on_1e5_rows` under 2 s each.
@@ -116,7 +116,7 @@ No new extractor. Truth block `* ==== S13 F1b: lfitci and qfitci ====` (S01's st
 - **U13-02** `qfitci mpg weight, level(90) n(20)` with the range filter on price to 4500-11385 versus `twoway qfitci mpg weight if inrange(price,4500,11385), level(90) n(20)`.
 - **U13-03** `lfitci mpg weight, stdf` dropdown to Domestic versus `twoway lfitci mpg weight if foreign == 0, stdf`.
 - **U13-04** `lfitci mpg weight [fw=rep78]` dropdown to Foreign versus `twoway lfitci mpg weight [fw=rep78] if foreign == 1`.
-- **U13-05** a move leaving two rows (`price` slider to 14500: 14500 and 15906): the saved lfitci source has two... rather `n()` points of line and all-missing limits; twoway's serset on `if price >= 14500` has the line and missing limits (`serset` values `.` read as NaN by the python block).
+- **U13-05** a move leaving two rows (`price` slider to 14500: 14500 and 15906): the saved lfitci source has `n()` points of line and all-missing limits (df 0); twoway's serset on `if price >= 14500` has the line and missing limits (`serset` values `.` read as NaN by the python block).
 
 ## TDD test stubs
 
@@ -158,7 +158,7 @@ TR-13.9's entries.
 **Acceptance criteria**
 - **AC-13.1** Saved lfitci/qfitci line and band equal the served app's after every corpus move to 1e-8 relative (NaN equal NaN).
 - **AC-13.2** Two rows (lfitci) and three (qfitci) draw the line and a NaN band; one row draws nothing; stdf/stdr under aw/pw draw no band.
-- **AC-13.3** No lfitci/qfitci marked; the seven remaining fit types still marked.
+- **AC-13.3** No lfitci/qfitci marked; the six remaining fit types (fpfit, fpfitci, lpoly, lpolyci, mband, mspline) still marked.
 - **AC-13.4** U13-01..05 pass; both twins under 2 s at 100,000 rows.
 
 ## Tasks
@@ -176,7 +176,7 @@ TR-13.9's entries.
 <task type="auto" id="13-02">
   <name>Tag the ci mappers and add the ci branch</name>
   <files>dash_render.py, test/js_runner.py</files>
-  <action><![CDATA[(1) `_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lfitci", "qfitci"})`. (2) In `map_lfitci` (:16421): on the `n < 2` path compute `std = self._fitci_std_for(options, wtype, "lfitci")`, `_lvl = _resolve_level(options, self.default_level)` before building the empty renderers, then before `return [line_r, band_r]` add the three TR-13.1 assignments on `line_r` with `empty_ci_src`, `n=_FIT_GRID`, `rng=None`; on the drawn path compute `_n_used = len(x_fit)` and `_rng = _dash_range_pair(options, "lfitci", "")` under silenced warnings (as S10 did), and add the three assignments on `line_r` after `_render_ci_band` returns. Repeat in `map_qfitci` (:16550) with layer "qfitci"; on its `except np.linalg.LinAlgError` bootstrap path tag with `std` and `_lvl` as well (the page will refit analytically; the bootstrap path is a fallback the config cannot express -- note this in the mapper comment). (3) Insert `dash_ci_write` (TR-13.3) before `// DASH_FIT_HELPERS_END` and the branch (TR-13.4) before `// DASH_FIT_BRANCHES_END`. (4) test/js_runner.py `run_fit_js_block`: TR-13.5's three-form head search:
+  <action><![CDATA[(1) `_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci"})` (S16 added `lowess` in batch 4). (2) In `map_lfitci` (:16421): on the `n < 2` path compute `std = self._fitci_std_for(options, wtype, "lfitci")`, `_lvl = _resolve_level(options, self.default_level)` before building the empty renderers, then before `return [line_r, band_r]` add the three TR-13.1 assignments on `line_r` with `empty_ci_src`, `n=_FIT_GRID`, `rng=None`; on the drawn path compute `_n_used = len(x_fit)` and `_rng = _dash_range_pair(options, "lfitci", "")` under silenced warnings (as S10 did), and add the three assignments on `line_r` after `_render_ci_band` returns. Repeat in `map_qfitci` (:16550) with layer "qfitci"; on its `except np.linalg.LinAlgError` bootstrap path tag with `std` and `_lvl` as well (the page will refit analytically; the bootstrap path is a fallback the config cannot express -- note this in the mapper comment). (3) Insert `dash_ci_write` (TR-13.3) before `// DASH_FIT_HELPERS_END` and the branch (TR-13.4) before `// DASH_FIT_BRANCHES_END`. (4) test/js_runner.py `run_fit_js_block`: TR-13.5's three-form head search:
 ```python
     t = ac["type"]
     heads = ["} else if (ac.type === '%s') {" % t,

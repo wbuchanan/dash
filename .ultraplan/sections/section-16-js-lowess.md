@@ -186,7 +186,7 @@ TR-16.8's four entries.
 **Acceptance criteria**
 - **AC-16.1** `dash_lowess` reproduces every fixture curve to 1e-9 relative; the saved page equals the served app after every corpus move.
 - **AC-16.2** Fewer than three rows or no x spread draw nothing; the cap empties the layer in under 0.2 s.
-- **AC-16.3** lowess is not marked; six fit types remain marked.
+- **AC-16.3** lowess is not marked; eight fit types (lfitci, qfitci, fpfit, fpfitci, lpoly, lpolyci, mband, mspline) remain marked.
 - **AC-16.4** N = 10,000 refits under 2 s under node; U16-01..05 pass.
 
 ## Tasks
@@ -212,8 +212,8 @@ TR-16.8's four entries.
 <task type="auto" id="16-03">
   <name>Flip, certify, document and commit F1c</name>
   <files>test/test_saved_stale_cue.py, test/test_wp31_truth.cscript, dash.sthlp</files>
-  <action><![CDATA[Remove `"lowess"` from `_FROZEN`. Append TR-16.8's `MOVE_CORPUS` entries under `# WP-31 F1c: lowess re-smooths on the saved page`. Append the U16 block (helpers `_u16_move`, `_u16_gen_compare` reading Stata's `gen(s)` variable through the python block's `Data.get` on the `if` sample sorted stably by x) above the marker line; run `WP31_ONLY=S16 scripts/stata_slot.sh <scratch>/s16 <scratch>/run_test_wp31_truth.do`. dash.sthlp TR-16.6 and the conformance pin. Add `test_lowess_under_node_on_1e4_rows` and `test_lowess_is_capped_above_max_ops` to `TestTheJsTwinsAreBounded`. Run `python3 -m pytest test/test_js_fit_refit.py test/test_saved_stale_cue.py test/test_mode_parity.py -k "lowess or Refit" test/test_help_conformance.py test/test_estimator_cost.py::TestTheJsTwinsAreBounded -q`. Close BUGS.md F1c (Resolution names `map_lowess`, `dash_lowess`, the cap with its constant; residual: none, the cap is documented behaviour), rewrite the GAPS3 F1c Tracked line, replace the `<!-- WP-31 F1c -->` markers (Results: `lowess on a saved page after a filter move: the build's smooth (marked) -> Stata's lowess on the kept rows; above 200 million window operations the line is left empty (WP-31, F1c)`). Grep for `claude|anthropic`; commit.]]></action>
-  <verify><![CDATA[pytest green; slot log `U16-01 ok`..`U16-05 ok`; `git log -1 --format=%s` ends `(WP-31 F1c)`.]]></verify>
+  <action><![CDATA[Remove `"lowess"` from `_FROZEN`. Append TR-16.8's `MOVE_CORPUS` entries under `# WP-31 F1c: lowess re-smooths on the saved page`. Append the U16 block (helpers `_u16_move`, `_u16_gen_compare` reading Stata's `gen(s)` variable through the python block's `Data.get` on the `if` sample sorted stably by x) above the marker line; run `WP31_ONLY=S16 scripts/stata_slot.sh <scratch>/s16 <scratch>/run_test_wp31_truth.do`. dash.sthlp TR-16.6 and the conformance pin. Add `test_lowess_under_node_on_1e4_rows` and `test_lowess_is_capped_above_max_ops` to `TestTheJsTwinsAreBounded`. Run `python3 -m pytest test/test_js_fit_refit.py test/test_saved_stale_cue.py test/test_mode_parity.py -k "lowess or Refit" test/test_help_conformance.py test/test_estimator_cost.py::TestTheJsTwinsAreBounded -q`. Close BUGS.md F1c (Resolution names `map_lowess`, `dash_lowess`, the cap with its constant; residual: none, the cap is documented behaviour), rewrite the GAPS3 line to `- **F1c Tracked:** Closed in WP-31, BUGS.md "<F1c title>", commit pending.` (DECISIONS A11; BUGS.md, GAPS3.md and CHANGELOG.md are implied files, A13), replace the `<!-- WP-31 F1c -->` markers (Results: `lowess on a saved page after a filter move: the build's smooth (marked) -> Stata's lowess on the kept rows; above 200 million window operations the line is left empty (WP-31, F1c)`). Grep for `claude|anthropic`; commit.]]></action>
+  <verify><![CDATA[pytest green; slot log `U16-01 ok`..`U16-05 ok`; `git log -1 --format=%s` ends `(WP-31 F1c)`; `grep -c "F1c Tracked:\*\* Closed in WP-31" GAPS3.md` prints 1.]]></verify>
   <done>F1c is one green commit: lowess re-smooths on the saved page and is no longer marked.</done>
 </task>
 
