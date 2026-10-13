@@ -218,7 +218,7 @@ end
 // stream when issued in bulk from a do-file block.
 // ----------------------------------------------------------------
 python:
-import json, re, sfi
+import json, os, re, sfi
 
 FX     = sfi.Macro.getGlobal("ZQA_FIXTURE")
 HELP   = sfi.Macro.getGlobal("ZQA_HELP")
@@ -374,6 +374,34 @@ def opt_token(abb, name):
         return abb
     return abb + "(" + v + ")"
 
+# WP-31 C3: an option twoway refuses on scatter (kernel() n() level()
+# bwidth() bands() range() base() degree() bin() width() start()
+# barwidth()) is refused there by dash too, r(198), as twoway's syntax
+# refuses it (test/fixtures/applicability_truth.json).  Its abbreviation is
+# probed on a type twoway accepts it on: the fixture's own plottype_context
+# where that type accepts it, else the first accepting type of PREFER.
+with open(os.path.join(os.path.dirname(os.path.abspath(FX)),
+                       "applicability_truth.json"), encoding="utf-8") as fh:
+    APPLIES = json.load(fh)["pairs"]
+_C3_OPTS = {k.split("@")[0] for k in APPLIES}
+_PREFER = ("kdensity", "lfit", "lfitci", "lpoly", "mband", "bar",
+           "histogram", "function")
+
+def _takes(name, ptype):
+    rec = APPLIES.get(name + "@" + ptype)
+    return rec is None or not (rec["rc"] == 198 and rec["message"]
+                               == "option " + name + "() not allowed")
+
+def carrier(name):
+    """The plot a value option is written on: scatter, unless twoway
+    refuses the option there (C3)."""
+    if name not in _C3_OPTS or _takes(name, "scatter"):
+        return "scatter mpg weight, "
+    ctx = OPTS.get(name, {}).get("plottype_context")
+    ok = [t for t in _PREFER if _takes(name, t)]
+    ptype = ctx if ctx and _takes(name, ctx) else ok[0]
+    return ptype + " " + PT_VARS.get(ptype, "mpg weight") + ", "
+
 def opt_cmd(abb, name):
     tok = opt_token(abb, name)
     if name == "name":
@@ -386,7 +414,7 @@ def opt_cmd(abb, name):
     # them there (WP-30 P1.9a); bar takes both.
     if name in ("horizontal", "vertical"):
         return "bar mpg weight, " + tok + " name(zqab)"
-    return "scatter mpg weight, " + tok + " name(zqab)"
+    return carrier(name) + tok + " name(zqab)"
 
 # WP-30 P1.10: text() is written as added_text records, counted under the
 # string key added_text_n; the spec holds no text key.
@@ -492,7 +520,7 @@ def doc_cmd(spelling, full):
     v = value_of(full)
     if v is None:
         v = "1"
-    return "scatter mpg weight, " + spelling + "(" + v + ") name(zqab)"
+    return carrier(full) + spelling + "(" + v + ") name(zqab)"
 
 # Accepted means RECORDED, under the full name, as A1 means it.  This was
 # mode "rconly", and the one-line command returns rc 0 for any option at all
