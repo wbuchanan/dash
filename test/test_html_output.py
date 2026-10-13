@@ -912,14 +912,21 @@ class TestXssInHtmlOutput:
 
 
 def _heads_on_page(html: str) -> int:
-    """The arrowheads the page draws: its one Arrow annotation's source
-    rows, the source being the one a Segment renderer draws from."""
+    """The arrowheads the page draws: the rows of the source its one
+    arrowhead script reads, the source being the one a Segment renderer
+    draws from.
+
+    Flipped (WP-31 C1): one Arrow annotation was wrong because twoway's
+    head is _gr_arrowhead's geometry; the page's script draws it from the
+    shaft's source."""
     byid = _doc_models(html)
-    arrows = [m for m in byid.values() if m["name"] == "Arrow"]
-    assert len(arrows) == 1, f"{len(arrows)} Arrow annotations"
-    attrs = arrows[0].get("attributes", {})
-    assert attrs.get("x_start", {}).get("field") == "x1", attrs.get("x_start")
-    src = byid[attrs["source"]["id"]]
+    assert not [m for m in byid.values() if m["name"] == "Arrow"]
+    cbs = [m for m in byid.values() if m["name"] == "CustomJS"
+           and m.get("attributes", {}).get("name") == "dash_arrow_head"]
+    assert len(cbs) == 1, f"{len(cbs)} arrowhead scripts"
+    args = dict(cbs[0]["attributes"]["args"]["entries"])
+    assert args["x1"] == "x1", args["x1"]
+    src = byid[args["src"]["id"]]
     seg_srcs = {r["attributes"]["data_source"]["id"] for r in byid.values()
                 if r["name"] == "GlyphRenderer"
                 and byid.get(r["attributes"]["glyph"]["id"], {}).get("name")

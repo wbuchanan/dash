@@ -30,8 +30,9 @@
 *!           Domestic, 3, Three, 4 and a date.
 *!   HC5-08  the by() sub-options dash does not implement are named in the
 *!           Stata log, on a saved and on a served build.
-*!   HC5-09  headlabel: twoway moves the labels to the arrow's head; dash
-*!           names it in the note and builds.
+*!   HC5-09  headlabel: twoway moves the labels to the arrow's head; so
+*!           does dash, with no note (Flipped, WP-31 C1: dash named it; the
+*!           placement is test_wp31_truth.cscript U02-06).
 *!   HC5-10  pcarrow and pcbarrow with mlabangle(400): twoway prints the
 *!           range, returns rc 0, draws the arrows and no labels; dash rc 0
 *!           and names the angle.
@@ -501,11 +502,13 @@ assert r(x) > `tail_x' + 500
 capture erase "`page'"
 _hc5_run `"dash pcarrow y1 x1 y2 x2, mlabel(lab) headlabel saving("`page'")"' "`logfile'"
 assert r(rc) == 0
-cert_log_has "`logfile'", needle("ignoring unsupported option(s): headlabel()")
-assert r(found) == 1
+// Flipped (WP-31 C1): dash named headlabel in the note, which was wrong
+// once it draws it; the labels' place is U02-06's.
+cert_log_has "`logfile'", needle("headlabel")
+assert r(found) == 0
 cert_file_has "`page'", needle(`""name":"LabelSet""')
 assert r(found) == 1
-display "HC5-09 PASS: twoway's headlabel moves the label to the head; dash names headlabel in the note and draws its labels"
+display "HC5-09 PASS: twoway's headlabel moves the label to the head; dash takes headlabel with no note and draws its labels"
 
 // ================================================================
 // HC5-10 -- mlabangle(400) on pcarrow and pcbarrow

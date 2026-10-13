@@ -366,11 +366,11 @@ class TestBothModesDrawEachPlotsWidth:
             assert set(b) == {tr("thick")}, (ptype, b)
 
     def test_the_arrows_follow_the_shaft(self, mode, wd):
-        from bokeh.models import Arrow
+        # WP-31 C1: the heads are a glyph per layer (the arrowline chain).
         (wd / "lwe2e.scheme").write_text(_SCHEME, encoding="utf-8")
         fig = _figure(mode, wd, _layers("pcarrow"), "lwe2e")
-        heads = [m.line_width for m in fig.center
-                 if isinstance(m, Arrow) and m.end is not None]
+        heads = [r.glyph.line_width for r in fig.renderers
+                 if "dash-arrowhead" in (r.tags or [])]
         tr = dr.OptionTranslator.translate_lwidth
         assert set(heads) == {tr("vthick"), tr("thick")}, heads
 

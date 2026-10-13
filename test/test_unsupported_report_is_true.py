@@ -211,12 +211,21 @@ def _norm(html: str) -> str:
         _PID.sub("PID", _UUID.sub("UUID", html)).encode()).hexdigest()
 
 
+#: The paired-coordinate types, drawn from four variables (WP-31 C1).
+_PC_PLOT = {"y1var": "mpg", "x1var": "weight", "y2var": "price",
+            "x2var": "rep78"}
+
+
 def _render(tmp_path, ptype, popts, gopts, tag):
+    plot = ({"type": ptype, **_PC_PLOT, "options": popts}
+            if ptype in ("pcarrow", "pcbarrow", "pcspike", "pccapsym",
+                         "pcscatter")
+            else {"type": ptype, "yvar": "mpg", "xvar": "weight",
+                  "options": popts})
     spec = {"graphs": [{"name": "g1",
                         "graph_options": dict(gopts, name="g1"),
                         "options": dict(gopts),
-                        "plots": [{"type": ptype, "yvar": "mpg",
-                                   "xvar": "weight", "options": popts}]}],
+                        "plots": [plot]}],
             "kpis": [],
             "build_options": {"layout": "auto", "registry": "g1",
                               "level": "95", "formats": {}, "theme": "",
@@ -447,6 +456,11 @@ NOT_IN_FILE = {
 _CV = {"colorvar": "price"}
 _ML = {"mlabel": "foreign"}
 LIVE_VALUES = {
+    # WP-31 C1: the arrowhead's half-angle, barb depth and label place,
+    # drawn on pcarrow (test_arrowheads.py).
+    "mangle": ({"mangle": "45"}, {}, "pcarrow", {}),
+    "barbsize": ({"barbsize": "medium"}, {}, "pcarrow", {}),
+    "headlabel": ({**_ML, "headlabel": "headlabel"}, dict(_ML), "pcarrow", {}),
     # ---- plot-level -------------------------------------------------------
     # WP-30 P1.14a: drawn, p1-p15 (each pair of styles differs on its type).
     "alstyle": ({"alstyle": "p3"}, {"alstyle": "p7"}, "bar", {}),
@@ -721,7 +735,8 @@ class TestEveryDeclaredOptionIsClassified:
         # declared in both blocks; 190 -> 195 and 79 -> 84: part 2's five
         # axis-2 forms
         # 195 -> 196 and 84 -> 85: P1.10 ttext declared
-        assert len(_declared_plot()) == 196, len(_declared_plot())
+        # 196 -> 199: C1 mangle barbsize headlabel declared
+        assert len(_declared_plot()) == 199, len(_declared_plot())
         assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

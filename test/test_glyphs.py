@@ -1701,17 +1701,16 @@ class TestMapPcarrow:
             "map_pcarrow must apply lcolor to segment"
 
     def test_pcarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
-        """lwidth(thick)=3.072 must also be applied to Arrow annotation objects.
+        """lwidth(thick) widens the shaft only; the head keeps the scheme's
+        arrow line width.
 
-        Arrow annotations added via fig.add_layout() are stored in fig.center.
-        """
-        from bokeh.models import Arrow
+        Flipped (WP-31 C1): the head at the shaft's 3.072 was wrong because
+        twoway's line options are the shaft's (twoway_pcarrow.sthlp;
+        measured 13oct2026, lcolor(red) lwidth(thick): heads at 0.3 rs in
+        the series colour); mlwidth() is the head's."""
         gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
-        arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
-        assert arrow_annots, "map_pcarrow must add Arrow annotations to fig"
-        for arrow in arrow_annots:
-            assert abs(arrow.line_width - 3.072) < 0.01, \
-                f"Arrow annotation line_width must be 3.072 (thick) but got {arrow.line_width}"
+        [head] = [r for r in fig.renderers if "dash-arrowhead" in r.tags]
+        assert head.glyph.line_width == gm.scheme.plot_line_width(0, "arrowline")
 
 
 class TestMapPcbarrow:
@@ -1749,17 +1748,11 @@ class TestMapPcbarrow:
             "map_pcbarrow must apply lcolor to segment"
 
     def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, fig, pc_cds, gm):
-        """lwidth(thick)=3.072 must also be applied to Arrow annotation objects.
-
-        Arrow annotations added via fig.add_layout() are stored in fig.center.
-        """
-        from bokeh.models import Arrow
+        """lwidth(thick) widens the shaft only; the heads keep the scheme's
+        arrow line width (Flipped, WP-31 C1, as pcarrow's above)."""
         gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lwidth": "thick"})
-        arrow_annots = [a for a in fig.center if isinstance(a, Arrow)]
-        assert arrow_annots, "map_pcbarrow must add Arrow annotations to fig"
-        for arrow in arrow_annots:
-            assert abs(arrow.line_width - 3.072) < 0.01, \
-                f"Arrow annotation line_width must be 3.072 (thick) but got {arrow.line_width}"
+        [head] = [r for r in fig.renderers if "dash-arrowhead" in r.tags]
+        assert head.glyph.line_width == gm.scheme.plot_line_width(0, "arrowline")
 
 
 class TestMapTsline:

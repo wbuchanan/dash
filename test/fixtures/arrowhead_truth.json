@@ -1,0 +1,477 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "4e2bd9066b5eef555a20ad89c9810ea3b2dfbefe",
+  "extracted": "13 Oct 2026 16:13:04",
+  "source": "scripts/extract_arrowhead_truth.do",
+  "stata_version": "19.5"
+ },
+ "headlabel": {
+  "with": [
+   "head",
+   "head",
+   "head",
+   "head",
+   "head"
+  ],
+  "without": [
+   "tail",
+   "tail",
+   "tail",
+   "tail",
+   "tail"
+  ]
+ },
+ "heads": {
+  "barb_large": {
+   "angle": 28.64,
+   "backsize_val": 2.4306,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 5,
+   "head_strokes": 0,
+   "poly_angle_at_a": 108.574,
+   "poly_angle_at_b": 42.788,
+   "poly_fill": "#1a476f",
+   "poly_fills": [
+    "#1a476f"
+   ],
+   "poly_half_angle": 28.626,
+   "poly_stroke": "#1a476f",
+   "poly_stroke_width_rs": 0.3,
+   "poly_tip_to_a_rs": 1.5279,
+   "poly_tip_to_b_rs": 2.1322,
+   "poly_vertices": 4,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778
+  },
+  "barb_medium": {
+   "angle": 28.64,
+   "backsize_val": 1.52778,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 5,
+   "head_strokes": 0,
+   "poly_angle_at_a": 61.528,
+   "poly_angle_at_b": 89.804,
+   "poly_fill": "#1a476f",
+   "poly_fills": [
+    "#1a476f"
+   ],
+   "poly_half_angle": 28.626,
+   "poly_stroke": "#1a476f",
+   "poly_stroke_width_rs": 0.3,
+   "poly_tip_to_a_rs": 1.5279,
+   "poly_tip_to_b_rs": 1.3432,
+   "poly_vertices": 4,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778
+  },
+  "barb_msize": {
+   "angle": 28.64,
+   "backsize_val": 1.52778,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 5,
+   "head_strokes": 0,
+   "poly_angle_at_a": 61.528,
+   "poly_angle_at_b": 89.804,
+   "poly_fill": "#1a476f",
+   "poly_fills": [
+    "#1a476f"
+   ],
+   "poly_half_angle": 28.626,
+   "poly_stroke": "#1a476f",
+   "poly_stroke_width_rs": 0.3,
+   "poly_tip_to_a_rs": 1.5279,
+   "poly_tip_to_b_rs": 1.3432,
+   "poly_vertices": 4,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778
+  },
+  "colours": {
+   "angle": 28.64,
+   "backsize_val": 1.52778,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 5,
+   "head_strokes": 0,
+   "poly_angle_at_a": 61.528,
+   "poly_angle_at_b": 89.804,
+   "poly_fill": "#008000",
+   "poly_fills": [
+    "#008000"
+   ],
+   "poly_half_angle": 28.626,
+   "poly_stroke": "#0000ff",
+   "poly_stroke_width_rs": 0.8,
+   "poly_tip_to_a_rs": 1.5279,
+   "poly_tip_to_b_rs": 1.3432,
+   "poly_vertices": 4,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778
+  },
+  "default": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.595,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778,
+   "stroke_len_rs": 1.5272,
+   "stroke_len_rs_range": [
+    1.5264,
+    1.5282
+   ]
+  },
+  "lcolor": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.595,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#ff0000",
+   "shaft_width_rs": 0.8,
+   "shafts": 5,
+   "size_val": 1.52778,
+   "stroke_len_rs": 1.5272,
+   "stroke_len_rs_range": [
+    1.5264,
+    1.5282
+   ]
+  },
+  "lcolor_barb": {
+   "angle": 28.64,
+   "backsize_val": 1.52778,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 5,
+   "head_strokes": 0,
+   "poly_angle_at_a": 61.528,
+   "poly_angle_at_b": 89.804,
+   "poly_fill": "#1a476f",
+   "poly_fills": [
+    "#1a476f"
+   ],
+   "poly_half_angle": 28.626,
+   "poly_stroke": "#1a476f",
+   "poly_stroke_width_rs": 0.3,
+   "poly_tip_to_a_rs": 1.5279,
+   "poly_tip_to_b_rs": 1.3432,
+   "poly_vertices": 4,
+   "shaft_colour": "#ff0000",
+   "shaft_width_rs": 0.8,
+   "shafts": 5,
+   "size_val": 1.52778
+  },
+  "mangle_45": {
+   "angle": 45.0,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 44.999,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778,
+   "stroke_len_rs": 1.5277,
+   "stroke_len_rs_range": [
+    1.5252,
+    1.5299
+   ]
+  },
+  "mcolor": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.595,
+   "head_stroke_colours": [
+    "#ff0000"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778,
+   "stroke_len_rs": 1.5272,
+   "stroke_len_rs_range": [
+    1.5264,
+    1.5282
+   ]
+  },
+  "msize_2": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.654,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 2.0,
+   "stroke_len_rs": 1.9986,
+   "stroke_len_rs_range": [
+    1.9978,
+    2.0008
+   ]
+  },
+  "msize_large": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.654,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 2.4306,
+   "stroke_len_rs": 2.43,
+   "stroke_len_rs_range": [
+    2.4285,
+    2.4311
+   ]
+  },
+  "msize_small": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.626,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.04166,
+   "stroke_len_rs": 1.041,
+   "stroke_len_rs_range": [
+    1.0397,
+    1.0428
+   ]
+  },
+  "msize_vlarge": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.657,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 3.125,
+   "stroke_len_rs": 3.1246,
+   "stroke_len_rs_range": [
+    3.1231,
+    3.1262
+   ]
+  },
+  "msize_x2": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.637,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 10,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 3.05556,
+   "stroke_len_rs": 3.0555,
+   "stroke_len_rs_range": [
+    3.0537,
+    3.0564
+   ]
+  },
+  "pcbarrow": {
+   "angle": 28.64,
+   "backsize_val": 0.0,
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "circles": 0,
+   "filled_heads": 0,
+   "half_angle": 28.595,
+   "head_stroke_colours": [
+    "#1a476f"
+   ],
+   "head_stroke_width_rs": 0.3,
+   "head_strokes": 20,
+   "shaft_colour": "#1a476f",
+   "shaft_width_rs": 0.3,
+   "shafts": 5,
+   "size_val": 1.52778,
+   "stroke_len_rs": 1.5271,
+   "stroke_len_rs_range": [
+    1.5264,
+    1.5282
+   ]
+  }
+ },
+ "onepoint": {
+  "angle": 28.64,
+  "backsize_val": 0.0,
+  "canvas": [
+   3960.0,
+   2880.0
+  ],
+  "circles": 0,
+  "filled_heads": 0,
+  "half_angle": 28.598,
+  "head_stroke_colours": [
+   "#1a476f"
+  ],
+  "head_stroke_width_rs": 0.3,
+  "head_strokes": 8,
+  "head_strokes_all_present": 10,
+  "markers": 0,
+  "markers_all_present": 0,
+  "shaft_colour": "#1a476f",
+  "shaft_width_rs": 0.3,
+  "shafts": 4,
+  "shafts_all_present": 5,
+  "size_val": 1.52778,
+  "stroke_len_rs": 1.5273,
+  "stroke_len_rs_range": [
+   1.5264,
+   1.5282
+  ]
+ },
+ "refusals": {
+  "barb_abc": {
+   "lines": [
+    "(note:  named style abc not found in class symbolsize, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "barb_big": {
+   "lines": [],
+   "rc": 0
+  },
+  "barb_neg": {
+   "lines": [],
+   "rc": 0
+  },
+  "headlabel_twice": {
+   "lines": [
+    "option headlabel not allowed"
+   ],
+   "rc": 198
+  },
+  "mangle_400": {
+   "lines": [],
+   "rc": 0
+  },
+  "mangle_abc": {
+   "lines": [
+    "(note:  named style abc not found in class anglestyle, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "mangle_m400": {
+   "lines": [],
+   "rc": 0
+  }
+ }
+}

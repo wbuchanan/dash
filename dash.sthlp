@@ -270,6 +270,32 @@ this file says so under the option concerned.
 {synoptline}
 
 {pstd}
+{ul:Arrowheads.}  {cmd:pcarrow}, {cmd:pcbarrow} and {cmd:pcarrowi} draw
+their heads as {cmd:twoway}'s {cmd:_gr_arrowhead} draws them, in the saved
+page and the served app, at every zoom and after a filter move: two open
+strokes from the tip, {cmd:msize()} long (the scheme's {cmd:symbolsize
+parrow}, {cmd:medium}, by default), stroked in {cmd:mlcolor()} or
+{cmd:mcolor()} (the shaft's colour by default) at {cmd:mlwidth()};
+{cmd:pcbarrow} draws one at each end.  The marker labels' gap is measured
+from the head's size.
+
+{phang2}{opt mangle(anglestyle)} sets the head's half-angle, an
+anglestyle name or a number of degrees ({cmd:stdarrow}, 28.64 degrees, by
+default); a name that is not an anglestyle is reported and the default
+drawn, as {cmd:twoway} notes it.
+
+{phang2}{opt barbsize(size)} sets the barb depth: zero, the default, draws
+the two open strokes; any other size draws a closed head filled in
+{cmd:mfcolor()} or {cmd:mcolor()} (the series colour by default), its back
+point {it:size}*cos({cmd:mangle}) behind the tip.
+
+{phang2}{opt headlabel} puts the marker labels at the second point, the
+head, instead of the first.
+
+{pstd}
+On the other plot types these three options are named in the note.
+
+{pstd}
 A range type takes three variables, {it:y1 y2 x}, and a paired-coordinate
 type four, {it:y1 x1 y2 x2}; a fit or smooth takes one {it:y} and one
 {it:x}.  Any other count is refused as {cmd:twoway} refuses it, in its
@@ -2843,9 +2869,10 @@ the per-plot specification (not to {cmd:dash build} options).
 {cmd:twoway} does, and an end that is missing is left unlabelled on its
 own.  {cmd:pcscatter}, {cmd:pccapsym}, {cmd:pcarrow} and {cmd:pcbarrow}
 label the first point, ({it:y1var}, {it:x1var}) -- the tail of an arrow.
-{cmd:twoway}'s {cmd:headlabel}, which moves those labels to the second
-point, is not implemented: {cmd:dash} names it in the note and draws the
-labels at the first point.  A paired-coordinate observation with a missing
+{cmd:headlabel} moves those labels to the second point, the head, on
+{cmd:pcarrow}, {cmd:pcbarrow} and {cmd:pcarrowi}, as {cmd:twoway} does; on
+{cmd:pcscatter} and {cmd:pccapsym} {cmd:dash} names it in the note and
+draws the labels at the first point.  A paired-coordinate observation with a missing
 coordinate is not drawn at all, marker or label, where {cmd:twoway}, when
 only the second point is missing, still labels the first point (and marks
 it, on {cmd:pcscatter} and {cmd:pccapsym}).  {cmd:scatteri} and

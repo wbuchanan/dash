@@ -1366,6 +1366,20 @@ local _u04_n = r(n)
 _ov_count "`logfile'" "kernel"
 local _u04_k = r(n)
 _ov_assert U04-04 `"(`_u04_rc' == 198) & (`_u04_n' == 0) & (`_u04_k' > 0)"' "lpoly kernel(nosuch) is refused by the kernel's own rule, not the type's"
+// U02-07, U02-08 (WP-31 C1): barbsize(), mangle() and headlabel are
+// taken as twoway takes them -- any number for the two sizes and a name
+// noted at drawing (barbsize(-1), barbsize(20000), mangle(400),
+// mangle(abc), barbsize(abc) rc 0, measured 13oct2026,
+// test/fixtures/arrowhead_truth.json refusals), with no note at
+// registration; headlabel twice refused in twoway's words, r(198).
+// ----------------------------------------------------------------
+sysuse auto, clear
+_hz_case U02-07 "pcarrow mpg weight trunk length, barbsize(-1)"
+_hz_case U02-07 "pcarrow mpg weight trunk length, barbsize(20000)"
+_hz_case U02-08 "pcarrow mpg weight trunk length, mangle(45)"
+_hz_case U02-08 "pcarrow mpg weight trunk length, mangle(400)"
+_hz_case U02-08 "pcarrow mpg weight trunk length, mangle(abc) barbsize(abc)"
+_hz_case U02-08 "pcarrow mpg weight trunk length, headlabel headlabel"
 
 // ----------------------------------------------------------------
 // Summary

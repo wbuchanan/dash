@@ -5282,7 +5282,7 @@ string rowvector _dash_rep_toks(string scalar s, real scalar commas)
 // _dash_connect_opt canonicalises before the per-y writer splits them.
 string scalar _dash_stylelist_keys()
 {
-    return("mcolor msymbol msize msangle mfcolor mlcolor mlwidth " +
+    return("mcolor msymbol msize barbsize msangle mfcolor mlcolor mlwidth " +
            "mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat " +
            "lcolor lwidth lpattern clcolor clpattern clwidth color fcolor " +
            "fintensity bfcolor blcolor acolor alcolor alwidth alpattern " +
@@ -6208,6 +6208,10 @@ real scalar _dash_rep_unique(string scalar key, string scalar typed,
                "xaxis", "colorvar", "colordiscrete", "colorcuts",
                "mlabvposition", "xoverhangs", "yoverhangs", "sort",
                "horizontal", "vertical", "stdp", "stdf", "stdr",
+               // WP-31 C1: headlabel, now declared, is refused a second
+               // time as twoway refuses it ("option headlabel not
+               // allowed", r(198), measured 13oct2026).
+               "headlabel",
                // GAPS2 X2: colorvarminmax, now declared, is refused a
                // second time as twoway refuses it.  colorlevels() is NOT
                // here: twoway takes it twice (measured 26sep2026).
@@ -6273,7 +6277,6 @@ string matrix _dash_rep_und_tab()
     t = t \ ("fitplot",      "fitplot",      "fitp",      "1", cis,         "0", "")
     t = t \ ("fit",          "fit",          "fit",       "0", cis,         "0", "")
     t = t \ ("fit",          "nofit",        "nofit",     "0", cis,         "0", "no")
-    t = t \ ("headlabel",    "headlabel",    "head",      "0", pcs,         "0", "")
     t = t \ ("mwidth",       "mwidth",       "mw",        "0", "histogram rbar", "0", "")
     t = t \ ("back",         "back",         "back",      "0", "mspline mband", "0", "")
     t = t \ ("back",         "noback",       "noback",    "0", "mspline mband", "0", "no")

@@ -1240,6 +1240,9 @@ class TestServerPcarrowPcbarrow:
         source = _build_app(dr_module, pc_df, spec)
         assert "Arrow" in source or "OpenHead" in source, \
             "pcarrow server dispatch must generate Arrow annotation code"
+        # WP-31 C1: the heads are drawn by the shared head script.
+        assert "_DASH_ARROW_HEAD_JS" in source
+        assert "_dash_arrow_head_hooks" in source
 
     def test_pcbarrow_generates_arrow_in_server(self, dr_module, auto_df):
         """pcbarrow in server mode must generate bidirectional Arrow/NormalHead code."""
@@ -1796,10 +1799,19 @@ class TestServerLineWidthAllTypes:
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
-        _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
-        assert arrow_annots, "server-mode pcarrow must produce Arrow annotations"
-        assert self._has_arrow_with_lw(arrow_annots, self._THICK_PX), \
-            "server-mode pcarrow Arrow annotations must have line_width=3.072 (thick)"
+        # Flipped (WP-31 C1): the head at the shaft's thick was wrong
+        # because twoway's line options are the shaft's; the head is
+        # markerstyle p#arrow at the scheme's arrow width (measured
+        # 13oct2026), drawn as a glyph (no Arrow annotation).
+        renderers, arrow_annots = self._exec_make_document_with_arrows(
+            dr_module, auto_df, spec)
+        assert not arrow_annots
+        heads = [r for r in renderers if "dash-arrowhead" in (r.tags or [])]
+        assert len(heads) == 1, "server-mode pcarrow must draw its head glyph"
+        assert abs(heads[0].glyph.line_width - self._THICK_PX) > 0.05
+        assert any(type(r.glyph).__name__ == "Segment"
+                   and abs(r.glyph.line_width - self._THICK_PX) < 0.05
+                   for r in renderers)
 
     def test_pcbarrow_lwidth_applies_to_arrow_annotations(self, dr_module, auto_df):
         """pcbarrow lwidth(thick)=3.072 must be applied to Arrow annotation objects, not just segment."""
@@ -1809,10 +1821,19 @@ class TestServerLineWidthAllTypes:
                        "options": {"lwidth": "thick"}}],
             "graph_options": {"name": "g1"},
         }])
-        _, arrow_annots = self._exec_make_document_with_arrows(dr_module, auto_df, spec)
-        assert arrow_annots, "server-mode pcbarrow must produce Arrow annotations"
-        assert self._has_arrow_with_lw(arrow_annots, self._THICK_PX), \
-            "server-mode pcbarrow Arrow annotations must have line_width=3.072 (thick)"
+        # Flipped (WP-31 C1): the head at the shaft's thick was wrong
+        # because twoway's line options are the shaft's; the head is
+        # markerstyle p#arrow at the scheme's arrow width (measured
+        # 13oct2026), drawn as a glyph (no Arrow annotation).
+        renderers, arrow_annots = self._exec_make_document_with_arrows(
+            dr_module, auto_df, spec)
+        assert not arrow_annots
+        heads = [r for r in renderers if "dash-arrowhead" in (r.tags or [])]
+        assert len(heads) == 1, "server-mode pcbarrow must draw its head glyph"
+        assert abs(heads[0].glyph.line_width - self._THICK_PX) > 0.05
+        assert any(type(r.glyph).__name__ == "Segment"
+                   and abs(r.glyph.line_width - self._THICK_PX) < 0.05
+                   for r in renderers)
 
 
 class TestServerRconnectedRcapsymMarkers:

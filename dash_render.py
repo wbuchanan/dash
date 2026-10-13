@@ -10942,6 +10942,18 @@ class SchemeParser:
             return self.marker_size
         return sizes[int(index) % 15]
 
+    def default_arrow_size(self, index: int = 0) -> float:
+        """The pixel size of an arrowhead (WP-31 C1): ``symbolsize parrow``
+        (``markerstyle p#arrow`` says ``set size scheme parrow``; s2color's
+        ``medium``, 1.52778 relative, measured as twoway's
+        ``.style.marker.size.val``, test/fixtures/arrowhead_truth.json) on
+        the marker ladder; the plot's marker size when the scheme has none."""
+        kw = str(getattr(self, "_props", {}).get("symbolsize parrow", "")
+                 or "").strip()
+        if not kw:
+            return self.default_marker_size(index)
+        return self._markersize_px(kw)
+
     #: The chains a plot's line width follows, by the style file that sets
     #: it (StataNow 19.5, ado/base/style): "lineplot" is linestyle-p#line
     #: (`set width scheme p#lineplot') -- line, lfit, qfit, lowess, lpoly,
@@ -19611,7 +19623,9 @@ class GlyphMapper:
     def _pc_clean_with_label(self, source: ColumnDataSource, y1var: str,
                              x1var: str, y2var: str, x2var: str,
                              options: "dict[str, str]",
-                             view=None) -> "pd.DataFrame":
+                             view=None,
+                             head_px: "float | None" = None
+                             ) -> "pd.DataFrame":
         """The rows a paired-coordinate arrow layer draws, as a frame.
 
         Its four coordinates and, when ``mlabel()`` names a column the data
@@ -19621,6 +19635,14 @@ class GlyphMapper:
         by position), and a row is dropped for a missing COORDINATE only: a
         missing label is not a missing observation.  A repeated coordinate
         (``pcarrow y x y x``) is one column.
+
+        With *head_px* (WP-31 C1, the arrow types), the column
+        ``_HEAD_PX`` holds it on every row, the empty frame included, for
+        _DASH_ARROW_HEAD_JS.  A row whose second point is missing is
+        dropped as before: twoway draws neither its shaft, its head nor a
+        marker (measured 13oct2026: 4 shafts, 8 head strokes and no
+        ``<circle>`` where 5, 10 and none are drawn with every point,
+        test/fixtures/arrowhead_truth.json ``onepoint``).
         """
         clean = pd.DataFrame({
             y1var: source.data[y1var],
@@ -19641,7 +19663,11 @@ class GlyphMapper:
         _pc_sel = self._view_mask(view, len(clean))
         if _pc_sel is not None:
             clean = clean[_pc_sel]
-        return clean.dropna(subset=coords)
+        clean = clean.dropna(subset=coords)
+        if head_px is not None:
+            clean[self._HEAD_PX] = pd.Series(float(head_px),
+                                             index=clean.index, dtype=float)
+        return clean
 
     @staticmethod
     def _add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var, color,
@@ -19680,6 +19706,155 @@ class GlyphMapper:
         fig.add_layout(head)
         return head
 
+    #: WP-31 C1: the shaft source's column holding each row's head size in
+    #: pixels (``msize()``, else the scheme's ``symbolsize parrow``), read
+    #: per row by _DASH_ARROW_HEAD_JS, so a saved move and a served redraw
+    #: carry it with the row.
+    _HEAD_PX = "__dash_head_px"
+
+    def _arrow_head_px(self, options: dict, color_idx: int = 0) -> float:
+        """The head's stroke length in pixels (WP-31 C1): ``msize()`` read
+        as ``_apply_marker_opts`` reads a marker's (``*#`` multiplies the
+        default, an unknown name is noted and drawn medium), else the
+        scheme's ``symbolsize parrow`` (``default_arrow_size``).  twoway's
+        ``_gr_arrowhead`` strokes the head ``msz`` long (measured: the
+        strokes are 1.5272 rs at ``medium``, 1.52778 rs)."""
+        d = self.scheme.default_arrow_size(color_idx)
+        if not str(options.get("msize", "") or "").strip():
+            return float(d)
+        try:
+            return max(0.0, self.tr.translate_msize(
+                options["msize"], float(d),
+                getattr(self.scheme, "size_ref_in", 4.0)))
+        except ValueError:
+            # _mlabel_radius_px reads the same value; the note is made once
+            # here, as _apply_marker_opts makes it for a marker.
+            _dash_style_note("msize", options["msize"], "size")
+            _fb = getattr(self.scheme, "marker_fallback_kw", "medium")
+            return (OptionTranslator._SYMBOLSIZE_RS[_fb]
+                    * OptionTranslator.PT_PER_RS * OptionTranslator.PX_PER_PT)
+
+    def _arrow_head_line(self, options: dict, color: str, line_width: float,
+                         color_idx: int = 0) -> "tuple[str, float]":
+        """The head's stroke (colour, width) (WP-31 C1): ``mlcolor()``, else
+        ``mcolor()``, else the series colour *color* (``linestyle
+        p#arrow``; measured: ``mcolor(red)`` strokes the heads red and
+        leaves the shaft, ``lcolor(red)`` reddens the shaft only);
+        ``mlwidth()``, else the scheme's arrow line width, else
+        *line_width*."""
+        stroke = color
+        for k in ("mlcolor", "mcolor"):
+            v = str(options.get(k, "") or "").strip()
+            if v and not OptionTranslator._means_no_color(v):
+                c, _a = self.tr.parse_color_alpha(v, k, base=color)
+                if c:
+                    stroke = c
+                break
+        width = self.scheme.plot_line_width(color_idx, "arrowline")
+        if width is None:
+            width = line_width
+        if str(options.get("mlwidth", "") or "").strip():
+            try:
+                width = self.tr.translate_lwidth(
+                    options["mlwidth"], width,
+                    getattr(self.scheme, "size_ref_in", 4.0))
+            except (ValueError, TypeError):
+                _dash_style_note("mlwidth", options["mlwidth"], "line width")
+        return stroke, float(width)
+
+    def _arrow_head_fill(self, options: dict, series_color: str) -> str:
+        """A filled head's colour (WP-31 C1): ``mfcolor()``, else
+        ``mcolor()``, else the series colour ``color p#`` (``p#arrowfill``;
+        measured: green under ``mfcolor(green)``, the series blue
+        otherwise) -- never Bokeh's black."""
+        for k in ("mfcolor", "mcolor"):
+            v = str(options.get(k, "") or "").strip()
+            if v and not OptionTranslator._means_no_color(v):
+                c, _a = self.tr.parse_color_alpha(v, k, base=series_color)
+                if c:
+                    return c
+                break
+        return series_color
+
+    def _arrow_barb(self, options: dict, head_px: float) -> float:
+        """The barb depth in pixels (WP-31 C1): ``barbsize()`` on the marker
+        size ladder (``*#`` multiplies the head size *head_px*); 0, the
+        scheme's ``symbolsize parrowbarb zero``, when absent.  twoway takes
+        any number (measured: ``barbsize(-1)`` and ``barbsize(20000)`` rc 0)
+        and notes an unknown name, drawing the default."""
+        v = str(options.get("barbsize", "") or "").strip()
+        if not v:
+            return 0.0
+        try:
+            return float(self.tr.translate_msize(
+                v, float(head_px), getattr(self.scheme, "size_ref_in", 4.0)))
+        except ValueError:
+            _dash_style_note("barbsize", v, "size")
+            return 0.0
+
+    def _arrow_angle(self, options: dict) -> float:
+        """The head's half-angle in radians (WP-31 C1): ``mangle()``, an
+        anglestyle name or degrees (twoway takes any number: ``mangle(400)``
+        rc 0, measured), else ``anglestyle stdarrow``, 28.64 degrees.  An
+        unknown name is noted and drawn at the default, as twoway notes it
+        ("named style abc not found in class anglestyle")."""
+        v = str(options.get("mangle", "") or "").strip()
+        deg = _DASH_ARROW_ANGLE_DEG
+        if v:
+            got = _dash_anglestyle_degrees(v)
+            if got is None and re.fullmatch(
+                    r"[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?", v):
+                try:
+                    got = float(v)
+                except (ValueError, OverflowError):
+                    got = None
+                if got is not None and not math.isfinite(got):
+                    got = None
+            if got is None:
+                _dash_style_note("mangle", v, "angle")
+            else:
+                deg = got
+        return math.radians(deg)
+
+    def _add_custom_heads(self, fig, pc_source, y1var, x1var, y2var, x2var,
+                          ends, barb_px, angle, line, fill, line_alpha=1.0):
+        """Draw twoway's arrowheads over the rows of *pc_source* (WP-31 C1,
+        DECISIONS D1): one head source (``xs``, ``ys``, ``row``), empty
+        here, filled in the browser by _DASH_ARROW_HEAD_JS, and one glyph
+        over it -- ``multi_line`` (two open strokes, A-T-C) when *barb_px*
+        is 0, else ``patches`` (T-A-B-C) filled in *fill*.  *line* is the
+        (colour, width) pair.  The script runs from document_ready (found
+        by ``_dash_arrow_head_hooks``), on every range change and on the
+        shaft source's data change (the range triggers are wired at
+        assembly, on the finished figure's ranges).  Bokeh's ArrowHead is not used: its
+        half-angle is a fixed 26.57 degrees with no depth.
+
+        Returns:
+            (head renderer, head source).
+        """
+        from bokeh.models import CustomJS as _CJS
+        heads = ColumnDataSource(data={"xs": [], "ys": [], "row": []})
+        kw = dict(xs="xs", ys="ys", source=heads, line_color=line[0],
+                  line_width=line[1])
+        if line_alpha != 1.0:
+            kw["line_alpha"] = line_alpha
+        if barb_px == 0:
+            r = fig.multi_line(**kw)
+        else:
+            if line_alpha != 1.0:
+                kw["fill_alpha"] = line_alpha
+            r = fig.patches(fill_color=fill, **kw)
+        r.tags = ["dash-arrowhead"]
+        cb = _CJS(args=dict(fig=fig, src=pc_source, heads=heads, hr=r,
+                            x1=x1var, y1=y1var, x2=x2var, y2=y2var,
+                            hpx=self._HEAD_PX, ends=int(ends),
+                            barb=float(barb_px), ang=float(angle)),
+                  code=_DASH_ARROW_HEAD_JS, name="dash_arrow_head")
+        pc_source.js_on_change("data", cb)
+        # The range triggers are wired by _dash_arrow_head_hooks when the
+        # page is assembled, on the ranges the finished figure holds.
+        return r, heads
+
     def map_pcarrow(
         self,
         fig: Any,
@@ -19694,8 +19869,10 @@ class GlyphMapper:
     ) -> list:
         """Add paired-coordinate arrow glyphs (segments + arrowheads) to *fig*.
 
-        Each observation draws a directed Arrow from (x1var, y1var) to
-        (x2var, y2var) using Bokeh's Arrow annotation with an OpenHead.
+        Each observation draws a shaft from (x1var, y1var) to (x2var,
+        y2var) and twoway's head at the second point (WP-31 C1:
+        ``_add_custom_heads``, ``_gr_arrowhead``'s geometry from msize(),
+        mangle() and barbsize(), coloured from the marker options).
 
         Args:
             fig:     Bokeh Figure object.
@@ -19707,15 +19884,19 @@ class GlyphMapper:
             options: Translated plot-level options dict.
 
         Returns:
-            List with the segment GlyphRenderer (Arrow annotations are layout objects).
+            List with the segment GlyphRenderer (the head glyph is drawn
+            beside it, over its own source).
         """
         # Masked by the layer's own view BEFORE the rows are dropped.  The
         # view's BooleanFilter is sized to the CALLER's source; the source
         # built below is shorter once rows with missing values go, and Bokeh
         # applies a mask by position -- so attaching the view to the rebuilt
         # source selected the wrong observations.
+        # The head's size, one number for the head and the label gap
+        # (WP-31 C1), carried per row in the shaft's source.
+        _hpx = self._arrow_head_px(options, color_idx)
         clean = self._pc_clean_with_label(source, y1var, x1var, y2var, x2var,
-                                          options, view)
+                                          options, view, head_px=_hpx)
         # hover()'s variables ride along; clean's index is the source row.
         pc_source = ColumnDataSource(self._carry_cols(
             source, dict(ColumnDataSource(clean).data),
@@ -19746,32 +19927,44 @@ class GlyphMapper:
         self._style_restyle(seg, options, ("aline",))
         self._apply_line_opts(seg, options, role="aline")
 
-        # Resolve line_width for Arrow annotations (same value as segment after opts applied)
+        # The shaft's width, after its options (the head's stroke falls
+        # back on it when the scheme sets no arrow width).
         arrow_lw = seg.glyph.line_width
-        _la = seg.glyph.line_alpha
-        _hk = {} if _la == 1.0 else {"line_alpha": _la}
 
-        # ONE Arrow annotation over pc_source, the copy the shaft draws:
-        # its heads are the rows that copy holds, so they follow exactly the
-        # rows the shaft follows -- the saved page's filter script rewrites
-        # the copy (it is a derived source, carrying __dash_row__), and the
-        # served redraw copies fresh rows onto it.  One annotation per row
-        # held literal coordinates no script reached, so after a move the
-        # shaft went and the head stayed (BUGS.md, 24sep2026).  It is also
-        # one model however many rows: one add_layout() per row was
-        # quadratic (WP-22: 8,000 arrows took 46 s).  A date column is a
-        # datetime64 array in pc_source, which BokehJS reads as epoch
-        # milliseconds, the axis's unit.
-        self._add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var,
-                              color, arrow_lw,
-                              end=OpenHead(size=10, line_color=color, **_hk),
-                              line_alpha=_la)
+        # The heads are computed from pc_source, the copy the shaft draws,
+        # by one script: they follow exactly the rows the shaft follows --
+        # the saved page's filter script rewrites the copy (a derived
+        # source, carrying __dash_row__), and the served redraw copies
+        # fresh rows onto it; either fires the script (BUGS.md, 24sep2026:
+        # literal coordinates stayed behind after a move).  One glyph
+        # however many rows (WP-22: one model per row was quadratic).
+        self._add_custom_heads(
+            fig, pc_source, y1var, x1var, y2var, x2var, ends=1,
+            barb_px=self._arrow_barb(options, _hpx),
+            angle=self._arrow_angle(options),
+            # The head is markerstyle p#arrow: lcolor() and lwidth() are
+            # the shaft's alone (measured 13oct2026: under lcolor(red)
+            # lwidth(thick) the heads stay the series colour at 0.3 rs).
+            line=self._arrow_head_line(
+                options, self.scheme.default_color(color_idx, "pcarrow"),
+                arrow_lw, color_idx),
+            fill=self._arrow_head_fill(
+                options, self.scheme.default_color(color_idx, "scatter")),
+            line_alpha=self._scheme_alpha_kw(color_idx, "pcarrow").get(
+                "line_alpha", 1.0))
 
         # Labels at the tail, (x1, y1), where twoway puts them without
         # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
         # first point).  dash drew no pcarrow label at all.
-        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+        # headlabel puts them at the second point, (x2, y2) (WP-31 C1;
+        # measured, five labels, all at the head).  The gap reads the
+        # head's size.
+        _at_head = bool(str(options.get("headlabel", "") or "").strip())
+        self._apply_mlabel_opts(fig, pc_source, options,
+                                x2var if _at_head else x1var,
+                                y2var if _at_head else y1var,
+                                radius_px=self._mlabel_radius_px(options, _hpx),
+                                color_idx=color_idx)
         return [seg]
 
     def map_pcbarrow(
@@ -19788,8 +19981,9 @@ class GlyphMapper:
     ) -> list:
         """Add paired-coordinate bidirectional arrow glyphs to *fig*.
 
-        Each observation draws a bidirectional Arrow from (x1var, y1var) to
-        (x2var, y2var) using Bokeh's Arrow annotation with NormalHead on both ends.
+        Each observation draws a shaft from (x1var, y1var) to (x2var,
+        y2var) and twoway's head at both points (WP-31 C1: open strokes in
+        the series colour by default; NormalHead filled them black).
 
         Args:
             fig:     Bokeh Figure object.
@@ -19801,15 +19995,19 @@ class GlyphMapper:
             options: Translated plot-level options dict.
 
         Returns:
-            List with the segment GlyphRenderer (Arrow annotations are layout objects).
+            List with the segment GlyphRenderer (the head glyph is drawn
+            beside it, over its own source).
         """
         # Masked by the layer's own view BEFORE the rows are dropped.  The
         # view's BooleanFilter is sized to the CALLER's source; the source
         # built below is shorter once rows with missing values go, and Bokeh
         # applies a mask by position -- so attaching the view to the rebuilt
         # source selected the wrong observations.
+        # The head's size, one number for the head and the label gap
+        # (WP-31 C1), carried per row in the shaft's source.
+        _hpx = self._arrow_head_px(options, color_idx)
         clean = self._pc_clean_with_label(source, y1var, x1var, y2var, x2var,
-                                          options, view)
+                                          options, view, head_px=_hpx)
         # hover()'s variables ride along; clean's index is the source row.
         pc_source = ColumnDataSource(self._carry_cols(
             source, dict(ColumnDataSource(clean).data),
@@ -19840,24 +20038,37 @@ class GlyphMapper:
         self._style_restyle(seg, options, ("aline",))
         self._apply_line_opts(seg, options, role="aline")
 
-        # Resolve line_width for Arrow annotations (same value as segment after opts applied)
+        # The shaft's width, after its options (the head's stroke falls
+        # back on it when the scheme sets no arrow width).
         arrow_lw = seg.glyph.line_width
-        _la = seg.glyph.line_alpha
-        _hk = {} if _la == 1.0 else {"line_alpha": _la}
 
-        # One Arrow annotation over the shaft's copy, as map_pcarrow's.
-        self._add_arrow_heads(fig, pc_source, y1var, x1var, y2var, x2var,
-                              color, arrow_lw,
-                              end=NormalHead(size=10, line_color=color, **_hk),
-                              start=NormalHead(size=10, line_color=color,
-                                               **_hk),
-                              line_alpha=_la)
+        self._add_custom_heads(
+            fig, pc_source, y1var, x1var, y2var, x2var, ends=2,
+            barb_px=self._arrow_barb(options, _hpx),
+            angle=self._arrow_angle(options),
+            # The head is markerstyle p#arrow: lcolor() and lwidth() are
+            # the shaft's alone (measured 13oct2026: under lcolor(red)
+            # lwidth(thick) the heads stay the series colour at 0.3 rs).
+            line=self._arrow_head_line(
+                options, self.scheme.default_color(color_idx, "pcbarrow"),
+                arrow_lw, color_idx),
+            fill=self._arrow_head_fill(
+                options, self.scheme.default_color(color_idx, "scatter")),
+            line_alpha=self._scheme_alpha_kw(color_idx, "pcbarrow").get(
+                "line_alpha", 1.0))
 
         # Labels at the first point, (x1, y1), as twoway labels pcbarrow
         # without headlabel (measured, ten labels, all at the first point).
         # dash drew no pcbarrow label at all.
-        self._apply_mlabel_opts(fig, pc_source, options, x1var, y1var,
-                                radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
+        # headlabel puts them at the second point, (x2, y2) (WP-31 C1;
+        # measured, five labels, all at the head).  The gap reads the
+        # head's size.
+        _at_head = bool(str(options.get("headlabel", "") or "").strip())
+        self._apply_mlabel_opts(fig, pc_source, options,
+                                x2var if _at_head else x1var,
+                                y2var if _at_head else y1var,
+                                radius_px=self._mlabel_radius_px(options, _hpx),
+                                color_idx=color_idx)
         return [seg]
 
     def map_pccapsym(
@@ -31443,6 +31654,82 @@ _DASH_AXIS_ZOOM_JS = r"""
     }
 })();
 """
+
+#: WP-31 C1: twoway's default arrowhead half-angle in degrees, ``anglestyle
+#: stdarrow`` (scheme-s2color.scheme:277, ``anglestyle parrow stdarrow``;
+#: measured 13oct2026, ``.style.marker.angle.val`` 28.64,
+#: test/fixtures/arrowhead_truth.json).  ``mangle()`` replaces it per layer.
+_DASH_ARROW_ANGLE_DEG = 28.64
+
+#: WP-31 C1 (DECISIONS D1): the arrowheads of pcarrow, pcbarrow and
+#: pcarrowi as twoway's ``_gr_arrowhead`` draws them (_gr_arrowhead.ado,
+#: arrowhead_simple and arrowhead_barb): in screen pixels, for each row of
+#: the shaft's source ``src``, the tip T, A = T + msz*(cos(phi+pi+ang),
+#: sin(phi+pi+ang)), C likewise at -ang, and with a barb B = T +
+#: barb*cos(ang)*(cos(phi+pi), sin(phi+pi)); open (A-T-C) when ``barb`` is 0,
+#: closed (T-A-B-C) otherwise; ``ends`` 2 repeats it at the start point.
+#: ``msz`` is the row's ``hpx`` column, so a saved move and a served redraw
+#: carry it with the row.  The vertices are turned back into data units by
+#: the head renderer ``hr``'s own scales (a yaxis(2) layer reads its range)
+#: and written to ``heads`` in one assignment.  It runs on document_ready,
+#: on every range change, on the shaft source's data change and, through a
+#: ResizeObserver it installs once, on a resize; before the first render
+#: there is no view and it returns.  A row with a non-finite coordinate
+#: draws no head (_gr_arrowhead.ado exits).  One script for both modes.
+_DASH_ARROW_HEAD_JS = r"""
+const dash_heads = () => {
+    const view = Bokeh.index.find_one(fig);
+    if (view == null || view.frame == null) return;
+    if (typeof ResizeObserver !== "undefined" && !heads.tags.includes("dash-ro")) {
+        const cv = view.canvas_view;
+        const el = cv != null ? cv.el : view.el;
+        if (el != null) {
+            heads.tags.push("dash-ro");
+            new ResizeObserver(() => dash_heads()).observe(el);
+        }
+    }
+    const fr = view.frame;
+    const xs_ = (fr.x_scales && fr.x_scales.get(hr.x_range_name)) || fr.x_scale;
+    const ys_ = (fr.y_scales && fr.y_scales.get(hr.y_range_name)) || fr.y_scale;
+    if (xs_ == null || ys_ == null) return;
+    const d = src.data;
+    const n = d[x1] ? d[x1].length : 0;
+    const a = Number(ang), b = Number(barb);
+    const xs = [], ys = [], row = [];
+    const head = (TX, TY, phi, msz, i) => {
+        const ax = TX + msz * Math.cos(phi + Math.PI + a);
+        const ay = TY + msz * Math.sin(phi + Math.PI + a);
+        const cx = TX + msz * Math.cos(phi + Math.PI - a);
+        const cy = TY + msz * Math.sin(phi + Math.PI - a);
+        let px, py;
+        if (b === 0) {
+            px = [ax, TX, cx]; py = [ay, TY, cy];
+        } else {
+            const bb = b * Math.cos(a);
+            px = [TX, ax, TX + bb * Math.cos(phi + Math.PI), cx];
+            py = [TY, ay, TY + bb * Math.sin(phi + Math.PI), cy];
+        }
+        xs.push(px.map((v) => xs_.invert(v)));
+        ys.push(py.map((v) => ys_.invert(v)));
+        row.push(i);
+    };
+    for (let i = 0; i < n; i++) {
+        const X1 = xs_.compute(Number(d[x1][i])), Y1 = ys_.compute(Number(d[y1][i]));
+        const X2 = xs_.compute(Number(d[x2][i])), Y2 = ys_.compute(Number(d[y2][i]));
+        const msz = Number(d[hpx] ? d[hpx][i] : NaN);
+        if (![X1, Y1, X2, Y2, msz].every(Number.isFinite)) continue;
+        head(X2, Y2, Math.atan2(Y2 - Y1, X2 - X1), msz, i);
+        if (Number(ends) === 2) head(X1, Y1, Math.atan2(Y1 - Y2, X1 - X2), msz, i);
+    }
+    // Nothing new (a range callback after a write of the same picture):
+    // no write, so no loop.
+    const old = heads.data;
+    if (old && JSON.stringify(old.xs) === JSON.stringify(xs)
+        && JSON.stringify(old.ys) === JSON.stringify(ys)) return;
+    heads.data = {xs: xs, ys: ys, row: row};
+};
+dash_heads();
+"""
 for _tok, _val in (("@@DASH_MAX_TICKS@@", _MAX_AXIS_TICKS),
                    ("@@DASH_SIDE@@", _DASH_NATSCALE_SIDE),
                    ("@@DASH_UNCOVERED@@", _DASH_NATSCALE_UNCOVERED),
@@ -38405,6 +38692,35 @@ def _dash_by_stack_hooks(models):
     return out
 
 
+def _dash_arrow_head_hooks(models):
+    """The arrowhead scripts (``CustomJS`` named ``dash_arrow_head``, WP-31
+    C1) under *models*, for the document's ``document_ready`` hooks, beside
+    ``_dash_by_stack_hooks``'.  Each is also put on ``start`` and ``end`` of
+    every range its figure holds now, once: pan, zoom and reset keep the
+    head's pixel size.  Both modes call it on the finished layout."""
+    out, seen = [], set()
+    for root in models or ():
+        refs = root.references() if hasattr(root, "references") else ()
+        for m in refs:
+            if getattr(m, "name", "") != "dash_arrow_head" or \
+                    type(m).__name__ != "CustomJS" or m.id in seen:
+                continue
+            seen.add(m.id)
+            out.append(m)
+            fig = (m.args or {}).get("fig")
+            if fig is None:
+                continue
+            rngs = [fig.x_range, fig.y_range]
+            rngs += list((fig.extra_x_ranges or {}).values())
+            rngs += list((fig.extra_y_ranges or {}).values())
+            for rng in rngs:
+                for ev in ("start", "end"):
+                    have = rng.js_property_callbacks.get("change:" + ev, [])
+                    if not any(c is m for c in have):
+                        rng.js_on_change(ev, m)
+    return out
+
+
 def _dash_by_layout_options(graph_opts):
     """The grid options ``_dash_layout_cell`` places a by() graph's panels
     with: ``_dash_by_grid_options`` and, without rows() or cols(), the
@@ -44451,7 +44767,8 @@ class DashRenderer:
         # callback, which components() serialises only when the models
         # are that document's roots.  A page with no by() grid is
         # serialised as before.
-        _by_hooks = _dash_by_stack_hooks(all_models)
+        _by_hooks = (_dash_by_stack_hooks(all_models)
+                     + _dash_arrow_head_hooks(all_models))
         if _by_hooks:
             from bokeh.document import Document as _HookDoc
             # file_html() left the models in _dummy_col's document.
@@ -46115,7 +46432,8 @@ class DashRenderer:
         self._last_layout_root = layout_root
         # The stacked view of every by() grid (WP-30 P1.15c), as a
         # callback of the document file_html() serialises.
-        _by_hooks = _dash_by_stack_hooks([layout_root])
+        _by_hooks = (_dash_by_stack_hooks([layout_root])
+                     + _dash_arrow_head_hooks([layout_root]))
         if _by_hooks:
             from bokeh.document import Document as _HookDoc
             _hook_doc = _HookDoc()
@@ -46781,7 +47099,9 @@ class ServerAppBuilder:
                       # layout(bs)'s served half rows and KPI cell heights,
                       # the saved page's own numbers (WP-28 E14).
                       "_DASH_BS_LG_FROM_PX", "_DASH_KPI_CELL_MIN_PX",
-                      "_DASH_KPI_CELL_MIN_NARROW_PX"):
+                      "_DASH_KPI_CELL_MIN_NARROW_PX",
+                      # The arrowheads' script and default angle (WP-31 C1).
+                      "_DASH_ARROW_HEAD_JS", "_DASH_ARROW_ANGLE_DEG"):
             _val = getattr(_mod, _name, None)
             if _val is None:
                 continue
@@ -47184,6 +47504,8 @@ class ServerAppBuilder:
                          "_dash_by_keys", "_dash_by_layout_options",
                          "_dash_by_side", "_dash_by_side_grid",
                          "_dash_by_stack_hook", "_dash_by_stack_hooks",
+                         # The arrowheads' document_ready hooks (WP-31 C1).
+                         "_dash_arrow_head_hooks",
                          "_dash_by_label_box",
                          # The columns a layer's options name.
                          "_dash_mlabel_names", "_dash_option_columns",
@@ -50761,7 +51083,8 @@ class ServerAppBuilder:
             '',
             '    doc.add_root(layout)',
             "    # The stacked view of every by() grid (WP-30 P1.15c).",
-            "    _by_hooks = _dash_by_stack_hooks([layout])",
+            "    _by_hooks = (_dash_by_stack_hooks([layout])",
+            "                 + _dash_arrow_head_hooks([layout]))",
             "    if _by_hooks:",
             "        doc.js_on_event('document_ready', *_by_hooks)",
             "    doc.title = title_text or 'dash'",

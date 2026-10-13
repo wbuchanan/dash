@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "C1": "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped",
     "C2": "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth",
     "B5a": "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)",
     "C10a": "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)",

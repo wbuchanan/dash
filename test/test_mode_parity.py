@@ -69,7 +69,7 @@ import pytest
 pytestmark = pytest.mark.batch
 from bokeh.document import Document
 from bokeh.models import (Arrow, Band, BoxAnnotation, ColorBar,
-                          ColumnDataSource, Div,
+                          ColumnDataSource, CustomJS, Div,
                           GridBox, GridPlot, HoverTool,
                           Label, LabelSet, Legend, Node, RangeSlider, Select,
                           Slider, Span, TabPanel, Tabs, Title, ToolProxy,
@@ -655,8 +655,47 @@ def _annotations(fig):
             out.append({"kind": "Band"})
         elif isinstance(r, Arrow):
             out.append({"kind": "Arrow", **_arrow_heads(r)})
+    # WP-31 C1: pcarrow's heads are a glyph the page's script fills from the
+    # rows of the shaft's source; profiled as the arrows they head, with
+    # the head's form and style.
+    for m in fig.references():
+        if isinstance(m, CustomJS) and m.name == "dash_arrow_head":
+            out.append({"kind": "Arrow", **_script_heads(m)})
     return sorted(out, key=lambda d: json.dumps(d, sort_keys=True,
                                                 default=str))
+
+
+def _script_heads(cb):
+    """What one arrowhead script (WP-31 C1) draws, in _arrow_heads' form:
+    ``start``/``end`` its head form at each end, the head glyph's colour
+    and width, and the (x1, y1, x2, y2) of every row of the source it
+    reads with four finite coordinates."""
+    a = cb.args
+    data = dict(a["src"].data)
+    hr = a["hr"]
+    form = (type(hr.glyph).__name__, _num(float(a["barb"])),
+            _num(float(a["ang"])))
+
+    def at(col, i):
+        try:
+            return _num(float(dr._dash_float_values(
+                pd.Series([data[col][i]]))[0]))
+        except (TypeError, ValueError):
+            return str(data[col][i])
+
+    cols = [a[k] for k in ("x1", "y1", "x2", "y2")]
+    rows = []
+    for i in range(len(data.get(cols[0], []))):
+        row = tuple(at(c, i) for c in cols)
+        if all(isinstance(v, float) and not math.isnan(v) for v in row):
+            rows.append(row)
+    return {"start": str(form) if int(a["ends"]) == 2 else None,
+            "end": str(form), "color": hr.glyph.line_color,
+            "width": hr.glyph.line_width,
+            "fill": getattr(hr.glyph, "fill_color", None),
+            "head_px": sorted({_num(float(v)) for v in
+                               data.get(a["hpx"], [])}),
+            "arrows": sorted(rows)}
 
 
 def _arrow_heads(a):
@@ -2336,6 +2375,16 @@ CORPUS = [
           [plot_for("lpoly", {"kernel": "gaussian", "degree": "1"})]),
     _case("mband bands(5) (WP-31 C3)",
           [plot_for("mband", {"bands": "5"})]),
+    # WP-31 C1: arrowheads -- sized, coloured and filled from the marker
+    # options, headlabel at the head, alike in both modes.
+    _case("pcarrow msize(large) mcolor(red) (WP-31 C1)",
+          [plot_for("pcarrow", {"msize": "large", "mcolor": "red"})]),
+    _case("pcbarrow barbsize(medium) mfcolor(green) (WP-31 C1)",
+          [plot_for("pcbarrow", {"barbsize": "medium", "mfcolor": "green"})]),
+    _case("pcarrowi headlabel with labels (WP-31 C1)",
+          [plot_for("pcarrowi", {"mlabcolor": "navy", "headlabel": "headlabel"},
+                    values=[[20.0, 3000.0, 30.0, 4000.0, "A", 3],
+                            [25.0, 2000.0, 22.0, 3500.0, "B", None]])]),
 ]
 
 
@@ -3015,6 +3064,9 @@ MOVE_CORPUS = [
     # 24sep2026: the heads were one fixed annotation per row).
     *[_move_case(f"{t} with its own in, {_MOVES[0][0]}", _MOVES[0],
                  [plot_for(t, in_expr="3/8")]) for t in ("pcarrow", "pcbarrow")],
+    # WP-31 C1: arrowheads -- the head size column follows the rows.
+    _move_case("pcarrow msize(large), dropdown to Foreign (WP-31 C1)",
+               _MOVES[0], [plot_for("pcarrow", {"msize": "large"})]),
     _move_case("line with marker labels, dropdown", _MOVES[0],
                [plot_for("line", {"mlabel": "rep"})]),
     # twoway draws no marker label on a line (test_marker_label_parity.py),

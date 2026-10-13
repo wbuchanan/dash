@@ -377,7 +377,7 @@ and now matches Stata.
 
 **WP-31 (drop-in GAPS3, 10oct2026)**
 
-<!-- WP-31 C1 -->
+- pcarrow, pcbarrow and pcarrowi heads are drawn as twoway draws them, in the saved page and the served app: sized by msize() (the scheme's symbolsize parrow, 1.53 relative units, by default; they were a fixed 10 pixels), stroked in mcolor()/mlcolor() at mlwidth() and filled in mfcolor() or the series colour (pcbarrow's heads were black); mangle() sets the head angle (28.64 degrees by default; Bokeh's fixed 26.57-degree head is no longer used), barbsize() the barb depth (open strokes at zero) and headlabel moves the labels to the head. lcolor() and lwidth() now style the shaft alone, as in twoway; they coloured and widened the head too. (WP-31, C1)
 
 <!-- WP-31 C2 -->
 

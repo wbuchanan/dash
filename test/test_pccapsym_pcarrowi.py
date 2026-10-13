@@ -29,7 +29,7 @@ import warnings
 
 import pandas as pd
 import pytest
-from bokeh.models import Arrow, ColumnDataSource, LabelSet, OpenHead
+from bokeh.models import Arrow, ColumnDataSource, LabelSet
 from bokeh.models.glyphs import Scatter, Segment
 from bokeh.plotting import figure
 
@@ -230,12 +230,18 @@ class TestMapPcarrowi:
         assert [type(r.glyph) for r in out_i] == [type(r.glyph) for r in out_v]
         for attr in ("x0", "y0", "x1", "y1"):
             assert _col(out_i[0], attr) == _col(out_v[0], attr)
-        # fig.center, not fig.select(): select() walks a set, so its order is
-        # not the drawing order; center is.
-        heads_i = [a for a in fig_i.center if isinstance(a, Arrow)]
-        heads_v = [a for a in fig_v.center if isinstance(a, Arrow)]
+        # Flipped (WP-31 C1): an OpenHead Arrow was wrong because twoway's
+        # head is _gr_arrowhead's geometry, two open strokes in the series
+        # colour by default; a filled head needs barbsize(); Bokeh's
+        # ArrowHead is no longer used.  pcarrowi's head glyph and script
+        # args equal pcarrow's from the same numbers.
+        assert not _arrow_annotations(fig_i) and not _arrow_annotations(fig_v)
+        heads_i, heads_v = _head_cbs(fig_i), _head_cbs(fig_v)
         assert len(heads_i) == len(heads_v) == 1
-        assert all(isinstance(a.end, OpenHead) for a in heads_i)
+        assert [type(r.glyph).__name__ for r in _head_glyphs(fig_i)] == \
+            [type(r.glyph).__name__ for r in _head_glyphs(fig_v)] == ["MultiLine"]
+        for k in ("ends", "barb", "ang", "hpx"):
+            assert heads_i[0].args[k] == heads_v[0].args[k]
         assert _head_rows(heads_i) == _head_rows(heads_v)
         assert len(_head_rows(heads_i)) == 2
 
@@ -246,8 +252,12 @@ class TestMapPcarrowi:
         assert seg.glyph.line_color == "#ff00ff"
         assert seg.glyph.line_width == gm.tr.translate_lwidth("thick")
         assert list(seg.glyph.line_dash) == list(gm.tr.translate_lpattern("dash"))
-        (head,) = fig.select({"type": Arrow})
-        assert head.line_color == "#ff00ff"
+        # Flipped (WP-31 C1): the head in the shaft's lcolor() was wrong
+        # because twoway's line options are the shaft's (measured
+        # 13oct2026: lcolor(red) lwidth(thick) leave the heads in the
+        # series colour); mcolor()/mlcolor() colour the head.
+        (head,) = _head_glyphs(fig)
+        assert head.glyph.line_color == gm.scheme.default_color(0, "pcarrow")
 
     def test_the_default_colour_is_pcarrows(self):
         gm, _, (seg,), _ = self._draw([[0, 0, 1, 1]], color_idx=3)
@@ -299,8 +309,7 @@ class TestMapPcarrowi:
     def test_a_missing_coordinate_draws_neither_arrow_nor_label(self):
         _, fig, (seg,), _ = self._draw([[0, 0, None, 1, "A", 3],
                                         [1, 1, 2, 2]])
-        assert _head_rows(fig.select({"type": Arrow})) == [(1.0, 1.0, 2.0,
-                                                            2.0)]
+        assert _head_rows(_head_cbs(fig)) == [(1.0, 1.0, 2.0, 2.0)]
         assert _col(seg, "x0") == [1.0]
         assert not _labelsets(fig)
 
@@ -360,7 +369,8 @@ class TestMapPcarrowi:
                 warnings.simplefilter("ignore")
                 dr.GlyphMapper().map_pcarrowi(
                     fig, [[i, i, i + 1, i + 1] for i in range(n)], {})
-            heads = [a for a in fig.center if isinstance(a, Arrow)]
+            # WP-31 C1: one head script over the shaft's rows.
+            heads = _head_cbs(fig)
             assert len(heads) == 1 and len(_head_rows(heads)) == n
             return len(seen)
 
@@ -486,8 +496,22 @@ def _labels(figs):
 
 
 def _heads(figs):
-    return sorted(_head_rows([a for f in figs
-                              for a in f.select({"type": Arrow})]))
+    return sorted(_head_rows([a for f in figs for a in _head_cbs(f)]))
+
+
+def _arrow_annotations(fig):
+    return [a for a in fig.center if isinstance(a, Arrow)]
+
+
+def _head_cbs(fig):
+    """The arrowhead scripts of *fig* (WP-31 C1)."""
+    from bokeh.models import CustomJS
+    return [m for m in fig.references()
+            if isinstance(m, CustomJS) and m.name == "dash_arrow_head"]
+
+
+def _head_glyphs(fig):
+    return [r for r in fig.renderers if "dash-arrowhead" in (r.tags or [])]
 
 
 def _head_rows(arrows):
@@ -497,6 +521,14 @@ def _head_rows(arrows):
     shaft's source, so its heads follow the rows the shaft follows."""
     out = []
     for a in arrows:
+        if not isinstance(a, Arrow):
+            # An arrowhead script (WP-31 C1): its source's rows.
+            ar = a.args
+            cols = [list(ar["src"].data[ar[k]]) for k in ("x1", "y1", "x2",
+                                                         "y2")]
+            out.extend(tuple(float(c[i]) for c in cols)
+                       for i in range(len(cols[0])))
+            continue
         specs = [getattr(a, k) for k in ("x_start", "y_start", "x_end",
                                         "y_end")]
         names = [getattr(v, "field", None) or (v.get("field")

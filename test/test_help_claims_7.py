@@ -1085,10 +1085,11 @@ class TestTheSecondAxisIsItsOwn:
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_arrowheads_go_on_the_second_axis(self, mode):
-        from bokeh.models import Arrow
+        # WP-31 C1: the head is a glyph renderer the script draws in its
+        # own range's scale (an Arrow annotation before).
         fig, _ = _render(mode, [plot_for("line"),
                                 plot_for("pcarrow", {"yaxis": "2"})])
-        heads = [m for m in fig.center if isinstance(m, Arrow)]
+        heads = [r for r in fig.renderers if "dash-arrowhead" in (r.tags or [])]
         assert heads and all(h.y_range_name == "y2" for h in heads)
 
     @pytest.mark.parametrize("mode", _MODES)

@@ -207,6 +207,269 @@ if inlist("`only'", "", "S01") & `: list posof "S01" in w31_run' {
 }
 * ==== end S01 ====
 
+// S02 helpers (WP-31 C1).  _u02_heads: what a registered dash arrow graph
+// draws for its heads, saved (DashRenderer) and served (the generated
+// app's make_document), into globals u02_<what>_<mode>: hpx (the head
+// size column), glyph (MultiLine/Patches), line, fill, ends, barb, ang,
+// lab (the label set's x field) and rows (the rows the head script reads),
+// and same (1 when both modes' head scripts and args agree).
+// _u02_chrome: the saved page drawn in headless Chrome, its head strokes'
+// length / hpx (min, max) and half-angles (min, max) into u02_c_*.
+// _u02_msize: the pixel size of a registered dash scatter's marker.
+python:
+import os as _u02_os, sys as _u02_sys
+for _u02_p in (_u02_os.path.abspath(".."), _u02_os.path.abspath(".")):
+    if _u02_p not in _u02_sys.path:
+        _u02_sys.path.insert(0, _u02_p)
+
+
+def _u02_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        page = r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u02_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u02_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    return r, page, doc
+
+
+def _u02_rec(models):
+    from bokeh.models import CustomJS, LabelSet
+    cbs, labs = {}, []
+    for root in models:
+        for m in root.references():
+            if isinstance(m, CustomJS) and m.name == "dash_arrow_head":
+                cbs[m.id] = m
+            elif isinstance(m, LabelSet):
+                labs.append(m)
+    [cb] = cbs.values()
+    a, g = cb.args, cb.args["hr"].glyph
+    hpx = sorted(set(float(v) for v in a["src"].data[a["hpx"]]))
+    lab = ""
+    if labs:
+        x = labs[0].x
+        lab = x if isinstance(x, str) else getattr(x, "field", "") or ""
+    return {"hpx": " ".join("%.6f" % v for v in hpx),
+            "glyph": type(g).__name__, "line": str(g.line_color),
+            "fill": str(getattr(g, "fill_color", "")), "ends": a["ends"],
+            "barb": "%.6f" % float(a["barb"]), "ang": "%.6f" % float(a["ang"]),
+            "lab": lab, "rows": len(a["src"].data[a["x1"]]),
+            "sig": (cb.code, a["ends"], float(a["barb"]), float(a["ang"]),
+                    hpx, type(g).__name__, str(g.line_color),
+                    str(getattr(g, "fill_color", "")), lab)}
+
+
+def _u02_heads(sp, dp, app):
+    from sfi import Macro
+    r, page, doc = _u02_docs(sp, dp, app)
+    sv = _u02_rec(list(r.figures.values()))
+    vv = _u02_rec(list(doc.roots))
+    for mode, rec in (("s", sv), ("v", vv)):
+        for k, v in rec.items():
+            if k != "sig":
+                Macro.setGlobal("u02_%s_%s" % (k, mode), str(v))
+    Macro.setGlobal("u02_same", "1" if sv["sig"] == vv["sig"] else "0")
+    Macro.setGlobal("u02_page", "")
+    with open(app + ".html", "w", encoding="utf-8") as fh:
+        fh.write(page)
+
+
+def _u02_chrome(app):
+    from sfi import Macro
+    import test_arrowheads as ta
+    with open(app + ".html", encoding="utf-8") as fh:
+        page = fh.read()
+    got = ta.chrome_heads(page)
+    Macro.setGlobal("u02_c_err", str(got.get("err", "")))
+    ratios, halves = [], []
+    for layer in got.get("heads", []):
+        r_, h_ = ta.head_geometry(layer)
+        ratios += r_
+        halves += h_
+    Macro.setGlobal("u02_c_n", str(len(ratios)))
+    if ratios:
+        Macro.setGlobal("u02_c_rmin", "%.6f" % min(ratios))
+        Macro.setGlobal("u02_c_rmax", "%.6f" % max(ratios))
+        Macro.setGlobal("u02_c_amin", "%.6f" % min(halves))
+        Macro.setGlobal("u02_c_amax", "%.6f" % max(halves))
+
+
+def _u02_msize(sp, dp):
+    import warnings
+    from sfi import Macro
+    import dash_render as dr
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    sizes = [rr.glyph.size for f in r.figures.values() for rr in f.renderers
+             if type(rr.glyph).__name__ == "Scatter"]
+    Macro.setGlobal("u02_msize", "%.6f" % float(sizes[0]))
+end
+
+capture program drop _u02_data
+program define _u02_data
+    version 19
+    // The extract script's five rows, y1 x1 y2 x2: (1 1 2 2) (2 1 3 3)
+    // (3 2 4 2) (4 3 5 4) (5 4 6 6).
+    clear
+    quietly set obs 5
+    quietly generate y1 = _n
+    quietly generate x1 = real(word("1 1 2 3 4", _n))
+    quietly generate y2 = _n + 1
+    quietly generate x2 = real(word("2 3 2 4 6", _n))
+    quietly generate y2m = y2
+    quietly replace y2m = . in 3
+    quietly generate str1 lab = word("a b c d e", _n)
+end
+
+// _u02_run k "dash command" dir: register and measure one graph.
+capture program drop _u02_run
+program define _u02_run
+    version 19
+    args k cmd dir
+    dash clear
+    quietly dash `cmd' name(zu02`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    // A program's python: line has a namespace of its own; the helpers
+    // live in __main__.
+    python: __import__("__main__")._u02_heads("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+* ==== S02 C1: Arrowheads ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S02") & `: list posof "S02" in w31_run' {
+    display as text "S02 start " c(current_date) " " c(current_time)
+    local u2d "`w31_work'/s02"
+    capture mkdir "`u2d'"
+    local u02_scheme "`c(scheme)'"
+    set scheme s2color
+    capture graph drop _all
+    _u02_data
+
+    // ------------------------------------------------------------
+    // U02-01: the default head is twoway's: msize() medium long (the
+    // marker dash draws for scatter, msize(medium)), at 28.64 degrees.
+    // ------------------------------------------------------------
+    quietly twoway pcarrow y1 x1 y2 x2, name(u02t, replace)
+    local tsz "`.u02t.plotregion1.plot1.style.marker.size.val'"
+    local tang "`.u02t.plotregion1.plot1.style.marker.angle.val'"
+    _w31_expect U02-01 "(abs(`tsz' - 1.52778) < 1e-4) & (`tang' == 28.64)" "twoway's head size `tsz', angle `tang'"
+    dash clear
+    quietly dash scatter y1 x1, msize(medium) name(zu02m)
+    _dash_serve_spec, specpath("`u2d'/sm.json") datapath("`u2d'/dm.json")
+    python: _u02_msize("`u2d'/sm.json", "`u2d'/dm.json")
+    _u02_run 1 "pcarrow y1 x1 y2 x2," "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-01 "(abs(${u02_hpx_`m'} - ${u02_msize}) < 1e-9)" "`m': head ${u02_hpx_`m'} px, scatter msize(medium) ${u02_msize} px"
+        _w31_expect U02-01 "(abs(${u02_ang_`m'} - 28.64 * c(pi) / 180) < 1e-6)" "`m': angle ${u02_ang_`m'}"
+    }
+    _w31_expect U02-01 "(${u02_same} == 1)" "the saved and served head scripts differ"
+    python: _u02_chrome("`u2d'/a1.py")
+    _w31_expect U02-01 `"("${u02_c_err}" == "") & (${u02_c_n} == 10)"' "Chrome drew ${u02_c_n} strokes (${u02_c_err})"
+    _w31_expect U02-01 "(abs(${u02_c_rmin} - 1) < .02) & (abs(${u02_c_rmax} - 1) < .02)" "stroke / hpx ${u02_c_rmin}..${u02_c_rmax}"
+    _w31_expect U02-01 "(abs(${u02_c_amin} - 28.64) < .5) & (abs(${u02_c_amax} - 28.64) < .5)" "half-angle ${u02_c_amin}..${u02_c_amax}"
+    _w31_done U02-01 "the head is msize(medium) long at 28.64 degrees, as twoway's, saved and served"
+
+    // ------------------------------------------------------------
+    // U02-02: msize(large) scales the head as twoway scales it.
+    // ------------------------------------------------------------
+    quietly twoway pcarrow y1 x1 y2 x2, msize(large) name(u02t, replace)
+    local tl "`.u02t.plotregion1.plot1.style.marker.size.val'"
+    local hs "${u02_hpx_s}"
+    _u02_run 2 "pcarrow y1 x1 y2 x2, msize(large)" "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-02 "(abs((${u02_hpx_`m'} / `hs') / (`tl' / `tsz') - 1) < .02)" "`m': large/default ${u02_hpx_`m'}/`hs' against twoway `tl'/`tsz'"
+    }
+    _w31_done U02-02 "msize(large) scales the head as twoway's, saved and served"
+
+    // ------------------------------------------------------------
+    // U02-03: barbsize(medium) fills a closed head in the series colour;
+    // barbsize() = msize() puts the back point at the foot of A's
+    // perpendicular (the right angle at B); mangle(45); the default is
+    // open; pcbarrow heads both ends.
+    // ------------------------------------------------------------
+    quietly twoway pcarrow y1 x1 y2 x2, barbsize(medium) name(u02t, replace)
+    local tb "`.u02t.plotregion1.plot1.style.marker.backsize.val'"
+    _w31_expect U02-03 "(abs(`tb' - `tsz') < 1e-4)" "twoway's backsize `tb'"
+    _u02_run 3 "pcarrow y1 x1 y2 x2, barbsize(medium)" "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-03 `"("${u02_glyph_`m'}" == "Patches") & ("${u02_fill_`m'}" == "#1a476f")"' "`m': ${u02_glyph_`m'} filled ${u02_fill_`m'}"
+        _w31_expect U02-03 "(abs(${u02_barb_`m'} - ${u02_hpx_`m'}) < 1e-6)" "`m': barb ${u02_barb_`m'} against msize ${u02_hpx_`m'} (right angle at B)"
+    }
+    quietly twoway pcarrow y1 x1 y2 x2, mangle(45) name(u02t, replace)
+    local t45 "`.u02t.plotregion1.plot1.style.marker.angle.val'"
+    _u02_run 4 "pcarrow y1 x1 y2 x2, mangle(45)" "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-03 "(`t45' == 45) & (abs(${u02_ang_`m'} - c(pi) / 4) < 1e-6)" "`m': mangle(45) angle ${u02_ang_`m'}, twoway `t45'"
+    }
+    _u02_run 5 "pcbarrow y1 x1 y2 x2," "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-03 `"("${u02_glyph_`m'}" == "MultiLine") & (${u02_ends_`m'} == 2)"' "`m': pcbarrow ${u02_glyph_`m'} ends ${u02_ends_`m'}"
+    }
+    _u02_run 6 "pcarrow y1 x1 y2 x2," "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-03 `"("${u02_glyph_`m'}" == "MultiLine") & (${u02_ends_`m'} == 1)"' "`m': pcarrow ${u02_glyph_`m'} ends ${u02_ends_`m'}"
+    }
+    _w31_done U02-03 "barbsize() fills the head, mangle() turns it, pcbarrow heads both ends, saved and served"
+
+    // ------------------------------------------------------------
+    // U02-04: mlcolor() strokes, mfcolor() fills.
+    // ------------------------------------------------------------
+    _u02_run 7 "pcarrow y1 x1 y2 x2, mcolor(red) mlcolor(blue) mfcolor(green) barbsize(medium)" "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-04 `"("${u02_line_`m'}" == "#0000ff") & ("${u02_fill_`m'}" == "#008000")"' "`m': line ${u02_line_`m'} fill ${u02_fill_`m'}"
+    }
+    _w31_done U02-04 "the head is stroked in mlcolor() and filled in mfcolor(), saved and served"
+
+    // ------------------------------------------------------------
+    // U02-05: a row missing its second point draws nothing, as twoway
+    // (fixture onepoint: one shaft and two strokes fewer, no marker).
+    // ------------------------------------------------------------
+    _u02_run 8 "pcarrow y1 x1 y2m x2," "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-05 "(${u02_rows_`m'} == 4)" "`m': ${u02_rows_`m'} rows headed"
+    }
+    _w31_done U02-05 "a row missing its second point draws no head and no marker, saved and served"
+
+    // ------------------------------------------------------------
+    // U02-06: headlabel labels the head.
+    // ------------------------------------------------------------
+    _u02_run 9 "pcarrow y1 x1 y2 x2, mlabel(lab) headlabel" "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-06 `"("${u02_lab_`m'}" == "x2")"' "`m': headlabel labels at ${u02_lab_`m'}"
+    }
+    _u02_run 10 "pcarrow y1 x1 y2 x2, mlabel(lab)" "`u2d'"
+    foreach m in s v {
+        _w31_expect U02-06 `"("${u02_lab_`m'}" == "x1")"' "`m': labels at ${u02_lab_`m'}"
+    }
+    _w31_done U02-06 "headlabel puts the labels at the head, saved and served"
+
+    local u02f : dir "`u2d'" files "*"
+    foreach f of local u02f {
+        capture erase "`u2d'/`f'"
+    }
+    capture rmdir "`u2d'"
+    capture graph drop _all
+    dash clear
+    set scheme `u02_scheme'
+    macro drop u02_*
+    display as text "S02 end " c(current_date) " " c(current_time)
+}
+* ==== end S02 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

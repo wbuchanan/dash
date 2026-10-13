@@ -152,22 +152,27 @@ class TestMapPcarrow:
         assert isinstance(result[0].glyph, Segment)
 
     def test_pcarrow_adds_arrow_layouts(self, fig, pc_cds, gm):
-        """P4-11: map_pcarrow adds Arrow layout annotations to the figure."""
+        """P4-11: map_pcarrow adds ONE head glyph, drawing a head on each
+        row of the shaft's source (10 in pc_cds).
+
+        Flipped (WP-31 C1): one Arrow annotation was wrong because twoway's
+        head is _gr_arrowhead's geometry, which Bokeh's ArrowHead cannot
+        draw; the head is a glyph over a source the page's script fills."""
         from bokeh.models import Arrow
         gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        # Arrow annotations go into fig.center (not fig.renderers): ONE,
-        # drawing a head on each row of the shaft's source (10 in pc_cds).
-        arrow_layouts = fig.select({"type": Arrow})
-        assert len(arrow_layouts) == 1
+        assert not fig.select({"type": Arrow})
+        assert len(_head_glyphs(fig)) == 1
         assert _heads_drawn(fig) == len(pc_cds.data["x1"])
 
     def test_pcarrow_uses_open_head(self, fig, pc_cds, gm):
-        """P4-12: Arrow annotations use OpenHead arrowheads."""
-        from bokeh.models import Arrow, OpenHead
+        """P4-12: pcarrow's default head is two open strokes.
+
+        Flipped (WP-31 C1): an OpenHead was wrong because twoway's head is
+        two strokes at 28.64 degrees, msize() long; it is a MultiLine."""
+        from bokeh.models import MultiLine
         gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        arrow_layouts = fig.select({"type": Arrow})
-        for arrow in arrow_layouts:
-            assert isinstance(arrow.end, OpenHead)
+        [r] = _head_glyphs(fig)
+        assert isinstance(r.glyph, MultiLine)
 
     def test_pcarrow_drops_nan_rows(self, fig, gm):
         """P4-13: map_pcarrow drops NaN rows before rendering."""
@@ -185,23 +190,32 @@ class TestMapPcarrow:
         assert _heads_drawn(tfig) == 2
 
     def test_pcarrow_lcolor_option(self, fig, pc_cds, gm):
-        """P4-14: lcolor option is applied to the Arrow annotation line color."""
+        """P4-14: lcolor option is applied to the shaft; the head keeps the
+        series colour.
+
+        Flipped (WP-31 C1): the head in lcolor() was wrong because twoway's
+        line options are the shaft's (measured 13oct2026: lcolor(red)
+        leaves the heads in the series colour); mcolor() colours the head."""
         result = gm.map_pcarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {"lcolor": "magenta"})
-        from bokeh.models import Arrow
-        arrow_layouts = fig.select({"type": Arrow})
-        assert arrow_layouts[0].line_color == "#ff00ff"
+        assert result[0].glyph.line_color == "#ff00ff"
+        [r] = _head_glyphs(fig)
+        assert r.glyph.line_color == gm.scheme.default_color(0, "pcarrow")
+
+
+def _head_glyphs(fig):
+    """The head glyph renderers of a figure (WP-31 C1)."""
+    return [r for r in fig.renderers if "dash-arrowhead" in (r.tags or [])]
 
 
 def _heads_drawn(fig):
-    """The heads a figure's Arrow annotations draw: one per row of the
-    source each reads its coordinates from (the shaft's copy), or one for
-    an annotation of literal coordinates."""
-    from bokeh.models import Arrow
+    """The rows a figure's arrowhead scripts draw a head on: the rows of
+    the shaft's copy each reads (WP-31 C1; one Arrow annotation per layer
+    before)."""
+    from bokeh.models import CustomJS
     n = 0
-    for a in fig.select({"type": Arrow}):
-        f = getattr(a.x_start, "field", None) or (
-            a.x_start.get("field") if isinstance(a.x_start, dict) else None)
-        n += len(a.source.data[f]) if f else 1
+    for m in fig.references():
+        if isinstance(m, CustomJS) and m.name == "dash_arrow_head":
+            n += len(m.args["src"].data[m.args["x1"]])
     return n
 
 
@@ -221,24 +235,36 @@ class TestMapPcbarrow:
         assert isinstance(result[0].glyph, Segment)
 
     def test_pcbarrow_adds_arrow_layouts(self, fig, pc_cds, gm):
-        """P4-17: map_pcbarrow adds Arrow layout annotations."""
+        """P4-17: map_pcbarrow adds one head glyph (Flipped, WP-31 C1: an
+        Arrow annotation before)."""
         from bokeh.models import Arrow
         gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        assert len(fig.select({"type": Arrow})) == 1
+        assert not fig.select({"type": Arrow})
+        assert len(_head_glyphs(fig)) == 1
         assert _heads_drawn(fig) == len(pc_cds.data["x1"])
 
     def test_pcbarrow_uses_normal_head_on_both_ends(self, fig, pc_cds, gm):
-        """P4-18: pcbarrow uses NormalHead on both start and end of each Arrow."""
-        from bokeh.models import Arrow, NormalHead
+        """P4-18: pcbarrow draws twoway's head at both ends: open strokes by
+        default, a filled head in the series colour with barbsize().
+
+        Flipped (WP-31 C1): NormalHead at both ends was wrong because
+        twoway's default head is two open strokes (C1), and NormalHead
+        filled it black."""
+        from bokeh.models import Arrow, CustomJS, MultiLine, Patches
         gm.map_pcbarrow(fig, pc_cds, "y1", "x1", "y2", "x2", {})
-        arrow_layouts = fig.select({"type": Arrow})
-        for arrow in arrow_layouts:
-            assert isinstance(arrow.end, NormalHead), (
-                f"Expected NormalHead at end, got {type(arrow.end).__name__}"
-            )
-            assert isinstance(arrow.start, NormalHead), (
-                f"Expected NormalHead at start, got {type(arrow.start).__name__}"
-            )
+        assert not fig.select({"type": Arrow})
+        [r] = _head_glyphs(fig)
+        assert isinstance(r.glyph, MultiLine)
+        [cb] = [m for m in fig.references() if isinstance(m, CustomJS)
+                and m.name == "dash_arrow_head"]
+        assert cb.args["ends"] == 2
+        tfig = figure()
+        gm.map_pcbarrow(tfig, pc_cds, "y1", "x1", "y2", "x2",
+                        {"barbsize": "medium"})
+        [r] = _head_glyphs(tfig)
+        assert isinstance(r.glyph, Patches)
+        assert r.glyph.fill_color == gm.scheme.default_color(0, "scatter")
+        assert r.glyph.fill_color not in ("black", "#000000")
 
     def test_pcbarrow_drops_nan_rows(self, fig, gm):
         """P4-19: map_pcbarrow drops NaN rows before rendering."""
@@ -252,20 +278,29 @@ class TestMapPcbarrow:
         cds = ColumnDataSource(df)
         tfig = figure()
         gm.map_pcbarrow(tfig, cds, "y1", "x1", "y2", "x2", {})
-        assert len(tfig.select({"type": Arrow})) == 1
+        assert len(_head_glyphs(tfig)) == 1
         assert _heads_drawn(tfig) == 2
 
     def test_pcbarrow_differs_from_pcarrow_head_type(self, fig, pc_cds, gm):
-        """P4-20: pcbarrow head type (NormalHead) is different from pcarrow (OpenHead)."""
-        from bokeh.models import Arrow, NormalHead, OpenHead
+        """P4-20: pcarrow and pcbarrow draw the same open head by default;
+        pcbarrow's at both endpoints, pcarrow's at the end only.
+
+        Flipped (WP-31 C1): pcarrow OpenHead against pcbarrow NormalHead
+        was wrong because twoway draws one head form on both (two open
+        strokes by default), pcbarrow at each end."""
+        from bokeh.models import CustomJS, MultiLine
         tfig1 = figure()
         tfig2 = figure()
         gm.map_pcarrow(tfig1, pc_cds, "y1", "x1", "y2", "x2", {})
         gm.map_pcbarrow(tfig2, pc_cds, "y1", "x1", "y2", "x2", {})
-        pa_arrows = tfig1.select({"type": Arrow})
-        pb_arrows = tfig2.select({"type": Arrow})
-        assert isinstance(pa_arrows[0].end, OpenHead)
-        assert isinstance(pb_arrows[0].end, NormalHead)
+        ends = []
+        for f in (tfig1, tfig2):
+            [r] = _head_glyphs(f)
+            assert isinstance(r.glyph, MultiLine)
+            [cb] = [m for m in f.references() if isinstance(m, CustomJS)
+                    and m.name == "dash_arrow_head"]
+            ends.append(cb.args["ends"])
+        assert ends == [1, 2]
 
 
 # ================================================================

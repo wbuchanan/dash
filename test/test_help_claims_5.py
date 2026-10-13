@@ -1086,6 +1086,16 @@ def _drawn_ends(fig):
             data = a.source.data if a.source is not None else {}
             for row in rows([a.x_start, a.y_start, a.x_end, a.y_end], data):
                 out.setdefault("Arrow", set()).update(ends(row))
+    # WP-31 C1: the heads are drawn by the page's script from the rows of
+    # the shaft's source it reads; "Arrow" is that script's rows.
+    from bokeh.models import CustomJS
+    for m in fig.references():
+        if isinstance(m, CustomJS) and m.name == "dash_arrow_head":
+            a = m.args
+            for row in rows([{"field": a["x1"]}, {"field": a["y1"]},
+                             {"field": a["x2"]}, {"field": a["y2"]}],
+                            a["src"].data):
+                out.setdefault("Arrow", set()).update(ends(row))
     return out
 
 

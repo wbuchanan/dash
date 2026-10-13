@@ -433,7 +433,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B4c Tracked:** Open (WP-31 section 29).
 - **B5a Tracked:** Open (WP-31 section 03).
 - **B5b Tracked:** Open (WP-31 section 18).
-- **C1 Tracked:** Open (WP-31 section 02).
+- **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit pending.
 - **C2 Tracked:** Open (WP-31 section 03).
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit pending.
 - **C4 Tracked:** Open (WP-31 section 11).

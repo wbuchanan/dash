@@ -295,16 +295,20 @@ class TestTheArrowheadsFollowTheShafts:
         _assert_heads_on_shafts(ptype, fig)
 
     def test_the_heads_draw_from_the_shafts_copy(self):
-        """One annotation over the copy the shaft draws, which the script
-        rewrites -- not a model per row, which it cannot reach."""
-        from bokeh.models import Arrow
+        """One head script over the copy the shaft draws, which the filter
+        script rewrites -- not a model per row, which it cannot reach.
+        Flipped (WP-31 C1): an Arrow annotation's source before; now the
+        arrowhead script's ``src``, which a data change of it re-runs."""
         r = _render(_spec([plot_for("pcarrow")], {"filter": _MOVES[0][1]}))
         [fig] = r.figures.values()
-        [head] = [a for a in fig.center if isinstance(a, Arrow)]
+        [head] = [m for m in fig.references() if isinstance(m, CustomJS)
+                  and m.name == "dash_arrow_head"]
         [seg] = [g for g in fig.renderers
                  if type(g.glyph).__name__ == "Segment"]
-        assert head.source is seg.data_source
-        assert any(s is head.source for s in r.derived_source_registry["g1"])
+        assert head.args["src"] is seg.data_source
+        assert head in seg.data_source.js_property_callbacks["change:data"]
+        assert any(s is head.args["src"]
+                   for s in r.derived_source_registry["g1"])
 
 
 class TestTheArrowHeadHelper:
@@ -348,7 +352,11 @@ class TestTheArrowHeadHelper:
                                 "x2": np.arange(n, dtype=float) + 1})
         fig = figure()
         dr.GlyphMapper().map_pcarrow(fig, src, "y1", "x1", "y2", "x2", {})
-        assert len([m for m in fig.center if isinstance(m, Arrow)]) == 1
+        # WP-31 C1: one head glyph over one (empty) head source, filled in
+        # the browser; no Arrow annotation.
+        assert not [m for m in fig.center if isinstance(m, Arrow)]
+        assert len([r for r in fig.renderers
+                    if "dash-arrowhead" in (r.tags or [])]) == 1
 
 
 def _profile_full(r):

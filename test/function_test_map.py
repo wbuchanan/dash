@@ -138,6 +138,15 @@ FUNCTIONS = {
  'GlyphMapper._apply_colorvar.<locals>._vlookup': 'test/test_glyphs.py::TestApplyColorvarOptions::test_colordiscrete_default_renders_legend_not_colorbar',
  'GlyphMapper._apply_fill_opts': 'test/test_glyphs.py::TestFillOptions::test_map_area_fcolor',
  'GlyphMapper._add_arrow_heads': 'test/test_saved_filter_layers.py::TestTheArrowHeadHelper::test_one_annotation_reading_the_columns',
+    # WP-31 S02 (C1): arrowheads
+ 'GlyphMapper._arrow_head_px': 'test/test_arrowheads.py::TestTheHeadSize::test_default_is_the_schemes_parrow',
+ 'GlyphMapper._arrow_head_line': 'test/test_arrowheads.py::TestHeadColours::test_stroke',
+ 'GlyphMapper._arrow_head_fill': 'test/test_arrowheads.py::TestHeadColours::test_fill',
+ 'GlyphMapper._arrow_barb': 'test/test_arrowheads.py::TestBarbsize::test_filled_when_positive',
+ 'GlyphMapper._arrow_angle': 'test/test_arrowheads.py::TestMangle::test_names_and_any_number',
+ 'GlyphMapper._add_custom_heads': 'test/test_arrowheads.py::TestBarbsize::test_open_by_default',
+ 'SchemeParser.default_arrow_size': 'test/test_arrowheads.py::TestDefaultArrowSize::test_reads_symbolsize_parrow',
+ '_dash_arrow_head_hooks': 'test/test_arrowheads.py::TestTheHeadJs::test_triggers',
  'GlyphMapper._apply_line_opts': 'test/test_glyphs.py::TestMapPcarrow::test_pcarrow_lwidth_applied',
  'GlyphMapper._apply_marker_opts': 'test/test_graph_options.py::TestMsangle::test_msangle_in_apply_marker_opts',
  'GlyphMapper._apply_mlabel_opts': 'test/test_glyphs.py::TestMlabwidth::test_mlabwidth_label_still_created',
@@ -1201,6 +1210,11 @@ TEST_ONLY = {
     "_dash_plot_type_names.<locals>._Probe.__getattr__": (
         "WP-26 keeps it with _dash_plot_type_names: the probe mapper that "
         "function reads the dispatch tables with, test-only with it."),
+    "GlyphMapper._add_arrow_heads": (
+        "WP-31 C1 keeps it unchanged (as WP-26 keeps test seams) for its direct callers "
+        "(test_saved_filter_layers.py TestTheArrowHeadHelper): pcarrow, "
+        "pcbarrow and pcarrowi draw twoway's head through "
+        "_add_custom_heads, and no mode calls it."),
 }
 
 

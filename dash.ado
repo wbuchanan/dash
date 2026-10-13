@@ -1235,6 +1235,7 @@ program define _dash_parse_plot_opts, sclass
         TLIne(string asis) ///
         TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
         TSCALE2(string asis)      TTITLE2(string asis) ///
+        MANGle(string asis) BARBSize(string asis) HEADlabel ///
         * ///
     ]
     // The style options of _dash_stylelist_keys() are string asis so a
@@ -1403,6 +1404,12 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mcolor           : copy local mcolor
     sreturn local msymbol          : copy local msymbol
     sreturn local msize            : copy local msize
+    // WP-31 C1: the arrowhead's half-angle, barb depth and label place,
+    // drawn on pcarrow, pcbarrow and pcarrowi (_dash_fold_typed names them
+    // on every other type).
+    sreturn local mangle           : copy local mangle
+    sreturn local barbsize         : copy local barbsize
+    sreturn local headlabel        : copy local headlabel
     sreturn local msangle          : copy local msangle
     sreturn local mfcolor          : copy local mfcolor
     sreturn local mlcolor          : copy local mlcolor
@@ -2264,6 +2271,19 @@ program define _dash_fold_typed, sclass
     // style, so mstyle() and mlstyle() are named on the arrow types.
     if `: list ptype in arrow_types' {
         foreach o in mstyle mlstyle {
+            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
+            if `_ft' local named "`named' `o'"
+        }
+    }
+    // WP-31 C1: mangle(), barbsize() and headlabel draw the arrowhead and
+    // its labels on the arrow types only; on every other type (pcspike,
+    // pccapsym, pcscatter and pci until section 34 draws headlabel there)
+    // they are named.  twoway takes any number for the two sizes
+    // (measured 13oct2026: barbsize(-1), barbsize(20000), mangle(400) rc
+    // 0; test/fixtures/arrowhead_truth.json refusals).
+    local _hl_named "mangle barbsize headlabel"
+    if !`: list ptype in arrow_types' {
+        foreach o of local _hl_named {
             mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
             if `_ft' local named "`named' `o'"
         }
@@ -4488,6 +4508,7 @@ program define _dash_plot_opts_to_json, rclass
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    mlabvposition mlabtextstyle ///
+                   mangle barbsize headlabel ///
                    xvarformat yvarformat ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
