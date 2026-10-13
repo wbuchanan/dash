@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "F4": "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule",
     "A1": "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph",
     "A2": "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's",
     "A3": "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts",

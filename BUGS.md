@@ -3238,11 +3238,11 @@
   - Suggested fix: WP-31 section 06 (parsed values): evaluate the division in the immediate forms.
   - Resolution: Fixed 13oct2026 (WP-31, C18). Measured first (test/fixtures/parsed_values_truth.json): twoway draws scatteri 2/2 1 and -1/-1 1 at (1, 1), 0/0 1 at a missing y, 2/2 1/1 at (1, 1) and 1 2 (1/1) with the clock position 1, and pci 2/2 0 0 1 from (1, 0) to (0, 1); 1/2 is "invalid point" r(198) in both. _dash_imm_number (dash_parse.mata), which reads every coordinate of scatteri, pci and pcarrowi, evaluates p/q with p equal to q as twoway does -- 1, or missing for 0/0 -- and refuses p unequal to q; _dash_imm_clock reads (1/1) as 1. The values reach both renderers as numbers, as any coordinate does. Pinned by test/test_scatteri_division.py::TestDivision::test_the_branch_exists, test/test_parser.cscript U06-05; fixture test/fixtures/parsed_values_truth.json. Residual, deferred (WP-31): the hexadecimal literal 1.0X+3ff at the top of a double's range stays refused, an accident of twoway's implementation (GAPS3 C18 Tracked). Closes GAPS3 C18 (WP-31, C18).
 
-- [ ] Title: _LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule
+- [x] Title: _LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule
   - File Names and Line Numbers: dash_render.py:486
   - Description: GAPS3.md F4, re-verified at 6370ca4: `_LPOLY_ROT_CONSTANTS` holds degree 4-7 rows that are unreachable under `degree=int,0,3`.
   - Suggested fix: WP-31 section 06 (parsed values): accept degree 4-7 with C10b.
-  - Resolution: Not fixed because WP-31 section 06 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 13oct2026 (WP-31, F4). degree() takes 0 to 7 since C10b, so _default_lpoly_bwidth (through _lpoly_rot_detail, in both renderers) reads every row of _LPOLY_ROT_CONSTANTS, pe 5 and 7 included, at a degree the rule table accepts; the comment above the table says the rows are live. Pinned by test/test_lpoly_constants_live.py::TestTheComment::test_every_row_is_reachable. Closes GAPS3 F4 (WP-31, F4).
 
 - [x] Title: Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression
   - File Names and Line Numbers: dash.ado:5402-5425

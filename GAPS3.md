@@ -492,7 +492,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1g Tracked:** Open (WP-31 section 28).
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).
-- **F4 Tracked:** Open (WP-31 section 06).
+- **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit pending.
 - **F5 Tracked:** Open (WP-31 section 46).
 - **G1 Tracked:** Open (WP-31 section 43).
 - **G2 Tracked:** Open (WP-31 section 43).

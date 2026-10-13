@@ -481,8 +481,9 @@ _LPOLY_ROT_GRID = {"epanechnikov": (math.sqrt(5.0), 101), "gaussian": (5.0, 101)
                    "parzen": (1.0, 81), "rectangle": (1.0, 81),
                    "triangle": (1.0, 81)}
 # repr(_lpoly_rot_constant(k, p)) for p = 1, 3, 5, 7: that quadrature with the
-# kernel's support strict (|z| < support).  p = 5, 7 (degree 4-7) are dormant
-# while degree() is capped at 3 (section 11 SD-7).
+# kernel's support strict (|z| < support).  p = 5, 7 (degree 4-7) are live
+# since WP-31 C10b/F4; degree() is bounded at 7 because the table stops there
+# (section 11 SD-7).
 _LPOLY_ROT_CONSTANTS = {
     ('epanechnikov', 1): 0.7688119451983404, ('epanechnikov', 3): 1.4510983654380067,
     ('epanechnikov', 5): 2.119707526564211, ('epanechnikov', 7): 2.784928997584904,

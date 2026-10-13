@@ -961,7 +961,7 @@ Changed behaviour.
 
 - scatteri, pci and pcarrowi read a coordinate p/q with p equal to q as twoway does, a division drawing 1 (0/0 is missing); dash refused it. (WP-31, C18)
 
-<!-- WP-31 F4 -->
+- The lpoly rule-of-thumb constants for degree 4-7 are reachable and tested. (WP-31, F4)
 
 - A weight expression is evaluated as twoway evaluates it: dash lfit mpg weight [aw=price+1] was refused, r(198), "must name one variable; dash cannot evaluate a weight expression", and is now fitted as twoway fits it, in the saved page and the served app, as are [aw=L.price] on tsset data and an expression on qfit, lfitci, qfitci, lpoly, lpolyci, fpfit, fpfitci, kdensity, histogram, mspline and mband; an expression Stata cannot evaluate is refused with Stata's code and words (nosuch not found, r(111)). (WP-31, A5)
 
