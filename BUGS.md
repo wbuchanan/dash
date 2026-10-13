@@ -2598,11 +2598,11 @@
   - Suggested fix: Order dash's refusals as twoway's parser meets them, and decide TP-07's rule against twoway's refusal of a word it does not know.
   - Resolution: Not fixed: it stays open because every command in it is refused or noted either way, the order touches every refusal the batch added, and TP-07's note is a deliberate rule. Graded S3 (WP-27): which word an invalid command's refusal names.
 
-- [ ] Title: kernel() on a type that takes no kernel is written to the spec without a note
+- [x] Title: kernel() on a type that takes no kernel is written to the spec without a note
   - File Names and Line Numbers: dash.ado: the plot-option parser (kernel=enum, declared for every type)
   - Description: Found 24sep2026 by the S3 batch's kernel-flag fix: `dash scatter mpg weight, kernel(gaussian)' registers with kernel written to the spec and no note, and the renderer ignores it; twoway presumably refuses kernel() on scatter, as it refuses the kernel flags there ("option gaussian not allowed", r(198)) -- not yet measured.
   - Suggested fix: Measure twoway's answer to kernel() on each type that takes none, and give it.
-  - Resolution: Not fixed: it stays open because it was found as the batch closed and twoway's answer is not yet measured. Graded S3 (WP-27): an option accepted in silence that draws nothing different.
+  - Resolution: Fixed 13oct2026 (WP-31, C3). _dash_option_rules carries a generated applies table (scripts/gen_applicability_table.py from test/fixtures/applicability_truth.json) and _dash_validate_opts refuses an option on a type outside its list before any value rule, r(198) "option <opt>() not allowed", in both renderers' input path (the spec never carries it). Pinned by test/test_option_applicability.py::TestTheTableIsTheFixture::test_each_option_lists_its_types, test/test_option_validation.cscript U04-01; fixture test/fixtures/applicability_truth.json. Closes GAPS3 C3 (WP-31, C3).
 
 - [x] Title: A scheme's quoted values (RGB colours, %opacity) were dropped without a warning
   - File Names and Line Numbers: dash_render.py SchemeParser._parse_lines (tokens[-1] as the value)
@@ -3214,11 +3214,11 @@
   - Suggested fix: WP-31 section 03 (rbar msize dot recast): read base() on dot and note or honour recast() on dot after measuring twoway dot, recast(line).
   - Resolution: Not fixed because WP-31 section 03 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
 
-- [ ] Title: Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence
+- [x] Title: Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence
   - File Names and Line Numbers: dash.ado:4448-4449; :2987-3010 rules have no type list
   - Description: GAPS3.md C3, re-verified at 6370ca4: Options twoway refuses on a type are dropped in silence: `kernel() n() level() bwidth() bands() range() base()` are written to every spec with no applicability table; only fpfit/fpfitci warn. BUGS.md open entry.
   - Suggested fix: WP-31 section 04 (option applicability): add a per-type applicability column to _dash_option_rules and refuse each inapplicable option with twoway's measured words.
-  - Resolution: Not fixed because WP-31 section 04 has not landed. Graded S1 (WP-31): a value the user gave is dropped or drawn wrong with no note.
+  - Resolution: Fixed 13oct2026 (WP-31, C3). _dash_option_rules carries a generated applies table (scripts/gen_applicability_table.py from test/fixtures/applicability_truth.json) and _dash_validate_opts refuses an option on a type outside its list before any value rule, r(198) "option <opt>() not allowed", in both renderers' input path (the spec never carries it). Pinned by test/test_option_applicability.py::TestTheTableIsTheFixture::test_each_option_lists_its_types, test/test_option_validation.cscript U04-01; fixture test/fixtures/applicability_truth.json. Closes GAPS3 C3 (WP-31, C3).
 
 - [ ] Title: range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)
   - File Names and Line Numbers: dash.ado:2995-3003, :3150-3158, :3484-3487

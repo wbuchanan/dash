@@ -1,0 +1,2467 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "4e2bd9066b5eef555a20ad89c9810ea3b2dfbefe",
+  "extracted": "13 Oct 2026 15:57:22",
+  "source": "scripts/extract_applicability_truth.do",
+  "stata_version": "19.5"
+ },
+ "options": [
+  "kernel",
+  "n",
+  "level",
+  "bwidth",
+  "bands",
+  "range",
+  "base",
+  "degree",
+  "bin",
+  "width",
+  "start",
+  "barwidth"
+ ],
+ "pairs": {
+  "bands@area": {
+   "cmd": "twoway area mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@bar": {
+   "cmd": "twoway bar mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@connected": {
+   "cmd": "twoway connected mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@dot": {
+   "cmd": "twoway dot mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@dropline": {
+   "cmd": "twoway dropline mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@fpfit": {
+   "cmd": "twoway fpfit mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@function": {
+   "cmd": "twoway function y = x, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@histogram": {
+   "cmd": "twoway histogram mpg, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@kdensity": {
+   "cmd": "twoway kdensity mpg, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@lfit": {
+   "cmd": "twoway lfit mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@lfitci": {
+   "cmd": "twoway lfitci mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@line": {
+   "cmd": "twoway line mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@lowess": {
+   "cmd": "twoway lowess mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@lpoly": {
+   "cmd": "twoway lpoly mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@mband": {
+   "cmd": "twoway mband mpg weight, bands(5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bands@mspline": {
+   "cmd": "twoway mspline mpg weight, bands(5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bands@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@qfit": {
+   "cmd": "twoway qfit mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@qfitci": {
+   "cmd": "twoway qfitci mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rarea": {
+   "cmd": "twoway rarea yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rbar": {
+   "cmd": "twoway rbar yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rcap": {
+   "cmd": "twoway rcap yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rline": {
+   "cmd": "twoway rline yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rspike": {
+   "cmd": "twoway rspike yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@scatter": {
+   "cmd": "twoway scatter mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@scatteri": {
+   "cmd": "twoway scatteri 20 2000, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@spike": {
+   "cmd": "twoway spike mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@tsline": {
+   "cmd": "twoway tsline mpg, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@tsrline": {
+   "cmd": "twoway tsrline yl yh, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "barwidth@area": {
+   "cmd": "twoway area mpg weight, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@bar": {
+   "cmd": "twoway bar mpg weight, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@connected": {
+   "cmd": "twoway connected mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@dot": {
+   "cmd": "twoway dot mpg weight, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@dropline": {
+   "cmd": "twoway dropline mpg weight, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@fpfit": {
+   "cmd": "twoway fpfit mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@function": {
+   "cmd": "twoway function y = x, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@histogram": {
+   "cmd": "twoway histogram mpg, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@kdensity": {
+   "cmd": "twoway kdensity mpg, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@lfit": {
+   "cmd": "twoway lfit mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@lfitci": {
+   "cmd": "twoway lfitci mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@line": {
+   "cmd": "twoway line mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@lowess": {
+   "cmd": "twoway lowess mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@lpoly": {
+   "cmd": "twoway lpoly mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@mband": {
+   "cmd": "twoway mband mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@mspline": {
+   "cmd": "twoway mspline mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@qfit": {
+   "cmd": "twoway qfit mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@qfitci": {
+   "cmd": "twoway qfitci mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rarea": {
+   "cmd": "twoway rarea yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rbar": {
+   "cmd": "twoway rbar yl yh weight, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@rcap": {
+   "cmd": "twoway rcap yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rline": {
+   "cmd": "twoway rline yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rspike": {
+   "cmd": "twoway rspike yl yh weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@scatter": {
+   "cmd": "twoway scatter mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@scatteri": {
+   "cmd": "twoway scatteri 20 2000, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@spike": {
+   "cmd": "twoway spike mpg weight, barwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "barwidth@tsline": {
+   "cmd": "twoway tsline mpg, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@tsrline": {
+   "cmd": "twoway tsrline yl yh, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "base@area": {
+   "cmd": "twoway area mpg weight, base(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "base@bar": {
+   "cmd": "twoway bar mpg weight, base(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "base@connected": {
+   "cmd": "twoway connected mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@dot": {
+   "cmd": "twoway dot mpg weight, base(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "base@dropline": {
+   "cmd": "twoway dropline mpg weight, base(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "base@fpfit": {
+   "cmd": "twoway fpfit mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@function": {
+   "cmd": "twoway function y = x, base(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "base@histogram": {
+   "cmd": "twoway histogram mpg, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@kdensity": {
+   "cmd": "twoway kdensity mpg, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@lfit": {
+   "cmd": "twoway lfit mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@lfitci": {
+   "cmd": "twoway lfitci mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@line": {
+   "cmd": "twoway line mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@lowess": {
+   "cmd": "twoway lowess mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@lpoly": {
+   "cmd": "twoway lpoly mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@mband": {
+   "cmd": "twoway mband mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@mspline": {
+   "cmd": "twoway mspline mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@qfit": {
+   "cmd": "twoway qfit mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@qfitci": {
+   "cmd": "twoway qfitci mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rarea": {
+   "cmd": "twoway rarea yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rbar": {
+   "cmd": "twoway rbar yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rcap": {
+   "cmd": "twoway rcap yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rline": {
+   "cmd": "twoway rline yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rspike": {
+   "cmd": "twoway rspike yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@scatter": {
+   "cmd": "twoway scatter mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@scatteri": {
+   "cmd": "twoway scatteri 20 2000, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@spike": {
+   "cmd": "twoway spike mpg weight, base(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "base@tsline": {
+   "cmd": "twoway tsline mpg, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@tsrline": {
+   "cmd": "twoway tsrline yl yh, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "bin@area": {
+   "cmd": "twoway area mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@bar": {
+   "cmd": "twoway bar mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@connected": {
+   "cmd": "twoway connected mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@dot": {
+   "cmd": "twoway dot mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@dropline": {
+   "cmd": "twoway dropline mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@fpfit": {
+   "cmd": "twoway fpfit mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@function": {
+   "cmd": "twoway function y = x, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@histogram": {
+   "cmd": "twoway histogram mpg, bin(5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bin@kdensity": {
+   "cmd": "twoway kdensity mpg, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@lfit": {
+   "cmd": "twoway lfit mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@lfitci": {
+   "cmd": "twoway lfitci mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@line": {
+   "cmd": "twoway line mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@lowess": {
+   "cmd": "twoway lowess mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@lpoly": {
+   "cmd": "twoway lpoly mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@mband": {
+   "cmd": "twoway mband mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@mspline": {
+   "cmd": "twoway mspline mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@qfit": {
+   "cmd": "twoway qfit mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@qfitci": {
+   "cmd": "twoway qfitci mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rarea": {
+   "cmd": "twoway rarea yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rbar": {
+   "cmd": "twoway rbar yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rcap": {
+   "cmd": "twoway rcap yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rline": {
+   "cmd": "twoway rline yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rspike": {
+   "cmd": "twoway rspike yl yh weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@scatter": {
+   "cmd": "twoway scatter mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@scatteri": {
+   "cmd": "twoway scatteri 20 2000, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@spike": {
+   "cmd": "twoway spike mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@tsline": {
+   "cmd": "twoway tsline mpg, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@tsrline": {
+   "cmd": "twoway tsrline yl yh, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bwidth@area": {
+   "cmd": "twoway area mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@bar": {
+   "cmd": "twoway bar mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@connected": {
+   "cmd": "twoway connected mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@dot": {
+   "cmd": "twoway dot mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@dropline": {
+   "cmd": "twoway dropline mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@fpfit": {
+   "cmd": "twoway fpfit mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@function": {
+   "cmd": "twoway function y = x, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@histogram": {
+   "cmd": "twoway histogram mpg, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@kdensity": {
+   "cmd": "twoway kdensity mpg, bwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bwidth@lfit": {
+   "cmd": "twoway lfit mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@lfitci": {
+   "cmd": "twoway lfitci mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@line": {
+   "cmd": "twoway line mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@lowess": {
+   "cmd": "twoway lowess mpg weight, bwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bwidth@lpoly": {
+   "cmd": "twoway lpoly mpg weight, bwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bwidth@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, bwidth(.5) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "bwidth@mband": {
+   "cmd": "twoway mband mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@mspline": {
+   "cmd": "twoway mspline mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@qfit": {
+   "cmd": "twoway qfit mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@qfitci": {
+   "cmd": "twoway qfitci mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rarea": {
+   "cmd": "twoway rarea yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rbar": {
+   "cmd": "twoway rbar yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rcap": {
+   "cmd": "twoway rcap yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rline": {
+   "cmd": "twoway rline yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rspike": {
+   "cmd": "twoway rspike yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@scatter": {
+   "cmd": "twoway scatter mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@scatteri": {
+   "cmd": "twoway scatteri 20 2000, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@spike": {
+   "cmd": "twoway spike mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@tsline": {
+   "cmd": "twoway tsline mpg, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@tsrline": {
+   "cmd": "twoway tsrline yl yh, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "degree@area": {
+   "cmd": "twoway area mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@bar": {
+   "cmd": "twoway bar mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@connected": {
+   "cmd": "twoway connected mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@dot": {
+   "cmd": "twoway dot mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@dropline": {
+   "cmd": "twoway dropline mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@fpfit": {
+   "cmd": "twoway fpfit mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@function": {
+   "cmd": "twoway function y = x, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@histogram": {
+   "cmd": "twoway histogram mpg, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@kdensity": {
+   "cmd": "twoway kdensity mpg, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@lfit": {
+   "cmd": "twoway lfit mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@lfitci": {
+   "cmd": "twoway lfitci mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@line": {
+   "cmd": "twoway line mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@lowess": {
+   "cmd": "twoway lowess mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@lpoly": {
+   "cmd": "twoway lpoly mpg weight, degree(1) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "degree@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, degree(1) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "degree@mband": {
+   "cmd": "twoway mband mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@mspline": {
+   "cmd": "twoway mspline mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@qfit": {
+   "cmd": "twoway qfit mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@qfitci": {
+   "cmd": "twoway qfitci mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rarea": {
+   "cmd": "twoway rarea yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rbar": {
+   "cmd": "twoway rbar yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rcap": {
+   "cmd": "twoway rcap yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rline": {
+   "cmd": "twoway rline yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rspike": {
+   "cmd": "twoway rspike yl yh weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@scatter": {
+   "cmd": "twoway scatter mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@scatteri": {
+   "cmd": "twoway scatteri 20 2000, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@spike": {
+   "cmd": "twoway spike mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@tsline": {
+   "cmd": "twoway tsline mpg, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@tsrline": {
+   "cmd": "twoway tsrline yl yh, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "kernel@area": {
+   "cmd": "twoway area mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@bar": {
+   "cmd": "twoway bar mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@connected": {
+   "cmd": "twoway connected mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@dot": {
+   "cmd": "twoway dot mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@dropline": {
+   "cmd": "twoway dropline mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@fpfit": {
+   "cmd": "twoway fpfit mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@function": {
+   "cmd": "twoway function y = x, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@histogram": {
+   "cmd": "twoway histogram mpg, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@kdensity": {
+   "cmd": "twoway kdensity mpg, kernel(gaussian) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "kernel@lfit": {
+   "cmd": "twoway lfit mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@lfitci": {
+   "cmd": "twoway lfitci mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@line": {
+   "cmd": "twoway line mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@lowess": {
+   "cmd": "twoway lowess mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@lpoly": {
+   "cmd": "twoway lpoly mpg weight, kernel(gaussian) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "kernel@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, kernel(gaussian) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "kernel@mband": {
+   "cmd": "twoway mband mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@mspline": {
+   "cmd": "twoway mspline mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@qfit": {
+   "cmd": "twoway qfit mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@qfitci": {
+   "cmd": "twoway qfitci mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rarea": {
+   "cmd": "twoway rarea yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rbar": {
+   "cmd": "twoway rbar yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rcap": {
+   "cmd": "twoway rcap yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rline": {
+   "cmd": "twoway rline yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rspike": {
+   "cmd": "twoway rspike yl yh weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@scatter": {
+   "cmd": "twoway scatter mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@scatteri": {
+   "cmd": "twoway scatteri 20 2000, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@spike": {
+   "cmd": "twoway spike mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@tsline": {
+   "cmd": "twoway tsline mpg, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@tsrline": {
+   "cmd": "twoway tsrline yl yh, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "level@area": {
+   "cmd": "twoway area mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@bar": {
+   "cmd": "twoway bar mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@connected": {
+   "cmd": "twoway connected mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@dot": {
+   "cmd": "twoway dot mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@dropline": {
+   "cmd": "twoway dropline mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@fpfit": {
+   "cmd": "twoway fpfit mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, level(90) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "level@function": {
+   "cmd": "twoway function y = x, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@histogram": {
+   "cmd": "twoway histogram mpg, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@kdensity": {
+   "cmd": "twoway kdensity mpg, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@lfit": {
+   "cmd": "twoway lfit mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@lfitci": {
+   "cmd": "twoway lfitci mpg weight, level(90) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "level@line": {
+   "cmd": "twoway line mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@lowess": {
+   "cmd": "twoway lowess mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@lpoly": {
+   "cmd": "twoway lpoly mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, level(90) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "level@mband": {
+   "cmd": "twoway mband mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@mspline": {
+   "cmd": "twoway mspline mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@qfit": {
+   "cmd": "twoway qfit mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@qfitci": {
+   "cmd": "twoway qfitci mpg weight, level(90) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "level@rarea": {
+   "cmd": "twoway rarea yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rbar": {
+   "cmd": "twoway rbar yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rcap": {
+   "cmd": "twoway rcap yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rline": {
+   "cmd": "twoway rline yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rspike": {
+   "cmd": "twoway rspike yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@scatter": {
+   "cmd": "twoway scatter mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@scatteri": {
+   "cmd": "twoway scatteri 20 2000, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@spike": {
+   "cmd": "twoway spike mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@tsline": {
+   "cmd": "twoway tsline mpg, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@tsrline": {
+   "cmd": "twoway tsrline yl yh, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "n@area": {
+   "cmd": "twoway area mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@bar": {
+   "cmd": "twoway bar mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@connected": {
+   "cmd": "twoway connected mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@dot": {
+   "cmd": "twoway dot mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@dropline": {
+   "cmd": "twoway dropline mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@fpfit": {
+   "cmd": "twoway fpfit mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@function": {
+   "cmd": "twoway function y = x, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@histogram": {
+   "cmd": "twoway histogram mpg, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@kdensity": {
+   "cmd": "twoway kdensity mpg, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@lfit": {
+   "cmd": "twoway lfit mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@lfitci": {
+   "cmd": "twoway lfitci mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@line": {
+   "cmd": "twoway line mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@lowess": {
+   "cmd": "twoway lowess mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@lpoly": {
+   "cmd": "twoway lpoly mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@mband": {
+   "cmd": "twoway mband mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@mspline": {
+   "cmd": "twoway mspline mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@qfit": {
+   "cmd": "twoway qfit mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@qfitci": {
+   "cmd": "twoway qfitci mpg weight, n(50) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "n@rarea": {
+   "cmd": "twoway rarea yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rbar": {
+   "cmd": "twoway rbar yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rcap": {
+   "cmd": "twoway rcap yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rline": {
+   "cmd": "twoway rline yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rspike": {
+   "cmd": "twoway rspike yl yh weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@scatter": {
+   "cmd": "twoway scatter mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@scatteri": {
+   "cmd": "twoway scatteri 20 2000, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@spike": {
+   "cmd": "twoway spike mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@tsline": {
+   "cmd": "twoway tsline mpg, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@tsrline": {
+   "cmd": "twoway tsrline yl yh, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "range@area": {
+   "cmd": "twoway area mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@bar": {
+   "cmd": "twoway bar mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@connected": {
+   "cmd": "twoway connected mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@dot": {
+   "cmd": "twoway dot mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@dropline": {
+   "cmd": "twoway dropline mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@fpfit": {
+   "cmd": "twoway fpfit mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@function": {
+   "cmd": "twoway function y = x, range(1 10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "range@histogram": {
+   "cmd": "twoway histogram mpg, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@kdensity": {
+   "cmd": "twoway kdensity mpg, range(1 10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "range@lfit": {
+   "cmd": "twoway lfit mpg weight, range(1 10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "range@lfitci": {
+   "cmd": "twoway lfitci mpg weight, range(1 10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "range@line": {
+   "cmd": "twoway line mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@lowess": {
+   "cmd": "twoway lowess mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@lpoly": {
+   "cmd": "twoway lpoly mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@mband": {
+   "cmd": "twoway mband mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@mspline": {
+   "cmd": "twoway mspline mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@qfit": {
+   "cmd": "twoway qfit mpg weight, range(1 10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "range@qfitci": {
+   "cmd": "twoway qfitci mpg weight, range(1 10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "range@rarea": {
+   "cmd": "twoway rarea yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rbar": {
+   "cmd": "twoway rbar yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rcap": {
+   "cmd": "twoway rcap yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rline": {
+   "cmd": "twoway rline yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rspike": {
+   "cmd": "twoway rspike yl yh weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@scatter": {
+   "cmd": "twoway scatter mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@scatteri": {
+   "cmd": "twoway scatteri 20 2000, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@spike": {
+   "cmd": "twoway spike mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@tsline": {
+   "cmd": "twoway tsline mpg, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@tsrline": {
+   "cmd": "twoway tsrline yl yh, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "start@area": {
+   "cmd": "twoway area mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@bar": {
+   "cmd": "twoway bar mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@connected": {
+   "cmd": "twoway connected mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@dot": {
+   "cmd": "twoway dot mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@dropline": {
+   "cmd": "twoway dropline mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@fpfit": {
+   "cmd": "twoway fpfit mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@function": {
+   "cmd": "twoway function y = x, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@histogram": {
+   "cmd": "twoway histogram mpg, start(0) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "start@kdensity": {
+   "cmd": "twoway kdensity mpg, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@lfit": {
+   "cmd": "twoway lfit mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@lfitci": {
+   "cmd": "twoway lfitci mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@line": {
+   "cmd": "twoway line mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@lowess": {
+   "cmd": "twoway lowess mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@lpoly": {
+   "cmd": "twoway lpoly mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@mband": {
+   "cmd": "twoway mband mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@mspline": {
+   "cmd": "twoway mspline mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@qfit": {
+   "cmd": "twoway qfit mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@qfitci": {
+   "cmd": "twoway qfitci mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rarea": {
+   "cmd": "twoway rarea yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rbar": {
+   "cmd": "twoway rbar yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rcap": {
+   "cmd": "twoway rcap yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rline": {
+   "cmd": "twoway rline yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rspike": {
+   "cmd": "twoway rspike yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@scatter": {
+   "cmd": "twoway scatter mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@scatteri": {
+   "cmd": "twoway scatteri 20 2000, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@spike": {
+   "cmd": "twoway spike mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@tsline": {
+   "cmd": "twoway tsline mpg, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@tsrline": {
+   "cmd": "twoway tsrline yl yh, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "width@area": {
+   "cmd": "twoway area mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@bar": {
+   "cmd": "twoway bar mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@connected": {
+   "cmd": "twoway connected mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@dot": {
+   "cmd": "twoway dot mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@dropline": {
+   "cmd": "twoway dropline mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@fpfit": {
+   "cmd": "twoway fpfit mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@function": {
+   "cmd": "twoway function y = x, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@histogram": {
+   "cmd": "twoway histogram mpg, width(1) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "width@kdensity": {
+   "cmd": "twoway kdensity mpg, width(1) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "width@lfit": {
+   "cmd": "twoway lfit mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@lfitci": {
+   "cmd": "twoway lfitci mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@line": {
+   "cmd": "twoway line mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@lowess": {
+   "cmd": "twoway lowess mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@lpoly": {
+   "cmd": "twoway lpoly mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@mband": {
+   "cmd": "twoway mband mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@mspline": {
+   "cmd": "twoway mspline mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@qfit": {
+   "cmd": "twoway qfit mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@qfitci": {
+   "cmd": "twoway qfitci mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rarea": {
+   "cmd": "twoway rarea yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rbar": {
+   "cmd": "twoway rbar yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rcap": {
+   "cmd": "twoway rcap yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rline": {
+   "cmd": "twoway rline yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rspike": {
+   "cmd": "twoway rspike yl yh weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@scatter": {
+   "cmd": "twoway scatter mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@scatteri": {
+   "cmd": "twoway scatteri 20 2000, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@spike": {
+   "cmd": "twoway spike mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@tsline": {
+   "cmd": "twoway tsline mpg, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@tsrline": {
+   "cmd": "twoway tsrline yl yh, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  }
+ },
+ "types": [
+  "scatter",
+  "line",
+  "connected",
+  "area",
+  "bar",
+  "spike",
+  "dropline",
+  "dot",
+  "tsline",
+  "tsrline",
+  "rarea",
+  "rbar",
+  "rspike",
+  "rcap",
+  "rline",
+  "rconnected",
+  "rcapsym",
+  "rscatter",
+  "pcspike",
+  "pccapsym",
+  "pcarrow",
+  "pcbarrow",
+  "pcscatter",
+  "pci",
+  "pcarrowi",
+  "scatteri",
+  "lfit",
+  "qfit",
+  "lfitci",
+  "qfitci",
+  "fpfit",
+  "fpfitci",
+  "lowess",
+  "lpoly",
+  "lpolyci",
+  "mspline",
+  "mband",
+  "kdensity",
+  "histogram",
+  "function"
+ ]
+}

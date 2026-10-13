@@ -916,13 +916,22 @@ def test_an_option_on_a_plot_type_that_does_not_take_it_is_ignored(
     each of these with r(198); dash registers it (rc 0, no note), the spec
     carries it, and both renderers draw the layer and say nothing.  When
     dash is made to refuse or name them, this test and the help's sentence
-    change together."""
+    change together.
+
+    Flipped (WP-31 C3): twoway refuses bwidth(), n() and bands() on
+    scatter and base() on line, r(198) "option <opt>() not allowed", and
+    dash now refuses them there before any spec is written
+    (test_option_validation.cscript U04-01).  A hand-written spec carrying
+    one is still drawn in silence by both renderers; the help's sentence
+    says the option is refused, not dropped."""
     spec = tp._spec([dict(plot_for(ptype), options={option: value})])
     std_w, srv_w = _warned(spec)
     for where, ws in (("saved", std_w), ("served", srv_w)):
         assert not [w for w in ws if option in w], (where, ws)
     text = _prose(_differences())
-    assert "One kind of option is still dropped without a word" in text
+    assert "One kind of option is still dropped without a word" not in text
+    assert ("is accepted only on the plot types twoway accepts it on and "
+            "refused on any other") in text
     assert "Nothing is ever dropped without being named" not in text
 
 

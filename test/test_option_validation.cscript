@@ -297,6 +297,17 @@
 *!          with rc 0 and no refusal -- the table accepts every value the
 *!          documented corpus writes -- and CV-count: every line was probed,
 *!          as many as the fixture holds.
+*! Option applicability (WP-31 C3), each dash line against twoway's own in
+*! the same run (test/fixtures/applicability_truth.json holds every pair):
+*!   U04-01  twelve pairs twoway refuses (kernel n level bwidth range base
+*!           bin width start on scatter, bands on kdensity, degree on
+*!           lowess, barwidth on rspike): rc 198 and the same first line,
+*!           option <opt>() not allowed
+*!   U04-02  twelve pairs twoway accepts: rc 0, nothing names the option
+*!   U04-03  the parenthesised and || forms refuse as twoway does
+*!   U04-04  the type is refused before the value: scatter kernel(nosuch)
+*!           says option kernel() not allowed; lpoly kernel(nosuch) still
+*!           gets the kernel's own message
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1266,6 +1277,95 @@ mata: st_local("_hz_o2", _dash_hz_order("horizontal"))
 mata: st_local("_hz_o3", _dash_hz_order("hor(1) ve"))
 mata: st_local("_hz_o4", _dash_hz_order(`"title("vert hor") horiz vertical"'))
 _ov_assert HZ-17 `"("`_hz_o1'" == "vert hor") & ("`_hz_o2'" == "horizontal") & ("`_hz_o3'" == "") & ("`_hz_o4'" == "horiz vertical")"' "_dash_hz_order reads the flags in typed order, as typed"
+
+// ----------------------------------------------------------------
+// U04: an option twoway refuses on a plot type is refused there (WP-31 C3)
+// ----------------------------------------------------------------
+// _u04_case id expected twoway-command dash-command: both run in this
+// session with their logs captured; rc must be `expected' for both and,
+// on a refusal, the first error line ("option <opt>() not allowed") the
+// same.  On an acceptance nothing may name the option (opt).
+capture program drop _u04_case
+program define _u04_case
+    version 16.0
+    args id expected opt tcmd dcmd
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 120
+    capture log close _ovlog
+    capture erase "`logfile'"
+    quietly graph drop _all
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily twoway `tcmd' nodraw
+    local trc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local tline `"`r(line)'"'
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `dcmd' name(zu04k)
+    local drc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local dline `"`r(line)'"'
+    _ov_count "`logfile'" "`opt'()"
+    local named = r(n)
+    local bad = (`trc' != `expected') | (`drc' != `expected')
+    if `expected' {
+        local bad = `bad' | (strtrim(`"`tline'"') != strtrim(`"`dline'"')) | (strtrim(`"`dline'"') != "option `opt'() not allowed")
+    }
+    else local bad = `bad' | (`named' > 0)
+    if `bad' {
+        display as error `"`id' FAIL: twoway rc `trc' [`tline'], dash rc `drc' [`dline'], named `named': `dcmd'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: rc `drc' as twoway -- `dcmd'"'
+end
+// U04-01: one refused pair per option; U04-02: one accepted pair each.
+_u04_case U04-01 198 kernel "scatter mpg weight, kernel(gaussian)" "scatter mpg weight, kernel(gaussian)"
+_u04_case U04-01 198 n "scatter mpg weight, n(50)" "scatter mpg weight, n(50)"
+_u04_case U04-01 198 level "scatter mpg weight, level(90)" "scatter mpg weight, level(90)"
+_u04_case U04-01 198 bwidth "scatter mpg weight, bwidth(.5)" "scatter mpg weight, bwidth(.5)"
+_u04_case U04-01 198 bands "kdensity mpg, bands(5)" "kdensity mpg, bands(5)"
+_u04_case U04-01 198 range "scatter mpg weight, range(1 10)" "scatter mpg weight, range(1 10)"
+_u04_case U04-01 198 base "scatter mpg weight, base(0)" "scatter mpg weight, base(0)"
+_u04_case U04-01 198 degree "lowess mpg weight, degree(1)" "lowess mpg weight, degree(1)"
+_u04_case U04-01 198 bin "scatter mpg weight, bin(5)" "scatter mpg weight, bin(5)"
+_u04_case U04-01 198 width "scatter mpg weight, width(1)" "scatter mpg weight, width(1)"
+_u04_case U04-01 198 start "scatter mpg weight, start(0)" "scatter mpg weight, start(0)"
+_u04_case U04-01 198 barwidth "rspike lo hi weight, barwidth(.5)" "rspike lo hi weight, barwidth(.5)"
+_u04_case U04-02 0 kernel "lpoly mpg weight, kernel(gaussian)" "lpoly mpg weight, kernel(gaussian)"
+_u04_case U04-02 0 n "lfit mpg weight, n(50)" "lfit mpg weight, n(50)"
+_u04_case U04-02 0 level "lfitci mpg weight, level(90)" "lfitci mpg weight, level(90)"
+_u04_case U04-02 0 bwidth "lowess mpg weight, bwidth(.5)" "lowess mpg weight, bwidth(.5)"
+_u04_case U04-02 0 bands "mband mpg weight, bands(5)" "mband mpg weight, bands(5)"
+_u04_case U04-02 0 range "function y = x, range(1 10)" "function y = x, range(1 10)"
+_u04_case U04-02 0 base "bar mpg weight, base(0)" "bar mpg weight, base(0)"
+_u04_case U04-02 0 degree "lpoly mpg weight, degree(1)" "lpoly mpg weight, degree(1)"
+_u04_case U04-02 0 bin "histogram mpg, bin(5)" "histogram mpg, bin(5)"
+_u04_case U04-02 0 width "histogram mpg, width(1)" "histogram mpg, width(1)"
+_u04_case U04-02 0 start "histogram mpg, start(0)" "histogram mpg, start(0)"
+_u04_case U04-02 0 barwidth "bar mpg weight, barwidth(.5)" "bar mpg weight, barwidth(.5)"
+// U04-03: inside ( ) and after ||, the layer's own type decides.
+_u04_case U04-03 198 kernel `"(scatter mpg weight, kernel(gaussian)),"' `"(scatter mpg weight, kernel(gaussian)),"'
+_u04_case U04-03 198 kernel `"lfit mpg weight || scatter mpg weight, kernel(gaussian)"' `"lfit mpg weight || scatter mpg weight, kernel(gaussian)"'
+// U04-04: the type is refused before any value rule reads the value.
+_u04_case U04-04 198 kernel `"scatter mpg weight, kernel(nosuch)"' `"scatter mpg weight, kernel(nosuch)"'
+capture dash clear
+local logfile "`c(tmpdir)'dash_ov.log"
+capture log close _ovlog
+capture erase "`logfile'"
+log using "`logfile'", name(_ovlog) text replace
+capture noisily dash lpoly mpg weight, kernel(nosuch) name(zu04k)
+local _u04_rc = _rc
+log close _ovlog
+_ov_count "`logfile'" "option kernel() not allowed"
+local _u04_n = r(n)
+_ov_count "`logfile'" "kernel"
+local _u04_k = r(n)
+_ov_assert U04-04 `"(`_u04_rc' == 198) & (`_u04_n' == 0) & (`_u04_k' > 0)"' "lpoly kernel(nosuch) is refused by the kernel's own rule, not the type's"
 
 // ----------------------------------------------------------------
 // Summary

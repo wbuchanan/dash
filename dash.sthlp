@@ -832,14 +832,19 @@ there, is an invalid point.  The literal is read as data and never run.
     one, a typo is reported as ignored rather than rejected: {cmd:titl(x)}
     is abbreviated {cmd:title()} and works, but {cmd:titel(x)} appears in
     the note.  The full list is in
-    {help dash##unsupported:Unsupported Stata twoway options}.  One kind
-    of option is still dropped without a word: an option {cmd:dash}
-    honours on some plot types, given on one that does not take it --
-    {cmd:bwidth()}, {cmd:n()}, {cmd:bands()}, {cmd:range()}, {cmd:base()}
-    or {cmd:level()} on a {cmd:scatter}, say, where the plot types each
-    option applies to are listed under
-    {help dash##smoother_options:Statistical Layer Options} -- is ignored,
-    where {cmd:twoway} refuses the command with r(198).
+    {help dash##unsupported:Unsupported Stata twoway options}.  An option
+    {cmd:dash} honours on some plot types -- {cmd:kernel()}, {cmd:n()},
+    {cmd:level()}, {cmd:bwidth()}, {cmd:bands()}, {cmd:range()},
+    {cmd:base()}, {cmd:degree()}, {cmd:bin()}, {cmd:width()},
+    {cmd:start()} and {cmd:barwidth()} -- is accepted only on the plot
+    types {cmd:twoway} accepts it on and refused on any other, as
+    {cmd:twoway} refuses it, with r(198) and {cmd:twoway}'s line
+    {err:option kernel() not allowed} (naming the option given): a
+    {cmd:kernel()} or {cmd:level()} on a {cmd:scatter}, say.  The per-type
+    lists are generated from a measured table
+    (scripts/extract_applicability_truth.do); the plot types each option
+    applies to are also listed under
+    {help dash##smoother_options:Statistical Layer Options}.
     The same holds one level down: a sub-option of {cmd:legend()},
     {cmd:xlabel()}/{cmd:ylabel()}, {cmd:xscale()}/{cmd:yscale()},
     {cmd:xtitle()}/{cmd:ytitle()}, {cmd:title()}, {cmd:subtitle()},

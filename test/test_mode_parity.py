@@ -2330,6 +2330,12 @@ CORPUS = [
               {"at_kind": "text", "at_y": 8000, "at_x": 3500, "at_yaxis": 2,
                "at_xaxis": 1, "at_lines": ["V"],
                "at_opts": "orientation(vertical) color(red)"}]}),
+    # WP-31 C3: option applicability.  Accepted pairs render alike in both
+    # modes; a refused pair never reaches the renderer.
+    _case("lpoly kernel(gaussian) degree(1) (WP-31 C3)",
+          [plot_for("lpoly", {"kernel": "gaussian", "degree": "1"})]),
+    _case("mband bands(5) (WP-31 C3)",
+          [plot_for("mband", {"bands": "5"})]),
 ]
 
 

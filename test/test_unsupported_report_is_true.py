@@ -88,7 +88,9 @@ PLOT_VALUES = {
     "at": ("mpg", "weight", "bar"),
     "b1title": ("b1", "bA", "scatter"),
     "b2title": ("b2", "bB", "scatter"),
-    "bands": ("20", "55", "kdensity"),
+    # Flipped (WP-31 C3): ("20", "55", "kdensity") was wrong because twoway
+    # refuses bands() on kdensity, r(198) "option bands() not allowed", and
+    # dash now refuses it there (test_option_applicability.py).
     "bin": ("5", "9", "histogram"),
     "blabel": ("total", "bar", "bar"),
     "ciopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),

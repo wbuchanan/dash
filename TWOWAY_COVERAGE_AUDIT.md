@@ -175,7 +175,7 @@ This list requires qualification:
 - `filter()` and `link()` are dashboard build/serve options, not graph-layer options.
 - Several names are options of other Stata graph commands rather than `twoway` options in the accepted position.
 - Completely unknown option names also pass through the catch-all and are reported. A misspelling can therefore look like a deliberately unsupported option.
-- Recognized type-specific options supplied to an inapplicable plot can sometimes be ignored where Stata would return an error.
+- Recognized type-specific options supplied to an inapplicable plot can sometimes be ignored where Stata would return an error. [WP-31 C3: corrected -- options are refused on the types twoway refuses them on]
 
 ## Resource and security envelope
 

@@ -435,7 +435,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B5b Tracked:** Open (WP-31 section 18).
 - **C1 Tracked:** Open (WP-31 section 02).
 - **C2 Tracked:** Open (WP-31 section 03).
-- **C3 Tracked:** Open (WP-31 section 04).
+- **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit pending.
 - **C4 Tracked:** Open (WP-31 section 11).
 - **C5 Tracked:** Open (WP-31 section 12).
 - **C6 Tracked:** Open (WP-31 section 14).
