@@ -263,3 +263,42 @@ class TestTheExtent:
         assert r._dash_hull_fields == {"x": ("lo", "hi")}
         assert dr._dash_layer_extent(rs, "x_range_name", "default") == \
             pytest.approx((1.0, 5.0))
+
+
+class TestOnADateAxis:
+    """rbar mwidth on a %td y axis, upright and horizontal: the Rect's
+    centre and height are in the axis's own units (epoch milliseconds),
+    so centre -/+ height/2 is y1..y2 and the axis spans it."""
+
+    _LO = [15000.0, 15010.0, 15020.0]
+    _HI = [15005.0, 15030.0, 15021.0]
+
+    @pytest.mark.parametrize("mode", _MODES)
+    @pytest.mark.parametrize("hz", [False, True])
+    def test_the_bar_spans_y1_y2(self, mode, hz, tmp_path):
+        import pandas as pd
+        df = pd.DataFrame({"x": [1.0, 2, 3], "lo": self._LO,
+                           "hi": self._HI, "y": [1.0, 2, 3]})
+        o = dict(_MW, **({"horizontal": "horizontal"} if hz else {}))
+        figs, _ = bg._figs(mode, tmp_path,
+                           bg._spec([bg._bar("rbar", **o)],
+                                    formats={"lo": "%td", "hi": "%td"}),
+                           df)
+        [f] = figs
+        r = _rect(figs)
+        g = r.glyph
+        centre, size = ("x", "width") if hz else ("y", "height")
+        d = r.data_source.data
+        mid = np.asarray(d[_field(getattr(g, centre))], dtype=float)
+        h = np.asarray(d[_field(getattr(g, size))], dtype=float)
+        ms = lambda v: dr._STATA_EPOCH_UNIX_MS + np.asarray(v) * bg._DAY
+        assert list(mid - h / 2) == pytest.approx(list(ms(self._LO)))
+        assert list(mid + h / 2) == pytest.approx(list(ms(self._HI)))
+        # The other dimension is the marker's screen width.
+        other = "height" if hz else "width"
+        assert getattr(g, other + "_units") == "screen"
+        rng = f.x_range if hz else f.y_range
+        assert rng.start <= ms(min(self._LO)) and \
+            rng.end >= ms(max(self._HI))
+        axis = (f.xaxis if hz else f.yaxis)[0]
+        assert type(axis).__name__ == "DatetimeAxis"
