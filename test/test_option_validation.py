@@ -66,7 +66,10 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
          "keyformat",
          # 14 -> 15: WP-30 P1.13a the colour kind (a comma-written plot
          # colour is refused in twoway's words).
-         "colour"}
+         "colour",
+         # 15 -> 16: WP-31 C10a the range kind (two numbers, a `.' for the
+         # data's bound with ,m, or a variable's min and max).
+         "range"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -79,14 +82,15 @@ msangle=style,-360,360  mlabposition=style  fintensity=style
 jitter=num,0,100  jitterseed=int,0  jseed=int,0
 yaxis=int,1,2  xaxis=int,1,2
 malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
-base=num  barwidth=pos  level=num,0,100,x
-degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos
+base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci
+degree=int,0,3  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
-n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
+n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 level=num,10,99.99@lpolyci
 colornlevels=int,2,256
 colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds
-colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2
+colorcuts=numlist,1  colorvar=var  mlabel=var
+range=range,2,2,m@lfit|qfit|lfitci|qfitci  range=range,2,2
 """
 CONTRACT_GRAPH_RULES = """
 xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist
@@ -230,7 +234,11 @@ class TestTheTableIsWellFormed:
         # beside the untyped n=int,2,10000 of the other types.  41 since
         # WP-29 P0.9: lpolyci's level() is twoway's 10 to 99.99 ("level()
         # must be between 10 and 99.99 inclusive", r(198), measured).
-        assert len(want) == 41, "the contract text above lost a token"
+        # 41 -> 43 (WP-31 C10a, measured: test/fixtures/value_bounds_truth
+        # .json): level typed on lfitci, qfitci and fpfitci, which take any
+        # number; range typed, with missingok on the four fits; kdensity
+        # bwidth 0.
+        assert len(want) == 43, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
 
@@ -293,6 +301,12 @@ class TestTheTableIsWellFormed:
             if len(ps) == 2:
                 assert ps[1] == "" or (
                     _is_integer(ps[1]) and int(ps[1]) >= int(ps[0])), rule
+        elif kind == "range":
+            # WP-31 C10a: min,max[,m] -- m is twoway's missingok.
+            assert len(ps) in (2, 3), rule
+            assert _is_integer(ps[0]) and _is_integer(ps[1]), rule
+            if len(ps) == 3:
+                assert ps[2] == "m", rule
         else:
             assert ps == (), f"{kind} takes no parameters: {rule}"
 

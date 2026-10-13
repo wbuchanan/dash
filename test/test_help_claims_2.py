@@ -271,9 +271,9 @@ class TestTheHelpSaysWhatWasMeasured:
         """HC2-18."""
         v = self._values()
         # P1.1b: twoway labels with the first variable (HC2-18a)
+        # Flipped (WP-31 C10a): range(varname) on function and kdensity is
+        # taken, as twoway takes it, so the help no longer names it here.
         for s in ("an element of {cmd:mlabel()} that names several variables",
-                  "{cmd:range(}{it:varname}{cmd:)} on {cmd:function} and "
-                  "{cmd:kdensity}",
                   "{cmd:scatter mpg weight, lwidth(-1)}, which {cmd:twoway} "
                   "draws, is refused"):
             assert s in v, s

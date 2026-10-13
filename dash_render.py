@@ -16507,8 +16507,7 @@ class GlyphMapper:
         std = self._fitci_std_for(options, wtype, "lfitci")
         se_band = _dash_fitci_se(Xg, fit, std)
         _lvl = _resolve_level(options, self.default_level)
-        t_crit = (_t_ppf(0.5 + _lvl / 200.0, df=fit["df"])
-                  if fit["df"] >= 1 else float("nan"))
+        t_crit = _dash_ci_t(_lvl, fit["df"])
 
         y_lower = y_fit - t_crit * se_band
         y_upper = y_fit + t_crit * se_band
@@ -16630,8 +16629,7 @@ class GlyphMapper:
             # Three observations leave df = 0: twoway draws the fit and no
             # band.  _t_ppf(df=0) raised, and the whole dashboard with it
             # (the WP-18 review: a by() panel of three cars was enough).
-            t_crit = (_t_ppf(0.5 + _lvl / 200.0, df=fit["df"])
-                      if fit["df"] >= 1 else float("nan"))
+            t_crit = _dash_ci_t(_lvl, fit["df"])
             y_lower = y_fit - t_crit * se_band
             y_upper = y_fit + t_crit * se_band
         except np.linalg.LinAlgError:
@@ -16689,18 +16687,13 @@ class GlyphMapper:
         # Validate the user's option FIRST: a typo in bwidth() is the user's
         # to fix and must be reported -- it used to propagate a ValueError
         # out of here and kill the entire render.
-        bw = _stat_option_float(options, "bwidth", 0.8, "lowess",
-                                lo=0.0, hi=1.0)
+        # lowess.ado:75-78 -- a bandwidth outside (0, 1) is silently
+        # reset to .8 (WP-31 C10a; measured, bwidth(-1), (0), (1), (1.5)
+        # and (5) draw bwidth(.8)'s curve: test/fixtures/
+        # value_bounds_truth.json lowess_bwidth).  dash draws it so, in
+        # silence, as twoway does; _stata_lowess resets it too.
+        bw = _stat_option_float(options, "bwidth", 0.8, "lowess")
         if bw is None or bw <= 0.0 or bw >= 1.0:
-            # lowess.ado:75-78 -- a bandwidth outside (0, 1) is silently
-            # reset to .8.  dash.ado already refuses one above 1; exactly 1
-            # gets through and is reset here, aloud.
-            if bw is not None and bw >= 1.0:
-                warnings.warn(
-                    f"dash: lowess option bwidth({options.get('bwidth')}) "
-                    f"must be strictly between 0 and 1; Stata's lowess "
-                    f"resets it to .8, and so does dash.",
-                    UserWarning, stacklevel=2)
             bw = 0.8
 
         # Masked by the layer's own view: a per-plot `if', a by()
@@ -16840,6 +16833,9 @@ class GlyphMapper:
             ``(x_sorted, smooth)``, both of length N; the running line is
             NaN where its window has no x spread, as Stata's is missing.
         """
+        # lowess.ado:75-78: a bandwidth outside (0, 1) is .8 (WP-31 C10a).
+        if not (0.0 < bw < 1.0):
+            bw = 0.8
         order = np.argsort(x, kind="stable")
         xs = np.asarray(x, dtype=float)[order]
         ys = np.asarray(y, dtype=float)[order]
@@ -17843,9 +17839,8 @@ class GlyphMapper:
         se_fit = self._fp_stdp(x_grid, fit)
         # With no residual degrees of freedom (N = rank: auto in 1/2 or
         # 1/3) Stata draws the fit and leaves the band missing.
-        t_crit = (_t_ppf(0.5 + _resolve_level(options, self.default_level)
-                         / 200.0, df=fit["df"])
-                  if fit["df"] >= 1 else float("nan"))
+        t_crit = _dash_ci_t(_resolve_level(options, self.default_level),
+                            fit["df"])
         valid = ~np.isnan(y_fit)
         y_lower = y_fit - t_crit * se_fit
         y_upper = y_fit + t_crit * se_fit
@@ -18329,8 +18324,13 @@ class GlyphMapper:
         default_bw = _stata_kde_bandwidth(arr, w, wtype)
         bw = _stat_option_float(options, "bwidth", default_bw, "kdensity",
                                 lo=0.0)
+        # bwidth(0) is twoway's default rule (WP-31 C10a; measured,
+        # test/fixtures/value_bounds_truth.json bwidth.kdensity_0 draws
+        # kdensity mpg's curve): the rule, in silence, and the saved page
+        # re-derives it after a move (bw_fixed None below).
+        _bw_zero = (bw == 0.0)
         if bw is None or bw <= 0.0:
-            if str(options.get("bwidth", "")).strip():
+            if str(options.get("bwidth", "")).strip() and not _bw_zero:
                 warnings.warn(
                     f"dash: kdensity option bwidth({options.get('bwidth')}) "
                     f"must be positive; deriving it from the data instead.",
@@ -18341,7 +18341,8 @@ class GlyphMapper:
             return self._empty_fit_line(fig, "x", "y", options, color_idx,
                                         yvar)
 
-        n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=2.0,
+        # n(1) is twoway's: one point, at the low end (WP-31 C10a).
+        n_pts = _stat_option_float(options, "n", 300.0, "kdensity", lo=1.0,
                                    hi=10000.0) or 300.0
         # twoway kdensity's grid is n() points, 300 by default, from the
         # observed minimum to the observed maximum (measured: the plotted
@@ -18398,7 +18399,8 @@ class GlyphMapper:
             "kernel":    kernel,
             "bw_rule":   _KDE_BANDWIDTH_RULE,
             "bw_fixed":  (float(bw)
-                          if str(options.get("bwidth", "")).strip() else None),
+                          if str(options.get("bwidth", "")).strip()
+                          and not _bw_zero else None),
             # The weight column and type the JS reads for the weighted sd,
             # percentiles and density sum; None on an unweighted layer.
             "wvar":      (str(options.get("wexp", "")).strip()
@@ -21292,19 +21294,57 @@ def _fit_grid(x: "np.ndarray", options: dict,
     Returns:
         The evaluation grid.
     """
+    # n(1) is twoway's (WP-31 C10a): one point, at the low end, which a
+    # line cannot draw -- twoway's one point is missing and draws nothing.
     n_pts = int(_stat_option_float(options, "n", float(_FIT_GRID), "fit",
-                                   lo=2.0, hi=10000.0) or _FIT_GRID)
-    lo, hi = float(np.min(x)), float(np.max(x))
-    rng = _dash_range_pair(options, layer,
-                           "drawing over the observed range of x")
-    if rng is not None:
-        lo, hi = rng
-        return np.linspace(lo, hi, n_pts)
+                                   lo=1.0, hi=10000.0) or _FIT_GRID)
+    lo, hi = _dash_range_bounds(options, x, layer,
+                                "drawing over the observed range of x")
     # An x with no spread is a grid of one value, n() times: twoway lfit
     # of mpg on a constant weight puts every point at (2500, 24.5)
     # (measured 24sep2026).  This widened it to [x, x+1], and the fit was
     # drawn as a sloped segment along a range no observation reaches.
     return np.linspace(lo, hi, n_pts)
+
+
+def _dash_range_bounds(options: dict, x: "np.ndarray", layer: str = "fit",
+                       what: str = "drawing over the observed range of x"
+                       ) -> "tuple[float, float]":
+    """The span lfit, qfit, lfitci and qfitci draw over, low first.
+
+    twoway reads ``Range(numlist min=2 max=2 missingok)``: a ``.`` stands
+    for the data's own bound, so ``range(. 4000)`` draws from the observed
+    minimum to 4000 and ``range(1000 .)`` from 1000 to the observed maximum
+    (WP-31 C10a; measured, test/fixtures/value_bounds_truth.json
+    range.dot_hi and range.dot_lo).  The two numbers come in either order.
+    No range(), or one that cannot be read (only a hand-written spec gets
+    one: dash.ado refuses it), is the observed range, the latter named
+    once.  NaN in *x* is ignored; never raises.
+    """
+    xa = np.asarray(x, dtype=float)
+    xa = xa[np.isfinite(xa)]
+    dlo = float(np.min(xa)) if xa.size else 0.0
+    dhi = float(np.max(xa)) if xa.size else 0.0
+    raw = str((options or {}).get("range", "") or "").strip()
+    if not raw:
+        return dlo, dhi
+    parts = raw.split()
+    vals = None
+    if len(parts) == 2:
+        try:
+            a = dlo if parts[0] == "." else float(parts[0])
+            b = dhi if parts[1] == "." else float(parts[1])
+            if math.isfinite(a) and math.isfinite(b) \
+                    and math.isfinite(max(a, b) - min(a, b)):
+                vals = (min(a, b), max(a, b))
+        except (TypeError, ValueError):
+            vals = None
+    if vals is None:
+        warnings.warn(
+            f"dash: {layer} range({raw[:40]}) is not two numbers; "
+            f"{what}.", UserWarning, stacklevel=3)
+        return dlo, dhi
+    return vals
 
 
 def _fp_grid(x: "np.ndarray") -> "np.ndarray":
@@ -21378,9 +21418,11 @@ def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL,
         default: The session default, from ``c(level)``.
         ptype:   The plot type.  On ``lpolyci`` the valid range is twoway's,
                  10 to 99.99 inclusive (WP-29 P0.9; dash.ado refuses the
-                 rest, so only a hand-written spec gets here); elsewhere it
-                 is strictly inside (0, 100).  The band and the legend key
-                 read the level through this one resolver.
+                 rest, so only a hand-written spec gets here); elsewhere
+                 any finite number, as twoway lfitci, qfitci and fpfitci
+                 take it (WP-31 C10a; :func:`_dash_ci_t` gives the band at
+                 such a level).  The band and the legend key read the
+                 level through this one resolver.
 
     Returns:
         The level; a value out of range or not a number gives one note
@@ -21393,7 +21435,7 @@ def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL,
     try:
         val = float(str(raw).strip())
         ok = math.isfinite(val) and ((10.0 <= val <= 99.99) if lp
-                                     else (0.0 < val < 100.0))
+                                     else True)
     except (TypeError, ValueError):
         _dash_warn_once(("level", str(ptype), str(raw)),
                         f"dash: level({raw}) is not a number; using "
@@ -21401,12 +21443,31 @@ def _resolve_level(options: dict, default: float = _DEFAULT_LEVEL,
         return float(default)
     if not ok:
         bounds = ("between 10 and 99.99 inclusive" if lp
-                  else "between 0 and 100")
+                  else "a finite number")
         _dash_warn_once(("level", str(ptype), str(raw)),
                         f"dash: level({raw}) must be {bounds}; using "
                         f"{default}.")
         return float(default)
     return val
+
+
+def _dash_ci_t(level: float, df: float) -> float:
+    """The t a confidence band at *level* is drawn with, as twoway's.
+
+    twoway lfitci, qfitci and fpfitci take any ``level()`` (WP-31 C10a;
+    measured, test/fixtures/value_bounds_truth.json level.*) and draw the
+    band at ``invttail(df, (1 - level/100)/2)``: 0 at level(0), a band
+    turned inside out below it, and missing -- no band, the fit alone --
+    at 100 or above, where the tail probability is not inside (0, 1).
+    That is ``_t_ppf(0.5 + level/200, df)`` where the probability is inside
+    (0, 1), and NaN elsewhere or with no residual degrees of freedom.
+    """
+    p = 0.5 + float(level) / 200.0
+    if not (df >= 1 and 0.0 < p < 1.0):
+        return float("nan")
+    if p == 0.5:
+        return 0.0
+    return _t_ppf(p, df=df)
 
 
 def _resolve_seed(options: dict, default: int = 42) -> int:
@@ -47949,6 +48010,9 @@ class ServerAppBuilder:
                     # colour and proportion readers the figure block calls.
                     _dash_style_note, _dash_warn_once, _dash_reset_notes,
                     _dash_graph_color, _dash_figure_aspect, _fit_grid,
+                    # WP-31 C10a: range(. #) on the fits, and the t of a
+                    # confidence level twoway draws at any value.
+                    _dash_range_bounds, _dash_ci_t,
                     # range(# #), read the one way for the fitted lines'
                     # grid and for kdensity's span (WP-23).
                     _dash_range_pair,

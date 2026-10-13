@@ -728,8 +728,9 @@ class TestLowessEdges:
     def test_bwidth_one_is_drawn_as_point_eight(self, tmp_path, mode):
         """lowess.ado:75-78 resets a bandwidth outside (0, 1) to .8:
         ``twoway lowess mpg weight, bwidth(1)`` and ``bwidth(1.5)`` plot the
-        default's serset (measured).  dash takes exactly 1 and draws the
-        default, with a note; more than 1 dash.ado refuses (HC6-05)."""
+        default's serset (measured).  dash draws the default for both, in
+        silence, as twoway does (WP-31 C10a; Flipped: it noted bwidth(1) and
+        dash.ado refused 1.5)."""
         one, w = _both(tmp_path, [{"type": "lowess", "yvar": "mpg",
                                    "xvar": "weight",
                                    "options": {"bwidth": "1"}}],
@@ -739,7 +740,14 @@ class TestLowessEdges:
                         "lw8")[mode]
         a, b = _one(one, "x_lw", "y_lw"), _one(dflt, "x_lw", "y_lw")
         np.testing.assert_array_equal(a["y_lw"], b["y_lw"])
-        assert any("resets it to .8" in m for m in w), w
+        assert not any("bwidth" in m for m in w), w
+        big, w = _both(tmp_path, [{"type": "lowess", "yvar": "mpg",
+                                   "xvar": "weight",
+                                   "options": {"bwidth": "1.5"}}],
+                       "lw15")[mode]
+        np.testing.assert_array_equal(_one(big, "x_lw", "y_lw")["y_lw"],
+                                      b["y_lw"])
+        assert not any("bwidth" in m for m in w), w
 
     @pytest.mark.parametrize("mode", _MODES)
     def test_logit_clamps_only_past_one_in_ten_thousand(self, tmp_path,
@@ -1160,9 +1168,11 @@ class TestTheEntriesSayWhatTakesThem:
     @pytest.mark.parametrize("opt,bound", [
         ("degree", "any whole number from 0 up"),
         ("degree", "refuses more than 3"),
-        ("n", "2 to 10000"), ("n", "any whole number from 1 up"),
+        # Flipped (WP-31 C10a): n(1) and lowess's every bwidth() are
+        # twoway's.
+        ("n", "1 to 10000"), ("n", "any whole number from 1 up"),
         ("n", "1 to 300"), ("bands", "1 to 200"),
-        ("bwidth", "at most 1 on {cmd:lowess}"),
+        ("bwidth", "{cmd:lowess} any number"),
         ("range", "Two numbers, in either order"),
         ("base", "any number")])
     def test_the_entry_gives_the_bounds(self, opt, bound):

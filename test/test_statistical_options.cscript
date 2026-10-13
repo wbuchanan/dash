@@ -141,8 +141,8 @@
 *!   mspline's n():
 *!     SO-67 mspline, n(1)              rc 0, "n":"1"
 *!     SO-68 mspline, n(0)              r(198) naming n()
-*!     SO-69 kdensity mpg, n(1)         r(198) naming n() (dash's own
-*!                                      bound 2..10000 on the other types)
+*!     SO-69 kdensity mpg, n(10001)     r(198) naming n() (dash's own
+*!                                      bound, up to 10000, on the other types)
 *!     SO-70 mspline, bands(5) n(4)     rc 0, both in the registry
 *!   Together:
 *!     SO-71 lfitci [fw=mpg], stdf level(90)
@@ -722,7 +722,10 @@ _so_said SO-68w "n()"
 // (measured 24sep2026) -- the positive control for the "must be" that
 // _so_probe requires absent from every accepted command.
 _so_said SO-68m "must be"
-_so_case SO-69 `"dash kdensity mpg, n(1) name(so69)"' 198
+// Flipped (WP-31 C10a): n(1) is twoway's and taken
+// (value_bounds_truth.json n.kdensity_one); dash's own bound is the upper
+// one, 10000, so the case probes past it.
+_so_case SO-69 `"dash kdensity mpg, n(10001) name(so69)"' 198
 _so_said SO-69w "n()"
 // SO-69d: the positive control for SO-88d below -- the same scanner and
 // the same words, from the same message.  Off mspline the n() refusal

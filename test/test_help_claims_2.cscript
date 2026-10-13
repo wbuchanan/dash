@@ -35,7 +35,7 @@
 *!           expression in mlabel(), colorvar() or by() is refused -- and
 *!           twoway refuses it too (r(111), r(101), r(101))
 *!   HC2-11  aspectratio(), hover(), ysize() are checked inside a segment
-*!   HC2-12  the five dash-own bounds that say so in a second sentence, and
+*!   HC2-12  the dash-own bounds that say so in a second sentence, and
 *!           twoway accepting each value
 *!   HC2-13  mspline n() 1 to 300 is twoway's own bound: no second sentence
 *!   HC2-14  the dash-own bounds with no second sentence, and twoway
@@ -47,7 +47,8 @@
 *!   HC2-17  an unknown scheme(): twoway draws s2color with a note, dash
 *!           refuses; twoway has no theme() at all
 *!   HC2-18  forms twoway reads and dash refuses: an mlabel() element that
-*!           names several variables, range(varname), a . in range(), and a width or angle
+*!           names several variables (range(varname) and a . in range()
+*!           taken since WP-31 C10a), and a width or angle
 *!           bound on a plot type that does not draw what it styles
 *!   HC2-19  the statistical switches: refused on every other plot type, as
 *!           twoway refuses them, with twoway's messages
@@ -386,13 +387,15 @@ _hc2_dash "HC2-04e" 198 `"dash scatter mpg weight, lalpha(101) name(hc)"'
 _hc2_dash "HC2-04f" 198 `"dash scatter mpg weight, falpha(-1) name(hc)"'
 _hc2_dash "HC2-04g" 198 `"dash scatter mpg weight, malpha(101) name(hc)"'
 _hc2_dash "HC2-04h" 0   `"dash lfitci mpg weight, level(0.5) name(hc)"'
-_hc2_dash "HC2-04i" 198 `"dash lfitci mpg weight, level(0) name(hc)"'
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash "HC2-04i" 0   `"dash lfitci mpg weight, level(0) name(hc)"'
 _hc2_dash "HC2-04j" 0   `"dash scatter mpg weight, aspectratio(0) name(hc)"'
 _hc2_dash "HC2-04k" 0   `"dash bar mpg weight, base(-1e10) name(hc)"'
 _hc2_dash "HC2-04l" 0   `"dash bar mpg weight, barwidth(0.001) name(hc)"'
 _hc2_dash "HC2-04m" 198 `"dash histogram mpg, width(-1) name(hc)"'
 _hc2_dash "HC2-04n" 0   `"dash lowess mpg weight, bwidth(1) name(hc)"'
-_hc2_dash "HC2-04o" 198 `"dash lowess mpg weight, bwidth(1.01) name(hc)"'
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash "HC2-04o" 0   `"dash lowess mpg weight, bwidth(1.01) name(hc)"'
 _hc2_dash "HC2-04p" 0   `"dash lpoly mpg weight, degree(0) name(hc)"'
 _hc2_dash "HC2-04q" 0   `"dash lpoly mpg weight, degree(3) name(hc)"'
 _hc2_dash "HC2-04r" 0   `"dash kdensity mpg, n(2) name(hc)"'
@@ -419,7 +422,8 @@ _hc2_dash "HC2-04L" 198 `"dash scatter mpg weight, msangle(360.5) name(hc)"'
 _hc2_dash "HC2-04M" 0   `"dash scatter mpg weight, xsize(1) ysize(100) name(hc)"'
 _hc2_dash "HC2-04N" 198 `"dash scatter mpg weight, xsize(0.5) name(hc)"'
 _hc2_dash "HC2-04O" 198 `"dash scatter mpg weight, ysize(100.5) name(hc)"'
-_hc2_dash "HC2-04P" 198 `"dash function y=x, range(1) name(hc)"'
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash "HC2-04P" 122 `"dash function y=x, range(1) name(hc)"' "option range() requires two numbers"
 _hc2_dash "HC2-04Q" 0   `"dash scatter mpg weight, colorvar(rep78) colorcuts(3) name(hc)"'
 
 // HC2-05 -- a word twoway would have swallowed.
@@ -489,12 +493,15 @@ _hc2_dash "HC2-12c" 198 `"dash histogram mpg, bin(5000) name(hc)"'
 _hc2_tail "HC2-12d" bin ". dash draws up to 1000 bins."
 _hc2_dash "HC2-12e" 198 `"dash kdensity mpg, n(20000) name(hc)"'
 _hc2_tail "HC2-12f" n ". dash evaluates up to 10000 points."
-_hc2_dash "HC2-12g" 198 `"dash lowess mpg weight, bwidth(5) name(hc)"'
-_hc2_tail "HC2-12h" bwidth ". lowess bwidth() is the fraction of the sample."
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash "HC2-12g" 0 `"dash lowess mpg weight, bwidth(5) name(hc)"'
+_hc2_dash "HC2-12h" 0 `"dash lowess mpg weight, bwidth(-1) name(hc)"'
 _hc2_dash "HC2-12i" 198 `"dash scatter mpg weight, xaxis(3) name(hc)"'
 _hc2_tail "HC2-12j" xaxis ". dash draws two axes."
-_hc2_dash "HC2-12k" 198 `"dash kdensity mpg, n(1) name(hc)"'
-_hc2_tail "HC2-12l" n ". dash evaluates up to 10000 points."
+// Flipped (WP-31 C10a): n(1) is twoway's; n(0) is refused with no
+// second sentence, its lower bound being twoway's.
+_hc2_dash "HC2-12k" 198 `"dash lfit mpg weight, n(0) name(hc)"'
+_hc2_tail "HC2-12l" n "" 0
 _hc2_expect "HC2-12m" 0 `"twoway lpoly mpg weight, degree(5)"'
 _hc2_expect "HC2-12n" 0 `"twoway histogram mpg, bin(5000)"'
 _hc2_expect "HC2-12o" 0 `"twoway kdensity mpg, n(20000)"'
@@ -513,16 +520,19 @@ _hc2_tail   "HC2-13d" n "" 301
 // value, and has no such option at all for the rest.
 _hc2_dash "HC2-14a" 198 `"dash scatter mpg weight, jitter(101) name(hc)"'
 _hc2_tail "HC2-14b" jitter "" 101
-_hc2_dash "HC2-14c" 198 `"dash lfitci mpg weight, level(100) name(hc)"'
-_hc2_tail "HC2-14d" level "" 100
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash "HC2-14c" 0 `"dash lfitci mpg weight, level(100) name(hc)"'
+_hc2_dash "HC2-14d" 0 `"dash lfitci mpg weight, level(-1) name(hc)"'
 _hc2_dash "HC2-14e" 198 `"dash bar mpg weight, barwidth(0) name(hc)"'
 _hc2_tail "HC2-14f" barwidth "" 0
 _hc2_dash "HC2-14g" 198 `"dash scatter mpg weight, aspectratio(-1) name(hc)"'
 _hc2_tail "HC2-14h" aspectratio "" -1
 _hc2_dash "HC2-14i" 198 `"dash scatter mpg weight, jitter(5) jitterseed(-1) name(hc)"'
 _hc2_tail "HC2-14j" jitterseed "" -1
-_hc2_dash "HC2-14k" 198 `"dash kdensity mpg, bwidth(0) name(hc)"'
-_hc2_tail "HC2-14l" bwidth "" 0
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash "HC2-14k" 0 `"dash kdensity mpg, bwidth(0) name(hc)"'
+_hc2_dash "HC2-14l" 198 `"dash kdensity mpg, bwidth(-1) name(hc)"'
+_hc2_tail "HC2-14E" bwidth "" -1
 _hc2_dash "HC2-14m" 198 `"dash scatter mpg weight, colorvar(rep78) colornlevels(1) name(hc)"'
 _hc2_tail "HC2-14n" colornlevels "" 1
 _hc2_dash "HC2-14o" 198 `"dash scatter mpg weight, jitter(5) jseed(-1) name(hc)"'
@@ -581,17 +591,18 @@ _hc2_expect "HC2-17c" 198 `"twoway scatter mpg weight, theme(dark)"' "option the
 _hc2_expect "HC2-18a" 0   `"twoway scatter mpg weight, mlabel(make foreign)"'
 _hc2_dash   "HC2-18b" 0   `"dash scatter mpg weight, mlabel(make foreign) name(hc)"'  // P1.1b: twoway labels with the first variable (HC2-18a)
 _hc2_expect "HC2-18c" 0   `"twoway function y=x, range(mpg)"'
-_hc2_dash   "HC2-18d" 198 `"dash function y=x, range(mpg) name(hc)"' "range()"
+// Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
+_hc2_dash   "HC2-18d" 0   `"dash function y=x, range(mpg) name(hc)"'
 _hc2_expect "HC2-18e" 0   `"twoway kdensity mpg, range(weight)"'
-_hc2_dash   "HC2-18f" 198 `"dash kdensity mpg, range(weight) name(hc)"' "range()"
+_hc2_dash   "HC2-18f" 0   `"dash kdensity mpg, range(weight) name(hc)"'
 _hc2_expect "HC2-18g" 0   `"twoway lfit mpg weight, range(. 5000)"'
-_hc2_dash   "HC2-18h" 198 `"dash lfit mpg weight, range(. 5000) name(hc)"' "range()"
+_hc2_dash   "HC2-18h" 0   `"dash lfit mpg weight, range(. 5000) name(hc)"'
 _hc2_expect "HC2-18i" 0   `"twoway qfitci mpg weight, range(2000 .)"'
-_hc2_dash   "HC2-18j" 198 `"dash qfitci mpg weight, range(2000 .) name(hc)"' "range()"
+_hc2_dash   "HC2-18j" 0   `"dash qfitci mpg weight, range(2000 .) name(hc)"'
 _hc2_expect "HC2-18s" 0   `"twoway qfit mpg weight, range(. 5000)"'
-_hc2_dash   "HC2-18t" 198 `"dash qfit mpg weight, range(. 5000) name(hc)"' "range()"
+_hc2_dash   "HC2-18t" 0   `"dash qfit mpg weight, range(. 5000) name(hc)"'
 _hc2_expect "HC2-18u" 0   `"twoway lfitci mpg weight, range(. 5000)"'
-_hc2_dash   "HC2-18v" 198 `"dash lfitci mpg weight, range(. 5000) name(hc)"' "range()"
+_hc2_dash   "HC2-18v" 0   `"dash lfitci mpg weight, range(. 5000) name(hc)"'
 _hc2_expect "HC2-18w" 127 `"twoway kdensity mpg, range(. 50)"' "option range() requires two numbers"
 _hc2_expect "HC2-18x" 198 `"twoway bar mpg weight, lwidth(-1)"' "gm_linewidth must be between"
 _hc2_expect "HC2-18y" 198 `"twoway connected mpg weight, mlwidth(-1)"' "gm_linewidth must be between"

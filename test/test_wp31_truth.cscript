@@ -708,6 +708,169 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w31_run' {
 }
 * ==== end S03 ====
 
+// S05 helpers (WP-31 C10a).  _u05_draw: the first Line glyph a
+// registered dash graph draws, saved and served, as its point count, x
+// min and max and y sum into globals u05_<k>s (saved) and u05_<k>v
+// (served), and the spec's range() into u05_rng; _u05_tw: twoway's own
+// plot 1 serset -- the y and x columns' nonmissing count, x min and max
+// and y sum -- in r().
+python:
+def _u05_draw(sp, dp, app):
+    import json
+    from sfi import Macro
+    import __main__ as m
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        vals = None
+        for f in figs:
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if type(g).__name__ != "Line" or vals is not None:
+                    continue
+                d = r.data_source.data
+                xs = [float(v) for v in d[g.x]]
+                ys = [float(v) for v in d[g.y]]
+                vals = (len(xs), min(xs) if xs else -1, max(xs) if xs else -1,
+                        sum(ys))
+        vals = vals or (-1, -1, -1, -1)
+        for k, v in zip(("n", "x0", "x1", "ys"), vals):
+            Macro.setGlobal("u05_%s%s" % (k, sfx), "%.17g" % v)
+    with open(sp, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    Macro.setGlobal("u05_rng", str(spec["graphs"][0]["plots"][0]
+                                   .get("options", {}).get("range", "")))
+end
+
+capture program drop _u05_reg
+program define _u05_reg
+    // _u05_reg <dir> <k> <dash command...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u05_m; _u05_m._u05_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u05_tw
+program define _u05_tw, rclass
+    // _u05_tw <twoway command with a comma>: plot 1's serset, y column 1
+    // and x column 2.
+    version 19
+    serset clear
+    capture graph drop u05t
+    quietly twoway `0' nodraw name(u05t, replace)
+    local id "`.u05t.plotregion1.plot1.serset.id'"
+    preserve
+    quietly serset set `id'
+    quietly serset use, clear
+    unab all : _all
+    local yv : word 1 of `all'
+    local xv : word 2 of `all'
+    quietly summarize `yv'
+    return scalar n = r(N)
+    return scalar ys = r(sum)
+    quietly summarize `xv'
+    return scalar x0 = r(min)
+    return scalar x1 = r(max)
+    restore
+    capture graph drop u05t
+end
+
+* ==== S05 C10a: Value bounds ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S05") & `: list posof "S05" in w31_run' {
+    display as text "S05 start " c(current_date) " " c(current_time)
+    local u5d "`w31_work'/s05"
+    capture mkdir "`u5d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U05-01: kdensity mpg, range(weight) -- the spec's range is summarize
+    // weight's min and max, and the drawn grid spans twoway's serset, both
+    // modes; lfit range(. 4000) and range(1000 .) span twoway's serset,
+    // the dot the data's own end (value_bounds_truth.json range.*).
+    // ------------------------------------------------------------
+    quietly summarize weight
+    local wlo = r(min)
+    local whi = r(max)
+    _u05_tw kdensity mpg, range(weight)
+    local t0 = r(x0)
+    local t1 = r(x1)
+    _u05_reg "`u5d'" 1 kdensity mpg, range(weight) name(zu51)
+    _w31_expect U05-01 `"("${u05_rng}" == "`wlo' `whi'")"' "spec range ${u05_rng}, summarize weight `wlo' `whi'"
+    foreach m in s v {
+        _w31_expect U05-01 "(abs(${u05_x0`m'} - `t0') < 1e-6 & abs(${u05_x1`m'} - `t1') < 1e-6)" "kdensity range(weight) `m': x ${u05_x0`m'}..${u05_x1`m'}, twoway `t0'..`t1'"
+    }
+    local k 2
+    foreach r in ". 4000" "1000 ." {
+        _u05_tw lfit mpg weight, range(`r')
+        local t0 = r(x0)
+        local t1 = r(x1)
+        _u05_reg "`u5d'" `k' lfit mpg weight, range(`r') name(zu5`k')
+        foreach m in s v {
+            _w31_expect U05-01 "(abs(${u05_x0`m'} - `t0') < 1e-6 & abs(${u05_x1`m'} - `t1') < 1e-6)" "lfit range(`r') `m': x ${u05_x0`m'}..${u05_x1`m'}, twoway `t0'..`t1'"
+        }
+        local ++k
+    }
+    _w31_done U05-01 "range(weight) on kdensity is weight's min and max; range(. 4000) and range(1000 .) on lfit span twoway's x, saved and served"
+
+    // ------------------------------------------------------------
+    // U05-02: kdensity bwidth(0) draws kdensity mpg's curve; lowess
+    // bwidth() at each value twoway resets (value_bounds_truth.json
+    // lowess_bwidth reset == 1: -1 0 1 1.5 5) draws bwidth(.8)'s curve and
+    // not bwidth(.3)'s, both modes, as twoway's serset does.
+    // ------------------------------------------------------------
+    _u05_reg "`u5d'" 4 kdensity mpg, name(zu54)
+    local ks "${u05_yss}"
+    local kv "${u05_ysv}"
+    _u05_reg "`u5d'" 5 kdensity mpg, bwidth(0) name(zu55)
+    _w31_expect U05-02 "(abs(${u05_yss} - `ks') < 1e-9 & abs(${u05_ysv} - `kv') < 1e-9)" "kdensity bwidth(0) y sum ${u05_yss} / ${u05_ysv}, default `ks' / `kv'"
+    _u05_tw lowess mpg weight, bwidth(.8)
+    local t8 = r(ys)
+    _u05_reg "`u5d'" 6 lowess mpg weight, bwidth(.8) name(zu56)
+    local l8s "${u05_yss}"
+    local l8v "${u05_ysv}"
+    _u05_reg "`u5d'" 7 lowess mpg weight, bwidth(.3) name(zu57)
+    local l3s "${u05_yss}"
+    local k 8
+    foreach v in -1 0 1 1.5 5 {
+        _u05_tw lowess mpg weight, bwidth(`v')
+        _w31_expect U05-02 "(abs(r(ys) - `t8') < 1e-6)" "twoway lowess bwidth(`v') y sum `r(ys)', bwidth(.8) `t8'"
+        _u05_reg "`u5d'" `k' lowess mpg weight, bwidth(`v') name(zu5`k')
+        _w31_expect U05-02 "(abs(${u05_yss} - `l8s') < 1e-9 & abs(${u05_ysv} - `l8v') < 1e-9)" "lowess bwidth(`v') y sum ${u05_yss} / ${u05_ysv}, bwidth(.8) `l8s' / `l8v'"
+        _w31_expect U05-02 "(abs(${u05_yss} - `l3s') > 1e-6)" "lowess bwidth(`v') equals bwidth(.3)'s curve"
+        _w31_expect U05-02 "(abs(${u05_yss} - `t8') < 1e-6)" "lowess bwidth(`v') y sum ${u05_yss}, twoway's `t8'"
+        local ++k
+    }
+    _w31_done U05-02 "kdensity bwidth(0) is the default curve; lowess bwidth(-1 0 1 1.5 5) draws twoway's .8 curve, saved and served"
+
+    // ------------------------------------------------------------
+    // U05-03: lfit n(1) is accepted, as twoway accepts it, and its line
+    // has one point, saved and served.
+    // ------------------------------------------------------------
+    capture noisily twoway lfit mpg weight, n(1) nodraw
+    local trc = _rc
+    _w31_expect U05-03 "(`trc' == 0)" "twoway lfit n(1) rc `trc'"
+    _u05_reg "`u5d'" 13 lfit mpg weight, n(1) name(zu513)
+    _w31_expect U05-03 "(${u05_ns} == 1 & ${u05_nv} == 1)" "lfit n(1) points ${u05_ns} / ${u05_nv}"
+    _w31_done U05-03 "lfit n(1) is accepted and draws one point, saved and served"
+
+    forvalues k = 1/13 {
+        foreach p in s d {
+            capture erase "`u5d'/`p'`k'.json"
+        }
+        capture erase "`u5d'/a`k'.py"
+    }
+    capture rmdir "`u5d'"
+    dash clear
+    display as text "S05 end " c(current_date) " " c(current_time)
+}
+* ==== end S05 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

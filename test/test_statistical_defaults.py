@@ -225,14 +225,22 @@ class TestBandwidthSemantics:
         )
 
     def test_lowess_out_of_range_bwidth_is_reported(self, mapper):
-        """Stata's lowess bwidth is a fraction in (0,1]."""
+        """Stata's lowess bwidth is a fraction in (0,1); one outside is .8,
+        in silence (lowess.ado:75-78).  Flipped (WP-31 C10a): dash noted
+        bwidth(5); twoway draws it as bwidth(.8), measured
+        (test/fixtures/value_bounds_truth.json lowess_bwidth)."""
         x, y = _xy(60)
-        fig = figure()
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            mapper.map_lowess(fig, _src(x, y), "mpg", "weight",
-                              {"bwidth": "5"})
-        assert any("bwidth" in str(w.message) for w in caught)
+            r5 = mapper.map_lowess(figure(), _src(x, y), "mpg", "weight",
+                                   {"bwidth": "5"})
+        assert not any("bwidth" in str(w.message) for w in caught)
+        r8 = mapper.map_lowess(figure(), _src(x, y), "mpg", "weight",
+                               {"bwidth": ".8"})
+        d5, d8 = r5.data_source.data, r8.data_source.data
+        k = [c for c in d5 if c.startswith("y")][0]
+        np.testing.assert_array_equal(np.asarray(d5[k], float),
+                                      np.asarray(d8[k], float))
 
     def test_lpoly_bwidth_is_absolute_in_data_units(self, mapper):
         """Stata's lpoly bwidth() is a bandwidth, not a fraction of the range.
@@ -598,10 +606,18 @@ class TestConfidenceLevel:
                                                        rel=1e-9)
 
     def test_invalid_level_is_reported(self):
+        # Flipped (WP-31 C10a): twoway lfitci takes level(150) and draws no
+        # band (test/fixtures/value_bounds_truth.json level.100); a level
+        # that is not a number is still reported.
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            self._band_width(150)
-        assert any("level" in str(w.message).lower() for w in caught)
+            w = self._band_width(150)
+        assert not any("level" in str(m.message).lower() for m in caught)
+        assert np.isnan(w)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            self._band_width("abc")
+        assert any("level" in str(m.message).lower() for m in caught)
 
 
 # ======================================================================

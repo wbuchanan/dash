@@ -969,17 +969,19 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
     {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
-    {cmd:level()} strictly between 0 and 100 (on {cmd:lpolyci}, 10 to
-    99.99, as {cmd:twoway}); {cmd:aspectratio()} 0 or
+    {cmd:level()} any number on {cmd:lfitci}, {cmd:qfitci} and
+    {cmd:fpfitci}, as {cmd:twoway} takes it (no band at 100 or more), and
+    10 to 99.99 on {cmd:lpolyci}, as {cmd:twoway}; {cmd:aspectratio()} 0 or
     more; {cmd:base()} any number; {cmd:start()} any number, except that
     on {cmd:histogram} a {cmd:start()} above the variable's minimum is
     refused in {cmd:twoway}'s own words,
     {cmd:option start() may not be larger than minimum of mpg};
-    {cmd:barwidth()}, {cmd:width()} and {cmd:bwidth()} positive, and on
-    {cmd:lowess}
-    {cmd:bwidth()} is a fraction of the sample, so at most 1.  Integers:
+    {cmd:barwidth()}, {cmd:width()} and {cmd:bwidth()} positive, except
+    that {cmd:kdensity} takes {cmd:bwidth(0)}, its default rule, and
+    {cmd:lowess} any number, one outside 0 to 1 drawn at .8, as
+    {cmd:twoway} draws it.  Integers:
     {cmd:yaxis()} and {cmd:xaxis()} 1 or 2; {cmd:degree()} 0 to 3;
-    {cmd:n()} 2 to 10000, or 1 to 300 on {cmd:mspline}; {cmd:bin()} 1
+    {cmd:n()} 1 to 10000, or 1 to 300 on {cmd:mspline}; {cmd:bin()} 1
     to 1000; {cmd:bands()} 1 to 200;
     {cmd:colornlevels()} 2 to 256; {cmd:jitterseed()} and {cmd:jseed()}
     0 or more; an integer written as {cmd:yaxis(2.0)}, {cmd:yaxis(02)},
@@ -1011,8 +1013,13 @@ there, is an invalid point.  The literal is read as data and never run.
     wherever it is written (see
     {help dash##scheme:Stata scheme support}).  A list of numbers,
     written as any Stata
-    {it:numlist}: {cmd:colorcuts()} one or more, {cmd:range()} exactly
-    two; {cmd:colorcuts(1(1)5)} reaches the renderer as 1 2 3 4 5.
+    {it:numlist}: {cmd:colorcuts()} one or more;
+    {cmd:colorcuts(1(1)5)} reaches the renderer as 1 2 3 4 5.
+    {cmd:range()}: two numbers, a {cmd:.} for the data's own end on
+    {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} and {cmd:qfitci}, or on
+    {cmd:kdensity} and {cmd:function} a variable, whose minimum and maximum
+    over the plot's sample are used; anything else is refused with
+    {cmd:twoway}'s code and words.
     Variables: {cmd:colorvar()} names one, {cmd:mlabel()} one per y (see
     {help dash##stylelists:Style lists}), {cmd:hover()}
     one or more, and {cmd:by()} one or more before its comma; each is
@@ -1028,16 +1035,13 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    Some of those bounds are {cmd:dash}'s own: {cmd:twoway} accepts
     the value, and {cmd:dash} refuses it because it could not draw it.
-    Five say so in a second sentence of the message: {cmd:yaxis()} and
+    Four say so in a second sentence of the message: {cmd:yaxis()} and
     {cmd:xaxis()} 1 or 2 ({cmd:dash} draws two axes; {cmd:twoway} allows
-    nine), {cmd:degree()} 0 to 3, {cmd:bin()} up to 1000, {cmd:n()} 2 to
-    10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound), and
-    the {cmd:lowess} {cmd:bwidth()} fraction.  The others carry
-    no second sentence: {cmd:jitter()} 0 to 100, {cmd:level()} strictly
-    inside 0 and 100 (on {cmd:lpolyci}, {cmd:twoway}'s words), {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or
-    more, {cmd:jitterseed()} 0 or more, and the {cmd:kdensity}
-    {cmd:bwidth()} positive ({cmd:kdensity} itself accepts
-    {cmd:bwidth(0)}).  {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
+    nine), {cmd:degree()} 0 to 3, {cmd:bin()} up to 1000, and {cmd:n()} up
+    to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound).
+    The others carry no second sentence: {cmd:jitter()} 0 to 100,
+    {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or more, and
+    {cmd:jitterseed()} 0 or more.  {cmd:malpha()}, {cmd:lalpha()}, {cmd:falpha()},
     {cmd:jseed()}, {cmd:colornlevels()}, {cmd:colpalette()} and {cmd:hover()}
     are options {cmd:twoway} does not have, so every rule on them is
     {cmd:dash}'s own.  {cmd:bands()} 1 to 200 is {cmd:twoway}'s own bound
@@ -1045,10 +1049,7 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    {cmd:dash} also refuses some forms {cmd:twoway} reads:
     an element of {cmd:mlabel()} that names several variables, such as
-    {cmd:t*} ({cmd:twoway} draws no labels for that y); {cmd:range(}{it:varname}{cmd:)} on
-    {cmd:function} and {cmd:kdensity}, and a {cmd:.} for the data's own
-    end in {cmd:range()} on {cmd:lfit}, {cmd:qfit}, {cmd:lfitci} and
-    {cmd:qfitci} ({cmd:dash} takes two numbers); a number too large for
+    {cmd:t*} ({cmd:twoway} draws no labels for that y); a number too large for
     Stata that {cmd:twoway} lets through, as in {cmd:msize(1e400)}; and a
     width or an angle outside its bounds on a plot type that does not
     draw what it styles.  {cmd:twoway} checks {cmd:lwidth()} only where
@@ -3007,10 +3008,10 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     and by the rule of thumb under {it:Default bandwidth} below on
     {cmd:lpoly} and {cmd:lpolyci}.  On {cmd:lowess} it is the fraction of
     the sample in each local regression, default 0.8 (see the note
-    below).  A positive number, at most 1 on {cmd:lowess};
-    {cmd:twoway}'s {cmd:kdensity} also takes {cmd:bwidth(0)}, meaning the
-    default, and its {cmd:lowess} reads a fraction of 0, or of 1 or more,
-    as 0.8, where {cmd:dash} reads 1 as 0.8 and refuses the rest, r(198).
+    below).  A positive number; {cmd:kdensity} also takes
+    {cmd:bwidth(0)}, meaning the default, and {cmd:lowess} any number,
+    reading one of 0 or less, or of 1 or more, as 0.8, as {cmd:twoway}
+    does.
     On {cmd:kdensity}, {opt width(#)} is a synonym, as in {cmd:twoway},
     and the two together are refused, r(198).  {cmd:bw()} abbreviates
     {cmd:bwidth()} on these four types, as in {cmd:twoway}; on {cmd:bar},
@@ -3075,7 +3076,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     default, over {cmd:range()}; one graph's {cmd:function} points must fit
     in one Stata macro, {cmd:c(macrolen)} characters (645,200 by default,
     about 21 a point; {cmd:set maxvar} raises it), or the graph is refused
-    with {cmd:r(134)}.  On these types {cmd:dash} takes 2 to 10000;
+    with {cmd:r(134)}.  On these types {cmd:dash} takes 1 to 10000 (one
+    point draws no line, as in {cmd:twoway});
     {cmd:twoway} takes any whole number from 1 up, with no upper bound
     ({cmd:lpoly} reads 1 as 50).  {cmd:mspline}: the number of points
     drawn between each pair of adjacent knots, default 10, 1 to 300, as in
@@ -3094,9 +3096,12 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     {cmd:kdensity} the density is estimated over it instead of from the
     minimum to the maximum of the plot's sample; on {cmd:function} it is
     the range of x, default {cmd:range(0 1)}.  Two numbers, in either
-    order.  {cmd:twoway} also takes a missing end ({cmd:.}, the observed
-    minimum or maximum) on the fits, and a variable, whose range is used,
-    on {cmd:kdensity} and {cmd:function}; {cmd:dash} refuses both, r(198).
+    order.  On the fits a missing end ({cmd:.}) is the observed minimum or
+    maximum; on {cmd:kdensity} and {cmd:function} a variable may be given
+    instead, whose minimum and maximum over the plot's sample are used, as
+    in {cmd:twoway}.  {it:Difference from twoway:} that range is read once,
+    when the graph is defined, and a filter move on the page does not
+    change it.
     {cmd:twoway} refuses {cmd:range()} on {cmd:fpfit}, {cmd:fpfitci},
     {cmd:lpoly}, {cmd:lpolyci}, {cmd:lowess}, {cmd:mspline}, {cmd:mband},
     {cmd:histogram}, {cmd:scatter} and {cmd:line}{p_end}
@@ -3164,8 +3169,8 @@ nothing.  The grid is {cmd:n()} points over the observed range, sized as
 name two different meanings: for {helpb twoway lpoly} it is an absolute
 bandwidth in x units, while for {helpb twoway lowess} it is the
 {it:fraction} of the sample used in each local regression (default 0.8).
-{cmd:dash} follows Stata in both cases, and draws {cmd:bwidth(1)} at
-0.8, as Stata's {cmd:lowess} does.
+{cmd:dash} follows Stata in both cases, and draws a {cmd:bwidth()} of 0
+or less, or of 1 or more, at 0.8, as Stata's {cmd:lowess} does.
 
 {pstd}
 {bf:Default bandwidth.}  With no {cmd:bwidth()}, {cmd:lpoly} and
@@ -3281,9 +3286,9 @@ to the maximum of the plot's sample, or over {cmd:range()}, as
 confidence band at {cmd:level()}, defaulting to the session's
 {cmd:c(level)} -- so {cmd:set level 90} is honoured, as {cmd:twoway}
 honours it.  On {cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci},
-{cmd:level(}{it:#}{cmd:)} must be a number strictly between 0 and 100
-and is refused otherwise, with r(198); {cmd:twoway} takes any number
-there.  On {cmd:lpolyci} it is {cmd:twoway}'s rule: 10 to 99.99, with at
+{cmd:level(}{it:#}{cmd:)} takes any number, as {cmd:twoway} takes it: at
+100 or more no band is drawn, at 0 the band has no width, and below 0 it
+is drawn inside out, as {cmd:twoway} draws it.  On {cmd:lpolyci} it is {cmd:twoway}'s rule: 10 to 99.99, with at
 most two digits after the decimal point as typed, each refused r(198) in
 {cmd:twoway}'s words, and a value that is not one number r(7).
 {cmd:lfitci} and {cmd:qfitci} build the band on {cmd:stdp}, {cmd:stdf} or

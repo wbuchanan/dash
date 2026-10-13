@@ -2389,6 +2389,17 @@ CORPUS = [
     _case("rbar mwidth msize(large)",
           [plot_for("rbar", {"mwidth": "mwidth", "msize": "large"})]),
     _case("dot base(50)", [plot_for("dot", {"base": "50"})]),
+    # WP-31 C10a: the values twoway accepts, drawn alike in both modes.
+    _case("lfit range(. 4000) (WP-31 C10a)",
+          [plot_for("lfit", {"range": ". 4000"})]),
+    _case("kdensity range(weight) (WP-31 C10a)",
+          [plot_for("kdensity", {"range": "1800 4080",
+                                 "range_var": "weight"})]),
+    _case("lowess bwidth(5) (WP-31 C10a)",
+          [plot_for("lowess", {"bwidth": "5"})]),
+    _case("kdensity bwidth(0) (WP-31 C10a)",
+          [plot_for("kdensity", {"bwidth": "0"})]),
+    _case("lfit n(1) (WP-31 C10a)", [plot_for("lfit", {"n": "1"})]),
 ]
 
 

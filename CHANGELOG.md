@@ -955,7 +955,7 @@ without changing a drawn result; the results that changed are the WP-31
 group under Results that change, and the newly refused forms sit under
 Changed behaviour.
 
-<!-- WP-31 C10a -->
+- range(), n(), bwidth() and level() take the values twoway takes: range(. #) and range(# .) on lfit, qfit, lfitci and qfitci, the data's own end for the dot, and range(varname) on kdensity and function, the variable's minimum and maximum over the plot's sample (each refused before, r(198)); n(1) (n() needed 2); kdensity bwidth(0), the default rule; lowess bwidth() outside 0 to 1, drawn at .8 (bwidth(5) was refused); and any level() on lfitci, qfitci and fpfitci (dash refused level(0) and level(100)). A refused range() now gives twoway's return code and words. (WP-31, C10a)
 
 <!-- WP-31 C10b -->
 

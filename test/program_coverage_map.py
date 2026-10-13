@@ -329,6 +329,7 @@ COVERAGE = {
         "_dash_scheme_dirs": ("test_custom_scheme.cscript:SP-04", "test_wp30_truth.cscript:SP-18"),
         # WP-30 S37 (P1.24): mlabvposition() and mlabtextstyle() (P1.24)
         "_dash_fold_mlabv": ("test_twoway_option_parity.cscript:MV-01", "test_twoway_option_parity.cscript:MV-02"),
+        "_dash_fold_range": ("test_wp31_truth.cscript:U05-01",),
         "_dash_mlabv_parse": ("test_twoway_option_parity.cscript:MV-06", "test_twoway_option_parity.cscript:MV-07"),
         # WP-30 S39 (P1.21a): xline/yline positions, refusals and lstyle (P1.21 part a)
         "_dash_line_check": ("test_suboption_reporting.cscript:XP-01",),

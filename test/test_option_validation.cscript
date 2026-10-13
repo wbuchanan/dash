@@ -75,15 +75,15 @@
 *! level() -- the rule moved from _dash_parse_plot_opts into the table:
 *!   OV-46  level(90)                 rc 0
 *!   OV-47  level(abc)                rc 198 naming level()
-*!   OV-48  level(100)                rc 198 naming level()
-*!   OV-49  level(0)                  rc 198 naming level()
+*!   OV-48  level(100)                rc 0   (as twoway: no band; WP-31 C10a)
+*!   OV-49  level(0)                  rc 0   (as twoway; WP-31 C10a)
 *! Statistical options, by plot type:
 *!   OV-50  lpoly degree(1)           rc 0
 *!   OV-51  lpoly degree(5)           rc 198 naming degree()  (dash's own limit)
 *!   OV-52  lpoly degree(1.5)         rc 198 naming degree()
 *!   OV-53  lowess bwidth(0.3)        rc 0
-*!   OV-54  lowess bwidth(5)          rc 198 naming bwidth()  (a fraction of the sample)
-*!   OV-55  lowess bwidth(0)          rc 198 naming bwidth()
+*!   OV-54  lowess bwidth(5)          rc 0   (drawn at .8, as twoway; WP-31 C10a)
+*!   OV-55  lowess bwidth(0)          rc 0   (drawn at .8, as twoway; WP-31 C10a)
 *!   OV-56  lpoly bwidth(400)         rc 0
 *!   OV-57  lpoly bwidth(5)           rc 0   (only lowess is bounded above)
 *!   OV-58  lpoly bwidth(0)           rc 198 naming bwidth()
@@ -97,7 +97,7 @@
 *!   OV-158..162 kernel(gau) and kernel(EPAN) registered in full;
 *!          gaussianx, gau;rm and a 253-letter word refused (WP-27)
 *!   OV-66  kdensity n(50)            rc 0
-*!   OV-67  kdensity n(1)             rc 198 naming n()
+*!   OV-67  kdensity n(1)             rc 0   (as twoway; WP-31 C10a)
 *!   OV-68  kdensity n(abc)           rc 198 naming n()
 *!   OV-69  kdensity n(20000)         rc 198 naming n()      (dash's own limit)
 *!   OV-70  histogram bin(12)         rc 0
@@ -116,9 +116,9 @@
 *!   OV-83  mband bands(abc)          rc 198 naming bands()
 *!   OV-84  mband bands(201)          rc 198 naming bands()
 *!   OV-85  function range(0 10)      rc 0
-*!   OV-86  function range(10)        rc 198 naming range()
-*!   OV-87  function range(0 5 10)    rc 198 naming range()
-*!   OV-88  function range(abc)       rc 198 naming range()
+*!   OV-86  function range(10)        rc 122 naming range()  (twoway's; WP-31 C10a)
+*!   OV-87  function range(0 5 10)    rc 123 naming range()  (twoway's; WP-31 C10a)
+*!   OV-88  function range(abc)       rc 111 variable abc not found (twoway's)
 *! Colour mapping and variables:
 *!   OV-89  colornlevels(6)           rc 0
 *!   OV-90  colornlevels(1)           rc 198 naming colornlevels()
@@ -308,6 +308,16 @@
 *!   U04-04  the type is refused before the value: scatter kernel(nosuch)
 *!           says option kernel() not allowed; lpoly kernel(nosuch) still
 *!           gets the kernel's own message
+*! Value bounds (WP-31 C10a), each dash rc and line against twoway's own in
+*! the same run (test/fixtures/value_bounds_truth.json):
+*!   U05-04  level(): lpolyci level(5), (9.99), (100) refused in twoway's
+*!           line, (10) and (99.99) taken; lfitci, qfitci and fpfitci take
+*!           level(5), (100), (150), (0) and (-1), as twoway does
+*!   U05-05  range(): lfit range(nosuch), (make), (weight), (10), (1 2 3);
+*!           function and kdensity range(10), (1 2 3), (. 3), (nosuch);
+*!           function range(make): twoway's rc and line
+*!   U05-06  lowess bwidth(-1), (0), (1), (1.5), (5): rc 0 as twoway, no
+*!           note naming bwidth()
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -659,8 +669,10 @@ _ov_case OV-45 `"dash bar mpg weight, barwidth(abc) name(ov45)"' 198 barwidth
 // ----------------------------------------------------------------
 _ov_case OV-46 `"dash lfitci mpg weight, level(90) name(ov46)"' 0 ""
 _ov_case OV-47 `"dash lfitci mpg weight, level(abc) name(ov47)"' 198 level
-_ov_case OV-48 `"dash lfitci mpg weight, level(100) name(ov48)"' 198 level
-_ov_case OV-49 `"dash lfitci mpg weight, level(0) name(ov49)"' 198 level
+// Flipped (WP-31 C10a): twoway's rc -- lfitci takes any level()
+// (value_bounds_truth.json level.100; U05-04 asks twoway again).
+_ov_case OV-48 `"dash lfitci mpg weight, level(100) name(ov48)"' 0 ""
+_ov_case OV-49 `"dash lfitci mpg weight, level(0) name(ov49)"' 0 ""
 
 // ----------------------------------------------------------------
 // OV-50 .. OV-88: statistical options, by plot type
@@ -669,8 +681,10 @@ _ov_case OV-50 `"dash lpoly mpg weight, degree(1) name(ov50)"' 0 ""
 _ov_case OV-51 `"dash lpoly mpg weight, degree(5) name(ov51)"' 198 degree
 _ov_case OV-52 `"dash lpoly mpg weight, degree(1.5) name(ov52)"' 198 degree
 _ov_case OV-53 `"dash lowess mpg weight, bwidth(0.3) name(ov53)"' 0 ""
-_ov_case OV-54 `"dash lowess mpg weight, bwidth(5) name(ov54)"' 198 bwidth
-_ov_case OV-55 `"dash lowess mpg weight, bwidth(0) name(ov55)"' 198 bwidth
+// Flipped (WP-31 C10a): twoway's rc -- lowess draws bwidth(5) and
+// bwidth(0) at .8 (value_bounds_truth.json lowess_bwidth).
+_ov_case OV-54 `"dash lowess mpg weight, bwidth(5) name(ov54)"' 0 ""
+_ov_case OV-55 `"dash lowess mpg weight, bwidth(0) name(ov55)"' 0 ""
 _ov_case OV-56 `"dash lpoly mpg weight, bwidth(400) name(ov56)"' 0 ""
 _ov_case OV-57 `"dash lpoly mpg weight, bwidth(5) name(ov57)"' 0 ""
 _ov_case OV-58 `"dash lpoly mpg weight, bwidth(0) name(ov58)"' 198 bwidth
@@ -682,7 +696,8 @@ _ov_case OV-63 `"dash kdensity mpg, kernel(gaussian) name(ov63)"' 0 ""
 _ov_case OV-64 `"dash kdensity mpg, kernel(Epan2) name(ov64)"' 0 "" `""kernel":"epan2""'
 _ov_case OV-65 `"dash kdensity mpg, kernel(bogus) name(ov65)"' 198 kernel
 _ov_case OV-66 `"dash kdensity mpg, n(50) name(ov66)"' 0 ""
-_ov_case OV-67 `"dash kdensity mpg, n(1) name(ov67)"' 198 n
+// Flipped (WP-31 C10a): twoway's rc (value_bounds_truth.json n.kdensity_one).
+_ov_case OV-67 `"dash kdensity mpg, n(1) name(ov67)"' 0 ""
 _ov_case OV-68 `"dash kdensity mpg, n(abc) name(ov68)"' 198 n
 _ov_case OV-69 `"dash kdensity mpg, n(20000) name(ov69)"' 198 n
 _ov_case OV-70 `"dash histogram mpg, bin(12) name(ov70)"' 0 ""
@@ -701,9 +716,11 @@ _ov_case OV-82 `"dash mband mpg weight, bands(2.5) name(ov82)"' 198 bands
 _ov_case OV-83 `"dash mband mpg weight, bands(abc) name(ov83)"' 198 bands
 _ov_case OV-84 `"dash mband mpg weight, bands(201) name(ov84)"' 198 bands
 _ov_case OV-85 `"dash function y = x^2, range(0 10) name(ov85)"' 0 ""
-_ov_case OV-86 `"dash function y = x^2, range(10) name(ov86)"' 198 range
-_ov_case OV-87 `"dash function y = x^2, range(0 5 10) name(ov87)"' 198 range
-_ov_case OV-88 `"dash function y = x^2, range(abc) name(ov88)"' 198 range
+// Flipped (WP-31 C10a): twoway's rc and line (value_bounds_truth.json
+// range.function_one, function_three, function_var_missing).
+_ov_case OV-86 `"dash function y = x^2, range(10) name(ov86)"' 122 range
+_ov_case OV-87 `"dash function y = x^2, range(0 5 10) name(ov87)"' 123 range
+_ov_refused OV-88 `"dash function y = x^2, range(abc) name(ov88)"' 111 "variable abc not found"
 
 // ----------------------------------------------------------------
 // OV-89 .. OV-101: colour mapping and variables
@@ -1465,6 +1482,126 @@ if `"`bad'"' != "" {
     global ov_faillist "${ov_faillist} U03-05"
 }
 else display as text "U03-05 PASS: recast() on dot taken as twoway takes it and named once; dot drawn"
+
+// U05 (WP-31 C10a): _u05_rc <twoway command> -- twoway's rc and the
+// count of `needle' in its log, then dash's rc and the count in its, and
+// whether dash's log names the option in a refusal ("must be").
+capture program drop _u05_rc
+program define _u05_rc, rclass
+    version 16.0
+    args cmd needle
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 200
+    sysuse auto, clear
+    capture log close _ovlog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily twoway `cmd' nodraw
+    local trc = _rc
+    log close _ovlog
+    local tn 1
+    if `"`needle'"' != "" {
+        _ov_count "`logfile'" `"`needle'"'
+        local tn = r(n)
+    }
+    capture erase "`logfile'"
+    capture dash clear
+    quietly graph drop _all
+    sysuse auto, clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `cmd' name(u05)
+    local drc = _rc
+    log close _ovlog
+    local dn 1
+    if `"`needle'"' != "" {
+        _ov_count "`logfile'" `"`needle'"'
+        local dn = r(n)
+    }
+    _ov_count "`logfile'" "must be"
+    local dmust = r(n)
+    // Any line of dash's but the registration's.
+    _ov_count "`logfile'" "dash:"
+    local dnote = r(n)
+    _ov_count "`logfile'" "registered."
+    local dnote = `dnote' - r(n)
+    capture erase "`logfile'"
+    capture dash clear
+    return scalar trc = `trc'
+    return scalar drc = `drc'
+    return scalar tn = `tn'
+    return scalar dn = `dn'
+    return scalar dmust = `dmust'
+    return scalar dnote = `dnote'
+end
+
+capture program drop _u05_judge
+program define _u05_judge
+    version 16.0
+    args id bad what
+    if `"`bad'"' != "" {
+        display as error `"`id' FAIL:`bad'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} `id'"
+    }
+    else display as text `"`id' PASS: `what'"'
+end
+
+// U05-04: level() as twoway bounds it -- on lpolyci alone.
+local bad ""
+foreach c in "lpolyci mpg weight, level(5)" "lpolyci mpg weight, level(9.99)" "lpolyci mpg weight, level(100)" {
+    _u05_rc `"`c'"' "level() must be between 10 and 99.99 inclusive"
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`c': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+foreach c in "lpolyci mpg weight, level(10)" "lpolyci mpg weight, level(99.99)" "lfitci mpg weight, level(5)" "lfitci mpg weight, level(100)" "lfitci mpg weight, level(150)" "lfitci mpg weight, level(0)" "lfitci mpg weight, level(-1)" "qfitci mpg weight, level(5)" "qfitci mpg weight, level(100)" "fpfitci mpg weight, level(5)" "fpfitci mpg weight, level(100)" {
+    _u05_rc `"`c'"' ""
+    if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+    }
+}
+_u05_judge U05-04 `"`bad'"' "level() refused on lpolyci outside 10-99.99 in twoway's line, any number taken on lfitci, qfitci and fpfitci, as twoway"
+
+// U05-05: range() refused with twoway's rc and line.
+local bad ""
+foreach c in "lfit mpg weight, range(nosuch)|range() invalid -- invalid numlist" ///
+             "lfit mpg weight, range(make)|range() invalid -- invalid numlist" ///
+             "lfit mpg weight, range(weight)|range() invalid -- invalid numlist" ///
+             "lfit mpg weight, range(10)|range() invalid -- invalid numlist has too few elements" ///
+             "lfit mpg weight, range(1 2 3)|range() invalid -- invalid numlist has too many elements" ///
+             "function y=x, range(10)|option range() requires two numbers" ///
+             "function y=x, range(1 2 3)|option range() requires two numbers" ///
+             "function y=x, range(. 3)|option range() requires two numbers" ///
+             "function y=x, range(nosuch)|variable nosuch not found" ///
+             "function y=x, range(make)|no observations" ///
+             "kdensity mpg, range(10)|option range() requires two numbers" ///
+             "kdensity mpg, range(. 30)|option range() requires two numbers" ///
+             "kdensity mpg, range(nosuch)|variable nosuch not found" {
+    local at = strpos(`"`c'"', "|")
+    local cmd = substr(`"`c'"', 1, `at' - 1)
+    local nd = substr(`"`c'"', `at' + 1, .)
+    _u05_rc `"`cmd'"' `"`nd'"'
+    if r(trc) == 0 | r(trc) != r(drc) | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`cmd': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+foreach c in "lfit mpg weight, range(. 4000)" "qfitci mpg weight, range(1000 .)" "kdensity mpg, range(weight)" "function y=x, range(weight)" {
+    _u05_rc `"`c'"' ""
+    if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+    }
+}
+_u05_judge U05-05 `"`bad'"' "range() refused with twoway's rc and line, and its dot and variable forms taken in silence"
+
+// U05-06: lowess bwidth() takes every value twoway takes, in silence.
+local bad ""
+foreach v in -1 0 1 1.5 5 {
+    _u05_rc `"lowess mpg weight, bwidth(`v')"' ""
+    if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+        local bad `"`bad' [bwidth(`v'): twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+    }
+}
+_u05_judge U05-06 `"`bad'"' "lowess bwidth(-1 0 1 1.5 5) taken in silence, as twoway takes it"
 
 // ----------------------------------------------------------------
 // Summary

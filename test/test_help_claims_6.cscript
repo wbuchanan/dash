@@ -374,8 +374,9 @@ _hc6_ss kbwd 0 kdensity mpg
 _hc6_same kbw0 kbwd 2 0
 local s = r(same)
 _hc6_dash "dash kdensity mpg, bwidth(0) name(hc6)"
-local bad = (`t' != 0 | `s' != 1 | r(rc) != 198)
-_hc6_tally HC6-03 `bad' "kdensity bwidth(0): twoway draws the default bandwidth's curve; dash refuses it, r(198)"
+// Flipped (WP-31 C10a): dash takes it, as twoway (value_bounds_truth.json).
+local bad = (`t' != 0 | `s' != 1 | r(rc) != 0)
+_hc6_tally HC6-03 `bad' "kdensity bwidth(0): twoway draws the default bandwidth's curve; dash takes it"
 
 // lowess.ado:75-78: a bandwidth outside (0, 1) is reset to .8.
 _hc6_ss lw1 0 lowess mpg weight, bwidth(1)
@@ -398,8 +399,9 @@ local s0 = r(same)
 _hc6_dash "dash lowess mpg weight, bwidth(1.5) name(hc6)"
 local d = r(rc)
 _hc6_dash "dash lowess mpg weight, bwidth(0) name(hc6)"
-local bad = (`s' != 1 | `s0' != 1 | `d' != 198 | r(rc) != 198)
-_hc6_tally HC6-05 `bad' "lowess bwidth(1.5) and bwidth(0): twoway resets both to .8; dash refuses both, r(198), its own bound"
+// Flipped (WP-31 C10a): dash takes it, as twoway (value_bounds_truth.json).
+local bad = (`s' != 1 | `s0' != 1 | `d' != 0 | r(rc) != 0)
+_hc6_tally HC6-05 `bad' "lowess bwidth(1.5) and bwidth(0): twoway resets both to .8; dash takes both (the renderer resets them to .8)"
 
 // twoway kdensity reads width() as the bandwidth.
 _hc6_ss kdw 0 kdensity mpg, width(2)
@@ -525,8 +527,9 @@ local r1 = r(rc)
 local n1 = r(ny)
 _hc6_dash "dash lpoly mpg weight, n(1) name(hc6)"
 local d1 = r(rc)
-local bad = (`r1' != 0 | `n1' != 50 | `d1' != 198)
-_hc6_tally HC6-11 `bad' "lpoly n(1): twoway draws 50 points; dash refuses it, r(198)"
+// Flipped (WP-31 C10a): dash takes it, as twoway (value_bounds_truth.json).
+local bad = (`r1' != 0 | `n1' != 50 | `d1' != 0)
+_hc6_tally HC6-11 `bad' "lpoly n(1): twoway draws 50 points; dash takes it (the renderer reads 1 as 50)"
 
 _hc6_tw "lpoly mpg weight, bwidth(400) n(0)"
 local t0 = r(rc)
@@ -625,8 +628,9 @@ local n1 = r(ny)
 _hc6_ss fndef 0 function y = x, range(0 1)
 local n2 = r(ny)
 _hc6_dash "dash function y = x, range(0 1) n(1) name(hc6)"
-local bad = (`r1' != 0 | `n1' != 1 | `n2' != 300 | r(rc) != 198)
-_hc6_tally HC6-18 `bad' "function: twoway draws n(1) as one point and 300 by default; dash refuses n(1)"
+// Flipped (WP-31 C10a): dash takes it, as twoway (value_bounds_truth.json).
+local bad = (`r1' != 0 | `n1' != 1 | `n2' != 300 | r(rc) != 0)
+_hc6_tally HC6-18 `bad' "function: twoway draws n(1) as one point and 300 by default; dash takes n(1)"
 
 // ================================================================
 // HC6-19 -- bands(): 1 to 200 in twoway, refused elsewhere
@@ -690,9 +694,10 @@ _hc6_tw "function y = x, range(weight)"
 local r3 = r(rc)
 _hc6_dash "dash function y = x, range(weight) name(hc6)"
 local d3 = r(rc)
-local bad = (`r1' != 0 | `x0' != 1760 | `d1' != 198 | `r2' != 0 | `x2' != 3291 | `d2' != 198 | `r3' != 0 | `d3' != 198)
+// Flipped (WP-31 C10a): dash takes it, as twoway (value_bounds_truth.json).
+local bad = (`r1' != 0 | `x0' != 1760 | `d1' != 0 | `r2' != 0 | `x2' != 3291 | `d2' != 0 | `r3' != 0 | `d3' != 0)
 if `bad' display as error "HC6-21 FAIL: range(. 6000) tw=`r1' from `x0' dash=`d1'; kdensity range(price) tw=`r2' from `x2' dash=`d2'; function range(weight) tw=`r3' dash=`d3'"
-_hc6_tally HC6-21 `bad' "a missing end and a variable in range(): twoway takes both; dash refuses them, r(198)"
+_hc6_tally HC6-21 `bad' "a missing end and a variable in range(): twoway takes both, and so does dash"
 
 _hc6_ss krr 0 kdensity mpg, range(50 0)
 _hc6_ss kr 0 kdensity mpg, range(0 50)
@@ -841,12 +846,13 @@ _hc6_dash "dash lpolyci mpg weight, level(5) name(hc6)"
 if r(rc) != 198 local bad = 1
 _hc6_said "level() must be between 10 and 99.99 inclusive"
 if r(n) < 1 local bad = 1
+// Flipped (WP-31 C10a): dash takes it, as twoway (value_bounds_truth.json).
 foreach v in 0 100 {
     _hc6_dash "dash lfitci mpg weight, level(`v') name(hc6)"
-    if r(rc) != 198 local bad = 1
+    if r(rc) != 0 local bad = 1
 }
 if `bad' display as error "HC6-24 FAIL: level() on lfitci or lpolyci is not taken or refused as twoway does"
-_hc6_tally HC6-24 `bad' "level(): twoway lfitci takes any number, lpolyci 10 to 99.99; dash refuses lpolyci's level(5) as twoway does, and lfitci's outside 0 and 100"
+_hc6_tally HC6-24 `bad' "level(): twoway lfitci takes any number, lpolyci 10 to 99.99; dash refuses lpolyci's level(5) as twoway does, and takes lfitci's 0 and 100"
 
 _hc6_ss l90 0 lfitci mpg weight, level(90)
 set level 90

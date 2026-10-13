@@ -2174,6 +2174,53 @@ program define _dash_fold_mlabv, sclass
 end
 
 // ================================================================
+// _dash_fold_range ptype qual  -- range(varname) as twoway reads it
+//
+// WP-31 C10a (D-05.a).  _dash_validate_value's range kind hands back
+// "@var:<name>" for a variable named in kdensity's or function's range();
+// twoway takes that variable's min and max (measured,
+// test/fixtures/value_bounds_truth.json range.var_kdensity and
+// range.var_function).  Here, once, over the plot's sample -- its own if
+// and in and the graph's, the string scalar named by qual -- s(range)
+// becomes the two numbers and s(range_var) the name, so both renderers
+// and the saved page read numbers as for range(# #).  A move of a filter
+// does not move them: twoway draws once.  With no observation (a string
+// variable, or one all missing over the sample) function is r(2000) "no
+// observations", as twoway's is; kdensity, which twoway draws empty, is
+// drawn over its own span and named in one note.  Called by
+// _dash_process_segment after _dash_validate_opts; the name passed the
+// kind's regex and confirm variable there.
+// ================================================================
+program define _dash_fold_range, sclass
+    version 19
+    args ptype qual
+    mata: st_local("v", st_global("s(range)"))
+    if substr(`"`macval(v)'"', 1, 5) != "@var:" exit
+    local name = substr(`"`v'"', 6, .)
+    mata: st_local("_fr_q", st_strscalar(st_local("qual")))
+    capture confirm numeric variable `name'
+    local _fr_n 0
+    if !_rc {
+        quietly summarize `name' `macval(_fr_q)', meanonly
+        local _fr_n = r(N)
+    }
+    if `_fr_n' == 0 {
+        if "`ptype'" == "function" {
+            display as error "no observations"
+            exit 2000
+        }
+        sreturn local range ""
+        sreturn local range_var ""
+        mata: _dash_say("txt", "dash: range(", st_local("name"), "): no observations, the data's own range used")
+        exit
+    }
+    local lo = strtrim(string(r(min), "%21.0g"))
+    local hi = strtrim(string(r(max), "%21.0g"))
+    sreturn local range "`lo' `hi'"
+    sreturn local range_var "`name'"
+end
+
+// ================================================================
 // _dash_fold_typed  -- options dash draws on some plot types only, named in
 //                      the note on the others.
 //
@@ -3038,14 +3085,15 @@ program define _dash_option_rules
         jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
         yaxis=int,1,2  xaxis=int,1,2 ///
         malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
-        base=num  barwidth=pos  level=num,0,100,x ///
-        degree=int,0,3  bwidth=pos,1@lowess  bwidth=pos ///
+        base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci ///
+        degree=int,0,3  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
-        n=int,1,300@mspline  n=int,2,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         level=num,10,99.99@lpolyci ///
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
-        colorcuts=numlist,1  colorvar=var  mlabel=var  range=numlist,2,2 ///
+        colorcuts=numlist,1  colorvar=var  mlabel=var ///
+        range=range,2,2,m@lfit|qfit|lfitci|qfitci  range=range,2,2 ///
         clwidth=style,0,10000,u ///
         alwidth=style,0,10000,u@lfitci|qfitci|lpolyci|fpfitci|area|bar|spike|dropline|histogram|rarea|rbar|rspike|rcap|rcapsym|rline|rconnected|tsrline|pcspike|pcarrow|pcbarrow|pcscatter|pccapsym|pci ///
         mlabangle=style,-360,360@scatter|connected|bar|dot|dropline|rcapsym|rconnected|rscatter|pcscatter|pccapsym|scatteri ///
@@ -3218,12 +3266,11 @@ program define _dash_validate_value, rclass
     else if "`opt'" == "bin" {
         local extra ". dash draws up to 1000 bins."
     }
-    else if "`opt'" == "n" & "`ptype'" != "mspline" {
-        // mspline's 1..300 is twoway's own ("n must be between 1 and 300").
+    else if "`opt'" == "n" & "`ptype'" != "mspline" & `R' > 10000 & `R' < . {
+        // mspline's 1..300 is twoway's own ("n must be between 1 and 300");
+        // the other types' lower bound 1 is twoway's (WP-31 C10a), the
+        // upper 10000 dash's resource limit.
         local extra ". dash evaluates up to 10000 points."
-    }
-    else if "`opt'" == "bwidth" & "`ptype'" == "lowess" {
-        local extra ". lowess bwidth() is the fraction of the sample."
     }
 
     local bad ""
@@ -3417,6 +3464,51 @@ program define _dash_validate_value, rclass
                 // "1 2 3 4 5" and "0 10".
                 local norm `"`r(numlist)'"'
             }
+        }
+    }
+    else if "`kind'" == "range" {
+        // WP-31 C10a: range() as twoway reads it (measured,
+        // test/fixtures/value_bounds_truth.json).  p3 "m": lfit, qfit,
+        // lfitci and qfitci -- Range(numlist min=2 max=2 missingok), a `.'
+        // standing for the data's own bound, anything else refused with
+        // numlist's code under "range() invalid -- ".  Otherwise kdensity
+        // and function: two numbers, or one variable name, whose min and
+        // max _dash_fold_range reads over the plot's sample; a variable
+        // that does not exist is r(111) in twoway's words, and anything
+        // but two numbers "option range() requires two numbers" with
+        // numlist's code.  A name reaches confirm only after the regex.
+        local _rg_rc 7
+        if !strpos(scalar(`V'), char(34)) {
+            if "`p3'" == "m" capture numlist `"`macval(value)'"', min(`p1') max(`p2') missingok
+            else             capture numlist `"`macval(value)'"', min(`p1') max(`p2')
+            local _rg_rc = _rc
+        }
+        if !`_rg_rc' {
+            local norm `"`r(numlist)'"'
+        }
+        else if "`p3'" == "m" {
+            local _rg_m "invalid numlist"
+            if `_rg_rc' == 122 local _rg_m "invalid numlist has too few elements"
+            if `_rg_rc' == 123 local _rg_m "invalid numlist has too many elements"
+            if !inlist(`_rg_rc', 121, 122, 123) local _rg_rc 121
+            display as error "range() invalid -- `_rg_m'"
+            exit `_rg_rc'
+        }
+        else if regexm(scalar(`T'), "^[A-Za-z_][A-Za-z0-9_]*$") {
+            mata: st_local("_rg_v", st_strscalar(st_local("T")))
+            // Stata's own line: "variable nosuch not found", r(111).
+            confirm variable `_rg_v'
+            // The full name, an abbreviation written out.
+            local _rg_full ""
+            foreach _rg_x of varlist `_rg_v' {
+                local _rg_full `_rg_x'
+            }
+            local norm "@var:`_rg_full'"
+        }
+        else {
+            if !inlist(`_rg_rc', 121, 122, 123, 127) local _rg_rc 121
+            display as error "option range() requires two numbers"
+            exit `_rg_rc'
         }
     }
     else if "`kind'" == "axislist" {
@@ -4528,7 +4620,7 @@ program define _dash_plot_opts_to_json, rclass
                    percent frequency density fraction kernel n level bands at ciopts ///
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
                    clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
-                   blabel horizontal vertical sort range colorlist jitterseed ///
+                   blabel horizontal vertical sort range range_var colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    mlabvposition mlabtextstyle ///
@@ -5663,6 +5755,11 @@ program define _dash_process_segment, rclass
         local _sl_n 1
         if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
         _dash_validate_opts "`_rc_own'" `_sl_n'
+        // range(varname) read as two numbers over the plot's sample
+        // (WP-31 C10a).
+        tempname _fr_s
+        mata: st_strscalar("`_fr_s'", st_local("_psq"))
+        _dash_fold_range "`_rc_own'" `_fr_s'
         _dash_stylelist_check "`_cn_ptype'" `_sl_n'
         if "`ptype'" == "function" {
             mata: st_local("_fn_rnorm", st_global("s(range)"))
