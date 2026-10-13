@@ -365,7 +365,13 @@ Without {cmd:tsset} an operator is refused "time variable not set",
 r(111); on a string variable "may not use time-series operators on string
 variables", r(109); a factor variable is "factor-variable operators not
 allowed", r(101); and data not sorted by the time variable are "not
-sorted", r(5).  {cmd:by()} with an operated plot variable in any layer is
+sorted", r(5).  In an option's variable an operator is refused as
+{cmd:twoway} refuses it, with or without {cmd:tsset}: {cmd:mlabel(L.make)}
+"variable L not found", r(111); {cmd:colorvar(L.mpg)} and
+{cmd:by(L.foreign)} "factor-variable and time-series operators not
+allowed", r(101); {cmd:mlabvposition(L.pos)} "L.pos invalid name", r(198).
+In a weight, {cmd:[aw=L.price]}, it is computed as in a plot variable.
+{cmd:by()} with an operated plot variable in any layer is
 "not sorted", r(5), as in {cmd:twoway}, and {cmd:dash} adds how to
 generate the variable first.  A bare {cmd:sort} with an operated {it:x} is
 "factor-variable and time-series operators not allowed" and "option

@@ -853,7 +853,7 @@ and now matches Stata.
 - start() on scatter, line, connected, area, bar, spike, dropline, dot, tsline, tsrline, rarea, rbar, rspike, rcap, rline, rconnected, rcapsym, rscatter, pcspike, pccapsym, pcarrow, pcbarrow, pcscatter, pci, pcarrowi, scatteri, lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mspline, mband, kdensity and function is refused, r(198), with twoway's line option start() not allowed; dash accepted it and drew nothing different. (WP-31, C3)
 - barwidth() on scatter, line, connected, tsline, tsrline, rarea, rspike, rcap, rline, rconnected, rcapsym, rscatter, pcspike, pccapsym, pcarrow, pcbarrow, pcscatter, pci, pcarrowi, scatteri, lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mspline, mband, kdensity and function is refused, r(198), with twoway's line option barwidth() not allowed; dash accepted it and drew nothing different (on rcap and rcapsym it was already refused, naming the spelling typed). (WP-31, C3)
 
-<!-- WP-31 A6 -->
+- colorvar() and by() with a time-series operator (colorvar(L.mpg), by(L.foreign)) are refused r(101), "factor-variable and time-series operators not allowed", as twoway refuses them; they were r(198) on tsset data and r(111) otherwise. mlabel(L.make) is r(111) "variable L not found", as in twoway; it was r(198) on tsset data. (WP-31, A6)
 
 <!-- WP-31 A8 -->
 
@@ -965,7 +965,7 @@ Changed behaviour.
 
 - A weight expression is evaluated as twoway evaluates it: dash lfit mpg weight [aw=price+1] was refused, r(198), "must name one variable; dash cannot evaluate a weight expression", and is now fitted as twoway fits it, in the saved page and the served app, as are [aw=L.price] on tsset data and an expression on qfit, lfitci, qfitci, lpoly, lpolyci, fpfit, fpfitci, kdensity, histogram, mspline and mband; an expression Stata cannot evaluate is refused with Stata's code and words (nosuch not found, r(111)). (WP-31, A5)
 
-<!-- WP-31 A6 -->
+- A time-series operator in an option's variable is refused as twoway refuses it, with or without tsset: dash scatter mpg weight, mlabel(L.make) said r(198) "mlabel() must name a variable, not a time-series expression" on tsset data and r(111) "variable L.make not found" otherwise, and now says twoway's "variable L not found", r(111); colorvar(L.mpg) and by(L.foreign) say "factor-variable and time-series operators not allowed", r(101). twoway draws none of them. (WP-31, A6)
 
 <!-- WP-31 A1 -->
 

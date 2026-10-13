@@ -469,16 +469,18 @@ quietly dash scatter mpg weight, name(hc)
 _hc2_expect "HC2-09d" 198 `"_dash_serve_spec, specpath("`hc2mj'") datapath("`hc2dj'") scheme(nonsense)"' "scheme()"
 
 // HC2-10 -- variables, expanded as twoway expands them; a time-series
-// expression refused, as twoway refuses it.
+// expression refused, as twoway refuses it, with its code and words
+// (Flipped, WP-31 A6: HC2-10e/g/i were r(198) "not a time-series
+// expression").
 _hc2_expect "HC2-10a" 0 `"twoway scatter mpg weight, by(for)"'
 _hc2_dash   "HC2-10b" 0 `"dash scatter mpg weight, by(for) name(hc)"'
 _hc2_reg    "HC2-10c" hc `""by":"foreign""'
 _hc2_expect "HC2-10d" 111 `"twoway scatter mpg weight, mlabel(L.mpg)"' "variable L not found"
-_hc2_dash   "HC2-10e" 198 `"dash scatter mpg weight, mlabel(L.mpg) name(hc)"' "not a time-series expression"
+_hc2_dash   "HC2-10e" 111 `"dash scatter mpg weight, mlabel(L.mpg) name(hc)"' "variable L not found"
 _hc2_expect "HC2-10f" 101 `"twoway scatter mpg weight, colorvar(L.mpg)"' "time-series operators not allowed"
-_hc2_dash   "HC2-10g" 198 `"dash scatter mpg weight, colorvar(L.mpg) name(hc)"' "not a time-series expression"
+_hc2_dash   "HC2-10g" 101 `"dash scatter mpg weight, colorvar(L.mpg) name(hc)"' "time-series operators not allowed"
 _hc2_expect "HC2-10h" 101 `"twoway scatter mpg weight, by(L.foreign)"' "time-series operators not allowed"
-_hc2_dash   "HC2-10i" 198 `"dash scatter mpg weight, by(L.foreign) name(hc)"' "not a time-series expression"
+_hc2_dash   "HC2-10i" 101 `"dash scatter mpg weight, by(L.foreign) name(hc)"' "time-series operators not allowed"
 _hc2_dash   "HC2-10j" 111 `"dash scatter mpg weight, mlabel(nosuchvar) name(hc)"' "not found"
 
 // HC2-11 -- checked inside a segment as well as after the comma.

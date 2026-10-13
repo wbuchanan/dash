@@ -1074,6 +1074,79 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
 }
 * ==== end S07 ====
 
+// S07 helper (WP-31 A6).  _u07_ops: the fixture's operator forms, each
+// as the dash command, twoway's rc and its line, into globals
+// u07_on, u07_oc<k>, u07_or<k>, u07_ot<k>; _u07_last: the last line of a
+// log that is not blank, into u07_line.
+python:
+def _u07_ops():
+    from sfi import Macro
+    ops = _U07_FIX["operators"]
+    keys = sorted(ops)
+    Macro.setGlobal("u07_on", str(len(keys)))
+    for i, k in enumerate(keys, 1):
+        cmd = ops[k]["cmd"]
+        if cmd.startswith("twoway "):
+            cmd = cmd[len("twoway "):]
+        Macro.setGlobal("u07_oc%d" % i, cmd)
+        Macro.setGlobal("u07_or%d" % i, str(ops[k]["rc"]))
+        Macro.setGlobal("u07_ot%d" % i, ops[k]["text"])
+
+
+def _u07_last(path):
+    from sfi import Macro
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        got = [ln.rstrip() for ln in fh if ln.strip()]
+    Macro.setGlobal("u07_line", got[-1] if got else "")
+end
+
+* ==== S07 A6: Operators in option varlists ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
+    display as text "S07 start " c(current_date) " " c(current_time)
+    local u7d "`w31_work'/s07b"
+    capture mkdir "`u7d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U07-4: each operator form of the fixture (twoway refuses every one:
+    // mlabel() r(111) "variable L not found", colorvar() and by() r(101)
+    // "factor-variable and time-series operators not allowed",
+    // mlabvposition() r(198) "L.pos invalid name") is refused by dash
+    // with twoway's rc and line, on tsset data and on data not tsset.
+    // ------------------------------------------------------------
+    python: _u07_ops()
+    local lf "`u7d'/ops.log"
+    local u7ls = c(linesize)
+    set linesize 200
+    foreach ts in 1 0 {
+        sysuse auto, clear
+        quietly generate t = _n
+        quietly generate int pos = mod(_n, 12)
+        if `ts' quietly tsset t
+        forvalues i = 1/${u07_on} {
+            local cmd "${u07_oc`i'}"
+            dash clear
+            quietly log using "`lf'", text replace name(u07o)
+            capture noisily dash `cmd' name(u074)
+            local rc = _rc
+            quietly log close u07o
+            python: _u07_last("`lf'")
+            _w31_expect U07-4 "(`rc' == ${u07_or`i'})" "tsset `ts': dash `cmd' rc `rc', twoway ${u07_or`i'}"
+            _w31_expect U07-4 `"(`"${u07_line}"' == `"${u07_ot`i'}"')"' "tsset `ts': dash `cmd' said [${u07_line}], twoway [${u07_ot`i'}]"
+        }
+    }
+    _w31_done U07-4 "mlabel(L.make), mlabel(L.rep78), colorvar(L.mpg), mlabvposition(L.pos) and by(L.foreign) refused with twoway's rc and line, tsset or not"
+
+    set linesize `u7ls'
+    capture erase "`lf'"
+    capture rmdir "`u7d'"
+    tsset, clear
+    dash clear
+    display as text "S07 end " c(current_date) " " c(current_time)
+}
+* ==== end S07 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

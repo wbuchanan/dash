@@ -3597,16 +3597,20 @@ program define _dash_validate_value, rclass
                 exit 198
             }
         }
-        // unab expands abbreviations and ranges.  When it refuses, tsrevar
-        // (rclass: it leaves s() alone, where tsunab and fvunab clear it)
-        // says whether the head is a valid time-series varlist -- one dash
-        // cannot draw, so a token carrying an operator (L.price) is refused
-        // as such.  tsrevar also passes `mpg if foreign', so the operator
-        // itself is required before that refusal.  Otherwise the first
-        // token that is not a variable is the one named -- twoway's own
-        // "variable X not found" -- without quotes around it: a value that
-        // ends in a double quote (by("foreign")) used to close the message's
-        // compound quote early and garble it.
+        // unab expands abbreviations and ranges.  When it refuses, the
+        // first token that is not a variable is the one named -- twoway's
+        // own "variable X not found" -- without quotes around it: a value
+        // that ends in a double quote (by("foreign")) used to close the
+        // message's compound quote early and garble it.  A token carrying
+        // a time-series operator (L.price) is refused as twoway refuses it
+        // in that option, whatever the tsset (WP-31 A6; measured,
+        // test/fixtures/weight_operator_truth.json operators.*): mlabel()
+        // reads a varname, so "variable L not found", r(111); colorvar()
+        // and by() "factor-variable and time-series operators not
+        // allowed", r(101).  twoway draws none of them.  hover() is dash's
+        // own: there tsrevar (rclass: it leaves s() alone, where tsunab and
+        // fvunab clear it) says whether the head is a valid time-series
+        // varlist, which dash cannot draw, and it is refused as such.
         local vv ""
         capture unab vv : `macval(head)'
         if _rc {
@@ -3626,10 +3630,23 @@ program define _dash_validate_value, rclass
                     if _rc {
                         local badvar `"`macval(tok)'"'
                         mata: st_strscalar(st_local("K"), st_local("tok"))
-                        if regexm(scalar(`K'), "^[LlFfDdSs][LlFfDdSs0-9()/]*\.[A-Za-z_]") local tsop = 1
+                        // ustrregexm: regexm's engine follows the caller's
+                        // version.
+                        if ustrregexm(scalar(`K'), "^[LlFfDdSs][LlFfDdSs0-9()/]*\.[A-Za-z_]") local tsop = 1
                         continue, break
                     }
                 }
+            }
+            if `tsop' & "`opt'" == "mlabel" {
+                // The operators before the dot: a token the operator test
+                // passed holds only letters, digits, ( ) / and the dot.
+                local _tsops = substr("`badvar'", 1, strpos("`badvar'", ".") - 1)
+                mata: _dash_say("err", "variable ", st_local("_tsops"), " not found")
+                exit 111
+            }
+            if `tsop' & inlist("`opt'", "colorvar", "by") {
+                display as error "factor-variable and time-series operators not allowed"
+                exit 101
             }
             if `ists' & `tsop' {
                 mata: _dash_say("err", "`prefix': `opt'() must name a variable, not a time-series expression (got: ", st_local("value"), ")")

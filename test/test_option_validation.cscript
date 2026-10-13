@@ -158,16 +158,20 @@
 *!   OV-166..168 fmt(%9,2fc %tm %10.0g) rc 0
 *! The adversarial review's findings (DESIGN.md section 7.1, 22sep2026):
 *!   OV-121 colorvar(L.price) jitter(5), data tsset
-*!                                    rc 198 naming colorvar(), and the
-*!                                    message says "time-series" (A1: the
-*!                                    old tsunab fallback cleared s() and
-*!                                    registered the segment with no options)
+*!                                    rc 101, twoway's "factor-variable and
+*!                                    time-series operators not allowed"
+*!                                    (Flipped, WP-31 A6: it was r(198)
+*!                                    naming colorvar(); A1: the old tsunab
+*!                                    fallback cleared s() and registered
+*!                                    the segment with no options)
 *!   OV-122 colorvar(price) jitter(5) rc 0, registry carries "jitter":"5"
 *!                                    AND "colorvar":"price" (the control)
 *!   OV-123 colorvar(L.price) jitter(5), data NOT tsset
-*!                                    rc 111 naming colorvar()
+*!                                    rc 101 likewise (Flipped, WP-31 A6:
+*!                                    it was r(111) naming colorvar())
 *!   OV-124 mlabel(L.mpg) jitter(5), data tsset
-*!                                    rc 198 naming mlabel(), "time-series"
+*!                                    rc 111, twoway's "variable L not
+*!                                    found" (Flipped, WP-31 A6: r(198))
 *!   OV-125 a graph and a KPI k registered, then
 *!          kpi name(k, replace) fmt(bogus)   rc 198 naming fmt(), the old
 *!          KPI's globals dash_kpi_k and dash_kpi_k__fmt intact, the registry
@@ -325,6 +329,8 @@
 *!          refused typed (Stata's weight syntax, twoway's rc), by
 *!          _dash_wexp_ok, and from an edited registry at export, r(198);
 *!          no __dash column left, the data kept
+*!   U07-9  mlabel(L.make) on histogram, function, mspline and mband:
+*!          twoway's code (WP-31 A6 guard)
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -777,16 +783,34 @@ _ov_case OV-120 `"dash kpi mean(mpg), name(k) title(T) fmt(%9.0fc)"' 0 ""
 // OV-121 .. OV-134: the adversarial review's findings (DESIGN.md 7.1)
 // ----------------------------------------------------------------
 // A1 -- a time-series expression in a var kind.  The data are tsset on t
-// (above), so L.price is a valid twoway varlist; dash cannot draw it and
-// says so, naming the option, without clearing the segment's s().
-_ov_case OV-121 `"dash scatter mpg weight, colorvar(L.price) jitter(5) name(ov121)"' 198 colorvar
-_ov_said OV-121m "time-series"
+// (above).  twoway refuses it in its own words, whatever the tsset, and
+// so does dash (Flipped, WP-31 A6: dash said r(198) "not a time-series
+// expression", or r(111) on data not tsset; test/fixtures/
+// weight_operator_truth.json operators.*), never clearing the segment's
+// s().  _ov_tsop <id> <rc> <cmd>: the command's rc, its log kept for
+// _ov_said.
+capture program drop _ov_tsop
+program define _ov_tsop
+    version 16.0
+    args id expected cmdtext
+    local logfile "`c(tmpdir)'dash_ov.log"
+    capture log close _ovlog
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily `cmdtext'
+    local rc = _rc
+    log close _ovlog
+    _ov_assert `id' "(`rc' == `expected')" `"rc `rc' (expected `expected') -- `macval(cmdtext)'"'
+end
+_ov_tsop OV-121 101 `"dash scatter mpg weight, colorvar(L.price) jitter(5) name(ov121)"'
+_ov_said OV-121m "factor-variable and time-series operators not allowed"
 _ov_case OV-122 `"dash scatter mpg weight, colorvar(price) jitter(5) name(ov122)"' 0 "" `""jitter":"5""' `""colorvar":"price""'
 quietly tsset, clear
-_ov_case OV-123 `"dash scatter mpg weight, colorvar(L.price) jitter(5) name(ov123)"' 111 colorvar
+_ov_tsop OV-123 101 `"dash scatter mpg weight, colorvar(L.price) jitter(5) name(ov123)"'
 quietly tsset t
-_ov_case OV-124 `"dash scatter mpg weight, mlabel(L.mpg) jitter(5) name(ov124)"' 198 mlabel
-_ov_said OV-124m "time-series"
+_ov_tsop OV-124 111 `"dash scatter mpg weight, mlabel(L.mpg) jitter(5) name(ov124)"'
+_ov_said OV-124m "variable L not found"
 
 // A2 -- a refused replace leaves the old KPI whole, and the registry
 // still builds.  Hand-rolled: _ov_probe clears the registry first.
@@ -1732,6 +1756,27 @@ if `"`bad'"' != "" {
     global ov_faillist "${ov_faillist} U07-8"
 }
 else display as text "U07-8 PASS: weight texts with a backtick, a dollar sign, a semicolon, a quote or a tab refused typed (twoway's rc) and in the registry (r(198)); nothing generated"
+
+// U07-9 (WP-31 A6): mlabel(L.make) on the types that never read mlabel()
+// (histogram: dropped, rc 0) or refuse it (mspline: r(111)) keeps
+// twoway's code, measured in the same run (guard).
+sysuse auto, clear
+quietly generate t = _n
+quietly tsset t
+local bad ""
+foreach c in "histogram mpg, mlabel(L.make)" "function y = x, mlabel(L.make)" "mspline mpg weight, mlabel(L.make)" "mband mpg weight, mlabel(L.make)" {
+    _u07_rc `"`c'"' "not found"
+    if r(trc) != r(drc) {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+tsset, clear
+if `"`bad'"' != "" {
+    display as error `"U07-9 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U07-9"
+}
+else display as text "U07-9 PASS: mlabel(L.make) on histogram, function, mspline and mband answers with twoway's code"
 
 // ----------------------------------------------------------------
 // Summary
