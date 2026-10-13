@@ -4125,10 +4125,16 @@ if "`bad'" != "" local nfail = `nfail' + 1
 if "`bad'" != "" display as error "RC-06 FAIL:`bad'"
 else display as text "RC-06 PASS: twoway's spellings by class, case-sensitive"
 
-// RC-07: dot is silent; pci and histogram's range targets are named.
+// RC-07: dot, pci and histogram's range targets are named.
+// Flipped (WP-31 B5a): dot was silent, which was wrong because twoway
+// reads recast() on dot and draws the dot graph unchanged (rc 0, the
+// same SVG; test/fixtures/rbar_dot_truth.json), so the option the user
+// gave is named rather than dropped in silence.
 local bad ""
 _ztp_run `"dash dot mpg weight, recast(line) name(zqtp)"' "`logfile'"
-if r(rc) | r(note) local bad "`bad' dot"
+if r(rc) | !r(note) local bad "`bad' dot"
+_ztp_logged "`logfile'" "recast()"
+if !r(found) local bad "`bad' dot/named"
 _zrc_spec `"{`q'type`q':`q'dot`q'"'
 if !r(found) local bad "`bad' dot/type"
 foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)" "histogram mpg, recast(rline)" {
@@ -4140,7 +4146,7 @@ foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)" "histogram mpg, recast(rli
 if "`bad'" != "" local faillist "`faillist' RC-07"
 if "`bad'" != "" local nfail = `nfail' + 1
 if "`bad'" != "" display as error "RC-07 FAIL:`bad'"
-else display as text "RC-07 PASS: dot ignores recast() silently; pci and histogram's range targets are named"
+else display as text "RC-07 PASS: recast() on dot, pci and histogram's range targets is named"
 
 // RC-08: one value for every y; a two-name value is an unknown name.
 local bad ""

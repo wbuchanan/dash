@@ -2969,8 +2969,9 @@ or density is marked after a filter move, as the fits are.  The
 spellings are {cmd:twoway}'s, case and all; a name outside the source's
 class prints {cmd:twoway}'s two notes and falls back -- a yx type to
 {cmd:scatter}, a range type to {cmd:rspike}, a {cmd:pc} type to
-{cmd:pcspike}, {cmd:function} to its own line.  {cmd:dot} ignores
-{cmd:recast()}.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
+{cmd:pcspike}, {cmd:function} to its own line.  On {cmd:dot},
+{cmd:recast()} is taken and named in the note: {cmd:twoway} reads it
+there and draws the dot graph unchanged.  On {cmd:lfitci}, {cmd:qfitci}, {cmd:lpolyci} and
 {cmd:fpfitci} the three are refused, r(198), as {cmd:twoway} refuses
 them, and so is a spelling of {cmd:recast()} shorter than its name.
 
@@ -3109,9 +3110,10 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     Under {cmd:by()} the panels share one base unless {cmd:yrescale} gives
     each its own scale, and a {cmd:yaxis(2)} layer takes its base from
     that axis.  The base follows the axis when a filter moves.
-    {cmd:twoway} also takes {cmd:base()} on {cmd:dot}, where it matters
-    only with {cmd:dotextend(no)}, and on {cmd:function}, as the base of
-    {cmd:droplines()} -- neither of which {cmd:dash} draws -- and refuses
+    On {cmd:dot}, {cmd:base()} widens the y axis to reach it, as in
+    {cmd:twoway}, with no tick placed for it, and does not move the dots.
+    {cmd:twoway} also takes {cmd:base()} on {cmd:function}, as the base of
+    {cmd:droplines()}, which {cmd:dash} does not draw, and refuses
     it on {cmd:histogram}, {cmd:kdensity}, {cmd:rbar}, {cmd:rspike},
     {cmd:rarea}, {cmd:scatter}, {cmd:line}, {cmd:connected} and
     {cmd:lfit}{p_end}

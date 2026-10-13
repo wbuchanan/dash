@@ -511,7 +511,7 @@ def _u03_draw(sp, dp, app):
     a, b = _u03_docs(sp, dp, app)
     for figs, sfx in ((a, "s"), (b, "v")):
         out = {"k": [], "w": [], "u": [], "b": [], "m": [], "y0": [],
-               "y1": []}
+               "y1": [], "h": []}
         for f in figs:
             out["y0"].append(float(f.y_range.start))
             out["y1"].append(float(f.y_range.end))
@@ -530,6 +530,11 @@ def _u03_draw(sp, dp, app):
                                                             g.width)))
                 elif t == "Scatter":
                     out["m"].append("%.12g" % float(g.size))
+                    # The dots' y values, as count and sum (B5a).
+                    yf = g.y if isinstance(g.y, str) else g.y.field
+                    ys = [float(v) for v in r.data_source.data[yf]
+                          if v == v]
+                    out["h"].append("%d:%.12g" % (len(ys), sum(ys)))
         for k, v in out.items():
             Macro.setGlobal("u03_%s%s" % (k, sfx),
                             " ".join(str(x) if not isinstance(x, str) else x
@@ -653,6 +658,44 @@ if inlist("`only'", "", "S03") & `: list posof "S03" in w31_run' {
         capture erase "`u3d'/`f'"
     }
     foreach k in 1 2 3 4weight 4turn 5 {
+        foreach p in s d {
+            capture erase "`u3d'/`p'`k'.json"
+        }
+        capture erase "`u3d'/a`k'.py"
+    }
+    capture rmdir "`u3d'"
+    capture graph drop u03t
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
+* ==== S03 B5a: dot base and recast ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w31_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local u3d "`w31_work'/s03b"
+    capture mkdir "`u3d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U03-04: dot base(50) widens the y axis to 50 in both modes, as
+    // twoway's scale reaches 50, and moves no dot.
+    // ------------------------------------------------------------
+    quietly twoway dot mpg weight, base(50) name(u03t, replace)
+    local cmax = `.u03t.plotregion1.yscale.curmax'
+    _w31_expect U03-04 "(`cmax' >= 50)" "twoway dot base(50) curmax `cmax'"
+    _u03_reg "`u3d'" 6 dot mpg weight, name(zu6)
+    local h0 "${u03_hs}"
+    _w31_expect U03-04 "(${u03_y1s} < 50 & ${u03_y1v} < 50)" "dot without base() reaches ${u03_y1s} / ${u03_y1v}"
+    _u03_reg "`u3d'" 7 dot mpg weight, base(50) name(zu7)
+    _w31_expect U03-04 "(${u03_y1s} >= 50 & ${u03_y1v} >= 50)" "dot base(50) y range ends at ${u03_y1s} saved, ${u03_y1v} served"
+    _w31_expect U03-04 `"("${u03_hs}" == "`h0'" & "${u03_hv}" == "`h0'")"' "the dots' y values ${u03_hs} / ${u03_hv}, without base() `h0'"
+    _w31_done U03-04 "dot base(50) widens the y axis past 50 in both modes, as twoway's (curmax `cmax'), and moves no dot"
+
+    foreach k in 6 7 {
         foreach p in s d {
             capture erase "`u3d'/`p'`k'.json"
         }

@@ -1441,6 +1441,31 @@ if `"`bad'"' != "" {
 }
 else display as text "U03-06 PASS: mwidth twice, and on scatter and bar, refused as twoway refuses it; once on rbar and histogram taken"
 
+// U03-05: recast() on dot: twoway takes it (rc 0) and draws the dot graph
+// unchanged (rbar_dot_truth.json), so dash takes it and names recast()
+// once in the note; the spec keeps type dot and no recast key.
+sysuse auto, clear
+local bad ""
+foreach c in "dot mpg weight, recast(line)" "dot mpg weight, recast(scatter)" {
+    _u03_rc `"`c'"' "recast()"
+    if r(trc) != 0 | r(drc) != 0 | r(named) != 1 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', named `r(named)']"'
+    }
+}
+capture dash clear
+quietly dash dot mpg weight, recast(line) name(u03r)
+_ov_has "u03r" `""type":"dot""'
+if r(found) != 1 local bad `"`bad' [spec type not dot]"'
+_ov_has "u03r" `""recast":"'
+if r(found) != 0 local bad `"`bad' [spec carries recast]"'
+capture dash clear
+if `"`bad'"' != "" {
+    display as error `"U03-05 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U03-05"
+}
+else display as text "U03-05 PASS: recast() on dot taken as twoway takes it and named once; dot drawn"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

@@ -2388,6 +2388,7 @@ CORPUS = [
     # WP-31 C2/B5a
     _case("rbar mwidth msize(large)",
           [plot_for("rbar", {"mwidth": "mwidth", "msize": "large"})]),
+    _case("dot base(50)", [plot_for("dot", {"base": "50"})]),
 ]
 
 

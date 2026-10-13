@@ -2610,7 +2610,14 @@ program define _dash_recast_opt, sclass
         else display as error "type() option not allowed"
         exit 198
     }
-    if "`ptype'" == "dot" exit
+    // WP-31 B5a: twoway reads recast() on dot and draws the dot graph
+    // unchanged (twoway dot mpg weight, recast(line) and recast(scatter):
+    // rc 0, the same SVG; test/fixtures/rbar_dot_truth.json probes), so
+    // it is named in the note, not dropped in silence.
+    if "`ptype'" == "dot" {
+        _dash_recast_named `_rc_word'
+        exit
+    }
     local _rc_lit "pci pcarrowi"
     if `: list ptype in _rc_lit' {
         _dash_recast_named `_rc_word'

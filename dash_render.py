@@ -19030,9 +19030,21 @@ class GlyphMapper:
             options: Translated plot-level options dict.
 
         Returns:
-            List containing the single scatter GlyphRenderer.
+            The scatter GlyphRenderer map_scatter returns.  With
+            ``base()`` it carries ``_dash_axis_include`` ``{"y": base}``.
         """
-        return self.map_scatter(fig, source, yvar, xvar, options, view=view, color_idx=color_idx)
+        rs = self.map_scatter(fig, source, yvar, xvar, options, view=view,
+                              color_idx=color_idx)
+        # base(): twoway registers it with the y scale and draws the dots
+        # from the axis's own base (yxview.class:1583-1587; WP-31 B5a):
+        # base(50) widens the scale to 50 and leaves the ticks
+        # (rbar_dot_truth.json dot.base_50).  The hull reads the tag as it
+        # reads an explicit bar base(): in the extent, no tick input.
+        _b = _stat_option_float(options, "base", None, "dot")
+        if _b is not None and math.isfinite(_b):
+            for r in (rs if isinstance(rs, (list, tuple)) else [rs]):
+                r._dash_axis_include = {"y": float(_b)}
+        return rs
 
     # ------------------------------------------------------------------
     # Phase 3 additional plot types
@@ -32353,6 +32365,10 @@ def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
         if hf:
             r._dash_hull_fields = {("y" if k == "x" else "x"): v
                                    for k, v in hf.items()}
+        inc = getattr(r, "_dash_axis_include", None)
+        if inc:
+            r._dash_axis_include = {("y" if k == "x" else "x"): v
+                                    for k, v in inc.items()}
     for a in annotations or ():
         if isinstance(a, (_bm.Legend, _bm.ColorBar)):
             continue
@@ -32439,6 +32455,12 @@ def _dash_secondary_values(fig, range_attr, name):
                 col = _dash_float_values(data[field], coerce=True)
                 sel = col[list(rows)] if len(col) else col
                 cols.extend(float(x) for x in sel if np.isfinite(x))
+        # WP-31 B5a: dot's base(), a number as a bar's base is.
+        inc = (getattr(r, "_dash_axis_include", None) or {}).get(
+            range_attr[0])
+        if isinstance(inc, (int, float)) and not isinstance(inc, bool) \
+                and math.isfinite(float(inc)) and n:
+            consts.append(float(inc))
     return cols, cols + consts
 
 
@@ -32579,15 +32601,24 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
         if getattr(r, range_attr, "default") != name:
             continue
         based = tuple(getattr(r, "_dash_base", None) or ())
+        data = src.data
+        first = next(iter(data), None)
+        n = len(data[first]) if first else 0
         if role == "base":
+            # WP-31 B5a: a base() that is no glyph property (dot's), read
+            # as an explicit bar base() is, on a layer with rows.
+            inc = (getattr(r, "_dash_axis_include", None) or {}).get(
+                range_attr[0])
+            if isinstance(inc, (int, float)) and not isinstance(inc, bool) \
+                    and math.isfinite(float(inc)) and n \
+                    and (kind != "log" or float(inc) > 0):
+                lo = float(inc) if lo is None else min(lo, float(inc))
+                hi = float(inc) if hi is None else max(hi, float(inc))
             if not based:
                 continue
             skip = ()
         else:
             skip = _dash_auto_base_props(r, range_attr[0]) + based
-        data = src.data
-        first = next(iter(data), None)
-        n = len(data[first]) if first else 0
         filt = getattr(getattr(r, "view", None), "filter", None)
         rows = None
         if filt is not None:
@@ -32932,6 +32963,14 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                 or {}).get(letter, ()):
                         if fld in src.data and str(fld) not in lf:
                             lf.append(str(fld))
+                    # WP-31 B5a: dot's base(), a base the page reads as
+                    # bar's explicit base (bconsts).
+                    _inc = (getattr(r, "_dash_axis_include", None)
+                            or {}).get(letter)
+                    if isinstance(_inc, (int, float)) \
+                            and not isinstance(_inc, bool) \
+                            and math.isfinite(float(_inc)):
+                        bc.append(float(_inc))
                     if lf or lc or bf or bc:
                         layers.append({"src": si, "filt": fi, "fk": fk_,
                                        "fields": lf, "consts": lc,
