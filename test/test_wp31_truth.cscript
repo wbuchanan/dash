@@ -871,6 +871,209 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w31_run' {
 }
 * ==== end S05 ====
 
+// S07 helpers (WP-31 A5-A8).  _u07_draw: what a registered dash graph
+// draws, saved (DashRenderer) and served (the generated app's
+// make_document): each line's and bar's y values (u07_ys, u07_yv), the
+// saved aggregate layers' weight columns (u07_w), the data file's
+// generated columns (u07_cols), and u07_tw 1 when the saved drawing is
+// twoway's (the fixture key's serset: the lfit line through its points,
+// the histogram's heights of the bins that hold rows, the kdensity
+// curve) to 1e-5, relative.
+python:
+import json as _u07_json, os as _u07_os, sys as _u07_sys
+for _u07_p in (_u07_os.path.abspath(".."),):
+    if _u07_p not in _u07_sys.path:
+        _u07_sys.path.insert(0, _u07_p)
+with open(_u07_os.path.join("fixtures", "weight_operator_truth.json"),
+          encoding="utf-8") as _u07_fh:
+    _U07_FIX = _u07_json.load(_u07_fh)
+
+
+def _u07_ys(figs):
+    out = []
+    for f in figs:
+        for r in f.renderers:
+            g = getattr(r, "glyph", None)
+            t = type(g).__name__
+            if t not in ("Line", "VBar", "Quad"):
+                continue
+            d = r.data_source.data
+            yf = {"Line": "y", "VBar": "top", "Quad": "top"}[t]
+            xf = {"Line": "x", "VBar": "x", "Quad": "left"}[t]
+            yk = getattr(g, yf)
+            xk = getattr(g, xf)
+            yk = yk if isinstance(yk, str) else getattr(yk, "field", yf)
+            xk = xk if isinstance(xk, str) else getattr(xk, "field", xf)
+            pts = sorted(zip([float(v) for v in d[xk]],
+                             [float(v) for v in d[yk]]))
+            out.append((t, pts))
+    return out
+
+
+def _u07_tw(key, drawn):
+    ss = _U07_FIX["weights"][key]["serset"]
+    tol = lambda a, b: abs(a - b) <= 1e-5 * max(1.0, abs(b))
+    if not drawn:
+        return 0
+    t, pts = drawn[0]
+    if key.startswith("lfit"):
+        xs, ys = ss["c2"], ss["c1"]
+        s = (ys[-1] - ys[0]) / (xs[-1] - xs[0])
+        return int(all(tol(y, ys[0] + s * (x - xs[0])) for x, y in pts))
+    want = [float(v) for v in ss["c1"]]
+    # twoway's histogram serset holds the bins that hold rows.
+    got = [y for _, y in pts if not (key.startswith("hist") and y == 0)]
+    return int(len(got) == len(want) and all(map(tol, got, want)))
+
+
+def _u07_draw(sp, dp, app, key=""):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import Plot
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u07_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u07_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    saved = list(r.figures.values())
+    served = [m for root in doc.roots for m in root.select({"type": Plot})]
+    a, b = _u07_ys(saved), _u07_ys(served)
+    sig = lambda v: " ".join("%s:%s" % (t, ";".join(
+        "%.9g,%.9g" % p for p in pts)) for t, pts in v)
+    Macro.setGlobal("u07_ys", sig(a))
+    Macro.setGlobal("u07_yv", sig(b))
+    Macro.setGlobal("u07_w", " ".join(
+        str(rr._dash_agg_config.get("wvar", ""))
+        for f in saved for rr in f.renderers
+        if isinstance(getattr(rr, "_dash_agg_config", None), dict)))
+    with open(dp, encoding="utf-8") as fh:
+        _u07_d = _u07_json.load(fh)
+    names = _u07_d.get("StataJSON", _u07_d).get("variableNames", [])
+    Macro.setGlobal("u07_cols", " ".join(n for n in names
+                                         if n.startswith("__dash")))
+    Macro.setGlobal("u07_tw", str(_u07_tw(key, a)) if key else "")
+end
+
+capture program drop _u07_reg
+program define _u07_reg
+    // _u07_reg <dir> <k> <fixture key or -> <dash command...>: register
+    // one graph, write its spec and data, and read both modes (_u07_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken key 0 : 0
+    if "`key'" == "-" local key ""
+    foreach g in ys yv w cols tw {
+        global u07_`g' ""
+    }
+    dash clear
+    global u07_rc 0
+    capture noisily dash `0'
+    global u07_rc = _rc
+    if ${u07_rc} exit
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u07_m; _u07_m._u07_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`key'")
+end
+
+* ==== S07 A5: Weight expressions ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
+    display as text "S07 start " c(current_date) " " c(current_time)
+    local u7d "`w31_work'/s07a"
+    capture mkdir "`u7d'"
+    capture graph drop _all
+    sysuse auto, clear
+    quietly generate t = _n
+    quietly tsset t
+    quietly generate double w1 = price + 1
+    quietly generate double w2 = L.price
+    quietly generate double w3 = rep78 + 1
+
+    // ------------------------------------------------------------
+    // U07-1: lfit [aw=price+1] is fitted as [aw=w1], w1 = price+1, in
+    // both modes, on twoway's line (weights.lfit_aw_expr).
+    // ------------------------------------------------------------
+    _u07_reg "`u7d'" 1 lfit_aw_expr lfit mpg weight [aw=price+1], name(u071a)
+    _w31_expect U07-1 "(${u07_rc} == 0)" "dash lfit [aw=price+1] rc ${u07_rc}"
+    local e_s "${u07_ys}"
+    local e_v "${u07_yv}"
+    local e_tw "${u07_tw}"
+    local e_c "${u07_cols}"
+    _u07_reg "`u7d'" 2 lfit_aw_var lfit mpg weight [aw=w1], name(u071b)
+    _w31_expect U07-1 "(${u07_rc} == 0)" "dash lfit [aw=w1] rc ${u07_rc}"
+    _w31_expect U07-1 `"("`e_s'" == "${u07_ys}" & "`e_v'" == "${u07_yv}" & "`e_s'" != "")"' "[aw=price+1] drew `e_s' / `e_v', [aw=w1] ${u07_ys} / ${u07_yv}"
+    _w31_expect U07-1 `"("`e_tw'" == "1")"' "the saved line is not twoway's (`e_s')"
+    _w31_expect U07-1 `"("`e_c'" == "__dashw1")"' "the data file's generated columns: `e_c'"
+    capture describe __dash*, varlist
+    _w31_expect U07-1 "(_rc != 0)" "a __dash column was left in the data: `r(varlist)'"
+    _w31_done U07-1 "lfit [aw=price+1] is fitted as twoway fits it, saved and served, from __dashw1"
+
+    // ------------------------------------------------------------
+    // U07-2: lfit [aw=L.price] is fitted as [aw=w2], w2 = L.price, from
+    // the time-series column __dasht1 (weights.lfit_aw_ts).
+    // ------------------------------------------------------------
+    _u07_reg "`u7d'" 3 lfit_aw_ts lfit mpg weight [aw=L.price], name(u072a)
+    _w31_expect U07-2 "(${u07_rc} == 0)" "dash lfit [aw=L.price] rc ${u07_rc}"
+    local e_s "${u07_ys}"
+    local e_v "${u07_yv}"
+    local e_tw "${u07_tw}"
+    local e_c "${u07_cols}"
+    _u07_reg "`u7d'" 4 lfit_aw_ts_var lfit mpg weight [aw=w2], name(u072b)
+    _w31_expect U07-2 `"("`e_s'" == "${u07_ys}" & "`e_v'" == "${u07_yv}" & "`e_s'" != "")"' "[aw=L.price] drew `e_s' / `e_v', [aw=w2] ${u07_ys} / ${u07_yv}"
+    _w31_expect U07-2 `"("`e_tw'" == "1")"' "the saved line is not twoway's (`e_s')"
+    _w31_expect U07-2 `"("`e_c'" == "__dasht1")"' "the data file's generated columns: `e_c'"
+    _w31_done U07-2 "lfit [aw=L.price] is fitted as twoway fits it, saved and served, from __dasht1"
+
+    // ------------------------------------------------------------
+    // U07-3: histogram [fw=rep78+1] and kdensity [aw=price+1] read the
+    // column __dashw1 as their weight and draw as their twins do
+    // ([fw=w3], [aw=w1]) and as twoway draws (weights.hist_fw_expr,
+    // kde_aw_expr).
+    // ------------------------------------------------------------
+    local k 5
+    foreach c in "hist_fw_expr histogram mpg [fw=rep78+1]|hist_fw_var histogram mpg [fw=w3]" "kde_aw_expr kdensity mpg [aw=price+1]|kde_aw_var kdensity mpg [aw=w1]" {
+        gettoken a b : c, parse("|")
+        local b = substr(`"`b'"', 2, .)
+        gettoken ka a : a
+        gettoken kb b : b
+        _u07_reg "`u7d'" `k' `ka' `a', name(u073`k')
+        _w31_expect U07-3 "(${u07_rc} == 0)" "dash `a' rc ${u07_rc}"
+        local e_s "${u07_ys}"
+        local e_v "${u07_yv}"
+        _w31_expect U07-3 `"("${u07_w}" == "__dashw1")"' "`a': the weight column read is ${u07_w}"
+        _w31_expect U07-3 `"("${u07_tw}" == "1")"' "`a': the saved drawing is not twoway's"
+        local ++k
+        _u07_reg "`u7d'" `k' `kb' `b', name(u073`k')
+        _w31_expect U07-3 `"("`e_s'" == "${u07_ys}" & "`e_v'" == "${u07_yv}" & "`e_s'" != "")"' "`a' and `b' draw differently"
+        local ++k
+    }
+    _w31_done U07-3 "histogram [fw=rep78+1] and kdensity [aw=price+1] weight by __dashw1, as twoway weights them"
+
+    forvalues k = 1/8 {
+        foreach p in s d {
+            capture erase "`u7d'/`p'`k'.json"
+        }
+        capture erase "`u7d'/a`k'.py"
+    }
+    capture rmdir "`u7d'"
+    tsset, clear
+    dash clear
+    display as text "S07 end " c(current_date) " " c(current_time)
+}
+* ==== end S07 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

@@ -318,6 +318,13 @@
 *!           function range(make): twoway's rc and line
 *!   U05-06  lowess bwidth(-1), (0), (1), (1.5), (5): rc 0 as twoway, no
 *!           note naming bwidth()
+*! Weight expressions (WP-31 A5; test/fixtures/weight_operator_truth.json):
+*!   U07-7  lfit [aw=price+1] rc 0, no note; [aw=nosuch+1], [aw=price+]
+*!          and kdensity [aw=nosuch*2] refused with twoway's rc and line
+*!   U07-8  weight texts holding a backtick, $, ;, a double quote or a tab
+*!          refused typed (Stata's weight syntax, twoway's rc), by
+*!          _dash_wexp_ok, and from an edited registry at export, r(198);
+*!          no __dash column left, the data kept
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1602,6 +1609,129 @@ foreach v in -1 0 1 1.5 5 {
     }
 }
 _u05_judge U05-06 `"`bad'"' "lowess bwidth(-1 0 1 1.5 5) taken in silence, as twoway takes it"
+
+// ----------------------------------------------------------------
+// WP-31 S07 (A5-A8).  _u07_rc <cmd> [needle]: twoway's and dash's rc for
+// one command and the first line of each log that holds `needle', into
+// r(trc) r(drc) r(tline) r(dline), and r(noted) the lines of dash's log holding "(note:".
+// ----------------------------------------------------------------
+capture program drop _u07_rc
+program define _u07_rc, rclass
+    version 16.0
+    args cmd needle
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 120
+    capture log close _ovlog
+    capture erase "`logfile'"
+    quietly graph drop _all
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily twoway `macval(cmd)' nodraw
+    local trc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" `"`macval(needle)'"'
+    local tline `"`r(line)'"'
+    capture erase "`logfile'"
+    capture dash clear
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `macval(cmd)' name(u07)
+    local drc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" `"`macval(needle)'"'
+    local dline `"`r(line)'"'
+    _ov_count "`logfile'" "(note:"
+    local noted = r(n)
+    capture erase "`logfile'"
+    capture dash clear
+    return scalar trc = `trc'
+    return scalar drc = `drc'
+    return scalar noted = `noted'
+    return local tline `"`macval(tline)'"'
+    return local dline `"`macval(dline)'"'
+end
+
+// U07-7 (WP-31 A5): a weight expression is taken as twoway takes it, with
+// no note; one Stata cannot evaluate is refused with twoway's rc and line
+// (test/fixtures/weight_operator_truth.json weights.bad_*).
+sysuse auto, clear
+local bad ""
+_u07_rc "lfit mpg weight [aw=price+1]," "dash:"
+if r(trc) != 0 | r(drc) != 0 | r(noted) != 0 {
+    local bad `"`bad' [[aw=price+1]: twoway `r(trc)', dash `r(drc)', noted `r(noted)']"'
+}
+foreach c in "lfit mpg weight [aw=nosuch+1],|nosuch not found" "lfit mpg weight [aw=price+],|invalid name" "kdensity mpg [aw=nosuch*2],|nosuch not found" {
+    gettoken cmd nd : c, parse("|")
+    local nd = substr(`"`nd'"', 2, .)
+    _u07_rc `"`cmd'"' `"`nd'"'
+    if r(trc) == 0 | r(trc) != r(drc) | strtrim(`"`r(tline)'"') != strtrim(`"`r(dline)'"') | `"`r(dline)'"' == "" {
+        local bad `"`bad' [`cmd': twoway `r(trc)' `r(tline)', dash `r(drc)' `r(dline)']"'
+    }
+}
+if `"`bad'"' != "" {
+    display as error `"U07-7 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U07-7"
+}
+else display as text "U07-7 PASS: [aw=price+1] taken with no note; nosuch+1, price+ and nosuch*2 refused with twoway's rc and line"
+
+// U07-8 (WP-31 A5): a weight text holding a backtick, a dollar sign, a
+// semicolon, a double quote or a tab never reaches a command line.  Typed,
+// Stata's own weight syntax refuses each first, with twoway's rc
+// (measured in the same run); _dash_wexp_ok refuses each by value; and a
+// registry edited to hold one is refused at export, r(198), "holds a
+// weight dash cannot evaluate".  Nothing is generated: no __dash variable
+// is left and the data are kept.
+sysuse auto, clear
+local bad ""
+mata: _u07_t = ("price+" + char(96) + "x'", "price+" + char(36) + "x", "price;drop _all", char(34) + "a" + char(34) + "+1", "price" + char(9) + "+price")
+local logfile "`c(tmpdir)'dash_ov.log"
+forvalues i = 1/5 {
+    capture dash clear
+    mata: st_local("_u07_c", "lfit mpg weight [aw=" + _u07_t[`i'] + "],")
+    capture twoway `macval(_u07_c)' nodraw
+    local trc = _rc
+    capture noisily dash `macval(_u07_c)' name(u078)
+    local rc = _rc
+    mata: st_local("_u07_ok", strofreal(_dash_wexp_ok(_u07_t[`i'])))
+    capture describe __dash*, varlist
+    local left = (_rc == 0)
+    capture confirm variable price
+    local gone = (_rc != 0)
+    if `rc' == 0 | `rc' != `trc' | `_u07_ok' | `left' | `gone' {
+        local bad `"`bad' [text `i': rc `rc' (twoway `trc'), wexp_ok `_u07_ok', __dash left `left', data dropped `gone']"'
+    }
+    // The registry route: the stored weight replaced by the text.
+    capture dash clear
+    quietly dash lfit mpg weight [aw=price+1], name(u078)
+    mata: st_global("dash_json_u078", subinstr(st_global("dash_json_u078"), char(34) + "wexp" + char(34) + ":" + char(34) + "price+1" + char(34), char(34) + "wexp" + char(34) + ":" + char(34) + _json_escape(_u07_t[`i']) + char(34)))
+    capture log close _ovlog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily _dash_serve_spec, specpath("`c(tmpdir)'u078s.json") datapath("`c(tmpdir)'u078d.json")
+    local src = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "holds a weight dash cannot evaluate"
+    local said = r(n)
+    capture describe __dash*, varlist
+    local left = (_rc == 0)
+    capture confirm variable price
+    local gone = (_rc != 0)
+    if `src' != 198 | `said' != 1 | `left' | `gone' {
+        local bad `"`bad' [registry text `i': rc `src', said `said', __dash left `left', data dropped `gone']"'
+    }
+}
+capture erase "`logfile'"
+capture erase "`c(tmpdir)'u078s.json"
+capture erase "`c(tmpdir)'u078d.json"
+mata: st_local("_u07_ok", strofreal(_dash_wexp_ok("price+1")))
+if `_u07_ok' != 1 local bad `"`bad' [_dash_wexp_ok(price+1) is `_u07_ok']"'
+capture mata: mata drop _u07_t
+capture dash clear
+if `"`bad'"' != "" {
+    display as error `"U07-8 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U07-8"
+}
+else display as text "U07-8 PASS: weight texts with a backtick, a dollar sign, a semicolon, a quote or a tab refused typed (twoway's rc) and in the registry (r(198)); nothing generated"
 
 // ----------------------------------------------------------------
 // Summary

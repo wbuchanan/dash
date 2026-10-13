@@ -2179,11 +2179,14 @@ local jg_q4 = _rc
 capture noisily dash scatter mpg weight, name(`"a"b"')
 local jg_q7 = _rc
 _jg_log_off
-cert_log_has "`jg_l47'", needle("must name one variable; dash cannot evaluate a weight expression")
+// Flipped (WP-31 A5): a weight expression is evaluated now; one holding a
+// double quote is refused before any command line sees it, "cannot be
+// evaluated" (it was "must name one variable").
+cert_log_has "`jg_l47'", needle("] cannot be evaluated")
 local jg_k1 = r(count)
 // The refusal shows the expression whole, past its quote: cut at the "',
 // it showed [aweight=cond(make==] (measured 24sep2026).
-cert_log_has "`jg_l47'", needle(`"x",1,2)] must name one variable"')
+cert_log_has "`jg_l47'", needle(`"x",1,2)] cannot be evaluated"')
 local jg_k1 = `jg_k1' + r(count)
 cert_log_has "`jg_l47'", needle("option top not allowed")
 local jg_k2 = r(count)
@@ -3880,7 +3883,8 @@ cert_log_has "`jg_l69'", needle("ignoring unsupported option(s): colormissing()"
 local jg_w4 = r(count)
 cert_log_has "`jg_l69'", needle("J6_W invalid name")
 local jg_w5 = r(count)
-cert_log_has "`jg_l69'", needle(`"J6_G",1,2)] must name one variable"')
+// Flipped (WP-31 A5): "cannot be evaluated", as above.
+cert_log_has "`jg_l69'", needle(`"J6_G",1,2)] cannot be evaluated"')
 local jg_w8 = r(count)
 capture erase "`jg_l69'"
 local jg_ok ""

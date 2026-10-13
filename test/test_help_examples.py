@@ -124,7 +124,8 @@ class TestTheShapeOfTheExamples:
             'dash scatter mpg weight, play(x)': 1,
             'dash (scatter mpg weight, yaxis(3))': 1,
             'dash (scatter mpg weight, discrete)': 1,
-            'dash lfit mpg weight [aw=price+1]': 1,
+            # Flipped (WP-31 A5): dash lfit mpg weight [aw=price+1] is
+            # drawn, so the help shows no refusal for it.
             'dash build, saving(d.html) scheme(nosuchthing) replace': 1,
             # Flipped (WP-30 P1.14a): pstyle() is drawn, so the
             # Unsupported example names mlpattern() instead.
@@ -621,10 +622,13 @@ class TestThePinnedLists:
         # `placeholder' pins (four shell lines, venv(), its link line);
         # WP-29 P0.8 pinned its two date-unit illustrations (22 + 2), and
         # WP-30 P1.17b and P1.32 two more sentence illustrations (24 + 2).
-        assert len(lines) == len(pins) == 26
+        # 26 -> 25: WP-31 A5 -- the [aw=price+1] example is drawn, no
+        # longer an expected refusal.
+        assert len(lines) == len(pins) == 25
         kinds = [k for k, _v, _t in pins]
+        # expect 4 -> 3: WP-31 A5, as above.
         assert (kinds.count("special"), kinds.count("expect"),
-                kinds.count("check"), kinds.count("shown")) == (1, 4, 4, 17)
+                kinds.count("check"), kinds.count("shown")) == (1, 3, 4, 17)
 
     def test_every_pin_names_what_the_help_holds(self, pins, groups, shown):
         texts = [c.text for c in _commands(groups)]
@@ -662,7 +666,8 @@ class TestThePinnedLists:
         """An example the help presents as refused shows the refusal."""
         by_text = {c.text: c for c in _commands(groups)}
         expect = [text for kind, _v, text in pins if kind == "expect"]
-        assert len(expect) == 4
+        # 4 -> 3: WP-31 A5, as above.
+        assert len(expect) == 3
         for text in expect:
             assert by_text[text].outputs, text
 

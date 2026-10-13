@@ -1283,12 +1283,15 @@ _hc6_tw "lfit mpg weight [aw=price+1]"
 local t = r(rc)
 _hc6_dash "dash lfit mpg weight [aw=price+1], name(hc6)"
 local d = r(rc)
-_hc6_said "dash: [aweight=price+1] must name one variable; dash cannot evaluate a weight expression."
+// Flipped (WP-31 A5): dash refused the expression, r(198), "must name
+// one variable"; twoway evaluates the weight, and so does dash now, at
+// export, as the help says.
+_hc6_said "must name one variable"
 local s1 = r(n)
-_hc6_said "Generate it first: generate double w = price+1"
+_hc6_said "cannot evaluate"
 local s2 = r(n)
-local bad = (`t' != 0 | `d' != 198 | `s1' != 1 | `s2' != 1)
-_hc6_tally HC6-49 `bad' "an expression weight: twoway evaluates it; dash refuses it, r(198), with the words the help prints"
+local bad = (`t' != 0 | `d' != 0 | `s1' != 0 | `s2' != 0)
+_hc6_tally HC6-49 `bad' "an expression weight: twoway evaluates it, and dash evaluates it at export, rc 0, as the help says"
 
 local bad = 0
 foreach w in aw fw {

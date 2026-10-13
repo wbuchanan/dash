@@ -23,10 +23,10 @@
 *!                        rc 0 on qfit qfitci fpfit fpfitci mspline mband
 *!     negative fw        r(402) "negative weights encountered" on lpoly
 *!                        lpolyci histogram kdensity; rc 0 elsewhere
-*!   WEIGHT EXPRESSIONS: twoway evaluates `[aw=price+1]' (rc 0).  dash
-*!     cannot: the data reach the renderer through jsonio as columns, so
-*!     a weight must be ONE existing variable (abbreviations expanded).
-*!     Anything else is refused, r(198), with the generate hint.
+*!   WEIGHT EXPRESSIONS: twoway evaluates `[aw=price+1]' (rc 0), and so
+*!     does dash (Flipped, WP-31 A5): ONE existing variable is its column
+*!     (abbreviations expanded); anything else is checked with Stata's
+*!     generate at registration and evaluated into a column at export.
 *!   SUB-OPTIONS (twoway's own declarations, class files under ado/base/t):
 *!     DISCrete (histogram: disc rc 0, dis/d r(198)); STDP STDF STDR with
 *!     no abbreviation (std r(198)), at most one ("may not combine stdf
@@ -87,19 +87,22 @@
 *!     SO-28 (lfit [aw=price]) (lowess [aw=price])
 *!                                  r(101): one refused layer refuses the
 *!                                  whole command
-*!   The one-variable policy:
-*!     SO-29 lfit [aw=price+1]      r(198) "must name one variable" and
-*!                                  the hint "generate double w = price+1"
+*!   Weight expressions (Flipped, WP-31 A5: twoway evaluates the weight,
+*!   and so does dash, into a column made at export):
+*!     SO-29 lfit [aw=price+1]      rc 0, "wexp":"price+1" (the expression
+*!                                  as typed); SO-29w qfit [aw=price*2] and
+*!                                  SO-29h kdensity [aw=price/1000] alike
 *!     SO-30 lfit [aw=pri]          rc 0, "wexp":"price" (expanded)
 *!     SO-31 scatter [aw=price+1]   rc 0, note [aweight] (a glyph layer
 *!                                  never evaluates the weight: unchanged)
 *!     SO-32 lfit [aw=nosuchvar]    r(111) -- syntax's own refusal
-*!     SO-33 lfit [aw=mpg-price]    r(198): a varlist range is not one
-*!                                  variable
-*!     SO-33b lfit [aw=price-price] r(198): a range that unab resolves to
-*!                                  ONE variable is still an expression
+*!     SO-33 lfit [aw=mpg-price]    rc 0, "wexp":"mpg-price": a varlist
+*!                                  range is an expression, as twoway reads it
+*!     SO-33b lfit [aw=price-price] rc 0, "wexp":"price-price": a range that
+*!                                  unab resolves to ONE variable is still
+*!                                  an expression (never weighted by price)
 *!                                  (twoway: price-price = 0, rc 0)
-*!     SO-33e lfit [aw=price - price]  r(198) likewise, with spaces
+*!     SO-33e lfit [aw=price - price]  rc 0 likewise, with spaces
 *!     SO-33c lfit [aw=p*]          r(198) "invalid name" from syntax
 *!     SO-33d lfit [aw=pr~e]        r(198) likewise (twoway r(198) both)
 *!   Frequency-weight values, per twoway:
@@ -497,11 +500,13 @@ _so_case SO-28 `"dash (lfit mpg weight [aw=price]) (lowess mpg weight [aw=price]
 _so_said SO-28w "weights not allowed"
 
 // ================================================================
-// One variable, expanded; an expression is refused with the hint.
+// One variable, expanded; an expression is kept as typed and evaluated
+// at export (Flipped, WP-31 A5: it was refused, r(198), "must name one
+// variable", where twoway evaluates it).
 // ================================================================
-_so_case SO-29 `"dash lfit mpg weight [aw=price+1], name(so29)"' 198
-_so_said SO-29w "must name one variable"
-_so_said SO-29h "generate double w = price+1"
+_so_case SO-29 `"dash lfit mpg weight [aw=price+1], name(so29)"' 0 "" `""weight":"aweight""' `""wexp":"price+1""'
+_so_case SO-29w `"dash qfit mpg weight [aw=price*2], name(so29w)"' 0 "" `""wexp":"price*2""'
+_so_case SO-29h `"dash kdensity mpg [aw=price/1000], name(so29h)"' 0 "" `""wexp":"price/1000""'
 _so_case SO-30 `"dash lfit mpg weight [aw=pri], name(so30)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
 // The one-name check must take any Stata name, not only ASCII ones.
 quietly generate double größe = price
@@ -633,18 +638,19 @@ _so_case SO-32 `"dash lfit mpg weight [aw=nosuchvar], name(so32)"' 111
 // control for the "not found" _so_probe requires absent from every
 // accepted command.
 _so_said SO-32w "not found"
-_so_case SO-33`"dash lfit mpg weight [aw=mpg-price], name(so33)"' 198
-_so_said SO-33w "must name one variable"
+_so_case SO-33 `"dash lfit mpg weight [aw=mpg-price], name(so33)"' 0 "" `""wexp":"mpg-price""'
+_so_case SO-33w `"dash lfit mpg weight [aw=mpg-price], name(so33w)"' 0 "" `"!"wexp":"mpg""'
 // unab reads a varlist, not a name: `price-price' is the one-variable
 // range price, and `price - price' too.  twoway weights by the
 // EXPRESSION price-price, which is zero (rc 0, measured 23sep2026), so
-// weighting by price would be a silently wrong estimate: each must be
-// refused as an expression.  `p*' and `pr~e' never reach unab: syntax
-// itself says "p* invalid name", r(198), as twoway does.
-_so_case SO-33b `"dash lfit mpg weight [aw=price-price], name(so33b)"' 198
-_so_said SO-33bw "must name one variable"
-_so_case SO-33e `"dash lfit mpg weight [aw=price - price], name(so33e)"' 198
-_so_said SO-33ew "must name one variable"
+// weighting by price would be a silently wrong estimate: each is kept as
+// the expression (Flipped, WP-31 A5: refused before, r(198)), never
+// unab'd to price.  `p*' and `pr~e' never reach unab: syntax itself says
+// "p* invalid name", r(198), as twoway does.
+_so_case SO-33b `"dash lfit mpg weight [aw=price-price], name(so33b)"' 0 "" `""wexp":"price-price""'
+_so_case SO-33bw `"dash lfit mpg weight [aw=price-price], name(so33bw)"' 0 "" `"!"wexp":"price""'
+_so_case SO-33e `"dash lfit mpg weight [aw=price - price], name(so33e)"' 0 "" `""wexp":"price - price""'
+_so_case SO-33ew `"dash lfit mpg weight [aw=price - price], name(so33ew)"' 0 "" `"!"wexp":"price""'
 _so_case SO-33c `"dash lfit mpg weight [aw=p*], name(so33c)"' 198
 _so_said SO-33cw "invalid name"
 _so_case SO-33d `"dash lfit mpg weight [aw=pr~e], name(so33d)"' 198
@@ -816,6 +822,7 @@ _so_case SO-92 `"dash histogram mpg if mpg >= 20, start(15) name(so92)"' 0 "" `"
 //     . dash lfit mpg weight, name(g1)        rc 0, and the registered
 //       spec carried "weight":"aweight","wexp":"price"
 // -- an lfit silently weighted by price.  After a refused [aw=price+1]
+// (now [aw=nosuch+1]: Flipped, WP-31 A5, an expression is evaluated)
 // every weighted type was refused with that expression's message, and a
 // scatter's note named [aweight].  Each pair below is a refusal and then
 // a command with no weight; _so_probe's `dash clear' between them is the
@@ -823,7 +830,7 @@ _so_case SO-92 `"dash histogram mpg if mpg >= 20, start(15) name(so92)"' 0 "" `"
 // ================================================================
 _so_case SO-93a `"dash lowess mpg weight [aw=price], name(so93a)"' 101
 _so_case SO-93 `"dash lfit mpg weight, name(so93)"' 0 "" `"!"weight":"' `"!"wexp":"'
-_so_case SO-94a `"dash lfit mpg weight [aw=price+1], name(so94a)"' 198
+_so_case SO-94a `"dash lfit mpg weight [aw=nosuch+1], name(so94a)"' 111
 _so_case SO-94 `"dash lfit mpg weight, name(so94)"' 0 "" `"!"wexp":"'
 _so_case SO-95a `"dash histogram mpg [aw=price], name(so95a)"' 101
 _so_case SO-95 `"dash scatter mpg weight, name(so95)"' 0 ""

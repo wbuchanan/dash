@@ -350,8 +350,22 @@
 *!       The table into the caller's locals _dts_n and _dts_e<k>.
 *!
 *!   _dash_tsop_meta(fmtmacro)
-*!       The spec's "ts_cols" object; the columns' formats merged into
-*!       the caller's local fmtmacro.
+*!       The spec's "ts_cols" object (the weight columns' entries too);
+*!       the columns' formats merged into the caller's local fmtmacro.
+*!
+*!   _dash_wexp_ok(expr)
+*!       1 when a weight expression may reach generate (no backtick, $,
+*!       quote, ;, tab or line break; 512 bytes).
+*!
+*!   _dash_wexp_reset()
+*!       Empty the weight-expression table.
+*!
+*!   _dash_wexp_rewrite(json, errmacro)
+*!       json with each weight expression replaced by its column
+*!       __dashw<k>; the reason in errmacro for one that may not be run.
+*!
+*!   _dash_wexp_export()
+*!       The table into the caller's locals _dwx_n and _dwx_e<k>.
 *!
 *!   _dash_extract_filters(filter_out, cmd_out)
 *!       Every filter() in the caller's `0': the groups, joined with
@@ -4050,7 +4064,9 @@ real scalar _dash_tsop_canon(string scalar e)
 
 // _dash_tsop_rewrite(json, errmacro) -- json with each plot-variable value
 // holding a dot ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var",
-// "y2var", "x2var"; never an option's variable) replaced by its column
+// "y2var", "x2var"; and the weight "wexp" when it is a canonical term,
+// [aw=L.price], WP-31 A5 -- another weight expression is
+// _dash_wexp_rewrite's) replaced by its column
 // __dasht<k>, the expression added to the table once.  Keys are found by
 // walking the JSON's strings, as _dash_qual_rewrite finds its own.  A
 // value that is not the canonical form (_dash_tsop_canon) puts the reason
@@ -4067,7 +4083,7 @@ string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
         _dash_tsop_list = J(0, 1, "")
     }
     st_local(errmacro, "")
-    keys = ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var")
+    keys = ("yvar", "xvar", "yvar1", "yvar2", "y1var", "x1var", "y2var", "x2var", "wexp")
     b    = ascii(json)
     n    = cols(b)
     cap  = 16
@@ -4106,7 +4122,7 @@ string scalar _dash_tsop_rewrite(string scalar json, string scalar errmacro)
         }
         if (ve > n) break
         val = (ve - v > 1 ? substr(json, v + 1, ve - v - 1) : "")
-        if (!strpos(val, ".")) {
+        if (!strpos(val, ".") | (tok == "wexp" & !_dash_tsop_canon(val))) {
             i = ve + 1
             continue
         }
@@ -4170,10 +4186,12 @@ void _dash_tsop_export()
 // expression when the base has no label (a label of blanks is a label:
 // twoway draws "   , L"); read by value, never cut (an 80-character label
 // keeps all 80).  Every value is escaped by
-// _json_escape.
+// _json_escape.  The weight columns __dashw<k> of _dash_wexp_rewrite
+// follow, {"expr":"price+1","label":"price+1"} (WP-31 A5).
 string scalar _dash_tsop_meta(string scalar fmtmacro)
 {
     external string colvector _dash_tsop_list
+    external string colvector _dash_wexp_list
     real scalar   k, dot
     string scalar e, base, lab, out, fmt, nm, q
 
@@ -4198,12 +4216,182 @@ string scalar _dash_tsop_meta(string scalar fmtmacro)
                   _json_escape(st_varformat(base)) + q
         }
     }
+    // The weight columns (WP-31 A5): the expression as typed, which is
+    // also the text a note shows for the column.
+    if (rows(_dash_wexp_list) == 0 & cols(_dash_wexp_list) == 0) {
+        _dash_wexp_list = J(0, 1, "")
+    }
+    for (k = 1; k <= rows(_dash_wexp_list); k++) {
+        e   = _dash_wexp_list[k]
+        nm  = "__dashw" + strofreal(k)
+        out = out + (out != "" ? "," : "") + q + nm + q + ":{" + q + "expr" +
+              q + ":" + q + _json_escape(e) + q + "," + q + "label" + q +
+              ":" + q + _json_escape(e) + q + "}"
+    }
     if (fmt != "") {
         e = strtrim(st_local(fmtmacro))
         if (e == "" | e == "{}") st_local(fmtmacro, "{" + fmt + "}")
         else st_local(fmtmacro, substr(e, 1, strlen(e) - 1) + "," + fmt + "}")
     }
     return("{" + out + "}")
+}
+
+
+// ------------------------------------------------------------
+// The weight-expression table (WP-31 A5).  twoway evaluates a weight
+// expression itself ([aw=price+1]); dash.ado checked it at registration
+// with Stata's own generate, and each distinct expression a dashboard's
+// layers carry becomes one column __dashw<k>, made in Stata by
+// _dash_wexp_gen at export, as the time-series columns are.  A canonical
+// time-series term ([aw=L.price]) is _dash_tsop_rewrite's, and a bare
+// variable name is read as the column it names.  The registry is a set
+// of globals a do-file can edit, so every expression is held to
+// _dash_wexp_ok here and again by _dash_wexp_gen before generate sees it.
+// ------------------------------------------------------------
+
+// _dash_wexp_ok(e) -- 1 when a weight expression may reach generate: not
+// empty, at most 512 bytes, and holding no backtick, dollar sign, double
+// quote, semicolon, tab or line break (WP-31 A5, D-07.a).  Read byte by
+// byte: no regex (regexm follows the caller's version).
+real scalar _dash_wexp_ok(string scalar e)
+{
+    real rowvector b
+    real scalar    i
+
+    if (strlen(e) == 0 | strlen(e) > 512) return(0)
+    b = ascii(e)
+    for (i = 1; i <= cols(b); i++) {
+        if (b[i] == 96 | b[i] == 36 | b[i] == 34 | b[i] == 59 |
+            b[i] == 9 | b[i] == 10 | b[i] == 13) return(0)
+    }
+    return(1)
+}
+
+// _dash_wexp_reset() -- empty the table.
+void _dash_wexp_reset()
+{
+    external string colvector _dash_wexp_list
+
+    _dash_wexp_list = J(0, 1, "")
+}
+
+// _dash_wexp_rewrite(json, errmacro) -- json with each "wexp" value that is
+// neither the exact name of a variable in memory nor a canonical
+// time-series term (_dash_tsop_canon) replaced by its column __dashw<k>,
+// the expression added to the table once.  Keys are found by walking the
+// JSON's strings, as _dash_tsop_rewrite finds its own.  A value
+// _dash_wexp_ok refuses, or holding a JSON escape, puts the reason in the
+// caller's local errmacro and returns json unchanged.
+string scalar _dash_wexp_rewrite(string scalar json, string scalar errmacro)
+{
+    external string colvector _dash_wexp_list
+    real rowvector   b
+    real scalar      n, i, e, k, v, ve, from, m, cap, ix
+    string scalar    tok, val, shown
+    string rowvector part
+
+    if (rows(_dash_wexp_list) == 0 & cols(_dash_wexp_list) == 0) {
+        _dash_wexp_list = J(0, 1, "")
+    }
+    st_local(errmacro, "")
+    b    = ascii(json)
+    n    = cols(b)
+    cap  = 16
+    part = J(1, cap, "")
+    m    = 0
+    from = 1
+    i    = 1
+    while (i <= n) {
+        if (b[i] != 34) {
+            i++
+            continue
+        }
+        e = i + 1
+        while (e <= n) {
+            if (b[e] == 34) break
+            e = e + (b[e] == 92 ? 2 : 1)
+        }
+        if (e > n) break
+        tok = (e - i > 1 ? substr(json, i + 1, e - i - 1) : "")
+        k   = _dash_qual_skipws(b, e + 1)
+        if (k > n) break
+        if (b[k] != 58 | tok != "wexp") {
+            i = e + 1
+            continue
+        }
+        v = _dash_qual_skipws(b, k + 1)
+        if (v > n) break
+        if (b[v] != 34) {
+            i = v
+            continue
+        }
+        ve = v + 1
+        while (ve <= n) {
+            if (b[ve] == 34) break
+            ve = ve + (b[ve] == 92 ? 2 : 1)
+        }
+        if (ve > n) break
+        val = (ve - v > 1 ? substr(json, v + 1, ve - v - 1) : "")
+        if (val == "" | _dash_tsop_canon(val)) {
+            i = ve + 1
+            continue
+        }
+        if (strlen(val) <= 32 & _st_varindex(val, 0) < .) {
+            if (st_varname(_st_varindex(val, 0)) == val) {
+                i = ve + 1
+                continue
+            }
+        }
+        if (!_dash_wexp_ok(val) | strpos(val, char(92))) {
+            shown = (ustrlen(val) > 80 ? usubstr(val, 1, 77) + "..." : val)
+            st_local(errmacro, "registry entry [" + shown +
+                "] holds a weight dash cannot evaluate")
+            return(json)
+        }
+        ix = 0
+        for (k = 1; k <= rows(_dash_wexp_list); k++) {
+            if (_dash_wexp_list[k] == val) {
+                ix = k
+                break
+            }
+        }
+        if (!ix) {
+            if (rows(_dash_wexp_list) >= 9999) {
+                st_local(errmacro, "it holds more than 9,999 distinct " +
+                    "weight expressions")
+                return(json)
+            }
+            _dash_wexp_list = _dash_wexp_list \ val
+            ix = rows(_dash_wexp_list)
+        }
+        if (m + 2 > cap) {
+            part = part, J(1, cap, "")
+            cap  = 2 * cap
+        }
+        part[++m] = substr(json, from, v - from)
+        part[++m] = char(34) + "__dashw" + strofreal(ix) + char(34)
+        from = ve + 1
+        i    = ve + 1
+    }
+    if (m + 1 > cap) part = part, J(1, 1, "")
+    part[++m] = substr(json, from, .)
+    return(invtokens(part[|1 \ m|], ""))
+}
+
+// _dash_wexp_export() -- the table into the caller's locals: _dwx_n, and
+// _dwx_e<k>, the expression of column __dashw<k>.
+void _dash_wexp_export()
+{
+    external string colvector _dash_wexp_list
+    real scalar k
+
+    if (rows(_dash_wexp_list) == 0 & cols(_dash_wexp_list) == 0) {
+        _dash_wexp_list = J(0, 1, "")
+    }
+    st_local("_dwx_n", strofreal(rows(_dash_wexp_list)))
+    for (k = 1; k <= rows(_dash_wexp_list); k++) {
+        st_local("_dwx_e" + strofreal(k), _dash_wexp_list[k])
+    }
 }
 
 

@@ -3244,11 +3244,11 @@
   - Suggested fix: WP-31 section 06 (parsed values): accept degree 4-7 with C10b.
   - Resolution: Not fixed because WP-31 section 06 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression
+- [x] Title: Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression
   - File Names and Line Numbers: dash.ado:5402-5425
   - Description: GAPS3.md A5, re-verified at 6370ca4: Weight expressions `[aw=price+1]` and `[aw=L.x]` refused; twoway takes an expression.
   - Suggested fix: WP-31 section 07 (weights operators hover dates): evaluate the expression into a __dash column at registration and pin the values against summarize [aw=].
-  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+  - Resolution: Fixed 13oct2026 (WP-31, A5). _dash_process_segment keeps a weight that is not one variable as the expression typed, after checking it with Stata's own generate (a refusal is Stata's words and code, nosuch not found r(111)) and _dash_wexp_ok (no backtick, dollar sign, double quote, semicolon, tab or line break; 512 bytes); at export _dash_wexp_rewrite and _dash_wexp_gen make one column __dashw<k> = (expression) per distinct expression, and a canonical time-series term ([aw=L.price]) is _dash_tsop_rewrite's __dasht<k> (its key list holds wexp); the spec's ts_cols names each column with its expression and both renderers take it in as data (_dash_tsop_cols_named), so lfit, qfit, the ci fits, lpoly, kdensity and histogram weight by it as twoway does, saved and served; the columns are dropped once the data are written. Pinned by test/test_weight_expressions.py::TestTheRendererReadsTheColumn::test_each_type, test/test_wp31_truth.cscript U07-1, test/test_option_validation.cscript U07-8; fixture test/fixtures/weight_operator_truth.json. Closes GAPS3 A5 (WP-31, A5).
 
 - [ ] Title: Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code
   - File Names and Line Numbers: dash.ado:3471-3479

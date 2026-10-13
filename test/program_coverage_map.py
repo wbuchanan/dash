@@ -342,6 +342,8 @@ COVERAGE = {
         # WP-30 S42 (P1.7): Time-series operators in plot varlists (P1.7)
         "_dash_parse_varpart_ts": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-04"),
         "_dash_tsop_gen": ("test_parser.cscript:TSO-06", "test_parser.cscript:TSO-11"),
+        # WP-31 S07 (A5): weight expressions
+        "_dash_wexp_gen": ("test_wp31_truth.cscript:U07-1", "test_wp31_truth.cscript:U07-3"),
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)
         "_dash_recast_opt": ("test_twoway_option_parity.cscript:RC-01", "test_twoway_option_parity.cscript:RC-13"),
         "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),
@@ -745,6 +747,11 @@ COVERAGE = {
         "_dash_tsop_meta": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-09"),
         "_dash_tsop_reset": ("test_parser.cscript:TSO-01",),
         "_dash_tsop_rewrite": ("test_parser.cscript:TSO-01", "test_parser.cscript:TSO-11"),
+        # WP-31 S07 (A5): weight expressions
+        "_dash_wexp_ok": ("test_option_validation.cscript:U07-8", "test_wp31_truth.cscript:U07-1"),
+        "_dash_wexp_reset": ("test_wp31_truth.cscript:U07-1",),
+        "_dash_wexp_rewrite": ("test_wp31_truth.cscript:U07-1", "test_wp31_truth.cscript:U07-3"),
+        "_dash_wexp_export": ("test_wp31_truth.cscript:U07-1",),
         # WP-30 S48 (P1.15b): by() grid and size (P1.15 part b)
         "_dash_by_clamp": ("test_by_suboptions.cscript:BYG-19",),
         "_dash_by_grammar": ("test_by_suboptions.cscript:BYG-18",),

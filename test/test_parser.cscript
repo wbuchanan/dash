@@ -3464,12 +3464,18 @@ if `"`c(python_exec)'"' != "" {
     dash clear
     display "TSO-11 PASS: a hand-edited operator expression is refused r(198), the data untouched"
 
-    // TSO-12: [aw=L.weight] stays refused r(198) (WP-30 P2.14's).
+    // TSO-12: [aw=L.weight] is taken, as twoway takes it, and computed as
+    // the time-series column __dasht1 at build (Flipped, WP-31 A5: it was
+    // refused r(198), where twoway evaluates the weight).
     _tso_data au
     dash clear
     _p1a_logrun "dash lfit mpg t [aw=L.weight], name(tso12)"
-    assert r(rc) == 198
-    display "TSO-12 PASS: a weight with an operator is still refused r(198)"
+    assert r(rc) == 0
+    _p1a_logrun `"dash build, saving("`tsopg'") replace"'
+    assert r(rc) == 0
+    capture describe __dash*, varlist
+    assert _rc != 0
+    display "TSO-12 PASS: a weight with an operator is taken and built, as twoway takes it"
 
     // TSO-13: a graph of operators alone draws, one-line and built.
     foreach body in "scatter D.close LD.close" "lfit D.close L.close" {

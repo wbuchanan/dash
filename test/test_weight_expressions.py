@@ -1,0 +1,262 @@
+"""Weight expressions (WP-31 A5).
+
+The defect: ``dash lfit mpg weight [aw=price+1]`` and ``[aw=L.price]`` were
+refused, r(198), "must name one variable; dash cannot evaluate a weight
+expression", where twoway evaluates the expression and fits with it
+(measured on StataNow 19.5: rc 0, the serset of ``[aw=price+1]`` equal to
+that of ``[aw=w1]`` with ``w1 = price+1``).
+
+dash.ado now evaluates an expression at export: a canonical time-series
+term (``L.price``) becomes the column ``__dasht<k>`` (``_dash_tsop_gen``,
+the key list of ``_dash_tsop_rewrite`` holds ``wexp``), any other
+expression the column ``__dashw<k>`` (``_dash_wexp_gen``, ``generate
+double __dashw<k> = (<expression>)``), named in the spec's ``ts_cols`` with
+the expression, which both renderers take in as data
+(``_dash_tsop_cols_named``).
+
+The truth is test/fixtures/weight_operator_truth.json, written by
+scripts/extract_weight_operator_truth.do; the Stata side (registration,
+export, the hostile texts) is pinned by test/test_wp31_truth.cscript
+U07-1..U07-3 and test/test_option_validation.cscript U07-7, U07-8.
+"""
+
+import json
+import os
+import re
+import sys
+import tempfile
+import warnings
+
+import numpy as np
+import pandas as pd
+import pytest
+from bokeh.document import Document
+from bokeh.models import Plot
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+sys.path.insert(0, REPO)
+
+import dash_render as dr  # noqa: E402
+from conftest import load_app, make_data_json, render_models  # noqa: E402
+from test_server_layer_defects import make_spec, plot_for  # noqa: E402
+
+FIXTURE = os.path.join(HERE, "fixtures", "weight_operator_truth.json")
+with open(FIXTURE, encoding="utf-8") as _fh:
+    _FIX = json.load(_fh)
+_TMP = tempfile.mkdtemp(prefix="dash_wexp_")
+_SEQ = iter(range(1, 10 ** 6))
+
+
+def _read(name):
+    with open(os.path.join(REPO, name), encoding="utf-8") as fh:
+        return fh.read()
+
+
+# ---------------------------------------------------------------------------
+# The fixture
+# ---------------------------------------------------------------------------
+class TestTheFixture:
+    def test_meta_is_stamped(self):
+        meta = _FIX["_meta"]
+        assert sorted(meta) == ["born_date", "dash_commit", "extracted",
+                                "source", "stata_version"]
+        assert meta["source"] == "scripts/extract_weight_operator_truth.do"
+        assert re.fullmatch(r"[0-9a-f]{40}", meta["dash_commit"])
+
+    def test_every_case_was_measured(self):
+        want = {
+            "weights": {"lfit_aw_expr": 0, "lfit_aw_var": 0,
+                        "lfit_aw_ts": 0, "lfit_aw_ts_var": 0,
+                        "hist_fw_expr": 0, "hist_fw_var": 0,
+                        "kde_aw_expr": 0, "kde_aw_var": 0,
+                        "lpoly_aw_expr": 0, "lpoly_aw_var": 0,
+                        "bad_expr": 111, "bad_var": 111, "bad_syntax": 198},
+            "operators": {"mlabel_L": 111, "mlabel_Lnum": 111,
+                          "colorvar_L": 101, "mlabvpos_L": 198, "by_L": 101},
+            "ydates": {"ylabel": 198, "ytick": 198, "ymlabel": 198,
+                       "ymtick": 198, "ylabel2": 198, "ytick2": 198,
+                       "yscale": 121, "yscale2": 121, "ylabel_tfmt": 198,
+                       "ylabel_tfmt_lit": 0, "ylabel_num": 0},
+        }
+        for sec, cases in want.items():
+            assert sorted(_FIX[sec]) == sorted(cases), sec
+            for key, rc in cases.items():
+                assert _FIX[sec][key]["rc"] == rc, (sec, key)
+        # The expression and its generated twin draw the same serset.
+        w = _FIX["weights"]
+        for a, b in (("lfit_aw_expr", "lfit_aw_var"),
+                     ("lfit_aw_ts", "lfit_aw_ts_var"),
+                     ("hist_fw_expr", "hist_fw_var"),
+                     ("kde_aw_expr", "kde_aw_var"),
+                     ("lpoly_aw_expr", "lpoly_aw_var")):
+            assert w[a]["serset"] == w[b]["serset"], a
+        assert len(_FIX["data"]["mpg"]) == 74
+
+
+# ---------------------------------------------------------------------------
+# Both renderers read the generated column
+# ---------------------------------------------------------------------------
+def _frame():
+    d = _FIX["data"]
+    df = pd.DataFrame({k: [np.nan if v is None else float(v) for v in d[k]]
+                       for k in ("mpg", "weight", "price", "rep78", "t")})
+    df["w1"] = df["price"] + 1
+    df["w3"] = df["rep78"] + 1
+    df["__dashw1"] = df["price"] + 1
+    df["__dashw2"] = df["rep78"] + 1
+    return df
+
+
+_TS = {"__dashw1": {"expr": "price+1", "label": "price+1"},
+       "__dashw2": {"expr": "rep78+1", "label": "rep78+1"}}
+
+
+def _write(spec):
+    tag = next(_SEQ)
+    sp = os.path.join(_TMP, "spec_%d.json" % tag)
+    dp = os.path.join(_TMP, "data_%d.json" % tag)
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump(make_data_json(_frame()), fh)
+    return tag, sp, dp
+
+
+def _figs(mode, spec):
+    tag, sp, dp = _write(spec)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if mode == "saved":
+            r = dr.DashRenderer(sp, dp)
+            render_models(r)
+            return list(r.figures.values())
+        ap = os.path.join(_TMP, "app_%d.py" % tag)
+        dr.ServerAppBuilder(sp, dp).build(ap)
+        mod = load_app(ap, "_wexp_app_%d" % tag)
+        doc = Document()
+        mod.make_document(doc)
+    return [m for root in doc.roots for m in root.select({"type": Plot})]
+
+
+def _drawn(figs):
+    """Every glyph's numeric columns, in render order, rounded."""
+    out = []
+    for f in figs:
+        for r in f.renderers:
+            g = getattr(r, "glyph", None)
+            src = getattr(r, "data_source", None)
+            if g is None or src is None:
+                continue
+            cols = {}
+            for k, v in src.data.items():
+                try:
+                    a = np.asarray(v, dtype=float)
+                except (TypeError, ValueError):
+                    continue
+                if a.ndim == 1 and not k.startswith("__dash"):
+                    cols[k] = [round(float(x), 9) for x in a]
+            out.append((type(g).__name__, sorted(cols.items())))
+    return out
+
+
+#: (type, weight, expression column, its twin variable)
+_CASES = [("lfit", "aweight", "__dashw1", "w1"),
+          ("qfit", "aweight", "__dashw1", "w1"),
+          ("lfitci", "aweight", "__dashw1", "w1"),
+          ("lpoly", "aweight", "__dashw1", "w1"),
+          ("kdensity", "aweight", "__dashw1", "w1"),
+          ("histogram", "fweight", "__dashw2", "w3")]
+
+
+def _wspec(ptype, wt, col, ts=True):
+    p = plot_for(ptype, {"weight": wt, "wexp": col})
+    bo = {"ts_cols": dict(_TS)} if ts else {}
+    return make_spec([p], build_options=bo)
+
+
+@pytest.mark.parametrize("mode", ["saved", "served"])
+class TestTheRendererReadsTheColumn:
+    @pytest.mark.parametrize("ptype,wt,col,twin", _CASES,
+                             ids=[c[0] for c in _CASES])
+    def test_each_type(self, mode, ptype, wt, col, twin):
+        got = _drawn(_figs(mode, _wspec(ptype, wt, col)))
+        want = _drawn(_figs(mode, _wspec(ptype, wt, twin)))
+        assert got and got == want
+
+    def test_the_lfit_is_twoways(self, mode):
+        """The fitted line of [aw=price+1] passes through twoway's serset."""
+        ss = _FIX["weights"]["lfit_aw_expr"]["serset"]
+        xs, ys = ss["c2"], ss["c1"]
+        slope = (ys[-1] - ys[0]) / (xs[-1] - xs[0])
+        figs = _figs(mode, _wspec("lfit", "aweight", "__dashw1"))
+        lines = [r for f in figs for r in f.renderers
+                 if type(getattr(r, "glyph", None)).__name__ == "Line"]
+        assert lines
+        d = lines[0].data_source.data
+        for x, y in zip(d["x"], d["y"]):
+            want = ys[0] + slope * (float(x) - xs[0])
+            assert abs(float(y) - want) <= 1e-5 * abs(want), (x, y, want)
+
+    def test_the_served_header_lists_wexp_as_a_var_key(self, mode):
+        assert "wexp" in dr._DASH_OPT_VAR_KEYS
+
+
+class TestTheColumnMap:
+    def test_the_weight_entries(self):
+        spec = {"graphs": [], "build_options": {"ts_cols": dict(_TS)}}
+        assert dr._dash_tsop_cols_named(spec) == _TS
+        for expr in ("", "price;drop", "a`b", "$x", 'a"b', "a\tb",
+                     "p" * 513, 3):
+            bad = {"__dashw1": {"expr": expr, "label": "x"}}
+            with pytest.raises(ValueError):
+                dr._dash_tsop_cols_named(
+                    {"graphs": [], "build_options": {"ts_cols": bad}})
+        for name in ("__dashw0", "__dashwx", "__dashw12345"):
+            bad = {name: {"expr": "price+1", "label": "x"}}
+            with pytest.raises(ValueError):
+                dr._dash_tsop_cols_named(
+                    {"graphs": [], "build_options": {"ts_cols": bad}})
+
+
+# ---------------------------------------------------------------------------
+# dash.ado and dash_parse.mata
+# ---------------------------------------------------------------------------
+def _mata_function(name):
+    src = _read("dash_parse.mata")
+    m = re.search(r"\n[a-z ]*\b%s\(.*?\n\}\n" % re.escape(name), src,
+                  re.S)
+    assert m, name
+    return m.group(0)
+
+
+_NEW_MATA = ("_dash_wexp_ok", "_dash_wexp_reset", "_dash_wexp_rewrite",
+             "_dash_wexp_export")
+
+
+class TestTheMataKeyLists:
+    def test_wexp_is_rewritten(self):
+        body = _mata_function("_dash_tsop_rewrite")
+        keys = re.search(r"keys = \(([^)]*)\)", body).group(1)
+        assert '"wexp"' in keys
+        body = _mata_function("_dash_wexp_rewrite")
+        assert re.search(r'"wexp"', body)
+        assert "__dashw" in body
+
+
+class TestTheRegistries:
+    def test_needed_and_index_agree(self):
+        ado = _read("dash.ado")
+        needed = re.search(r"local _needed(.*?)\n\s*foreach", ado, re.S)
+        assert needed
+        words = set(needed.group(1).replace("///", " ").split())
+        head = _read("dash_parse.mata").split("\n}\n", 1)[0]
+        sys.path.insert(0, HERE)
+        import program_coverage_map as pcm
+        for fn in _NEW_MATA:
+            assert fn in words, fn
+            assert re.search(r"\*!   %s\(" % fn, head), fn
+            assert fn in pcm.COVERAGE["dash_parse.mata"], fn
+        assert re.search(r"(?m)^program define _dash_wexp_gen$", ado)
+        assert "_dash_wexp_gen" in pcm.COVERAGE["dash.ado"]

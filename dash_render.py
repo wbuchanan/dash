@@ -41269,7 +41269,10 @@ def _dash_tsop_cols_named(spec):
     The map is user-reachable (the registry is globals), so each entry is
     validated before anything uses it: the name is one dash writes, the
     expression is canonical with a Stata-name base, the label is text of
-    at most ``_DASH_TSOP_LABEL_MAX`` characters.
+    at most ``_DASH_TSOP_LABEL_MAX`` characters.  A weight expression's
+    column ``__dashw<k>`` (WP-31 A5: ``[aw=price+1]``, made by Stata's
+    generate at build) carries the expression as typed: at most 512 bytes,
+    no backtick, dollar sign, double quote, semicolon, tab or line break.
 
     Raises:
         ValueError: An entry dash.ado would not write.
@@ -41283,16 +41286,28 @@ def _dash_tsop_cols_named(spec):
         raise bad
     out = {}
     for name, ent in raw.items():
-        if not isinstance(name, str) or not _DASH_TSOP_NAME_RE.match(name):
+        # A weight expression's column __dashw<k> (WP-31 A5,
+        # _dash_wexp_gen): Stata's generate evaluated the expression, which
+        # is text of at most 512 bytes holding none of the characters
+        # _dash_wexp_ok refuses.
+        wcol = isinstance(name, str) and re.match(
+            r"__dashw[1-9][0-9]{0,3}\Z", name) is not None
+        if not wcol and (not isinstance(name, str)
+                         or not _DASH_TSOP_NAME_RE.match(name)):
             raise bad
         if not isinstance(ent, dict):
             raise bad
         expr, label = ent.get("expr"), ent.get("label")
         if not isinstance(expr, str) or not isinstance(label, str):
             raise bad
-        m = _DASH_TSOP_EXPR_RE.match(expr)
-        if m is None or not _dash_is_stata_name(m.group("base")):
-            raise bad
+        if wcol:
+            if (not expr or len(expr.encode("utf-8")) > 512
+                    or any(c in expr for c in "`$\";\t\n\r")):
+                raise bad
+        else:
+            m = _DASH_TSOP_EXPR_RE.match(expr)
+            if m is None or not _dash_is_stata_name(m.group("base")):
+                raise bad
         if len(label) > _DASH_TSOP_LABEL_MAX:
             raise bad
         out[name] = {"expr": expr, "label": label}

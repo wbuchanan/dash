@@ -963,7 +963,7 @@ Changed behaviour.
 
 <!-- WP-31 F4 -->
 
-<!-- WP-31 A5 -->
+- A weight expression is evaluated as twoway evaluates it: dash lfit mpg weight [aw=price+1] was refused, r(198), "must name one variable; dash cannot evaluate a weight expression", and is now fitted as twoway fits it, in the saved page and the served app, as are [aw=L.price] on tsset data and an expression on qfit, lfitci, qfitci, lpoly, lpolyci, fpfit, fpfitci, kdensity, histogram, mspline and mband; an expression Stata cannot evaluate is refused with Stata's code and words (nosuch not found, r(111)). (WP-31, A5)
 
 <!-- WP-31 A6 -->
 

@@ -1976,7 +1976,6 @@ WP31_OPEN = {
     "C10b": "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)",
     "C18": "scatteri refuses a 2/2 numlist element where twoway divides",
     "F4": "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule",
-    "A5": "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression",
     "A6": "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code",
     "A7": "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list",
     "A8": "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)",

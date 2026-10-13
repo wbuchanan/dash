@@ -456,6 +456,7 @@ program define _dash_require_mata
         _dash_qual_rewrite _dash_qual_take _dash_qual_export _dash_qual_orders ///
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
+        _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
         _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
@@ -5571,28 +5572,51 @@ program define _dash_process_segment, rclass
     }
     if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' {
         // The data reach the renderer as exported, one column per
-        // variable, so a weight must be ONE existing variable.  twoway
-        // evaluates `[aw=price+1]' itself; dash cannot, and says so
-        // rather than weighting by something else.  unab expands an
-        // abbreviation (`[aw=pri]') to the full name the renderer reads.
-        // It reads a VARLIST, so the expression must first be one name:
-        // unab resolves the range `price-price' to price, where twoway
-        // weights by the expression price-price, which is zero (measured
-        // 23sep2026, rc 0).  confirm name accepts any Stata name,
-        // Unicode included, and nothing else.
+        // variable.  A weight that is ONE existing variable is that
+        // column: unab expands an abbreviation (`[aw=pri]') to the full
+        // name the renderer reads.  It reads a VARLIST, so the expression
+        // must first be one name: unab resolves the range `price-price'
+        // to price, where twoway weights by the expression price-price,
+        // which is zero (measured 23sep2026, rc 0).  confirm name accepts
+        // any Stata name, Unicode included, and nothing else.
         local _wx ""
         capture confirm name `macval(_seg_wexp)'
         if !_rc {
             capture unab _wx : `macval(_seg_wexp)'
         }
-        if _rc | `: word count `_wx'' != 1 {
-            // The expression is echoed through _dash_say: read by value,
-            // shown as written (a brace or a quote in it is the user's text).
-            mata: _dash_say("err", "dash: [`_seg_weight'=", st_local("_seg_wexp"), "] must name one variable; dash cannot evaluate a weight expression.")
-            mata: _dash_say("err", "      Generate it first: generate double w = ", st_local("_seg_wexp"), "")
-            exit 198
+        if !_rc & `: word count `_wx'' == 1 {
+            local _seg_wexp "`_wx'"
         }
-        local _seg_wexp "`_wx'"
+        else {
+            // An expression (WP-31 A5): twoway evaluates `[aw=price+1]'
+            // and `[aw=L.price]' itself (test/fixtures/
+            // weight_operator_truth.json weights.*).  A canonical
+            // time-series term takes the __dasht route at export
+            // (_dash_tsop_rewrite), anything else is generated into
+            // __dashw<k> there (_dash_wexp_gen).  Checked now, with
+            // Stata's own generate and its words and code, so a bad
+            // expression is refused at registration; a text holding a
+            // backtick, dollar sign, quote, semicolon, tab or line break
+            // never reaches a command line (_dash_wexp_ok).  The spec
+            // carries the expression as typed.
+            mata: st_local("_wok", strofreal(_dash_wexp_ok(st_local("_seg_wexp"))))
+            if !`_wok' {
+                mata: _dash_say("err", "dash: [`_seg_weight'=", st_local("_seg_wexp"), "] cannot be evaluated")
+                exit 198
+            }
+            // Quietly, as twoway says nothing of the missing values an
+            // expression makes; a refusal is run again noisily, so Stata's
+            // own words are shown with its code.
+            tempvar _wt
+            capture quietly generate double `_wt' = (`macval(_seg_wexp)')
+            if _rc {
+                local _wrc = _rc
+                capture noisily generate double `_wt' = (`macval(_seg_wexp)')
+                exit `_wrc'
+            }
+            capture drop `_wt'
+            local _wx "(`macval(_seg_wexp)')"
+        }
         // twoway's own checks of the weight's values, measured 23sep2026:
         // a non-integer fweight is r(401) "may not use noninteger frequency
         // weights" on lfit lfitci lpoly lpolyci histogram kdensity; a
@@ -5882,7 +5906,7 @@ program define _dash_process_segment, rclass
             local _ss_c "!missing(`yvar')"
             if "`ptype'" != "kdensity" local _ss_c "!missing(`yvar', `xvar')"
             if `"`_seg_weight'"' != "" {
-                local _ss_c "`_ss_c' & !missing(`_seg_wexp') & `_seg_wexp' > 0"
+                local _ss_c "`_ss_c' & !missing((`_seg_wexp')) & (`_seg_wexp') > 0"
             }
             if `: length local _ps_if' {
                 local _ss_c `"`_ss_c' & `macval(_ps_if)'"'
@@ -6076,7 +6100,8 @@ program define _dash_process_segment, rclass
     // leaves out when missing (and a weight not above zero).
     c_local _seg_vars_out `yvar' `xvar'
     local _seg_wv ""
-    if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' local _seg_wv `_seg_wexp'
+    // An expression in parentheses (WP-31 A5): the by() sample reads it.
+    if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' local _seg_wv (`_seg_wexp')
     c_local _seg_wvar_out `_seg_wv'
     // A function layer's text and the generator's range() and n(): the
     // typed range when it is two plain numbers (numlist keeps 13 digits,
@@ -6527,7 +6552,7 @@ program define _dash_qual_gen
     capture unab _dq_clash : __dash*
     if _rc == 0 {
         local _dq_first : word 1 of `_dq_clash'
-        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dq_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dq_first' newname"
         exit 110
     }
@@ -6669,7 +6694,7 @@ program define _dash_sort_gen, sortpreserve
     capture unab _ds_clash : __dashs*
     if _rc == 0 {
         local _ds_first : word 1 of `_ds_clash'
-        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_ds_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_ds_first' newname"
         exit 110
     }
@@ -6731,7 +6756,7 @@ program define _dash_tsop_gen
     capture unab _dt_clash : __dasht*
     if _rc == 0 {
         local _dt_first : word 1 of `_dt_clash'
-        display as error "`cmdname': variable `_dt_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "`cmdname': variable `_dt_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
         display as error "      Rename it first, for example: rename `_dt_first' newname"
         exit 110
     }
@@ -6759,6 +6784,56 @@ program define _dash_tsop_gen
         if "`_dt_vl'" != "" label values __dasht`k' `_dt_vl'
     }
     c_local _dash_tsop_vars "`made'"
+end
+
+// ================================================================
+// _dash_wexp_gen <cmdname>  -- the weight-expression columns, made in
+// Stata at export (WP-31 A5).  The twin of _dash_tsop_gen: each
+// expression of the table (_dash_wexp_rewrite, _dash_wexp_export) becomes
+// one column __dashw<k> = (expression), made by generate as twoway
+// evaluates the weight -- over every observation -- with Stata's own
+// message and code when generate refuses it ("nosuch not found", r(111);
+// "time variable not set" for L.price+1 on data not tsset).  The table is
+// a set of globals a do-file can edit, so each expression is held to
+// _dash_wexp_ok again before generate sees it.  What was made is dropped
+// on a refusal; the names come back in the caller's local
+// _dash_wexp_vars.
+// ================================================================
+program define _dash_wexp_gen
+    version 19
+    args cmdname
+    local _dwx_n = 0
+    mata: _dash_wexp_export()
+    if `_dwx_n' == 0 {
+        c_local _dash_wexp_vars ""
+        exit
+    }
+    capture unab _dw_clash : __dashw*
+    if _rc == 0 {
+        local _dw_first : word 1 of `_dw_clash'
+        display as error "`cmdname': variable `_dw_first' is named with the prefix __dash, which is reserved for the columns dash makes (its qualifier columns __dashq#, its join-order columns __dashs#, its time-series columns __dasht#, its weight columns __dashw#, its row identity __dash_row__ and its marker-label and jitter columns)."
+        display as error "      Rename it first, for example: rename `_dw_first' newname"
+        exit 110
+    }
+    local made ""
+    forvalues k = 1/`_dwx_n' {
+        mata: st_local("_dw_ok", strofreal(_dash_wexp_ok(st_local("_dwx_e`k'"))))
+        if !`_dw_ok' {
+            if "`made'" != "" drop `made'
+            mata: _dash_say("err", "`cmdname': registry entry [", st_local("_dwx_e`k'"), "] holds a weight dash cannot evaluate")
+            exit 198
+        }
+        capture quietly generate double __dashw`k' = (`macval(_dwx_e`k')')
+        if _rc {
+            local rc = _rc
+            if "`made'" != "" drop `made'
+            capture noisily generate double __dashw`k' = (`macval(_dwx_e`k')')
+            capture drop __dashw`k'
+            exit `rc'
+        }
+        local made `made' __dashw`k'
+    }
+    c_local _dash_wexp_vars "`made'"
 end
 
 // ================================================================
@@ -9073,7 +9148,16 @@ program define _dash_render_immediate
     // Each expression (L.close) becomes the column __dasht<k> Stata fills
     // with tsrevar at export (_dash_tsop_gen); the spec names the column
     // and carries the expression and twoway's text in "ts_cols".
+    // A weight expression (WP-31 A5) becomes the column __dashw<k> Stata
+    // fills with generate at export (_dash_wexp_gen), first, so a
+    // canonical time-series weight is left to the table below.
     local _dts_err ""
+    mata: _dash_wexp_reset()
+    mata: st_local("json_spec", _dash_wexp_rewrite(st_local("json_spec"), "_dts_err"))
+    if `: length local _dts_err' {
+        mata: _dash_say("err", "dash: ", st_local("_dts_err"), ".")
+        exit 198
+    }
     mata: _dash_tsop_reset()
     mata: st_local("json_spec", _dash_tsop_rewrite(st_local("json_spec"), "_dts_err"))
     if `: length local _dts_err' {
@@ -9082,9 +9166,14 @@ program define _dash_render_immediate
     }
     local _dts_n = 0
     mata: _dash_tsop_export()
+    local _dwx_n = 0
+    mata: _dash_wexp_export()
     local _dts_names ""
     forvalues _dtk = 1/`_dts_n' {
         local _dts_names `_dts_names' __dasht`_dtk'
+    }
+    forvalues _dtk = 1/`_dwx_n' {
+        local _dts_names `_dts_names' __dashw`_dtk'
     }
 
     // ---- Determine variables needed ----
@@ -9250,7 +9339,7 @@ program define _dash_render_immediate
         _dash_cell_cap 0 "" `_ri_gc'
     }
     else {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n''
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n''
     }
 
     // Reference lines: positions times by() panels (WP-30 P1.21a).
@@ -9264,7 +9353,7 @@ program define _dash_render_immediate
     // The time-series columns: their bases' formats, and the spec's map
     // from each column to its expression and twoway's text.
     local _dts_json ""
-    if `_dts_n' > 0 {
+    if `_dts_n' + `_dwx_n' > 0 {
         mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
         local _dts_json `","ts_cols":`macval(_dts_obj)'"'
     }
@@ -9293,7 +9382,8 @@ program define _dash_render_immediate
         local _dash_qual_vars ""
         local _dash_sort_vars ""
         local _dash_tsop_vars ""
-        if `_dq_n' + `_ds_n' + `_dts_n' > 0 {
+        local _dash_wexp_vars ""
+        if `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
@@ -9315,6 +9405,15 @@ program define _dash_render_immediate
             _dash_tmp_close, dir(`"`_dash_run'"')
             exit `_dt_rc'
         }
+        // The weight-expression columns (WP-31 A5); generate's refusal
+        // drops what was made.
+        capture noisily _dash_wexp_gen "dash"
+        if _rc {
+            local _dt_rc = _rc
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
+            _dash_tmp_close, dir(`"`_dash_run'"')
+            exit `_dt_rc'
+        }
         // Captured, so the qualifier columns are dropped when the export
         // fails too.  The writer reads each stored value whatever its
         // display format, so no format is touched (until 24sep2026 jsonio
@@ -9322,10 +9421,10 @@ program define _dash_render_immediate
         // export left it so: test_program_coverage.cscript PC-11).  Its
         // message is still shown and its code returned; no value is
         // expanded on the way (test_string_values.cscript).
-        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
+        capture noisily _dash_write_data "`data_json_path'" `needed_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         local _dash_jrc = _rc
-        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'" != "" {
-            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
+        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'`_dash_wexp_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         }
     }
     if `_dash_jrc' {
@@ -10121,8 +10220,10 @@ program define _dash_prepare_spec, rclass
     _dash_limit, name(by_groups)
     local _by_groups_lim = r(value)
     mata: _dash_qual_reset()
-    // The time-series table, one for the dashboard (WP-30 P1.7).
+    // The time-series table, one for the dashboard (WP-30 P1.7), and the
+    // weight-expression table (WP-31 A5).
     mata: _dash_tsop_reset()
+    mata: _dash_wexp_reset()
     local _rl_sum 0
     local _at_sum 0
     local ntok_reg : word count `registry'
@@ -10214,6 +10315,13 @@ program define _dash_prepare_spec, rclass
             // Time-series operators (WP-30 P1.7): each expression becomes
             // the column __dasht<k> _dash_tsop_gen fills at export.
             local _dts_err ""
+            // A weight expression first (WP-31 A5): the column __dashw<k>
+            // _dash_wexp_gen fills at export.
+            mata: st_local("_qg_`k'", _dash_wexp_rewrite(st_local("_qg_`k'"), "_dts_err"))
+            if `: length local _dts_err' {
+                mata: _dash_say("err", "`cmdname': ", st_local("_dts_err"), ". Run dash clear and register it again.")
+                exit 198
+            }
             mata: st_local("_qg_`k'", _dash_tsop_rewrite(st_local("_qg_`k'"), "_dts_err"))
             if `: length local _dts_err' {
                 mata: _dash_say("err", "`cmdname': ", st_local("_dts_err"), ". Run dash clear and register it again.")
@@ -10252,10 +10360,11 @@ program define _dash_prepare_spec, rclass
 
             local gvars ""
             mata: _dash_extract_vars(st_local("_qg_`k'"), "gvars")
-            // Less the time-series columns, which _dash_tsop_gen makes.
+            // Less the time-series columns, which _dash_tsop_gen makes, and
+            // the weight columns, _dash_wexp_gen's.
             local _gv_keep ""
             foreach v of local gvars {
-                if substr("`v'", 1, 7) != "__dasht" local _gv_keep `_gv_keep' `v'
+                if !inlist(substr("`v'", 1, 7), "__dasht", "__dashw") local _gv_keep `_gv_keep' `v'
             }
             local gvars `_gv_keep'
             foreach v of local gvars {
@@ -10416,6 +10525,8 @@ program define _dash_prepare_spec, rclass
     // refused (P1A-74).  A KPI always names its variable.
     local _dts_n = 0
     mata: _dash_tsop_export()
+    local _dwx_n = 0
+    mata: _dash_wexp_export()
     local _novars = ("`all_vars'" == "" & `_dts_n' == 0)
     if `_novars' {
         _dash_plottype_families
@@ -10495,7 +10606,7 @@ program define _dash_prepare_spec, rclass
     // observation of every variable and says so; the saved route counts
     // only what the page will hold.
     if "`server'" != "" | "`cmdname'" == "dash serve" {
-        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n'' "" 0 1
+        _dash_cell_cap `=`_dash_nvars' + `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n'' "" 0 1
         _dash_byte_cap `all_vars'
     }
     else {
@@ -10507,7 +10618,7 @@ program define _dash_prepare_spec, rclass
     _dash_formats_json "`all_vars'" _dash_fmt_json _dash_date_vars
     // The time-series columns' formats and the spec's map (WP-30 P1.7).
     local _dts_json ""
-    if `_dts_n' > 0 {
+    if `_dts_n' + `_dwx_n' > 0 {
         mata: st_local("_dts_obj", _dash_tsop_meta("_dash_fmt_json"))
         local _dts_json `","ts_cols":`macval(_dts_obj)'"'
     }
@@ -10522,7 +10633,8 @@ program define _dash_prepare_spec, rclass
         local _dash_qual_vars ""
         local _dash_sort_vars ""
         local _dash_tsop_vars ""
-        if `_dq_n' + `_ds_n' + `_dts_n' > 0 {
+        local _dash_wexp_vars ""
+        if `_dq_n' + `_ds_n' + `_dts_n' + `_dwx_n' > 0 {
             tempname _dash_eh
             _estimates hold `_dash_eh', restore nullok
         }
@@ -10541,11 +10653,18 @@ program define _dash_prepare_spec, rclass
             capture drop `_dash_qual_vars' `_dash_sort_vars'
             exit `_dt_rc'
         }
-        // Captured for the same reason as on the immediate route.
-        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
-        local _dash_jrc = _rc
-        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'" != "" {
+        // The weight-expression columns, as on the immediate route.
+        capture noisily _dash_wexp_gen "`cmdname'"
+        if _rc {
+            local _dt_rc = _rc
             capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars'
+            exit `_dt_rc'
+        }
+        // Captured for the same reason as on the immediate route.
+        capture noisily _dash_write_data "`datapath'" `all_vars' `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
+        local _dash_jrc = _rc
+        if "`_dash_qual_vars'`_dash_sort_vars'`_dash_tsop_vars'`_dash_wexp_vars'" != "" {
+            capture drop `_dash_qual_vars' `_dash_sort_vars' `_dash_tsop_vars' `_dash_wexp_vars'
         }
     }
     if `_dash_jrc' exit `_dash_jrc'

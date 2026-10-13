@@ -489,9 +489,9 @@ if `drcb' == 0 {
     _hc_key hc06b weight
     local wt `"`r(value)'"'
 }
-// one variable, not an expression, on a layer that honours it (twoway
-// evaluates the expression); on a glyph layer, which draws no weight, the
-// weight is named in the note by type
+// an expression on a layer that honours it is evaluated, as twoway
+// evaluates it (Flipped, WP-31 A5: it was refused, r(198)); on a glyph
+// layer, which draws no weight, the weight is named in the note by type
 graph drop _all
 capture twoway lfit mpg weight [aw=displacement/2], nodraw
 local twrcx = _rc
@@ -502,8 +502,8 @@ local drcy = _rc
 capture {
     assert `twrc' == 198 & `drc' == 198
     assert `drcb' == 0 & `"`wt'"' == "aweight"
-    assert `twrcx' == 0 & `drcx' == 198 & `drcy' == 0
-    assert "${dash_graph_registry}" == "hc06b hc06d"
+    assert `twrcx' == 0 & `drcx' == 0 & `drcy' == 0
+    assert "${dash_graph_registry}" == "hc06b hc06c hc06d"
 }
 if _rc {
     display as error `"HC1-06 FAIL: twoway `twrc' dash `drc'; in the plot rc=`drcb' weight=[`wt']; expression: twoway `twrcx' lfit `drcx' scatter `drcy'"'

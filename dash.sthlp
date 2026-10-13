@@ -3419,14 +3419,24 @@ weight on {cmd:lowess} ({cmd:weights not allowed}), {cmd:[aweight=]} or
 {cmd:[pweight=]} on {cmd:histogram}, and {cmd:[pweight=]} on
 {cmd:kdensity}, {cmd:lpoly} or {cmd:lpolyci} -- each r(101) -- and any
 weight on {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi}, r(198)
-({cmd:weights not allowed}).  The weight must be one existing variable,
-abbreviated as {cmd:twoway} abbreviates a variable.  {cmd:twoway} also
-accepts an expression there; {cmd:dash} cannot evaluate one before the
-data leave Stata, so it is refused with r(198) and the remedy:
+({cmd:weights not allowed}).  The weight is a variable, abbreviated as
+{cmd:twoway} abbreviates a variable, or an expression, as in {cmd:twoway}:
+{cmd:dash} checks the expression with Stata's own {cmd:generate} when the
+graph is registered (an expression Stata refuses is refused with Stata's
+code and words, {cmd:nosuch not found}, r(111)) and evaluates it into a
+column of its own when the data are exported, over every observation, so
+the layer is fitted as {cmd:twoway} fits it; a time-series term such as
+{cmd:L.price} is computed as a time-series operator in a plot variable is
+(see {it:Time-series operators} above), and needs {cmd:tsset} data:
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
 {phang3}{cmd:. dash lfit mpg weight [aw=price+1]}{p_end}
-{phang3}{cmd:dash: [aweight=price+1] must name one variable; dash cannot evaluate a weight expression. Generate it first: generate double w = price+1}{p_end}
+
+{pstd}
+An expression holding a backtick, a dollar sign, a double quote, a
+semicolon, a tab or a line break never reaches a command line: Stata's
+weight syntax refuses most of them as {cmd:twoway} does, and {cmd:dash}
+refuses the rest, r(198).
 
 {pstd}
 On {cmd:scatter} and the other glyph layers, and on {cmd:function}, a
