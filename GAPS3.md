@@ -431,11 +431,11 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B4a Tracked:** Open (WP-31 section 23).
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).
-- **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit pending.
+- **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
 - **B5b Tracked:** Open (WP-31 section 18).
-- **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit pending.
-- **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit pending.
-- **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit pending.
+- **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit c0c5139.
+- **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
+- **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
 - **C4 Tracked:** Open (WP-31 section 11).
 - **C5 Tracked:** Open (WP-31 section 12).
 - **C6 Tracked:** Open (WP-31 section 14).
