@@ -2472,12 +2472,12 @@ display "P20-33 PASS: name(g1, replace) stores the graph as g1 -- with by(), on 
 // P20-34 -- tokens spelled to pass for a coordinate or a clock position:
 // SMCL, hex, digits followed by letters, full-width, Arabic-Indic and
 // superscript digits, a Unicode minus, a no-break space and a tab glued
-// to a digit, a numlist range, an expression, an uppercase missing value
-// and a quoted non-number.  Each is refused r(198), as twoway refuses it
-// ("invalid point," / "invalid position,"), the token shown as text, and
-// nothing registered.  (1/1 is a numlist range twoway takes and then
-// evaluates as a division, drawing 1 -- an accident of its implementation
-// that dash does not copy.)
+// to a digit, an expression, an uppercase missing value and a quoted
+// non-number.  Each is refused r(198), as twoway refuses it ("invalid
+// point," / "invalid position,"), the token shown as text, and nothing
+// registered.  (1/1 is a numlist range twoway takes and evaluates as a
+// division, drawing 1; since WP-31 C18 dash does the same, so it is not
+// probed here.)
 capture dash clear
 _adv_p19_run "dash scatteri 1 {bf:INJMARKSX}, name(p2034)"
 assert r(rc) == 198
@@ -2495,9 +2495,11 @@ local p2034lg "`r(log)'"
 mata: st_local("p2034f", strofreal(_cert_file_has(st_local("p2034lg"), char(39) + char(34) + "{bf:INJMARKQX}" + char(34) + char(39) + " is not a number.", 0)))
 assert `p2034f' == 1
 local p2034tb = char(9)
+// Flipped (WP-31 C18): 1/1 left this list -- twoway divides a p/p
+// coordinate and dash now does too (test_parser.cscript P1A-61..67).
 foreach p2034t in 0x10 1e3x 12abc "`=uchar(65299)'" "`=uchar(1635)'" ///
     "`=uchar(178)'" "`=uchar(8722)'1" "1`=uchar(160)'" "1`p2034tb'2" ///
-    1/1 1+1 .A {
+    1+1 .A {
     foreach p2034p in scatteri pci {
         local p2034v = cond("`p2034p'" == "scatteri", "1 `p2034t'", "0 0 0 `p2034t'")
         _adv_p19_run "dash `p2034p' `p2034v', name(p2034b)"
@@ -2514,7 +2516,9 @@ _adv_p19_run "dash pci 0 0 0 1 ({bf:INJMARKCQ}), name(p2034d)"
 assert r(rc) == 198
 cert_file_has "`r(log)'", needle("dash: pci: invalid position, {bf:INJMARKCQ};")
 assert r(found) == 1
-foreach p2034c in "(.)" "(1/1)" "(`=uchar(65299)')" "(0x3)" "( 3 3 )" {
+// Flipped (WP-31 C18): (1/1) left this list -- twoway reads it as clock
+// position 1 and dash now does too (_dash_imm_clock).
+foreach p2034c in "(.)" "(`=uchar(65299)')" "(0x3)" "( 3 3 )" {
     foreach p2034p in scatteri pci {
         local p2034v = cond("`p2034p'" == "scatteri", "1 2 `p2034c'", "0 0 0 1 `p2034c'")
         _adv_p19_run "dash `p2034p' `p2034v', name(p2034e)"
