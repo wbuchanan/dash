@@ -424,7 +424,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit pending.
 - **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit pending.
 - **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit pending.
-- **A8 Tracked:** Open (WP-31 section 07).
+- **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit pending.
 - **B1 Tracked:** Open (WP-31 section 21).
 - **B2 Tracked:** Open (WP-31 section 21).
 - **B3 Tracked:** Open (WP-31 section 21).

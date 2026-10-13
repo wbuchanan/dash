@@ -3984,7 +3984,9 @@ ticks are drawn; {cmd:tscale(log)} on a date axis is noted as
 {cmd:xscale(log)} is.  What {cmd:twoway} refuses is refused in its words:
 a date literal in {cmd:xlabel()}, {cmd:xtick()}, {cmd:xmlabel()},
 {cmd:xmtick()} or {cmd:xline()} (r(198)) or in {cmd:xscale(range())}
-(r(121)); a literal on an axis that takes numbers only, or one no
+(r(121)), and likewise in {cmd:ylabel()}, {cmd:ytick()}, {cmd:ymlabel()},
+{cmd:ymtick()} or {cmd:yline()} (r(198)) or in {cmd:yscale(range())}
+(r(121)), on any {it:y} variable, a date-formatted one too; a literal on an axis that takes numbers only, or one no
 date function reads ({cmd:tline(2000m13)}); more than 2,500 lines in a
 copy (r(123)); and {cmd:tm()} and {cmd:ts()}, which are no option of
 {cmd:twoway}'s (r(198)).  The dates are read when the graph is

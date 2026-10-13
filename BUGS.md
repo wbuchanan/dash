@@ -3262,11 +3262,11 @@
   - Suggested fix: WP-31 section 07 (weights operators hover dates): merge the two lists and pin the tooltip.
   - Resolution: Fixed 13oct2026 (WP-31, A7). _dash_rep_cat gives hover() its own category "H" and _dash_rep_merge joins two lists, blank-separated, in the order written, so the segment merge, the after-comma merge and a repeat in one option list (_dash_rep_merge_locals, _dash_rep_reduce) keep every list; the readers of the merged text (_dash_extract_hover_vars, the renderers' tooltip builder) keep each variable once, so the tooltip shows x, y and every hover() variable once, in both renderers. Pinned by test/test_hover_merge.py::TestHoverIsMerged::test_category_and_branch, test/test_wp31_truth.cscript U07-5. Closes GAPS3 A7 (WP-31, A7).
 
-- [ ] Title: Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)
+- [x] Title: Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)
   - File Names and Line Numbers: dash.ado:7546-7563 (x options only)
   - Description: GAPS3.md A8, re-verified at 6370ca4: Date literals in y-options (`ylabel(2000m1)`) accepted; twoway r(198).
   - Suggested fix: WP-31 section 07 (weights operators hover dates): extend the date-literal refusal loop to the y options.
-  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 13oct2026 (WP-31, A8). _dash_plot hands the y label, tick and scale options to _dash_taxis_fold in its dash__tf_ globals with the x and t keys, and _dash_taxis_fold runs a second refusal loop over ylabel ytick ymlabel ymtick ylabel2 ytick2 (r(198), "invalid label specifier, :  2000m1:") and yscale yscale2 (r(121), "range() invalid -- invalid numlist") with _dash_xdate_find, in twoway's words; measured, twoway refuses them on a %tm y variable too, so no form is left open; ylabel(480) draws. Pinned by test/test_y_date_literals.py::TestYDateLiterals::test_the_y_loop_exists, test/test_wp31_truth.cscript U07-6; fixture test/fixtures/weight_operator_truth.json. Closes GAPS3 A8 (WP-31, A8).
 
 - [ ] Title: dash twoway with nothing after it is refused r(198) where twoway draws an empty graph
   - File Names and Line Numbers: dash.ado:118-125 prefix strip; dash_parse.mata `_dash_split_segs`

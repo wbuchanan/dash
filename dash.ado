@@ -7267,9 +7267,12 @@ program define _dash_plot
     // literal written in an x option (_dash_taxis_fold).  The values go
     // over by value, in globals, and come back as the g_ locals; the spec
     // never carries a t key.  tm() and ts() are no option of twoway's.
+    // The y label, tick and scale options go over too, for the date
+    // literals twoway refuses there (WP-31 A8).
     foreach _tk in name xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
             xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ttitle ///
-            tline tlabel2 ttick2 tline2 tscale2 ttitle2 {
+            tline tlabel2 ttick2 tline2 tscale2 ttitle2 ///
+            ylabel ytick ymlabel ymtick ylabel2 ytick2 yscale yscale2 {
         mata: st_global("dash__tf_`_tk'", st_local("g_`_tk'"))
     }
     mata: st_global("dash__tf_ign", st_local("_dash_ignored_acc"))
@@ -7278,7 +7281,8 @@ program define _dash_plot
     if !`_tf_rc' {
         foreach _tk in xlabel xtick xmlabel xmtick xline xscale xtitle xlabel2 ///
                 xtick2 xline2 xscale2 xtitle2 tlabel ttick tmlabel tmtick tscale ///
-                ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 {
+                ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 ///
+                ylabel ytick ymlabel ymtick ylabel2 ytick2 yscale yscale2 {
             mata: st_local("g_`_tk'", st_global("dash__tf_`_tk'"))
         }
         mata: st_local("_dash_ignored_acc", st_global("dash__tf_ign"))
@@ -7767,6 +7771,8 @@ end
 //   * an x option reads no date literal: xlabel(2000m1) is "invalid label
 //     specifier, :  2000m1:", r(198), xscale(range(1999m1)) r(121) (c11,
 //     c13, xl1-xsc2; xline() is refused by _dash_line_check already, c12);
+//     nor does a y option, ylabel(2000m1) and yscale(range(2000m1)) alike
+//     (WP-31 A8, weight_operator_truth.json ydates.*);
 //   * the unit is the first plot's x variable's label format, and none
 //     (numbers only) after lfit, qfit, lfitci, qfitci, lpoly, lpolyci,
 //     kdensity, function, scatteri, pci or pcarrowi (m6_*), x1's for the pc
@@ -7812,6 +7818,26 @@ program define _dash_taxis_fold
 
     // A date literal in an x option.
     foreach c in xlabel:1 xtick:1 xmlabel:1 xmtick:1 xlabel2:1 xtick2:1 xscale:3 xscale2:3 {
+        gettoken k f : c, parse(":")
+        local f = substr("`f'", 2, .)
+        mata: st_local("_tf_hit", strofreal(_dash_xdate_find(st_global("dash__tf_`k'"), `f')))
+        if `_tf_hit' {
+            if `f' == 3 {
+                display as error "range() invalid -- invalid numlist"
+                exit 121
+            }
+            mata: _dash_say("err", "invalid label specifier, :  ", st_local("_xd_tok"), ":")
+            exit 198
+        }
+    }
+
+    // A date literal in a y option (WP-31 A8): twoway refuses it as it
+    // refuses the x form, in the same words and codes, on a %t-formatted
+    // y variable too (test/fixtures/weight_operator_truth.json ydates.*:
+    // ylabel(2000m1) "invalid label specifier, :  2000m1:", r(198);
+    // yscale(range(2000m1)) "range() invalid -- invalid numlist", r(121)).
+    // yline() is _dash_line_check's.
+    foreach c in ylabel:1 ytick:1 ymlabel:1 ymtick:1 ylabel2:1 ytick2:1 yscale:3 yscale2:3 {
         gettoken k f : c, parse(":")
         local f = substr("`f'", 2, .)
         mata: st_local("_tf_hit", strofreal(_dash_xdate_find(st_global("dash__tf_`k'"), `f')))

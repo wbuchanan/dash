@@ -1236,6 +1236,71 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
 }
 * ==== end S07 ====
 
+// S07 helper (WP-31 A8).  _u07_yd: the fixture's y date forms, each as
+// the dash command, twoway's rc and its line, into globals u07_yn,
+// u07_yc<k>, u07_yr<k>, u07_yt<k>.
+python:
+def _u07_yd():
+    from sfi import Macro
+    yd = _U07_FIX["ydates"]
+    keys = sorted(yd)
+    Macro.setGlobal("u07_yn", str(len(keys)))
+    for i, k in enumerate(keys, 1):
+        cmd = yd[k]["cmd"]
+        if cmd.startswith("twoway "):
+            cmd = cmd[len("twoway "):]
+        Macro.setGlobal("u07_yc%d" % i, cmd)
+        Macro.setGlobal("u07_yr%d" % i, str(yd[k]["rc"]))
+        Macro.setGlobal("u07_yt%d" % i, yd[k]["text"] if yd[k]["rc"] else "")
+end
+
+* ==== S07 A8: y date literals ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
+    display as text "S07 start " c(current_date) " " c(current_time)
+    local u7d "`w31_work'/s07d"
+    capture mkdir "`u7d'"
+    capture graph drop _all
+    local u7ls = c(linesize)
+    set linesize 200
+
+    // ------------------------------------------------------------
+    // U07-6: a date literal in ylabel(), ytick(), ymlabel(), ymtick(),
+    // their axis-2 forms and yscale(range()) -- also on a %tm y variable
+    // -- is refused with twoway's rc and line (ydates.*); ylabel(480) on
+    // the %tm variable and on mpg draws (guard).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly generate ym = ym(2000, mod(_n, 12) + 1)
+    format ym %tm
+    python: _u07_yd()
+    local lf "`u7d'/yd.log"
+    // In a loop, so the count is read after _u07_yd set it.
+    foreach u7f in yd {
+        forvalues i = 1/${u07_yn} {
+            local cmd "${u07_yc`i'}"
+            dash clear
+            quietly log using "`lf'", text replace name(u07y)
+            capture noisily dash `cmd' name(u076)
+            local rc = _rc
+            quietly log close u07y
+            python: _u07_last("`lf'")
+            _w31_expect U07-6 "(`rc' == ${u07_yr`i'})" "dash `cmd' rc `rc', twoway ${u07_yr`i'}"
+            if ${u07_yr`i'} {
+                _w31_expect U07-6 `"(`"${u07_line}"' == `"${u07_yt`i'}"')"' "dash `cmd' said [${u07_line}], twoway [${u07_yt`i'}]"
+            }
+        }
+    }
+    _w31_done U07-6 "a date literal in a y label, tick or scale option is refused with twoway's rc and line; ylabel(480) draws"
+
+    set linesize `u7ls'
+    capture erase "`lf'"
+    capture rmdir "`u7d'"
+    dash clear
+    display as text "S07 end " c(current_date) " " c(current_time)
+}
+* ==== end S07 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

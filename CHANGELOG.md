@@ -855,7 +855,7 @@ and now matches Stata.
 
 - colorvar() and by() with a time-series operator (colorvar(L.mpg), by(L.foreign)) are refused r(101), "factor-variable and time-series operators not allowed", as twoway refuses them; they were r(198) on tsset data and r(111) otherwise. mlabel(L.make) is r(111) "variable L not found", as in twoway; it was r(198) on tsset data. (WP-31, A6)
 
-<!-- WP-31 A8 -->
+- A date literal in a y label, tick or scale option is refused as twoway refuses it: dash scatter mpg weight, ylabel(2000m1) drew, and is now refused, r(198), "invalid label specifier, :  2000m1:", as are ytick(), ymlabel(), ymtick() and their axis(2) forms; yscale(range(2000m1)) is r(121), "range() invalid -- invalid numlist"; a %tm y variable does not change it, as in twoway. (WP-31, A8)
 
 <!-- WP-31 A2 -->
 
