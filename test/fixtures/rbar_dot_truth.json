@@ -1,0 +1,262 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "4e2bd9066b5eef555a20ad89c9810ea3b2dfbefe",
+  "extracted": "13 Oct 2026 15:57:55",
+  "source": "scripts/extract_rbar_dot_truth.do",
+  "stata_version": "19.5"
+ },
+ "dot": {
+  "base_0": {
+   "curmax": 41.0,
+   "curmin": 0.0,
+   "svg": {
+    "circles": 11396,
+    "lines": 14,
+    "paths": 0,
+    "rects": 5
+   },
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "base_50": {
+   "curmax": 50.0,
+   "curmin": 10.0,
+   "svg": {
+    "circles": 11396,
+    "lines": 14,
+    "paths": 0,
+    "rects": 5
+   },
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "base_none": {
+   "curmax": 41.0,
+   "curmin": 10.0,
+   "svg": {
+    "circles": 11248,
+    "lines": 14,
+    "paths": 0,
+    "rects": 5
+   },
+   "ticks": [
+    10.0,
+    10.0,
+    40.0
+   ]
+  },
+  "plain_line": {
+   "circles": 0,
+   "lines": 14,
+   "paths": 1,
+   "rects": 5
+  },
+  "plain_scatter": {
+   "circles": 148,
+   "lines": 14,
+   "paths": 0,
+   "rects": 5
+  }
+ },
+ "probes": {
+  "bar_mwidth": {
+   "message": "option mwidth not allowed",
+   "rc": 198
+  },
+  "dot_recast_line": {
+   "message": null,
+   "rc": 0,
+   "svg": {
+    "circles": 11248,
+    "lines": 14,
+    "paths": 0,
+    "rects": 5
+   }
+  },
+  "dot_recast_scatter": {
+   "message": null,
+   "rc": 0,
+   "svg": {
+    "circles": 11248,
+    "lines": 14,
+    "paths": 0,
+    "rects": 5
+   }
+  },
+  "histogram_mwidth": {
+   "message": null,
+   "rc": 0,
+   "svg": {
+    "circles": 0,
+    "lines": 20,
+    "paths": 0,
+    "rects": 21
+   },
+   "widths_px": [
+    104.32,
+    104.44,
+    104.45
+   ]
+  },
+  "histogram_plain": {
+   "svg": {
+    "circles": 0,
+    "lines": 20,
+    "paths": 0,
+    "rects": 21
+   },
+   "widths_px": [
+    417.66,
+    417.78
+   ]
+  },
+  "rbar_mwidth_twice": {
+   "message": "option mwidth not allowed",
+   "rc": 198
+  },
+  "scatter_mwidth": {
+   "message": "option mwidth not allowed",
+   "rc": 198
+  }
+ },
+ "rbar": {
+  "msize_only": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 2.4306,
+   "n_rects": 74,
+   "ratio": 0.034375,
+   "width_max_px": 1.11,
+   "width_min_px": 0.99,
+   "width_px": 0.99
+  },
+  "mwidth": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 1.52778,
+   "n_rects": 74,
+   "ratio": 1.5295138888888888,
+   "width_max_px": 44.06,
+   "width_min_px": 43.93,
+   "width_px": 44.05
+  },
+  "mwidth_2": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 2.0,
+   "n_rects": 74,
+   "ratio": 1.9979166666666666,
+   "width_max_px": 57.67,
+   "width_min_px": 57.54,
+   "width_px": 57.54
+  },
+  "mwidth_barwidth_rule": "marker size",
+  "mwidth_bw03": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 0.3,
+   "n_rects": 74,
+   "ratio": 0.30069444444444443,
+   "width_max_px": 8.66,
+   "width_min_px": 8.54,
+   "width_px": 8.66
+  },
+  "mwidth_bw3": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 3.0,
+   "n_rects": 74,
+   "ratio": 2.9993055555555554,
+   "width_max_px": 86.5,
+   "width_min_px": 86.38,
+   "width_px": 86.38
+  },
+  "mwidth_large": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 2.4306,
+   "n_rects": 74,
+   "ratio": 2.431944444444445,
+   "width_max_px": 70.04,
+   "width_min_px": 69.92,
+   "width_px": 70.04
+  },
+  "mwidth_small": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 1.04166,
+   "n_rects": 74,
+   "ratio": 1.0399305555555556,
+   "width_max_px": 30.07,
+   "width_min_px": 29.95,
+   "width_px": 29.95
+  },
+  "mwidth_vlarge": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 3.125,
+   "n_rects": 74,
+   "ratio": 3.1239583333333334,
+   "width_max_px": 90.09,
+   "width_min_px": 89.97,
+   "width_px": 89.97
+  },
+  "plain": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 1.52778,
+   "n_rects": 74,
+   "ratio": 0.034375,
+   "width_max_px": 1.11,
+   "width_min_px": 0.99,
+   "width_px": 0.99
+  },
+  "spacing": {
+   "canvas": [
+    3960.0,
+    2880.0
+   ],
+   "classname": "y2xview_g",
+   "marker_size_val": 1.52778,
+   "n_rects": 74,
+   "ratio": 1.5298611111111111,
+   "width_max_px": 44.06,
+   "width_min_px": 43.93,
+   "width_px": 44.06
+  }
+ }
+}

@@ -379,7 +379,7 @@ and now matches Stata.
 
 - pcarrow, pcbarrow and pcarrowi heads are drawn as twoway draws them, in the saved page and the served app: sized by msize() (the scheme's symbolsize parrow, 1.53 relative units, by default; they were a fixed 10 pixels), stroked in mcolor()/mlcolor() at mlwidth() and filled in mfcolor() or the series colour (pcbarrow's heads were black); mangle() sets the head angle (28.64 degrees by default; Bokeh's fixed 26.57-degree head is no longer used), barbsize() the barb depth (open strokes at zero) and headlabel moves the labels to the head. lcolor() and lwidth() now style the shaft alone, as in twoway; they coloured and widened the head too. (WP-31, C1)
 
-<!-- WP-31 C2 -->
+- rbar ..., mwidth draws each bar as wide as a marker of its msize() in screen units (the scheme's symbol size by default), as twoway's rbar mwidth does: dash rbar yl yh weight, mwidth msize(large) drew one x unit per bar and ignored msize() in silence (mwidth was named), and now draws bars a large marker wide at any x spacing, zoom or filter move; barwidth() beside mwidth is read as that marker size. msize() on rbar without mwidth, and mwidth on histogram, are named; mwidth on any other type is refused, r(198), "option mwidth not allowed", as twoway refuses it. (WP-31, C2)
 
 <!-- WP-31 B5a -->
 

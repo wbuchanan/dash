@@ -225,7 +225,10 @@ def _render(tmp_path, ptype, popts, gopts, tag):
     spec = {"graphs": [{"name": "g1",
                         "graph_options": dict(gopts, name="g1"),
                         "options": dict(gopts),
-                        "plots": [plot]}],
+                        "plots": [dict(plot,
+                                       # WP-31 C2: a range layer's bounds.
+                                       **({"yvar1": "mpg", "yvar2": "price"}
+                                          if ptype == "rbar" else {}))]}],
             "kpis": [],
             "build_options": {"layout": "auto", "registry": "g1",
                               "level": "95", "formats": {}, "theme": "",
@@ -474,6 +477,9 @@ LIVE_VALUES = {
     # (PLOT_VALUES), which was wrong because twoway turns the bars
     # (horizontal_truth.json draw bar).
     "horizontal": ({"horizontal": "horizontal"}, {}, "bar", {}),
+    # WP-31 C2: mwidth draws each rbar as wide as a marker of its msize().
+    "mwidth": ({"mwidth": "mwidth", "msize": "large"},
+               {"mwidth": "mwidth", "msize": "tiny"}, "rbar", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
     "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
     "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
@@ -735,8 +741,9 @@ class TestEveryDeclaredOptionIsClassified:
         # declared in both blocks; 190 -> 195 and 79 -> 84: part 2's five
         # axis-2 forms
         # 195 -> 196 and 84 -> 85: P1.10 ttext declared
-        # 196 -> 199: C1 mangle barbsize headlabel declared
-        assert len(_declared_plot()) == 199, len(_declared_plot())
+        # 196 -> 199: C1 mangle barbsize headlabel declared; 199 -> 200: C2
+        # mwidth declared
+        assert len(_declared_plot()) == 200, len(_declared_plot())
         assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

@@ -617,8 +617,9 @@ class TestTheParsersFoundSomething:
         # 196 -> 203: P1.6 declared the seven time-axis options.
         # 203 -> 208: P1.6 part 2 declared tlabel2() .. ttitle2().
         # 208 -> 209: P1.10 part 2 declared ttext().
-        # 209 -> 212: C1 mangle barbsize headlabel declared
-        assert len(_ado_declarations()) == 212
+        # 209 -> 212: C1 mangle barbsize headlabel declared; 212 -> 213: C2
+        # mwidth declared
+        assert len(_ado_declarations()) == 213
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph

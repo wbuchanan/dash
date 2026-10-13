@@ -2385,6 +2385,9 @@ CORPUS = [
           [plot_for("pcarrowi", {"mlabcolor": "navy", "headlabel": "headlabel"},
                     values=[[20.0, 3000.0, 30.0, 4000.0, "A", 3],
                             [25.0, 2000.0, 22.0, 3500.0, "B", None]])]),
+    # WP-31 C2/B5a
+    _case("rbar mwidth msize(large)",
+          [plot_for("rbar", {"mwidth": "mwidth", "msize": "large"})]),
 ]
 
 
@@ -3261,6 +3264,9 @@ MOVE_CORPUS = [
     _move_case("xlabel(15345, add) on a date axis, range (WP-30 P1.18b)",
                _MOVES[1], [plot_for("line", yvar="mpg", xvar="when")],
                {"xlabel": "15345, add"}, bo=_P123A_W),
+    # WP-31 C2/B5a
+    _move_case("rbar mwidth, dropdown to Foreign", _MOVES[0],
+               [plot_for("rbar", {"mwidth": "mwidth"})]),
 ]
 
 

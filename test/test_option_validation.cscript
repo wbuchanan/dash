@@ -1382,6 +1382,66 @@ _hz_case U02-08 "pcarrow mpg weight trunk length, mangle(abc) barbsize(abc)"
 _hz_case U02-08 "pcarrow mpg weight trunk length, headlabel headlabel"
 
 // ----------------------------------------------------------------
+// WP-31 S03 (C2, B5a).  _u03_rc <cmd>: twoway's and dash's rc and first
+// "not allowed" line for one command, into r(trc) r(drc) r(tline)
+// r(dline), and r(named) the lines of dash's note naming `needle'.
+// ----------------------------------------------------------------
+capture program drop _u03_rc
+program define _u03_rc, rclass
+    version 16.0
+    args cmd needle
+    local logfile "`c(tmpdir)'dash_ov.log"
+    set linesize 120
+    capture log close _ovlog
+    capture erase "`logfile'"
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily twoway `cmd' nodraw
+    local trc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local tline `"`r(line)'"'
+    capture erase "`logfile'"
+    capture dash clear
+    quietly graph drop _all
+    log using "`logfile'", name(_ovlog) text replace
+    capture noisily dash `cmd' name(u03)
+    local drc = _rc
+    log close _ovlog
+    _ov_count "`logfile'" "not allowed"
+    local dline `"`r(line)'"'
+    local named 0
+    if `"`needle'"' != "" {
+        _ov_count "`logfile'" `"`needle'"'
+        local named = r(n)
+    }
+    capture erase "`logfile'"
+    capture dash clear
+    return scalar trc = `trc'
+    return scalar drc = `drc'
+    return scalar named = `named'
+    return local tline `"`macval(tline)'"'
+    return local dline `"`macval(dline)'"'
+end
+
+// U03-06: a second mwidth on rbar, and mwidth on scatter and bar, are
+// refused as twoway refuses them (rc and line); mwidth once on rbar and
+// histogram is taken.
+sysuse auto, clear
+local bad ""
+foreach c in "rbar mpg price weight, mwidth mwidth" "scatter mpg weight, mwidth" "bar mpg weight, mwidth" "rbar mpg price weight, mwidth" "histogram mpg, mwidth" {
+    _u03_rc `"`c'"'
+    if r(trc) != r(drc) | strtrim(`"`r(tline)'"') != strtrim(`"`r(dline)'"') {
+        local bad `"`bad' [`c': twoway `r(trc)' `r(tline)', dash `r(drc)' `r(dline)']"'
+    }
+}
+if `"`bad'"' != "" {
+    display as error `"U03-06 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U03-06"
+}
+else display as text "U03-06 PASS: mwidth twice, and on scatter and bar, refused as twoway refuses it; once on rbar and histogram taken"
+
+// ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------
 local nfail    = ${ov_nfail}

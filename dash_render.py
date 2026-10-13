@@ -18555,6 +18555,11 @@ class GlyphMapper:
         source = (self._subset_source(source, _rb_sel) if _rb_sel is not None
                   else ColumnDataSource(dict(source.data)))
         view = None
+        # mwidth: twoway's rbarm view, each bar as wide as a marker of its
+        # msize() in screen units (WP-31 C2).
+        if str(options.get("mwidth", "") or "").strip():
+            return self._map_rbar_mwidth(fig, source, y1var, y2var, xvar,
+                                         options, color_idx)
         # One x unit, or barwidth() (twoway reads it on rbar: barwidth(.3)
         # draws .3, measured 03oct2026; WP-30 P1.17a), in the variable's
         # units on a date axis.  The first key present wins; a bad value
@@ -18572,15 +18577,7 @@ class GlyphMapper:
             options=options)
         if _rb_ext:
             source.data.update(_rb_ext)
-        # The fill is the resolved colour at the p#bar intensity, opaque,
-        # as twoway draws it; the outline keeps the colour (WP-30 P1.2b).
-        _fill_base = self.scheme.default_color(color_idx, "bar")
-        _f = self.scheme.p_bar_intensity[color_idx % 15]
-        # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
-        _fill_base = self._style_value(options, "area", "fill", _fill_base)
-        _f = self._style_value(options, "area", "intensity", _f)
-        _oa = self._style_options(options, ("area",))
-        _ol = self._style_options(options, ("aline",))
+        _fill_base, _f = self._rbar_fill_base(options, color_idx)
         _rbar_kwargs: dict = dict(x=x_field, bottom=y1var, top=y2var, source=source,
                                    width=width_spec,
                                    fill_color=self._blend_intensity(
@@ -18597,6 +18594,30 @@ class GlyphMapper:
         if view is not None:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
+        self._rbar_finish(r, options, _fill_base, _f)
+        # No marker labels: twoway draws none on rbar (measured).
+        return [r]
+
+    def _rbar_fill_base(self, options: dict, color_idx: int):
+        """``(colour, intensity)`` of a range bar's fill: the resolved
+        colour at the p#bar intensity, opaque, as twoway draws it; the
+        outline keeps the colour (WP-30 P1.2b).  A named style's areastyle
+        is the base (WP-30 P1.14a, D-32e)."""
+        _fill_base = self.scheme.default_color(color_idx, "bar")
+        _f = self.scheme.p_bar_intensity[color_idx % 15]
+        _fill_base = self._style_value(options, "area", "fill", _fill_base)
+        _f = self._style_value(options, "area", "intensity", _f)
+        return _fill_base, _f
+
+    def _rbar_finish(self, r, options: dict, _fill_base, _f) -> None:
+        """Style a range bar *r* -- the VBar map_rbar draws, or the Rect of
+        its mwidth form (WP-31 C2) -- from the named style, color(),
+        bfcolor()/blcolor() and the generic fill and line appliers, in that
+        order.  *_fill_base* and *_f* are the scheme's (or the style's)
+        fill colour and intensity.  One sequence for both forms, so they
+        cannot drift."""
+        _oa = self._style_options(options, ("area",))
+        _ol = self._style_options(options, ("aline",))
         self._style_restyle(r, options, ("area", "aline"))
         # color() fills the bar and draws its outline, as map_bar reads it:
         # twoway's rbar with color(red) is filled #FF3333 and stroked
@@ -18656,7 +18677,72 @@ class GlyphMapper:
         self._apply_fill_opts(r, options, base=_fill_base, intensity=_f)
         # After bfcolor/blcolor, so blcolor keeps priority for the line.
         self._apply_line_opts(r, options, role="aline")
-        # No marker labels: twoway draws none on rbar (measured).
+
+    #: The mwidth form's centre and height columns (WP-31 C2).
+    _RBAR_MID = "__dash_rbar_mid"
+    _RBAR_H = "__dash_rbar_h"
+
+    def _rbar_mwidth_px(self, options: dict, color_idx: int) -> float:
+        """The pixel width of an mwidth range bar: a marker of the layer's
+        ``msize()``, the scheme's symbol size by default.  twoway's rbarm
+        reads ``barwidth()`` as that marker size (``y2xview_parse:144-150``;
+        measured: ``mwidth barwidth(.3)`` draws marker.size.val .3), so a
+        barwidth() wins.  An unreadable size is noted and the scheme's
+        fallback drawn, as _apply_marker_opts reads it."""
+        base = float(self.scheme.default_marker_size(color_idx))
+        name = next((k for k in ("barwidth", "width", "msize")
+                     if str(options.get(k, "") or "").strip()), None)
+        if name is None:
+            return base
+        try:
+            return max(0.0, float(self.tr.translate_msize(
+                str(options[name]).strip(), base,
+                getattr(self.scheme, "size_ref_in", 4.0))))
+        except ValueError:
+            _dash_style_note(name, options[name], "size")
+            _fb = getattr(self.scheme, "marker_fallback_kw", "medium")
+            return (OptionTranslator._SYMBOLSIZE_RS[_fb]
+                    * OptionTranslator.PT_PER_RS
+                    * OptionTranslator.PX_PER_PT)
+
+    def _map_rbar_mwidth(self, fig, source, y1var, y2var, xvar, options,
+                         color_idx=0) -> list:
+        """rbar with ``mwidth``: twoway's rbarm view (WP-31 C2).
+
+        Each bar is a ``Rect`` centred on x and on (y1 + y2) / 2, as tall
+        as |y2 - y1| in data units and as wide as a marker of the layer's
+        ``msize()`` in screen units (``_rbar_mwidth_px``), so the width
+        does not follow the x spacing, a zoom or a filter move: twoway's
+        bar width over min(W, H) * 100 is its marker.size.val (fixture
+        test/fixtures/rbar_dot_truth.json).  *source* is the layer's own
+        copy (map_rbar made it); the two columns are written into it.  The
+        renderer carries ``_dash_hull_fields`` so the axis hull reads y1
+        and y2, not the centre.  Styled by _rbar_finish, as the VBar is.
+        """
+        y1 = np.asarray(_dash_float_values(source.data[y1var], coerce=True),
+                        dtype=np.float64)
+        y2 = np.asarray(_dash_float_values(source.data[y2var], coerce=True),
+                        dtype=np.float64)
+        with np.errstate(invalid="ignore"):
+            source.data[self._RBAR_MID] = (y1 + y2) / 2.0
+            source.data[self._RBAR_H] = np.abs(y2 - y1)
+        _fill_base, _f = self._rbar_fill_base(options, color_idx)
+        kw: dict = dict(x=xvar, y=self._RBAR_MID, height=self._RBAR_H,
+                        width=self._rbar_mwidth_px(options, color_idx),
+                        width_units="screen", height_units="data",
+                        source=source,
+                        fill_color=self._blend_intensity(
+                            _fill_base, _f, self.scheme.naturally_white),
+                        line_alpha=0, legend_label=y1var,
+                        **self._scheme_alpha_kw(color_idx, "rbar", fill=True,
+                                                line=False))
+        _lw = self.scheme.plot_line_width(color_idx, "bar")
+        if _lw is not None:
+            kw["line_width"] = _lw
+        r = fig.rect(**kw)
+        r.tags = ["dash_rbar_mwidth"]
+        r._dash_hull_fields = {"y": (y1var, y2var)}
+        self._rbar_finish(r, options, _fill_base, _f)
         return [r]
 
     def map_rspike(
@@ -32156,6 +32242,9 @@ _DASH_TRANSPOSE = {
     "LabelSet": ("LabelSet", (("x", "y"),)),
     "Label": ("Label", (("x", "y"),)),
     "Arrow": ("Arrow", (("x_start", "y_start"), ("x_end", "y_end"))),
+    # WP-31 C2: an mwidth rbar (its screen-unit width turns with it).
+    "Rect": ("Rect", (("x", "y"), ("width", "height"),
+                      ("width_units", "height_units"))),
 }
 
 
@@ -32234,6 +32323,14 @@ def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
                         "Unspecified" in type(getattr(v, u, None)).__name__
                         for u in ("transform", "units")):
                     v = v.field if tn == "Field" else v.value
+                elif tn in ("Field", "Value") and "Unspecified" in type(
+                        getattr(v, "transform", None)).__name__:
+                    # A spec with units only (an mwidth Rect's screen
+                    # width, WP-31 C2) as the dict the constructor reads
+                    # its units from; passed whole, the units were lost.
+                    v = {("field" if tn == "Field" else "value"):
+                         (v.field if tn == "Field" else v.value),
+                         "units": v.units}
                 props[swap.get(k, k)] = v
             if cap:
                 ang = props.get("angle", 0.0)
@@ -32251,6 +32348,11 @@ def _dash_transpose_layer(fig, renderers, annotations, ptype=""):
         based = getattr(r, "_dash_base", None)
         if based:
             r._dash_base = tuple(swap.get(p, p) for p in based)
+        # WP-31: the hull's extra columns turn with the glyph.
+        hf = getattr(r, "_dash_hull_fields", None)
+        if hf:
+            r._dash_hull_fields = {("y" if k == "x" else "x"): v
+                                   for k, v in hf.items()}
     for a in annotations or ():
         if isinstance(a, (_bm.Legend, _bm.ColorBar)):
             continue
@@ -32330,6 +32432,13 @@ def _dash_secondary_values(fig, range_attr, name):
             if isinstance(const, (int, float)) and not isinstance(const, bool) \
                     and math.isfinite(float(const)) and n:
                 consts.append(float(const))
+        # WP-31 C2: an mwidth rbar's y1 and y2 (its Rect names the centre).
+        for field in (getattr(r, "_dash_hull_fields", None) or {}).get(
+                range_attr[0], ()):
+            if field in data:
+                col = _dash_float_values(data[field], coerce=True)
+                sel = col[list(rows)] if len(col) else col
+                cols.extend(float(x) for x in sel if np.isfinite(x))
     return cols, cols + consts
 
 
@@ -32528,6 +32637,25 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
             a, b = float(col.min()), float(col.max())
             lo = a if lo is None else min(lo, a)
             hi = b if hi is None else max(hi, b)
+        # WP-31 C2: the columns a glyph draws between without naming them
+        # as a coordinate -- an mwidth rbar's y1 and y2, its Rect naming
+        # the centre -- in the variable's own units, through the view.
+        extra = () if role == "base" else (
+            (getattr(r, "_dash_hull_fields", None) or {}).get(
+                range_attr[0], ()))
+        for field in extra:
+            if field not in data:
+                continue
+            col = _dash_float_values(data[field], coerce=True)
+            if rows is not None:
+                col = col[rows[rows < len(col)]]
+            col = col[np.isfinite(col)]
+            if kind == "log":
+                col = col[col > 0]
+            if col.size:
+                a, b = float(col.min()), float(col.max())
+                lo = a if lo is None else min(lo, a)
+                hi = b if hi is None else max(hi, b)
     return None if lo is None else (lo, hi)
 
 
@@ -32799,6 +32927,11 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                 and not isinstance(c, bool) \
                                 and math.isfinite(float(c)):
                             (bc if attr in based else lc).append(float(c))
+                    # WP-31 C2: an mwidth rbar's y1 and y2 (Rect: centre).
+                    for fld in (getattr(r, "_dash_hull_fields", None)
+                                or {}).get(letter, ()):
+                        if fld in src.data and str(fld) not in lf:
+                            lf.append(str(fld))
                     if lf or lc or bf or bc:
                         layers.append({"src": si, "filt": fi, "fk": fk_,
                                        "fields": lf, "consts": lc,

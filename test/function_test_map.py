@@ -1147,6 +1147,11 @@ FUNCTIONS = {
  'app:make_document.<locals>._make_filter_cb.<locals>._dash_move_plan': 'test/test_served_worker.py::TestTheTripwires::test_the_worker_draws_with_its_own_mapper_and_scheme',
  'app:make_document.<locals>._make_filter_cb.<locals>._dash_move_post': 'test/test_served_worker.py::TestAClosedSessionDropsItsResult::test_closed',
  'app:make_document.<locals>._make_filter_cb.<locals>._dash_move_post.<locals>._hop': 'test/test_served_worker.py::TestAClosedSessionDropsItsResult::test_closed',
+ # WP-31 S03 (C2, B5a)
+ 'GlyphMapper._map_rbar_mwidth': 'test/test_rbar_mwidth.py::TestMwidth::test_the_width_is_the_marker_size',
+ 'GlyphMapper._rbar_finish': 'test/test_rbar_mwidth.py::TestWithoutMwidth::test_nothing_changes',
+ 'GlyphMapper._rbar_fill_base': 'test/test_rbar_mwidth.py::TestWithoutMwidth::test_nothing_changes',
+ 'GlyphMapper._rbar_mwidth_px': 'test/test_rbar_mwidth.py::TestMwidth::test_msize_scales_the_width',
 }
 
 

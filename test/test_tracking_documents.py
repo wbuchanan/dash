@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "C2": "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth",
     "B5a": "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)",
     "C10a": "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)",
     "C10b": "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)",

@@ -498,6 +498,11 @@ millisecond for {cmd:%tc} and {cmd:%tC}, and a week, month, quarter,
 half-year or year for {cmd:%tw} to {cmd:%ty}; so monthly data held as
 {cmd:%td} dates draws bars a day wide, as in {cmd:twoway}, and
 {cmd:barwidth(30)} widens them.  Widths do not change when a filter moves.
+With {cmd:mwidth}, {cmd:rbar} draws each bar as wide as a marker of its
+{cmd:msize()} (the scheme's symbol size by default), in screen units,
+as {cmd:twoway}'s {cmd:rbar} {cmd:mwidth} draws, whatever the spacing
+of {it:x}; {cmd:barwidth()} beside it is read as that marker size, as in
+{cmd:twoway}.  Without {cmd:mwidth}, {cmd:msize()} is accepted and named.
 {cmd:rcap} draws its caps as long as a marker of its {cmd:msize()} is wide,
 the scheme's symbol size by default, in screen units.  {cmd:rcapsym} draws
 no caps, only its spike and a marker at each end, at the scheme's symbol
@@ -5121,6 +5126,9 @@ disagree in either direction.
     {cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}, and a range type or
     an unknown name on {cmd:histogram} -- see {ul:Recast} under
     Statistical Layer Options.
+    {cmd:msize()} on {cmd:rbar} without {cmd:mwidth}, where {cmd:twoway}
+    draws nothing of it either, and {cmd:mwidth} on {cmd:histogram},
+    where {cmd:twoway} draws each bar a marker wide.
     {opt play(recordingname)} -- there is no graph editor to replay.
 
 {pstd}

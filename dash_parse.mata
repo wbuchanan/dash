@@ -6215,7 +6215,10 @@ real scalar _dash_rep_unique(string scalar key, string scalar typed,
                // GAPS2 X2: colorvarminmax, now declared, is refused a
                // second time as twoway refuses it.  colorlevels() is NOT
                // here: twoway takes it twice (measured 26sep2026).
-               "colorvarminmax"), k)) return(1)
+               "colorvarminmax",
+               // WP-31 C2: mwidth, now declared, is taken once on rbar
+               // and histogram (measured 13oct2026).
+               "mwidth"), k)) return(1)
     if (ptype == "histogram" & (typed == "bins" |
         anyof(("discrete", "fraction", "percent", "frequency", "density"), k)))
         return(1)
@@ -6277,7 +6280,6 @@ string matrix _dash_rep_und_tab()
     t = t \ ("fitplot",      "fitplot",      "fitp",      "1", cis,         "0", "")
     t = t \ ("fit",          "fit",          "fit",       "0", cis,         "0", "")
     t = t \ ("fit",          "nofit",        "nofit",     "0", cis,         "0", "no")
-    t = t \ ("mwidth",       "mwidth",       "mw",        "0", "histogram rbar", "0", "")
     t = t \ ("back",         "back",         "back",      "0", "mspline mband", "0", "")
     t = t \ ("back",         "noback",       "noback",    "0", "mspline mband", "0", "no")
     t = t \ ("onepanel",     "onepanel",     "onep",      "0", "tsline tsrline", "0", "")

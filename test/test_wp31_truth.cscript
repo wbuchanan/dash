@@ -470,6 +470,201 @@ if inlist("`only'", "", "S02") & `: list posof "S02" in w31_run' {
 }
 * ==== end S02 ====
 
+// S03 helpers (WP-31 C2, B5a).  _u03_draw: what a registered dash graph
+// draws, saved and served -- the glyph types, the Rect widths and width
+// units, the VBar widths and the Scatter sizes -- into globals u03_<k>s
+// (saved) and u03_<k>v (served); _u03_svg: twoway's median bar width over
+// min(W, H) * 100 from an SVG, into u03_ratio.
+python:
+import os as _u03_os, sys as _u03_sys
+for _u03_p in (_u03_os.path.abspath(".."),
+               _u03_os.path.abspath(_u03_os.path.join("..", "scripts"))):
+    if _u03_p not in _u03_sys.path:
+        _u03_sys.path.insert(0, _u03_p)
+
+
+def _u03_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u03_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u03_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    return list(r.figures.values()), sv
+
+
+def _u03_draw(sp, dp, app):
+    from sfi import Macro
+    a, b = _u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        out = {"k": [], "w": [], "u": [], "b": [], "m": [], "y0": [],
+               "y1": []}
+        for f in figs:
+            out["y0"].append(float(f.y_range.start))
+            out["y1"].append(float(f.y_range.end))
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                t = type(g).__name__
+                if t not in ("Rect", "VBar", "Scatter", "Line"):
+                    continue
+                out["k"].append(t)
+                if t == "Rect":
+                    out["w"].append("%.12g" % float(getattr(g.width, "value",
+                                                            g.width)))
+                    out["u"].append(str(g.width_units))
+                elif t == "VBar":
+                    out["b"].append("%.12g" % float(getattr(g.width, "value",
+                                                            g.width)))
+                elif t == "Scatter":
+                    out["m"].append("%.12g" % float(g.size))
+        for k, v in out.items():
+            Macro.setGlobal("u03_%s%s" % (k, sfx),
+                            " ".join(str(x) if not isinstance(x, str) else x
+                                     for x in v))
+
+
+def _u03_svg(path):
+    from sfi import Macro
+    from svg_truth import svg_document
+    doc = svg_document(path)
+    cw = doc["canvas"]["w"]
+    narrow = [r for r in doc["rects"] if r["w"] and r["h"]
+              and 0 < r["w"] < cw / 3.0 and r["h"] > 0]
+    fills = {}
+    for r in narrow:
+        fills[r["fill"]] = fills.get(r["fill"], 0) + 1
+    ws = sorted(r["w"] for r in narrow
+                if fills and r["fill"] == max(fills, key=fills.get))
+    m = min(doc["canvas"]["w"], doc["canvas"]["h"])
+    Macro.setGlobal("u03_ratio",
+                    "%.6g" % (100.0 * ws[len(ws) // 2] / m) if ws else "-1")
+end
+
+capture program drop _u03_reg
+program define _u03_reg
+    // _u03_reg <dir> <k> <dash command...>: register one graph, write its
+    // spec and data, and read what both modes draw (_u03_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    // Qualified through __main__: a bare name is not found from inside a
+    // program (cert_svg.do's TRAP note).
+    python: import __main__ as _u03_m; _u03_m._u03_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u03_all
+program define _u03_all, rclass
+    // _u03_all <want> <list...>: 1 when the list is not empty and every
+    // value equals <want> to 1e-6 (relative).
+    version 19
+    gettoken want 0 : 0
+    local ok = (`: word count `0'' > 0)
+    foreach v of local 0 {
+        if abs(`v' - (`want')) > 1e-6 * max(1, abs(`want')) local ok = 0
+    }
+    return scalar ok = `ok'
+end
+
+* ==== S03 C2: rbar mwidth ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S03") & `: list posof "S03" in w31_run' {
+    display as text "S03 start " c(current_date) " " c(current_time)
+    local u3d "`w31_work'/s03"
+    capture mkdir "`u3d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    quietly generate yl = mpg - 1
+    quietly generate yh = mpg + 1
+
+    // ------------------------------------------------------------
+    // U03-01: rbar mwidth is as wide as a medium marker, in screen units,
+    // both modes; twoway's width over min(W, H) * 100 is its marker size.
+    // ------------------------------------------------------------
+    quietly twoway rbar yl yh weight, mwidth name(u03t, replace)
+    local msv = `.u03t.plotregion1.plot1.style.marker.size.val'
+    quietly graph export "`u3d'/t1.svg", replace
+    python: _u03_svg("`u3d'/t1.svg")
+    _w31_expect U03-01 "(abs(${u03_ratio} - `msv') <= .01 * `msv')" "twoway ratio ${u03_ratio}, marker.size.val `msv'"
+    _u03_reg "`u3d'" 1 scatter mpg weight, name(zu1)
+    local m0 "${u03_ms}"
+    _u03_all `m0' ${u03_mv}
+    _w31_expect U03-01 "(r(ok))" "dash scatter marker saved `m0' served ${u03_mv}"
+    _u03_reg "`u3d'" 2 rbar yl yh weight, mwidth name(zu2)
+    _u03_all `m0' ${u03_ws} ${u03_wv}
+    _w31_expect U03-01 "(r(ok))" "Rect width saved ${u03_ws} served ${u03_wv}, marker `m0'"
+    _w31_expect U03-01 `"("${u03_us} ${u03_uv}" == "screen screen")"' "width units ${u03_us} / ${u03_uv}"
+    _w31_done U03-01 "rbar mwidth is a medium marker (`m0' px) wide in screen units, saved and served; twoway's ratio is its marker size"
+
+    // ------------------------------------------------------------
+    // U03-02: mwidth msize(large) is a large marker wide at both x
+    // spacings (weight, turn), both modes.
+    // ------------------------------------------------------------
+    _u03_reg "`u3d'" 3 scatter mpg weight, msize(large) name(zu3)
+    local ml "${u03_ms}"
+    foreach xv in weight turn {
+        quietly twoway rbar yl yh `xv', mwidth msize(large) name(u03t, replace)
+        local msv = `.u03t.plotregion1.plot1.style.marker.size.val'
+        quietly graph export "`u3d'/t2`xv'.svg", replace
+        python: _u03_svg("`u3d'/t2`xv'.svg")
+        _w31_expect U03-02 "(abs(${u03_ratio} - `msv') <= .01 * `msv')" "twoway on `xv': ratio ${u03_ratio}, marker.size.val `msv'"
+        _u03_reg "`u3d'" 4`xv' rbar yl yh `xv', mwidth msize(large) name(zu4`xv')
+        _u03_all `ml' ${u03_ws} ${u03_wv}
+        _w31_expect U03-02 "(r(ok))" "on `xv': Rect width saved ${u03_ws} served ${u03_wv}, large marker `ml'"
+    }
+    _w31_done U03-02 "rbar mwidth msize(large) is a large marker (`ml' px) wide on weight and turn, saved and served"
+
+    // ------------------------------------------------------------
+    // U03-03: msize(large) without mwidth: the VBar is one x unit wide, as
+    // before, and the note names msize() once.
+    // ------------------------------------------------------------
+    local lf "`u3d'/n3.log"
+    dash clear
+    quietly log using "`lf'", text replace name(u03n)
+    dash rbar yl yh weight, msize(large) name(zu5)
+    quietly log close u03n
+    _dash_serve_spec, specpath("`u3d'/s5.json") datapath("`u3d'/d5.json")
+    python: _u03_draw("`u3d'/s5.json", "`u3d'/d5.json", "`u3d'/a5.py")
+    _u03_all 1 ${u03_bs} ${u03_bv}
+    _w31_expect U03-03 "(r(ok))" "VBar width saved ${u03_bs} served ${u03_bv}"
+    _w31_expect U03-03 `"("${u03_ks} ${u03_kv}" == "VBar VBar")"' "glyphs ${u03_ks} / ${u03_kv}"
+    cert_log_has "`lf'", needle("msize()")
+    _w31_expect U03-03 "(r(count) == 1)" "the log names msize() `r(count)' times"
+    _w31_done U03-03 "rbar msize(large) without mwidth draws the one-unit VBar and names msize() once"
+
+    capture erase "`lf'"
+    foreach f in t1.svg t2weight.svg t2turn.svg {
+        capture erase "`u3d'/`f'"
+    }
+    foreach k in 1 2 3 4weight 4turn 5 {
+        foreach p in s d {
+            capture erase "`u3d'/`p'`k'.json"
+        }
+        capture erase "`u3d'/a`k'.py"
+    }
+    capture rmdir "`u3d'"
+    capture graph drop u03t
+    dash clear
+    display as text "S03 end " c(current_date) " " c(current_time)
+}
+* ==== end S03 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

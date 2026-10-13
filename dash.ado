@@ -1236,6 +1236,7 @@ program define _dash_parse_plot_opts, sclass
         TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
         TSCALE2(string asis)      TTITLE2(string asis) ///
         MANGle(string asis) BARBSize(string asis) HEADlabel ///
+        MWidth ///
         * ///
     ]
     // The style options of _dash_stylelist_keys() are string asis so a
@@ -1410,6 +1411,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mangle           : copy local mangle
     sreturn local barbsize         : copy local barbsize
     sreturn local headlabel        : copy local headlabel
+    sreturn local mwidth           : copy local mwidth
     sreturn local msangle          : copy local msangle
     sreturn local mfcolor          : copy local mfcolor
     sreturn local mlcolor          : copy local mlcolor
@@ -2288,6 +2290,20 @@ program define _dash_fold_typed, sclass
             if `_ft' local named "`named' `o'"
         }
     }
+    // WP-31 C2: rbar draws msize() only with mwidth (twoway's rbarm view);
+    // without it the size reaches a marker style nothing draws, so it is
+    // named.  mwidth on histogram is drawn by twoway (bars a marker wide)
+    // and named here until section 12.  twoway takes mwidth on rbar and
+    // histogram only: elsewhere "option mwidth not allowed", r(198)
+    // (test/fixtures/rbar_dot_truth.json probes).
+    mata: st_local("_ft", strofreal(st_global("s(mwidth)") != ""))
+    if `_ft' & !inlist("`ptype'", "rbar", "histogram") {
+        display as error "option mwidth not allowed"
+        exit 198
+    }
+    if "`ptype'" == "histogram" & `_ft' local named "`named' mwidth"
+    mata: st_local("_ft", strofreal(st_global("s(msize)") != "" & st_global("s(mwidth)") == ""))
+    if "`ptype'" == "rbar" & `_ft' local named "`named' msize"
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
 end
 
@@ -4496,7 +4512,7 @@ program define _dash_plot_opts_to_json, rclass
     // (WP-22) are non-empty only on the types _dash_fold_cl keeps them for.
     foreach key in mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor ///
                    mlabsize mlabposition mlabgap mlabwidth malpha marker lcolor ///
-                   lwidth lpattern lalpha fcolor fintensity falpha barwidth base ///
+                   lwidth lpattern lalpha fcolor fintensity falpha barwidth base mwidth ///
                    blcolor bfcolor jitter jseed yaxis xaxis colorvar colpalette ///
                    colordiscrete coloruseplegend colornlevels colorcuts colormissing ///
                    colorlevels colorvarminmax ///
