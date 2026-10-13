@@ -421,10 +421,10 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A2 Tracked:** Open (WP-31 section 08).
 - **A3 Tracked:** Open (WP-31 section 08).
 - **A4 Tracked:** Open (WP-31 section 08).
-- **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit pending.
-- **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit pending.
-- **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit pending.
-- **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit pending.
+- **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
+- **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit 79c9f79.
+- **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit ec00ad8.
+- **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit e07f97e.
 - **B1 Tracked:** Open (WP-31 section 21).
 - **B2 Tracked:** Open (WP-31 section 21).
 - **B3 Tracked:** Open (WP-31 section 21).
@@ -443,8 +443,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C8a Tracked:** Open (WP-31 section 15).
 - **C8b Tracked:** Open (WP-31 section 17).
 - **C9 Tracked:** Open (WP-31 section 20).
-- **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit pending.
-- **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit pending.
+- **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
+- **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
 - **C10c Tracked:** Open (WP-31 section 09).
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C12 Tracked:** Open (WP-31 section 46).
@@ -453,7 +453,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C15 Tracked:** Open (WP-31 section 34).
 - **C16 Tracked:** Open (WP-31 section 46).
 - **C17 Tracked:** Open (WP-31 section 34).
-- **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit pending.
+- **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **D1 Tracked:** Open (WP-31 section 24).
 - **D2 Tracked:** Open (WP-31 section 27).
 - **D3 Tracked:** Open (WP-31 section 30).
@@ -492,7 +492,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1g Tracked:** Open (WP-31 section 28).
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).
-- **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit pending.
+- **F4 Tracked:** Closed in WP-31, BUGS.md "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule", commit 8f8fdf7.
 - **F5 Tracked:** Open (WP-31 section 46).
 - **G1 Tracked:** Open (WP-31 section 43).
 - **G2 Tracked:** Open (WP-31 section 43).

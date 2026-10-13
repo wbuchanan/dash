@@ -3855,3 +3855,9 @@
   - Description: GAPS3.md I6, re-verified at 6370ca4: No secret scan; no CI; no ruff/pyflakes/bandit in the Makefile (the renderer has 51 findings); `.claude/hooks/*` that CLAUDE.md relies on are git-ignored; `*.log` excluded only locally so a fresh clone shows test/run_all_cscripts.log as untracked.
   - Suggested fix: WP-31 section 60 (test harness fixtures): add a CI workflow, a lint target and a secrets test, and track or document the hooks.
   - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed
+  - File Names and Line Numbers: dash.ado `_dash_wexp_gen`, `_dash_process_segment` (weight gate); test/test_weight_expressions.py
+  - Description: Found by WP-31 section 07 (A5): `twoway lfit mpg weight [aw=price-price]` prints "(note: regress could not fit model)"; dash registers the layer without that note.
+  - Suggested fix: Measure twoway's drawing and notes for all-zero weights on each weighted type and match the note, or draw nothing with dash's empty-layer note.
+  - Resolution: Not fixed because it was found after A5 closed and is left for a later section (WP-31 M12 residual). Graded S3 (WP-31): a note twoway gives that dash does not; nothing is drawn wrong.
