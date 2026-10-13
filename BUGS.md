@@ -3195,3 +3195,663 @@
   - Description: Register P1.25.6 (A80), measured 03oct2026 at c96facd. Two registered graphs with scheme(s1mono) and scheme(s1rcolor) were drawn #ffffff and #000000 on the saved page and #ffffff and #ffffff in the served app, and both modes warned that a dashboard draws one scheme and ignored the second graph, which was false for the saved page. A graph-level theme name, dash scatter mpg weight, scheme(mono), was drawn in s2color (border #eaf2f3) with the note that scheme mono was not found on the saved page, and in s1mono with no note when served.
   - Suggested fix: WP-30 section 34 (Stata's scheme lookup along the ado-path): name each graph's scheme by the dashboard's rule in both renderers and give the served app one property dict per distinct graph scheme, swapped per figure and per redraw.
   - Resolution: Fixed 08oct2026 (WP-30, P1.25b). Each graph's scheme() is named by _dash_scheme_choice in both renderers, so a theme name is the theme (or a file of that name Stata finds); ServerAppBuilder._resolve_graph_schemes writes one property dict per distinct graph scheme, and the app's _dash_under_graph_scheme swaps it in for each figure and each redraw after a filter move, as DashRenderer._make_figure does; the one-scheme warning is gone from both modes. Pinned by test/test_scheme_lookup.py::TestPerGraphSchemes::test_each_graph_is_drawn_in_its_own_scheme, test/test_scheme_lookup.py::TestPerGraphSchemes::test_the_served_move_keeps_each_graphs_scheme, test/test_scheme_lookup.py::TestThemeNamesAndFiles::test_a_graph_level_alias_is_the_alias_in_both_modes, test/test_wp30_truth.cscript SP-17.
+
+- [ ] Title: pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped
+  - File Names and Line Numbers: dash_render.py:19683-19861, :19660-19662
+  - Description: GAPS3.md C1, re-verified at 6370ca4: pcarrow/pcbarrow/pcarrowi: head `msize() mcolor() mfcolor() mlcolor() mlwidth()` are declared, written to the spec and **silently** not read; heads are fixed `OpenHead(size=10)`; pcbarrow's `NormalHead` has no `fill_color` so its heads fill black; `mangle()`, `barbsize()`, `headlabel` undeclared (generic note); a row missing only its second point is dropped whole. test_phase4_plots.py P4-18/P4-20 pin the black heads.
+  - Suggested fix: WP-31 section 02 (arrowheads): size and colour the heads from the marker options and the scheme, fill pcbarrow heads with the line colour, declare mangle(), barbsize() and headlabel, keep a one-point row as a marker, and rewrite P4-18 and P4-20.
+  - Resolution: Not fixed because WP-31 section 02 has not landed. Graded S1 (WP-31): a value the user gave is dropped or drawn wrong with no note.
+
+- [ ] Title: rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth
+  - File Names and Line Numbers: dash_render.py:18512-18650 `map_rbar`
+  - Description: GAPS3.md C2, re-verified at 6370ca4: `rbar ..., msize()` (the bar width twoway then uses with `mwidth`) is written and **silently** unread; `mwidth` is named.
+  - Suggested fix: WP-31 section 03 (rbar msize dot recast): read msize() with mwidth on rbar, or name both in the note.
+  - Resolution: Not fixed because WP-31 section 03 has not landed. Graded S1 (WP-31): a value the user gave is dropped or drawn wrong with no note.
+
+- [ ] Title: base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)
+  - File Names and Line Numbers: dash_render.py:18910-18937 `map_dot`; dash.ado:2575
+  - Description: GAPS3.md B5, re-verified at 6370ca4: the base and recast parts; the whole row reads: `dot` is drawn as a plain scatter: no dot rows; `dotextend()`, `ndots()`, `dsymbol dcolor dfcolor dsize dlcolor dlwidth dlalign` undeclared (generic note), `dstyle()`/`dlstyle()` pending; `base()` on dot written to the spec and never read; `recast()` on dot dropped with no note.
+  - Suggested fix: WP-31 section 03 (rbar msize dot recast): read base() on dot and note or honour recast() on dot after measuring twoway dot, recast(line).
+  - Resolution: Not fixed because WP-31 section 03 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence
+  - File Names and Line Numbers: dash.ado:4448-4449; :2987-3010 rules have no type list
+  - Description: GAPS3.md C3, re-verified at 6370ca4: Options twoway refuses on a type are dropped in silence: `kernel() n() level() bwidth() bands() range() base()` are written to every spec with no applicability table; only fpfit/fpfitci warn. BUGS.md open entry.
+  - Suggested fix: WP-31 section 04 (option applicability): add a per-type applicability column to _dash_option_rules and refuse each inapplicable option with twoway's measured words.
+  - Resolution: Not fixed because WP-31 section 04 has not landed. Graded S1 (WP-31): a value the user gave is dropped or drawn wrong with no note.
+
+- [ ] Title: range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)
+  - File Names and Line Numbers: dash.ado:2995-3003, :3150-3158, :3484-3487
+  - Description: GAPS3.md C10, re-verified at 6370ca4: the bounds that are a rules-table edit; the whole row reads: Values twoway accepts are refused: `range(varname)` and `range(# .)`, `degree()` above 3 (ROT constants for 4-7 exist but are unreachable), `n(1)`, `bwidth(0)`, lowess `bwidth()` above 1 (twoway uses .8), one `mlabel()` element naming several variables, scatteri `2/2`, `level()` bounds applied to every CI type (and `level(5)` drawn on lfitci where twoway bounds 10-99.99), `yaxis(1 2)`, axes 3-9.
+  - Suggested fix: WP-31 section 05 (value bounds): relax each rule to twoway's bound and cscript each against twoway's rc.
+  - Resolution: Not fixed because WP-31 section 05 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)
+  - File Names and Line Numbers: dash.ado:2995-3003, :3150-3158, :3484-3487
+  - Description: GAPS3.md C10, re-verified at 6370ca4: the values needing new parsing; the whole row reads: Values twoway accepts are refused: `range(varname)` and `range(# .)`, `degree()` above 3 (ROT constants for 4-7 exist but are unreachable), `n(1)`, `bwidth(0)`, lowess `bwidth()` above 1 (twoway uses .8), one `mlabel()` element naming several variables, scatteri `2/2`, `level()` bounds applied to every CI type (and `level(5)` drawn on lfitci where twoway bounds 10-99.99), `yaxis(1 2)`, axes 3-9.
+  - Suggested fix: WP-31 section 06 (parsed values): accept degree 4-7 with the ROT constants, several variables in one mlabel() element, the scatteri division and yaxis(1 2).
+  - Resolution: Not fixed because WP-31 section 06 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: scatteri refuses a 2/2 numlist element where twoway divides
+  - File Names and Line Numbers: dash_parse.mata:1166
+  - Description: GAPS3.md C18, re-verified at 6370ca4: Immediate forms: `scatteri` `2/2` numlist refused where twoway divides.
+  - Suggested fix: WP-31 section 06 (parsed values): evaluate the division in the immediate forms.
+  - Resolution: Not fixed because WP-31 section 06 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: _LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule
+  - File Names and Line Numbers: dash_render.py:486
+  - Description: GAPS3.md F4, re-verified at 6370ca4: `_LPOLY_ROT_CONSTANTS` holds degree 4-7 rows that are unreachable under `degree=int,0,3`.
+  - Suggested fix: WP-31 section 06 (parsed values): accept degree 4-7 with C10b.
+  - Resolution: Not fixed because WP-31 section 06 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression
+  - File Names and Line Numbers: dash.ado:5402-5425
+  - Description: GAPS3.md A5, re-verified at 6370ca4: Weight expressions `[aw=price+1]` and `[aw=L.x]` refused; twoway takes an expression.
+  - Suggested fix: WP-31 section 07 (weights operators hover dates): evaluate the expression into a __dash column at registration and pin the values against summarize [aw=].
+  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code
+  - File Names and Line Numbers: dash.ado:3471-3479
+  - Description: GAPS3.md A6, re-verified at 6370ca4: Option varlists with operators: `mlabel(L.make)`, `colorvar(L.mpg)`, `by(L.foreign)` are refused r(198); twoway r(111)/r(101) or draws.
+  - Suggested fix: WP-31 section 07 (weights operators hover dates): route option varlists through _dash_tsop_gen where twoway draws and copy twoway's rc where it refuses.
+  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list
+  - File Names and Line Numbers: dash.ado:1085, :1571
+  - Description: GAPS3.md A7, re-verified at 6370ca4: `hover()` written inside a layer's parentheses and again after the comma keeps only the rightmost list.
+  - Suggested fix: WP-31 section 07 (weights operators hover dates): merge the two lists and pin the tooltip.
+  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)
+  - File Names and Line Numbers: dash.ado:7546-7563 (x options only)
+  - Description: GAPS3.md A8, re-verified at 6370ca4: Date literals in y-options (`ylabel(2000m1)`) accepted; twoway r(198).
+  - Suggested fix: WP-31 section 07 (weights operators hover dates): extend the date-literal refusal loop to the y options.
+  - Resolution: Not fixed because WP-31 section 07 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: dash twoway with nothing after it is refused r(198) where twoway draws an empty graph
+  - File Names and Line Numbers: dash.ado:118-125 prefix strip; dash_parse.mata `_dash_split_segs`
+  - Description: GAPS3.md A1, re-verified at 6370ca4: `dash twoway` with nothing after it is refused r(198) "empty plot specification"; twoway draws an empty graph.
+  - Suggested fix: WP-31 section 08 (abbreviations prefix mlalign): draw an empty figure with axes only for the bare prefix and pin it with a cscript.
+  - Resolution: Not fixed because WP-31 section 08 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's
+  - File Names and Line Numbers: dash_parse.mata:1688-1730; dash.sthlp:302-333
+  - Description: GAPS3.md A2, re-verified at 6370ca4: Plot-type abbreviations are a superset of twoway's (`lfi qfi ar ba sp low lpo fp kde dr tsl tsrl msp` accepted; twoway refuses them) and the help lists only twoway's eight.
+  - Suggested fix: WP-31 section 08 (abbreviations prefix mlalign): refuse the extra abbreviations with twoway's not-a-twoway-plot-type r(198) and pin with test_parser.cscript.
+  - Resolution: Not fixed because WP-31 section 08 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts
+  - File Names and Line Numbers: test/test_abbreviations.py:41-53, :255
+  - Description: GAPS3.md A3, re-verified at 6370ca4: Option-abbreviation minimums have no live pin: test/fixtures/abbrev_truth.json is marked "PRE-FIX RECORD" and test_abbreviations.py asserts the stale counts (7 mismaps, 2 unresolved).
+  - Suggested fix: WP-31 section 08 (abbreviations prefix mlalign): regenerate the fixture after A2 and pin every option minimum live both ways.
+  - Resolution: Not fixed because WP-31 section 08 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable
+  - File Names and Line Numbers: dash.ado:1170; marker_options.sthlp `{cmdab:mla:lign}`
+  - Description: GAPS3.md A4, re-verified at 6370ca4: `mla()` binds to dash's `mlabel()` (minimum `ml`) where twoway's `mla` is `mlalign()`; `scatter y x, mla(center)` is refused as a bad variable.
+  - Suggested fix: WP-31 section 08 (abbreviations prefix mlalign): declare MLAlign() so the longer minimum wins and cscript both spellings.
+  - Resolution: Not fixed because WP-31 section 08 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Axes 3 to 9 are refused where twoway draws them (the axes part)
+  - File Names and Line Numbers: dash.ado:2995-3003, :3150-3158, :3484-3487
+  - Description: GAPS3.md C10, re-verified at 6370ca4: the axes part; the whole row reads: Values twoway accepts are refused: `range(varname)` and `range(# .)`, `degree()` above 3 (ROT constants for 4-7 exist but are unreachable), `n(1)`, `bwidth(0)`, lowess `bwidth()` above 1 (twoway uses .8), one `mlabel()` element naming several variables, scatteri `2/2`, `level()` bounds applied to every CI type (and `level(5)` drawn on lfitci where twoway bounds 10-99.99), `yaxis(1 2)`, axes 3-9.
+  - Suggested fix: WP-31 section 09 (axes three to nine): draw axes 3-9 with Bokeh extra ranges in both modes and cscript against twoway.
+  - Resolution: Not fixed because WP-31 section 09 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the JS prelude and the lfit and qfit twins; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 10 (js prelude lfit qfit): generalise the _FILTER_JS prelude to xvar, yvar and wvar, add dash_fit_grid, dash_wls and dash_t_ppf, and refit lfit and qfit pinned to their Python twins.
+  - Resolution: Not fixed because WP-31 section 10 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn
+  - File Names and Line Numbers: dash_parse.mata:6261-6276; grep 0 for est*
+  - Description: GAPS3.md C4, re-verified at 6370ca4: Fit options `atobs`, `estcmd()`, `estopts()` (incl. fpfit `estopts(degree())`), `predopts()`, `ciplot()`, `fitplot()`, `nofit` named, not drawn.
+  - Suggested fix: WP-31 section 11 (fit options): honour nofit, ciplot() and fitplot(), run estcmd(), estopts() and predopts() through Stata at build time, and read atobs as a grid rule.
+  - Resolution: Not fixed because WP-31 section 11 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn
+  - File Names and Line Numbers: dash_parse.mata:6263-6298; dash.sthlp:3075-3077
+  - Description: GAPS3.md C5, re-verified at 6370ca4: kdensity `area()`, `boundary`; histogram `gap()`; function `droplines()`, `base()`; area `nodropbase`; bar `baroffset()` named, not drawn.
+  - Suggested fix: WP-31 section 12 (distribution area odds): draw each with its direct Bokeh form in both modes.
+  - Resolution: Not fixed because WP-31 section 12 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the lfitci and qfitci twins; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 13 (js lfitci qfitci): port the lfitci and qfitci bands to JavaScript on the S10 prelude, pinned to their Python twins.
+  - Resolution: Not fixed because WP-31 section 13 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn
+  - File Names and Line Numbers: dash.ado:2712, :2775-2776
+  - Description: GAPS3.md C6, re-verified at 6370ca4: `cmissing(n)` on area/rarea and on estimator-generated missing points (lowess, lpoly, lpolyci, fpfit, fpfitci, lfitci, qfitci, mband, mspline); `connect()` other than direct on rarea: named, not drawn.
+  - Suggested fix: WP-31 section 14 (cmissing connect recast): split the patch or band at missing points as twoway does.
+  - Resolution: Not fixed because WP-31 section 14 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them
+  - File Names and Line Numbers: dash.ado:2616-2635, :2577-2581
+  - Description: GAPS3.md C7, re-verified at 6370ca4: `recast()` histogram to a range type or unknown name named; `recast()` on pci/pcarrowi named; twoway draws them.
+  - Suggested fix: WP-31 section 14 (cmissing connect recast): extend _dash_recast_opt to those forms.
+  - Resolution: Not fixed because WP-31 section 14 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)
+  - File Names and Line Numbers: dash.ado:2205, :2218-2225, :1330-1331; dash_render.py:13734
+  - Description: GAPS3.md C8, re-verified at 6370ca4: the coverage and jitter parts; the whole row reads: `colorvar()` drawn on 4 types only (scatter connected rconnected dot); `jitter()` named on rscatter rcapsym pcscatter pccapsym; `colorlist()`, `coloruseplegend` pending (`_use_plegend` read into a dead variable); `colorstart() colorend() colorformissing() colorfillonly colorkeysrange colorrule() clegend() plegend() pcycle()` undeclared, generic note; dash's own `colormissing()` is not Stata's `colorformissing()` spelling; `colorvar(i.var)` r(111).
+  - Suggested fix: WP-31 section 15 (colorvar coverage): route every glyph through _apply_colorvar and jitter the four range types.
+  - Resolution: Not fixed because WP-31 section 15 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit lowess after a filter move (the lowess twin)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the lowess twin; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 16 (js lowess): port lowess to JavaScript, pinned to its Python twin.
+  - Resolution: Not fixed because WP-31 section 16 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)
+  - File Names and Line Numbers: dash.ado:2205, :2218-2225, :1330-1331; dash_render.py:13734
+  - Description: GAPS3.md C8, re-verified at 6370ca4: the option remainder; the whole row reads: `colorvar()` drawn on 4 types only (scatter connected rconnected dot); `jitter()` named on rscatter rcapsym pcscatter pccapsym; `colorlist()`, `coloruseplegend` pending (`_use_plegend` read into a dead variable); `colorstart() colorend() colorformissing() colorfillonly colorkeysrange colorrule() clegend() plegend() pcycle()` undeclared, generic note; dash's own `colormissing()` is not Stata's `colorformissing()` spelling; `colorvar(i.var)` r(111).
+  - Suggested fix: WP-31 section 17 (colorvar options): alias colorformissing(), declare and draw the remaining colorvar options.
+  - Resolution: Not fixed because WP-31 section 17 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)
+  - File Names and Line Numbers: dash_render.py:18910-18937 `map_dot`; dash.ado:2575
+  - Description: GAPS3.md B5, re-verified at 6370ca4: the dot rows and d-options; the whole row reads: `dot` is drawn as a plain scatter: no dot rows; `dotextend()`, `ndots()`, `dsymbol dcolor dfcolor dsize dlcolor dlwidth dlalign` undeclared (generic note), `dstyle()`/`dlstyle()` pending; `base()` on dot written to the spec and never read; `recast()` on dot dropped with no note.
+  - Suggested fix: WP-31 section 18 (dot rows): draw twoway's dot rows and declare and draw the d-options in both modes.
+  - Resolution: Not fixed because WP-31 section 18 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit lpoly after a filter move (the lpoly twin)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the lpoly twin; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 19 (js lpoly): port lpoly with its rule-of-thumb bandwidth to JavaScript, pinned to its Python twin.
+  - Resolution: Not fixed because WP-31 section 19 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Weighted scatter markers are not sized by [aw]
+  - File Names and Line Numbers: dash_render.py:14944-14973
+  - Description: GAPS3.md C9, re-verified at 6370ca4: Weighted scatter markers are not sized by `[aw]`.
+  - Suggested fix: WP-31 section 20 (weighted markers): scale marker area by weight as twoway does and pin against twoway's .gph marker sizes.
+  - Resolution: Not fixed because WP-31 section 20 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: rpcap and rpspike are refused by name
+  - File Names and Line Numbers: dash.ado:4880-4906; dash_parse.mata:1806
+  - Description: GAPS3.md B1, re-verified at 6370ca4: `rpcap`, `rpspike` refused by name r(198) with advice.
+  - Suggested fix: WP-31 section 21 (rpcap rpspike refusals): parse the four-variable family, draw map_rcap or map_rspike plus the point marker in both modes, and cscript against the .gph serset.
+  - Resolution: Not fixed because WP-31 section 21 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list
+  - File Names and Line Numbers: dash.ado:4904; grep 0
+  - Description: GAPS3.md B2, re-verified at 6370ca4: `sunflower` falls to the generic "unrecognised plot type"; absent from the help's Not-drawn list.
+  - Suggested fix: WP-31 section 21 (rpcap rpspike refusals): refuse sunflower by name with advice and list it in the help.
+  - Resolution: Not fixed because WP-31 section 21 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: matamatrix() is read as a varlist and refused r(101) or r(111)
+  - File Names and Line Numbers: grep 0
+  - Description: GAPS3.md B3, re-verified at 6370ca4: `matamatrix()` is read as a varlist and refused r(101)/r(111).
+  - Suggested fix: WP-31 section 21 (rpcap rpspike refusals): refuse matamatrix() by name with advice and list it in the help.
+  - Resolution: Not fixed because WP-31 section 21 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit lpolyci after a filter move (the lpolyci twin)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the lpolyci twin; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 22 (js lpolyci): port the lpolyci analytic band to JavaScript on S19's lpoly, pinned to its Python twin.
+  - Resolution: Not fixed because WP-31 section 22 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)
+  - File Names and Line Numbers: dash.ado:4891-4893
+  - Description: GAPS3.md B4, re-verified at 6370ca4: the interpolation, grid rule, cap and truth extractor; the whole row reads: `contour`, `contourline` refused by name.
+  - Suggested fix: WP-31 section 23 (contour interpolation): implement twoway's thin-plate and Shepard interpolation in numpy with the unique-x by unique-y grid, the 1,000-point cap and an extract script of twoway__contour_gen truth.
+  - Resolution: Not fixed because WP-31 section 23 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read
+  - File Names and Line Numbers: dash.ado:1025-1037; grep 0 in renderer
+  - Description: GAPS3.md D1, re-verified at 6370ca4: `xmtick ymtick xmlabel ymlabel tmtick tmlabel` (and the `*2` forms) pending, never read by the renderer. Bokeh has no labelled minor ticks.
+  - Suggested fix: WP-31 section 24 (minor ticks labels): draw minor ticks as Bokeh minor ticks and minor labels as a second LabelSet along the axis.
+  - Resolution: Not fixed because WP-31 section 24 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the mband and mspline twins; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 25 (js mband mspline): port mband and mspline to JavaScript, pinned to their Python twins.
+  - Resolution: Not fixed because WP-31 section 25 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)
+  - File Names and Line Numbers: dash.ado:4891-4893
+  - Description: GAPS3.md B4, re-verified at 6370ca4: the type registration, options, colour rules, colour key and both modes; the whole row reads: `contour`, `contourline` refused by name.
+  - Suggested fix: WP-31 section 26 (contour drawing): register the two types, draw with Bokeh contour fills and lines from S23's grid with the colour options and key, and tag the layer frozen above the cap.
+  - Resolution: Not fixed because WP-31 section 26 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them
+  - File Names and Line Numbers: dash.ado:1016-1035; dash_render.py:36868-36871
+  - Description: GAPS3.md D2, re-verified at 6370ca4: `t1title`..`r2title`, `title2`, `subtitle2` pending; the latter two are twoway refusals, not options.
+  - Suggested fix: WP-31 section 27 (edge titles): draw the eight edge titles on each side and refuse title2() and subtitle2() with twoway's r(198).
+  - Resolution: Not fixed because WP-31 section 27 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)
+  - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
+  - Description: GAPS3.md F1, re-verified at 6370ca4: the fpfit and fpfitci twins; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
+  - Suggested fix: WP-31 section 28 (js fpfit fpfitci): port fpfit's power search and fpfitci's band to JavaScript, pinned to their Python twins.
+  - Resolution: Not fixed because WP-31 section 28 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: contour and contourline are refused by name (the JavaScript twin)
+  - File Names and Line Numbers: dash.ado:4891-4893
+  - Description: GAPS3.md B4, re-verified at 6370ca4: the JavaScript twin; the whole row reads: `contour`, `contourline` refused by name.
+  - Suggested fix: WP-31 section 29 (js contour): port marching squares and isobands to the saved page so contours refit within the cap.
+  - Resolution: Not fixed because WP-31 section 29 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only
+  - File Names and Line Numbers: dash_render.py:37117 `_DASH_TEXTBOX_HONOURED`, :37246
+  - Description: GAPS3.md D3, re-verified at 6370ca4: Textbox sub-options on titles (`position ring span justification alignment orientation box bexpand margin bmargin tstyle fcolor lcolor lwidth lpattern lstyle bcolor width height linegap placement`) named; `_dash_textbox_place` exists but is wired only to scheme clocks.
+  - Suggested fix: WP-31 section 30 (textbox placement added text): wire user position() and ring() through _dash_textbox_place and draw box, margin and justification.
+  - Resolution: Not fixed because WP-31 section 30 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label
+  - File Names and Line Numbers: dash.ado:7829-7889; dash_render.py:37323
+  - Description: GAPS3.md D13, re-verified at 6370ca4: Added text: `tstyle()` and the other textbox sub-options named; `$name` in drawn labels not macro-expanded.
+  - Suggested fix: WP-31 section 30 (textbox placement added text): route tstyle() through SchemeParser.textbox_style and expand globals at registration.
+  - Resolution: Not fixed because WP-31 section 30 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged
+  - File Names and Line Numbers: dash_render.py:37094, :37105, :28394-28425, :28059-28063, :28325-28327, :28514
+  - Description: GAPS3.md D4, re-verified at 6370ca4: Legend: `holes colfirst textfirst stack symxsize symysize symplacement keygap rowgap colgap textwidth forcesize region() bplacement() span title() subtitle() note() caption() bmargin() nobox color()` named; scheme `cols` dropped when `position()` given; corner clocks centred on a side; `pos(0)` goes top-right; `ring(0)` alone leaves Bokeh's top_right (help promises "inside the plot region"); `legend(label(1))` with no text dropped silently; key size fixed; keys with the same text and style not merged.
+  - Suggested fix: WP-31 section 31 (legend geometry): implement the geometry sub-options on the Bokeh Legend with a clock table, a blank key for label(#) and merged identical keys.
+  - Resolution: Not fixed because WP-31 section 31 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: A histogram-only graph draws a legend where twoway draws none
+  - File Names and Line Numbers: dash_render.py:28514
+  - Description: GAPS3.md C13, re-verified at 6370ca4: histogram-only graph draws a legend; twoway draws none.
+  - Suggested fix: WP-31 section 31 (legend geometry): exempt histogram-only graphs from the legend.
+  - Resolution: Not fixed because WP-31 section 31 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()
+  - File Names and Line Numbers: dash.ado:1028-1048, :3047, :3166-3190; dash_render.py:21362-21366, :43721
+  - Description: GAPS3.md D5, re-verified at 6370ca4: `scale()`, `fxsize()`, `fysize()`, `xoverhangs`, `yoverhangs` pending, never read; `aspectratio()` shapes the figure not the plot region, loses to `xsize/ysize`, and `aspectratio(#, placement())` is refused as "not a positive number".
+  - Suggested fix: WP-31 section 32 (sizing scale aspect): apply scale() to every size, honour fxsize and fysize in the grid, compute the plot-region ratio from the frame and accept placement().
+  - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Sizes are relative to a 4-inch reference and scale() is pending
+  - File Names and Line Numbers: dash_render.py:7098, :7221, :11450
+  - Description: GAPS3.md E11, re-verified at 6370ca4: Sizes are relative to a 4-inch reference and `scale()` is pending (see D5).
+  - Suggested fix: WP-31 section 32 (sizing scale aspect): scale every size with D5.
+  - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn
+  - File Names and Line Numbers: dash_render.py:36969-36976, :30267
+  - Description: GAPS3.md D6, re-verified at 6370ca4: Axis sub-options `labgap labstyle tstyle gstyle alternate altgap gmin gmax gextend custom tlstyle tlwidth tlcolor tlpattern glwidth glcolor glpattern labjustification labalignment` named; `##5` read as `#5`; `minmax` over all layers unverified; label forms twoway refuses drawn anyway.
+  - Suggested fix: WP-31 section 33 (axis suboptions look): draw the stylable sub-options, apply the ##N minor rule and refuse twoway's refusals.
+  - Resolution: Not fixed because WP-31 section 33 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back
+  - File Names and Line Numbers: dash_render.py:31980, :36922-36945
+  - Description: GAPS3.md D7, re-verified at 6370ca4: Axis-scale look: `fill outergap() extend noextend fextend lstyle atanh logit log1m` named; two `yscale(alt)` toggle back in twoway; `gsize axis_title_gap` unread; `zlabel()/zscale()` look words named.
+  - Suggested fix: WP-31 section 33 (axis suboptions look): draw extend, fextend and outergap() and toggle alt.
+  - Resolution: Not fixed because WP-31 section 33 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn
+  - File Names and Line Numbers: dash_render.py:7161, :7180, :7245
+  - Description: GAPS3.md E6, re-verified at 6370ca4: Line-width edges: `*#` multiplies before the 0.3 pt floor; 10,000-unit bound; `tlwidth()/glwidth()` named not drawn.
+  - Suggested fix: WP-31 section 33 (axis suboptions look): apply the floor after the multiply and draw tick and grid widths.
+  - Resolution: Not fixed because WP-31 section 33 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: yvarlabel() and xvarlabel() are undeclared, noted and absent from the help
+  - File Names and Line Numbers: dash.ado:933-975, :1167-1210; test/fixtures/rejected_options.json:2300-2314
+  - Description: GAPS3.md D8, re-verified at 6370ca4: `yvarlabel()`/`xvarlabel()` (real twoway options, advanced_options.sthlp) undeclared: generic note, not drawn, not in the help.
+  - Suggested fix: WP-31 section 34 (varlabel marker label options): declare them and use them as axis title and legend key text.
+  - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on
+  - File Names and Line Numbers: dash.ado:1137-1250; dash_parse.mata:6277
+  - Description: GAPS3.md C17, re-verified at 6370ca4: `mlabprefix()`/`mlabsuffix()` (StataNow) and `lalign()` at plot level are undeclared: generic note, absent from the help's Unsupported list. `headlabel` is accepted-and-named on pcspike/pcscatter/pci/pcarrowi where only pcarrow/pccapsym take it (twoway unverified).
+  - Suggested fix: WP-31 section 34 (varlabel marker label options): declare and draw prefix and suffix, declare lalign() and measure headlabel's type set.
+  - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared
+  - File Names and Line Numbers: dash_render.py:13465-13475, :6379
+  - Description: GAPS3.md E3, re-verified at 6370ca4: `msangle(anglestyle name)` noted and drawn at 0 degrees although `_DASH_ANGLESTYLES` exists; `mlalign()`, `mwidth`, `mlabstyle()` undeclared (generic note).
+  - Suggested fix: WP-31 section 34 (varlabel marker label options): use _dash_anglestyle_degrees for msangle and declare the three options.
+  - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)
+  - File Names and Line Numbers: dash.ado:3712-3760
+  - Description: GAPS3.md C14, re-verified at 6370ca4: `rscatter y y2 x, mlabel(y)` draws; twoway r(102).
+  - Suggested fix: WP-31 section 34 (varlabel marker label options): count mlabel variables toward the range check.
+  - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Bar marker labels default to 3 o'clock where twoway's bar default is 12
+  - File Names and Line Numbers: dash_render.py:14360
+  - Description: GAPS3.md C15, re-verified at 6370ca4: Bar marker labels default to 3 o'clock; twoway's bar default is 12.
+  - Suggested fix: WP-31 section 34 (varlabel marker label options): give each type its default clock.
+  - Resolution: Not fixed because WP-31 section 34 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis
+  - File Names and Line Numbers: dash_render.py:31764, :31723-33579; no y2 in `_DASH_AXIS_FINISH_JS`/`_FILTER_JS`
+  - Description: GAPS3.md D9, re-verified at 6370ca4: Secondary axis: the y2/x2 range is built once and never follows a filter move in either mode; the first-used axis is not drawn left/bottom; `horizontal` with `yaxis(2)` titles no x axis.
+  - Suggested fix: WP-31 section 35 (second axis moves): recompute the extra ranges in the move callback in both modes and apply the first-used side rule.
+  - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn
+  - File Names and Line Numbers: dash_render.py:26095-26135 grammar, :38451
+  - Description: GAPS3.md D10, re-verified at 6370ca4: `by()`: overall `graphregion()/plotregion()` and `regions` named; `legend(ring(0))` drawn beside the array; overall legend not clickable; `by_alternate_*` axes; panel margin uses f(panels) not `iscale()`; `subtitleformat()`, shrink options, other bystyles named; panel-label box restyling (`subtitle(, fcolor() lcolor() nobox)`) named; a one-panel `by()` with an empty value label drawn without chrome; panels emptied by a filter stay drawn.
+  - Suggested fix: WP-31 section 36 (by remainder): apply the stage-3 grammar rows and hide emptied panels after a move.
+  - Resolution: Not fixed because WP-31 section 36 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white
+  - File Names and Line Numbers: dash_render.py:6504-6710
+  - Description: GAPS3.md D11, re-verified at 6370ca4: Region: `graphregion(margin())` not exact; graphregion `i*` options, `intensity() iintensity() shadestyle() ishadestyle() marginonly` named; margin forms `L+10`, three- and five-value, `allsides-ms` not parsed; s1color's unfilled plot region filled white.
+  - Suggested fix: WP-31 section 37 (region remainder): parse every marginstyle form, draw intensity and shade and honour shadestyle plotregion none.
+  - Resolution: Not fixed because WP-31 section 37 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: An out-of-range xline() or yline() is clipped to the frame where twoway draws it outside
+  - File Names and Line Numbers: dash_render.py:39139
+  - Description: GAPS3.md D12, re-verified at 6370ca4: Reference lines: an out-of-range `xline()/yline()` is clipped to the frame (Bokeh Span); twoway draws it outside; an asymmetric extended end stays at the last frame on zoom-out.
+  - Suggested fix: WP-31 section 38 (reference lines frame): draw reference lines with a Segment in screen units beyond the frame.
+  - Resolution: Not fixed because WP-31 section 38 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()
+  - File Names and Line Numbers: dash_render.py:36001, :50709-50712
+  - Description: GAPS3.md D14, re-verified at 6370ca4: `tabs()` drops unregistered names silently (layout() now names them); served `layout(s1:1,1 s2:1,1)` overwrites the cell silently; no per-tab `layout()`.
+  - Suggested fix: WP-31 section 39 (tabs layout legend edges): name unknown tab members, refuse same-cell collisions in Mata and add per-tab layout.
+  - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked
+  - File Names and Line Numbers: dash.ado:2860-2884; dash_parse.mata:8206-8219
+  - Description: GAPS3.md D16, re-verified at 6370ca4: `legend(po(9) top)` names `top` first; `title("T", prefix suffix)` prints no "option prefix ignored" line; values nested in `legend(region())`/`legend(title())` unchecked.
+  - Suggested fix: WP-31 section 39 (tabs layout legend edges): match twoway's order and message.
+  - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted
+  - File Names and Line Numbers: dash_render.py:6932-6987, :6921-6930, :7536-7559
+  - Description: GAPS3.md E1, re-verified at 6370ca4: Symbols: `arrow`, `arrowf`, `A`, `a`, `\|` refused (noted, scheme symbol drawn); `pipe` drawn as a horizontal dash (twoway's is vertical); `point`/`p` at full 8 px; `V` as a filled inverted triangle; lower-case shorthands `o d s t x v` at full size; `star asterisk hexagon dot` accepted where twoway refuses.
+  - Suggested fix: WP-31 section 40 (symbols line patterns): add the arrow marker, vertical pipe, 1 px point, hollow V and small shorthands, and refuse the non-Stata names.
+  - Resolution: Not fixed because WP-31 section 40 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending
+  - File Names and Line Numbers: dash_render.py:7633-7651, :7253-7281, :7261, :9786-9803; dash.ado:1343
+  - Description: GAPS3.md E2, re-verified at 6370ca4: Line patterns: formula strings (`-.`, `--..`, `_`, `#`) refused in options and schemes (solid drawn); `-_-` drawn as dash_dot; dot geometry `[2,4]` vs Stata `.1 .7`, shortdash `[4,4]` vs `.8 .7`, tight_dot `[1,2]` vs `.1 .4`, vshortdash `[3,3]` vs `.5 .7`; `mlpattern()` pending (never read).
+  - Suggested fix: WP-31 section 40 (symbols line patterns): parse the formula grammar into dash arrays scaled by width, copy the style files' ratios and draw mlpattern().
+  - Resolution: Not fixed because WP-31 section 40 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive
+  - File Names and Line Numbers: dash_render.py:7550-7553, :7645, :8952
+  - Description: GAPS3.md E12, re-verified at 6370ca4: Case folding: `translate_msymbol` and `translate_lpattern` lower-case names (`CIRCLE`, `Dash` drawn); Stata style names are case-sensitive (measured for anglestyle). `_INTENSITY["max"]` 9999.99 vs the style file's 999999 (no visible effect).
+  - Suggested fix: WP-31 section 40 (symbols line patterns): measure twoway and match its case rule.
+  - Resolution: Not fixed because WP-31 section 40 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element
+  - File Names and Line Numbers: dash_parse.mata:5302-5361, :5393
+  - Description: GAPS3.md E4, re-verified at 6370ca4: Stylelist edges: glued `=` forms (`red=blue`, `red=`) and `(red)` reach the renderer as one unknown element (twoway r(198) for `(red)`); an unknown `msymbol()` element draws the p# symbol (twoway: circle, unverified).
+  - Suggested fix: WP-31 section 41 (colour width outline edges): tokenise = inside elements and refuse the parenthesised form.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)
+  - File Names and Line Numbers: dash_render.py:7412-7421, :7469, :7509-7510, :12603
+  - Description: GAPS3.md E5, re-verified at 6370ca4: Colours: a comma colour inside a structured sub-option (`title(, color("1,2,3"))`, region, `xline(, lcolor())`, `ylabel(, labcolor())`) noted and drawn black where twoway refuses r(198); `navy*52` clamp and `color foreground bg` cycle UNCLEAR; `mcolor("red",blue)` unverified.
+  - Suggested fix: WP-31 section 41 (colour width outline edges): read comma RGB in every context and refuse where twoway does.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A pstyle(p#) CI band under a scheme intensity above full is clamped to full
+  - File Names and Line Numbers: dash_render.py:10746-10750 vs :10732
+  - Description: GAPS3.md E7, re-verified at 6370ca4: pstyle(p#) CI band under a scheme intensity above full is clamped to full (`_intensity` default clamp=True); histogram passes clamp=False.
+  - Suggested fix: WP-31 section 41 (colour width outline edges): pass clamp=False on the band reader.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: rarea and rbar outlines are not stroked where twoway strokes them from the scheme
+  - File Names and Line Numbers: dash_render.py:18494-18513, :18588
+  - Description: GAPS3.md E8, re-verified at 6370ca4: rarea and rbar outlines: twoway strokes them (rarea `#1A476F` 17.28 under s2color); dash draws none unless colour options are given.
+  - Suggested fix: WP-31 section 41 (colour width outline edges): stroke from the scheme's area line style.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: _SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified
+  - File Names and Line Numbers: dash_render.py:6992-7007, :48084, :8899, :7015, :17911-18060
+  - Description: GAPS3.md E13, re-verified at 6370ca4: Shipped scheme keys the renderer never references (`color plabel`, `color pline`, `color plineplot`, `linewidth p#solid`, `linewidth parea`); `_SIZE_MAP` kept and serialised into the served app though nothing reads it; `_GSIZE_NUMERIC_PT_PER_UNIT` duplicates `PT_PER_RS`; scheme `%NN` opacity on histogram unverified though the help promises every layer.
+  - Suggested fix: WP-31 section 41 (colour width outline edges): drop the dead map and constant and verify histogram opacity with a test.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed
+  - File Names and Line Numbers: dash_render.py:34473-34481, :33876-34123
+  - Description: GAPS3.md E9, re-verified at 6370ca4: Inline SMCL style runs (`{bf:}` on part of a text) and raised text with no Unicode form drawn in the text's own style; `{hline} {space} {dup} {cmd:} {hi:} {ccl} {center:}` and links drawn as typed.
+  - Suggested fix: WP-31 section 42 (smcl inline runs): split a text into runs drawn as several Label objects, or document the limit with a measured example.
+  - Resolution: Not fixed because WP-31 section 42 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips
+  - File Names and Line Numbers: dash_render.py:2495-2497; dash_parse.mata:2161
+  - Description: GAPS3.md G1, re-verified at 6370ca4: Extended missing `.a`-`.z` merged into one null in by(, missing) panels, marker labels, filters, tooltips.
+  - Suggested fix: WP-31 section 43 (data missing locale): carry the missing code through export and the label writer.
+  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+
+- [ ] Title: set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read
+  - File Names and Line Numbers: grep `c(dp)` 0; dash_render.py:534, :658, :33988
+  - Description: GAPS3.md G2, re-verified at 6370ca4: `set dp comma` never read; `%tC` converted without leap seconds (up to 27 s); `graph set` font faces not read.
+  - Suggested fix: WP-31 section 43 (data missing locale): read c(dp), embed Stata's leap-second table and read graph set.
+  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Working columns are generated in the user's data, user variables named x, y, top, count or density are shadowed in hover() and mlabel(), numbers are embedded as JSON text and the cell count counts every exported row
+  - File Names and Line Numbers: dash.ado:6543-6590, :4262-4273; dash_render.py:1772-1792, :12387-12430, :43028-43034
+  - Description: GAPS3.md G3, re-verified at 6370ca4: Working columns are generated in the user's data (r(900) possible at `c(maxvar)`); user variables named `x`, `y`, `top`, `count`, `density` shadowed in `hover()`/`mlabel()`; numbers embedded as JSON text (~0.5 GB per million values); strL check loops per observation; a faceted computed-only graph counted in full; `$dash_max_cells` counts every exported row.
+  - Suggested fix: WP-31 section 43 (data missing locale): reserve derived names by prefix, use binary arrays and count planned rows.
+  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists
+  - File Names and Line Numbers: dash_render.py:12420-12424
+  - Description: GAPS3.md G4, re-verified at 6370ca4: Carried columns (`hover()`, `mlabel`, row id) upcast to dtype=object and handed to Bokeh as Python lists; bokeh 3.8 validates item by item (7.5 of 7.7 s on a million-row line).
+  - Suggested fix: WP-31 section 43 (data missing locale): keep numeric carried columns as arrays.
+  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: One format-writer model is emitted per distinct tick format and per tooltip kind
+  - File Names and Line Numbers: dash_render.py:27945
+  - Description: GAPS3.md G5, re-verified at 6370ca4: One ~33 KB format-writer model per distinct tick format and per (fmt, kind) tooltip.
+  - Suggested fix: WP-31 section 43 (data missing locale): share one writer per page.
+  - Resolution: Not fixed because WP-31 section 43 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: User and third-party style files are not read, 57 Stata style names draw default attributes with a note, and a scheme cannot redefine a linestyle or areastyle
+  - File Names and Line Numbers: dash_render.py:8115 `_STYLE_TABLE`, :8663-8711, :9424-9492
+  - Description: GAPS3.md E10, re-verified at 6370ca4: User and third-party `*.style` files on the ado-path are not read; 57 Stata style names outside the transcribed table draw default attributes with a note; a scheme cannot redefine a linestyle/areastyle because `linestyle`, `areastyle`, `markerstyle`, `seriesstyle`, `shadestyle` keys are never read (kept silently, by ruling). `c(adoarchive)` unhandled.
+  - Suggested fix: WP-31 section 44 (style file resolver): add a general resolver over the 161 style files and the scheme's own class directives.
+  - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Date #N ticks agree with _tsnatscale on 52 to 98 percent of ranges, xtick(#N) and xlabel(minmax) are held after a move, and the margin is a build-time fraction
+  - File Names and Line Numbers: test/test_date_axis_ticks.py:62; test/test_natscale.py:64-78; test/test_by_scales.py:426
+  - Description: GAPS3.md D15, re-verified at 6370ca4: Date `#N` ticks on %td-%th agree with `_tsnatscale` on 52-98% of ranges; three natscale misses on auto (strict xfails); `xtick(#N)`/`xlabel(minmax)` held after a move; margin a build-time fraction.
+  - Suggested fix: WP-31 section 45 (date ticks natscale): fit more measured ranges or embed Stata's ticks and re-place after a move.
+  - Resolution: Not fixed because WP-31 section 45 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if
+  - File Names and Line Numbers: dash_render.py:16960-17180
+  - Description: GAPS3.md C11, re-verified at 6370ca4: lpoly edges: gaussian weights below 1e-14 counted toward the two-observation rule (3 vs 23 points), round-off cases D1-D5, `pwidth(0)` and `pwidth(+800)` rc differences; lpoly with its own `if` on five rows draws an empty line (twoway unmeasured).
+  - Suggested fix: WP-31 section 46 (estimator edges): measure twoway, then match or document.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed
+  - File Names and Line Numbers: dash.ado:8280-8394
+  - Description: GAPS3.md C12, re-verified at 6370ca4: `function` under `by()` evaluated once, twoway once per panel; a malformed y-form echoed as typed.
+  - Suggested fix: WP-31 section 46 (estimator edges): evaluate per panel.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted
+  - File Names and Line Numbers: dash_render.py:17994-18004, :1913-1930
+  - Description: GAPS3.md C16, re-verified at 6370ca4: A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted.
+  - Suggested fix: WP-31 section 46 (estimator edges): tag the recast renderer for the recount.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Fractional %t values are floored on load and join-order edge cases differ
+  - File Names and Line Numbers: dash_render.py:612-620, :16187-16210
+  - Description: GAPS3.md G6, re-verified at 6370ca4: Fractional %t values floored on load (twoway unmeasured); join-order edge cases (rarea one bound missing, tied sort keys, connected markers under sort).
+  - Suggested fix: WP-31 section 46 (estimator edges): measure twoway and match.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: %d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses
+  - File Names and Line Numbers: grep `%tb` 0
+  - Description: GAPS3.md G7, re-verified at 6370ca4: `%d`/`%tb` axis formats drawn `%9.0g` with a note; `xvarformat(bogus)` noted (twoway: "bogus not found").
+  - Suggested fix: WP-31 section 46 (estimator edges): write business dates and copy twoway's error.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists
+  - File Names and Line Numbers: dash_render.py:16560-16563, :16627-16632, :364-381; dash.ado:2229-2234
+  - Description: GAPS3.md F5, re-verified at 6370ca4: `map_qfitci` docstring still describes a 500-resample bootstrap; the code is analytic (bootstrap only on LinAlgError). The header comment at :364-381 narrates fpfitci's former bootstrap. `_dash_fold_typed`'s comment says line types are always joined in x order (false since WP-29).
+  - Suggested fix: WP-31 section 46 (estimator edges): fix the three comments.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The function points-free fallback evaluates ten math names only
+  - File Names and Line Numbers: dash_render.py:~11683 `_SAFE_FUNCS`, :20567
+  - Description: GAPS3.md F2, re-verified at 6370ca4: `function` points-free fallback evaluates 10 math names only; comparisons, `!`, `cond()`, n-ary `min/max`, `round`, `int`, `ln`, `normal`, `normalden`, `c(pi)`, missing codes need Stata (the Stata route covers them at build time).
+  - Suggested fix: WP-31 section 47 (function fallback fixtures): extend the fallback to comparisons, cond(), n-ary min and max, round, int, ln, normal, normalden, c(pi) and missing codes.
+  - Resolution: Not fixed because WP-31 section 47 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values
+  - File Names and Line Numbers: test/fixtures/stat_truth.json keys
+  - Description: GAPS3.md F3, re-verified at 6370ca4: Stata ground truth missing for weighted qfitci/fpfitci bands, stdf/stdr under `[fw=]`, the six kernels on lpolyci, pattern lengths, on-edge values.
+  - Suggested fix: WP-31 section 47 (function fallback fixtures): extract and pin each.
+  - Resolution: Not fixed because WP-31 section 47 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: No per-graph data table shows the rows a graph draws (the data table)
+  - File Names and Line Numbers: dash.ado:9318, :9350; dash_render.py:35539, :35340-35364
+  - Description: GAPS3.md H2, re-verified at 6370ca4: the data table; the whole row reads: Dashboard extensions: KPI cards take no weights and lack kurtosis/semean/range; no multi-select filter, "(missing)" option, slider direction or reset button; one link group; brush cannot act as a filter; no print stylesheet; PNG/SVG omit KPI cards, title, filters and tab strip.
+  - Suggested fix: WP-31 section 48 (data table): add a folded, toggled per-graph DataTable of the drawn rows in Stata display formats and value labels, virtual scrolling, sortable, row-capped, in both modes.
+  - Resolution: Not fixed because WP-31 section 48 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)
+  - File Names and Line Numbers: dash.ado:9318, :9350; dash_render.py:35539, :35340-35364
+  - Description: GAPS3.md H2, re-verified at 6370ca4: the filter widgets; the whole row reads: Dashboard extensions: KPI cards take no weights and lack kurtosis/semean/range; no multi-select filter, "(missing)" option, slider direction or reset button; one link group; brush cannot act as a filter; no print stylesheet; PNG/SVG omit KPI cards, title, filters and tab strip.
+  - Suggested fix: WP-31 section 49 (filter widgets): add the four widgets in both modes.
+  - Resolution: Not fixed because WP-31 section 49 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)
+  - File Names and Line Numbers: dash.ado:9318, :9350; dash_render.py:35539, :35340-35364
+  - Description: GAPS3.md H2, re-verified at 6370ca4: the KPI statistics; the whole row reads: Dashboard extensions: KPI cards take no weights and lack kurtosis/semean/range; no multi-select filter, "(missing)" option, slider direction or reset button; one link group; brush cannot act as a filter; no print stylesheet; PNG/SVG omit KPI cards, title, filters and tab strip.
+  - Suggested fix: WP-31 section 50 (kpi weights stats): add weights and the three statistics in both modes.
+  - Resolution: Not fixed because WP-31 section 50 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)
+  - File Names and Line Numbers: dash.ado:9318, :9350; dash_render.py:35539, :35340-35364
+  - Description: GAPS3.md H2, re-verified at 6370ca4: the link groups and brush; the whole row reads: Dashboard extensions: KPI cards take no weights and lack kurtosis/semean/range; no multi-select filter, "(missing)" option, slider direction or reset button; one link group; brush cannot act as a filter; no print stylesheet; PNG/SVG omit KPI cards, title, filters and tab strip.
+  - Suggested fix: WP-31 section 51 (link groups brush): add several link groups, brush-as-filter, bin and bar selection to rows, and intersected brushes in both modes.
+  - Resolution: Not fixed because WP-31 section 51 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Saved-page JavaScript errors fail silently and saved sliders fire on every drag step
+  - File Names and Line Numbers: dash_render.py:35259, :25467-25476, :25624/:25688/:25753, :50063
+  - Description: GAPS3.md H1, re-verified at 6370ca4: A box or lasso selection on bars or histograms drives nothing; concurrent brushes are not intersected on the saved page (served intersects); saved-page JS errors fail silently (no `window.onerror`, the only catches swallow); saved sliders fire on every drag step (served uses `value_throttled`).
+  - Suggested fix: WP-31 section 52 (saved page errors throttle): add an error banner through the nonce path and value_throttled on the saved page.
+  - Resolution: Not fixed because WP-31 section 52 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)
+  - File Names and Line Numbers: dash.ado:9318, :9350; dash_render.py:35539, :35340-35364
+  - Description: GAPS3.md H2, re-verified at 6370ca4: the export and print parts; the whole row reads: Dashboard extensions: KPI cards take no weights and lack kurtosis/semean/range; no multi-select filter, "(missing)" option, slider direction or reset button; one link group; brush cannot act as a filter; no print stylesheet; PNG/SVG omit KPI cards, title, filters and tab strip.
+  - Suggested fix: WP-31 section 53 (export print): add a print stylesheet and a composite PNG and SVG export.
+  - Resolution: Not fixed because WP-31 section 53 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: One aria-live region, no alt text and English-only interface
+  - File Names and Line Numbers: dash_render.py:1906
+  - Description: GAPS3.md K6, re-verified at 6370ca4: Accessibility (one `aria-live` region, no alt text) and English-only interface.
+  - Suggested fix: WP-31 section 54 (accessibility): add keyboard-reachable widgets, ARIA labels on every filter, KPI card, tab and figure, and contrast checks, verified with axe-core.
+  - Resolution: Not fixed because WP-31 section 54 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The served make_document builds on the event loop, catch_warnings can swap filters, a brush made during a move is cleared, and the bundle ships bokeh-mathjax
+  - File Names and Line Numbers: dash_render.py:48895-48950, :4967-4985
+  - Description: GAPS3.md H3, re-verified at 6370ca4: Served app: `make_document` builds on the event loop (1.6-4.6 s at 100-200k rows; no per-session memory bound, 64-150 MB per session at 200k rows by decision); library `catch_warnings` can swap filters; a brush made while a move waits is cleared; the bundle ships bokeh-mathjax (1.79 MB per session) though dash no longer uses it.
+  - Suggested fix: WP-31 section 55 (served hygiene): build off-loop and drop the mathjax component from the served resources.
+  - Resolution: Not fixed because WP-31 section 55 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read
+  - File Names and Line Numbers: dash_render.py:48376-48396, :50985-51007; dash.ado:8166-8167
+  - Description: GAPS3.md H4, re-verified at 6370ca4: Environment: `BOKEH_RESOURCES=cdn` blanks the served page silently; `BOKEH_MINIFIED/DEV` change the saved page silently; `/health` reports only ok/timestamp; the browser-launch return code is captured and never read.
+  - Suggested fix: WP-31 section 55 (served hygiene): reject or report each variable, deepen /health and read _op_rc.
+  - Resolution: Not fixed because WP-31 section 55 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__
+  - File Names and Line Numbers: dash_parse.mata:555, :769, :1688, :2498; dash.ado:524-528, :665, :669-681, :10997
+  - Description: GAPS3.md H7, re-verified at 6370ca4: Session hygiene: four unprefixed Mata functions (`_json_escape`, `_is_utf8`, `_expand_plottype_str`, `_first_comma_pos`) dropped by name on repair; `sys.argv` overwritten and never restored; `_dash_xm`, `_dash_render_ns`, `_dash_priv_argv` left in `__main__`.
+  - Suggested fix: WP-31 section 55 (served hygiene): prefix the functions, save and restore argv and delete the names.
+  - Resolution: Not fixed because WP-31 section 55 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note
+  - File Names and Line Numbers: dash.sthlp; test/test_help_conformance.py:353-360
+  - Description: GAPS3.md J1, re-verified at 6370ca4: dash.sthlp:4972-4975 says every supplied option "is named in that command's note, so nothing is dropped in silence"; contradicted by C1, C2, C3. The Unsupported section (:4968-5137) omits every name that reaches the generic note (atobs, ciplot, fitplot, nofit, boundary, headlabel, mwidth, baroffset, nodropbase, clegend, plegend, pcycle, the six colorvar names, gap(), droplines(), mangle(), barbsize(), ndots(), dotextend(), the d-options, estcmd/estopts/predopts, mlabprefix/mlabsuffix, mlalign, mlabstyle, lalign, yvarlabel/xvarlabel) because test_help_conformance.py reads only the pending blocks.
+  - Suggested fix: WP-31 section 56 (help reconciliation): generate the list from the pending blocks, _dash_rep_und_tab and the catch-all probes, and pin both ways.
+  - Resolution: Not fixed because WP-31 section 56 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs
+  - File Names and Line Numbers: dash.sthlp
+  - Description: GAPS3.md J2, re-verified at 6370ca4: Help inconsistencies: Syntax line 88 shows filter `type()` as required; the %tw-%ty period-slider sentence sits in the dropdown paragraph (:1731-1734); `legend(ring(0))` "inside the plot region" (:3545) vs Bokeh's top_right; `msangle` documented as degrees only; dash.sthlp:572 "Four plot types are not drawn" omits sunflower/matamatrix; `dot` listed among types drawn as twoway describes (:236-260); "logs each refusal once a minute per limit, so a flood cannot flood the log" (:2262-2263): the per-minute rate constants exist (dash_render.py:48132-48135) but no once-a-minute gate on the refusal log line was found (unverified); no iframe sentence; no overlay/`link()` qualifier example; no %tC/log-precedence paragraph.
+  - Suggested fix: WP-31 section 56 (help reconciliation): fix each sentence with its test.
+  - Resolution: Not fixed because WP-31 section 56 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists
+  - File Names and Line Numbers: examples/*.do; test/test_examples_run.cscript:13-16
+  - Description: GAPS3.md J3, re-verified at 6370ca4: Examples: 10 of 40 plot types unused (bar, scatteri, pci, pcarrowi, pccapsym, pcbarrow, pcscatter, tsline, tsrline, fpfit); no example uses `dash serve`, weights or `csv`; feature_tour.do's header names serve/pci it does not contain and says "thirty-eight plot types"; test_examples_run.cscript:13-16 claims the examples exercise every plot type; no coverage test.
+  - Suggested fix: WP-31 section 57 (examples): add a plot-types tour and a serve example and a coverage test.
+  - Resolution: Not fixed because WP-31 section 57 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings
+  - File Names and Line Numbers: as cited
+  - Description: GAPS3.md J4, re-verified at 6370ca4: Stale tracking text: GAPS.md:42-76 lists 8 closed gaps as current; ROADMAP.md:4194 "19 remain open, all S3" vs 3; 62 closed BUGS.md entries open with "Resolution: Not fixed"; DROPIN P3.10 and GAPS2 K10 give the renderer as 32k/27.7k lines (52,280 now); TWOWAY_COVERAGE_AUDIT.md:169 lists horizontal/vertical/pstyle/lstyle/mstyle/mlstyle/recast/text/mlabvposition/mlabtextstyle/cmissing/connect as inert (all drawn now) and :95 still describes lpolyci as a bootstrap in its body; GAPS2 anchors A8, B27, A2 point at old line numbers; test/test_geometry_visual.md:6, :20; stale "all 20" built-ins comment test/test_scheme_fidelity.py:996; docstrings describing removed xfails in test_scheme_consumption.py:1108-1113, test_scheme_visual_truth.py:66-74, test_mode_parity.py:2341, test_filters.py:1612-1622; test_glyphs.py:1352 "Missing unit tests" header over tests that exist; dangling references to `.ultraplan/BASELINE.md` (test_varlist_expansion.py:240), `.ultraplan/CHANGELOG.md` (REMAINING.md, BUGS.md:245), `.ultraplan/phases/PHASE-12`, `examples/plot_types_tour.do`, `scripts/extract_format_locale_truth.do` (GAPS2.md).
+  - Suggested fix: WP-31 section 58 (register drift): one reconciliation pass and tracking-document count checks.
+  - Resolution: Not fixed because WP-31 section 58 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted
+  - File Names and Line Numbers: dash_render.py
+  - Description: GAPS3.md J5, re-verified at 6370ca4: Served-app text: emitted header "Launch with: bokeh serve", ServerAppBuilder docstrings (:46428, :46440), dead `title_safe` (:47868), `_SIZE_MAP` emitted into the app (:48084).
+  - Suggested fix: WP-31 section 58 (register drift): fix each.
+  - Resolution: Not fixed because WP-31 section 58 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix
+  - File Names and Line Numbers: REMAINING.md:353-365; phases/; ROADMAP.md:88-1106
+  - Description: GAPS3.md J6, re-verified at 6370ca4: REMAINING.md and phases/ (31 phases) are superseded by ROADMAP.md and DROPIN-REMAINING.md but still in the tree with 68 PARTIAL markers and unchecked definitions of done; ROADMAP's WP-01..WP-11 headings lack the "DONE" suffix the tracking test reads although each carries a DONE blockquote.
+  - Suggested fix: WP-31 section 58 (register drift): mark the two documents historical and add the suffixes.
+  - Resolution: Not fixed because WP-31 section 58 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short
+  - File Names and Line Numbers: `ls README* LICENSE*` empty; dash.pkg; dash.sthlp:3-21, :5203-5204
+  - Description: GAPS3.md I2, re-verified at 6370ca4: No README, no LICENSE, dash.pkg has no Author/KW lines, no `net install` instruction in the help, Author section titled "Also see", Jump To lists 19 of 32 sections.
+  - Suggested fix: WP-31 section 59 (readme package versions): write the README, the pkg lines, the install line and the help fixes.
+  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A failed dash_setup leaves installed packages in place and does not say what it installed, the served child is sys.executable, Unmet lists warnings beside a failure, and a dash_setup_lib.py in the working directory is found first
+  - File Names and Line Numbers: dash_setup.ado:91-92, :827; dash_render.py:51842
+  - Description: GAPS3.md I3, re-verified at 6370ca4: A failed dash_setup leaves already-installed packages in place and does not say what it installed; no hash-pinned installs; the served child is `sys.executable` (Homebrew's base Python under a venv link) working only through Stata's exported `PYTHONPATH`; `Unmet:` lists warnings when a failure also occurred; a `dash_setup_lib.py` or `bokeh.py` in the working directory is found first.
+  - Suggested fix: WP-31 section 59 (readme package versions): record installs, offer the uninstall line, and fix the four reporting and path defects.
+  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: _dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser
+  - File Names and Line Numbers: dash_render.py:189-210, :51346; dash.ado:6139
+  - Description: GAPS3.md I4, re-verified at 6370ca4: `_dash_dep_versions()` (dash_render.py:189) is computed and returned but printed nowhere except through Stata's call at dash.ado:6139, so a hand-run renderer or app with a sub-floor numpy/pandas is silent; Python below 3.7 dies at the parser.
+  - Suggested fix: WP-31 section 59 (readme package versions): print the note from the renderer's and the app's main and accept the SyntaxError.
+  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines
+  - File Names and Line Numbers: dash_render.py:60; dash.ado:1, :13, :6638; test/test_pkg_metadata.py:50-57
+  - Description: GAPS3.md I5, re-verified at 6370ca4: Version headers disagree: dash_render.py `Version: 1.0.0 25mar2026`; dash.ado:1, :13, :6638 and dash_parse.mata:1 say `v2.0`; test_pkg_metadata.py pins only the `*! Version:` lines.
+  - Suggested fix: WP-31 section 59 (readme package versions): renumber every header and extend the pin to every file and header.
+  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind
+  - File Names and Line Numbers: dash.ado:6118-6133 unguarded vs :6296-6299
+  - Description: GAPS3.md I7, re-verified at 6370ca4: The renderer bytecode is still cached under PLUS/py: the guard added for dash_setup_lib does not cover the renderer load, and `ado uninstall` leaves `__pycache__` behind.
+  - Suggested fix: WP-31 section 59 (readme package versions): wrap the renderer load in the dont_write_bytecode guard and pin with test_installed_layout.py.
+  - Resolution: Not fixed because WP-31 section 59 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line, a served build from an installed tree, per-type by() parity, an inspect.getsource fallback
+  - File Names and Line Numbers: test/
+  - Description: GAPS3.md K2, re-verified at 6370ca4: Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line in the log, a served build from an installed tree, per-type `by()` parity as a cscript, an `inspect.getsource` fallback.
+  - Suggested fix: WP-31 section 60 (test harness fixtures): add each.
+  - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Sixteen truth fixtures have no committed generator, nine carry absolute paths, there is no make truth and no metadata guard
+  - File Names and Line Numbers: scripts/, test/fixtures/
+  - Description: GAPS3.md K3, re-verified at 6370ca4: Truth fixtures: 16 fixtures with no committed generator; 9 carry absolute paths; no `make truth`; no metadata guard; visual truth covers 4 of 26 schemes with no histogram render.
+  - Suggested fix: WP-31 section 60 (test harness fixtures): add generators, a target and a guard.
+  - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails
+  - File Names and Line Numbers: as cited
+  - Description: GAPS3.md K4, re-verified at 6370ca4: Harness: the server fixture leaks a process when `__enter__` fails (test_server_serves.py:123-142); no AST count of the generated app's dispatch; scheme-key enumeration hand-written; no CSS-guard served arm; tracking-document counts unchecked; strict xfails test_natscale.py:76 and test_by_scales.py:426 (known divergences).
+  - Suggested fix: WP-31 section 60 (test harness fixtures): fix the leak and add the guards.
+  - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS
+  - File Names and Line Numbers: test/test_mode_parity.py:111-155, :2802, :3247-3298
+  - Description: GAPS3.md H6, re-verified at 6370ca4: Parity guard limits: after a move only glyphs, labels, arrowheads and KPI cards are compared; the move oracle is the saved renderer re-run with an `if`, not the saved page's JS; no brush, multi-move, bs under 992 px, second-axis range after a slider move, runtime notes, PNG/SVG/CSV bytes, ado-path schemes, launched-process behaviour; test_mode_parity.py runs only in the batch tier.
+  - Suggested fix: WP-31 section 60 (test harness fixtures): extend the move profile and add a saved-JS move oracle.
+  - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally
+  - File Names and Line Numbers: Makefile:24-92; .gitignore; .git/info/exclude:130
+  - Description: GAPS3.md I6, re-verified at 6370ca4: No secret scan; no CI; no ruff/pyflakes/bandit in the Makefile (the renderer has 51 findings); `.claude/hooks/*` that CLAUDE.md relies on are git-ignored; `*.log` excluded only locally so a fresh clone shows test/run_all_cscripts.log as untracked.
+  - Suggested fix: WP-31 section 60 (test harness fixtures): add a CI workflow, a lint target and a secrets test, and track or document the hooks.
+  - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

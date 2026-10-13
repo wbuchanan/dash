@@ -53,6 +53,15 @@ file holds, mechanically:
    "(WP-30, <id>)", and a closed entry's Resolution holds "(WP-30, <id>)".
    WP-30's closeout left WP30_OPEN empty; test_no_wp30_entry_remains_open
    keeps every P1 entry closed with no marker left.
+10. WP-31's entries (.ultraplan/sections/index.md A4) are open in BUGS.md
+   in the form "Not fixed because WP-31 section NN has not landed. Graded
+   S1|S2|S3 (WP-31): ...", NN being the section WP31_SECTION names, listed
+   in WP31_OPEN, which with WP29_OPEN and WP30_OPEN exempts them from the
+   release guard, tracked "Open (WP-31 section NN)." in GAPS3.md section 9,
+   with a "<!-- WP-31 <id> -->" marker in each CHANGELOG list WP31_LISTS
+   names, until their section lands; then the key is gone, the Tracked
+   line reads Closed or Partly closed, no marker is left, each list holds a
+   line ending "(WP-31, <id>)", and a closed Resolution holds it too.
 
 Run against the documents of 4ede074, before WP-23 changed them, 11 of
 these 24 tests failed, each where the documents were wrong: 26 closed
@@ -555,8 +564,10 @@ class TestNoOpenEntryBlocksARelease:
         # WP-29's P0 entries stayed open, S1 or S2, until their sections
         # landed (WP29_OPEN, empty since its closeout); WP-30's P1 entries
         # do the same until theirs land (WP30_OPEN), and TestWp30Tracking
-        # holds each one to its WP-30 form.
-        allowed = set(WP29_OPEN.values()) | set(WP30_OPEN.values())
+        # holds each one to its WP-30 form.  WP-31's entries do the same
+        # until theirs land (WP31_OPEN; TestWp31Tracking).
+        allowed = (set(WP29_OPEN.values()) | set(WP30_OPEN.values())
+                   | set(WP31_OPEN.values()))
         bad = ["line %d: %s %s" % (e["line"], g, e["title"][:90])
                for e in entries if not e["closed"]
                and e["title"] not in allowed
@@ -1951,3 +1962,662 @@ class TestWp30Tracking:
                 for e in entries if not e["closed"]
                 and _WP30_OPEN_FORM.match(e["fields"].get("Resolution", ""))]
         assert not bad, "\n".join(bad)
+
+
+# ===========================================================================
+# WP-31's entries (item 10 of the module docstring)
+# ===========================================================================
+
+#: WP-31 (.ultraplan/sections/index.md A4): the BUGS.md entries S01 opened,
+#: one per manifest row id, by id, with their exact titles, one key per line
+#: in Appendix A order.  A section's closing commit closes the entry in place
+#: and deletes its own key line.  S61 leaves it {}.
+WP31_OPEN = {
+    "C1": "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped",
+    "C2": "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth",
+    "B5a": "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)",
+    "C3": "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence",
+    "C10a": "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)",
+    "C10b": "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)",
+    "C18": "scatteri refuses a 2/2 numlist element where twoway divides",
+    "F4": "_LPOLY_ROT_CONSTANTS holds degree 4-7 rows that are unreachable under the degree 0-3 rule",
+    "A5": "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression",
+    "A6": "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code",
+    "A7": "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list",
+    "A8": "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)",
+    "A1": "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph",
+    "A2": "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's",
+    "A3": "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts",
+    "A4": "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable",
+    "C10c": "Axes 3 to 9 are refused where twoway draws them (the axes part)",
+    "F1a": "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)",
+    "C4": "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn",
+    "C5": "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn",
+    "F1b": "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)",
+    "C6": "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn",
+    "C7": "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them",
+    "C8a": "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)",
+    "F1c": "The saved page does not refit lowess after a filter move (the lowess twin)",
+    "C8b": "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)",
+    "B5b": "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)",
+    "F1d": "The saved page does not refit lpoly after a filter move (the lpoly twin)",
+    "C9": "Weighted scatter markers are not sized by [aw]",
+    "B1": "rpcap and rpspike are refused by name",
+    "B2": "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list",
+    "B3": "matamatrix() is read as a varlist and refused r(101) or r(111)",
+    "F1e": "The saved page does not refit lpolyci after a filter move (the lpolyci twin)",
+    "B4a": "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)",
+    "D1": "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read",
+    "F1f": "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)",
+    "B4b": "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)",
+    "D2": "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them",
+    "F1g": "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)",
+    "B4c": "contour and contourline are refused by name (the JavaScript twin)",
+    "D3": "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only",
+    "D13": "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label",
+    "D4": "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged",
+    "C13": "A histogram-only graph draws a legend where twoway draws none",
+    "D5": "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()",
+    "E11": "Sizes are relative to a 4-inch reference and scale() is pending",
+    "D6": "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn",
+    "D7": "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back",
+    "E6": "Line-width *# multiplies before the 0.3 pt floor and tlwidth() and glwidth() are named not drawn",
+    "D8": "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help",
+    "C17": "mlabprefix(), mlabsuffix() and plot-level lalign() are undeclared and headlabel is accepted on types twoway may not take it on",
+    "E3": "msangle(anglestyle name) is drawn at 0 degrees and mlalign(), mwidth and mlabstyle() are undeclared",
+    "C14": "rscatter y y2 x, mlabel(y) draws where twoway refuses r(102)",
+    "C15": "Bar marker labels default to 3 o'clock where twoway's bar default is 12",
+    "D9": "The y2 and x2 range is built once and never follows a filter move, the first-used axis is not drawn left or bottom, and horizontal with yaxis(2) titles no x axis",
+    "D10": "by() sub-options of its stage-3 grammar are named, overall legend placement and interaction differ, panel margins ignore iscale(), and panels emptied by a filter stay drawn",
+    "D11": "graphregion margins are inexact, the intensity and shade options are named, several marginstyle forms are not parsed, and s1color's unfilled plot region is filled white",
+    "D12": "An out-of-range xline() or yline() is clipped to the frame where twoway draws it outside",
+    "D14": "tabs() drops unregistered names silently, the served layout() overwrites a cell silently, and there is no per-tab layout()",
+    "D16": "legend(po(9) top) names top first, title(T, prefix suffix) prints no ignored line, and values nested in legend(region()) are unchecked",
+    "E1": "Marker symbols arrow, arrowf, A, a and pipe are refused, pipe is horizontal, point is 8 px, V is filled, shorthands are full size and non-Stata names are accepted",
+    "E2": "Line-pattern formula strings are refused, named pattern geometry differs from Stata's and mlpattern() is pending",
+    "E12": "translate_msymbol and translate_lpattern lower-case names where Stata style names are case-sensitive",
+    "E4": "Glued = stylelist forms and a parenthesised element reach the renderer as one unknown element",
+    "E5": "A comma colour inside a structured sub-option is drawn black where twoway refuses r(198)",
+    "E7": "A pstyle(p#) CI band under a scheme intensity above full is clamped to full",
+    "E8": "rarea and rbar outlines are not stroked where twoway strokes them from the scheme",
+    "E13": "_SIZE_MAP and _GSIZE_NUMERIC_PT_PER_UNIT are dead but kept and serialised, and histogram scheme opacity is unverified",
+    "E9": "Inline SMCL style runs and raised text with no Unicode form are drawn in the text's own style, and hline, space, dup, cmd, hi, ccl, center and links are drawn as typed",
+    "G1": "Extended missing .a to .z are merged into one null in by(, missing) panels, marker labels, filters and tooltips",
+    "G2": "set dp comma is never read, %tC is converted without leap seconds and graph set font faces are not read",
+    "G3": "Working columns are generated in the user's data, user variables named x, y, top, count or density are shadowed in hover() and mlabel(), numbers are embedded as JSON text and the cell count counts every exported row",
+    "G4": "Carried hover, mlabel and row-id columns are upcast to object and handed to Bokeh as Python lists",
+    "G5": "One format-writer model is emitted per distinct tick format and per tooltip kind",
+    "E10": "User and third-party style files are not read, 57 Stata style names draw default attributes with a note, and a scheme cannot redefine a linestyle or areastyle",
+    "D15": "Date #N ticks agree with _tsnatscale on 52 to 98 percent of ranges, xtick(#N) and xlabel(minmax) are held after a move, and the margin is a build-time fraction",
+    "C11": "lpoly edge cases: tiny gaussian weights counted toward the two-observation rule, round-off cases, pwidth(0) and pwidth(+800) rc differences, and an empty line under a five-row if",
+    "C12": "function under by() is evaluated once where twoway evaluates once per panel, and a malformed y form is echoed as typed",
+    "C16": "A recast kdensity or histogram is marked stale after a move where the un-recast one is recounted",
+    "G6": "Fractional %t values are floored on load and join-order edge cases differ",
+    "G7": "%d and %tb axis formats are drawn %9.0g with a note and xvarformat(bogus) is noted where twoway refuses",
+    "F5": "The map_qfitci docstring, the module header and the _dash_fold_typed comment describe code that no longer exists",
+    "F2": "The function points-free fallback evaluates ten math names only",
+    "F3": "Stata ground truth is missing for weighted qfitci and fpfitci bands, stdf and stdr under fw, the six kernels on lpolyci, pattern lengths and on-edge values",
+    "H2t": "No per-graph data table shows the rows a graph draws (the data table)",
+    "H2f": "Filters lack a multi-select dropdown, a (missing) option, a slider direction and a reset button (the filter widgets)",
+    "H2k": "KPI cards take no weights and lack kurtosis, semean and range (the KPI statistics)",
+    "H2l": "One link group only, brush cannot act as a filter, a brush on bars or histograms drives nothing and concurrent brushes are not intersected (the link groups and brush)",
+    "H1": "Saved-page JavaScript errors fail silently and saved sliders fire on every drag step",
+    "H2x": "No print stylesheet, and PNG and SVG export omit KPI cards, title, filters and the tab strip (the export and print parts)",
+    "K6": "One aria-live region, no alt text and English-only interface",
+    "H3": "The served make_document builds on the event loop, catch_warnings can swap filters, a brush made during a move is cleared, and the bundle ships bokeh-mathjax",
+    "H4": "BOKEH_RESOURCES=cdn blanks the served page silently, BOKEH_MINIFIED and BOKEH_DEV change the saved page silently, /health reports only ok, and the browser-launch return code is never read",
+    "H7": "Four unprefixed Mata functions are dropped by name on repair, sys.argv is overwritten and not restored, and three names are left in __main__",
+    "J1": "The help says every supplied option is named in the note and its Unsupported section omits every name that reaches the generic note",
+    "J2": "Help inconsistencies in the syntax line, the period-slider sentence, legend(ring(0)), msangle, the Not-drawn count, dot, the refusal-log claim and missing paragraphs",
+    "J3": "Ten plot types, dash serve, weights and csv appear in no example, the feature_tour header is stale and no coverage test exists",
+    "J4": "Stale tracking text in GAPS.md, ROADMAP.md, BUGS.md, DROPIN, TWOWAY_COVERAGE_AUDIT.md and several test docstrings",
+    "J5": "The served app's header says Launch with bokeh serve, ServerAppBuilder docstrings are stale, title_safe is dead and _SIZE_MAP is emitted",
+    "J6": "REMAINING.md and phases/ are superseded but in the tree with PARTIAL markers, and ROADMAP WP-01 to WP-11 headings lack the DONE suffix",
+    "I2": "No README, dash.pkg has no Author or KW lines, no net install instruction in the help, the Author section is titled Also see, and the Jump To list is short",
+    "I3": "A failed dash_setup leaves installed packages in place and does not say what it installed, the served child is sys.executable, Unmet lists warnings beside a failure, and a dash_setup_lib.py in the working directory is found first",
+    "I4": "_dash_dep_versions() is printed nowhere but through Stata, so a hand-run renderer or app is silent, and Python below 3.7 dies at the parser",
+    "I5": "Version headers disagree (dash_render.py 1.0.0 25mar2026, dash.ado and dash_parse.mata v2.0) and the pin reads only the Version lines",
+    "I7": "The renderer bytecode is still cached under PLUS/py and ado uninstall leaves __pycache__ behind",
+    "K2": "Stata end-to-end gaps: served layer-output assertions, computed layers on %t variables served, the serve start line, a served build from an installed tree, per-type by() parity, an inspect.getsource fallback",
+    "K3": "Sixteen truth fixtures have no committed generator, nine carry absolute paths, there is no make truth and no metadata guard",
+    "K4": "The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails",
+    "H6": "The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS",
+    "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
+}
+
+#: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
+#: release its line belongs in (section-01 Appendix A).
+WP31_LISTS = {
+    "C1": ("Results that change",),
+    "C2": ("Results that change",),
+    "B5a": ("Results that change",),
+    "C3": ("Changed behaviour",),
+    "C10a": ("Fixed in WP-31",),
+    "C10b": ("Fixed in WP-31",),
+    "C18": ("Fixed in WP-31",),
+    "F4": ("Fixed in WP-31",),
+    "A5": ("Fixed in WP-31",),
+    "A6": ("Fixed in WP-31", "Changed behaviour",),
+    "A7": ("Results that change",),
+    "A8": ("Changed behaviour",),
+    "A1": ("Fixed in WP-31",),
+    "A2": ("Changed behaviour",),
+    "A3": ("Fixed in WP-31",),
+    "A4": ("Changed behaviour",),
+    "C10c": ("Fixed in WP-31",),
+    "F1a": ("Results that change",),
+    "C4": ("Results that change",),
+    "C5": ("Results that change",),
+    "F1b": ("Results that change",),
+    "C6": ("Results that change",),
+    "C7": ("Results that change",),
+    "C8a": ("Results that change",),
+    "F1c": ("Results that change",),
+    "C8b": ("Results that change",),
+    "B5b": ("Results that change",),
+    "F1d": ("Results that change",),
+    "C9": ("Results that change",),
+    "B1": ("Fixed in WP-31",),
+    "B2": ("Fixed in WP-31",),
+    "B3": ("Fixed in WP-31",),
+    "F1e": ("Results that change",),
+    "B4a": ("Fixed in WP-31",),
+    "D1": ("Results that change",),
+    "F1f": ("Results that change",),
+    "B4b": ("Fixed in WP-31",),
+    "D2": ("Results that change", "Changed behaviour",),
+    "F1g": ("Results that change",),
+    "B4c": ("Fixed in WP-31",),
+    "D3": ("Results that change",),
+    "D13": ("Results that change",),
+    "D4": ("Results that change",),
+    "C13": ("Results that change",),
+    "D5": ("Results that change",),
+    "E11": ("Results that change",),
+    "D6": ("Results that change", "Changed behaviour",),
+    "D7": ("Results that change",),
+    "E6": ("Results that change",),
+    "D8": ("Results that change",),
+    "C17": ("Results that change",),
+    "E3": ("Results that change",),
+    "C14": ("Changed behaviour",),
+    "C15": ("Results that change",),
+    "D9": ("Results that change",),
+    "D10": ("Results that change",),
+    "D11": ("Results that change",),
+    "D12": ("Results that change",),
+    "D14": ("Changed behaviour", "Fixed in WP-31",),
+    "D16": ("Changed behaviour", "Fixed in WP-31",),
+    "E1": ("Results that change", "Changed behaviour",),
+    "E2": ("Results that change",),
+    "E12": ("Changed behaviour",),
+    "E4": ("Changed behaviour",),
+    "E5": ("Results that change", "Changed behaviour",),
+    "E7": ("Results that change",),
+    "E8": ("Results that change",),
+    "E13": ("Fixed in WP-31",),
+    "E9": ("Results that change",),
+    "G1": ("Results that change",),
+    "G2": ("Results that change",),
+    "G3": ("Fixed in WP-31",),
+    "G4": ("Fixed in WP-31",),
+    "G5": ("Fixed in WP-31",),
+    "E10": ("Results that change",),
+    "D15": ("Results that change",),
+    "C11": ("Results that change",),
+    "C12": ("Results that change",),
+    "C16": ("Fixed in WP-31",),
+    "G6": ("Results that change",),
+    "G7": ("Results that change", "Changed behaviour",),
+    "F5": ("Fixed in WP-31",),
+    "F2": ("Results that change",),
+    "F3": ("Fixed in WP-31",),
+    "H2t": ("Fixed in WP-31",),
+    "H2f": ("Fixed in WP-31",),
+    "H2k": ("Fixed in WP-31",),
+    "H2l": ("Fixed in WP-31",),
+    "H1": ("Fixed in WP-31",),
+    "H2x": ("Fixed in WP-31",),
+    "K6": ("Fixed in WP-31",),
+    "H3": ("Fixed in WP-31",),
+    "H4": ("Changed behaviour",),
+    "H7": ("Fixed in WP-31",),
+    "J1": ("Fixed in WP-31",),
+    "J2": ("Fixed in WP-31",),
+    "J3": ("Fixed in WP-31",),
+    "J4": ("Fixed in WP-31",),
+    "J5": ("Fixed in WP-31",),
+    "J6": ("Fixed in WP-31",),
+    "I2": ("Fixed in WP-31",),
+    "I3": ("Fixed in WP-31",),
+    "I4": ("Fixed in WP-31",),
+    "I5": ("Fixed in WP-31",),
+    "I7": ("Fixed in WP-31",),
+    "K2": ("Fixed in WP-31",),
+    "K3": ("Fixed in WP-31",),
+    "K4": ("Fixed in WP-31",),
+    "H6": ("Fixed in WP-31",),
+    "I6": ("Fixed in WP-31",),
+}
+
+#: The section that closes each entry (index.md "Section manifest").
+WP31_SECTION = {
+    "C1": 2,
+    "C2": 3,
+    "B5a": 3,
+    "C3": 4,
+    "C10a": 5,
+    "C10b": 6,
+    "C18": 6,
+    "F4": 6,
+    "A5": 7,
+    "A6": 7,
+    "A7": 7,
+    "A8": 7,
+    "A1": 8,
+    "A2": 8,
+    "A3": 8,
+    "A4": 8,
+    "C10c": 9,
+    "F1a": 10,
+    "C4": 11,
+    "C5": 12,
+    "F1b": 13,
+    "C6": 14,
+    "C7": 14,
+    "C8a": 15,
+    "F1c": 16,
+    "C8b": 17,
+    "B5b": 18,
+    "F1d": 19,
+    "C9": 20,
+    "B1": 21,
+    "B2": 21,
+    "B3": 21,
+    "F1e": 22,
+    "B4a": 23,
+    "D1": 24,
+    "F1f": 25,
+    "B4b": 26,
+    "D2": 27,
+    "F1g": 28,
+    "B4c": 29,
+    "D3": 30,
+    "D13": 30,
+    "D4": 31,
+    "C13": 31,
+    "D5": 32,
+    "E11": 32,
+    "D6": 33,
+    "D7": 33,
+    "E6": 33,
+    "D8": 34,
+    "C17": 34,
+    "E3": 34,
+    "C14": 34,
+    "C15": 34,
+    "D9": 35,
+    "D10": 36,
+    "D11": 37,
+    "D12": 38,
+    "D14": 39,
+    "D16": 39,
+    "E1": 40,
+    "E2": 40,
+    "E12": 40,
+    "E4": 41,
+    "E5": 41,
+    "E7": 41,
+    "E8": 41,
+    "E13": 41,
+    "E9": 42,
+    "G1": 43,
+    "G2": 43,
+    "G3": 43,
+    "G4": 43,
+    "G5": 43,
+    "E10": 44,
+    "D15": 45,
+    "C11": 46,
+    "C12": 46,
+    "C16": 46,
+    "G6": 46,
+    "G7": 46,
+    "F5": 46,
+    "F2": 47,
+    "F3": 47,
+    "H2t": 48,
+    "H2f": 49,
+    "H2k": 50,
+    "H2l": 51,
+    "H1": 52,
+    "H2x": 53,
+    "K6": 54,
+    "H3": 55,
+    "H4": 55,
+    "H7": 55,
+    "J1": 56,
+    "J2": 56,
+    "J3": 57,
+    "J4": 58,
+    "J5": 58,
+    "J6": 58,
+    "I2": 59,
+    "I3": 59,
+    "I4": 59,
+    "I5": 59,
+    "I7": 59,
+    "K2": 60,
+    "K3": 60,
+    "K4": 60,
+    "H6": 60,
+    "I6": 60,
+}
+
+WP31_ALL = tuple(WP31_LISTS)
+
+_WP31_ID = r"[A-K]\d{1,2}[a-gkltx]?"
+_WP31_MARKER = re.compile(r"<!-- WP-31 (%s) -->" % _WP31_ID)
+_WP31_OPEN_FORM = re.compile(
+    r"^  - Resolution: Not fixed because WP-31 section (\d{2}) has not landed\."
+    r" Graded S[1-3] \(WP-31\): \S")
+_GAPS3_ROW = re.compile(r"^\| (?P<id>[A-K]\d{1,2}) \| (?P<gap>.+?) \| (?P<sev>S[1-3][^|]*)\| ")
+_GAPS3_TRACKED = re.compile(r"^- \*\*(?P<id>%s) Tracked:\*\* (?P<text>\S.*)$" % _WP31_ID)
+_GAPS3_OPEN = re.compile(r"^Open \(WP-31 section (\d{2})\)\.$")
+#: A closing commit writes "commit pending"; the merger's step k.3b rewrites
+#: it to the landed sha on s3-bugs (DECISIONS A11), so the reader accepts
+#: both and the batch-end gate (G2) and S61.3 forbid "pending".
+_GAPS3_CLOSED = re.compile(
+    r'^Closed in WP-31, BUGS\.md "([^"]+)", commit ([0-9a-f]{7,40}|pending)\.$')
+_GAPS3_PARTLY = re.compile(
+    r'^Partly closed in WP-31 \(section (\d{2}), commit ([0-9a-f]{7,40}|pending)\): '
+    r'(\S.*); open: (\S.*) \(BUGS\.md "([^"]+)"\)\.$')
+
+
+def _wp31_markers(text):
+    return _WP31_MARKER.findall(text)
+
+
+def _wp31_open_problems(open_map, entries):
+    """As _wp30_open_problems, for WP-31 (WP31_ALL, _WP31_OPEN_FORM,
+    WP31_SECTION)."""
+    bad = []
+    unknown = sorted(set(open_map) - set(WP31_ALL))
+    if unknown:
+        bad.append("ids WP-31 does not have: %s" % unknown)
+    titles = list(open_map.values())
+    if len(set(titles)) != len(titles):
+        bad.append("two ids share one title")
+    for pid, title in open_map.items():
+        if '"' in title:
+            bad.append("%s: the title holds a double quote" % pid)
+        match = [e for e in entries if e["title"] == title]
+        if len(match) != 1:
+            bad.append("%s: %d BUGS.md entries are titled %r"
+                       % (pid, len(match), title))
+            continue
+        e = match[0]
+        if e["closed"]:
+            bad.append("%s: %r is closed; delete its WP31_OPEN key"
+                       % (pid, title))
+            continue
+        form = _WP31_OPEN_FORM.match(e["fields"].get("Resolution", ""))
+        if not form:
+            bad.append("%s: %r's Resolution is not 'Not fixed because WP-31 "
+                       "section NN has not landed. Graded S1|S2|S3 (WP-31): "
+                       "...'" % (pid, title))
+        elif int(form.group(1)) != WP31_SECTION.get(pid):
+            bad.append("%s: its Resolution names section %s, not %s"
+                       % (pid, form.group(1), WP31_SECTION.get(pid)))
+    return bad
+
+
+def _wp31_marker_problems(open_ids, markers):
+    bad = ["a marker names %s, which WP-31 does not have" % m
+           for m in sorted(set(markers) - set(WP31_ALL))]
+    bad += ["%s is open and CHANGELOG.md holds no marker for it" % pid
+            for pid in WP31_ALL if pid in open_ids and pid not in markers]
+    return bad
+
+
+def _wp31_closure_problems(open_ids, markers, entries):
+    bad = []
+    for pid in WP31_ALL:
+        if pid in open_ids:
+            continue
+        if pid in markers:
+            bad.append("%s is closed and CHANGELOG.md still holds its "
+                       "marker" % pid)
+        tag = "(WP-31, %s)" % pid
+        if not [e for e in entries if e["closed"]
+                and tag in e["fields"].get("Resolution", "")]:
+            bad.append("%s is closed and no closed BUGS.md entry's "
+                       "Resolution holds %s" % (pid, tag))
+    return bad
+
+
+def _wp31_list_problems(lists_map, changelog):
+    lists = _changelog_lists(changelog)
+    bad = []
+    names = sorted({n for ls in lists_map.values() for n in ls})
+    bodies = {n: _changelog_list(lists, n) for n in names}
+    for n in names:
+        if bodies[n] is None:
+            bad.append("CHANGELOG.md has no single '### %s' list" % n)
+    for pid, wanted in lists_map.items():
+        mark, line = "<!-- WP-31 %s -->" % pid, "(WP-31, %s)" % pid
+        for n in wanted:
+            body = bodies.get(n)
+            if body is not None and mark not in body and line not in body:
+                bad.append("%s: '### %s' holds neither its marker nor a line "
+                           "ending %s" % (pid, n, line))
+        for h, body in lists.items():
+            if any(h == n or h.startswith(n + " (") for n in wanted):
+                continue
+            if mark in body:
+                bad.append("%s: its marker sits under '### %s'" % (pid, h))
+            if line in body:
+                bad.append("%s: a line ending %s sits under '### %s'"
+                           % (pid, line, h))
+    return bad
+
+
+def _parse_gaps3(text):
+    """(rows, tracked, dupes): rows {table id: gap text}, tracked
+    {entry id: text of its Tracked line}, dupes the entry ids with two
+    Tracked lines.  Only GAPS3.md's table rows and its section 9 lines are
+    read."""
+    rows, tracked, dupes = {}, {}, []
+    for ln in text.split("\n"):
+        m = _GAPS3_ROW.match(ln)
+        if m:
+            rows[m.group("id")] = m.group("gap")
+        t = _GAPS3_TRACKED.match(ln)
+        if t:
+            if t.group("id") in tracked:
+                dupes.append(t.group("id"))
+            tracked[t.group("id")] = t.group("text")
+    return rows, tracked, dupes
+
+
+def _gaps3_problems(rows, tracked, dupes, open_ids, entries, sha_exists):
+    """Every WP-31 id has one Tracked line whose table row exists; an Open
+    line names the id's section and the id is open; a Closed line names a
+    closed entry's title and a commit that exists (or "pending", before the
+    merger's step k.3b), and the id is not open; a Partly line names an
+    existing commit (or "pending") and an open residual entry."""
+    bad = ["%s has two Tracked lines" % d for d in dupes]
+    bad += ["a Tracked line names %s, which WP-31 does not have" % t
+            for t in sorted(set(tracked) - set(WP31_ALL))]
+    for pid in WP31_ALL:
+        if pid not in tracked:
+            bad.append("%s: GAPS3.md has 0 Tracked lines" % pid)
+            continue
+        if re.sub(r"[a-z]$", "", pid) not in rows:
+            bad.append("%s: GAPS3.md has no table row for it" % pid)
+        text = tracked[pid]
+        o, c, p = (_GAPS3_OPEN.match(text), _GAPS3_CLOSED.match(text),
+                   _GAPS3_PARTLY.match(text))
+        if o:
+            if int(o.group(1)) != WP31_SECTION[pid]:
+                bad.append("%s: Open names section %s, not %s"
+                           % (pid, o.group(1), WP31_SECTION[pid]))
+            if pid not in open_ids:
+                bad.append("%s: Tracked Open but its entry is closed" % pid)
+        elif c:
+            title, sha = c.group(1), c.group(2)
+            if pid in open_ids:
+                bad.append("%s: Tracked Closed but its entry is open" % pid)
+            if not [e for e in entries if e["closed"] and e["title"] == title]:
+                bad.append("%s: no closed BUGS.md entry is titled %r"
+                           % (pid, title))
+            if sha != "pending" and not sha_exists(sha):
+                bad.append("%s: commit %s does not exist" % (pid, sha))
+        elif p:
+            if p.group(2) != "pending" and not sha_exists(p.group(2)):
+                bad.append("%s: commit %s does not exist" % (pid, p.group(2)))
+            if not [e for e in entries if not e["closed"]
+                    and e["title"] == p.group(5)]:
+                bad.append("%s: no open BUGS.md entry is titled %r"
+                           % (pid, p.group(5)))
+        else:
+            bad.append("%s: Tracked line %r is in none of the three forms"
+                       % (pid, text))
+    return bad
+
+
+def _sha_exists(sha):
+    return _git("cat-file", "-e", sha + "^{commit}").returncode == 0
+
+
+class TestWp31Tracking:
+    """WP-31's entries (index.md A4; section-01): open in BUGS.md naming
+    their section, tracked Open in GAPS3.md section 9, with a marker in each
+    CHANGELOG list they belong to, until their section lands; then closed,
+    tracked Closed or Partly, with no marker left and a Resolution naming
+    (WP-31, <id>)."""
+
+    def test_every_allowed_title_is_an_open_entry(self, bugs):
+        entries, _p = bugs
+        assert not _wp31_open_problems(WP31_OPEN, entries), "\n".join(
+            _wp31_open_problems(WP31_OPEN, entries))
+
+    def test_an_open_entry_keeps_its_marker(self):
+        bad = _wp31_marker_problems(set(WP31_OPEN),
+                                    _wp31_markers(_read("CHANGELOG.md")))
+        assert not bad, "\n".join(bad)
+
+    def test_a_closed_entry_has_no_marker_and_a_resolution(self, bugs):
+        entries, _p = bugs
+        bad = _wp31_closure_problems(
+            set(WP31_OPEN), set(_wp31_markers(_read("CHANGELOG.md"))),
+            entries)
+        assert not bad, "\n".join(bad)
+
+    def test_each_entry_sits_in_its_changelog_lists(self):
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 110
+        assert tuple(WP31_SECTION) == WP31_ALL
+        assert set(WP31_SECTION.values()) == set(range(2, 61))
+        bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))
+        assert not bad, "\n".join(bad)
+
+    def test_every_entry_has_one_gaps3_tracked_line(self, bugs):
+        entries, _p = bugs
+        rows, tracked, dupes = _parse_gaps3(_read("GAPS3.md"))
+        bad = _gaps3_problems(rows, tracked, dupes, set(WP31_OPEN), entries,
+                              _sha_exists)
+        assert not bad, "\n".join(bad)
+
+    def test_the_marker_reader(self):
+        text = ("### Results that change\n\n<!-- WP-31 C1 -->\n"
+                "### Changed behaviour (may need your do-files changed)\n\n"
+                "<!-- WP-31 C10a --><!-- WP-31 H2t -->\n"
+                "### Fixed in WP-31\n\n<!-- WP-31 F1g -->\n")
+        assert _wp31_markers(text) == ["C1", "C10a", "H2t", "F1g"]
+        assert _wp31_markers("<!-- WP-30 P1.1a --> <!-- WP-31 C1-->") == []
+        assert _wp31_markers("<!-- WP-31 B5a --><!-- WP-31 B5b -->") == [
+            "B5a", "B5b"]
+
+    def test_the_wp31_problem_readers(self):
+        def entry(title, closed, res):
+            return {"title": title, "closed": closed,
+                    "fields": {"Resolution": "  - Resolution: " + res}}
+        open_form = ("Not fixed because WP-31 section 02 has not landed. "
+                     "Graded S1 (WP-31): dropped.")
+        good = [entry("T1", False, open_form),
+                entry("T2", True, "Fixed 01nov2026 (WP-31, C2). Done.")]
+        assert _wp31_open_problems({"C1": "T1"}, good) == []
+        for open_map, entries, says in (
+                ({"C1": "T2"}, good, "is closed"),
+                ({"C1": "T9"}, good, "0 BUGS.md entries"),
+                ({"C1": "T1"}, [entry("T1", False, open_form.replace(
+                    "02", "03"))], "names section 03, not 2"),
+                ({"Z9": "T1"}, good, "does not have"),
+                ({"C1": 'a "q"'}, [entry('a "q"', False, open_form)],
+                 "double quote")):
+            assert any(says in b for b in _wp31_open_problems(
+                open_map, entries)), (says, open_map)
+        assert _wp31_marker_problems({"C1"}, []) == [
+            "C1 is open and CHANGELOG.md holds no marker for it"]
+        others = set(WP31_ALL) - {"C2"}
+        assert _wp31_closure_problems(others, others, good) == []
+        assert _wp31_closure_problems(others, others, good[:1]) == [
+            "C2 is closed and no closed BUGS.md entry's Resolution holds "
+            "(WP-31, C2)"]
+        log = ("## 1.0\n\n### Results that change\n\n<!-- WP-31 C1 -->\n"
+               "### Fixed in WP-31\n\n- x. (WP-31, J1)\n")
+        assert _wp31_list_problems({"C1": ("Results that change",),
+                                    "J1": ("Fixed in WP-31",)}, log) == []
+        assert _wp31_list_problems({"J1": ("Results that change",)}, log) == [
+            "J1: '### Results that change' holds neither its marker nor a "
+            "line ending (WP-31, J1)",
+            "J1: a line ending (WP-31, J1) sits under '### Fixed in WP-31'"]
+
+    def test_the_gaps3_readers(self):
+        text = ("| ID | Gap | Sev | Register | Evidence | Task |\n"
+                "|---|---|---|---|---|---|\n"
+                "| C1 | heads are fixed | S1 | P2.8 | r.py:1 | fix |\n"
+                "| C8 | colorvar on 4 types | S2 | P2.10 | d.ado:2 | route |\n"
+                "## 9. Tracking\n\n- **C1 Tracked:** Open (WP-31 section 02).\n"
+                '- **C8a Tracked:** Closed in WP-31, BUGS.md "T2", commit '
+                "0123abc.\n- **C8b Tracked:** Partly closed in WP-31 (section "
+                '17, commit 0123abc): aliases; open: pcycle (BUGS.md "R1").\n')
+        rows, tracked, dupes = _parse_gaps3(text)
+        assert rows == {"C1": "heads are fixed", "C8": "colorvar on 4 types"}
+        assert sorted(tracked) == ["C1", "C8a", "C8b"] and dupes == []
+        entries = [{"title": "T2", "closed": True, "fields": {}},
+                   {"title": "R1", "closed": False, "fields": {}}]
+        tracked_all = {pid: "Open (WP-31 section %02d)." % WP31_SECTION[pid]
+                       for pid in WP31_ALL}
+        tracked_all.update(tracked)
+        # Every other id needs a table row too, or it is reported as having
+        # none; the synthetic table above holds only C1 and C8.
+        rows_all = {re.sub(r"[a-z]$", "", pid): "gap" for pid in WP31_ALL}
+        rows_all.update(rows)
+        bad = _gaps3_problems(rows_all, tracked_all, dupes,
+                              set(WP31_ALL) - {"C8a"}, entries,
+                              lambda s: s == "0123abc")
+        assert bad == [], bad
+        bad = _gaps3_problems(rows_all, tracked_all, dupes, set(WP31_ALL),
+                              entries, lambda s: False)
+        assert "C8a: Tracked Closed but its entry is open" in bad
+        assert "C8a: commit 0123abc does not exist" in bad
+        assert "C8b: commit 0123abc does not exist" in bad
+        rows2 = dict(rows_all)
+        rows2.pop("C1")
+        assert "C1: GAPS3.md has no table row for it" in _gaps3_problems(
+            rows2, tracked_all, dupes, set(WP31_ALL), entries, lambda s: True)
+        assert "C1: GAPS3.md has 0 Tracked lines" in _gaps3_problems(
+            rows, {}, [], set(WP31_ALL), entries, lambda s: True)
+        # "commit pending" (DECISIONS A11) passes without a sha check.
+        pend = dict(tracked_all)
+        pend["C8a"] = 'Closed in WP-31, BUGS.md "T2", commit pending.'
+        pend["C8b"] = ("Partly closed in WP-31 (section 17, commit pending): "
+                       'aliases; open: pcycle (BUGS.md "R1").')
+        assert _gaps3_problems(rows_all, pend, dupes, set(WP31_ALL) - {"C8a"},
+                               entries, lambda s: False) == []
+        # Split-row ids (B5a/B5b, C10a..c, F1a..g, H2f/k/l/t/x) parse.
+        for pid in ("B5a", "B5b", "C10c", "F1g", "H2t"):
+            m = _GAPS3_TRACKED.match(
+                "- **%s Tracked:** Open (WP-31 section 03)." % pid)
+            assert m and m.group("id") == pid, pid

@@ -83,29 +83,30 @@ if `"`macval(_dash_pyx)'"' != "" {
 // Seconds: the three-session run of 08oct2026 (its [ TIME] lines;
 // test_mata_autoload, which prints none, 0.5 s as before);
 // test_wp30_truth's 317 s is shared out over the sessions, each running
-// its part of the blocks
+// its part of the blocks; test_wp31_truth's 1 s (S01's scaffold only,
+// section-01 D-01.g) likewise
 local _cert_shards ///
     test_abbreviations.cscript           18.2 0  1 3 4 ///
-    test_ado_loads.cscript                0.1 0  1 2 1 ///
+    test_ado_loads.cscript                0.1 0  1 3 1 ///
     test_adversarial.cscript             17.5 0  1 2 3 ///
     test_alias_semantics.cscript         10.6 0  2 2 4 ///
     test_bug_regressions.cscript          8.4 1  1 1 1 ///
     test_by_suboptions.cscript            2.0 0  2 1 1 ///
-    test_caller_version.cscript           0.5 0  2 3 3 ///
+    test_caller_version.cscript           0.5 0  2 2 3 ///
     test_ci_band_options.cscript          6.4 0  2 2 3 ///
     test_clear_registry.cscript           0.1 0  2 1 3 ///
     test_conformance.cscript              6.9 0  1 2 4 ///
     test_custom_scheme.cscript            5.1 0  1 3 2 ///
     test_e2e_filters.cscript              8.8 0  2 2 4 ///
-    test_e2e_kpi.cscript                  0.6 0  2 2 2 ///
-    test_e2e_multi.cscript                4.5 0  2 2 3 ///
+    test_e2e_kpi.cscript                  0.6 0  2 3 2 ///
+    test_e2e_multi.cscript                4.5 0  2 3 3 ///
     test_e2e_serve.cscript                3.7 1  1 1 1 ///
     test_e2e_single.cscript               4.7 0  2 1 1 ///
-    test_echo_text.cscript                0.3 0  1 2 4 ///
+    test_echo_text.cscript                0.3 0  1 3 4 ///
     test_env_guards.cscript              21.6 1  1 1 1 ///
     test_examples_run.cscript             9.0 0  1 1 3 ///
-    test_export.cscript                   3.2 0  1 3 4 ///
-    test_filter_label.cscript             0.5 0  1 2 2 ///
+    test_export.cscript                   3.2 0  1 2 4 ///
+    test_filter_label.cscript             0.5 0  1 3 2 ///
     test_gaps2_truth.cscript             13.0 0  1 3 4 ///
     test_graph_option_scope.cscript       0.4 0  1 1 4 ///
     test_help_claims_1.cscript           13.8 0  1 3 4 ///
@@ -118,41 +119,42 @@ local _cert_shards ///
     test_help_claims_8.cscript            6.7 0  1 1 4 ///
     test_help_examples.cscript           14.0 0  2 2 3 ///
     test_json_escaping.cscript           20.5 0  2 3 3 ///
-    test_mata_autoload.cscript            0.5 0  2 3 1 ///
+    test_mata_autoload.cscript            0.5 0  2 2 1 ///
     test_mata_library_guard.cscript      10.1 0  1 3 2 ///
-    test_nodraw_honoured.cscript          0.4 0  2 2 3 ///
+    test_nodraw_honoured.cscript          0.4 0  2 3 3 ///
     test_option_report_paren.cscript      0.2 0  1 1 3 ///
     test_option_surface.cscript           6.9 0  2 3 2 ///
     test_option_validation.cscript        5.2 0  1 1 4 ///
     test_parser.cscript                  22.2 0  2 3 4 ///
-    test_parser_integrity.cscript         1.1 0  1 2 1 ///
+    test_parser_integrity.cscript         1.1 0  1 3 1 ///
     test_path_validation.cscript          8.0 0  1 3 2 ///
     test_program_coverage.cscript         8.0 0  2 1 3 ///
     test_qualifier_in_stata.cscript     112.4 0  2 2 2 ///
     test_qualifier_literals.cscript      21.8 0  1 3 4 ///
-    test_registry_collision.cscript       3.3 0  2 2 2 ///
+    test_registry_collision.cscript       3.3 0  2 3 2 ///
     test_render_locate.cscript            2.6 1  1 1 1 ///
-    test_render_log_clean.cscript         1.5 0  2 3 3 ///
+    test_render_log_clean.cscript         1.5 0  2 2 3 ///
     test_resource_limits.cscript          2.2 0  1 1 3 ///
     test_serve_browser.cscript            1.8 1  1 1 1 ///
     test_serve_launch.cscript            13.1 1  1 1 1 ///
     test_serve_options.cscript            0.4 0  1 1 2 ///
     test_server_build.cscript             1.0 0  1 1 4 ///
     test_setup_honesty.cscript           10.7 0  2 1 3 ///
-    test_setup_injection.cscript          0.0 0  2 3 2 ///
-    test_setup_python_gate.cscript        0.0 0  2 3 2 ///
-    test_setup_version_gate.cscript       0.1 0  1 3 1 ///
-    test_statistical_options.cscript      4.5 0  1 3 1 ///
+    test_setup_injection.cscript          0.0 0  2 2 2 ///
+    test_setup_python_gate.cscript        0.0 0  2 2 2 ///
+    test_setup_version_gate.cscript       0.1 0  1 2 1 ///
+    test_statistical_options.cscript      4.5 0  1 2 1 ///
     test_string_values.cscript           14.6 0  2 3 4 ///
     test_suboption_reporting.cscript     13.6 0  2 2 3 ///
-    test_textbox_multiline.cscript        0.2 0  2 3 2 ///
-    test_theme_escaping.cscript           0.4 0  2 3 1 ///
-    test_tokenizer.cscript                0.1 0  2 2 3 ///
+    test_textbox_multiline.cscript        0.2 0  2 2 2 ///
+    test_theme_escaping.cscript           0.4 0  2 2 1 ///
+    test_tokenizer.cscript                0.1 0  2 3 3 ///
     test_twoway_option_parity.cscript    35.9 0  2 3 3 ///
     test_utf8_validation.cscript          0.1 0  1 1 4 ///
     test_varlist_expansion.cscript        4.7 0  2 2 4 ///
     test_wp29_truth.cscript              88.1 1  1 1 1 ///
-    test_wp30_truth.cscript             316.9 0  * * *
+    test_wp30_truth.cscript             316.9 0  * * * ///
+    test_wp31_truth.cscript               1.0 0  * * *
 // ---- shards: end ----
 local _cert_sh : environment DASH_CERT_SHARD
 mata: st_local("_cert_ok", strofreal(st_local("_cert_sh") == "" | ustrregexm(st_local("_cert_sh"), "^[1-4]/[1-4]$")))
@@ -3116,6 +3118,52 @@ else if `rc' == 0 {
 }
 else {
     display as error "[ FAIL] test_wp30_truth.cscript  (rc=`rc')"
+    local n_fail = `n_fail' + 1
+}
+}
+
+// 70. test_wp31_truth.cscript (WP-31: the one certification script for
+// every twoway/Stata-value comparison the drop-in GAPS3 package needs; one
+// block per GAPS3 row, S01's scaffold and the blocks S02-S60 append,
+// above its "append new blocks above this line" marker --
+// .ultraplan/sections/index.md A5).  It runs in every shard, each session
+// running its own part of the blocks (DASH_CERT_SHARD).
+// ----------------------------------------------------------------
+local _cert_go : list posof "test_wp31_truth.cscript" in _cert_run
+if `_cert_go' {
+display as text "[ RUN ] test_wp31_truth.cscript"
+cd "`testdir'"
+local _cert_c0 = clock(c(current_date) + " " + c(current_time), "DMYhms")
+capture noisily {
+    do "test_wp31_truth.cscript"
+}
+local rc = _rc
+// Timing (timer 100, started by the script after its clear all; the
+// wall clock survives a script that clears all again).
+capture timer off 100
+quietly timer list 100
+local _cert_t = r(t100)
+local _cert_w = (clock(c(current_date) + " " + c(current_time), "DMYhms") - `_cert_c0') / 1000
+display as text "[ TIME] test_wp31_truth.cscript timer=" %9.3f `_cert_t' "s wall=" %6.0f `_cert_w' "s"
+local _cert_prof : environment DASH_CERT_PROFILE
+if "`_cert_prof'" != "" {
+    capture profiler off
+    display as text "[PROFILE] test_wp31_truth.cscript"
+    capture noisily profiler report
+}
+capture file close _all
+capture log close _all
+cd "`dashdir'"
+if `rc' == 222 {
+    display as text "[ SKIP] test_wp31_truth.cscript  (dependency unavailable)"
+    local n_skip = `n_skip' + 1
+}
+else if `rc' == 0 {
+    display as text "[ PASS] test_wp31_truth.cscript"
+    local n_pass = `n_pass' + 1
+}
+else {
+    display as error "[ FAIL] test_wp31_truth.cscript  (rc=`rc')"
     local n_fail = `n_fail' + 1
 }
 }

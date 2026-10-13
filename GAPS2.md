@@ -139,7 +139,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   3. For `mangle()` and a partial `barbsize()`, draw heads as a patches glyph whose vertices a shared CustomJS recomputes in screen space, in both modes. If this step is deferred, document the ~2° difference.
   4. Declare `mangle()` and `barbsize()`, and replace P4-20 (test/test_phase4_plots.py:257).
   5. Test head size, angle and colour against twoway SVG under s2color and s1mono, in both modes, including pcarrowi.
-- **Tracked:** new.
+- **Tracked:** new. GAPS3: C1.
 
 <a id="a3"></a>
 ### A3. Bar and cap geometry: rbar ignores barwidth(); bar and rbar default widths, rcap cap width and rcapsym's caps are not twoway's
@@ -209,7 +209,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   3. contour/contourline: call `twoway__contour_gen` under preserve, export the polygons and lines as literal records, draw them with patches/multi_line, and say in a note that the layer is static under filters.
   4. `matamatrix()`: read the matrix columns by value in Mata into reserved export columns. Until then, refuse `sunflower` and `matamatrix()` by name.
   5. Test with a cscript comparing each generator's output and serset with live twoway, pytest in both modes, and a time bound for contour over 1e6 rows.
-- **Tracked:** GAPS.md F1 (closed by refusing the five by name); sunflower and `matamatrix()` are new.
+- **Tracked:** GAPS.md F1 (closed by refusing the five by name); sunflower and `matamatrix()` are new. GAPS3: B1, B2, B3, B4.
 
 <a id="a6"></a>
 ### A6. `function` draws nothing for most Stata expressions: normalden(), ln(), _pi, comparisons, cond(), min(), round(), _b[] ... (also reported as C5)
@@ -240,7 +240,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   3. Pass `jitter()` on the four types through `_apply_jitter`.
   4. By default, bin an unbinned colorvar at twoway's z-axis ticks (a bin column and a ColorBar with those ticks). Keep continuous colouring as an option.
   5. Test the colour of each mark against twoway SVG for each type, and jitter extents under a fixed seed, in both modes.
-- **Tracked:** GAPS.md F4 colorvar row (closed by naming it); drawing on the other types is new.
+- **Tracked:** GAPS.md F4 colorvar row (closed by naming it); drawing on the other types is new. GAPS3: C8.
 
 <a id="a9"></a>
 ### A9. lpoly and lpolyci default bandwidth only approximates Stata's rule of thumb, and ignores degree() and kernel() (also reported as C1, C13)
@@ -269,7 +269,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   1. Measure twoway's rc, log text and serset for the three cases.
   2. Either mark them silent through `_mark_silent` (dash_render.py:7990), as `map_lpolyci` does, or keep the note and document it at dash.sthlp:235-238 as a deliberate difference.
   3. Update EC-03 to EC-05 to match, in both modes.
-- **Tracked:** BUGS.md:2559 (open, S3).
+- **Tracked:** BUGS.md:2559 (open, S3). GAPS3: (BUGS.md:2559, kept by WP-30 M6).
 
 <a id="a12"></a>
 ### A12. An option twoway refuses on a type is dropped in silence (bwidth(), n(), bands(), range(), base(), level(), kernel() ...) (also reported as C15)
@@ -285,7 +285,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Encode that as an applicability list in `_dash_option_rules` (as for `discrete`/`stdp`/`mean`), and refuse elsewhere in twoway's words, r(198).
   3. Refuse lpolyci `level()` outside 10-99.99.
   4. Test each option × type cell against live twoway in a cscript, and add pytest that the spec never carries an inapplicable option.
-- **Tracked:** BUGS.md open "kernel() on a type that takes no kernel is written to the spec without a note" (:2601); BUGS.md open "In a few mixed lists dash names another word than twoway names first" (:2595); ROADMAP WP-23 "Found on the way".
+- **Tracked:** BUGS.md open "kernel() on a type that takes no kernel is written to the spec without a note" (:2601); BUGS.md open "In a few mixed lists dash names another word than twoway names first" (:2595); ROADMAP WP-23 "Found on the way". GAPS3: C3.
 
 <a id="a13"></a>
 ### A13. Default legend keys and axis titles per plot type are dash's own, not twoway's (also reported as C10)
@@ -315,7 +315,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   2. Declare the d-options, `dotextend()` and `ndots()` with twoway's abbreviations in `_dash_parse_plot_opts`.
   3. Recompute the rows on filter moves in both modes.
   4. Test dot count, spacing and colour against twoway SVG under s2color, s1mono and economist, with pytest in both modes.
-- **Tracked:** new.
+- **Tracked:** new. GAPS3: B5.
 
 <a id="a15"></a>
 ### A15. dash refuses values on some types that twoway draws (also reported as C11)
@@ -338,7 +338,7 @@ dash is meant to draw every twoway plot type with twoway's syntax, type-specific
   3. For `mlabel(a b)`, use the first variable with a note. Evaluate scatteri numlists as twoway does, clamp `msize(1e400)` as twoway draws it, and check `lwidth()`/`mlwidth()`/`msangle()` only on types that draw them.
   4. Support `yaxis()`/`xaxis()` 3-9 with extra Bokeh ranges, placed as twoway places them (coordinate with the axes-area findings).
   5. Test each form against live twoway (serset equality), and move the help text from "refused" to "as twoway".
-- **Tracked:** new (each refusal is documented in dash.sthlp).
+- **Tracked:** new (each refusal is documented in dash.sthlp). GAPS3: C10.
 
 ## B. Graph-level twoway options
 
@@ -462,7 +462,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** `axis_label_options.sthlp` documents `{x|y}mtick()` and `{x|y}mlabel()` with the same rule grammar as major labels. In dash they are pending (dash.ado:791-796) and named. `xtick()` already uses Bokeh's minor-tick channel (`_dash_apply_tick_option`, dash_render.py:16857), so the two have to be combined.
 - **Closable:** partly -- Bokeh draws text only on major ticks, so minor labels in their own style need a second axis on the same range, or merging into the major labels (which gives them the major style).
 - **Plan:** 1. Fold `xtick` and `xmtick` positions into one `CustomJSTicker` minor set, with the scheme's minor-tick length. 2. Draw `xmlabel` either by merging its positions into the major ticker with its own formatter text, or as an overlaid second axis with a smaller font. 3. pytest in both modes; cscript comparing twoway's SVG.
-- **Tracked:** GAPS.md E1 (deferred).
+- **Tracked:** GAPS.md E1 (deferred). GAPS3: D1.
 
 <a id="b11"></a>
 ### B11. Named styles and colour lists are not read: `pstyle` (non-ci), `lstyle`, `mstyle`, `mlstyle`, `mlpattern`, `colorlist`, `coloruseplegend` (also reported as D6)
@@ -560,7 +560,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** `title_options.sthlp` lists the t1/t2, b1/b2, l1/l2 and r1/r2 titles, with l/r drawn vertically. In dash they are on the pending list (dash.ado:769-790), named, and never drawn (dash.sthlp Unsupported, "Alternative titles"); the text is stored as typed (JSE-46).
 - **Closable:** yes -- a Bokeh `Title` can go in any side panel and is drawn vertically on the left and right.
 - **Plan:** 1. Add each as a `Title` in the above/below/left/right panel at its ring position, through `_dash_textbox` so sub-options work. 2. Take them off the pending lists and out of dash.sthlp Unsupported (test_unsupported_report_is_true.py and test_help_conformance.py enforce this). 3. pytest in both modes; cscript comparing twoway's SVG text positions and orientation.
-- **Tracked:** GAPS.md E1 (deferred).
+- **Tracked:** GAPS.md E1 (deferred). GAPS3: D2.
 
 <a id="b20"></a>
 ### B20. `text()`/`ttext()` added text is not drawn
@@ -629,7 +629,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   `TestDateAxisTicks` in test/test_natscale_axes.py holds the agreement floors.
 - **Closable:** partly -- `_tsnatscale` and `natscale` are compiled into Stata and undocumented, so dash can only approximate them from measured answers.
 - **Plan:** 1. Measure structured sweeps per unit, varying span and N, into natscale_axes_truth.json. 2. Recover the calendar-step choice as a rule table rather than a fitted score. 3. Raise the floors in test_natscale_axes.py as agreement improves.
-- **Tracked:** BUGS.md open: "#N ticks on a %td to %th date axis follow a fitted model...".
+- **Tracked:** BUGS.md open: "#N ticks on a %td to %th date axis follow a fitted model...". GAPS3: D15.
 
 <a id="b25"></a>
 ### B25. Default axes are Bokeh's, not twoway's (tick positions, range padding, s2color vertical y labels)
@@ -671,7 +671,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** twoway refuses `title2`, `subtitle2`, `mlabwidth`, `ciopts`, `blabel`, `at`, `xreverse` and unknown lower-case words with r(198); dash.sthlp Unsupported and 3096-3115 list them. dash names them in its note and draws the graph (the TP-07 rule), so a typo like `titel(x)` runs. The open BUGS.md entry (line 2595) also records dash naming a different first word than twoway in some mixed option lists.
 - **Closable:** yes.
 - **Plan:** 1. Revisit the TP-07 rule in light of twoway's refusal: refuse undeclared lower-case words with "option X not allowed", r(198), and keep the note only for twoway options dash does not draw. 2. Order the refusals the way twoway's parser meets them. 3. Update TP-07 in test_twoway_option_parity.cscript, and the help. 4. Measure each word against live twoway in the cscript.
-- **Tracked:** BUGS.md open: "In a few mixed lists dash names another word than twoway names first...".
+- **Tracked:** BUGS.md open: "In a few mixed lists dash names another word than twoway names first...". GAPS3: D2.
 
 **B29. Title and subtitle are left-aligned; textbox `position()`/`ring()`/`span`/`justification()` are not drawn** -- same gap as D17; see there.
 
@@ -684,7 +684,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
   - It refuses `placement()` as not a number.
 - **Closable:** partly -- under responsive (`stretch_width`) sizing, Bokeh constrains only the outer canvas ratio and panel sizes are known only after BokehJS layout, so an exact plot-region ratio needs a resize callback or a fixed `frame_width`/`frame_height`. Absolute inches conflict with the responsive page by design.
 - **Plan:** 1. Read the `placement()` sub-option. 2. Apply `xsize`/`ysize` to the canvas and `aspectratio` to the frame, via a `CustomJS` callback on `inner_width` that sets height = inner_width*ratio + (outer minus inner panel heights). 3. Measure frame dimensions in a headless browser test. 4. Compare against twoway's SVG plot-region rectangles for 10 ratios.
-- **Tracked:** new (precedence and band documented in dash.sthlp:2533-2560).
+- **Tracked:** new (precedence and band documented in dash.sthlp:2533-2560). GAPS3: D5.
 
 <a id="b31"></a>
 ### B31. `by()` graph chrome differs from twoway's (panel labels, default note, repeated axes, missing-panel text)
@@ -704,7 +704,7 @@ Area B covers twoway's graph-level options: titles and textboxes, axis labels, t
 - **Gap:** `scale_option.sthlp` defines `scale(#)` to multiply text, marker and line sizes. `region_options.sthlp` defines `fxsize()`/`fysize()`, and `advanced_options.sthlp` defines `xoverhangs`/`yoverhangs`. In dash all five are on the graph pending list (dash.ado:760-790) and named; dash.sthlp Unsupported explains the choice.
 - **Closable:** partly -- `fxsize`/`fysize` size a panel for `graph combine`, which dash's layout does not model, so they can only shrink the figure within its cell. Bokeh already sizes borders to fit tick labels, so the overhang options may have nothing left to do.
 - **Plan:** 1. `scale(#)`: multiply every resolved text size, marker size and line width in the figure build. 2. `fxsize`/`fysize`: set the figure's max width/height as a percentage of its cell. 3. Check in a browser whether end labels can clip; if they cannot, document the overhang options as no-ops and stop naming them. 4. pytest, and a cscript comparing twoway's SVG sizes under `scale(1.5)`.
-- **Tracked:** GAPS.md E1 (deferred).
+- **Tracked:** GAPS.md E1 (deferred). GAPS3: D5.
 
 ## C. Statistical fidelity
 
@@ -804,7 +804,7 @@ The statistical layers should draw what twoway draws, with the same estimator, d
 - **Gap:** Stata assigns bars by `floor((v - min)/h)` in double precision (twoway__histogram_gen.ado:198), as dash's discrete histogram and mband already do. dash's continuous branch instead compares values against an edge array (`np.histogram`, dash_render.py:9577; the JavaScript loop at 14817-14824), so a value on an interior edge can land one bar off. 45 of 4795 random rounded datasets (0.9%) with `bin(2..39)` differ. For example, 21 values in {0.1..1.0} with `bin(27)` put the four 0.3 values in bar 5 instead of bar 6. This was compared with the ado's rule, not yet with Stata output.
 - **Closable:** yes. The C2 fix closes it too.
 - **Plan:** 1. Use C2's floor-and-clamp counter in `map_histogram`, the served copy and the JavaScript recount. 2. Add a fixture section of values on edges, read from twoway histogram's serset: x = 0(.1)1 with `bin(10)`, 200 values rounded to hundredths with `bin(20)`, the 21-value example with `bin(27)`, and nlsw88 ttl_exp with `bin(27)`. 3. Compare bar by bar in test_statistical_truth.py, and run the JavaScript twin under node as `TestFilterJavaScript` does (test_statistical_helpers.py:860).
-- **Tracked:** new.
+- **Tracked:** new; closed by WP-28's C2 fix (GAPS3 §6): commit b06b662, BUGS.md "A continuous histogram dropped the observation at its last edge, and the rows a tolerated start() lies above"; the histogram edge rule is pinned by test/test_histogram_edge_rule.py.
 
 **C15. kernel() on a plot type that has no kernel is written to the spec with no note** -- same gap as A12; see there.
 
@@ -890,7 +890,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Derive the named patterns from the linepattern-*.style values on dash's relative-unit px scale. Measure at `lwidth(medium)` and `lwidth(vthick)` whether Stata scales lengths with line width, and apply that only if it does.
   3. Apply `mlpattern()` as the marker's `line_dash`, and remove it from the unsupported list and the help.
   4. Test formula parsing, a scheme's `linepattern p1 "-."` and `mlpattern()` in both modes against the measured segment lengths.
-- **Tracked:** `mlpattern()`: GAPS.md E1 (deferred by WP-27); the formula grammar is new.
+- **Tracked:** `mlpattern()`: GAPS.md E1 (deferred by WP-27); the formula grammar is new. GAPS3: E2.
 
 <a id="d5"></a>
 ### D5. Marker symbols: arrow/arrowf/| refused, pipe/point/V/sm* misdrawn, and scheme hollow and small symbols drawn filled at full size
@@ -1017,7 +1017,7 @@ dash says a dashboard "has the look" of the session's scheme. To do that it ship
   2. Anchor sizes to the figure's nominal height (`ysize()` or graphsize y) instead of 4 inches, using Stata's anchor ratios.
   3. Optionally, add a bounded CustomJS on `inner_height` changes that rescales fonts and marker sizes, in both modes.
   4. Test the Bokeh models. Take headless-browser screenshots at two widths and compare title and marker size, as a percentage of height, with truth.json.
-- **Tracked:** `scale()`: GAPS.md E1 (deferred by WP-27); relative sizing is new (the help documents the 4-inch reference).
+- **Tracked:** `scale()`: GAPS.md E1 (deferred by WP-27); relative sizing is new (the help documents the 4-inch reference). GAPS3: D5, E11.
 
 <a id="d16"></a>
 ### D16. Tick geometry and axis furniture are Bokeh's: minor ticks, inward tick stubs, economist's axis, legend key size
@@ -1161,7 +1161,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   3. Overlay markers for the selected rows on linked line and area layers.
   4. Optional: an opt-in brush-as-filter (e.g. `link(..., filter)`) that feeds `dash_filter_mask`.
   5. Add node and served tests. Stata truth: `count if inrange(x,a,b) & inrange(y,c,d)`, and `summarize` over it.
-- **Tracked:** new (the partial behaviour is documented at dash.sthlp:855, 1005-1017)
+- **Tracked:** new (the partial behaviour is documented at dash.sthlp:855, 1005-1017) GAPS3: H1, H2l.
 
 <a id="e6"></a>
 ### E6. A filter move keeps the build-time frame: the second axis keeps its unfiltered range, and `by()` panels emptied by a filter stay drawn
@@ -1175,7 +1175,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   2. Hide a `by()` panel whose rows are all filtered out and reflow the grid: rebuild the gridplot children in the served app, and toggle visibility and re-lay the GridPlot in the saved page's JS.
   3. Test in both modes: y2 start and end after a move equal a build on the filtered frame, and panel visibility follows the filter.
   4. Stata truth (unmeasured today): the axis ranges of `twoway ... if foreign==0` with `yaxis(2)`, and the `by()` panel count on the subset.
-- **Tracked:** new (the y2 item is planned in REMAINING.md:1238)
+- **Tracked:** new (the y2 item is planned in REMAINING.md:1238) GAPS3: D9.
 
 <a id="e7"></a>
 ### E7. KPI cards take no weights and lack statistics summarize and tabstat report (also reported as G13)
@@ -1187,7 +1187,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   2. Add weighted mean, sum, sd, var and percentiles in `_kpi_statistic`, the served app and `dash_apply_kpis`, reusing `dash_wpctl`.
   3. Add kurtosis, semean and range.
   4. Record a Stata fixture from `summarize x [aw=w], detail` and `tabstat x, s(semean range kurt)`. Check it on first paint and after filter and brush moves in both modes, and add cscript refusals for the weight types `summarize` refuses.
-- **Tracked:** new
+- **Tracked:** new GAPS3: H2k.
 
 <a id="e9"></a>
 ### E9. Only one link group per dashboard
@@ -1199,7 +1199,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   2. Build one shared source per group, with brush and KPI wiring, `exclude()` and the CSV per group. In the served app, `_shared` becomes a dict keyed by group.
   3. Add parity tests (test_mode_parity corpus) and node and served tests asserting that a selection in group A never changes group B.
   4. Stata truth: the selected rows equal `count if` over the box's bounds.
-- **Tracked:** new (documented limitation, dash.sthlp:1024)
+- **Tracked:** new (documented limitation, dash.sthlp:1024) GAPS3: H2l.
 
 <a id="e10"></a>
 ### E10. PNG export is incomplete, and there is no vector or scripted export
@@ -1229,7 +1229,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   1. Wrap each callback body in try/catch. On an error, show a visible banner Div ("this dashboard could not update; reload the page"), and call `console.error` with the callback name and the filter state.
   2. In the served app, log the traceback with the app's logger and show the same banner.
   3. Tests: under node, force a throw with a bad argument and assert the banner text; check in test_csp.py that the CSP admits the banner.
-- **Tracked:** new
+- **Tracked:** new GAPS3: H1.
 
 <a id="e12"></a>
 ### E12. Saved-page sliders recompute at every drag step, with no throttle
@@ -1240,7 +1240,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   1. Above a row threshold, bind the saved callbacks to `value_throttled` or coalesce steps with requestAnimationFrame. Keep per-step updates below it.
   2. Document the threshold in dash.sthlp.
   3. Test that the callback attribute depends on n, and add a browser timing check once dash has an in-browser test suite.
-- **Tracked:** new (the behaviour is documented at dash.sthlp:1316)
+- **Tracked:** new (the behaviour is documented at dash.sthlp:1316) GAPS3: H1.
 
 <a id="e13"></a>
 ### E13. The filter widget set is narrow: single-select only, no missing-value option, a >= slider only, no reset
@@ -1253,7 +1253,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   3. Add a `direction(le)` sub-option for sliders.
   4. Add a 'Reset filters' button in both modes.
   5. Test in both modes and under node. Stata truth from a fixture on auto: `count if inlist(rep78,3,4)`, `count if missing(rep78)` and `count if price<=5000`.
-- **Tracked:** new
+- **Tracked:** new GAPS3: H2f.
 
 <a id="e14"></a>
 ### E14. The saved page and the served app still present the dashboard differently (also reported as F7, F8, F14, J11)
@@ -1286,7 +1286,7 @@ Area E covers the dashboard layer: the auto, r x c, placement and `layout(bs)` g
   2. Lay out each tab by the layout's r and c, or by its placements read as tab-local positions (refused when they collide), and by `_dash_auto_grid_cols` under auto. `_dash_tab_panels` is shared, so both modes change together.
   3. Allow quoted tab titles, parsed in dash.ado and `_dash_parse_tabs`.
   4. Tests: cscript refusals, and the saved and served grid shape per tab in test_layout_tabs.py and the parity corpus.
-- **Tracked:** new (the silent drop is documented at dash.sthlp:995)
+- **Tracked:** new (the silent drop is documented at dash.sthlp:995) GAPS3: D14.
 
 ## F. Served mode (dash serve)
 
@@ -1446,7 +1446,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** dash_render.py:432-439 converts `%tC` on `%tc`'s epoch and warns. test_dates.py:159 pins the warning, not the correct value. `Cofc()` offsets measured in test/fixtures/date_truth.json run from 9 to 27 s, and dash.sthlp never documents `%tC` or leap seconds.
 - **Closable:** yes. Stata's `cofC()` does the conversion at export.
 - **Plan:** 1. At export, convert with `cofC()` into a double column, or embed Stata's leap-second table and subtract. 2. Show Stata's `%tC` text, including 23:59:60. 3. Test against `display %tC` and `Cofc()` values added to date_truth.json. 4. Drop the warning.
-- **Tracked:** new
+- **Tracked:** new GAPS3: G2.
 
 <a id="g10"></a>
 ### G10. Axis ticks ignore the variable's display format unless xlabel()/ylabel() is given
@@ -1464,7 +1464,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** twoway keeps `.a`-`.z` distinct. `by(x, missing)` draws one panel per missing code, titled with the value label or ".a" (bygraph_g.class:104-116, 430-454), and marker labels show the label or the code name. dash's writer reads with `missingval=None` and writes null (dash_render.py:1286-1289). So value labels for .a-.z (1178-1206) never match, and `_dash_by_groups` (1866-1890) puts every missing value into one panel. The single panel and the marker-label and CSV losses are documented (dash.sthlp:1650-1657, 1785-1787, 869). The merging of distinct codes in by() panels, dropdown filters and tooltips is not. `colorvar()`'s single missing category matches twoway, so it is not part of this gap.
 - **Closable:** yes.
 - **Plan:** 1. The writer keeps NaN for computation and adds a sparse `extendedMissing` map, `{var: {obs: "a"}}`. It reads Stata's raw missing doubles through sfi and decodes them with `Missing.getValue('.a')`...`'.z'`. 2. In the renderer, in both modes, key by() groups on (value, code) and title them with the value label, ".a", or the documented title for "."; marker labels, dropdown options and tooltips use the label or the code. Measure colorvar with colordiscrete. 3. Decide whether the CSV keeps an empty field or writes the code, and update dash.sthlp:869 and 1785-1787 to match. 4. cscript with labelled .a/.b in y and in the by() variable: panel count, panel titles and mlabel text equal twoway's SVG, and a dropdown lists .a and .b separately.
-- **Tracked:** new (the marker-label and CSV parts are documented at dash.sthlp:1785-1787 and 869; the single Missing panel at 1650-1657)
+- **Tracked:** new (the marker-label and CSV parts are documented at dash.sthlp:1785-1787 and 869; the single Missing panel at 1650-1657) GAPS3: G1.
 
 **G13. KPI cards take no weights** -- same gap as E7; see there.
 
@@ -1497,7 +1497,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** twoway reads `[aw=exp]`. dash refuses anything but one variable with r(198) (dash.ado:3713-3722). dash.sthlp:2186-2193 documents the refusal and says dash cannot evaluate the expression before the data leave Stata. That reason is stale: `_dash_qual_gen` (dash.ado:4220 onward) already evaluates Stata expressions into `__dashq` columns at build.
 - **Closable:** yes.
 - **Plan:** 1. Evaluate each distinct weight expression like a qualifier, into `double __dashw<k>` at export, under the same reserved-prefix rule. 2. Point `wexp` at that column. 3. Apply the fweight integer and sign checks to the evaluated values. 4. cscript: lfit, lfitci, kdensity and histogram with `[aw=price/1000]` and `[fw=int(price/1000)]`; fitted values equal twoway's serset.
-- **Tracked:** GAPS.md A3 (documented refusal)
+- **Tracked:** GAPS.md A3 (documented refusal) GAPS3: A5.
 
 <a id="g18"></a>
 ### G18. Weighted markers on scatter are not drawn
@@ -1505,7 +1505,7 @@ Area G is meant to carry Stata's data into the page faithfully: storage types, l
 - **Gap:** scatter.sthlp:917-925 (Weighted markers): a weight scales the marker's size, with aweights, fweights and pweights treated alike. dash.sthlp:2194-2201: on scatter and the other glyph layers the weight is accepted but not exported, and is named in the note as `[aweight]`. Markers are drawn at a single size.
 - **Closable:** yes. Bokeh Scatter takes a per-row size field; only twoway's scaling rule must be measured.
 - **Plan:** 1. Export the weight on scatter. 2. Measure twoway's rule from SVG marker radii, e.g. census `scatter drate medage [w=pop18p], msymbol(Oh)`: area proportional to the weight, with the scale reference measured. 3. Pass Bokeh a per-row size column in both modes, following filters. 4. Remove `[aweight]` from the note on scatter.
-- **Tracked:** GAPS.md A3 (the WP-13 note on glyph layers)
+- **Tracked:** GAPS.md A3 (the WP-13 note on glyph layers) GAPS3: C9.
 
 ## H. Installation, setup, platforms, packaging
 
@@ -1555,7 +1555,7 @@ This area promises a one-command setup: `dash_setup` finds Stata's Python, insta
 - **Gap:** GAPS.md J6 and ROADMAP WP-06 name rollback of a partial install, and WP-27 deferred it. `dash_setup.ado:152-205` installs one package at a time and exits r(198) at the first failure. Anything already installed stays, with no uninstall path and no list of what this run added.
 - **Closable:** partly -- pip has no transactional install, and removing added packages can break other software, so a safe rollback is possible only in an environment dash owns.
 - **Plan:** 1. Make a venv the recommended target (see H7), so rollback is deleting the venv. 2. For in-place installs, record the installed distributions first (`importlib.metadata`). On failure, list what was added and print the exact `pip uninstall` command. 3. Test with the setup_sandbox recorder: a pandas failure after bokeh installs reports bokeh as added.
-- **Tracked:** GAPS.md J6 (rollback deferred by WP-27).
+- **Tracked:** GAPS.md J6 (rollback deferred by WP-27). GAPS3: I3.
 
 <a id="h10"></a>
 ### H10. Loading the renderer leaves a 1.2 MB .pyc in PLUS/py that `ado uninstall` does not remove
@@ -1563,7 +1563,7 @@ This area promises a one-command setup: `dash_setup` finds Stata's Python, insta
 - **Gap:** `ado uninstall dash` should remove everything dash installed. Both load sites (`dash.ado:4203-4207`, `dash_setup.ado:615-619`) use `spec_from_file_location` plus `exec_module`, which caches bytecode. Probe: this wrote `plus/py/__pycache__/dash_render.cpython-313.pyc` (1,169,929 bytes). `stata.trk` lists only the files in `dash.pkg`, so the cache is left behind on uninstall.
 - **Closable:** yes -- compiling without the cache costs 0.17 s.
 - **Plan:** 1. Set `sys.dont_write_bytecode=True` around both loads and restore it afterwards, or `compile()` the source without caching. 2. Pytest: loading in a temp dir leaves no `__pycache__`. 3. Release gate: after `net install`, a build and `ado uninstall dash`, assert PLUS/py is empty.
-- **Tracked:** new.
+- **Tracked:** new; half closed (GAPS3 §6): the dash_setup_lib load is guarded (dash.ado:6296-6299, dash_setup.ado:1080-1083, PYTHONDONTWRITEBYTECODE in dash_setup_lib.py:43), the renderer load at dash.ado:6118-6133 is not. GAPS3: I7.
 
 ## I. Security and robustness
 
@@ -1612,7 +1612,7 @@ Outside the served app, a saved page silently carries the rows its `if`/`in` exc
      - a live-server test with `BOKEH_RESOURCES=cdn` asserting that every script src stays under `/static`
      - a cscript that runs `dash serve, timeout(1)` inside `log using` and asserts that the start line and the origin warning are in the log
      - an environment-variable surface in the adversarial matrix
-- **Tracked:** new.
+- **Tracked:** new. GAPS3: H4.
 
 <a id="i2"></a>
 ### I2. Saved page embeds every row of every used variable, including rows the dashboard's if/in exclude, with no warning
@@ -1669,7 +1669,7 @@ Outside the served app, a saved page silently carries the rows its `if`/`in` exc
   2. Add an optional bandit pass over dash_render.py and a generated app to `make check`, with the intentional eval (noqa S307) and subprocess sites baselined.
   3. Document both in AGENTS.md and the Makefile help.
   4. There is no Stata counterpart. Run in both pytest environments.
-- **Tracked:** new.
+- **Tracked:** new. GAPS3: I6.
 
 <a id="i12"></a>
 ### I12. The CSP keeps script-src 'unsafe-inline', so it would not stop an injected script or handler
@@ -1730,7 +1730,7 @@ This area covers the claims about where and how a dashboard can be opened (offli
   3. Serialise `c(dp)` into build_options in dash.ado, and apply it to `%w.df`/`%w.dfc` in both modes.
   4. Axis ticks: `NumeralTickFormatter(language='de')` or `CustomJSTickFormatter`.
   5. Tests: pytest against the fixture in both modes, a node test of the recompute, and a cscript comparing the KPI card text with `display`.
-- **Tracked:** new
+- **Tracked:** new GAPS3: G2.
 
 **J2. Stata graph-text markup (`{bf:}`, `{it:}`, `{sup:}`, `{sub:}`, `{&alpha}`, `{stSerif:}`, `{fontface}`) is drawn as literal text** -- same gap as D3; see there.
 
@@ -1773,7 +1773,7 @@ This area covers the claims about where and how a dashboard can be opened (offli
   2. Correct feature_tour.do's header (forty types, and what it actually covers).
   3. Add `test/test_examples_cover_features.py`: every plot type in the Plot types table, plus csv, weights and server, must appear in some example outside comments.
   4. Run the new example in Stata through `test_examples_run.cscript` and through `make gate` from an installed copy.
-- **Tracked:** new (related GAPS.md F5, closed by WP-23, for the help's own examples)
+- **Tracked:** new (related GAPS.md F5, closed by WP-23, for the help's own examples) GAPS3: J3.
 
 **J11. The served page has no viewport tag; the help documents this as a limitation, but dash already rewrites that template and could add it** -- same gap as E14; see there.
 
@@ -1855,7 +1855,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   1. At renderer start-up, read MINIFIED, DEV, LOG_LEVEL, SIMPLE_IDS, RESOURCES and PY_LOG_LEVEL.
   2. Either force the values dash needs (e.g. `Resources(mode='inline', minified=True)`) or warn once, naming each variable and its effect.
   3. Add pytest cases with the variables monkeypatched, asserting page size and the warning. Add a certification case that runs `dash scatter` with one variable set.
-- **Tracked:** new
+- **Tracked:** new GAPS3: H4.
 
 <a id="k5"></a>
 ### K5. Dependencies are unpinned, the declared ranges are untested at both ends, and there is no lock or dev-requirements file
@@ -1889,7 +1889,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   2. Split `dash_render.py` by class into `dash_*.py` modules, so net install places them together in PLUS/d/.
   3. Add `ruff check` (pyflakes rules) over `dash_render.py` and a freshly generated app to `make check`, and fix the current findings.
   4. Build one case table (statistic, data, Stata's value) that drives both the node harness and the Python functions.
-- **Tracked:** new
+- **Tracked:** new GAPS3: K5 (out of scope, PRD §7).
 
 <a id="k11"></a>
 ### K11. The maintainer documents have drifted from the code
@@ -1906,7 +1906,7 @@ This area should deliver a unit test for every function and end-to-end tests of 
   2. Add an S3-batch section to ROADMAP after WP-27 with the current open count.
   3. Strip the superseded "Not fixed yet" wording from closed BUGS.md resolutions. Add rules to `test_tracking_documents.py`: no [x] entry's Resolution starts with "Not fixed", and the counts in GAPS.md and ROADMAP.md match BUGS.md.
   4. Retire `test_geometry_visual.md` in favour of `test_responsive_layout.py`, or update it.
-- **Tracked:** new (successor to GAPS.md M1)
+- **Tracked:** new (successor to GAPS.md M1) GAPS3: J4.
 
 ## X. Cross-cutting (completeness critic)
 
@@ -2018,7 +2018,7 @@ This area collects gaps that no single feature area covered: dropdown filters, `
   2. Have the repair step drop only `_dash_*()`.
   3. Run the renderer and the export through one helper that saves and restores `sys.argv`, does not keep the `run_path` namespace, and deletes its temporaries.
   4. Write a cscript that defines its own `_json_escape()` and `_is_utf8()`, runs `dash scatter`, and asserts dash works and the user's functions are unchanged (`mata describe` plus a call). Add a check that `sys.argv` and `dir()` of `__main__` are the same before and after a render.
-- **Tracked:** new
+- **Tracked:** new GAPS3: H7.
 
 ## Appendix
 

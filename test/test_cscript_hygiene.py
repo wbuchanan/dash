@@ -293,10 +293,11 @@ class TestTheChecksReachEveryScript:
         # section, so 66; plus WP-29's test_wp29_truth, the one script that
         # package adds (.ultraplan/wp29/index.md A3), so 67; plus WP-30's
         # test_wp30_truth, the one script that package adds
-        # (.ultraplan/wp30/index.md A142), so 68 now.  An empty
+        # (.ultraplan/wp30/index.md A142), so 68 now; plus WP-31's
+        # test_wp31_truth (.ultraplan/sections/index.md A5), so 69.  An empty
         # glob would leave every per-script test above with no parameters,
         # and pytest reports that as a skip, not a failure.
-        assert len(_CSCRIPTS) == 68, (
+        assert len(_CSCRIPTS) == 69, (
             f"{len(_CSCRIPTS)} .cscript files found in {_HERE}"
         )
 
@@ -315,8 +316,9 @@ class TestTheChecksReachEveryScript:
         # c(python_exec) itself (its own line, not cert_svg.do's, which
         # loads after it and would otherwise be the only carrier), so 48;
         # WP-29's test_wp29_truth gates the same way, so 49; WP-30's
-        # test_wp30_truth gates the same way, so 50.
-        assert len(names) == 50, f"{len(names)}: {sorted(names)}"
+        # test_wp30_truth gates the same way, so 50; WP-31's test_wp31_truth
+        # gates the same way, so 51.
+        assert len(names) == 51, f"{len(names)}: {sorted(names)}"
 
     def test_the_import_probes_are_found(self):
         with_probes = [_name(p) for p in _CSCRIPTS
@@ -1209,3 +1211,111 @@ class TestTheWp30TruthScript:
                  "blocks name 2 entries")):
             _blocks, bad = _wp30_blocks(text)
             assert any(says in b for b in bad), (says, bad)
+
+
+# ---------------------------------------------------------------------------
+# WP-31's truth script: S01's scaffold and the blocks sections append
+# ---------------------------------------------------------------------------
+
+_WP31_TRUTH = os.path.join(_HERE, "test_wp31_truth.cscript")
+_W31_OPEN = re.compile(r"^\* ==== (S\d{2}) (.+) ====$")
+_W31_CLOSE = re.compile(r"^\* ==== end (S\d{2}) ====$")
+_W31_MARK = "* ==== append new blocks above this line ===="
+_W31_HEAD = re.compile(r"^(scaffold|[A-K]\d{1,2}[a-gkltx]?): \S")
+
+
+def _wp31_blocks(src):
+    """As _wp30_blocks, with WP31_ONLY and w31_run, a header naming one
+    GAPS3 row id (a section may own several blocks, one per row), and
+    section order non-decreasing."""
+    lines = src.split("\n")
+    bad = []
+    marks = [n for n, ln in enumerate(lines, 1) if ln.rstrip() == _W31_MARK]
+    if len(marks) != 1:
+        bad.append("the line %r appears %d times" % (_W31_MARK, len(marks)))
+    mark = marks[0] if marks else len(lines) + 1
+    blocks, cur = [], None
+    for n, ln in enumerate(lines, 1):
+        o, c = _W31_OPEN.match(ln.rstrip()), _W31_CLOSE.match(ln.rstrip())
+        if o:
+            if cur:
+                bad.append("%s (line %d) is not closed before line %d"
+                           % (cur[0], cur[1], n))
+            cur = (o.group(1), n, o.group(2))
+        elif c:
+            if cur is None or c.group(1) != cur[0]:
+                bad.append("line %d closes %s, which is not the open block"
+                           % (n, c.group(1)))
+            else:
+                blocks.append((cur[0], cur[1], n))
+                if not _W31_HEAD.match(cur[2]):
+                    bad.append("%s (line %d) names no GAPS3 row ('<id>: "
+                               "<what>')" % (cur[0], cur[1]))
+            cur = None
+    if cur:
+        bad.append("%s (line %d) is never closed" % cur[:2])
+    for k, (sec, first, last) in enumerate(blocks):
+        code = [ln.strip() for ln in lines[first:last - 1]
+                if ln.strip() and not ln.strip().startswith(("//", "*"))]
+        if code[:2] != ["local only : env WP31_ONLY",
+                        'if inlist("`only\'", "", "%s") & `: list posof '
+                        '"%s" in w31_run\' {' % (sec, sec)]:
+            bad.append("%s (line %d) is not gated by WP31_ONLY=%s"
+                       % (sec, first, sec))
+        timed = ['display as text "%s %s " c(current_date) " " '
+                 'c(current_time)' % (sec, w) for w in ("start", "end")]
+        if code[2:3] != timed[:1] or code[-2:] != [timed[1], "}"]:
+            bad.append("%s (line %d) does not print its start line first and "
+                       "its end line last" % (sec, first))
+        if last > mark:
+            bad.append("%s (line %d) is below the marker" % (sec, first))
+        if k and sec < blocks[k - 1][0]:
+            bad.append("%s (line %d) follows %s: blocks go in section order"
+                       % (sec, first, blocks[k - 1][0]))
+    return blocks, bad
+
+
+class TestTheWp31TruthScript:
+
+    def test_the_scaffold_is_in_order(self):
+        text = _read(_WP31_TRUTH)
+        order = ['cscript "WP-31 truth', "SKIP: Python not available.",
+                 'do "cert_helpers.do"', 'do "cert_svg.do"',
+                 "// ---- parts: begin", "local w31_sh : environment "
+                 "DASH_CERT_SHARD", "// ---- parts: end", "* ==== S01 ",
+                 "local only : env WP31_ONLY", "* ==== end S01 ====",
+                 _W31_MARK, "has no block to run",
+                 "test_wp31_truth: ALL CHECKS PASSED"]
+        positions = [text.find(s) for s in order]
+        assert -1 not in positions, dict(zip(order, positions))
+        assert positions == sorted(positions), (order, positions)
+        assert "capture python:" not in text
+
+    def test_every_block_is_gated_timed_closed_and_in_section_order(self):
+        blocks, bad = _wp31_blocks(_read(_WP31_TRUTH))
+        assert not bad, "\n".join(bad)
+        assert blocks and blocks[0][0] == "S01", blocks
+
+    def test_the_block_reader(self):
+        def block(sec, head, body=""):
+            return ("* ==== %s %s ====\nlocal only : env WP31_ONLY\n"
+                    'if inlist("`only\'", "", "%s") & `: list posof "%s" '
+                    'in w31_run\' {\n'
+                    '    display as text "%s start " c(current_date) " " '
+                    "c(current_time)\n%s"
+                    '    display as text "%s end " c(current_date) " " '
+                    "c(current_time)\n}\n* ==== end %s ====\n"
+                    % (sec, head, sec, sec, sec, body, sec, sec))
+        good = ('cscript "x"\n' + block("S01", "scaffold: smoke", "    // a\n")
+                + "\n" + block("S14", "C6: cmissing") + "\n"
+                + block("S14", "C7: recast") + _W31_MARK + "\nexit 9\n")
+        blocks, bad = _wp31_blocks(good)
+        assert bad == [], bad
+        assert [b[0] for b in blocks] == ["S01", "S14", "S14"], blocks
+        for text, says in (
+                (good.replace('"S14") &', '"S01") &'), "not gated"),
+                (good.replace("* ==== end S14 ====\n", "", 1), "not closed"),
+                (good.replace("C7: recast", "nothing"), "names no GAPS3 row"),
+                (good.replace("S14", "S00"), "section order"),
+                (good.replace(_W31_MARK + "\n", ""), "appears 0 times")):
+            assert any(says in b for b in _wp31_blocks(text)[1]), (says,)

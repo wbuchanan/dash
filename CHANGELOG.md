@@ -375,6 +375,114 @@ and now matches Stata.
 - scheme(), a scheme named on one graph and the session's c(scheme) are found as Stata finds them: scheme-NAME.scheme, then NAME.scheme, in each directory of the ado-path in turn (BASE, SITE, the working directory, PERSONAL, PLUS, OLDPLACE and directories added with adopath, each with its first-letter subdirectory), and a scheme file's #include the same way. dash scatter mpg weight, scheme(w30x) with scheme-w30x.scheme in the working directory was refused r(198), and after set scheme of a PLUS, PERSONAL or third-party scheme an unschemed dashboard was drawn in s2color with a warning; each is now drawn in that scheme. A file in the working directory named like one of the twenty-six shipped schemes (s2color.scheme, scheme-s1mono.scheme) no longer replaces the shipped scheme, as in twoway; scheme(mono) and the other theme names draw a scheme file of that name when Stata finds one; and the refusal of a name Stata does not find lists the twenty-six schemes and the six themes. (WP-30, P1.25b)
 - A dashboard whose graphs name different schemes is served with each graph in its own scheme, as the saved page draws it: served, scheme(s1rcolor) on the second graph drew it white in the first graph's s1mono. The warning that a dashboard draws one scheme is gone from both modes, and a graph's scheme(mono) draws s1mono on the saved page where it drew s2color with a note. (WP-30, P1.25b)
 
+**WP-31 (drop-in GAPS3, 10oct2026)**
+
+<!-- WP-31 C1 -->
+
+<!-- WP-31 C2 -->
+
+<!-- WP-31 B5a -->
+
+<!-- WP-31 A7 -->
+
+<!-- WP-31 F1a -->
+
+<!-- WP-31 C4 -->
+
+<!-- WP-31 C5 -->
+
+<!-- WP-31 F1b -->
+
+<!-- WP-31 C6 -->
+
+<!-- WP-31 C7 -->
+
+<!-- WP-31 C8a -->
+
+<!-- WP-31 F1c -->
+
+<!-- WP-31 C8b -->
+
+<!-- WP-31 B5b -->
+
+<!-- WP-31 F1d -->
+
+<!-- WP-31 C9 -->
+
+<!-- WP-31 F1e -->
+
+<!-- WP-31 D1 -->
+
+<!-- WP-31 F1f -->
+
+<!-- WP-31 D2 -->
+
+<!-- WP-31 F1g -->
+
+<!-- WP-31 D3 -->
+
+<!-- WP-31 D13 -->
+
+<!-- WP-31 D4 -->
+
+<!-- WP-31 C13 -->
+
+<!-- WP-31 D5 -->
+
+<!-- WP-31 E11 -->
+
+<!-- WP-31 D6 -->
+
+<!-- WP-31 D7 -->
+
+<!-- WP-31 E6 -->
+
+<!-- WP-31 D8 -->
+
+<!-- WP-31 C17 -->
+
+<!-- WP-31 E3 -->
+
+<!-- WP-31 C15 -->
+
+<!-- WP-31 D9 -->
+
+<!-- WP-31 D10 -->
+
+<!-- WP-31 D11 -->
+
+<!-- WP-31 D12 -->
+
+<!-- WP-31 E1 -->
+
+<!-- WP-31 E2 -->
+
+<!-- WP-31 E5 -->
+
+<!-- WP-31 E7 -->
+
+<!-- WP-31 E8 -->
+
+<!-- WP-31 E9 -->
+
+<!-- WP-31 G1 -->
+
+<!-- WP-31 G2 -->
+
+<!-- WP-31 E10 -->
+
+<!-- WP-31 D15 -->
+
+<!-- WP-31 C11 -->
+
+<!-- WP-31 C12 -->
+
+<!-- WP-31 G6 -->
+
+<!-- WP-31 G7 -->
+
+<!-- WP-31 F2 -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
@@ -732,6 +840,38 @@ and now matches Stata.
   fig.png.html silently. (WP-30, P1.28a)
 - On a Stata older than 19, dash and dash_setup stop before doing anything else with "dash requires Stata 19 or later; this is Stata 18.5" (the running release) and r(9). Stata 16-18.5 used to run dash untested, and Stata 14-15 stopped with Stata's own "cannot run version 16.0 programs". A do-file that sets version 16 or 17 on Stata 19 is unaffected. (WP-30, P1.35)
 
+<!-- WP-31 C3 -->
+
+<!-- WP-31 A6 -->
+
+<!-- WP-31 A8 -->
+
+<!-- WP-31 A2 -->
+
+<!-- WP-31 A4 -->
+
+<!-- WP-31 D2 -->
+
+<!-- WP-31 D6 -->
+
+<!-- WP-31 C14 -->
+
+<!-- WP-31 D14 -->
+
+<!-- WP-31 D16 -->
+
+<!-- WP-31 E1 -->
+
+<!-- WP-31 E12 -->
+
+<!-- WP-31 E4 -->
+
+<!-- WP-31 E5 -->
+
+<!-- WP-31 G7 -->
+
+<!-- WP-31 H4 -->
+
 ### Removed
 
 - `dash_setup` no longer installs or checks scipy or statsmodels. No
@@ -796,6 +936,111 @@ and now matches Stata.
   too. A served app's traceback shows the app's source lines on 3.11 and
   3.12, as on 3.13. (WP-30, P1.33)
 - Stata 19 or later; tested on StataNow 19.5 (MP), macOS arm64, and measured on MP only. Every dash and dash_setup program declared version 16.0, which implied Stata 16 support that was never tested; all 91 now declare version 19. (WP-30, P1.35)
+
+### Fixed in WP-31
+
+Gaps the drop-in audit of 10oct2026 (GAPS3.md) recorded that WP-31 fixed
+without changing a drawn result; the results that changed are the WP-31
+group under Results that change, and the newly refused forms sit under
+Changed behaviour.
+
+<!-- WP-31 C10a -->
+
+<!-- WP-31 C10b -->
+
+<!-- WP-31 C18 -->
+
+<!-- WP-31 F4 -->
+
+<!-- WP-31 A5 -->
+
+<!-- WP-31 A6 -->
+
+<!-- WP-31 A1 -->
+
+<!-- WP-31 A3 -->
+
+<!-- WP-31 C10c -->
+
+<!-- WP-31 B1 -->
+
+<!-- WP-31 B2 -->
+
+<!-- WP-31 B3 -->
+
+<!-- WP-31 B4a -->
+
+<!-- WP-31 B4b -->
+
+<!-- WP-31 B4c -->
+
+<!-- WP-31 D14 -->
+
+<!-- WP-31 D16 -->
+
+<!-- WP-31 E13 -->
+
+<!-- WP-31 G3 -->
+
+<!-- WP-31 G4 -->
+
+<!-- WP-31 G5 -->
+
+<!-- WP-31 C16 -->
+
+<!-- WP-31 F5 -->
+
+<!-- WP-31 F3 -->
+
+<!-- WP-31 H2t -->
+
+<!-- WP-31 H2f -->
+
+<!-- WP-31 H2k -->
+
+<!-- WP-31 H2l -->
+
+<!-- WP-31 H1 -->
+
+<!-- WP-31 H2x -->
+
+<!-- WP-31 K6 -->
+
+<!-- WP-31 H3 -->
+
+<!-- WP-31 H7 -->
+
+<!-- WP-31 J1 -->
+
+<!-- WP-31 J2 -->
+
+<!-- WP-31 J3 -->
+
+<!-- WP-31 J4 -->
+
+<!-- WP-31 J5 -->
+
+<!-- WP-31 J6 -->
+
+<!-- WP-31 I2 -->
+
+<!-- WP-31 I3 -->
+
+<!-- WP-31 I4 -->
+
+<!-- WP-31 I5 -->
+
+<!-- WP-31 I7 -->
+
+<!-- WP-31 K2 -->
+
+<!-- WP-31 K3 -->
+
+<!-- WP-31 K4 -->
+
+<!-- WP-31 H6 -->
+
+<!-- WP-31 I6 -->
 
 ### Fixed in WP-30
 
