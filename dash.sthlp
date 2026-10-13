@@ -986,7 +986,9 @@ there, is an invalid point.  The literal is read as data and never run.
     that {cmd:kdensity} takes {cmd:bwidth(0)}, its default rule, and
     {cmd:lowess} any number, one outside 0 to 1 drawn at .8, as
     {cmd:twoway} draws it.  Integers:
-    {cmd:yaxis()} and {cmd:xaxis()} 1 or 2; {cmd:degree()} 0 to 3;
+    {cmd:yaxis()} and {cmd:xaxis()} 1, 2 or both ({cmd:yaxis(1 2)} draws
+    the layer on both axes, a list read as {cmd:twoway} reads it);
+    {cmd:degree()} 0 to 7;
     {cmd:n()} 1 to 10000, or 1 to 300 on {cmd:mspline}; {cmd:bin()} 1
     to 1000; {cmd:bands()} 1 to 200;
     {cmd:colornlevels()} 2 to 256; {cmd:jitterseed()} and {cmd:jseed()}
@@ -1042,8 +1044,9 @@ there, is an invalid point.  The literal is read as data and never run.
 {phang2}    Some of those bounds are {cmd:dash}'s own: {cmd:twoway} accepts
     the value, and {cmd:dash} refuses it because it could not draw it.
     Four say so in a second sentence of the message: {cmd:yaxis()} and
-    {cmd:xaxis()} 1 or 2 ({cmd:dash} draws two axes; {cmd:twoway} allows
-    nine), {cmd:degree()} 0 to 3, {cmd:bin()} up to 1000, and {cmd:n()} up
+    {cmd:xaxis()} 1, 2 or both ({cmd:dash} draws two axes; {cmd:twoway} allows
+    nine), {cmd:degree()} 0 to 7 (Stata's rule-of-thumb constants stop
+    there), {cmd:bin()} up to 1000, and {cmd:n()} up
     to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound).
     The others carry no second sentence: {cmd:jitter()} 0 to 100,
     {cmd:barwidth()} positive, {cmd:aspectratio()} 0 or more, and
@@ -2811,7 +2814,11 @@ the per-plot specification (not to {cmd:dash build} options).
 
 {synoptset 28}{...}
 {synopt:{cmdab:ml:abel(}{it:varname}{cmd:)}}label each observation with
-    the value of {it:varname}, on the plot types listed below{p_end}
+    the value of {it:varname}, on the plot types listed below.  With
+    several y variables, each takes the next name; an element may be a
+    varlist pattern ({cmd:t*}, {cmd:make-foreign}): its variables label
+    the following y's, and names past the last y are dropped, as in
+    {cmd:twoway}{p_end}
 {synopt:{cmdab:mlabc:olor(}{it:color}{cmd:)}}color of the label text;
     by default the scheme's marker-label colour -- {cmd:color p}{it:#}{cmd:label},
     else {cmd:color plabel}, else the plot's own colour, with its opacity,
@@ -3042,10 +3049,10 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     spelling{p_end}
 {synopt:{opt degree(#)}}{cmd:lpoly} and {cmd:lpolyci}: the degree of the
     local polynomial -- 0, the Nadaraya-Watson kernel estimator (the
-    default); 1, local linear; 2, local quadratic; 3, local cubic.
-    {cmd:twoway} takes any whole number from 0 up; {cmd:dash} refuses more
-    than 3, r(198), because it fits local polynomials up to degree
-    3{p_end}
+    default); 1, local linear; 2, local quadratic; 3, local cubic; up to
+    7.  {cmd:twoway} takes any whole number from 0 up; {cmd:dash} refuses
+    more than 7, r(198), because Stata's rule-of-thumb constants stop
+    there{p_end}
 {synopt:{opt kernel(name)}}{cmd:lpoly}, {cmd:lpolyci} and {cmd:kdensity}:
     {cmd:epanechnikov} (the default), {cmd:epan2}, {cmd:biweight},
     {cmd:cosine}, {cmd:gaussian}, {cmd:parzen}, {cmd:rectangle} or
@@ -3186,7 +3193,12 @@ degree p+3 in powers of x, where p is the degree and an even degree uses
 the next odd one, with Stata's handling of nearly collinear powers; the
 residual variance as the weighted mean squared residual of that fit; the
 squared (p+1)th derivative of the fit integrated over the central 90% of
-the range of x; and Stata's constant for the kernel.  The bandwidth is
+the range of x; and Stata's constant for the kernel.  At degree 4 and 5
+the bandwidth is Stata's to 5e-4; at degree 6 and 7, where that global
+polynomial is of degree 9 or 10 in raw powers, Stata's own round-off is
+not reproduced and the bandwidth agrees to about 1%
+({cmd:lpoly mpg weight, degree(6)}: 386.3 where {cmd:r(bwidth)} is 390.0).
+The bandwidth is
 computed from the rows each layer draws: each {cmd:by()} panel and each
 {cmd:if} or {cmd:in} gets its own, and the served app recomputes it from
 the rows kept after every filter move.  As {cmd:twoway} draws them, an x
@@ -3889,8 +3901,11 @@ right-hand y axis scaled to what the layers on that axis draw, or
 {opt xaxis(2)} for a top x axis; the layer's marker labels and arrowheads go
 with it, and the left or bottom axis spans only the layers drawn on it.
 Both are plot-level options, given inside the layer's parentheses.  Either
-takes 1 or 2 only: {cmd:dash} draws two axes where {cmd:twoway} allows
-nine, and any other value is refused.
+takes 1, 2 or both: a layer on {opt yaxis(1 2)} is drawn once and ties the
+two axes into one scale, as {cmd:twoway} ties them -- the right-hand axis
+reads the left's scale, and every layer on either axis is drawn on it,
+through every filter move.  {cmd:dash} draws two axes where {cmd:twoway}
+allows nine, and any other number is refused.
 
 {pstd}
 As in {cmd:twoway}, the sub-option {cmd:axis(2)} puts {cmd:ytitle()},

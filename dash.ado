@@ -3029,7 +3029,7 @@ end
 // with the note, as twoway draws it (WP-30 P1.13a).  Every bound below was
 // measured against twoway (22sep2026, StataNow 19.5).  Five bounds are
 // dash's own rather than twoway's AND say so in a second sentence of the
-// refusal: yaxis/xaxis 1..2, degree 0..3, bin 1..1000, n 2..10000 (mspline's
+// refusal: yaxis/xaxis 1..2, degree 0..7, bin 1..1000, n 2..10000 (mspline's
 // n 1..300 and bands 1..200 are twoway's) and the lowess bwidth (0,1].  The other dash-own bounds -- colornlevels 2..256,
 // jitter 0..100, level strictly inside 0..100, barwidth > 0, aspectratio
 // >= 0, jitterseed()/jseed() >= 0, kdensity bwidth > 0 -- are refused with
@@ -3040,7 +3040,10 @@ end
 // names; a token without @ applies to every type that has no @ token for
 // the same option.  Kinds -- num: a finite number, p1/p2 inclusive bounds
 // (either may be empty), p3 = x makes both exclusive; int: an integer,
-// p1/p2 bounds; pos: a number > 0, p1 an inclusive ceiling; style: a name
+// p1/p2 bounds; axes (WP-31 C10b): yaxis()/xaxis(), a numlist of axis
+// numbers as twoway reads it (integers 1 to 9, twoway's codes and lines
+// outside them), each at most p2, normalised to the sorted distinct list
+// (2 1 -> 1 2, 1 1 -> 1); pos: a number > 0, p1 an inclusive ceiling; style: a name
 // passes untouched, a number must lie in [p1,p2] where bounds are given
 // (mlabposition and fintensity have none: twoway accepts 13, 2.5, 150 and
 // -5 with a note or silently, and the renderer notes 13 and draws 150 and
@@ -3084,10 +3087,10 @@ program define _dash_option_rules
         lwidth=style,0,10000,u  mlwidth=style,0,10000,u ///
         msangle=style,-360,360  mlabposition=style  fintensity=style ///
         jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
-        yaxis=int,1,2  xaxis=int,1,2 ///
+        yaxis=axes,1,2  xaxis=axes,1,2 ///
         malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
         base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci ///
-        degree=int,0,3  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
+        degree=int,0,7  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         level=num,10,99.99@lpolyci ///
@@ -3262,7 +3265,9 @@ program define _dash_validate_value, rclass
         local extra ". dash draws two axes."
     }
     else if "`opt'" == "degree" {
-        local extra ". dash fits local polynomials up to degree 3."
+        // twoway takes any degree (degree(8) measured, WP-31 C10b); Stata's
+        // rule-of-thumb constants, _LPOLY_ROT_CONSTANTS, stop at 7.
+        local extra ". dash fits local polynomials up to degree 7."
     }
     else if "`opt'" == "bin" {
         local extra ". dash draws up to 1000 bins."
@@ -3321,11 +3326,47 @@ program define _dash_validate_value, rclass
         }
         if `ok' {
             local bad ""
-            // One canonical spelling: yaxis(2.0), yaxis(02), yaxis(+2) and
-            // n(1E3) reach the renderer as 2, 2, 2 and 1000, where it
-            // compares the text or calls int() on it.
+            // One canonical spelling: n(1E3) and degree(2.0) reach the
+            // renderer as 1000 and 2, where it calls int() on it.
             local norm = strtrim(string(`R', "%21.0f"))
         }
+    }
+    else if "`kind'" == "axes" {
+        // WP-31 C10b: yaxis()/xaxis() as twoway reads them, a numlist of
+        // axis numbers (measured, test/fixtures/parsed_values_truth.json):
+        // 0 or 10 is r(125), 1.5 r(126), a word r(121), each "<opt>()
+        // invalid -- " and numlist's words; yaxis(1 2) draws the layer on
+        // both axes (one scale, _dash_axes_tied in the renderer).  A number
+        // twoway takes above p2 is dash's own bound, refused below with the
+        // extra sentence.  Normalised to the sorted distinct list: one
+        // canonical spelling, yaxis(02) and yaxis(2 1) reach the renderer
+        // as 2 and 1 2.  numlist sees the value only when it holds no quote.
+        local _ax_rc 121
+        if !strpos(scalar(`V'), char(34)) {
+            capture numlist `"`macval(value)'"', min(1) integer range(>=1 <=9)
+            local _ax_rc = _rc
+        }
+        if `_ax_rc' {
+            local _ax_m "invalid numlist"
+            if `_ax_rc' == 122 local _ax_m "invalid numlist has too few elements"
+            if `_ax_rc' == 125 local _ax_m "invalid numlist has elements outside of allowed range"
+            if `_ax_rc' == 126 local _ax_m "invalid numlist has noninteger elements"
+            if !inlist(`_ax_rc', 122, 125, 126) local _ax_rc 121
+            display as error "`opt'() invalid -- `_ax_m'"
+            exit `_ax_rc'
+        }
+        local _ax_l `"`r(numlist)'"'
+        local _ax_l : list uniq _ax_l
+        local _ax_l : list sort _ax_l
+        local _ax_hi 0
+        foreach _ax_v of local _ax_l {
+            if `_ax_v' > `_ax_hi' local _ax_hi `_ax_v'
+        }
+        if `_ax_hi' > `p2' {
+            if `: word count `_ax_l'' == 1 local bad "an integer between `p1' and `p2'"
+            else local bad "a list of integers between `p1' and `p2'"
+        }
+        else local norm `"`_ax_l'"'
     }
     else if "`kind'" == "pos" {
         if "`p1'" != ""                      local bad "a positive number no greater than `p1'"
@@ -3891,12 +3932,53 @@ program define _dash_mlabel_list, rclass
     local nser   `"`_dash_a3'"'
     local value : copy local _dash_txt
     mata: _dash_stylelist_locals(st_local("value"), "_ml")
+    // WP-31 C10b: an unquoted element that is a varlist pattern -- Stata
+    // name characters holding *, ?, ~ or - (t*, make-foreign) -- is
+    // expanded by unab, as twoway's MLabels() is, and its names take its
+    // place, labelling the following y's; names past the last y are
+    // dropped below, as twoway drops them (measured,
+    // test/fixtures/parsed_values_truth.json mlabel.*).  unab sees the
+    // element only after the pattern regex; a pattern that matches nothing
+    // keeps its place and is refused there, in unab's (twoway's) words.
+    local _mlm 0
+    forvalues j = 1/`_mln' {
+        local _mle : copy local _mlt`j'
+        local _mlp 0
+        if "`_mlq`j''" != "1" {
+            mata: st_local("_mlp", strofreal(regexm(st_local("_mle"), "^[A-Za-z_*?~][A-Za-z0-9_*?~-]*$") & regexm(st_local("_mle"), "[*?~-]")))
+        }
+        if `_mlp' {
+            capture unab _mlx : `_mle'
+            if !_rc {
+                foreach _mlv of local _mlx {
+                    local ++_mlm
+                    local _mlT`_mlm' `_mlv'
+                    local _mlQ`_mlm' 0
+                    local _mlP`_mlm' 0
+                }
+                continue
+            }
+        }
+        local ++_mlm
+        local _mlT`_mlm' : copy local _mle
+        local _mlQ`_mlm' : copy local _mlq`j'
+        local _mlP`_mlm' `_mlp'
+    }
+    forvalues j = 1/`_mlm' {
+        local _mlt`j' : copy local _mlT`j'
+        local _mlq`j' : copy local _mlQ`j'
+    }
+    local _mln `_mlm'
     local seen ""
     local seenres ""
     local dots ""
     local named 0
     forvalues j = 1/`_mln' {
         local _mlr`j' "."
+        if `_mlP`j'' {
+            // A pattern unab could not expand: its own line, r(111).
+            unab _mlx : `_mlt`j''
+        }
         mata: st_local("_c", st_local("_mlq`j'") == "1" ? (strtrim(st_local("_mlt`j'")) == "" ? "skip" : "name") : (st_local("_mlt`j'") == "=" ? "eq" : (st_local("_mlt`j'") == "." ? "skip" : ((st_local("_mlt`j'") == ".." | st_local("_mlt`j'") == "...") ? "dots" : "name"))))
         if "`_c'" == "eq" {
             display as error "=exp not allowed"
@@ -5965,12 +6047,19 @@ program define _dash_process_segment, rclass
     c_local _seg_named_out `_seg_named'
     // The axes this segment's layers are drawn on (yaxis(), xaxis(); 1 when
     // not given), for _dash_plot's axis check (WP-29 P0.5).
-    mata: st_local("_seg_ya", st_global("s(yaxis)"))
-    mata: st_local("_seg_xa", st_global("s(xaxis)"))
-    local _seg_ya = cond(real("`_seg_ya'") < ., real("`_seg_ya'"), 1)
-    local _seg_xa = cond(real("`_seg_xa'") < ., real("`_seg_xa'"), 1)
+    // s(yaxis) is the axes kind's sorted list (WP-31 C10b): yaxis(1 2)
+    // puts the layers on both, so _seg_y/xaxes_out carry the list for the
+    // axis check and _seg_y/xaxis_out the highest number.
+    mata: st_local("_seg_yas", st_global("s(yaxis)"))
+    mata: st_local("_seg_xas", st_global("s(xaxis)"))
+    if !`: word count `_seg_yas'' local _seg_yas 1
+    if !`: word count `_seg_xas'' local _seg_xas 1
+    local _seg_ya : word `: word count `_seg_yas'' of `_seg_yas'
+    local _seg_xa : word `: word count `_seg_xas'' of `_seg_xas'
     c_local _seg_yaxis_out `_seg_ya'
     c_local _seg_xaxis_out `_seg_xa'
+    c_local _seg_yaxes_out `_seg_yas'
+    c_local _seg_xaxes_out `_seg_xas'
     // The variable this segment's x axis takes its label format from, for
     // the t-options' date literals (WP-30 P1.6, _dash_taxis_fold): the x of
     // the yx and range types (tsline and tsrline: the tsset variable), the
@@ -7115,6 +7204,8 @@ program define _dash_plot
         local _seg_axreq_raw   ""
         local _seg_yaxis_out   1
         local _seg_xaxis_out   1
+        local _seg_yaxes_out   1
+        local _seg_xaxes_out   1
         local _seg_xvar_out    ""
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend by xscale yscale aspectratio scheme ///
@@ -7130,9 +7221,9 @@ program define _dash_plot
         // This segment's axis options, as typed, and its layers' axes, for
         // twoway's axis check after the loop (WP-29 P0.5).
         mata: _dash_axreq_add(st_local("_seg_axreq_raw"), `k')
-        local _g_ys `_g_ys' `_seg_yaxis_out'
+        local _g_ys `_g_ys' `_seg_yaxes_out'
         local _g_ys : list uniq _g_ys
-        local _g_xs `_g_xs' `_seg_xaxis_out'
+        local _g_xs `_g_xs' `_seg_xaxes_out'
         local _g_xs : list uniq _g_xs
         // Each segment's type, x variable and x axis, for the t-options'
         // units (WP-30 P1.6): "type:variable:axis", "." for no variable.

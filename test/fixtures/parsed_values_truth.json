@@ -1,0 +1,908 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "c7c1b2b6199b1951821451d5073c3efdff40e1ca",
+  "extracted": "13 Oct 2026 18:16:08",
+  "source": "scripts/extract_parsed_values_truth.do",
+  "stata_version": "19.5"
+ },
+ "degree": {
+  "4": {
+   "kernels": {
+    "biweight": {
+     "r_bwidth": 553.0446715433235,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "cosine": {
+     "r_bwidth": 1127.5071764396178,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "epan2": {
+     "r_bwidth": 508.4533588106048,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "epanechnikov": {
+     "r_bwidth": 227.26748456356623,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "gaussian": {
+     "r_bwidth": 155.54976637094228,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "parzen": {
+     "r_bwidth": 633.4904514766965,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "rectangle": {
+     "r_bwidth": 465.2036007006932,
+     "r_degree": 4.0,
+     "rc": 0
+    },
+    "triangle": {
+     "r_bwidth": 527.2532850577148,
+     "r_degree": 4.0,
+     "rc": 0
+    }
+   },
+   "r_bwidth": 227.26748456356623,
+   "r_degree": 4.0,
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "5": {
+   "kernels": {
+    "biweight": {
+     "r_bwidth": 553.0446715433235,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "cosine": {
+     "r_bwidth": 1127.5071764396178,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "epan2": {
+     "r_bwidth": 508.4533588106048,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "epanechnikov": {
+     "r_bwidth": 227.26748456356623,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "gaussian": {
+     "r_bwidth": 155.54976637094228,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "parzen": {
+     "r_bwidth": 633.4904514766965,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "rectangle": {
+     "r_bwidth": 465.2036007006932,
+     "r_degree": 5.0,
+     "rc": 0
+    },
+    "triangle": {
+     "r_bwidth": 527.2532850577148,
+     "r_degree": 5.0,
+     "rc": 0
+    }
+   },
+   "r_bwidth": 227.26748456356623,
+   "r_degree": 5.0,
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "6": {
+   "kernels": {
+    "biweight": {
+     "r_bwidth": 932.6072008373857,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "cosine": {
+     "r_bwidth": 1894.0986081038066,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "epan2": {
+     "r_bwidth": 872.7946853631494,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "epanechnikov": {
+     "r_bwidth": 389.9944585027262,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "gaussian": {
+     "r_bwidth": 240.13152958189755,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "parzen": {
+     "r_bwidth": 1039.4529068232926,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "rectangle": {
+     "r_bwidth": 816.8173701183457,
+     "r_degree": 6.0,
+     "rc": 0
+    },
+    "triangle": {
+     "r_bwidth": 897.3300189369812,
+     "r_degree": 6.0,
+     "rc": 0
+    }
+   },
+   "r_bwidth": 389.9944585027262,
+   "r_degree": 6.0,
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "7": {
+   "kernels": {
+    "biweight": {
+     "r_bwidth": 932.6072008373857,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "cosine": {
+     "r_bwidth": 1894.0986081038066,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "epan2": {
+     "r_bwidth": 872.7946853631494,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "epanechnikov": {
+     "r_bwidth": 389.9944585027262,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "gaussian": {
+     "r_bwidth": 240.13152958189755,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "parzen": {
+     "r_bwidth": 1039.4529068232926,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "rectangle": {
+     "r_bwidth": 816.8173701183457,
+     "r_degree": 7.0,
+     "rc": 0
+    },
+    "triangle": {
+     "r_bwidth": 897.3300189369812,
+     "r_degree": 7.0,
+     "rc": 0
+    }
+   },
+   "r_bwidth": 389.9944585027262,
+   "r_degree": 7.0,
+   "twoway_message": "",
+   "twoway_rc": 0
+  },
+  "8": {
+   "kernels": {
+    "biweight": {
+     "r_bwidth": 1144.2550786630923,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "cosine": {
+     "r_bwidth": 2320.886773207369,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "epan2": {
+     "r_bwidth": 1084.1240422900614,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "epanechnikov": {
+     "r_bwidth": 484.2298820571598,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "gaussian": {
+     "r_bwidth": 278.48943649399115,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "parzen": {
+     "r_bwidth": 1252.255639502733,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "rectangle": {
+     "r_bwidth": 1029.1547948382497,
+     "r_degree": 8.0,
+     "rc": 0
+    },
+    "triangle": {
+     "r_bwidth": 1108.67632243354,
+     "r_degree": 8.0,
+     "rc": 0
+    }
+   },
+   "r_bwidth": 484.2298820571598,
+   "r_degree": 8.0,
+   "twoway_message": "",
+   "twoway_rc": 0
+  }
+ },
+ "mlabel": {
+  "bad_pattern": {
+   "message": "variable zz* not found",
+   "rc": 111
+  },
+  "extra_names": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0,
+     11.0,
+     40.0
+    ],
+    [
+     17.0,
+     3350.0,
+     11.0,
+     40.0
+    ],
+    [
+     22.0,
+     2640.0,
+     12.0,
+     35.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight",
+    "trunk",
+    "turn"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": null
+  },
+  "pattern": {
+   "legend_keys": 2,
+   "message": "",
+   "plots": 2,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     4099.0,
+     2930.0,
+     11.0,
+     40.0
+    ],
+    [
+     17.0,
+     4749.0,
+     3350.0,
+     11.0,
+     40.0
+    ],
+    [
+     22.0,
+     3799.0,
+     2640.0,
+     12.0,
+     35.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "price",
+    "weight",
+    "trunk",
+    "turn"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    15906.0
+   ],
+   "yscale2": null
+  },
+  "range": {
+   "legend_keys": 2,
+   "message": "",
+   "plots": 2,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     4099.0,
+     2930.0,
+     null,
+     3.0,
+     2.5,
+     11.0,
+     186.0,
+     40.0,
+     121.0,
+     3.5799999237060547,
+     0.0
+    ],
+    [
+     17.0,
+     4749.0,
+     3350.0,
+     null,
+     3.0,
+     3.0,
+     11.0,
+     173.0,
+     40.0,
+     258.0,
+     2.5299999713897705,
+     0.0
+    ],
+    [
+     22.0,
+     3799.0,
+     2640.0,
+     null,
+     null,
+     3.0,
+     12.0,
+     168.0,
+     35.0,
+     121.0,
+     3.0799999237060547,
+     0.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "price",
+    "weight",
+    "make",
+    "rep78",
+    "headroom",
+    "trunk",
+    "length",
+    "turn",
+    "displacement",
+    "gear_ratio",
+    "foreign"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    15906.0
+   ],
+   "yscale2": null
+  }
+ },
+ "pci": {
+  "1/2 0 0 1": {
+   "message": "invalid point,",
+   "rc": 198
+  },
+  "2/2 0 0 1": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     1.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "vars": [
+    "__000000",
+    "__000001",
+    "__000002",
+    "__000003"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    1.0
+   ],
+   "yscale2": null
+  }
+ },
+ "scatteri": {
+  "-1/-1 1": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     1.0,
+     1.0
+    ]
+   ],
+   "vars": [
+    "__000000",
+    "__000001"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    2.0
+   ],
+   "yscale2": null
+  },
+  "0/0 1": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     null,
+     1.0
+    ]
+   ],
+   "vars": [
+    "__000000",
+    "__000001"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    1e+300,
+    -1e+300
+   ],
+   "yscale2": null
+  },
+  "1 2 (1/1)": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     1.0,
+     2.0,
+     1.0
+    ]
+   ],
+   "vars": [
+    "__000000",
+    "__000001",
+    "__000002"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    2.0
+   ],
+   "yscale2": null
+  },
+  "1/2 1": {
+   "message": "invalid point, 1 1/2",
+   "rc": 198
+  },
+  "2/2 1": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     1.0,
+     1.0
+    ]
+   ],
+   "vars": [
+    "__000000",
+    "__000001"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    2.0
+   ],
+   "yscale2": null
+  },
+  "2/2 1/1": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     1.0,
+     1.0
+    ]
+   ],
+   "vars": [
+    "__000000",
+    "__000001"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    0.0,
+    2.0
+   ],
+   "yscale2": null
+  }
+ },
+ "xaxis": {
+  "both": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0
+    ],
+    [
+     17.0,
+     3350.0
+    ],
+    [
+     22.0,
+     2640.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight"
+   ],
+   "xaxis_dexes": [
+    "2 1"
+   ],
+   "yaxis_dexes": [
+    "1"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": null
+  }
+ },
+ "yaxis": {
+  "both": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0
+    ],
+    [
+     17.0,
+     3350.0
+    ],
+    [
+     22.0,
+     2640.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "2 1"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": [
+    10.0,
+    41.0
+   ]
+  },
+  "dupe": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0
+    ],
+    [
+     17.0,
+     3350.0
+    ],
+    [
+     22.0,
+     2640.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1 1"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": null
+  },
+  "frac": {
+   "message": "yaxis() invalid -- invalid numlist has noninteger elements",
+   "rc": 126
+  },
+  "order": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0
+    ],
+    [
+     17.0,
+     3350.0
+    ],
+    [
+     22.0,
+     2640.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "2 1"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": [
+    10.0,
+    41.0
+   ]
+  },
+  "ten": {
+   "message": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+   "rc": 125
+  },
+  "three": {
+   "legend_keys": 1,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0
+    ],
+    [
+     17.0,
+     3350.0
+    ],
+    [
+     22.0,
+     2640.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "3 2 1"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": [
+    10.0,
+    41.0
+   ]
+  },
+  "tied": {
+   "legend_keys": 2,
+   "message": "",
+   "plots": 2,
+   "rc": 0,
+   "regions": 1,
+   "rows": [
+    [
+     22.0,
+     2930.0,
+     4099.0
+    ],
+    [
+     17.0,
+     3350.0,
+     4749.0
+    ],
+    [
+     22.0,
+     2640.0,
+     3799.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight",
+    "price"
+   ],
+   "xaxis_dexes": [
+    "1"
+   ],
+   "yaxis_dexes": [
+    "2 1"
+   ],
+   "yscale1": [
+    0.0,
+    15906.0
+   ],
+   "yscale2": [
+    0.0,
+    15906.0
+   ]
+  },
+  "untied": {
+   "legend_keys": 2,
+   "message": "",
+   "plots": 1,
+   "rc": 0,
+   "regions": 2,
+   "rows": [
+    [
+     22.0,
+     2930.0,
+     4099.0
+    ],
+    [
+     17.0,
+     3350.0,
+     4749.0
+    ],
+    [
+     22.0,
+     2640.0,
+     3799.0
+    ]
+   ],
+   "vars": [
+    "mpg",
+    "weight",
+    "price"
+   ],
+   "xaxis_dexes": [
+    "1",
+    "1"
+   ],
+   "yaxis_dexes": [
+    "1",
+    "2"
+   ],
+   "yscale1": [
+    10.0,
+    41.0
+   ],
+   "yscale2": [
+    0.0,
+    15906.0
+   ]
+  },
+  "word": {
+   "message": "yaxis() invalid -- invalid numlist",
+   "rc": 121
+  },
+  "zero": {
+   "message": "yaxis() invalid -- invalid numlist has elements outside of allowed range",
+   "rc": 125
+  }
+ }
+}

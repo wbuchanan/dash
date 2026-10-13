@@ -870,7 +870,8 @@ dash clear
 // HC1-16 -- values twoway accepts that dash cannot draw are refused
 // ================================================================
 local bad16 ""
-foreach c in "scatter mpg weight, yaxis(3)" "lpoly mpg weight, degree(4)" "histogram mpg, bin(2000)" {
+// Flipped (WP-31 C10b): degree(4) is drawn; degree(8) is dash's bound.
+foreach c in "scatter mpg weight, yaxis(3)" "lpoly mpg weight, degree(8)" "histogram mpg, bin(2000)" {
     graph drop _all
     capture twoway `c' nodraw
     local twrc = _rc
@@ -886,7 +887,7 @@ if `"`bad16'"' != "" {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-16"'
 }
-else display as text "HC1-16 PASS: yaxis(3), degree(4) and bin(2000) run in twoway and are refused by dash, r(198)"
+else display as text "HC1-16 PASS: yaxis(3), degree(8) and bin(2000) run in twoway and are refused by dash, r(198)"
 dash clear
 
 // ================================================================

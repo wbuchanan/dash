@@ -871,6 +871,159 @@ if inlist("`only'", "", "S05") & `: list posof "S05" in w31_run' {
 }
 * ==== end S05 ====
 
+// S06 helpers (WP-31 C10b).  _u06_draw: what a registered dash graph
+// draws, saved and served (sfx s, v): its Line renderers (u06_ln<sfx>),
+// its right-hand axes on the second range (u06_rt<sfx>), whether that
+// range is the first axis's own object (u06_tie<sfx>), the sorted fields
+// of its LabelSets (u06_lab<sfx>); from the spec, each layer's mlabel()
+// (u06_ml) and the first layer's yaxis() (u06_ya).  _u06_bw: dash's
+// default lpoly bandwidth over the data in memory, y x, degree d, in
+// u06_bw.
+python:
+def _u06_draw(sp, dp, app):
+    import json
+    from sfi import Macro
+    import __main__ as m
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        ln = rt = tie = 0
+        labs = []
+        for f in figs:
+            for r in f.renderers:
+                if type(getattr(r, "glyph", None)).__name__ == "Line":
+                    ln += 1
+            rt += sum(1 for ax in f.right
+                      if getattr(ax, "y_range_name", "") == "y2")
+            if f.extra_y_ranges.get("y2") is not None \
+                    and f.extra_y_ranges["y2"] is f.y_range:
+                tie = 1
+            for c in f.center:
+                if type(c).__name__ == "LabelSet":
+                    # The column is the variable's, prefixed.
+                    labs.append(str(getattr(c.text, "field", c.text))
+                                .replace("__dash_mlabel_", "", 1))
+        Macro.setGlobal("u06_ln" + sfx, str(ln))
+        Macro.setGlobal("u06_rt" + sfx, str(rt))
+        Macro.setGlobal("u06_tie" + sfx, str(tie))
+        Macro.setGlobal("u06_lab" + sfx, " ".join(sorted(labs)))
+    with open(sp, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    plots = spec["graphs"][0]["plots"]
+    Macro.setGlobal("u06_ml", " ".join(
+        str((p.get("options") or {}).get("mlabel", "")) for p in plots))
+    Macro.setGlobal("u06_ya", str((plots[0].get("options") or {})
+                                  .get("yaxis", "")))
+
+
+def _u06_bw(y, x, d):
+    import numpy as np
+    from sfi import Data, Macro
+    import dash_render as dr
+    ys = np.asarray(Data.get(y), dtype=float).ravel()
+    xs = np.asarray(Data.get(x), dtype=float).ravel()
+    h = dr.GlyphMapper._default_lpoly_bwidth(xs, ys, None, int(d),
+                                             "epanechnikov")
+    Macro.setGlobal("u06_bw", "%.17g" % h)
+end
+
+capture program drop _u06_reg
+program define _u06_reg
+    // _u06_reg <dir> <k> <dash command...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u06_m; _u06_m._u06_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+* ==== S06 C10b: Parsed values ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S06") & `: list posof "S06" in w31_run' {
+    display as text "S06 start " c(current_date) " " c(current_time)
+    local u6d "`w31_work'/s06"
+    capture mkdir "`u6d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U06-01: lpoly degree(4)..degree(7) draw, saved and served, with
+    // dash's default bandwidth at the lpoly command's r(bwidth) from the
+    // same run -- 5e-4 at degree 4-5, 1e-2 at 6-7 (Stata's degree 9-10
+    // global fit in raw powers is round-off there; test_lpoly_degree.py)
+    // -- and the fixture's; degree(8), which twoway draws, is dash's own
+    // bound: r(198) naming degree 7.
+    // ------------------------------------------------------------
+    local k 1
+    foreach d in 4 5 6 7 {
+        quietly lpoly mpg weight, degree(`d') nograph
+        local rb = r(bwidth)
+        python: import __main__ as _u06_m; _u06_m._u06_bw("mpg", "weight", `d')
+        local tol = cond(`d' <= 5, 5e-4, 1e-2)
+        _w31_expect U06-01 "(abs(${u06_bw} / `rb' - 1) <= `tol')" "degree(`d') bandwidth ${u06_bw}, lpoly r(bwidth) `rb'"
+        capture noisily twoway lpoly mpg weight, degree(`d') nodraw
+        _w31_expect U06-01 "(_rc == 0)" "twoway lpoly degree(`d') rc `=_rc'"
+        _u06_reg "`u6d'" `k' lpoly mpg weight, degree(`d') name(zu6`k')
+        _w31_expect U06-01 "(${u06_lns} == 1 & ${u06_lnv} == 1)" "degree(`d') lines ${u06_lns} / ${u06_lnv}"
+        local ++k
+    }
+    capture noisily twoway lpoly mpg weight, degree(8) nodraw
+    local trc = _rc
+    dash clear
+    capture noisily dash lpoly mpg weight, degree(8) name(zu68)
+    local drc = _rc
+    _w31_expect U06-01 "(`trc' == 0 & `drc' == 198)" "degree(8): twoway rc `trc', dash rc `drc'"
+    _w31_done U06-01 "lpoly degree(4)-(7) draw with Stata's rule-of-thumb bandwidth, saved and served; degree(8) is dash's bound"
+
+    // ------------------------------------------------------------
+    // U06-02: scatter mpg price weight, mlabel(t*) -- the element is
+    // unab'd: mpg is labelled by trunk, price by turn, as twoway's serset
+    // carries them; both modes draw two LabelSets of those columns.
+    // ------------------------------------------------------------
+    capture noisily twoway scatter mpg price weight, mlabel(t*) nodraw
+    _w31_expect U06-02 "(_rc == 0)" "twoway mlabel(t*) rc `=_rc'"
+    _u06_reg "`u6d'" 5 scatter mpg price weight, mlabel(t*) name(zu65)
+    _w31_expect U06-02 `"("${u06_ml}" == "trunk turn")"' "spec mlabel ${u06_ml}"
+    _w31_expect U06-02 `"("${u06_labs}" == "trunk turn" & "${u06_labv}" == "trunk turn")"' "label sets ${u06_labs} / ${u06_labv}"
+    dash clear
+    capture noisily dash scatter mpg weight, mlabel(zz*) name(zu6z)
+    _w31_expect U06-02 "(_rc == 111)" "mlabel(zz*) rc `=_rc'"
+    _w31_done U06-02 "mlabel(t*) labels mpg with trunk and price with turn, saved and served; mlabel(zz*) is r(111)"
+
+    // ------------------------------------------------------------
+    // U06-03: line mpg weight, yaxis(1 2) -- twoway draws the layer once
+    // on one scale both axes read (parsed_values_truth.json yaxis.both);
+    // dash draws one Line, a right-hand axis on y2, and y2 is the first
+    // axis's own range, saved and served.  A filter move of that range is
+    // the second axis's: test_yaxis_both.py::TestMoves.
+    // ------------------------------------------------------------
+    capture graph drop u6tw
+    quietly twoway line mpg weight, yaxis(1 2) nodraw name(u6tw, replace)
+    local t1 "`.u6tw.yaxis1.plotregion.yscale.curmin' `.u6tw.yaxis1.plotregion.yscale.curmax'"
+    local t2 "`.u6tw.yaxis2.plotregion.yscale.curmin' `.u6tw.yaxis2.plotregion.yscale.curmax'"
+    _w31_expect U06-03 `"("`t1'" == "`t2'" & "`.u6tw.plotregion1.plot2.isa'" == "")"' "twoway: scales `t1' / `t2', one plot"
+    capture graph drop u6tw
+    _u06_reg "`u6d'" 6 line mpg weight, yaxis(1 2) name(zu66)
+    _w31_expect U06-03 `"("${u06_ya}" == "1 2")"' "spec yaxis ${u06_ya}"
+    foreach m in s v {
+        _w31_expect U06-03 "(${u06_ln`m'} == 1 & ${u06_rt`m'} == 1 & ${u06_tie`m'} == 1)" "`m': lines ${u06_ln`m'}, right axes ${u06_rt`m'}, tied ${u06_tie`m'}"
+    }
+    _w31_done U06-03 "yaxis(1 2) draws the layer once with a second axis on the same scale, saved and served"
+
+    forvalues k = 1/6 {
+        foreach p in s d {
+            capture erase "`u6d'/`p'`k'.json"
+        }
+        capture erase "`u6d'/a`k'.py"
+    }
+    capture rmdir "`u6d'"
+    dash clear
+    display as text "S06 end " c(current_date) " " c(current_time)
+}
+* ==== end S06 ====
+
 // S07 helpers (WP-31 A5-A8).  _u07_draw: what a registered dash graph
 // draws, saved (DashRenderer) and served (the generated app's
 // make_document): each line's and bar's y values (u07_ys, u07_yv), the

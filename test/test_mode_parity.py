@@ -2400,6 +2400,18 @@ CORPUS = [
     _case("kdensity bwidth(0) (WP-31 C10a)",
           [plot_for("kdensity", {"bwidth": "0"})]),
     _case("lfit n(1) (WP-31 C10a)", [plot_for("lfit", {"n": "1"})]),
+    # WP-31 C10b: degree 4-7, mlabel() patterns (one variable per y, as
+    # dash.ado writes them) and a layer on both axes, alike in both modes.
+    _case("lpoly degree(5) (WP-31 C10b)",
+          [plot_for("lpoly", {"degree": "5", "bwidth": "800"})]),
+    _case("scatter mpg price weight mlabel(p*) (WP-31 C10b)",
+          [plot_for("scatter", {"mlabel": "price"}),
+           plot_for("scatter", {"mlabel": "foreign"}, yvar="price")]),
+    _case("line yaxis(1 2) (WP-31 C10b)",
+          [plot_for("line", {"yaxis": "1 2"})]),
+    _case("line yaxis(1 2) beside a yaxis(2) layer (WP-31 C10b)",
+          [plot_for("line", {"yaxis": "1 2"}),
+           plot_for("line", {"yaxis": "2"}, yvar="price")]),
 ]
 
 
@@ -3279,6 +3291,10 @@ MOVE_CORPUS = [
     # WP-31 C2/B5a
     _move_case("rbar mwidth, dropdown to Foreign", _MOVES[0],
                [plot_for("rbar", {"mwidth": "mwidth"})]),
+    # WP-31 C10b: the tied axes follow the move together.
+    _move_case("line yaxis(1 2), dropdown to Foreign (WP-31 C10b)",
+               _MOVES[0], [plot_for("line", {"yaxis": "1 2"}),
+                           plot_for("line", {"yaxis": "2"}, yvar="price")]),
 ]
 
 

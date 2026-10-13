@@ -613,6 +613,8 @@ FUNCTIONS = {
  '_dash_qualified_frame.<locals>._bound': 'test/test_adversarial_matrix.py::TestIfQualifierExhaustion::test_an_in_range_too_long_for_int_is_read_not_raised',
  '_dash_range_pair': 'test/test_help_claims_6.py::TestTheFitRangeIsReadSafely::test_an_unreadable_range_draws_the_observed_range',
  '_dash_range_bounds': 'test/test_value_bounds.py::TestRangeBounds::test_each_form',
+ '_dash_axis_numbers': 'test/test_yaxis_both.py::TestTokens::test_each_form',
+ '_dash_axes_tied': 'test/test_yaxis_both.py::TestBothAxes::test_tied_layers_share_one_scale',
  '_dash_ci_t': 'test/test_value_bounds.py::TestLevel::test_band_missing_at_100_and_above',
  '_dash_range_source': 'test/test_scheme_review_fixes.py::TestMarkColourIsForMarkers::test_markers_take_p1markfill_and_segments_take_p1',
  '_dash_reference_lines': 'test/test_axis_options.py::TestReferenceLines::test_suboptions_are_applied',

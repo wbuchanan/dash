@@ -1167,7 +1167,8 @@ class TestTheEntriesSayWhatTakesThem:
 
     @pytest.mark.parametrize("opt,bound", [
         ("degree", "any whole number from 0 up"),
-        ("degree", "refuses more than 3"),
+        # Flipped (WP-31 C10b): degree 4-7 are drawn.
+        ("degree", "refuses more than 7"),
         # Flipped (WP-31 C10a): n(1) and lowess's every bwidth() are
         # twoway's.
         ("n", "1 to 10000"), ("n", "any whole number from 1 up"),

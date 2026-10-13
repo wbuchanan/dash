@@ -1249,6 +1249,41 @@ def _dash_figure_date_kind(plots, key, fallback, date_vars, axis_no=1):
     return kinds.pop()
 
 
+def _dash_axis_numbers(options, key):
+    """The axis numbers a layer's ``yaxis()`` or ``xaxis()`` (*key*) names,
+    as sorted distinct strings: ``["1"]`` when it names none (WP-31 C10b).
+
+    dash.ado writes ``"1"``, ``"2"`` or ``"1 2"`` (its ``axes`` kind sorts
+    and drops repeats: twoway's ``yaxis(2 1)`` and ``yaxis(1 1)`` are
+    ``1 2`` and ``1``); a spec written by hand is read the same way.  Every
+    reader of a layer's axis asks ``"2" in`` this list, never ``== "2"``,
+    so a layer on both axes counts on each.  ``_dash_axis_tokens`` is the
+    axis-label tokenizer, a different thing."""
+    raw = (options or {}).get(key, "1") if isinstance(options, dict) else "1"
+    toks = str("1" if raw is None else raw).split()
+    return sorted(set(toks), key=lambda t: (len(t), t)) or ["1"]
+
+
+def _dash_axes_tied(plots, key):
+    """Whether a layer of *plots* names both axes of *key* (``"yaxis"`` or
+    ``"xaxis"``), as in ``line mpg weight, yaxis(1 2)`` (WP-31 C10b).
+
+    twoway then ties axes 1 and 2 into ONE scale: the layer is drawn once,
+    in one plot region both axes read, and every other layer on either
+    axis joins that region (measured, test/fixtures/parsed_values_truth.json
+    ``yaxis.both``: one plot, scales 10-41 on both axes; ``yaxis.tied``:
+    with ``(line price weight, yaxis(2))`` beside it one region and one
+    scale 0-15906).  ``_dash_add_secondary_axes`` then puts the second axis
+    on the first axis's own range."""
+    for p in plots or ():
+        if not isinstance(p, dict):
+            continue
+        nums = _dash_axis_numbers(p.get("options"), key)
+        if "1" in nums and "2" in nums:
+            return True
+    return False
+
+
 def _dash_layer_axis_names(plot, key):
     """``(axis_no, [names])``: the axis number one layer draws on for
     *key* (``"xvar"`` or ``"yvar"``) and the variables it draws there, or
@@ -1268,7 +1303,10 @@ def _dash_layer_axis_names(plot, key):
     opts = plot.get("options") or {}
     if not isinstance(opts, dict):
         opts = {}
-    axis_no = 2 if str(opts.get(phys + "axis", "1")).strip() == "2" else 1
+    # A layer on both axes (yaxis(1 2)) is on axis 1's scale, which the
+    # second axis reads then (WP-31 C10b).
+    axis_no = (2 if _dash_axis_numbers(opts, phys + "axis") == ["2"]
+               else 1)
     letter = _dash_role_letter(plot, phys)
     key = letter + "var"
     if ptype in _DASH_UNIVARIATE_TYPES:
@@ -1304,9 +1342,8 @@ def _dash_axis_vars(plots, axis_no=1):
             opts = p.get("options") or {}
             if not isinstance(opts, dict):
                 opts = {}
-            on = (2 if str(opts.get(letter + "axis", "1")).strip() == "2"
-                  else 1)
-            if on != axis_no:
+            if str(axis_no) not in _dash_axis_numbers(opts,
+                                                      letter + "axis"):
                 continue
             role = _dash_role_letter(p, letter)
             if ptype in _DASH_UNIVARIATE_TYPES:
@@ -1428,15 +1465,18 @@ def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
         opts = p.get("options") or {}
         if not isinstance(opts, dict):
             opts = {}
-        xa = "2" if str(opts.get("xaxis", "1")).strip() == "2" else "1"
-        ya = "2" if str(opts.get("yaxis", "1")).strip() == "2" else "1"
+        # Every axis number the layer names (WP-31 C10b: yaxis(1 2) is on
+        # both); a layer is grouped by the first it names in the other
+        # dimension.
+        xa = _dash_axis_numbers(opts, "xaxis")
+        ya = _dash_axis_numbers(opts, "yaxis")
         layers.append((i, p, xa, ya))
     out = {}
     for dim, other in (("x", "y"), ("y", "x")):
         for n in ("1", "2"):
-            on = [(i, p, xa if dim == "x" else ya, ya if dim == "x" else xa)
+            on = [(i, p, n, (ya if dim == "x" else xa)[0])
                   for i, p, xa, ya in layers
-                  if (xa if dim == "x" else ya) == n]
+                  if n in (xa if dim == "x" else ya)]
             key = dim if n == "1" else dim + "2"
             if not on:
                 out[key] = ("", False)
@@ -11873,7 +11913,7 @@ def _compute_secondary_range(
     vals: list[float] = []
     for plot in plots:
         opts = plot.get("options", {})
-        if str(opts.get(axis_key, "1")).strip() != str(axis_number):
+        if str(axis_number) not in _dash_axis_numbers(opts, axis_key):
             continue
         # A horizontal layer shows its other role on this axis (WP-30
         # P1.9a).
@@ -32207,13 +32247,22 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     for axis_key, var_key, rng_attr, name, side, kw in (
             ("yaxis", "yvar", "extra_y_ranges", "y2", "right", "y_range_name"),
             ("xaxis", "xvar", "extra_x_ranges", "x2", "above", "x_range_name")):
-        wanted = any(str(p.get("options", {}).get(axis_key, "1")).strip() == "2"
+        wanted = any("2" in _dash_axis_numbers(p.get("options"), axis_key)
                      for p in plots)
         has[name] = wanted
         if not wanted:
             continue
-        lo, hi = _compute_secondary_range(frame, plots, axis_key, var_key, 2)
-        getattr(fig, rng_attr)[name] = Range1d(lo, hi)
+        if _dash_axes_tied(plots, axis_key):
+            # A layer on both axes ties them into one scale (WP-31 C10b,
+            # measured): the second axis reads the first axis's own range,
+            # the same object, so every re-finish, zoom and filter move of
+            # it is the second axis's too, in both modes.
+            getattr(fig, rng_attr)[name] = getattr(
+                fig, "y_range" if name == "y2" else "x_range")
+        else:
+            lo, hi = _compute_secondary_range(frame, plots, axis_key,
+                                              var_key, 2)
+            getattr(fig, rng_attr)[name] = Range1d(lo, hi)
         n = name[0]
         toks = _dash_by_tokens(str(graph_opts.get(f"{n}scale2", "") or ""))
         is_log = "log" in [_dash_subopt_name(t) for t in toks]
@@ -33266,8 +33315,8 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             # for x2, as the primary axis maps through xvar/yvar.
             var2 = ""
             for _p in plots:
-                if str((_p.get("options") or {}).get(axis_key, "1")
-                       ).strip() != "2":
+                if "2" not in _dash_axis_numbers(_p.get("options"),
+                                                 axis_key):
                     continue
                 if axis_key == "yaxis":
                     var2 = _p.get("yvar") or _p.get("yvar1") or ""
@@ -33423,6 +33472,10 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                        else getattr(fig, extra_attr).get(name))
                 if rng is None:
                     continue
+                if rng is getattr(fig, main_attr):
+                    # A second axis tied to the first (yaxis(1 2), WP-31
+                    # C10b) reads the first's range and layers: one hull.
+                    name = "default"
                 kind = None
                 if isinstance(ax, LogAxis):
                     kind = "log"
@@ -33844,6 +33897,13 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
         if name == "default":
             if getattr(fig, letter + "_range") is not obj:
                 setattr(fig, letter + "_range", obj)
+                # A second axis tied to this one (WP-31 C10b) keeps reading
+                # the same object.
+                extra = "extra_%s_ranges" % letter
+                tied = {k: obj for k, v in getattr(fig, extra).items()
+                        if v is cur}
+                if tied:
+                    setattr(fig, extra, {**getattr(fig, extra), **tied})
         elif cur is not obj:
             extra = "extra_%s_ranges" % letter
             setattr(fig, extra, {**getattr(fig, extra), name: obj})
@@ -34093,10 +34153,15 @@ def _dash_assign_axis_ranges(fig, renderers, options, annotations=()):
     put every label where the left axis reads the price, off its point.
     """
     from bokeh.models import ColorBar, Legend
-    use_y2 = (str((options or {}).get("yaxis", "1")).strip() == "2"
-              and "y2" in fig.extra_y_ranges)
-    use_x2 = (str((options or {}).get("xaxis", "1")).strip() == "2"
-              and "x2" in fig.extra_x_ranges)
+    # Only a layer on axis 2 alone moves (WP-31 C10b): a layer on both axes
+    # is on the one scale they share, and when the axes are tied the second
+    # range IS the first (_dash_add_secondary_axes), so nothing moves.
+    use_y2 = (_dash_axis_numbers(options, "yaxis") == ["2"]
+              and "y2" in fig.extra_y_ranges
+              and fig.extra_y_ranges["y2"] is not fig.y_range)
+    use_x2 = (_dash_axis_numbers(options, "xaxis") == ["2"]
+              and "x2" in fig.extra_x_ranges
+              and fig.extra_x_ranges["x2"] is not fig.x_range)
     if not (use_y2 or use_x2):
         return
     # A legend or a colour bar is placed on the screen, not at data
@@ -47796,6 +47861,9 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # a layer's yaxis()/xaxis() numbers, axes tied by
+                         # yaxis(1 2) (WP-31 C10b).
+                         "_dash_axis_numbers", "_dash_axes_tied",
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
                          # xline/yline extent (WP-30 P1.21b).

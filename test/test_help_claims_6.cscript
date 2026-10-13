@@ -433,18 +433,21 @@ if `bad' display as error "HC6-07 FAIL: twoway rc=`t' said=`tw'; dash rc=`d' sai
 _hc6_tally HC6-07 `bad' "width() with bwidth() on kdensity: r(198), twoway's words, in both"
 
 // ================================================================
-// HC6-08 -- degree(): twoway takes any whole number from 0 up; dash 0-3
+// HC6-08 -- degree(): twoway takes any whole number from 0 up; dash 0-7
+// Flipped (WP-31 C10b): degree(4) is drawn; degree(8), which twoway
+// draws too (parsed_values_truth.json degree.8), is dash's bound.  The
+// twoway reading stays degree(4)'s, the one this script's truth holds.
 // ================================================================
 _hc6_tw "lpoly mpg weight, bwidth(400) degree(4)"
 local t4 = r(rc)
 _hc6_tw "lpoly mpg weight, bwidth(400) degree(-1)"
 local tm = r(rc)
-_hc6_dash "dash lpoly mpg weight, degree(4) name(hc6)"
+_hc6_dash "dash lpoly mpg weight, degree(8) name(hc6)"
 local d4 = r(rc)
-_hc6_said "dash fits local polynomials up to degree 3"
+_hc6_said "dash fits local polynomials up to degree 7"
 local dw = r(n)
 local bad = (`t4' != 0 | `tm' != 198 | `d4' != 198 | `dw' != 1)
-_hc6_tally HC6-08 `bad' "degree(4): twoway rc 0, degree(-1) r(198); dash refuses 4 and says why"
+_hc6_tally HC6-08 `bad' "degree(8): twoway rc 0, degree(-1) r(198); dash refuses 8 and says why"
 
 // ================================================================
 // HC6-09, 10 -- kernel()

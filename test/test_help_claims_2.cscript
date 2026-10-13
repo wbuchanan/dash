@@ -489,8 +489,10 @@ _hc2_dash "HC2-11b" 111 `"dash (scatter mpg weight, hover(nosuch)) (line mpg wei
 _hc2_dash "HC2-11c" 198 `"dash (scatter mpg weight, ysize(101)) (line mpg weight), name(hc)"' "ysize()"
 
 // HC2-12 -- dash's own bounds that say so; twoway takes every value.
-_hc2_dash "HC2-12a" 198 `"dash lpoly mpg weight, degree(5) name(hc)"'
-_hc2_tail "HC2-12b" degree ". dash fits local polynomials up to degree 3."
+// Flipped (WP-31 C10b): degree 4-7 are drawn; 8, which twoway draws
+// (parsed_values_truth.json degree.8), is dash's bound.
+_hc2_dash "HC2-12a" 198 `"dash lpoly mpg weight, degree(8) name(hc)"'
+_hc2_tail "HC2-12b" degree ". dash fits local polynomials up to degree 7."
 _hc2_dash "HC2-12c" 198 `"dash histogram mpg, bin(5000) name(hc)"'
 _hc2_tail "HC2-12d" bin ". dash draws up to 1000 bins."
 _hc2_dash "HC2-12e" 198 `"dash kdensity mpg, n(20000) name(hc)"'
@@ -504,7 +506,7 @@ _hc2_tail "HC2-12j" xaxis ". dash draws two axes."
 // second sentence, its lower bound being twoway's.
 _hc2_dash "HC2-12k" 198 `"dash lfit mpg weight, n(0) name(hc)"'
 _hc2_tail "HC2-12l" n "" 0
-_hc2_expect "HC2-12m" 0 `"twoway lpoly mpg weight, degree(5)"'
+_hc2_expect "HC2-12m" 0 `"twoway lpoly mpg weight, degree(8)"'
 _hc2_expect "HC2-12n" 0 `"twoway histogram mpg, bin(5000)"'
 _hc2_expect "HC2-12o" 0 `"twoway kdensity mpg, n(20000)"'
 _hc2_expect "HC2-12p" 0 `"twoway kdensity mpg, n(1)"'

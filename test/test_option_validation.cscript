@@ -60,7 +60,7 @@
 *!   OV-31  yaxis(2)                  rc 0
 *!   OV-32  yaxis(3)                  rc 198 naming yaxis()   (dash's own limit)
 *!   OV-33  xaxis(1)                  rc 0
-*!   OV-34  xaxis(abc)                rc 198 naming xaxis()
+*!   OV-34  xaxis(3)                  rc 198 naming xaxis()   (dash's own limit; WP-31 C10b)
 *!   OV-35  malpha(60)                rc 0
 *!   OV-36  malpha(150)               rc 198 naming malpha()
 *!   OV-37  lalpha(50)                rc 0
@@ -79,7 +79,7 @@
 *!   OV-49  level(0)                  rc 0   (as twoway; WP-31 C10a)
 *! Statistical options, by plot type:
 *!   OV-50  lpoly degree(1)           rc 0
-*!   OV-51  lpoly degree(5)           rc 198 naming degree()  (dash's own limit)
+*!   OV-51  lpoly degree(5)           rc 0   (as twoway; WP-31 C10b)
 *!   OV-52  lpoly degree(1.5)         rc 198 naming degree()
 *!   OV-53  lowess bwidth(0.3)        rc 0
 *!   OV-54  lowess bwidth(5)          rc 0   (drawn at .8, as twoway; WP-31 C10a)
@@ -322,6 +322,11 @@
 *!           function range(make): twoway's rc and line
 *!   U05-06  lowess bwidth(-1), (0), (1), (1.5), (5): rc 0 as twoway, no
 *!           note naming bwidth()
+*! Parsed values (WP-31 C10b; test/fixtures/parsed_values_truth.json):
+*!   U06-04  yaxis(1 1), (2 1), (1 2), xaxis(1 2) taken as twoway takes them;
+*!           yaxis(0), (10), (1.5), (abc) refused with twoway's rc and line;
+*!           yaxis(1 2 3), which twoway draws, refused with dash's own
+*!           sentence (axes 3-9 are section 09's)
 *! Weight expressions (WP-31 A5; test/fixtures/weight_operator_truth.json):
 *!   U07-7  lfit [aw=price+1] rc 0, no note; [aw=nosuch+1], [aw=price+]
 *!          and kdensity [aw=nosuch*2] refused with twoway's rc and line
@@ -664,7 +669,9 @@ _ov_case OV-30 `"dash scatter mpg weight, jitter(5) jseed(abc) name(ov30)"' 198 
 _ov_case OV-31 `"dash scatter mpg weight, yaxis(2) name(ov31)"' 0 ""
 _ov_case OV-32 `"dash scatter mpg weight, yaxis(3) name(ov32)"' 198 yaxis
 _ov_case OV-33 `"dash scatter mpg weight, xaxis(1) name(ov33)"' 0 ""
-_ov_case OV-34 `"dash scatter mpg weight, xaxis(abc) name(ov34)"' 198 xaxis
+// Flipped (WP-31 C10b): xaxis(abc) is twoway's r(121) "xaxis() invalid --
+// invalid numlist", asked of twoway in U06-04; the case probes axis 3.
+_ov_case OV-34 `"dash scatter mpg weight, xaxis(3) name(ov34)"' 198 xaxis
 _ov_case OV-35 `"dash scatter mpg weight, malpha(60) name(ov35)"' 0 ""
 _ov_case OV-36 `"dash scatter mpg weight, malpha(150) name(ov36)"' 198 malpha
 _ov_case OV-37 `"dash line mpg weight, sort lalpha(50) name(ov37)"' 0 ""
@@ -691,7 +698,9 @@ _ov_case OV-49 `"dash lfitci mpg weight, level(0) name(ov49)"' 0 ""
 // OV-50 .. OV-88: statistical options, by plot type
 // ----------------------------------------------------------------
 _ov_case OV-50 `"dash lpoly mpg weight, degree(1) name(ov50)"' 0 ""
-_ov_case OV-51 `"dash lpoly mpg weight, degree(5) name(ov51)"' 198 degree
+// Flipped (WP-31 C10b): twoway's rc -- lpoly takes degree(5)
+// (parsed_values_truth.json degree.5); U06-01 compares the bandwidth.
+_ov_case OV-51 `"dash lpoly mpg weight, degree(5) name(ov51)"' 0 ""
 _ov_case OV-52 `"dash lpoly mpg weight, degree(1.5) name(ov52)"' 198 degree
 _ov_case OV-53 `"dash lowess mpg weight, bwidth(0.3) name(ov53)"' 0 ""
 // Flipped (WP-31 C10a): twoway's rc -- lowess draws bwidth(5) and
@@ -1633,6 +1642,35 @@ foreach v in -1 0 1 1.5 5 {
     }
 }
 _u05_judge U05-06 `"`bad'"' "lowess bwidth(-1 0 1 1.5 5) taken in silence, as twoway takes it"
+
+// U06-04 (WP-31 C10b): yaxis()/xaxis() lists as twoway reads them, each
+// against twoway in the same run.
+local bad ""
+foreach c in "line mpg weight, yaxis(1 1)" "line mpg weight, yaxis(2 1)" "line mpg weight, yaxis(1 2)" "line mpg weight, xaxis(1 2)" {
+    _u05_rc `"`c'"' ""
+    if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+    }
+}
+foreach c in "line mpg weight, yaxis(0)|yaxis() invalid -- invalid numlist has elements outside of allowed range" ///
+             "line mpg weight, yaxis(10)|yaxis() invalid -- invalid numlist has elements outside of allowed range" ///
+             "line mpg weight, yaxis(1.5)|yaxis() invalid -- invalid numlist has noninteger elements" ///
+             "line mpg weight, yaxis(abc)|yaxis() invalid -- invalid numlist" ///
+             "line mpg weight, xaxis(0)|xaxis() invalid -- invalid numlist has elements outside of allowed range" ///
+             "scatter mpg weight, xaxis(abc)|xaxis() invalid -- invalid numlist" {
+    local at = strpos(`"`c'"', "|")
+    local cmd = substr(`"`c'"', 1, `at' - 1)
+    local nd = substr(`"`c'"', `at' + 1, .)
+    _u05_rc `"`cmd'"' `"`nd'"'
+    if r(trc) == 0 | r(trc) != r(drc) | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`cmd': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+_u05_rc "line mpg weight, yaxis(1 2 3)" "dash draws two axes."
+if r(trc) != 0 | r(drc) != 198 | r(dn) < 1 {
+    local bad `"`bad' [yaxis(1 2 3): twoway `r(trc)', dash `r(drc)' (`r(dn)')]"'
+}
+_u05_judge U06-04 `"`bad'"' "yaxis()/xaxis() lists taken and refused as twoway does; yaxis(1 2 3) dash's own bound"
 
 // ----------------------------------------------------------------
 // WP-31 S07 (A5-A8).  _u07_rc <cmd> [needle]: twoway's and dash's rc for

@@ -492,8 +492,8 @@ _RANGE_AND_PC = ("rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
 class TestTheDifferencesSection:
 
     def test_item_5_names_the_values_dash_refuses(self):
-        """HC1-16: yaxis(3), degree(4), bin(2000) run in twoway and are
-        refused by dash."""
+        """HC1-16: yaxis(3), degree(8), bin(2000) run in twoway and are
+        refused by dash.  Flipped (WP-31 C10b): degree(4) is drawn."""
         diff = _prose(_differences())
         assert ("runs whenever dash draws its plot type (see" not in diff)
         assert "yaxis(3)" in diff and "Option values" in diff

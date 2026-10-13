@@ -69,7 +69,10 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
          "colour",
          # 15 -> 16: WP-31 C10a the range kind (two numbers, a `.' for the
          # data's bound with ,m, or a variable's min and max).
-         "range"}
+         "range",
+         # 16 -> 17: WP-31 C10b the axes kind (yaxis(1 2), twoway's
+         # numlist codes outside 1-9).
+         "axes"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -80,10 +83,10 @@ msize=style  mlabsize=style  mlabgap=style
 lwidth=style,0,10000,u  mlwidth=style,0,10000,u
 msangle=style,-360,360  mlabposition=style  fintensity=style
 jitter=num,0,100  jitterseed=int,0  jseed=int,0
-yaxis=int,1,2  xaxis=int,1,2
+yaxis=axes,1,2  xaxis=axes,1,2
 malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
 base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci
-degree=int,0,3  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
+degree=int,0,7  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos
 kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle
 n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200
 level=num,10,99.99@lpolyci
@@ -237,7 +240,8 @@ class TestTheTableIsWellFormed:
         # 41 -> 43 (WP-31 C10a, measured: test/fixtures/value_bounds_truth
         # .json): level typed on lfitci, qfitci and fpfitci, which take any
         # number; range typed, with missingok on the four fits; kdensity
-        # bwidth 0.
+        # bwidth 0.  43 unchanged (WP-31 C10b: the axes kind and degree 7
+        # replace their tokens one for one).
         assert len(want) == 43, "the contract text above lost a token"
         missing = sorted(want - parsed)
         assert not missing, f"contract rules absent from dash.ado: {missing}"
@@ -307,6 +311,11 @@ class TestTheTableIsWellFormed:
             assert _is_integer(ps[0]) and _is_integer(ps[1]), rule
             if len(ps) == 3:
                 assert ps[2] == "m", rule
+        elif kind == "axes":
+            # WP-31 C10b: lo,hi -- the axis numbers dash draws.
+            assert len(ps) == 2, rule
+            assert _is_integer(ps[0]) and _is_integer(ps[1]), rule
+            assert 1 <= int(ps[0]) <= int(ps[1]) <= 9, rule
         else:
             assert ps == (), f"{kind} takes no parameters: {rule}"
 

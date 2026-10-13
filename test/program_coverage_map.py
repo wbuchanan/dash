@@ -318,7 +318,7 @@ COVERAGE = {
         # WP-30 S12 (P1.27): Drop-in command form and saving() grammar (P1.27, M5/M11)
         "_dash_display_on": ("test_serve_browser.cscript:SB-31", "test_serve_browser.cscript:SB-32"),
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
-        "_dash_mlabel_list": ("test_varlist_expansion.cscript:PS-05", "test_varlist_expansion.cscript:PS-06"),
+        "_dash_mlabel_list": ("test_varlist_expansion.cscript:PS-05", "test_varlist_expansion.cscript:PS-06", "test_wp31_truth.cscript:U06-02"),
         "_dash_value_list": ("test_varlist_expansion.cscript:PS-08", "test_varlist_expansion.cscript:PS-12"),
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         "_dash_result": ("test_export.cscript:GE-09", "test_export.cscript:GE-01"),

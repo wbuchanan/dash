@@ -1373,7 +1373,9 @@ _ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(nosuch ..)
 _ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(make .. nosuch)
 _ps_refuse PS-06 111 "*variable nosuch not found" |`two' mlabel(nosuch =)
 _ps_refuse PS-06 101 "=exp not allowed" |`two' mlabel(= nosuch)
-_ps_refuse PS-06 198 "dash: mlabel() must name one variable (got: t*)" |`two' mlabel(t*)
+// Flipped (WP-31 C10b): mlabel(t*) is expanded as twoway expands it
+// (U06-02); a pattern naming nothing is twoway's r(111).
+_ps_refuse PS-06 111 "*variable zz* not found" |`two' mlabel(zz*)
 _ps_refuse PS-06 198 ".. not allowed in option mlabel()" |`two' mlabel(make..)
 _ps_tally PS-06 `ok' "every mlabel variable is checked, past the last y too, before .."
 

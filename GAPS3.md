@@ -444,7 +444,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C8b Tracked:** Open (WP-31 section 17).
 - **C9 Tracked:** Open (WP-31 section 20).
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit pending.
-- **C10b Tracked:** Open (WP-31 section 06).
+- **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit pending.
 - **C10c Tracked:** Open (WP-31 section 09).
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C12 Tracked:** Open (WP-31 section 46).
