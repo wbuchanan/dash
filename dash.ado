@@ -2296,8 +2296,9 @@ program define _dash_fold_typed, sclass
     // and named here until section 12.  twoway takes mwidth on rbar and
     // histogram only: elsewhere "option mwidth not allowed", r(198)
     // (test/fixtures/rbar_dot_truth.json probes).
+    local mw_types "rbar histogram"
     mata: st_local("_ft", strofreal(st_global("s(mwidth)") != ""))
-    if `_ft' & !inlist("`ptype'", "rbar", "histogram") {
+    if `_ft' & !`: list ptype in mw_types' {
         display as error "option mwidth not allowed"
         exit 198
     }
