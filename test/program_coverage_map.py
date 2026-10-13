@@ -474,7 +474,7 @@ COVERAGE = {
         "_dash_json_number": ("test_parser.cscript:P1A-67",
                               "test_parser.cscript:P1A-58"),
         "_dash_json_number17": ("test_parser.cscript:FX-10",),
-        "_dash_imm_number": ("test_parser.cscript:P1A-67",),
+        "_dash_imm_number": ("test_parser.cscript:P1A-67", "test_parser.cscript:U06-05"),
         "_dash_imm_clock": ("test_parser.cscript:P1A-67",),
         "_dash_imm_echo": ("test_parser.cscript:P1A-67",),
         "_dash_imm_records": ("test_parser.cscript:P1A-67",),

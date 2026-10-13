@@ -1899,12 +1899,14 @@ string scalar _dash_kernel_full(string scalar word) {
 //   * a list with no whole record is refused, "'0' invalid observation
 //     number," r(198).
 //
-// Two things twoway takes are refused here, because they are accidents of
-// its implementation rather than its syntax: a numlist range that holds
-// one number, which twoway then evaluates as a division (2/2 and -1/-1
-// draw at 1, 0/0 is missing, and (1/1) is taken as a clock position); and
-// a hexadecimal literal at the top of a double's range (1.0X+3ff), missing
-// there.
+// A numlist range that holds one number twoway then evaluates as a
+// division, and so does dash (WP-31 C18, measured,
+// test/fixtures/parsed_values_truth.json): p/q with p == q draws 1 --
+// 2/2 and -1/-1 draw at 1, 0/0 is missing, (1/1) is the clock position 1
+// -- and p != q, a range of two numbers, is "invalid point" in twoway too.
+// One thing twoway takes is refused here, because it is an accident of its
+// implementation rather than its syntax: a hexadecimal literal at the top
+// of a double's range (1.0X+3ff), missing there.
 //
 // The list is read byte by byte, as a value: nothing in it is ever
 // expanded as Stata.  Only a blank separates two tokens, as in gettoken; a
@@ -2201,13 +2203,30 @@ string colvector _dash_json_number17(real colvector v)
 // gettoken hands it over, quotes stripped.
 string scalar _dash_imm_number(string scalar tok)
 {
-    string scalar t
-    real scalar   v
+    string scalar t, a, b
+    real scalar   v, k
 
     t = _dash_imm_trim(tok)
     if (t == ".") return("null")
     if (strlen(t) == 2 & substr(t, 1, 1) == ".") {
         if (_dash_ascii_in(substr(t, 2, 1), 97, 122)) return("null")
+    }
+    // twoway's numlist reads p/q as a range; with one value it is then
+    // evaluated as a division: 2/2 and -1/-1 draw at 1, 0/0 is missing
+    // (measured 23sep2026 and again for WP-31 C18).  p != q is "invalid
+    // point".
+    k = strpos(t, "/")
+    if (k > 1 & k < strlen(t)) {
+        if (strpos(substr(t, k + 1, .), "/") == 0) {
+            a = substr(t, 1, k - 1)
+            b = substr(t, k + 1, .)
+            if (_dash_imm_decimal(a) & _dash_imm_decimal(b)) {
+                if (strtoreal(a) == strtoreal(b)) {
+                    return(strtoreal(a) == 0 ? "null" : "1")
+                }
+                return("")
+            }
+        }
     }
     if (!_dash_imm_numchars(t)) return("")
     v = strtoreal(t)
@@ -2234,6 +2253,8 @@ string scalar _dash_imm_clock(string scalar tok)
     real scalar   v
 
     t = _dash_imm_trim(tok)
+    // (1/1) is the clock position 1, twoway's division (WP-31 C18).
+    if (_dash_imm_number(t) == "1" & strpos(t, "/")) t = "1"
     if (!_dash_imm_numchars(t)) return("")
     v = strtoreal(t)
     if (v >= . | v < 0 | v > 12) return("")

@@ -959,7 +959,7 @@ Changed behaviour.
 
 - lpoly and lpolyci accept degree(4) to degree(7) with Stata's rule-of-thumb bandwidth for each (degree above 3 was refused); an mlabel() element may be a varlist pattern such as t* or make-foreign, labelling the following y's (it was r(111)); yaxis(1 2) and xaxis(1 2) draw the layer on both axes, one scale both read, as twoway does (refused before). (WP-31, C10b)
 
-<!-- WP-31 C18 -->
+- scatteri, pci and pcarrowi read a coordinate p/q with p equal to q as twoway does, a division drawing 1 (0/0 is missing); dash refused it. (WP-31, C18)
 
 <!-- WP-31 F4 -->
 

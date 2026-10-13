@@ -531,8 +531,10 @@ quotes.  A missing value -- {cmd:.} or {cmd:.a} to {cmd:.z} -- draws
 nothing, and so does a number past the range of the float {cmd:twoway}
 stores it as.  {cmd:dash} refuses, with {cmd:r(198)}, a coordinate that is
 not a number, a clock position that is not a number from 0 to 12, and a
-list with no whole point, segment or arrow; it also refuses a numlist range
-such as {cmd:2/2}, which {cmd:twoway} takes and evaluates as a division.
+list with no whole point, segment or arrow.  A coordinate {it:p}/{it:q}
+with {it:p} equal to {it:q} is 1 (0/0 missing), as {cmd:twoway} evaluates
+it ({cmd:scatteri 2/2 1} draws at 1, 1), and {it:p} unequal to {it:q} is
+refused, as {cmd:twoway} refuses it.
 What {cmd:twoway} drops silently at the end of the list -- too little for
 another point, segment or arrow, or everything from a {cmd:""} where one's
 last number belongs -- {cmd:dash} drops with a note.  A label is drawn at

@@ -725,16 +725,15 @@ cert_file_has "`lg61'", needle("dash: scatteri needs at least one point, two num
 assert r(found) == 1
 cert_file_has "`lg61'", needle("'abc' is too little for one.")
 assert r(found) == 1
-// 2/2 is a numlist range twoway takes and then evaluates as a division,
-// drawing 1: an accident of its implementation, which dash refuses as
-// the number it is not (1/2, the same form, is refused by twoway too).
+// 2/2 is read as twoway reads it, a division drawing 1 (WP-31 C18,
+// U06-05); 1/2, a range of two values, is refused by twoway too.
 // 1(1)1 is refused by twoway too, r(133).
 foreach seg in "scatteri 1 2 (-1)" "scatteri 1 2 (.)" "scatteri 1 2 ()" ///
     `"scatteri 1 2 ("3")"' "scatteri 1 2 (12.000001)" "scatteri 1 2 ((3))" ///
     `"scatteri 1 2 "A" "B" 3 4"' `"scatteri 1 2 "A" (9) 4"' ///
     "scatteri 1 2 (3) (4) 5 6" `"scatteri 1 2 "A"(3) 4 5"' ///
     `"scatteri 1 2 "A" ( 3 )"' "scatteri 1 2 x(3 4) 5" ///
-    "scatteri 0x10 1" "scatteri 1x3 1" "scatteri 1/2 1" "scatteri 2/2 1" ///
+    "scatteri 0x10 1" "scatteri 1x3 1" "scatteri 1/2 1" ///
     "scatteri 1(1)1 2" "scatteri 1+1 2" `"scatteri 2"A" 1"' ///
     `"scatteri "" 2"' `"scatteri 1 """' "scatteri 1`tb'2" ///
     "scatteri .A 1" "scatteri -. 1" "scatteri .. 1" "scatteri 1.0X+400 1" ///
@@ -747,6 +746,43 @@ foreach seg in "scatteri 1 2 (-1)" "scatteri 1 2 (.)" "scatteri 1 2 ()" ///
 }
 assert "${dash_graph_registry}" == ""
 display "P1A-61 PASS: scatteri refuses a non-number where a coordinate belongs, a clock position outside 0..12, and a list with no whole point"
+
+// ================================================================
+// U06-05 (WP-31 C18) -- a coordinate p/q is twoway's division: p == q
+// draws 1 (0/0 missing), p != q is "invalid point"; each rc twoway's in
+// the same run (test/fixtures/parsed_values_truth.json scatteri.*, pci.*)
+// ================================================================
+local u65bad ""
+foreach c in "scatteri 2/2 1|[[1,1]]" "scatteri -1/-1 1|[[1,1]]" ///
+    "scatteri 0/0 1|[[null,1]]" "scatteri 2/2 1/1|[[1,1]]" ///
+    "scatteri 1 2 (1/1)|[[1,2," ///
+    "pci 2/2 0 0 1|[[1,0,0,1]]" "scatteri 1/2 1|" "pci 1/2 0 0 1|" {
+    local at = strpos(`"`c'"', "|")
+    local cmd = substr(`"`c'"', 1, `at' - 1)
+    local want = substr(`"`c'"', `at' + 1, .)
+    quietly sysuse auto, clear
+    capture twoway `cmd', nodraw
+    local trc = _rc
+    dash clear
+    _p1a_logrun `"dash `cmd', name(u65)"'
+    local drc = r(rc)
+    if `trc' != `drc' local u65bad `"`u65bad' [`cmd': twoway `trc', dash `drc']"'
+    if `"`want'"' != "" & !strpos(`"${dash_json_u65}"', `""values":`want'"') {
+        local u65bad `"`u65bad' [`cmd': values not `want']"'
+    }
+}
+// (1/1) is the clock position 1: no label, clock 1.
+dash clear
+_p1a_logrun `"dash scatteri 1 2 (1/1), name(u65)"'
+if !strpos(`"${dash_json_u65}"', `""values":[[1,2,"",1]]"') {
+    local u65bad `"`u65bad' [(1/1): not clock 1]"'
+}
+dash clear
+if `"`u65bad'"' != "" {
+    display as error `"U06-05 FAIL:`u65bad'"'
+    exit 9
+}
+display "U06-05 PASS: scatteri and pci read p/p as twoway's division and refuse p/q, each rc twoway's"
 
 // ================================================================
 // P1A-62 -- what twoway drops at the end of scatteri's list is dropped,
@@ -839,7 +875,7 @@ assert r(found) == 1
 foreach seg in `"pci "A" 0 0 1"' `"pci 0 0 "A" 0 1"' ///
     `"pci 0 0 0 1 "A" "B" 1 1 2 2"' `"pci 0 0 0 1 "A" (3) 1 1 2 2"' ///
     "pci (3) 0 0 0 1" "pci 0 0 0 1 (-1)" "pci 0 0 0 1 (.)" ///
-    "pci 0 0 0 1 1 1 2 2x" "pci 1+1 0 0 1" "pci 2/2 0 0 1" ///
+    "pci 0 0 0 1 1 1 2 2x" "pci 1+1 0 0 1" "pci 1/2 0 0 1" ///
     `"pci 0 0 0 """' `"pci 0 "" 0 1"' "pci 0 0 0 1`tb'1 1 2 2" {
     capture _dash_process_segment `"`seg'"' _ptx _jx
     if _rc != 198 {
@@ -984,7 +1020,14 @@ assert(_dash_imm_number("-.") == "")
 assert(_dash_imm_number("") == "")
 assert(_dash_imm_number("1+1") == "")
 assert(_dash_imm_number("0x10") == "")
-assert(_dash_imm_number("2/2") == "")
+// Flipped (WP-31 C18): twoway's division.
+assert(_dash_imm_number("2/2") == "1")
+assert(_dash_imm_number("-1/-1") == "1")
+assert(_dash_imm_number("0/0") == "null")
+assert(_dash_imm_number("1/2") == "")
+assert(_dash_imm_number("2/2/2") == "")
+assert(_dash_imm_number("/2") == "")
+assert(_dash_imm_clock("1/1") == "1")
 assert(_dash_imm_number("1.0X+400") == "")
 assert(_dash_imm_number(char(9) + "1") == "")
 assert(_dash_imm_number("1 2") == "")

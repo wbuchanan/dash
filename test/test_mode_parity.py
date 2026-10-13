@@ -2412,6 +2412,9 @@ CORPUS = [
     _case("line yaxis(1 2) beside a yaxis(2) layer (WP-31 C10b)",
           [plot_for("line", {"yaxis": "1 2"}),
            plot_for("line", {"yaxis": "2"}, yvar="price")]),
+    # WP-31 C18: scatteri 2/2 1, as dash.ado writes it.
+    _case("scatteri 2/2 1 (WP-31 C18)",
+          [plot_for("scatteri", values=[[1.0, 1.0]])]),
 ]
 
 
