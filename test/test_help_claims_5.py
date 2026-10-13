@@ -179,7 +179,10 @@ def _both(spec, payload):
         warnings.simplefilter("always")
         r = dr.DashRenderer(sp, dp)
         render_models(r)
-    saved = sorted({str(w.message) for w in caught})
+    # A ResourceWarning is the garbage collector closing a file some
+    # earlier test in this worker leaked; it is no note of dash's.
+    saved = sorted({str(w.message) for w in caught
+                    if not issubclass(w.category, ResourceWarning)})
     tag, sp, dp = _write(spec, payload)
     ap = os.path.join(_TMP, f"app_{tag}.py")
     with warnings.catch_warnings(record=True) as built:
@@ -192,7 +195,8 @@ def _both(spec, payload):
         warnings.simplefilter("always")
         doc = Document()
         mod.make_document(doc)
-    served = sorted({str(w.message) for w in list(built) + list(session)})
+    served = sorted({str(w.message) for w in list(built) + list(session)
+                     if not issubclass(w.category, ResourceWarning)})
     return r, doc, saved, served
 
 
