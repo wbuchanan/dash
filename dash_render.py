@@ -20171,6 +20171,9 @@ class GlyphMapper:
                 r._dash_axis_include = {"y": float(_b)}
         marker_r = rs[-1] if isinstance(rs, (list, tuple)) else rs
         dots_r = self._dot_rows(fig, marker_r, options)
+        # twoway draws the rows from the data, not from the jittered
+        # markers (dot_truth.json D31): _dot_fill reads these columns.
+        dots_r._dash_dots_vars = {"along": yvar, "across": xvar}
         if _b is not None and math.isfinite(_b):
             dots_r._dash_axis_include = {"y": float(_b)}
         return [dots_r, marker_r]
@@ -20406,7 +20409,10 @@ class GlyphMapper:
         (``dr._dash_dots_marker``) through its view, read in the axis's
         units; the axis is the one the dots' ``y`` column is drawn on
         (``x`` under horizontal).  Writes nothing when the rows are
-        unchanged.  Returns whether it wrote.  Never raises."""
+        unchanged.  The positions are the layer's variables (map_dot's
+        ``_dash_dots_vars``), not jitter()'s moved columns: twoway jitters
+        the markers and draws the rows on the data (dot_truth.json D31).
+        Returns whether it wrote.  Never raises."""
         try:
             m = getattr(dr, "_dash_dots_marker", None)
             spec = None
@@ -20435,9 +20441,16 @@ class GlyphMapper:
                         rows = np.flatnonzero(
                             np.asarray(list(bools)[:n], dtype=bool))
 
+            raw = getattr(dr, "_dash_dots_vars", None) or {}
+
             def col(letter):
                 v = getattr(m.glyph, letter, None)
                 f = _dash_spec_field(v)
+                # The variable itself, never jitter()'s moved column:
+                # twoway's rows stay on the data (dot_truth.json D31).
+                own = raw.get("along" if letter == along else "across")
+                if isinstance(own, str) and own in mdata:
+                    f = own
                 if not f or f not in mdata:
                     return np.full(len(rows), np.nan)
                 c = _dash_float_values(mdata[f], coerce=True)[rows]

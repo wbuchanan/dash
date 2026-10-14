@@ -93,7 +93,8 @@ local G25 "D27|twoway dot mpg weight in 1/5, p(p3) dcolor(red)"
 local G26 "D28|twoway dot mpg weight in 1/5, baroffset(.5)"
 local G27 "D29|twoway dot mpg weight in 1/5, baroffset(5)"
 local G28 "D30|twoway dot mpg weight in 1/5, dlalign(outside)"
-forvalues k = 1/28 {
+local G29 "D31|twoway dot mpg weight in 1/5, jitter(5) jitterseed(1)"
+forvalues k = 1/29 {
     gettoken key rest : G`k', parse("|")
     gettoken bar cmd : rest, parse("|")
     local opt = cond(strpos(`"`cmd'"', ","), " ", ", ")

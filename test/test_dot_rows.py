@@ -466,3 +466,34 @@ class TestTheAdoText:
         assert _T["D27"]["dot_stroke"] == ["#000000"]
         assert 'display as error "option ndots() incorrectly specified"' \
             in ado
+
+
+class TestJitter:
+    """twoway's jitter() moves dot's markers and leaves its rows of dots on
+    the data: under jitter(5) jitterseed(1) the runs keep D01's screen x
+    and every marker leaves its run (dot_truth.json D31).  dash drew the
+    rows through the jittered marker columns (measured at c377e9b)."""
+
+    def test_the_fixture(self):
+        runs = sorted(float(k) for k in _T["D31"]["dot_runs"])
+        assert runs == sorted(float(k) for k in _T["D01"]["dot_runs"])
+        off = {tuple(c) for c in _T["D31"]["marker_centres"]
+               if min(abs(c[0] - r) for r in runs) > 0.2}
+        assert len(off) == 5
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_rows_stay_on_the_data(self, mode, tmp_path):
+        f, _ = _fig(mode, tmp_path, {"jitter": "5", "jitterseed": "1"})
+        assert set(_runs(_dots(f))) == set(_AUTO5["weight"])
+        m = _marker(f)
+        xs = m.data_source.data[dr._dash_spec_field(m.glyph.x)]
+        assert not set(float(v) for v in xs) & set(_AUTO5["weight"])
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_horizontal_rows_stay_on_the_data(self, mode, tmp_path):
+        f, _ = _fig(mode, tmp_path, {"jitter": "5", "jitterseed": "1",
+                                     "horizontal": "horizontal"})
+        assert set(_runs(_dots(f))) == set(_AUTO5["weight"])
+        lo, hi = dr._dash_axis_scale(f, "x")
+        for run in _runs(_dots(f)).values():
+            assert min(run) >= lo - 1e-9 and max(run) <= hi + 1e-9
