@@ -494,7 +494,7 @@ and now matches Stata.
 
 <!-- WP-31 C6b -->
 
-<!-- WP-31 C11b -->
+- lpoly and lpolyci on a saved page after a filter move that leaves an exactly fitted rule of thumb (y an exact polynomial in x, or a few rows): the line drawn at 0 in silence -> the build's smooth and band, dimmed and keyed "(unfiltered)" (WP-31, C11b)
 
 <!-- WP-31 C8c -->
 

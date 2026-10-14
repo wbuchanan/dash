@@ -4003,6 +4003,90 @@ if inlist("`only'", "", "S22") & `: list posof "S22" in w31_run' {
 }
 * ==== end S22 ====
 
+// S22 C11b helper.  _u22_move_mark: the saved page's lpoly layer before
+// and after one filter move, the callback run under node; globals
+// u22_same (1 when the line after the move is the build's), u22_muted (1
+// when every renderer of the layer is dimmed), u22_cue (1 when the
+// graph's stale caption shows) and u22_zero (1 when the line is all 0).
+python:
+def _u22_move_mark(sp, dp, kind, value):
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    lay = [x for f in r.figures.values() for x in f.renderers
+           if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+           == "lpoly"]
+    before = {k: list(v) for k, v in lay[0].data_source.data.items()}
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    after = {k: list(v) for k, v in lay[0].data_source.data.items()}
+    cue = [t for f in r.figures.values() for t in f.above
+           if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+    Macro.setGlobal("u22_same", str(int(before == after)))
+    Macro.setGlobal("u22_muted", str(int(all(x.muted for x in lay))))
+    Macro.setGlobal("u22_cue", str(int(bool(cue) and cue[0].visible)))
+    Macro.setGlobal("u22_zero", str(int(bool(after["y_lp"]) and all(
+        v == 0 for v in after["y_lp"]))))
+end
+
+* ==== S22 C11b: an exactly fitted rule of thumb is marked on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S22") & `: list posof "S22" in w31_run' {
+    display as text "S22 start " c(current_date) " " c(current_time)
+    local u22d "`w31_work'/s22b"
+    capture mkdir "`u22d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U22-06: the price slider at 12990 keeps five cars, on which lpoly's
+    // rule-of-thumb global fit at degree(2) (degree 6, seven coefficients)
+    // is exact: Stata's r(bwidth) is the round-off of its arithmetic (its
+    // smooth is recorded, not compared: the served app emulates it).  The
+    // saved page keeps the build's smooth and marks the layer, where it
+    // drew y = 0 in silence.  (At degree(0) invsym drops columns of the
+    // global fit on these five weights, so the fit is not exact and the
+    // saved page refits.)
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    capture noisily dash (scatter mpg weight) (lpoly mpg weight, degree(2)), name(zu226)
+    _w31_expect U22-06 "(_rc == 0)" "dash lpoly rc `=_rc'"
+    quietly count if price >= 12990
+    local nk = r(N)
+    _w31_expect U22-06 "(`nk' == 5)" "price >= 12990 keeps `nk' rows"
+    quietly lpoly mpg weight if price >= 12990, degree(2) nograph generate(u22x u22y)
+    local sbw = r(bwidth)
+    quietly count if u22y < .
+    local nz = r(N)
+    _w31_expect U22-06 "(`sbw' < .)" "Stata's lpoly on the five rows: r(bwidth) `sbw'"
+    _dash_serve_spec, specpath("`u22d'/s6.json") datapath("`u22d'/d6.json") filter(price, type(slider))
+    python: _u22_move_mark("`u22d'/s6.json", "`u22d'/d6.json", "Slider", "12990")
+    _w31_expect U22-06 "(${u22_zero} == 0)" "the saved lpoly after the slider to 12990 is drawn at 0"
+    _w31_expect U22-06 "(${u22_same} == 1 & ${u22_muted} == 1 & ${u22_cue} == 1)" "the saved lpoly after the slider to 12990: build kept ${u22_same}, dimmed ${u22_muted}, caption ${u22_cue}"
+    _w31_done U22-06 "five kept rows, an exact global fit (Stata's r(bwidth) `sbw', `nz' grid points drawn): the saved page keeps the build's smooth and marks it"
+
+    foreach p in s d {
+        capture erase "`u22d'/`p'6.json"
+    }
+    capture rmdir "`u22d'"
+    macro drop u22_same u22_muted u22_cue u22_zero
+    capture graph drop _all
+    dash clear
+    display as text "S22 end " c(current_date) " " c(current_time)
+}
+* ==== end S22 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

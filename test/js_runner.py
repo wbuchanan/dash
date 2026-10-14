@@ -616,6 +616,7 @@ def _fit_harness(ac, x, y, w=None, *, timed=False):
             + ";\nconst fw = " + (_floats(w) if w is not None else "null")
             + ";\nconst src = { data: null, change: { emit: () => {} } };"
             + "\nconst _dash_lpci_cache = new Map();"
+            + "\nconst _dash_unrefit = {};"
             + "\nconst _t0 = process.hrtime.bigint();"
             + "\nfor (let _i = 0; _i < 1; _i++) {\n" + block + "\n}"
             + "\nconst _ms = Number(process.hrtime.bigint() - _t0) / 1e6;"
@@ -641,6 +642,7 @@ def run_fit_js_block_roles(ac, x, y, w=None, *, timed=False):
                + ";\nconst _srcs = [{ data: null, change: { emit: () => {} } },"
                + " { data: null, change: { emit: () => {} } }];"
                + "\nconst _dash_lpci_cache = new Map();"
+               + "\nconst _dash_unrefit = {};"
                + "\nconst _t0 = process.hrtime.bigint();"
                + "\nfor (let _i = 0; _i < 2; _i++) {\nconst ac = _acs[_i];"
                + " const src = _srcs[_i];\n" + block + "\n}"

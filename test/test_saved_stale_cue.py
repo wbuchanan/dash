@@ -254,7 +254,10 @@ class TestTheCueAppearsOnAMove:
         both keys marked "(unfiltered)" after a move, because the saved
         page kept the build's smooth and band.  It refits both since, so
         neither the band nor the line is dimmed or marked, and the caption
-        and status stay hidden; the name is kept."""
+        and status stay hidden; the name is kept.  Flipped (WP-31 C11b):
+        after the dropdown to Foreign the rule of thumb is an exact global
+        fit, whose round-off the page does not emulate: it keeps the
+        build's smooth and band there and marks both keys, as before F1e."""
         _, filt, action, _o = move
         r = _render(_spec([plot_for("scatter"), plot_for("lpolyci")],
                           {"filter": filt}))
@@ -266,16 +269,20 @@ class TestTheCueAppearsOnAMove:
                 and set(srcs[2].data) >= {"x_lp", "y_lp"}
                 and "y_lower" not in srcs[2].data):
             pytest.fail("needs S11 (P0.9 three-source lpolyci)")
-        assert all(getattr(x, "_dash_frozen", None) is None for x in layer)
+        # One conditional tag (WP-31 C11b): the default bandwidths.
+        tags = [getattr(x, "_dash_frozen", None) for x in layer]
+        assert tags[0] is not None and "cond" in tags[0]
+        assert all(tg is tags[0] for tg in tags)
         built = {id(i): _text(i.label) for i in _items_of(f, layer)}
         _act(r, action)
-        assert not any(x.muted for x in layer)
+        exact = action == _MOVES[0][2]
+        assert [x.muted for x in layer] == [exact] * 3
         for it in _items_of(f, layer):
-            assert not _text(it.label).endswith(" (unfiltered)")
-        assert {id(i): _text(i.label) for i in _items_of(f, layer)} == built
+            assert _text(it.label).endswith(" (unfiltered)") is exact
         st = r.filter_callbacks[0].args.get("stale_status")
-        assert st is None or st.visible is False
+        assert st.visible is exact
         _back(r, action[0])
+        assert {id(i): _text(i.label) for i in _items_of(f, layer)} == built
         assert not any(x.muted for x in layer)
 
         # An empty lpolyci holds three empty sources and is never marked.
@@ -295,6 +302,9 @@ class TestTheCueAppearsOnAMove:
         assert not any(x.muted for x in layer)
 
 
+#: WP-31 C11b: widths that keep lpoly and lpolyci off the rule of thumb.
+_GIVEN_WIDTHS = {"lpoly": {"bwidth": "400"},
+                 "lpolyci": {"bwidth": "400", "pwidth": "600"}}
 #: WP-31 F1: the computed layers the saved page refits after a move.
 _REFIT = ["lfit", "qfit", "lowess", "lfitci", "qfitci", "lpoly", "lpolyci"]
 
@@ -309,7 +319,12 @@ class TestARefitLayerIsNeverMarked:
     @pytest.mark.parametrize("t", _REFIT)
     def test_not_marked(self, t, move):
         _, filt, action, _oracle = move
-        r = _render(_spec([plot_for("scatter"), plot_for(t)],
+        # Flipped (WP-31 C11b): lpoly and lpolyci at their default widths
+        # after the dropdown to Foreign, where the rule of thumb is an
+        # exact global fit the page marks (test_js_fit_refit.py
+        # TestTheExactFitIsMarked); given widths refit there.
+        opts = (_GIVEN_WIDTHS.get(t, {}) if move is _MOVES[0] else {})
+        r = _render(_spec([plot_for("scatter"), plot_for(t, opts)],
                           {"filter": filt}))
         _act(r, action)
         f = r.figures["g1"]

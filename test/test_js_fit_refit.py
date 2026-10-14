@@ -1304,7 +1304,10 @@ _ROT_BY_ID = {r["id"]: r for r in _LPT["rows"]}
 #: (D-19.a), measured at the F1d commit: 48 of 785, every one Python's
 #: "float" route -- an exact global fit on 2 to 5 rows of auto (mpg on
 #: weight, epanechnikov and gaussian, degree 0-3), where Stata's h is its
-#: round-off; the page draws y = 0 there.  The 737 others agree to 1e-6
+#: round-off; the page drew y = 0 there, and since WP-31 C11b keeps the
+#: build and marks the layer (TestTheRotFlagsAnExactFit: every one is
+#: flagged; a port of the round-off could not be shown to agree across
+#: platforms, so the count stays).  The 737 others agree to 1e-6
 #: (1.8e-10 at most), the rows whose raw columns invsym cuts among them.
 _ROT_DIVERGENT_COUNT = 48
 
@@ -1517,20 +1520,23 @@ class TestTheSavedLpolyRefits:
                 or not np.allclose(built[1], sy)), "the move changed nothing"
 
     def test_an_exact_global_fit_draws_the_line_at_zero(self):
-        # D-19.a: on the five Foreign rows the global fit of degree 4 is
-        # exact; Stata's bandwidth is its round-off, which the served app
-        # emulates and the saved page does not: it draws y = 0 over the
-        # kept rows' range (BUGS.md "lpoly's default bandwidth on an
-        # exactly fitted y differs between the saved page and the served
-        # app").
+        """Flipped (WP-31 C11b): on the five Foreign rows the global fit
+        of degree 4 is exact and Stata's bandwidth is its round-off, which
+        the served app emulates and no float emulation can show across
+        platforms (the served value itself rests on the BLAS's summation
+        order); the saved page drew y = 0 over the kept rows' range, in
+        silence.  It now keeps the build's smooth and marks the layer
+        (M8), as it marks a layer it does not refit; the name is kept."""
         spec = _spec([plot_for("scatter"), plot_for("lpoly")],
                      {"filter": _MOVES[0][1]})
         r = _render(spec)
+        built = _fit_data(r.figures["g1"].renderers)
         _move(r, _MOVES[0][2])
         sx, sy = _fit_data(r.figures["g1"].renderers)
-        kept = _DF.query("foreign == 1")["weight"]
-        assert len(sx) == 10 and (sy == 0).all()
-        assert sx[0] == kept.min() and sx[-1] == kept.max()
+        np.testing.assert_array_equal(sx, built[0])
+        np.testing.assert_array_equal(sy, built[1])
+        assert not (sy == 0).all()
+        _assert_exact_fit_marked(r)
 
     def test_a_move_leaving_one_row_empties_the_line(self):
         spec = _spec([plot_for("scatter"), plot_for("lpoly")],
@@ -1853,9 +1859,12 @@ _LPCI_REFIT = [
     ("lpolyci var(4) [aw=weight]",
      [plot_for("lpolyci", {"lpvar": "4", "weight": "aweight",
                            "wexp": "weight"})], _MOVES[2]),
-    ("lpolyci cosine [fw=rep] bwidth(500)",
+    # pwidth() given too (WP-31 C11b): the default pilot is 1.5 times the
+    # rule of thumb, an exact fit on the Foreign rows, which the page marks.
+    ("lpolyci cosine [fw=rep] bwidth(500) pwidth(750)",
      [plot_for("lpolyci", {"kernel": "cosine", "weight": "fweight",
-                           "wexp": "rep", "bwidth": "500"})], _MOVES[0]),
+                           "wexp": "rep", "bwidth": "500",
+                           "pwidth": "750"})], _MOVES[0]),
 ]
 
 
@@ -1891,3 +1900,132 @@ class TestTheSavedLpolyciRefits:
         got = _lpci_data(r.figures["g1"].renderers)
         assert all(len(v) == 0 for v in got["line"].values())
         assert all(len(v) == 0 for v in got["band"].values())
+
+
+# ---- WP-31 C11b: an exactly fitted rule of thumb is marked ----
+#
+# Where lpoly's rule-of-thumb global fit is exact (y an exact polynomial
+# in x, or no more rows than its coefficients), Stata's r(bwidth) is the
+# round-off of its float arithmetic.  The served app emulates it
+# (_lpoly_rot_float); a JavaScript port agrees on 8 of the fixture's 48
+# such rows, since numpy's matrix-vector products do not sum in a fixed
+# order (measured: A @ v differs from the sequential sum by 2.8e-17) and
+# the round-off is the whole of the residual.  So the saved page keeps
+# the build's smooth there and marks the layer with the stale cue after
+# a move (M8), never drawing y = 0 in silence.
+
+
+def _assert_exact_fit_marked(r, key="g1"):
+    """The lpoly/lpolyci layer of *key* is dimmed, keyed "(unfiltered)"
+    and the caption shown."""
+    from test_saved_stale_cue import _items_of as _its, _one_cue as _cue1
+    f = r.figures[key]
+    rends = [x for x in f.renderers
+             if getattr(x, "_dash_frozen", None) is not None]
+    assert rends and all(x.muted for x in rends), [x.muted for x in rends]
+    assert _cue1(r, key).visible is True
+    items = _its(f, rends)
+    assert items and all(
+        str(getattr(i.label, "value", i.label)).endswith(" (unfiltered)")
+        for i in items)
+
+
+@requires_node
+class TestTheRotFlagsAnExactFit:
+    def test_every_float_row_is_flagged_and_no_other(self):
+        calls, routes = [], []
+        for row in _LPT["rows"]:
+            x, y, w = _lp_sample(row)
+            calls.append([x.tolist(), y.tolist(), _lp_list(w),
+                          row["degree"], row["kernel"]])
+            routes.append(_rot_pairs()[row["id"]][1]["route"])
+        got = run_js(_fit_js() + "\nconst _calls = " + json.dumps(calls)
+                     + ";\nprocess.stdout.write(JSON.stringify(_calls.map("
+                     "a => { const o = {}; dash_lpoly_rot(...a, o); "
+                     "return !!o.exact; })));")
+        assert [i for i, g in enumerate(got) if g] == [
+            i for i, rt in enumerate(routes) if rt == "float"]
+
+    def test_every_divergent_row_is_flagged(self):
+        flagged = set()
+        for row, (js, det) in zip(_LPT["rows"], [_rot_pairs()[r["id"]]
+                                                  for r in _LPT["rows"]]):
+            if not _rot_agrees(js, det, 1e-6):
+                assert det["route"] == "float", row["id"]
+                flagged.add(row["id"])
+        assert len(flagged) == _ROT_DIVERGENT_COUNT
+
+
+@requires_node
+class TestTheExactFitIsMarked:
+    def test_lpolyci_keeps_its_build_and_is_marked(self):
+        spec = _spec([plot_for("scatter"), plot_for("lpolyci")],
+                     {"filter": _MOVES[0][1]})
+        r = _render(spec)
+        built = _lpci_data(r.figures["g1"].renderers)
+        _move(r, _MOVES[0][2])
+        got = _lpci_data(r.figures["g1"].renderers)
+        for role in ("line", "band"):
+            for c, v in got[role].items():
+                np.testing.assert_array_equal(v, built[role][c])
+        _assert_exact_fit_marked(r)
+
+    def test_lpolyci_with_a_bwidth_and_a_default_pilot_is_marked(self):
+        # bwidth() given, pwidth() not: the pilot is 1.5 times the rule
+        # of thumb, exact on the Foreign rows, so the band is the build's.
+        spec = _spec([plot_for("scatter"),
+                      plot_for("lpolyci", {"bwidth": "400"})],
+                     {"filter": _MOVES[0][1]})
+        r = _render(spec)
+        _move(r, _MOVES[0][2])
+        _assert_exact_fit_marked(r)
+
+    @pytest.mark.parametrize("plot", [
+        plot_for("lpoly", {"bwidth": "400"}),
+        plot_for("lpolyci", {"bwidth": "400", "pwidth": "600"})],
+        ids=["lpoly bwidth", "lpolyci bwidth pwidth"])
+    def test_given_widths_are_never_conditional(self, plot):
+        r = _render(_spec([plot_for("scatter"), plot],
+                          {"filter": _MOVES[0][1]}))
+        assert not any(hasattr(x, "_dash_frozen")
+                       for x in r.figures["g1"].renderers)
+
+    def test_a_move_the_rule_of_thumb_survives_marks_nothing(self):
+        # The range move leaves an inexact global fit: refitted, unmarked.
+        spec = _spec([plot_for("scatter"), plot_for("lpoly")],
+                     {"filter": _MOVES[1][1]})
+        r = _render(spec)
+        _move(r, _MOVES[1][2])
+        f = r.figures["g1"]
+        rends = [x for x in f.renderers
+                 if getattr(x, "_dash_frozen", None) is not None]
+        assert rends and not any(x.muted for x in rends)
+        sx, sy = _fit_data(f.renderers)
+        vx, vy = _served_fit_after(spec, _MOVES[1][2])
+        np.testing.assert_allclose(sy, vy, rtol=1e-8, atol=1e-9)
+
+    def test_rot_conditional(self):
+        lp = _map("lpoly", _FRAME)
+        assert dr.GlyphMapper._rot_conditional([lp])
+        assert not dr.GlyphMapper._rot_conditional(
+            [_map("lpoly", _FRAME, {"bwidth": "400"})])
+        assert dr.GlyphMapper._rot_conditional(
+            _lpci_map(_FRAME, {"bwidth": "400"}))
+        assert dr.GlyphMapper._rot_conditional(
+            _lpci_map(_FRAME, {"pwidth": "600"}))
+        assert not dr.GlyphMapper._rot_conditional(
+            _lpci_map(_FRAME, {"bwidth": "400", "pwidth": "600"}))
+        assert not dr.GlyphMapper._rot_conditional(
+            [_map("lfit", _FRAME), _map("lpoly", _FRAME,
+                                        {"recast": "scatter"})])
+        assert not dr.GlyphMapper._rot_conditional([])
+
+    def test_the_conditional_config_pairs_the_layer_and_its_mark(self):
+        r = _render(_spec([plot_for("scatter"), plot_for("lpolyci")],
+                          {"filter": _MOVES[0][1]}))
+        cb = r.filter_callbacks[0]
+        aggs = [c for c in json.loads(cb.args["agg_configs_json"])
+                if c["type"] == "lpolyci"]
+        stale = json.loads(cb.args["stale_configs_json"])
+        assert len(aggs) == 2 and len(stale) == 1
+        assert aggs[0]["mark"] == aggs[1]["mark"] == stale[0]["cond"]

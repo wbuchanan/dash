@@ -2023,8 +2023,9 @@ smooth and its confidence band ({cmd:lpolyci}, with {cmd:pwidth()} and
 {cmd:var()}) are refitted with the default bandwidth recomputed from the
 kept rows; where that bandwidth is Stata's round-off of an exact global fit (y
 an exact polynomial in x, or no more rows than the rule of thumb's fit has
-coefficients) the saved page draws the line at 0 where {cmd:dash serve}
-reproduces Stata's value.  When a move
+coefficients), which {cmd:dash serve} reproduces and the saved page cannot
+reproduce on every machine, the saved page keeps the smooth and band it was
+built with and marks the layer, as below.  When a move
 removes observations such a line, a histogram's bins or a density's grid was
 computed from, the page marks the layer: it is dimmed, its legend key reads
 "(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows

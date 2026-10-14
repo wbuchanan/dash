@@ -459,7 +459,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C10d Tracked:** Open (WP-31 section 46).
 - **C10e Tracked:** Open (WP-31 section 35).
 - **C11 Tracked:** Open (WP-31 section 46).
-- **C11b Tracked:** Open (WP-31 section 22).
+- **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit pending.
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Open (WP-31 section 31).
 - **C14 Tracked:** Open (WP-31 section 34).
@@ -500,8 +500,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)", commit 55ee2e5.
 - **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
-- **F1d Tracked:** Partly closed in WP-31 (section 19, commit bbc640a): the saved page refits lpoly with its rule-of-thumb bandwidth after a filter move; open: an exactly fitted global fit draws the line at 0 where the served app reproduces Stata's round-off (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app").
-- **F1e Tracked:** Partly closed in WP-31 (section 22, commit pending): the saved page refits lpolyci's smooth and its analytic band after a filter move; open: an exactly fitted global fit draws the line at 0 and no band where the served app reproduces Stata's round-off (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app").
+- **F1d Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpoly after a filter move (the lpoly twin)", commit bbc640a.
+- **F1e Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpolyci after a filter move (the lpolyci twin)", commit pending.
 - **F1f Tracked:** Open (WP-31 section 25).
 - **F1g Tracked:** Open (WP-31 section 28).
 - **F2 Tracked:** Open (WP-31 section 47).

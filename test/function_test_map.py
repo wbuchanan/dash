@@ -189,6 +189,7 @@ FUNCTIONS = {
  'GlyphMapper._join_order': 'test/test_join_order.py::TestTheJoinOrderRule::test_the_precedence',
  'GlyphMapper._layer_weight_column': 'test/test_saved_stale_cue.py::TestTheWeightColumn::test_it_decides_as_layer_weights_does',
  'GlyphMapper._layer_weight_values_state': 'test/test_saved_stale_cue.py::TestTheWeightColumn::test_the_value_state',
+ 'GlyphMapper._rot_conditional': 'test/test_js_fit_refit.py::TestTheExactFitIsMarked::test_rot_conditional',
  'GlyphMapper._layer_weights': 'test/test_statistical_helpers.py::TestLayerWeights::test_an_unweighted_layer_is_masked_and_carries_no_weight',
  'GlyphMapper._lpoly_grid_plan': 'test/test_js_fit_refit.py::TestLpolyConfig::test_lpoly_grid_plan',
  'GlyphMapper._mark_insufficient': 'test/test_layer_reports.py::TestAByPanelIsAnsweredAsTwowayAnswersIt::test_mark_insufficient_marks_each_renderer',

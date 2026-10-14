@@ -16628,6 +16628,26 @@ class GlyphMapper:
         fp = str(o.get("fitplot", "") or "").strip()
         return ci not in ("", "rarea") or fp not in ("", "line")
 
+    @staticmethod
+    def _rot_conditional(renderers) -> bool:
+        """Does a layer's refit lean on lpoly's rule of thumb (WP-31
+        C11b)?  True when one of *renderers* carries an lpoly refit
+        config without bwidth() or an lpolyci one without bwidth() or
+        pwidth(): after a move whose rule of thumb is an exact global fit
+        the saved page keeps such a layer's build, so it is registered
+        with the stale cue under a condition."""
+        for r in renderers or ():
+            cfg = getattr(r, "_dash_agg_config", None)
+            if not isinstance(cfg, dict):
+                continue
+            t = cfg.get("type")
+            if t == "lpoly" and cfg.get("bwidth") is None:
+                return True
+            if t == "lpolyci" and (cfg.get("bwidth") is None
+                                   or cfg.get("pwidth") is None):
+                return True
+        return False
+
     def _tag_fitci(self, line_r, ptype, source, view, xvar, yvar, wtype, w,
                    fig, options):
         """Hand an lfitci or qfitci layer to the saved page's refit (WP-31
@@ -27976,8 +27996,11 @@ function dash_lstsq(cols, y) {
 // where Python's twin does not take its exact route: fewer distinct x than
 // d+1 or a raw-power column invsym would drop (Python fits the columns
 // Stata keeps), or an exact global fit (s2 <= 1e-24 var(y): Stata's h is
-// its round-off, which Python emulates).
-function dash_lpoly_rot(x, y, w, degree, kernel) {
+// its round-off, which Python emulates).  An exact global fit also sets
+// out.exact (out optional): the caller keeps the build's smooth and the
+// layer is marked (WP-31 C11b), since no float emulation of that
+// round-off agrees across platforms.
+function dash_lpoly_rot(x, y, w, degree, kernel, out) {
     const n = x.length;
     if (n < 2 || y.length !== n || (w && w.length !== n)) return NaN;
     const ww = w ? w : new Array(n).fill(1);
@@ -28101,7 +28124,10 @@ function dash_lpoly_rot(x, y, w, degree, kernel) {
     // (Python's s2 <= 1e-24 var(y) is in exact arithmetic; float QR
     // leaves about 1e-26 y^2, so 1e-20 here): Stata's h is its
     // round-off, which Python emulates and this does not (D-19.a).
-    if (ycon || s2 <= 1e-20 * vy) return NaN;
+    if (ycon || s2 <= 1e-20 * vy) {
+        if (out) out.exact = true;
+        return NaN;
+    }
     const sp = Math.pow(s, pe + 1);
     const D = dash_polyder(a, pe + 1).map(v => v / sp);
     const Pi = dash_polyint(dash_polymul(D, D));
@@ -28283,6 +28309,9 @@ const agg_configs = JSON.parse(agg_configs_json);
 // lpolyci's fit, made once per config for its line and its band
 // (WP-31 F1e, D-22.a); one per callback run.
 const _dash_lpci_cache = new Map();
+// WP-31 C11b: per conditional mark (ac.mark, c.cond), whether this run
+// kept a layer's build because its rule of thumb was an exact global fit.
+const _dash_unrefit = {};
 for (let ai = 0; ai < agg_configs.length; ai++) {
     const ac  = agg_configs[ai];
     const src = agg_sources[ai];
@@ -28643,11 +28672,24 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // else the local fits, a grid point with fewer than two weighted
         // rows missing: left out, or kept as a break under cmissing(n).
         const n = fx.length;
+        // WP-31 C11b: the build's smooth, kept for a move whose rule of
+        // thumb is an exact global fit.
+        if (src._dash_built === undefined) src._dash_built = src.data;
+        if (ac.mark !== undefined && ac.mark !== null) _dash_unrefit[ac.mark] = false;
         if (n < 2) { dash_fit_write(src, ac, [], [], null); continue; }
         const lw = dash_lpoly_weights(fw, ac.wtype);
         const ng = dash_lpoly_grid_n(ac.n_dataset, ac.n_user);
+        const _rt = {};
         const h = (ac.bwidth !== null && ac.bwidth !== undefined)
-            ? ac.bwidth : dash_lpoly_rot(fx, fy, lw, ac.degree, ac.kernel);
+            ? ac.bwidth : dash_lpoly_rot(fx, fy, lw, ac.degree, ac.kernel, _rt);
+        if (_rt.exact) {
+            // Stata's bandwidth is its round-off here: the build's smooth
+            // stays and the stale cue marks the layer (c.cond).
+            src.data = src._dash_built;
+            src.change.emit();
+            if (ac.mark !== undefined && ac.mark !== null) _dash_unrefit[ac.mark] = true;
+            continue;
+        }
         let lo = Infinity, hi = -Infinity;
         for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
         const xg = dash_linspace(lo, hi, ng);
@@ -28668,23 +28710,29 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // invnormal(.5(1 - level/100) + level/100) se.  The line and the
         // band are two tagged renderers (ac.role); the fit is made once
         // per config and served to both from _dash_lpci_cache (D-22.a).
+        if (src._dash_built === undefined) src._dash_built = src.data;
         const key = JSON.stringify(Object.assign({}, ac, {role: null}));
         let R = _dash_lpci_cache.get(key);
         if (!R) {
-            R = {lx: [], ly: [], bx: [], by: [], bl: [], bu: []};
+            R = {lx: [], ly: [], bx: [], by: [], bl: [], bu: [], unrefit: false};
             const n = fx.length;
             if (n >= 2) {
                 const lw = dash_lpoly_weights(fw, ac.wtype);
                 const ng = dash_lpoly_grid_n(ac.n_dataset, ac.n_user);
                 const given = (v) => v !== null && v !== undefined;
+                const _rt = {};
                 const rot = (given(ac.bwidth) && given(ac.pwidth)) ? NaN
-                    : dash_lpoly_rot(fx, fy, lw, ac.degree, ac.kernel);
+                    : dash_lpoly_rot(fx, fy, lw, ac.degree, ac.kernel, _rt);
+                // WP-31 C11b: an exact global fit keeps the build (marked).
+                R.unrefit = !!_rt.exact;
                 const h = given(ac.bwidth) ? ac.bwidth : rot;
                 const hp = given(ac.pwidth) ? ac.pwidth : 1.5 * rot;
                 let lo = Infinity, hi = -Infinity;
                 for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
                 const xg = dash_linspace(lo, hi, ng);
-                if (!isFinite(h)) {
+                if (R.unrefit) {
+                    // the build's line and band are restored below
+                } else if (!isFinite(h)) {
                     R.lx = xg; R.ly = xg.map(() => 0);
                 } else {
                     const yg = dash_lpoly_fit(fx, fy, h, ac.degree, ac.kernel, lw, xg);
@@ -28704,7 +28752,11 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             }
             _dash_lpci_cache.set(key, R);
         }
-        if (ac.role === 'band') {
+        if (ac.mark !== undefined && ac.mark !== null) _dash_unrefit[ac.mark] = R.unrefit;
+        if (R.unrefit) {
+            src.data = src._dash_built;
+            src.change.emit();
+        } else if (ac.role === 'band') {
             dash_fit_write(src, Object.assign({}, ac, {join: null}), R.bx, R.by, [R.bl, R.bu]);
             if (ac.keepmissing) dash_fill_split_n(src, ac.cols[0], [ac.cols[2], ac.cols[3], ac.cols[1]], ac.cols[2]);
         } else {
@@ -28766,6 +28818,9 @@ if (typeof stale_configs_json !== "undefined") {
             }
             stale = used;
         }
+        // WP-31 C11b: a layer the page refits is marked only when this run
+        // kept its build (an exactly fitted rule of thumb).
+        if (c.cond !== undefined && c.cond !== null) stale = stale && _dash_unrefit[c.cond] === true;
         for (const r of (_stl_rends[ci] || [])) { r.muted = stale; }
         if (stale) {
             _stl_any = true;
@@ -48189,6 +48244,21 @@ class DashRenderer:
                 _ftag = self._frozen_layer_tag(ptype.lower(), popts,
                                                source_for_plot, _plot_view,
                                                _frozen_vars, kind=_fkind)
+                if _ftag is None and GlyphMapper._rot_conditional(
+                        _layer_renderers):
+                    # WP-31 C11b: a refitted lpoly or lpolyci on the rule
+                    # of thumb is marked only after a move whose rule of
+                    # thumb is an exact global fit, where the page keeps
+                    # its build: the tag's cond pairs it with the layer's
+                    # refit configs (render() step 3b).
+                    _ftag = self._frozen_layer_tag(ptype.lower(), popts,
+                                                   source_for_plot,
+                                                   _plot_view, _frozen_vars,
+                                                   kind="fit")
+                    if _ftag is not None:
+                        self._n_cond_marks = getattr(self, "_n_cond_marks",
+                                                     0) + 1
+                        _ftag["cond"] = self._n_cond_marks - 1
                 if _ftag is not None:
                     for _fr in _layer_renderers:
                         if not _dash_is_swatch(_fr):
@@ -50020,6 +50090,10 @@ class DashRenderer:
                                 "members": m_idx, "title": t_idx,
                                 "items": its,
                                 "suffix": _DASH_STALE_SUFFIX[tag["kind"]]})
+                if "cond" in tag:
+                    # WP-31 C11b: marked only when the refit kept the
+                    # build (the agg configs' mark).
+                    configs[-1]["cond"] = int(tag["cond"])
                 rend_lists.append(list(rends))
         if not configs:
             return None
@@ -50366,6 +50440,10 @@ class DashRenderer:
                         and hasattr(_r, "_dash_agg_config")):
                     continue
                 _cfg = dict(_r._dash_agg_config)
+                # WP-31 C11b: the conditional mark the stale cue reads.
+                _ft = getattr(_r, "_dash_frozen", None)
+                if isinstance(_ft, dict) and "cond" in _ft:
+                    _cfg["mark"] = int(_ft["cond"])
                 _rows = getattr(_r, "_dash_agg_rows", None)
                 if _rows is not None and len(_rows) < _n_rows:
                     _cfg["member_ids"] = _rows
