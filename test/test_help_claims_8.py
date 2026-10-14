@@ -1559,8 +1559,18 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
         assert "No Bokeh equivalent" not in s
 
     def test_xtick_is_described_as_twoway_draws_it(self):
+        # Flipped (WP-31 D1): xtick() was described in the section's
+        # "Minor ticks and minor labels" entry, which was wrong once minor
+        # ticks and labels are drawn: the entry left the section, and
+        # xtick() is described where the axis options are.
         s = self._sec()
-        assert "without labels" in s and "{cmd:xtick()}" in s
+        assert "Minor ticks and minor labels" not in s
+        assert "{opt xmtick(" not in s and "{opt ymlabel(" not in s
+        whole = open(os.path.join(os.path.dirname(os.path.abspath(
+            __file__)), "..", "dash.sthlp"), encoding="utf-8").read()
+        i = whole.index("{ul:Ticks without labels.}")
+        assert "without labels" in whole[i:i + 600] \
+            and "{cmd:xtick()}" in whole[i:i + 600]
 
     def test_scale_is_not_called_a_combine_option(self):
         s = self._sec()

@@ -934,6 +934,8 @@ program define _dash_parse_graph_opts, sclass
         PLOTBGCOLOR(string)       LINK(string)              FILTer(string asis) ///
         YTITLE2(string asis)      XTITLE2(string asis)      YLABEL2(string asis) ///
         XLABEL2(string asis)      YSCALE2(string asis)      XSCALE2(string asis) ///
+        xmlabel2(string asis)     ymlabel2(string asis)     xmtick2(string asis) ///
+        ymtick2(string asis) ///
         XSIZe(string)             YSIZe(string)             FXSIZE(string) ///
         FYSIZE(string)            SCALE(string)             TEXT(string asis) ///
         HOVer(string)             TTEXT(string asis) ///
@@ -1023,16 +1025,8 @@ program define _dash_parse_graph_opts, sclass
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
-    if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
-    if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
-    // WP-30 P1.6: tmlabel() and tmtick() are stored on xmlabel/xmtick by
-    // _dash_taxis_fold and drawn when minor ticks are (P2.2).
-    if `: length local tmlabel' local _dash_pending `"`_dash_pending' tmlabel"'
-    if `: length local tmtick' local _dash_pending `"`_dash_pending' tmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
-    if `: length local ymlabel' local _dash_pending `"`_dash_pending' ymlabel"'
-    if `: length local ymtick' local _dash_pending `"`_dash_pending' ymtick"'
     if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown : copy local options
@@ -1068,6 +1062,10 @@ program define _dash_parse_graph_opts, sclass
     sreturn local xtitle2      : copy local xtitle2
     sreturn local ylabel2      : copy local ylabel2
     sreturn local xlabel2      : copy local xlabel2
+    sreturn local xmlabel2     : copy local xmlabel2
+    sreturn local ymlabel2     : copy local ymlabel2
+    sreturn local xmtick2      : copy local xmtick2
+    sreturn local ymtick2      : copy local ymtick2
     sreturn local yscale2      : copy local yscale2
     sreturn local xscale2      : copy local xscale2
     sreturn local ytick2       : copy local ytick2
@@ -1222,6 +1220,8 @@ program define _dash_parse_plot_opts, sclass
         BGColor(string)           PLOTBGCOLOR(string)       LINK(string) ///
         FILTer(string asis)       YTITLE2(string asis)      XTITLE2(string asis) ///
         YLABEL2(string asis)      XLABEL2(string asis)      YSCALE2(string asis) ///
+        xmlabel2(string asis)     ymlabel2(string asis)     xmtick2(string asis) ///
+        ymtick2(string asis) ///
         XSCALE2(string asis)      XSIZe(string)             YSIZe(string) ///
         FXSIZE(string)            FYSIZE(string)            SCALE(string) ///
         TEXT(string asis)         XTICk(string asis)        YTICk(string asis) ///
@@ -1398,17 +1398,9 @@ program define _dash_parse_plot_opts, sclass
     if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
     if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
     if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
-    if `: length local xmlabel' local _dash_pending `"`_dash_pending' xmlabel"'
-    if `: length local xmtick' local _dash_pending `"`_dash_pending' xmtick"'
-    // WP-30 P1.6: tmlabel() and tmtick() are stored on xmlabel/xmtick by
-    // _dash_taxis_fold and drawn when minor ticks are (P2.2).
-    if `: length local tmlabel' local _dash_pending `"`_dash_pending' tmlabel"'
-    if `: length local tmtick' local _dash_pending `"`_dash_pending' tmtick"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
     // region so an end tick label does not run off the edge.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
-    if `: length local ymlabel' local _dash_pending `"`_dash_pending' ymlabel"'
-    if `: length local ymtick' local _dash_pending `"`_dash_pending' ymtick"'
     if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
@@ -1632,6 +1624,10 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_xtitle2      : copy local xtitle2
     sreturn local g_ylabel2      : copy local ylabel2
     sreturn local g_xlabel2      : copy local xlabel2
+    sreturn local g_xmlabel2     : copy local xmlabel2
+    sreturn local g_ymlabel2     : copy local ymlabel2
+    sreturn local g_xmtick2      : copy local xmtick2
+    sreturn local g_ymtick2      : copy local ymtick2
     sreturn local g_yscale2      : copy local yscale2
     sreturn local g_xscale2      : copy local xscale2
     sreturn local g_ytick2       : copy local ytick2
@@ -3264,6 +3260,7 @@ program define _dash_option_rules
         xtick=axislist  ytick=axislist  xtick2=axislist  ytick2=axislist ///
         xmtick=axislist  ymtick=axislist ///
         xmlabel=axislist  ymlabel=axislist ///
+        xmtick2=axislist  ymtick2=axislist  xmlabel2=axislist  ymlabel2=axislist ///
         zlabel=keyformat
     // Flag applicability (WP-18): flag[|flag...]@type[|type...].  A flag
     // written on a type outside its list is refused as twoway refuses it,
@@ -6374,7 +6371,7 @@ program define _dash_process_segment, rclass
     foreach gkey in title subtitle note caption name saving xtitle ytitle xlabel ///
             ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-            xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+            xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
             scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title title2 ///
@@ -7441,7 +7438,7 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-          xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+          xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///
@@ -7478,7 +7475,7 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+              xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
@@ -7589,7 +7586,7 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+              xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
@@ -7681,7 +7678,7 @@ program define _dash_plot
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+              xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
@@ -7713,7 +7710,7 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
               ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-              xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+              xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title title2 ///
@@ -8123,7 +8120,7 @@ program define _dash_plot
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
           ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
-          xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
+          xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title title2 ///

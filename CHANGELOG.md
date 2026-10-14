@@ -412,7 +412,7 @@ and now matches Stata.
 
 - lpolyci on a saved page after a filter move: the build's smooth and band (marked) -> lpoly's smooth and its analytic band on the kept rows; where the rule of thumb's fit is exact the line is drawn at 0 with no band (WP-31, F1e)
 
-<!-- WP-31 D1 -->
+- `dash scatter mpg weight, xmtick(##5)`: no minor ticks and `xmtick()` named as unsupported -> four minor ticks between each pair of major ticks, as twoway draws them; `xmlabel()`, `ymtick()`, `ymlabel()`, `tmtick()`, `tmlabel()` and their axis(2) copies drawn too; `xlabel(##5)` -> twoway's note "##5 ignored, only allowed for minor ticks" and the default ticks (was: read as `#5`) (WP-31, D1)
 
 - mband and mspline on a saved page after a filter move: the build's knots (marked) -> the cross medians and spline of the kept rows (WP-31, F1f)
 

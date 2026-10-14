@@ -45,6 +45,8 @@ default: the variable label
 xlabel(# "text")                       Axis.major_label_overrides, and   canvas text
                                        CustomJSTickFormatter.args
 ylabel2(# "text")                      CustomJSTickFormatter.args        canvas text (formatter)
+xmlabel(# "text")                      ColumnDataSource.data (a          canvas text (LabelSet
+                                       dash_minor_labels LabelSet)       text field; WP-31 D1)
 by() panel title: value label          Title.text                        canvas text
 colorvar colour bar: variable label    ColorBar.title                    canvas text
 legend key: variable label;            LegendItem.label                  DOM text node
@@ -316,6 +318,8 @@ def hostile_inputs(payload):
             note=textbox("gnote"), caption=textbox("gcap"),
             hover="make price",
             xlabel='2000 "%s" 3000' % quoted("tick1"),
+            # WP-31 D1: a minor label's text, a LabelSet's column.
+            xmlabel='2500 "%s"' % quoted("mtick1"),
             legend='label(2 "%s")' % quoted("leglab"),
             # WP-30 P1.10: a text() record, as dash.ado writes it.
             added_text=[{"at_kind": "text", "at_y": 30, "at_x": 3000,
@@ -712,6 +716,10 @@ SINKS = (
          modes=("standalone",)),
     # Data.
     Sink("string_data_values", "sv0", ("ColumnDataSource",), "data", "data"),
+    # WP-31 D1: xmlabel()'s text is the column a LabelSet named
+    # dash_minor_labels draws as canvas text (its text is a field).
+    Sink("xmlabel_minor_label_text", "mtick1", ("ColumnDataSource",), "data",
+         "data"),
 )
 
 

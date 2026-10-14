@@ -1364,7 +1364,10 @@ _DASH_ONLY = {"jseed", "malpha", "lalpha", "falpha", "colornlevels",
               "xlabel2", "ylabel2",
               # WP-29 P0.5: dash's spellings of xtick(..., axis(2)) and
               # ytick(..., axis(2)); twoway refuses those names outright.
-              "xtick2", "ytick2"}
+              "xtick2", "ytick2",
+              # WP-31 D1: dash's spellings of xmtick(..., axis(2)) and the
+              # other minor forms; twoway has no such option names.
+              "xmtick2", "ymtick2", "xmlabel2", "ymlabel2"}
 # Options whose refusal is dash's own and documented as such (dash.sthlp,
 # "Option values"): twoway accepts every value of these silently.  And
 # scheme, which these tests never saw until _TOKEN read every kind

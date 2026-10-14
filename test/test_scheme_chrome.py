@@ -31,6 +31,7 @@ modes with it.
 import json
 import math
 import os
+import re
 import sys
 import warnings
 
@@ -409,6 +410,29 @@ class TestTheChromeKeysAreRead:
         s = _user(tmp_path, monkeypatch, "tsmall", "gsize tick small\n")
         assert s.tick_length_px == pytest.approx(2.7777 * 2.88 * 4 / 3,
                                                  abs=0.01)
+
+    def test_the_minor_tick_keys_are_read(self):
+        """WP-31 D1: every shipped scheme carries the minor-tick stubs the
+        generator writes -- `gsize minortick' and `gsize tickgap'
+        (half_tiny, half a tick) and `numticks_g horizontal_minor' and
+        `vertical_minor' (0: no minor tick unless asked) -- and the parser
+        reads them."""
+        import glob
+        files = sorted(glob.glob(os.path.join(os.path.dirname(dr.__file__),
+                                              "dash-*.scheme")))
+        assert len(files) == 26
+        for f in files:
+            with open(f, encoding="utf-8") as fh:
+                text = fh.read()
+            for key in ("gsize minortick", "gsize tickgap",
+                        "numticks_g horizontal_minor",
+                        "numticks_g vertical_minor"):
+                assert re.search(r"^" + key + r"\s", text, re.M), (f, key)
+        s2 = dr.SchemeParser("s2color")
+        assert s2.minortick_length_px == pytest.approx(_TINY_PX / 2.0,
+                                                       abs=0.01)
+        assert s2.tickgap_px == pytest.approx(_TINY_PX / 2.0, abs=0.01)
+        assert s2.numticks_minor == {"x": 0, "y": 0}
 
     def test_axisstyle_names_map_to_line_and_tick_flags(self):
         f = dr.SchemeParser._AXISSTYLE_FLAGS

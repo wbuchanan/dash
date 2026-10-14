@@ -1614,6 +1614,14 @@ def extract(stata_base: str, scheme: str) -> dict:
                                           lambda t: resolve_linewidth(r, t)),
             "tick_length": chrome_one("tick_length", "gsize", "tick",
                                       lambda t: resolve_sized(r, "gsize", t)),
+            # WP-31 D1: the minor ticks' length and the tick-label gap
+            # (style/tickstyle-minor.style: `set length scheme minortick',
+            # `set textgap scheme tickgap').
+            "minortick_length": chrome_one(
+                "minortick_length", "gsize", "minortick",
+                lambda t: resolve_sized(r, "gsize", t)),
+            "tickgap": chrome_one("tickgap", "gsize", "tickgap",
+                                  lambda t: resolve_sized(r, "gsize", t)),
             "tick_position": chrome_one("tick_position", "tickposition",
                                         "axis_tick", tok_name, "outside"),
         }
@@ -1899,6 +1907,13 @@ def extract(stata_base: str, scheme: str) -> dict:
             lambda t: _as_number(t.strip()), class_default=False),
         "numticks_vertical_major": scalar(
             "numticks_vertical_major", "numticks_g", ["vertical_major"],
+            lambda t: _as_number(t.strip()), class_default=False),
+        # WP-31 D1: no minor tick unless asked.
+        "numticks_horizontal_minor": scalar(
+            "numticks_horizontal_minor", "numticks_g", ["horizontal_minor"],
+            lambda t: _as_number(t.strip()), class_default=False),
+        "numticks_vertical_minor": scalar(
+            "numticks_vertical_minor", "numticks_g", ["vertical_minor"],
             lambda t: _as_number(t.strip()), class_default=False),
         "margin_twoway": scalar("margin_twoway", "margin", ["twoway"],
                                 lambda t: t.strip().strip('"'),
@@ -2227,6 +2242,8 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     group(["twoway's default tick count and plot-region margin (WP-30 P1.3a)."], [
         scalar("numticks_g", "horizontal_major", "numticks_horizontal_major"),
         scalar("numticks_g", "vertical_major", "numticks_vertical_major"),
+        scalar("numticks_g", "horizontal_minor", "numticks_horizontal_minor"),
+        scalar("numticks_g", "vertical_minor", "numticks_vertical_minor"),
         scalar("margin", "twoway", "margin_twoway"),
     ])
     group(["Stata's margin ladder, the sizes plotregion(margin()) names",
@@ -2397,6 +2414,9 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
             ("linewidth", "tick", nm("tick_line_width"),
              ("tick_line_width", None)),
             ("gsize", "tick", nm("tick_length"), ("tick_length", None)),
+            ("gsize", "minortick", nm("minortick_length"),
+             ("minortick_length", None)),
+            ("gsize", "tickgap", nm("tickgap"), ("tickgap", None)),
             ("tickposition", "axis_tick", e.get("tick_position"),
              ("tick_position", None)),
         ]

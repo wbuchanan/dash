@@ -605,17 +605,21 @@ def _digest(model):
 # patched back in is the batch-18 one).  Re-derived for WP-30 P1.17b: the
 # finish code's date model puts %td weekly steps on %tw week starts
 # (dash_ts_day_week; finish JS text only).
+# 228ed963... -> ca4f095c... and 1b348e29... -> fb860211...: D1 the axis
+# finisher and zoom code (one CustomJS per page) gain the minor-tick step;
+# measured at 3b4ff75 against this tree, the code string is the only
+# difference in a plain scatter's models.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "228ed963122490d992bae6dfefe52c9060fae8e58aa23b5b69b8f28cbb16b3bd",
+        "ca4f095c5458b12c0555f5c597ec1df12972a2891c2bc3494dac948cd6f331ff",
     ("saved", "yaxis2"):
-        "228ed963122490d992bae6dfefe52c9060fae8e58aa23b5b69b8f28cbb16b3bd",
+        "ca4f095c5458b12c0555f5c597ec1df12972a2891c2bc3494dac948cd6f331ff",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     ("served", "plain"):
-        "1b348e29bc8ebd32dd79f78008474b225a157704d38c34efae385e940f700090",
+        "fb860211aea8f8715c60777b6b653a89cc13c6521aff7c792318bd446d7b4c08",
     ("served", "yaxis2"):
-        "1b348e29bc8ebd32dd79f78008474b225a157704d38c34efae385e940f700090",
+        "fb860211aea8f8715c60777b6b653a89cc13c6521aff7c792318bd446d7b4c08",
 }
 
 

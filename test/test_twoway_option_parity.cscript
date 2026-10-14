@@ -2909,8 +2909,17 @@ local out`n' `"ytick(1)"'
 local ++n
 local in`n'  `"ylabel(1, axis(3))"'
 local out`n' `""'
+// Flipped (WP-31 D1): ymlabel(1, axis(2)) "byte for byte" was wrong once
+// minor ticks and labels are drawn: it is dash's ymlabel2(), and a t
+// option's mlabel on axis 2, which no key routes, stays as typed.
+local ++n
+local in`n'  `"ymlabel(1, axis(2))"'
+local out`n' `"ymlabel2(1)"'
+local ++n
+local in`n'  `"ymtick(1 2, axis(2))"'
+local out`n' `"ymtick2(1 2)"'
 // byte for byte
-foreach w in `"ymlabel(1, axis(2))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' {
+foreach w in `"tmlabel(1, axis(2))"' `"ymtick(1, axis(3))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' {
     local ++n
     local in`n'  `"`w'"'
     local out`n' `"`w'"'
@@ -4760,8 +4769,10 @@ if `"`bad'"' != "" {
 }
 else display as text "TA-09 PASS: hostile tokens refused without evaluation; 10,000 positions in under 2 s"
 
-// TA-10: tmlabel() and tmtick() are stored on xmlabel/xmtick and named
-// until minor ticks are drawn.
+// TA-10: tmlabel() and tmtick() are stored on xmlabel/xmtick.  Flipped
+// (WP-31 D1): "and named until minor ticks are drawn" was wrong once dash
+// draws minor ticks and labels as twoway does (minor_tick_truth.json):
+// they are drawn and named nowhere.
 local bad ""
 foreach c in "tmlabel|xmlabel" "tmtick|xmtick" {
     gettoken o k : c, parse("|")
@@ -4769,14 +4780,14 @@ foreach c in "tmlabel|xmlabel" "tmtick|xmtick" {
     _zta_val `"tsline y, `o'(2000m7(12)2004m7)"' `k' "486 498 510 522 534"
     local bad `"`bad'`_zta_bad'"'
     _ztp_logged "$zta_log" "`o'()"
-    if !r(found) local bad `"`bad' [`o' not named]"'
+    if r(found) local bad `"`bad' [`o' named]"'
 }
 if `"`bad'"' != "" {
     local nfail = `nfail' + 1
     local faillist "`faillist' TA-10"
     display as error `"TA-10 FAIL:`bad'"'
 }
-else display as text "TA-10 PASS: tmlabel() and tmtick() stored on xmlabel/xmtick and named"
+else display as text "TA-10 PASS: tmlabel() and tmtick() stored on xmlabel/xmtick and named nowhere"
 
 // TA-15: a date literal in an x-option is refused as twoway refuses it,
 // on axis 1 and axis 2.

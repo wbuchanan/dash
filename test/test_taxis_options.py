@@ -172,9 +172,11 @@ class TestTheDeclarations:
                 if not re.search(r"sreturn local %s%s\s+: copy local %s\b"
                                  % (pre, opt, opt), body):
                     bad.append(f"{prog}: no sreturn of {opt}")
+            # Flipped (WP-31 D1): "pending" was wrong once minor ticks and
+            # labels are drawn; tmlabel() and tmtick() are named nowhere.
             for opt in ("tmlabel", "tmtick"):
-                if f"length local {opt}' local _dash_pending" not in body:
-                    bad.append(f"{prog}: {opt} not pending")
+                if f"length local {opt}' local _dash_pending" in body:
+                    bad.append(f"{prog}: {opt} pending")
         lists = re.findall(r"foreach gk(?:ey)? in (.*?)\{", src, re.S)
         lists = [l for l in lists if "xmlabel" in l]
         if len(lists) != 7:
@@ -353,9 +355,14 @@ class TestTheHelp:
         for word in ("tm()", "ts()", "lfit", "xline()", "xscale(log)",
                      "dash build"):
             assert word in grp, word
-        i = hlp.index("Minor ticks and minor labels.")
+        # Flipped (WP-31 D1): the Unsupported entry "Minor ticks and minor
+        # labels" named tmlabel() and tmtick(), which was wrong once they
+        # are drawn; the axis options' "Minor ticks and labels" paragraph
+        # says they are drawn as xmlabel() and xmtick().
+        assert "Minor ticks and minor labels." not in hlp
+        i = hlp.index("{ul:Minor ticks and labels.}")
         par = hlp[i:hlp.index("\n\n", i)]
-        assert "{opt tmlabel()}" in par and "{opt tmtick()}" in par
+        assert "{opt tmtick()}" in par and "{opt tmlabel()}" in par
 
     def test_it_documents_axis2_format_and_left_aligned(self):
         grp = _source("dash.sthlp")

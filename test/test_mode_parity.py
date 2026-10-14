@@ -2512,6 +2512,12 @@ CORPUS = [
           [plot_for("rscatter", {"weight": "aweight", "wexp": "price"})]),
     _case("dot aweight (WP-31 C9)",
           [plot_for("dot", {"weight": "aweight", "wexp": "price"})]),
+    # WP-31 D1 (section 24): minor ticks and labels
+    _case("xmtick(##5) xmlabel(1500 2500) ymtick(20 30) (WP-31 D1)", [_sc()],
+          go={"xmtick": "##5", "xmlabel": "1500 2500", "ymtick": "20 30"}),
+    _case("ymtick(5000, axis(2)) on a yaxis(2) layer (WP-31 D1)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
+          go={"ymtick2": "5000", "ymlabel2": "10000"}),
 ]
 
 
@@ -3492,6 +3498,12 @@ MOVE_CORPUS = [
                                    "wexp": "weight"})]),
     _move_case("mspline on a date x, dropdown", _MOVES[0],
                [plot_for("mspline", yvar="mpg", xvar="when")]),
+
+    # WP-31 D1 (section 24): minor ticks and labels
+    _move_case("xmtick(##5) after a dropdown move (WP-31 D1)", _MOVES[0],
+               [plot_for("scatter")],
+               go={"xlabel": "0(1000)5000", "xmtick": "##5",
+                   "xmlabel": "1500 2500"}),
 ]
 
 

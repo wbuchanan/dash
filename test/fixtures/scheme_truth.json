@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-14T17:25:19Z",
+    "generated_utc": "2026-10-14T22:58:44Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11337,6 +11337,8 @@
     "graphsize_y": 4.5,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -11461,6 +11463,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -12275,6 +12289,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -12336,6 +12352,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -14676,6 +14694,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -15097,6 +15129,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -17381,6 +17427,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -17505,6 +17553,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -18319,6 +18379,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -18380,6 +18442,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -20720,6 +20784,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -21141,6 +21219,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -23425,6 +23517,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -23549,6 +23643,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -24363,6 +24469,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -24424,6 +24532,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -26764,6 +26874,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -27185,6 +27309,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -29547,6 +29685,8 @@
     "graphsize_y": 4.5,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -29671,6 +29811,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -30499,6 +30651,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -30560,6 +30714,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -32884,6 +33040,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -33308,6 +33478,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -35767,6 +35951,8 @@
     "graphsize_y": 4.5,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -35891,6 +36077,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -36735,6 +36933,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -36796,6 +36996,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -39136,6 +39338,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -39557,6 +39773,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -42128,6 +42358,8 @@
     "graphsize_y": 2.6,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -42249,6 +42481,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -43093,6 +43337,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -43154,6 +43400,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -45494,6 +45742,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -45915,6 +46177,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -48407,6 +48683,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -48528,6 +48806,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -49342,6 +49632,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -49403,6 +49695,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -51743,6 +52037,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -52164,6 +52472,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -54524,6 +54846,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -54645,6 +54969,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -55489,6 +55825,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -55550,6 +55888,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -57890,6 +58230,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -58311,6 +58665,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -60804,6 +61172,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -60925,6 +61295,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -61739,6 +62121,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -61800,6 +62184,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -64140,6 +64526,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -64561,6 +64961,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -66844,6 +67258,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -66965,6 +67381,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -67779,6 +68207,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -67840,6 +68270,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -70180,6 +70612,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -70604,6 +71050,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -72965,6 +73425,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -73086,6 +73548,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -73914,6 +74388,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -73975,6 +74451,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -76299,6 +76777,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -76723,6 +77215,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -79105,6 +79611,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -79226,6 +79734,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -80040,6 +80560,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -80101,6 +80623,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -82441,6 +82965,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -82865,6 +83403,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -85156,6 +85708,8 @@
     "graphsize_y": 2.2,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "vsmall",
     "symbolsize": {
       "name": "large",
@@ -85273,6 +85827,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "inside",
     "axis_styles": {
@@ -86104,6 +86670,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -86165,6 +86733,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -88536,6 +89106,20 @@
         "file": "scheme-economist.scheme",
         "line": 104
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-economist.scheme",
+        "line": 105
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-economist.scheme",
+        "line": 106
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -88966,6 +89550,20 @@
         "value": "tiny",
         "file": "scheme-economist.scheme",
         "line": 38
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-economist.scheme",
+        "line": 39
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-economist.scheme",
+        "line": 40
       },
       "tick_position": {
         "kind": "transcribed",
@@ -91446,6 +92044,8 @@
     "graphsize_y": 2.6,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -91567,6 +92167,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -92411,6 +93023,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -92472,6 +93086,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -94812,6 +95428,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -95233,6 +95863,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -97804,6 +98448,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -97925,6 +98571,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -98769,6 +99427,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -98830,6 +99490,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -101170,6 +101832,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -101591,6 +102267,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -104163,6 +104853,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "2.2",
@@ -104284,6 +104976,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": ".55",
+      "value": 0.55,
+      "sztype": "relative",
+      "pt_at_4in": 1.58
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -105121,6 +105825,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -105182,6 +105888,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -107506,6 +108214,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -107930,6 +108652,20 @@
         "value": "tiny",
         "file": "scheme-s1manual.scheme",
         "line": 34
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": ".55",
+        "file": "scheme-s1manual.scheme",
+        "line": 35
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s1manual.scheme",
+        "line": 36
       },
       "tick_position": {
         "kind": "transcribed",
@@ -110375,6 +111111,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -110496,6 +111234,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -111354,6 +112104,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -111415,6 +112167,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -113739,6 +114493,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -114160,6 +114928,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -116751,6 +117533,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -116872,6 +117656,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -117686,6 +118482,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -117747,6 +118545,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -120087,6 +120887,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -120508,6 +121322,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -122791,6 +123619,8 @@
     "graphsize_y": 4.5,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -122915,6 +123745,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -123729,6 +124571,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -123790,6 +124634,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -126130,6 +126976,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -126551,6 +127411,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -128836,6 +129710,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -128960,6 +129836,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -129774,6 +130662,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -129835,6 +130725,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -132175,6 +133067,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -132596,6 +133502,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -134879,6 +135799,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "medium",
@@ -135000,6 +135922,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -135814,6 +136748,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -135875,6 +136811,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -138215,6 +139153,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -138636,6 +139588,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -140920,6 +141886,8 @@
     "graphsize_y": 4.5,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -141044,6 +142012,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -141858,6 +142838,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -141919,6 +142901,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -144259,6 +145243,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -144680,6 +145678,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -146965,6 +147977,8 @@
     "graphsize_y": 4,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -147089,6 +148103,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -147903,6 +148929,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -147964,6 +148992,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -150304,6 +151334,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -150725,6 +151769,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -153009,6 +154067,8 @@
     "graphsize_y": 4.5,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -153133,6 +154193,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -153947,6 +155019,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -154008,6 +155082,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -156348,6 +157424,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -156769,6 +157859,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -159054,6 +160158,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -159178,6 +160284,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -159992,6 +161110,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -160053,6 +161173,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -162393,6 +163515,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -162814,6 +163950,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",
@@ -165100,6 +166250,8 @@
     "graphsize_y": 2.392,
     "numticks_horizontal_major": 5,
     "numticks_vertical_major": 5,
+    "numticks_horizontal_minor": 0,
+    "numticks_vertical_minor": 0,
     "margin_twoway": "medsmall",
     "symbolsize": {
       "name": "small",
@@ -165224,6 +166376,18 @@
       "value": 1.3888,
       "sztype": "relative",
       "pt_at_4in": 4.0
+    },
+    "minortick_length": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
+    },
+    "tickgap": {
+      "name": "half_tiny",
+      "value": 0.6944,
+      "sztype": "relative",
+      "pt_at_4in": 2.0
     },
     "tick_position": "outside",
     "axis_styles": {
@@ -166038,6 +167202,8 @@
       "graphsize_y": "graphsize y",
       "numticks_horizontal_major": "numticks_g horizontal_major",
       "numticks_vertical_major": "numticks_g vertical_major",
+      "numticks_horizontal_minor": "numticks_g horizontal_minor",
+      "numticks_vertical_minor": "numticks_g vertical_minor",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
       "dots_color": "color dots",
@@ -166099,6 +167265,8 @@
       "minortick_color": "color minortick",
       "tick_line_width": "linewidth tick",
       "tick_length": "gsize tick",
+      "minortick_length": "gsize minortick",
+      "tickgap": "gsize tickgap",
       "tick_position": "tickposition axis_tick",
       "axis_style_x": "axisstyle horizontal_default",
       "axis_style_y": "axisstyle vertical_default",
@@ -168439,6 +169607,20 @@
         "file": "scheme-s2color.scheme",
         "line": 292
       },
+      "numticks_horizontal_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g horizontal_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 293
+      },
+      "numticks_vertical_minor": {
+        "kind": "transcribed",
+        "directive": "numticks_g vertical_minor",
+        "value": "0",
+        "file": "scheme-s2color.scheme",
+        "line": 294
+      },
       "margin_twoway": {
         "kind": "transcribed",
         "directive": "margin twoway",
@@ -168860,6 +170042,20 @@
         "value": "tiny",
         "file": "scheme-s2color.scheme",
         "line": 153
+      },
+      "minortick_length": {
+        "kind": "transcribed",
+        "directive": "gsize minortick",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 154
+      },
+      "tickgap": {
+        "kind": "transcribed",
+        "directive": "gsize tickgap",
+        "value": "half_tiny",
+        "file": "scheme-s2color.scheme",
+        "line": 156
       },
       "tick_position": {
         "kind": "transcribed",

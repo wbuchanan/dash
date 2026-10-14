@@ -5071,6 +5071,189 @@ if inlist("`only'", "", "S23") & `: list posof "S23" in w31_run' {
 }
 * ==== end S23 ====
 
+// S24 (WP-31 D1) helpers: register one dash graph, write its spec and
+// data, and read the minor ticks and labels both modes draw.
+// _u24_draw sets u24_x<m> (the x axis's minor positions), u24_y<m> (the
+// y axis's), u24_y2<m> (the second y axis's), u24_l<m> (the x axis's minor
+// labels, "pos|text" each) and u24_lo<m> (the x range's start), m = s
+// saved, v served; numbers written %.10g.
+python:
+def _u24_draw(sp, dp, app):
+    import __main__ as m
+    from sfi import Macro
+    from bokeh.models import CustomJSTicker, LabelSet
+    a, b = m._u03_docs(sp, dp, app)
+
+    def _minor(f, letter, name):
+        sides = (f.below + f.above) if letter == "x" else (f.left + f.right)
+        attr = letter + "_range_name"
+        out = []
+        for ax in sides:
+            t = getattr(ax, "ticker", None)
+            if getattr(ax, attr, "default") != name \
+                    or not isinstance(t, CustomJSTicker):
+                continue
+            ar = dict(t.args or {})
+            out += list(ar.get("mextra") or []) + list(ar.get("extra") or [])
+            if ar.get("mfixed") is not None:
+                out += list(ar["mfixed"].ticks or [])
+        return " ".join(format(float(v), ".10g") for v in sorted(set(out)))
+
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        Macro.setGlobal("u24_x" + sfx, _minor(f, "x", "default"))
+        Macro.setGlobal("u24_y" + sfx, _minor(f, "y", "default"))
+        Macro.setGlobal("u24_y2" + sfx, _minor(f, "y", "y2"))
+        rows = []
+        for mdl in f.center:
+            if isinstance(mdl, LabelSet) and mdl.name == "dash_minor_labels" \
+                    and list(mdl.tags or [])[:1] == ["x"]:
+                d = mdl.source.data
+                rows += ["%s|%s" % (format(float(p), ".10g"), t)
+                         for p, t in zip(d["pos"], d["text"])]
+        Macro.setGlobal("u24_l" + sfx, " ".join(rows))
+        Macro.setGlobal("u24_lo" + sfx, format(float(f.x_range.start), ".10g"))
+end
+
+capture program drop _u24_reg
+program define _u24_reg
+    // _u24_reg <dir> <k> <dash command...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    capture quietly dash `0'
+    if _rc {
+        foreach m in s v {
+            foreach g in x y y2 l lo {
+                global u24_`g'`m' "rc `=_rc'"
+            }
+        }
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u24_m; _u24_m._u24_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u24_tw
+program define _u24_tw
+    // _u24_tw <axis> <set>: twoway's positions on u24t's tickset, its
+    // rule walked as tickset_g.class draws it, else its listed ticks,
+    // into global u24_tw ("%.10g" each).
+    version 19
+    args axis set
+    local p ".u24t.`axis'.`set'"
+    local out ""
+    if 0``p'.use_rule.istrue' & "``p'.delta'" != "0" & "``p'.min'" != "." {
+        local lo = ``p'.min'
+        local hi = ``p'.max'
+        local d = ``p'.delta'
+        if abs(`lo') < 1e299 & abs(`hi') < 1e299 {
+            local n = floor((`hi' + .48 * `d' - `lo') / `d')
+            forvalues i = 0/`n' {
+                local x = `lo' + `i' * `d'
+                if abs(`x') < `d' * 1e-6 local x 0
+                local out "`out' `=strtrim(string(`x', "%18.10g"))'"
+            }
+        }
+    }
+    else {
+        forvalues i = 1/0``p'.ticks.arrnels' {
+            local out "`out' `=strtrim(string(``p'.ticks[`i'][1]', "%18.10g"))'"
+        }
+    }
+    global u24_tw = strtrim("`out'")
+end
+
+* ==== S24 D1: Minor ticks and labels ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S24") & `: list posof "S24" in w31_run' {
+    display as text "S24 start " c(current_date) " " c(current_time)
+    local u24d "`w31_work'/s24"
+    capture mkdir "`u24d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U24-1: xmtick(##5) over xlabel(0(1000)5000): twoway's minornl rule
+    // walked (0(200)5000), the positions dash's ticker carries, both modes.
+    quietly twoway scatter mpg weight, xlabel(0(1000)5000) xmtick(##5) name(u24t, replace)
+    _u24_tw xaxis1 minornl
+    local tw1 "${u24_tw}"
+    graph drop u24t
+    _u24_reg "`u24d'" 1 scatter mpg weight, xlabel(0(1000)5000) xmtick(##5) name(zu241)
+    foreach m in s v {
+        _w31_expect U24-1 `"("${u24_x`m'}" == "`tw1'")"' "`m': dash ${u24_x`m'}; twoway `tw1'"
+    }
+    // The default axis: extended below the first major to the data (1800).
+    quietly twoway scatter mpg weight, xmtick(##5) name(u24t, replace)
+    _u24_tw xaxis1 minornl
+    local tw1b "${u24_tw}"
+    graph drop u24t
+    _u24_reg "`u24d'" 11 scatter mpg weight, xmtick(##5) name(zu2411)
+    foreach m in s v {
+        _w31_expect U24-1 `"("${u24_x`m'}" == "`tw1b'")"' "`m' default axis: dash ${u24_x`m'}; twoway `tw1b'"
+    }
+    _w31_done U24-1 "xmtick(##5) draws twoway's between positions on a rule and on the default axis, saved and served"
+
+    // U24-2: majors that are an uneven list: twoway's one tick at 0 and
+    // the scale widened to it.
+    quietly twoway scatter mpg weight, xlabel(1000 2000 4000) xmtick(##5) name(u24t, replace)
+    _u24_tw xaxis1 minornl
+    local tw2 "${u24_tw}"
+    local cm2 = `.u24t.plotregion1.xscale.curmin'
+    graph drop u24t
+    _u24_reg "`u24d'" 2 scatter mpg weight, xlabel(1000 2000 4000) xmtick(##5) name(zu242)
+    foreach m in s v {
+        _w31_expect U24-2 `"("${u24_x`m'}" == "`tw2'") & (${u24_lo`m'} <= `cm2')"' "`m': dash ${u24_x`m'} from ${u24_lo`m'}; twoway `tw2' from `cm2'"
+    }
+    _w31_done U24-2 "##5 over uneven majors draws twoway's one tick at 0 and widens the scale to it, saved and served"
+
+    // U24-3: explicit positions.
+    quietly twoway scatter mpg weight, xmtick(1500 2500) name(u24t, replace)
+    _u24_tw xaxis1 minornl
+    local tw3 "${u24_tw}"
+    graph drop u24t
+    _u24_reg "`u24d'" 3 scatter mpg weight, xmtick(1500 2500) name(zu243)
+    foreach m in s v {
+        _w31_expect U24-3 `"("${u24_x`m'}" == "`tw3'")"' "`m': dash ${u24_x`m'}; twoway `tw3'"
+    }
+    _w31_done U24-3 "xmtick(1500 2500) draws twoway's positions, saved and served"
+
+    // U24-4: xmlabel(1500 "a" 2500): the positions, the quoted text and
+    // the axis format's text (weight %8.0gc: 2,500).
+    quietly twoway scatter mpg weight, xmlabel(1500 "a" 2500) name(u24t, replace)
+    local fmt4 "`.u24t.xaxis1.minor.label_format'"
+    local tw4 ""
+    forvalues i = 1/0`.u24t.xaxis1.minor.ticks.arrnels' {
+        local v = `.u24t.xaxis1.minor.ticks[`i'][1]'
+        local t `"`.u24t.xaxis1.minor.ticks[`i'][2]'"'
+        if `"`t'"' == "" local t = strtrim(string(`v', "`fmt4'"))
+        local tw4 `"`tw4' `=strtrim(string(`v', "%18.10g"))'|`t'"'
+    }
+    local tw4 = strtrim(`"`tw4'"')
+    graph drop u24t
+    _u24_reg "`u24d'" 4 scatter mpg weight, xmlabel(1500 "a" 2500) name(zu244)
+    foreach m in s v {
+        _w31_expect U24-4 `"("${u24_l`m'}" == "`tw4'") & ("${u24_x`m'}" == "1500 2500")"' "`m': labels ${u24_l`m'} at ${u24_x`m'}; twoway `tw4'"
+    }
+    _w31_done U24-4 `"xmlabel(1500 "a" 2500) writes twoway's texts (`tw4') at its positions, saved and served"'
+
+    // U24-6: ymtick(5000 10000, axis(2)) reaches the second axis only.
+    quietly twoway scatter mpg weight || scatter price weight, yaxis(2) ymtick(5000 10000, axis(2)) name(u24t, replace)
+    _u24_tw yaxis2 minornl
+    local tw6 "${u24_tw}"
+    graph drop u24t
+    _u24_reg "`u24d'" 6 scatter mpg weight || scatter price weight, yaxis(2) ymtick(5000 10000, axis(2)) name(zu246)
+    foreach m in s v {
+        _w31_expect U24-6 `"("${u24_y2`m'}" == "`tw6'") & ("${u24_y`m'}" == "")"' "`m': y2 ${u24_y2`m'}, y '${u24_y`m'}'; twoway `tw6'"
+    }
+    _w31_done U24-6 "ymtick(, axis(2)) draws twoway's positions on the second axis and none on the first, saved and served"
+    capture dash clear
+    display as text "S24 end " c(current_date) " " c(current_time)
+}
+* ==== end S24 ====
+
 // S25 C6b helpers.  _u25_tw <twoway plot>: plot 1's serset of the drawn
 // twoway graph written to <dir>/t.csv (y, then x); _u25_cmp: the first
 // visible Line a registered dash graph draws, saved and served, against

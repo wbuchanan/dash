@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "D1": "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read",
     "B4b": "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)",
     "D2": "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them",
     "F1g": "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)",

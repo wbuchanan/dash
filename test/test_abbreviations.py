@@ -785,8 +785,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # on colorvar(i.var) (three).
     # 151 -> 156: B5b the pending note -- bmlinestyle's two lines, the
     # d-options' four and dlalign's two for dstyle/dlstyle's three.
-    assert comments == {"_dash_parse_plot_opts": 156,
-                        "_dash_parse_graph_opts": 73}, comments
+    # 156 -> 154 and 73 -> 71: D1 the note on the tmlabel and tmtick
+    # pending lines goes with them (two, in each parser).
+    assert comments == {"_dash_parse_plot_opts": 154,
+                        "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below
@@ -891,10 +893,12 @@ class TestTheAxisRouteKnowsDashsSpellings:
         assert {f: int(t[f][3]) for f in t} == {
             "scale": 1, "label": 2, "mlabel": 3, "tick": 4, "mtick": 5,
             "title": 6, "line": 7}
-        # dash draws title, label, tick, line and scale on axis 2
+        # dash draws title, label, tick, line and scale on axis 2, and
+        # (Flipped, WP-31 D1: "" was wrong once minor ticks and labels are
+        # drawn) mlabel and mtick
         assert {f: t[f][4] for f in t} == {
-            "title": "title2", "label": "label2", "mlabel": "",
-            "tick": "tick2", "mtick": "", "line": "line2",
+            "title": "title2", "label": "label2", "mlabel": "mlabel2",
+            "tick": "tick2", "mtick": "mtick2", "line": "line2",
             "scale": "scale2"}
 
     def test_the_seven_graph_key_lists_agree(self):

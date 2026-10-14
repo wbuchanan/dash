@@ -460,10 +460,11 @@
 *!       blank-separated (GAPS2 G3).
 *!
 *!   _dash_route_axis2(opts)
-*!       opts with each x/y title, label, tick, line and scale option's
-*!       axis(2) rewritten as ytitle2()/ylabel2()/ytick2()/yline2()/
-*!       yscale2() (x too), an axis(1) word dropped and twoway's plurals
-*!       renamed; every form twoway refuses is left as typed (WP-28 B3,
+*!       opts with each x/y title, label, mlabel, tick, mtick, line and
+*!       scale option's axis(2) rewritten as ytitle2()/ylabel2()/
+*!       ymlabel2()/ytick2()/ymtick2()/yline2()/yscale2() (x too; the
+*!       mlabel and mtick forms WP-31 D1), an axis(1) word dropped and
+*!       twoway's plurals renamed; every form twoway refuses is left as typed (WP-28 B3,
 *!       WP-29 P0.5).  _dash_axfam(), _dash_ax_parse(), _dash_ax_word()
 *!       and _dash_axis_num() (the axis number axis(arg) names, as twoway
 *!       reads it: a whole number within -2147483648..2147483647, else 1)
@@ -6579,6 +6580,7 @@ string scalar _dash_rep_cat(string scalar key)
                "title2", "subtitle2", "ztitle", "ttitle", "ttitle2"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
                "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
+               "xmtick2", "ymtick2", "xmlabel2", "ymlabel2",
                "zlabel", "tlabel", "ttick", "tmlabel", "tmtick", "tlabel2",
                "ttick2"), k)) return("L")
     if (anyof(("legend", "graphregion", "plotregion"), k)) return("I")
@@ -7306,9 +7308,9 @@ string matrix _dash_axfam()
 {
     return(("title",  "title",   "title",  "2", "6", "title2" \
             "label",  "labels",  "label",  "2", "2", "label2" \
-            "mlabel", "mlabels", "mlabel", "3", "3", ""       \
+            "mlabel", "mlabels", "mlabel", "3", "3", "mlabel2" \
             "tick",   "ticks",   "tick",   "4", "4", "tick2"  \
-            "mtick",  "mticks",  "mtick",  "3", "5", ""       \
+            "mtick",  "mticks",  "mtick",  "3", "5", "mtick2" \
             "line",   "lines",   "line",   "3", "7", "line2"  \
             "scale",  "scale",   "scale",  "3", "1", "scale2"))
 }
@@ -7435,10 +7437,11 @@ real scalar _dash_ax_parse(string scalar tok, string matrix fam,
 //   axis(3) to axis(9) (WP-31 C10c): taken out of the list and recorded
 //       by _dash_axisn_add, value formed as for axis 2, for the graph's
 //       "axisn" object (a t option on those axes is left as typed);
-//   any other axis, an mlabel or mtick on axis 2, a second axis word, an
-//       axis word in capitals and a second comma: left as typed, for
-//       _dash_axreq_check to refuse in twoway's words (or, for ymlabel()
-//       and ymtick() on axis 2, for the note).
+//   axis(2) of an mlabel or mtick (WP-31 D1): xmlabel2(), ymlabel2(),
+//       xmtick2(), ymtick2() alike (a t option's is left as typed);
+//   any other axis (an mlabel or mtick on axes 3-9 among them), a second
+//       axis word, an axis word in capitals and a second comma: left as
+//       typed, for _dash_axreq_check to refuse in twoway's words.
 // Every other word, and every body, is returned byte for byte, so text
 // holding "axis(2)", a quote, $ or a backtick is kept as typed.  No regex
 // (regexm follows the caller's version).
@@ -7476,8 +7479,15 @@ string scalar _dash_route_axis2(string scalar opts)
                 continue
             }
         }
-        else if (n == 2 & fam[r, 6] != "") dn = d + fam[r, 6]
-        else if (n >= 3 & n <= 9 & fam[r, 6] != "" & d != "t") {
+        // A t option's mlabel or mtick on axis 2 has no dash key (WP-31
+        // D1): left as typed, as before.
+        else if (n == 2 & fam[r, 6] != "" &
+                 !(d == "t" & anyof(("mlabel", "mtick"), fam[r, 1]))) {
+            dn = d + fam[r, 6]
+        }
+        // Axes 3-9 (WP-31 C10c) take no mlabel or mtick (WP-31 D1).
+        else if (n >= 3 & n <= 9 & fam[r, 6] != "" & d != "t" &
+                 !anyof(("mlabel", "mtick"), fam[r, 1])) {
             // Axes three to nine (WP-31 C10c): the option leaves the text
             // and is recorded for the graph's "axisn" object
             // (_dash_axisn_json), its value formed as an axis-2 copy's.

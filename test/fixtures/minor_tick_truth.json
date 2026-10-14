@@ -1,0 +1,411 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "3b4ff751aa9b8a420300be1ad82dd81105af3bd2",
+  "extracted": "14 Oct 2026 18:45:05",
+  "members": [
+   "min",
+   "max",
+   "delta",
+   "_between_ticks",
+   "use_rule",
+   "ticks",
+   "label_format"
+  ],
+  "source": "scripts/extract_minor_tick_truth.do",
+  "stata_version": "19.5"
+ },
+ "m_axis2": {
+  "between": 0.0,
+  "delta": 12615.0,
+  "format": "%8.0gc",
+  "max": -1e+300,
+  "min": 1e+300,
+  "positions": [],
+  "scale": [
+   0.0,
+   15906.0
+  ],
+  "texts": [
+   "",
+   ""
+  ],
+  "ticks": [
+   5000.0,
+   10000.0
+  ],
+  "use_rule": false
+ },
+ "m_between5": {
+  "between": 5.0,
+  "delta": 200.0,
+  "format": "%8.0gc",
+  "max": 5000.0,
+  "min": 0.0,
+  "positions": [
+   0.0,
+   200.0,
+   400.0,
+   600.0,
+   800.0,
+   1000.0,
+   1200.0,
+   1400.0,
+   1600.0,
+   1800.0,
+   2000.0,
+   2200.0,
+   2400.0,
+   2600.0,
+   2800.0,
+   3000.0,
+   3200.0,
+   3400.0,
+   3600.0,
+   3800.0,
+   4000.0,
+   4200.0,
+   4400.0,
+   4600.0,
+   4800.0,
+   5000.0
+  ],
+  "scale": [
+   0.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_between_count": {
+  "between": 2.0,
+  "delta": 500.0,
+  "format": "%8.0gc",
+  "max": 5000.0,
+  "min": 2000.0,
+  "positions": [
+   2000.0,
+   2500.0,
+   3000.0,
+   3500.0,
+   4000.0,
+   4500.0,
+   5000.0
+  ],
+  "scale": [
+   1760.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_between_default": {
+  "between": 5.0,
+  "delta": 200.0,
+  "format": "%8.0gc",
+  "max": 5000.0,
+  "min": 1800.0,
+  "positions": [
+   1800.0,
+   2000.0,
+   2200.0,
+   2400.0,
+   2600.0,
+   2800.0,
+   3000.0,
+   3200.0,
+   3400.0,
+   3600.0,
+   3800.0,
+   4000.0,
+   4200.0,
+   4400.0,
+   4600.0,
+   4800.0,
+   5000.0
+  ],
+  "scale": [
+   1760.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_between_even_list": {
+  "between": 5.0,
+  "delta": 200.0,
+  "format": "%8.0gc",
+  "max": 0.0,
+  "min": 0.0,
+  "positions": [
+   0.0
+  ],
+  "scale": [
+   0.0,
+   4840.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_between_foreign": {
+  "between": 5.0,
+  "delta": 100.0,
+  "format": "%8.0gc",
+  "max": 3500.0,
+  "min": 1500.0,
+  "positions": [
+   1500.0,
+   1600.0,
+   1700.0,
+   1800.0,
+   1900.0,
+   2000.0,
+   2100.0,
+   2200.0,
+   2300.0,
+   2400.0,
+   2500.0,
+   2600.0,
+   2700.0,
+   2800.0,
+   2900.0,
+   3000.0,
+   3100.0,
+   3200.0,
+   3300.0,
+   3400.0,
+   3500.0
+  ],
+  "scale": [
+   1500.0,
+   3500.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_between_label": {
+  "between": 4.0,
+  "delta": 250.0,
+  "format": "%8.0gc",
+  "max": 5000.0,
+  "min": 2000.0,
+  "positions": [
+   2000.0,
+   2250.0,
+   2500.0,
+   2750.0,
+   3000.0,
+   3250.0,
+   3500.0,
+   3750.0,
+   4000.0,
+   4250.0,
+   4500.0,
+   4750.0,
+   5000.0
+  ],
+  "scale": [
+   1760.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_between_uneven": {
+  "between": 5.0,
+  "delta": 200.0,
+  "format": "%8.0gc",
+  "max": 0.0,
+  "min": 0.0,
+  "positions": [
+   0.0
+  ],
+  "scale": [
+   0.0,
+   4840.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_count": {
+  "between": 0.0,
+  "delta": 1000.0,
+  "format": "%8.0gc",
+  "max": 5000.0,
+  "min": 2000.0,
+  "positions": [
+   2000.0,
+   3000.0,
+   4000.0,
+   5000.0
+  ],
+  "scale": [
+   1760.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_date_between": {
+  "between": 2.0,
+  "delta": 0.0,
+  "format": "%td",
+  "max": null,
+  "min": null,
+  "positions": [],
+  "scale": [
+   14610.0,
+   16830.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_explicit": {
+  "between": 0.0,
+  "delta": 3080.0,
+  "format": "%8.0gc",
+  "max": -1e+300,
+  "min": 1e+300,
+  "positions": [],
+  "scale": [
+   1500.0,
+   5000.0
+  ],
+  "texts": [
+   "",
+   ""
+  ],
+  "ticks": [
+   1500.0,
+   2500.0
+  ],
+  "use_rule": false
+ },
+ "m_labels": {
+  "between": 0.0,
+  "delta": 3080.0,
+  "format": "%8.0gc",
+  "max": -1e+300,
+  "min": 1e+300,
+  "positions": [],
+  "scale": [
+   1500.0,
+   5000.0
+  ],
+  "texts": [
+   "a",
+   ""
+  ],
+  "ticks": [
+   1500.0,
+   2500.0
+  ],
+  "use_rule": false
+ },
+ "m_log": {
+  "between": 5.0,
+  "delta": 200.0,
+  "format": "%8.0gc",
+  "max": 5000.0,
+  "min": 1800.0,
+  "positions": [
+   1800.0,
+   2000.0,
+   2200.0,
+   2400.0,
+   2600.0,
+   2800.0,
+   3000.0,
+   3200.0,
+   3400.0,
+   3600.0,
+   3800.0,
+   4000.0,
+   4200.0,
+   4400.0,
+   4600.0,
+   4800.0,
+   5000.0
+  ],
+  "scale": [
+   1760.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_minmax": {
+  "between": 0.0,
+  "delta": 3080.0,
+  "format": "%8.0gc",
+  "max": 4840.0,
+  "min": 1760.0,
+  "positions": [
+   1760.0,
+   4840.0
+  ],
+  "scale": [
+   1760.0,
+   5000.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ },
+ "m_refusal": {
+  "note": "##5 ignored, only allowed for minor ticks",
+  "rc": 0
+ },
+ "m_widen": {
+  "between": 0.0,
+  "delta": 3080.0,
+  "format": "%8.0gc",
+  "max": -1e+300,
+  "min": 1e+300,
+  "positions": [],
+  "scale": [
+   1760.0,
+   6000.0
+  ],
+  "texts": [
+   ""
+  ],
+  "ticks": [
+   6000.0
+  ],
+  "use_rule": false
+ },
+ "m_y_between": {
+  "between": 2.0,
+  "delta": 5.0,
+  "format": "%8.0g",
+  "max": 40.0,
+  "min": 10.0,
+  "positions": [
+   10.0,
+   15.0,
+   20.0,
+   25.0,
+   30.0,
+   35.0,
+   40.0
+  ],
+  "scale": [
+   10.0,
+   41.0
+  ],
+  "texts": [],
+  "ticks": [],
+  "use_rule": true
+ }
+}

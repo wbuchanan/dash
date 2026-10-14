@@ -148,16 +148,12 @@ PLOT_VALUES = {
     "t2title": ("t2", "tB", "scatter"),
     "title2": ("T2", "TT", "scatter"),
     "width": ("2", "4", "histogram"),
-    "xmlabel": ("5(5)40", "10(10)40", "scatter"),
-    "xmtick": ("5(1)40", "10(2)40", "scatter"),
-    # WP-30 P1.6: stored on xmlabel/xmtick at registration and named.
-    "tmlabel": ("5(5)40", "10(10)40", "scatter"),
-    "tmtick": ("5(1)40", "10(2)40", "scatter"),
+    # Flipped (WP-31 D1): xmlabel, xmtick, tmlabel, tmtick, ymlabel and
+    # ymtick left this table for LIVE_VALUES and ALIASES: minor ticks and
+    # labels are drawn.
     "xoverhangs": ("xoverhangs", "", "scatter"),
     "xsize": ("3", "9", "scatter"),
     "xtick": ("5(5)40", "10(10)40", "scatter"),
-    "ymlabel": ("5(5)40", "10(10)40", "scatter"),
-    "ymtick": ("5(1)40", "10(2)40", "scatter"),
     "yoverhangs": ("yoverhangs", "", "scatter"),
     "ysize": ("2", "9", "scatter"),
     "ytick": ("5(5)40", "10(10)40", "scatter"),
@@ -292,8 +288,10 @@ class TestTheListIsCoveredAndHonest:
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
-        assert len(_plot_pending()) == 39, sorted(_plot_pending())
-        assert len(_graph_pending()) == 24, sorted(_graph_pending())
+        # 39 -> 33 and 24 -> 18: D1 xmlabel xmtick tmlabel tmtick ymlabel
+        # ymtick drawn (minor ticks and labels)
+        assert len(_plot_pending()) == 33, sorted(_plot_pending())
+        assert len(_graph_pending()) == 18, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -448,6 +446,9 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            "tlabel", "ttick", "tscale", "ttitle", "tline",
            # and their axis-2 forms, onto xlabel2() .. xtitle2() (part 2).
            "tlabel2", "ttick2", "tline2", "tscale2", "ttitle2",
+           # tmlabel() and tmtick() fold onto xmlabel() and xmtick() the
+           # same way, drawn since WP-31 D1 (test_minor_ticks.py).
+           "tmlabel", "tmtick",
            # colorformissing() is twoway's spelling of colormissing(),
            # copied onto it before the spec is written (WP-31 C8b;
            # test_wp31_truth.cscript U17-03).
@@ -769,6 +770,22 @@ LIVE_VALUES = {
                ("xtick2", "2000 3000", "2500 3500")),
     "xline2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
                ("xline2", "3000", "3500")),
+    # Flipped (WP-31 D1): PLOT_VALUES xmlabel/xmtick/ymlabel/ymtick --
+    # "named and inert" -- was wrong because twoway draws minor ticks and
+    # labels (minor_tick_truth.json); the axis(2) forms are dash's keys for
+    # their axis(2) copies (test_minor_ticks.py).
+    "xmtick": ({}, {}, "scatter", ("xmtick", "1500 2500", "2000")),
+    "xmlabel": ({}, {}, "scatter", ("xmlabel", "1500 2500", "2000")),
+    "ymtick": ({}, {}, "scatter", ("ymtick", "15 25", "20")),
+    "ymlabel": ({}, {}, "scatter", ("ymlabel", "15 25", "20")),
+    "xmtick2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+                ("xmtick2", "2500 3500", "3000")),
+    "xmlabel2": ({"xaxis": "2"}, {"xaxis": "2"}, "scatter",
+                 ("xmlabel2", "2500 3500", "3000")),
+    "ymtick2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+                ("ymtick2", "15 25", "20")),
+    "ymlabel2": ({"yaxis": "2"}, {"yaxis": "2"}, "scatter",
+                 ("ymlabel2", "15 25", "20")),
     "yline": ({}, {}, "scatter", ("yline", "20", "25")),
     # Flipped (WP-30 P1.10): text() was named and inert (PLOT_VALUES),
     # which was wrong because twoway draws it (added_text_truth.json); the
@@ -859,8 +876,10 @@ class TestEveryDeclaredOptionIsClassified:
         # colorallowmultiple colorotherlabel, and clegend plegend pcycle in
         # both blocks, declared
         # 227 -> 236: B5b the nine dot options declared
-        assert len(_declared_plot()) == 236, len(_declared_plot())
-        assert len(_declared_graph()) == 88, len(_declared_graph())
+        # 236 -> 240 and 88 -> 92: D1 axis(2) minor forms xmlabel2
+        # ymlabel2 xmtick2 ymtick2 declared in both blocks
+        assert len(_declared_plot()) == 240, len(_declared_plot())
+        assert len(_declared_graph()) == 92, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

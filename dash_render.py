@@ -3872,16 +3872,20 @@ def _dash_named_once(graphs, kpis):
     return kept["graph"], kept["KPI"]
 
 
-#: A lone second axis's options, and the first axis's they become.
+#: A lone second axis's options, and the first axis's they become (the
+#: minor ones since WP-31 D1).
 _DASH_LONE_AXIS_OPTIONS = {"y": ("ytitle", "ylabel", "yscale", "ytick",
-                                 "yline"),
+                                 "yline", "ymtick", "ymlabel"),
                            "x": ("xtitle", "xlabel", "xscale", "xtick",
-                                 "xline")}
+                                 "xline", "xmtick", "xmlabel")}
 
 #: dash's second-axis options: what an axis(2) copy of ytitle(), ylabel(),
-#: yscale(), ytick() and yline() (x too) is written as (WP-29 P0.5).
-_DASH_AXIS2_KEYS = {"y": ("ytitle2", "ylabel2", "yscale2", "ytick2", "yline2"),
-                    "x": ("xtitle2", "xlabel2", "xscale2", "xtick2", "xline2")}
+#: yscale(), ytick() and yline() (x too) is written as (WP-29 P0.5), and
+#: of ymtick() and ymlabel() (WP-31 D1).
+_DASH_AXIS2_KEYS = {"y": ("ytitle2", "ylabel2", "yscale2", "ytick2", "yline2",
+                          "ymtick2", "ymlabel2"),
+                    "x": ("xtitle2", "xlabel2", "xscale2", "xtick2", "xline2",
+                          "xmtick2", "xmlabel2")}
 
 #: A number as twoway's ``axis(integer)`` reads it: an optional sign, digits
 #: with an optional point, or a point and digits, and an optional exponent.
@@ -10200,18 +10204,21 @@ class SchemeParser:
     #: The longest tick a scheme may ask for, in Bokeh pixels.
     _TICK_MAX_PX: float = 100.0
 
-    def _tick_length_px(self) -> float:
-        """``gsize tick`` in Bokeh pixels: a Stata size (tiny is 1.3888
-        units, 4pt, 5.33px at the 4-inch reference) through
-        ``OptionTranslator.resolve_size``.  Absent is 4pt; a value dash
-        cannot read or outside 0..100px is 4pt with one note."""
-        default = 4.0 * OptionTranslator.PX_PER_PT
-        raw = self._props.get("gsize tick", "").strip()
+    def _tick_length_px(self, key: str = "gsize tick",
+                        default_pt: float = 4.0) -> float:
+        """*key* (``gsize tick``) in Bokeh pixels: a Stata size (tiny is
+        1.3888 units, 4pt, 5.33px at the 4-inch reference) through
+        ``OptionTranslator.resolve_size``.  Absent is *default_pt* (4pt;
+        WP-31 D1 reads ``gsize minortick`` and ``gsize tickgap`` with
+        2pt, half_tiny); a value dash cannot read or outside 0..100px is
+        *default_pt* with one note."""
+        default = default_pt * OptionTranslator.PX_PER_PT
+        raw = self._props.get(key, "").strip()
         if not raw:
             return default
         try:
             px = OptionTranslator.resolve_size(
-                raw, "gap", 4.0, getattr(self, "size_ref_in", 4.0)
+                raw, "gap", default_pt, getattr(self, "size_ref_in", 4.0)
             ) * OptionTranslator.PX_PER_PT
         except ValueError:
             px = None
@@ -10219,9 +10226,9 @@ class SchemeParser:
                 0 <= px <= self._TICK_MAX_PX:
             return px
         warnings.warn(
-            f"dash scheme: tick length {self._shown(raw)} (from 'gsize "
-            f"tick') is not a size from 0 to {self._TICK_MAX_PX:g}px; "
-            "falling back to 4pt.",
+            f"dash scheme: tick length {self._shown(raw)} (from '{key}') "
+            f"is not a size from 0 to {self._TICK_MAX_PX:g}px; "
+            f"falling back to {default_pt:g}pt.",
             UserWarning,
             stacklevel=3,
         )
@@ -10827,6 +10834,25 @@ class SchemeParser:
         self.tick_line_width: float = self._bounded_lwidth(
             "linewidth tick", self.axis_line_width)
         self.tick_length_px: float = self._tick_length_px()
+        # WP-31 D1: the minor ticks' length, width and label (twoway's
+        # tickstyle-minor.style: `gsize minortick half_tiny', `linewidth
+        # minortick thin', textboxstyle minortick_label in `gsize
+        # minortick_label vsmall' and `color tick_label'), the gap between
+        # a tick and its label (`gsize tickgap half_tiny') and the default
+        # minor tick counts (`numticks_g horizontal_minor|vertical_minor
+        # 0': no minor tick unless asked).
+        self.minortick_length_px: float = self._tick_length_px(
+            "gsize minortick", 2.0)
+        self.tickgap_px: float = self._tick_length_px("gsize tickgap", 2.0)
+        self.minortick_line_width: float = self._bounded_lwidth(
+            "linewidth minortick", self.tick_line_width)
+        self.minortick_label_font_size: str = self._gsize(
+            "gsize minortick_label", self._GSIZE_PT.get("vsmall", "6pt"))
+        self.numticks_minor: dict = {
+            "x": self._bounded_int("numticks_g horizontal_minor", 0, 0, 50,
+                                   "minor tick count") or 0,
+            "y": self._bounded_int("numticks_g vertical_minor", 0, 0, 50,
+                                   "minor tick count") or 0}
         self.tick_position: str = self._choice(
             "tickposition axis_tick", ("outside", "inside", "crossing"),
             "outside", "tick position")
@@ -11850,12 +11876,25 @@ class SchemeParser:
             else 0.0,
             "tick_position": self.tick_position or "outside",
             "tick_color": self.tick_color,
-            "line_color": self.axis_line_color}
+            "line_color": self.axis_line_color,
+            # WP-31 D1: the minor ticks' and minor labels' look.
+            "minor_length": float(self.minortick_length_px) if _draws_ticks
+            else 0.0,
+            "tickgap": float(self.tickgap_px),
+            "minor_line_width": float(self.minortick_line_width),
+            "minor_label_size": self.minortick_label_font_size,
+            "minor_label_color": self.tick_label_color,
+            "minor_grid_color": self.minor_grid_color,
+            "minor_grid_width": float(self.minor_grid_line_width),
+            "minor_grid_dash": list(self.minor_grid_dash or [])}
         if which not in ("x", "y"):
             return
         angle = self.tick_angle_x if which == "x" else self.tick_angle_y
         axis.major_label_orientation = (
             "horizontal" if angle == 0 else math.radians(angle))
+        # WP-31 D1: the minor labels' angle (ticksetstyle-minor_*_default:
+        # `set tickangle scheme horizontal_tick|vertical_tick').
+        axis._dash_scheme_look["tick_angle"] = float(angle)
         line, ticks = self.axis_flags(which, number)
         if not line:
             axis.axis_line_color = None
@@ -34338,8 +34377,16 @@ def _dash_finish_off_date_axes(fig):
 #: probe of this section distinguishes them.
 _DASH_AXIS_RULE_RE = re.compile(r"\A#{1,2}\s*(\d+)\s*(.*)\Z", re.S)
 
+#: WP-31 D1: twoway's minor-only rule ``##N`` at the head of an axis
+#: option -- N-1 minor ticks between each pair of major ticks
+#: (axis_label_options.sthlp: "##N ... allowed with mlabel() and mtick()
+#: only"); on xlabel()/xtick() twoway notes "##N ignored, only allowed for
+#: minor ticks" and draws as if it were absent (test/fixtures/
+#: minor_tick_truth.json ``m_refusal``).
+_DASH_MINOR_RULE_RE = re.compile(r"\A\s*##\s*(\d{1,9})(?=\s|\Z)")
 
-def _dash_parse_axis_spec(raw):
+
+def _dash_parse_axis_spec(raw, minor=False):
     """Parse Stata's full ``axis_label`` grammar.
 
     Handles a numlist (every form of TR-14.1/BR-14.4, including the
@@ -34363,6 +34410,12 @@ def _dash_parse_axis_spec(raw):
         ``#N``/``##N``, ``minmax``, ``none`` -- or with no values twoway
         spends ``add`` (``ylabel(15(10)35, add)`` draws 15 25 35, measured
         in test/fixtures/axis_add_truth.json), and so does this.
+
+    WP-31 D1: ``between`` is the N of a leading ``##N`` when *minor* (an
+    xmtick()/xmlabel() spec; 0 draws nothing, as twoway's
+    suggest_between_ticks exits below 1); without *minor* the token is
+    twoway's "##N ignored" note's (``between_ignored``, the token as
+    typed) and the rest of the head is read without it.
     """
     out = {"mode": "default", "ticks": [], "count": None,
            "labels": {}, "format": None, "labsize": None,
@@ -34370,7 +34423,9 @@ def _dash_parse_axis_spec(raw):
            "norescale": False, "add": False, "unsupported": [],
            # WP-30 P1.18a: the label and tick look (None: not given).
            "show_labels": None, "show_ticks": None, "labcolor": None,
-           "tlength": None, "tposition": None, "angle_bad": None}
+           "tlength": None, "tposition": None, "angle_bad": None,
+           # WP-31 D1: ##N (minor options) or the ignored token.
+           "between": None, "between_ignored": None}
     if not raw or not str(raw).strip():
         return out
     text = str(raw)
@@ -34441,6 +34496,16 @@ def _dash_parse_axis_spec(raw):
                 or _DASH_AXIS_RULE_RE.match(head)
                 or _DASH_AXIS_INCR_RE.match(_first)):
             out["add"] = False
+
+    _mb = _DASH_MINOR_RULE_RE.match(head)
+    if _mb:
+        if minor:
+            _d = _mb.group(1)
+            out["between"] = (min(int(_d), _MAX_AXIS_TICKS) if len(_d) <= 9
+                              else _MAX_AXIS_TICKS)
+        else:
+            out["between_ignored"] = "##" + _mb.group(1)
+        head = head[_mb.end():].strip()
 
     if re.fullmatch(r"none", head, re.I):
         out["mode"] = "none"
@@ -34818,7 +34883,7 @@ def _dash_tick_position(raw):
 
 
 def _dash_tick_look(axis_obj, spec, minor=False, by_graph=False, option="",
-                    ref_in=4.0):
+                    ref_in=4.0, length_key="tick_length"):
     """Draw a label or tick option's ``noticks``/``ticks``, ``tlength()``
     and ``tposition()`` on the major ticks (or, with *minor*, the minor
     ticks that draw xtick()/ytick() positions), from the scheme's own tick
@@ -34833,6 +34898,8 @@ def _dash_tick_look(axis_obj, spec, minor=False, by_graph=False, option="",
     Under by() twoway draws ``noticks`` as if absent (M6).  A length is
     read in Stata's size units, ``*#`` of the scheme's; an unknown length
     is medium and an unknown side crossing, each with one note.
+    *length_key* names the snapshot's base length: ``"minor_length"`` for
+    an xmtick()/xmlabel() axis's own minor ticks (WP-31 D1).
     """
     show = spec.get("show_ticks")
     tl = spec.get("tlength")
@@ -34854,13 +34921,16 @@ def _dash_tick_look(axis_obj, spec, minor=False, by_graph=False, option="",
     for ax in members:
         look = getattr(ax, "_dash_scheme_look", None)
         if isinstance(look, dict):
-            base_len = float(look.get("tick_length") or 0.0)
+            base_len = float(look.get(length_key, look.get("tick_length"))
+                             or 0.0)
             base_pos = look.get("tick_position") or "outside"
             base_col = look.get("tick_color")
         else:
             t_in = int(getattr(ax, "major_tick_in", 0) or 0)
             t_out = int(getattr(ax, "major_tick_out", 0) or 0)
             base_len = float(max(t_in, t_out))
+            if length_key == "minor_length":
+                base_len /= 2.0       # half_tiny beside tiny
             base_pos = ("outside" if t_in == 0 else
                         "inside" if t_out == 0 else "crossing")
             base_col = getattr(ax, "major_tick_line_color", None)
@@ -34986,6 +35056,21 @@ _DASH_TICK_EXTRA_JS = ("const lo = Math.min(cb_data.start, cb_data.end); "
                        "return extra.filter((v) => v >= lo && v <= hi);")
 _DASH_TICK_EVERY_JS = ("return every.get_ticks(cb_data.start, cb_data.end, "
                        "cb_data.range, cb_data.cross_loc).major;")
+#: WP-31 D1: the minor code of an axis with minor ticks -- the explicit
+#: xmtick()/xmlabel() positions (``mextra``), the ``##N`` positions the
+#: finishers place in the FixedTicker ``mfixed`` (_dash_finish_minor_ticks,
+#: dash_minor_place), and an xtick()'s own ``extra`` or ``every`` when the
+#: axis has one (one minor slot, shared; D-24.a).  Constant text: the
+#: positions are numbers in ``args``.
+_DASH_MTICK_JS = (
+    "const lo = Math.min(cb_data.start, cb_data.end); "
+    "const hi = Math.max(cb_data.start, cb_data.end); "
+    "let v = Array.from(mextra || [])"
+    ".concat(Array.from((mfixed && mfixed.ticks) || [])); "
+    "if (typeof extra !== 'undefined') v = v.concat(Array.from(extra)); "
+    "if (typeof every !== 'undefined') v = v.concat(every.get_ticks("
+    "cb_data.start, cb_data.end, cb_data.range, cb_data.cross_loc).major); "
+    "return v.filter((x) => x >= lo && x <= hi);")
 
 
 #: WP-30 P1.3a (TR-21.11): the saved page's twin of the finisher chain --
@@ -35382,6 +35467,93 @@ function dash_axis_compute(plan, models) {
     }
     return {tickers: tickers, ranges: ranges, tick_range: tick_range, fills: fills, boxes: boxes};
 }
+// WP-31 D1: twoway's ##N minor positions -- the twins of _dash_minor_rule
+// and _dash_minor_between -- and the step that writes them (the plan's
+// "minor": the FixedTicker the axis's minor code reads, the minor labels'
+// source and the axis's formatter, by model index).  Numbers only.
+function dash_minor_rule(m, extra) {
+    const even = (vs) => {
+        if (vs.length < 2) return null;
+        const gap = vs[1] - vs[0];
+        if (!(isFinite(gap) && gap > 0)) return null;
+        for (let i = 1; i < vs.length; i++)
+            if (Math.abs((vs[i] - vs[i - 1]) - gap) > 1e-6 * gap) return null;
+        return [vs[0], vs[vs.length - 1], gap];
+    };
+    const ok = (v) => typeof v === "number" && isFinite(v);
+    const vals = Array.from(new Set(Array.from(m || []).filter(ok))).sort((x, y) => x - y);
+    let r = even(vals);
+    if (r === null && extra && extra.length) {
+        const ex = new Set(Array.from(extra).filter(ok));
+        r = even(vals.filter((v) => !ex.has(v)));
+    }
+    return r;
+}
+function dash_minor_between(rule, n, lo, hi, lab, kind) {
+    if (!rule || !(n >= 1)) return [];
+    const rmin = rule[0], rmax = rule[1], gap = rule[2];
+    const d = gap / n;
+    if (!(isFinite(d) && d > 0)) return [];
+    if (typeof lo !== "number" || !isFinite(lo)) lo = rmin;
+    if (typeof hi !== "number" || !isFinite(hi)) hi = rmax;
+    const a = rmin - d * Math.floor((rmin - lo) / d);
+    const b = rmax + d * Math.floor((hi - rmax) / d);
+    const span = (b + 0.48 * d - a) / d;
+    if (!isFinite(span) || span < 0 || span > @@DASH_MAX_TICKS@@) return [];
+    const tol = (hi - lo) / 10000.0, nmaj = Math.round((rmax - rmin) / gap);
+    const out = [];
+    for (let i = 0; i <= Math.floor(span); i++) {
+        let x = a + i * d;
+        if (Math.abs(x) < d * 1e-6) x = 0.0;
+        if (kind === "log" && x <= 0) continue;
+        if (lab) {
+            const k = Math.round((x - rmin) / gap);
+            if (k >= 0 && k <= nmaj && Math.abs(x - (rmin + k * gap)) < tol) continue;
+        }
+        out.push(x);
+    }
+    return out;
+}
+function dash_minor_place(a, models, lo, hi) {
+    const mn = a && a.minor;
+    if (!mn) return;
+    const tk = (a.mode === "count" && a.ticker >= 0) ? models[a.ticker] : null;
+    const maj = tk ? Array.from(tk.ticks || []) : (mn.maj || []);
+    // A date axis's majors are calendar ticks with no step (as
+    // _dash_minor_dated): ##N draws nothing there.
+    const dated = typeof a.kind === "string" && a.kind !== "log"
+        && a.kind.indexOf("su:") !== 0;
+    const rule = dated ? null : dash_minor_rule(maj, a.extra || []);
+    const kind = a.kind === "log" ? "log" : null;
+    const pt = mn.tb ? dash_minor_between(rule, mn.tb, lo, hi, false, kind) : [];
+    const pl = mn.lb ? dash_minor_between(rule, mn.lb, lo, hi, true, kind) : [];
+    const fx = mn.fx >= 0 ? models[mn.fx] : null;
+    if (fx) {
+        const t = Array.from(new Set(pt.concat(pl))).sort((x, y) => x - y);
+        if (!dash_axis_same(Array.from(fx.ticks || []), t)) {
+            fx.ticks = t;
+            if (fx.change) fx.change.emit();
+        }
+    }
+    const src = mn.src >= 0 ? models[mn.src] : null;
+    if (!src || !src.data) return;
+    const f = mn.fm >= 0 ? models[mn.fm] : null;
+    const pos = Array.from(src.data.pos || []).slice(0, mn.nfix);
+    const text = Array.from(src.data.text || []).slice(0, mn.nfix);
+    for (const v of pl) {
+        let s = String(v);
+        try {
+            if (f && typeof f.doFormat === "function") s = String(f.doFormat([v], {loc: 0})[0]);
+        } catch (err) { s = String(v); }
+        pos.push(v);
+        text.push(s);
+    }
+    const old = src.data;
+    if (dash_axis_same(Array.from(old.pos || []), pos)
+            && dash_axis_same(Array.from(old.text || []), text)) return;
+    src.data = {pos: pos, text: text};
+    if (src.change) src.change.emit();
+}
 function dash_axis_same(a, b) {
     if (!a || !b || a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
@@ -35423,6 +35595,8 @@ function dash_axis_finish(plan, models) {
         if (r && r.change) r.change.emit();
     }
     for (const f of tg.fills) dash_fill_auto_bases(f[0], models, f[1], f[2]);
+    // WP-31 D1: the ##N minor ticks and labels, over each finished scale.
+    for (const f of tg.fills) dash_minor_place(f[0], models, f[1], f[2]);
     // WP-30 P1.20b: each panel's inner box follows its axes' hulls.
     for (const b of tg.boxes) {
         const box = models[b[0]];
@@ -35510,6 +35684,13 @@ _DASH_AXIS_ZOOM_JS = r"""
             }
         }
         if (t && t.length && !dash_axis_same(Array.from(tk.ticks || []), t)) tk.ticks = t;
+        // WP-31 D1: the ##N minor ticks follow the majors (home: over the
+        // finished scale; zoomed: over the visible extent).
+        if (a.minor) {
+            let lo = Math.min(s, e), hi = Math.max(s, e);
+            if (home) for (const f of tg.fills) if (f[0] === a) { lo = f[1]; hi = f[2]; }
+            dash_minor_place(a, models, lo, hi);
+        }
     }
 })();
 """
@@ -35642,6 +35823,7 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     from bokeh.models.tickers import BasicTicker, CustomJSTicker
     text = str(raw or "")
     spec = _dash_parse_axis_spec(text)
+    _dash_note_major_between(spec)
     bad = list(spec.get("unsupported", []))
     # A tick draws no label: its format/labsize/angle and its label look
     # (labcolor, labels, nolabels; WP-30 P1.18a) are named as typed.
@@ -35701,6 +35883,502 @@ def _dash_apply_tick_option(axes, grids, raw, option, values=None, seen=None,
     if spec.get("grid"):
         for g in grids:
             g.minor_grid_line_color = grid_color or "#e5e5e5"
+
+
+# ==== Minor ticks and minor labels (WP-31 D1) =============================
+
+def _dash_note_major_between(spec):
+    """twoway's note for ``##N`` on a major option, "##N ignored, only
+    allowed for minor ticks" (measured: rc 0, the option's other parts
+    drawn; test/fixtures/minor_tick_truth.json ``m_refusal``), once per
+    token per render (WP-31 D1)."""
+    tok = (spec or {}).get("between_ignored")
+    if tok:
+        _dash_warn_once(("between-major", tok),
+                        f"dash: {tok} ignored, only allowed for minor ticks")
+
+
+def _dash_minor_dated(kind):
+    """True on a date axis (a Stata date kind, not ``log`` and not a
+    number axis in Stata units, ``su:``), where ``##N`` draws nothing: its
+    majors are tsnatscale's calendar ticks, a list with no step
+    (measured: test/fixtures/minor_tick_truth.json ``m_date_between``;
+    WP-31 D1)."""
+    return (isinstance(kind, str) and kind != "log"
+            and not kind.startswith("su:"))
+
+
+def _dash_minor_rule(majors, extra=()):
+    """``(min, max, delta)`` of the major ticks *majors* when they are
+    evenly spaced, the rule twoway's ``##N`` steps from
+    (tickset_g.class suggest_between_ticks reads ``.mymajor.min``,
+    ``.max`` and ``.delta``), else None (WP-31 D1).
+
+    natscale's and an ``a(b)c`` label's majors are a rule; a %td axis's
+    calendar ticks are uneven and so are none (measured:
+    test/fixtures/minor_tick_truth.json ``m_date_between`` draws no minor
+    tick).  When the ticks are uneven only because of values a label
+    option added (*extra*, ``xlabel(#5 2500)``), the rule is read without
+    them.  Fewer than two finite ticks give None."""
+    def _even(vs):
+        if len(vs) < 2:
+            return None
+        gap = vs[1] - vs[0]
+        if not (math.isfinite(gap) and gap > 0):
+            return None
+        tol = 1e-6 * gap
+        for a, b in zip(vs, vs[1:]):
+            if abs((b - a) - gap) > tol:
+                return None
+        return (vs[0], vs[-1], gap)
+
+    def _ok(v):
+        return (isinstance(v, (int, float)) and not isinstance(v, bool)
+                and math.isfinite(float(v)))
+
+    vals = sorted({float(v) for v in (majors or ()) if _ok(v)})
+    rule = _even(vals)
+    if rule is None and extra:
+        ex = {float(v) for v in extra if _ok(v)}
+        rule = _even([v for v in vals if v not in ex])
+    return rule
+
+
+def _dash_minor_between(rule, n, lo, hi, labelled=False, kind=None):
+    """twoway's ``##N`` positions (WP-31 D1): the step ``delta / n`` of the
+    major *rule* (:func:`_dash_minor_rule`), from the major minimum
+    extended by whole steps down to the scale's minimum *lo* to the major
+    maximum extended up to *hi* -- tickset_g.class suggest_between_ticks
+    -- walked as its draw walks them, ``min(step)(max + .48*step)``, a
+    value within step*1e-6 of 0 drawn at 0.  *labelled* (an xmlabel())
+    skips the positions on a major tick, as twoway's draw does (within
+    1/10000 of the scale); on a log axis (*kind*) a value at or below 0 is
+    dropped.  No rule, n below 1 or more than ``_MAX_AXIS_TICKS``
+    positions give ``[]``."""
+    if rule is None:
+        return []
+    try:
+        n = int(n)
+        rmin, rmax, gap = (float(v) for v in rule)
+    except (TypeError, ValueError, OverflowError):
+        return []
+    if n < 1 or not (math.isfinite(gap) and gap > 0):
+        return []
+    d = gap / n
+    lo = float(lo) if lo is not None and math.isfinite(float(lo)) else rmin
+    hi = float(hi) if hi is not None and math.isfinite(float(hi)) else rmax
+    a = rmin - d * math.floor((rmin - lo) / d)
+    b = rmax + d * math.floor((hi - rmax) / d)
+    span = (b + 0.48 * d - a) / d
+    if not math.isfinite(span) or span < 0 or span > _MAX_AXIS_TICKS:
+        return []
+    tol = (hi - lo) / 10000.0
+    nmaj = int(round((rmax - rmin) / gap))
+    out = []
+    for i in range(int(math.floor(span)) + 1):
+        x = a + i * d
+        if abs(x) < d * 1e-6:
+            x = 0.0
+        if kind == "log" and x <= 0:
+            continue
+        if labelled:
+            k = int(round((x - rmin) / gap))
+            if 0 <= k <= nmaj and abs(x - (rmin + k * gap)) < tol:
+                continue
+        out.append(x)
+    return out
+
+
+def _dash_axis_majors(ax):
+    """The major ticks an axis draws now: its FixedTicker's (or its
+    CustomJSTicker's ``base`` FixedTicker's), else ``[]``."""
+    from bokeh.models import CustomJSTicker, FixedTicker
+    t = getattr(ax, "ticker", None)
+    if isinstance(t, CustomJSTicker):
+        t = dict(t.args or {}).get("base")
+    if isinstance(t, FixedTicker):
+        return [float(v) for v in (t.ticks or ())]
+    return []
+
+
+def _dash_minor_text(ax, v, spec=None, value_labels=None):
+    """The text twoway writes at minor position *v* of axis *ax*: the value
+    label (with ``valuelabel``), else *v* in the label option's
+    ``format()`` or the axis's own writer's format (its formatter's
+    ``fmt``, a date read back from epoch milliseconds through its
+    ``kind``), else %9.0g (WP-31 D1, D-24.e)."""
+    spec = spec or {}
+    if spec.get("valuelabel") and value_labels:
+        keys = [v, float(v), _fmt_num(v)]
+        for k in keys:
+            if k in value_labels:
+                return str(value_labels[k])
+    f = getattr(ax, "formatter", None)
+    args = dict(getattr(f, "args", None) or {}) if f is not None else {}
+    fmt = spec.get("format") or args.get("fmt") or "%9.0g"
+    kind = str(args.get("kind") or "")
+    val = _dash_stata_value_of(v, kind) if kind else v
+    if val is None:
+        return "."
+    try:
+        return _dash_fmt_text(val, fmt, storage=args.get("storage") or None)
+    except Exception:  # noqa: BLE001 -- a format the writer refuses
+        return _fmt_num(v)
+
+
+def _dash_axis_side_of(fig, ax):
+    """The side list (``below``, ``above``, ``left``, ``right``) holding
+    *ax*, or None."""
+    for side in ("below", "left", "above", "right"):
+        if any(a is ax for a in (getattr(fig, side, None) or ())):
+            return side
+    return None
+
+
+def _dash_minor_label_model(fig, ax, which, axis_no, pos, texts, look,
+                            size, color, angle, side):
+    """The label model(s) of one axis's minor labels (WP-31 D1, D-24.b):
+    a ``LabelSet`` along the frame edge in screen units on the first side
+    (below, left), one ``Label`` per position at the frame's far edge
+    (``Node``) on the other (above, right).  Every model is named
+    ``dash_minor_labels`` and tagged ``[which, axis_no]``; the text is a
+    canvas text, never HTML."""
+    from bokeh.models import ColumnDataSource, Label, LabelSet, Node
+    out_len = max(int(getattr(ax, "minor_tick_out", 0) or 0), 0)
+    off = float(out_len) + float(look.get("tickgap", 0.0) or 0.0)
+    deg = abs(math.degrees(angle)) % 180.0 if angle else 0.0
+    if side in ("below", None):
+        al, bl = ("center", "top") if deg == 0 else ("right", "middle")
+    elif side == "above":
+        al, bl = ("center", "bottom") if deg == 0 else ("left", "middle")
+    elif side == "left":
+        al, bl = (("right", "middle") if deg != 90 else ("center", "bottom"))
+    else:
+        al, bl = (("left", "middle") if deg != 90 else ("center", "top"))
+    common = dict(text_align=al, text_baseline=bl, text_font_size=size,
+                  text_color=color, angle=float(angle or 0.0),
+                  level="overlay", name="dash_minor_labels",
+                  tags=[which, str(axis_no)])
+    rname = {"x_range_name": getattr(ax, "x_range_name", "default")} \
+        if which == "x" else {"y_range_name": getattr(ax, "y_range_name",
+                                                      "default")}
+    if side in ("below", "left", None):
+        src = ColumnDataSource({"pos": [float(p) for p in pos],
+                                "text": [str(t) for t in texts]})
+        if which == "x":
+            m = LabelSet(source=src, x="pos", y=0, x_units="data",
+                         y_units="screen", y_offset=-off, **rname, **common)
+        else:
+            m = LabelSet(source=src, y="pos", x=0, y_units="data",
+                         x_units="screen", x_offset=-off, **rname, **common)
+        fig.add_layout(m)
+        return [m], src
+    models = []
+    for p, t in zip(pos, texts):
+        if which == "x":
+            m = Label(x=float(p), x_units="data",
+                      y=Node(target="frame", symbol="top"), y_offset=off,
+                      text=str(t), **rname, **common)
+        else:
+            m = Label(y=float(p), y_units="data",
+                      x=Node(target="frame", symbol="right"), x_offset=off,
+                      text=str(t), **rname, **common)
+        fig.add_layout(m)
+        models.append(m)
+    return models, None
+
+
+def _dash_apply_minor_ticks(fig, axes, grids, which, axis_no, mtick_raw,
+                            mlabel_raw, values=None, seen=None, key="", *,
+                            date_kind=None, by_graph=False, ref_in=4.0,
+                            value_labels=None, names=None, colours=None,
+                            major_spec=None):
+    """xmtick()/ymtick() and xmlabel()/ymlabel() (and their axis-2 keys) on
+    the axes *axes* of *fig*, as twoway draws them (WP-31 D1, GAPS3 D1).
+
+    Both options take the axis-label grammar (:func:`_dash_parse_axis_spec`
+    with *minor*): a numlist or ``a(b)c``, ``minmax`` (the data's extremes
+    in *values*), ``#N`` (natscale's N over the axis's data, placed once
+    the layers are drawn and held, as xtick(#N) is) and the minor-only
+    ``##N`` (N-1 between each pair of evenly spaced majors, placed by
+    :func:`_dash_finish_minor_ticks` and after every filter move and
+    zoom).  The marks are the axis's Bokeh minor ticks: its ticker becomes
+    (or, beside an xtick(), stays) a ``CustomJSTicker`` whose minor code
+    :data:`_DASH_MTICK_JS` returns the explicit positions (``mextra``) and
+    the placed ones (the FixedTicker ``mfixed``).  Alone they are the
+    scheme's ``gsize minortick`` long, in ``linewidth minortick``; beside
+    an xtick() the one slot keeps the xtick's major length (D-24.a).
+    Explicit positions widen the scale unless ``norescale`` (measured:
+    ``xmtick(6000)`` runs the axis to 6000).  ``grid`` draws the minor
+    grid in the scheme's ``minor_grid`` look.  xmlabel() writes each
+    position's text -- its quoted text, else the axis's writer
+    (:func:`_dash_minor_text`) -- in ``gsize minortick_label`` and ``color
+    tick_label`` (:func:`_dash_minor_label_model`).  An ``axis(#)`` left in
+    the text (an axis 3-9 copy, or a t option's axis 2, which no key
+    routes) is named and not drawn; a label sub-option on a tick option is
+    named, as xtick() names it.  *major_spec* is the axis's parsed label
+    option, whose explicit uneven list leaves twoway's lone ``##N`` tick
+    at 0 (measured ``m_between_uneven``)."""
+    from bokeh.models import CustomJSTicker, FixedTicker
+    from bokeh.models.tickers import ContinuousTicker
+    tick_opt, lab_opt = names or (which + "mtick", which + "mlabel")
+    specs = []
+    for role, raw, opt in (("tick", mtick_raw, tick_opt),
+                           ("label", mlabel_raw, lab_opt)):
+        text = str(raw or "")
+        if not text.strip():
+            continue
+        sp = _dash_parse_axis_spec(text, minor=True)
+        bad = list(sp.get("unsupported") or [])
+        unrouted = [t for t in bad if _dash_subopt_name(t) == "axis"]
+        if unrouted:
+            _dash_report_suboptions(opt, unrouted, seen, key)
+            continue
+        if role == "tick":
+            for _sub in ("format", "labsize", "angle", "labcolor", "labels",
+                         "nolabels"):
+                if _sub in sp.get("typed", {}):
+                    bad.append(sp["typed"][_sub])
+        _dash_report_suboptions(opt, bad, seen, key)
+        if date_kind:
+            sp = _dash_date_axis_spec(sp, date_kind, opt)
+        specs.append((role, opt, sp))
+    if not specs:
+        return
+    mextra, rows, every = [], [], []
+    tb = lb = 0
+    lspec = None
+    norescale = False
+    for role, opt, sp in specs:
+        mode = sp["mode"]
+        pos = []
+        if mode == "explicit" and sp["ticks"]:
+            pos = [float(t) for t in sp["ticks"]]
+        elif mode == "minmax" and values is not None:
+            vv = pd.Series(_dash_float_values(values, coerce=True)).dropna()
+            if len(vv):
+                pos = [float(vv.min()), float(vv.max())]
+        elif mode == "count" and sp.get("count"):
+            every.append((role, int(sp["count"])))
+        if sp.get("between"):
+            if role == "tick":
+                tb = int(sp["between"])
+            else:
+                lb = int(sp["between"])
+        norescale = norescale or bool(sp.get("norescale"))
+        mextra += pos
+        if role == "label":
+            lspec = sp
+            if sp.get("show_labels") is not False or by_graph:
+                labs = {}
+                for k, v in (sp.get("labels") or {}).items():
+                    try:
+                        labs[float(k)] = v
+                    except (TypeError, ValueError):
+                        continue
+                rows += [(p, labs.get(p)) for p in pos]
+    # twoway's lone tick at 0 for ##N over majors that are an uneven list
+    # (m_between_uneven: the scale widened to 0), on a numeric axis.
+    if (tb or lb) and date_kind is None and major_spec is not None \
+            and major_spec.get("mode") == "explicit" \
+            and not major_spec.get("add") \
+            and _dash_minor_rule(major_spec.get("ticks") or ()) is None:
+        mextra.append(0.0)
+        if lb and lspec is not None:
+            rows.append((0.0, None))
+    mextra = sorted(set(mextra))
+    show_labels = lspec is not None and (lspec.get("show_labels")
+                                         is not False or by_graph)
+    for ax in axes:
+        if not isinstance(ax.ticker, (ContinuousTicker, CustomJSTicker)):
+            # A categorical axis has no position a number could name.
+            continue
+        # A log axis draws no position at or below 0.
+        own = ([v for v in mextra if v > 0]
+               if type(ax).__name__ == "LogAxis" else list(mextra))
+        t = ax.ticker
+        a = dict(t.args or {}) if isinstance(t, CustomJSTicker) else None
+        shared = a is not None and ("extra" in a or "every" in a)
+        mfixed = FixedTicker(ticks=[], minor_ticks=[])
+        new = {"mextra": own, "mfixed": mfixed}
+        if tb:
+            new["between"] = int(tb)
+        if a is not None and "base" in a:
+            t.args = dict(a, **new)
+            t.minor_code = _DASH_MTICK_JS
+        else:
+            ax.ticker = CustomJSTicker(args=dict(new, base=t),
+                                       major_code=_DASH_TICK_MAJOR_JS,
+                                       minor_code=_DASH_MTICK_JS)
+        if not norescale:
+            ax._dash_hull_tick_extra = list(
+                getattr(ax, "_dash_hull_tick_extra", None) or []) + own
+        look = getattr(ax, "_dash_scheme_look", None) or {}
+        if not shared:
+            # The minor ticks' own look: gsize minortick long, linewidth
+            # minortick wide, on the scheme's side, unless the option
+            # gives its own (ticks/noticks, tlength(), tposition()).
+            if "minor_line_width" in look:
+                ax.minor_tick_line_width = look["minor_line_width"]
+            for role, opt, sp in specs:
+                _dash_tick_look(ax, sp, True, by_graph, opt, ref_in,
+                                length_key="minor_length")
+        if any(sp.get("grid") for _r, _o, sp in specs):
+            for g in grids or ():
+                g.minor_grid_line_color = look.get("minor_grid_color",
+                                                   "#e5e5e5")
+                if "minor_grid_width" in look:
+                    g.minor_grid_line_width = look["minor_grid_width"]
+                if look.get("minor_grid_dash") is not None:
+                    g.minor_grid_line_dash = list(look["minor_grid_dash"])
+        mn = {"tb": int(tb), "lb": int(lb), "fixed": mfixed, "src": None,
+              "labels": [], "rows": [], "every": list(every),
+              "lspec": lspec, "vlabels": value_labels, "which": which,
+              "axis_no": int(axis_no), "look": None}
+        if lspec is not None and show_labels:
+            T = OptionTranslator
+            size = look.get("minor_label_size") or "6pt"
+            if lspec.get("labsize"):
+                try:
+                    size = T.css_pt(T.resolve_size(
+                        str(lspec["labsize"]), "text",
+                        T.css_to_pt(size) or T.size_medium_pt("text"),
+                        ref_in))
+                except (ValueError, TypeError):
+                    _dash_style_note(f"{lab_opt}(labsize)", lspec["labsize"],
+                                     "size", "medium")
+                    size = T.css_pt(T.size_medium_pt("text"))
+            color = look.get("minor_label_color") or "#000000"
+            if lspec.get("labcolor") is not None:
+                _hex, _alpha = T.parse_color_alpha(
+                    lspec["labcolor"], f"{lab_opt}(labcolor)", base=color,
+                    **(colours or {}))
+                color = _hex or color
+            if lspec.get("angle") is not None:
+                angle = float(lspec["angle"])
+                if lspec.get("angle_bad") is not None:
+                    _dash_style_note(f"{lab_opt}(angle)", lspec["angle_bad"],
+                                     "angle", "0 degrees")
+            else:
+                angle = math.radians(float(look.get("tick_angle", 0.0)
+                                           or 0.0))
+            texts = [t if t is not None else _dash_minor_text(
+                ax, p, lspec, value_labels) for p, t in rows]
+            side = _dash_axis_side_of(fig, ax)
+            models, src = _dash_minor_label_model(
+                fig, ax, which, axis_no, [p for p, _t in rows], texts, look,
+                size, color, angle, side)
+            mn.update({"src": src, "labels": models,
+                       "rows": list(zip([p for p, _t in rows], texts)),
+                       "look": (look, size, color, angle, side)})
+        else:
+            mn["lb"] = 0
+        ax._dash_minor = mn
+
+
+def _dash_place_minor_counts(entries):
+    """Place each axis's xmtick(#N)/xmlabel(#N) positions once, over the
+    data its layers draw (natscale, :func:`_dash_axis_count_ticks`), before
+    the hull, so they widen the scale as xtick(#N)'s do; held after a
+    filter move (D-21e).  Run by :func:`_dash_finish_count_ticks` (WP-31
+    D1)."""
+    from bokeh.models import CustomJSTicker
+    for e in entries or ():
+        ax = e["ax"]
+        mn = getattr(ax, "_dash_minor", None)
+        if not mn or not mn.get("every"):
+            continue
+        lo = e.get("tick_lo", e.get("lo"))
+        hi = e.get("tick_hi", e.get("hi"))
+        if lo is None or hi is None:
+            continue
+        t = ax.ticker
+        for role, n in mn["every"]:
+            pos = [float(v) for v in (_dash_axis_count_ticks(
+                lo, hi, n, e.get("kind")) or [])]
+            if isinstance(t, CustomJSTicker):
+                a = dict(t.args or {})
+                a["mextra"] = sorted(set(list(a.get("mextra") or []) + pos))
+                t.args = a
+            ax._dash_every_extra = list(
+                getattr(ax, "_dash_every_extra", None) or []) + pos
+            if role == "label" and mn.get("look") is not None:
+                look, size, color, angle, side = mn["look"]
+                rows = [(p, _dash_minor_text(ax, p, mn["lspec"],
+                                             mn["vlabels"])) for p in pos]
+                mn["rows"] = list(mn["rows"]) + rows
+        mn["every"] = []
+
+
+def _dash_finish_minor_ticks(fig):
+    """Place every ``##N`` minor position of *fig*'s axes from the majors
+    just placed and the finished scale (:func:`_dash_minor_rule`,
+    :func:`_dash_minor_between`), into the ticker's FixedTicker ``mfixed``,
+    and rewrite the axis's minor labels: the explicit rows as built, then
+    the between rows in the axis's writer.  Run at the ends of
+    :func:`_dash_finish_count_ticks` and :func:`_dash_common_count_ticks`
+    -- at build and after every served filter move, in both modes; the
+    saved page's twin is ``dash_minor_place`` in ``_DASH_AXIS_FINISH_JS``
+    (WP-31 D1).  Labels drawn as one Label per position (an axis on the
+    far side) are placed at build and held.  Idempotent."""
+    from bokeh.models import CustomJSTicker
+    for e in getattr(fig, "_dash_hull_axes", None) or ():
+        ax = e["ax"]
+        mn = getattr(ax, "_dash_minor", None)
+        if not mn:
+            continue
+        t = ax.ticker
+        if isinstance(t, CustomJSTicker) and "mfixed" in dict(t.args or {}) \
+                and t.minor_code != _DASH_MTICK_JS:
+            # _dash_place_count_ticks set xtick(#N)'s code; the slot is
+            # shared (D-24.a).
+            t.minor_code = _DASH_MTICK_JS
+        rows = list(mn.get("rows") or [])
+        pl = []
+        if mn["tb"] or mn["lb"]:
+            sc = _dash_axis_scale(fig, e["letter"],
+                                  e.get("name") or "default")
+            lo, hi = sc if sc is not None else (None, None)
+            rule = _dash_minor_rule(_dash_axis_majors(ax),
+                                    getattr(ax, "_dash_extra_ticks", None)
+                                    or ())
+            kind = "log" if e.get("kind") == "log" else None
+            if _dash_minor_dated(e.get("kind")):
+                rule = None
+            pt = (_dash_minor_between(rule, mn["tb"], lo, hi, False, kind)
+                  if mn["tb"] else [])
+            pl = (_dash_minor_between(rule, mn["lb"], lo, hi, True, kind)
+                  if mn["lb"] else [])
+            new = sorted(set(pt) | set(pl))
+            fx = mn["fixed"]
+            if [float(v) for v in (fx.ticks or ())] != new:
+                fx.ticks = new
+        src = mn.get("src")
+        if src is not None:
+            allr = rows + [(p, _dash_minor_text(ax, p, mn["lspec"],
+                                                mn["vlabels"])) for p in pl]
+            data = {"pos": [float(p) for p, _t in allr],
+                    "text": [str(t) for _p, t in allr]}
+            cur = dict(src.data)
+            if [float(v) for v in cur.get("pos", [])] != data["pos"] \
+                    or list(cur.get("text", [])) != data["text"]:
+                src.data = data
+        elif mn.get("look") is not None and not mn.get("placed") \
+                and not e.get("refinish"):
+            # The far side: one Label per position, placed once.
+            look, size, color, angle, side = mn["look"]
+            have = {float(m.x if mn["which"] == "x" else m.y)
+                    for m in mn.get("labels") or ()}
+            extra = [(p, t) for p, t in rows if float(p) not in have]
+            extra += [(p, _dash_minor_text(ax, p, mn["lspec"], mn["vlabels"]))
+                      for p in pl]
+            if extra:
+                models, _src = _dash_minor_label_model(
+                    fig, ax, mn["which"], mn["axis_no"],
+                    [p for p, _t in extra], [t for _p, t in extra], look,
+                    size, color, angle, side)
+                mn["labels"] = list(mn.get("labels") or []) + models
+            mn["placed"] = True
 
 
 def _dash_date_axis_spec(spec, kind, option):
@@ -35819,6 +36497,7 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
                     **(getattr(fig, "_dash_unit_kind", None) or {}),
                     ax_key[0]: "su:" + _stata_date_kind(fb)}
         spec = _dash_parse_axis_spec(raw) if raw else None
+        _dash_note_major_between(spec)
         # WP-30 P1.18b: an add spec draws the default ticks too.
         if (spec is None or spec.get("mode") == "default"
                 or spec.get("add")) \
@@ -35859,6 +36538,16 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
             _dash_apply_tick_option(axis_obj, grid_obj, traw, tick_key, col,
                                     seen, key, grid_color, date_kind=kind,
                                     by_graph=by_graph, ref_in=ref_in)
+        # WP-31 D1: xmtick()/xmlabel() (tmtick()/tmlabel() fold onto them)
+        # after the label and tick options, so they join that ticker.
+        mt = str(graph_opts.get(ax_key[0] + "mtick", "") or "")
+        ml = str(graph_opts.get(ax_key[0] + "mlabel", "") or "")
+        if mt.strip() or ml.strip():
+            _dash_apply_minor_ticks(fig, axis_obj, grid_obj, ax_key[0], 1,
+                                    mt, ml, col, seen, key, date_kind=kind,
+                                    by_graph=by_graph, ref_in=ref_in,
+                                    value_labels=vlabels, colours=colours,
+                                    major_spec=spec)
     # The scale look, after the labels and ticks; the sub-option note was
     # printed where the figure was made (_dash_scale_spec), so it is read
     # here without one.  A list copy: alt edits the side lists.
@@ -36824,7 +37513,7 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                 ok = (lambda v: isinstance(v, (int, float))
                       and not isinstance(v, bool)
                       and math.isfinite(float(v)))
-                axes.append({
+                ent = {
                     "letter": letter, "name": str(name),
                     "kind": kind if isinstance(kind, str) else None,
                     "key": "%s:%d" % e["key"], "mode": mode,
@@ -36848,7 +37537,34 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                                if letter in margins and _dash_margin_pair(
                                    margins[letter]) is not None else None),
                     "range": ri, "ticker": ti,
-                    "layers": layers, "bars": bars, "autobase": autobase})
+                    "layers": layers, "bars": bars, "autobase": autobase}
+                # WP-31 D1: the ##N minor ticks and labels the page places
+                # again (dash_minor_place): numbers and model indexes only.
+                mn = getattr(ax, "_dash_minor", None)
+                if mn and (mn.get("tb") or mn.get("lb")):
+                    idx = {}
+                    for nm_, mdl in (("fx", mn.get("fixed")),
+                                     ("src", mn.get("src")),
+                                     ("fm", getattr(ax, "formatter", None)
+                                      if mn.get("src") is not None
+                                      else None)):
+                        if mdl is None:
+                            idx[nm_] = -1
+                            continue
+                        j = index.get(id(mdl))
+                        if j is None:
+                            j = index[id(mdl)] = len(models)
+                            models.append(mdl)
+                        idx[nm_] = j
+                    ent["minor"] = {
+                        "tb": int(mn.get("tb") or 0),
+                        "lb": int(mn.get("lb") or 0),
+                        "fx": idx["fx"], "src": idx["src"], "fm": idx["fm"],
+                        "nfix": len(mn.get("rows") or []),
+                        "maj": (None if mode == "count" else
+                                [float(v) for v in _dash_axis_majors(ax)
+                                 if ok(v)])}
+                axes.append(ent)
                 if zoom and mode == "count" and ri >= 0 \
                         and rng not in zoom_ranges:
                     zoom_ranges.append(rng)
@@ -36994,6 +37710,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         raw = _dash_axisn_value(graph_opts, n, num, "label")
         spec = (_dash_parse_axis_spec(raw)
                 if raw.strip() and ax is not None else None)
+        _dash_note_major_between(spec)
         if spec is not None and kind:
             spec = _dash_date_axis_spec(spec, kind, _on("label"))
         # ytick(..., axis(2)) -- dash's ytick2() (WP-29 P0.5): its positions
@@ -37142,6 +37859,25 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                     col_vals or None, seen, key, grid_color,
                                     date_kind=kind, by_graph=by_graph,
                                     ref_in=ref_in)
+        # WP-31 D1: ymtick2()/ymlabel2() (axis(2) copies) on this axis;
+        # axes 3-9 take none (their text keeps its axis(#), named).
+        mt2 = (str(graph_opts.get(f"{n}mtick2", "") or "") if num == 2
+               else "")
+        ml2 = (str(graph_opts.get(f"{n}mlabel2", "") or "") if num == 2
+               else "")
+        if ax is not None and (mt2.strip() or ml2.strip()):
+            mgrids = []
+            if any(_dash_parse_axis_spec(r, minor=True).get("grid")
+                   for r in (mt2, ml2) if r.strip()):
+                g = Grid(dimension=dim, axis=ax, grid_line_color=None,
+                         **{kw: name})
+                fig.add_layout(g, "center")
+                mgrids.append(g)
+            _dash_apply_minor_ticks(
+                fig, [ax], mgrids, n, 2, mt2, ml2, col_vals or None, seen,
+                key, date_kind=kind, by_graph=by_graph, ref_in=ref_in,
+                names=(f"{n}mtick2", f"{n}mlabel2"), colours=colours,
+                major_spec=spec)
         if ax is not None and scale_raw:
             # WP-30 P1.18a: the second axis's own look.
             _dash_apply_scale_look(fig, ax, _dash_scale_look(scale_raw),
@@ -37744,10 +38480,14 @@ def _dash_finish_count_ticks(fig, refinish=False, skip=()):
         e["tick_lo"], e["tick_hi"] = lo, hi
         if lo is not None and not e.get("skip"):
             _dash_place_count_ticks(e, lo, hi)
+    # WP-31 D1: xmtick(#N)/xmlabel(#N) positions widen the scale.
+    _dash_place_minor_counts(entries)
     _dash_hull_ranges(fig, entries)
     # Each default base at twoway's clamp, from the scale just made
     # (WP-30 P1.17b); a by() graph's shared letters again after the share.
     _dash_finish_auto_bases(fig)
+    # WP-31 D1: ##N from the majors just placed, over the scale just made.
+    _dash_finish_minor_ticks(fig)
 
 
 def _dash_common_count_ticks(figs, letters=("x", "y")):
@@ -37838,9 +38578,11 @@ def _dash_common_count_ticks(figs, letters=("x", "y")):
         if hkey in made:
             _dash_share_repoint([f for f, _ in per.values()], hkey[1],
                                 hkey[0], made[hkey])
-    # The panels' default bases from the common scale (WP-30 P1.17b).
+    # The panels' default bases from the common scale (WP-30 P1.17b), and
+    # their ##N minor ticks from the common majors (WP-31 D1).
     for f in figs or ():
         _dash_finish_auto_bases(f)
+        _dash_finish_minor_ticks(f)
 
 
 def _dash_share_repoint(figs, letter, name, rng):
@@ -51588,6 +52330,8 @@ class ServerAppBuilder:
                       "_DASH_AXLABEL_SUBOPT_TABLE",
                       "_DASH_AXSCALE_SUBOPT_TABLE",
                       "_DASH_REFLINE_SUBOPT_TABLE", "_DASH_AXLABEL_HONOURED",
+                      # WP-31 D1: minor ticks and minor labels.
+                      "_DASH_MINOR_RULE_RE", "_DASH_MTICK_JS",
                       "_DASH_SUBOPT_REAL_RE", "_DASH_SUBOPT_INT_RE",
                       # The second axes' coordinate names and the
                       # yscale2()/xscale2() sub-options honoured (WP-23).
@@ -51979,6 +52723,14 @@ class ServerAppBuilder:
                          "_dash_value_labels_for",
                          "_dash_hover_text_column", "_dash_add_hover_text",
                          "_dash_primary_axes", "_dash_apply_tick_option",
+                         # WP-31 D1: minor ticks and minor labels.
+                         "_dash_note_major_between", "_dash_minor_dated",
+                         "_dash_minor_rule",
+                         "_dash_minor_between", "_dash_axis_majors",
+                         "_dash_minor_text", "_dash_axis_side_of",
+                         "_dash_minor_label_model", "_dash_apply_minor_ticks",
+                         "_dash_place_minor_counts",
+                         "_dash_finish_minor_ticks",
                          "_dash_apply_axis_options",
                          # WP-30 P1.18a: the axis look
                          "_dash_tick_geometry", "_dash_tick_position",

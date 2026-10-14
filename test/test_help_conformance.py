@@ -556,8 +556,11 @@ class TestTheParsersFoundSomething:
         # 208 -> 217: B5b the synopt entries of dotextend() ndots()
         # dsymbol() dcolor() dfcolor() dsize() dlcolor() dlwidth() and the
         # Unsupported entry's dlalign() (dstyle() and dlstyle() move).
-        assert len(found) == 217, (
-            f"{len(found)} options parsed out of dash.sthlp, 217 measured "
+        # 217 -> 219: D1 the Unsupported entry "Minor ticks and minor
+        # labels" goes (xmtick() .. tmtick()) and four synopt rows define
+        # ymtick2() ymlabel2() xmtick2() xmlabel2().
+        assert len(found) == 219, (
+            f"{len(found)} options parsed out of dash.sthlp, 219 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -640,7 +643,8 @@ class TestTheParsersFoundSomething:
         # colorformissing colorkeysrange colorkeysreverse
         # colorallowmultiple colorotherlabel clegend plegend pcycle declared
         # 240 -> 249: B5b the nine dot options declared
-        assert len(_ado_declarations()) == 249
+        # 249 -> 253: D1 xmlabel2 ymlabel2 xmtick2 ymtick2 declared
+        assert len(_ado_declarations()) == 253
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -662,7 +666,8 @@ class TestTheParsersFoundSomething:
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
-        assert len(_ignored_options()) == 39
+        # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn
+        assert len(_ignored_options()) == 33
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -685,7 +690,8 @@ class TestTheParsersFoundSomething:
         # 42 -> 40: C8b the "colorvar() sub-options" entry goes
         # 40 -> 39: B5b dstyle() and dlstyle() leave it with their entry,
         # dlalign() joins the marker outline entry
-        assert len(_unsupported_section()) == 39
+        # 39 -> 33: D1 the "Minor ticks and minor labels" entry goes
+        assert len(_unsupported_section()) == 33
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -752,8 +758,10 @@ class TestTheParsersFoundSomething:
         # ones, less the Unsupported entry they replace.
         # 417 -> 427: B5b the ten synopt entries dotextend() .. dlwidth().
         # 427 -> 428: B1 the Plot types table's "range with a point" row.
-        assert len(defs) == 428, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 428 "
+        # 428 -> 431: D1 four synopt rows ymtick2() .. xmlabel2(), less
+        # the Unsupported entry "Minor ticks and minor labels".
+        assert len(defs) == 431, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 431 "
             f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

@@ -350,6 +350,9 @@
 *!   U11-07 nofit and atobs on scatter, estopts() on lpolyci, atobs on
 *!          fpfit, estcmd() on lfit: twoway's rc and line; atobs on
 *!          fpfitci and smoothplot() on lpolyci taken
+*! Minor ticks (WP-31 D1; test/fixtures/minor_tick_truth.json m_refusal):
+*!   U24-5  xlabel(##5): twoway's rc 0 and its note "##5 ignored, only
+*!          allowed for minor ticks", printed by dash when it draws
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1932,6 +1935,35 @@ foreach c in "fpfitci mpg weight, atobs" "lpolyci mpg weight, smoothplot(scatter
     }
 }
 _u05_judge U11-07 `"`bad'"' "the fit options refused where twoway refuses them, in its words, and taken in silence where it takes them"
+
+// U24-5 (WP-31 D1): ##N on a major option.  twoway takes it, rc 0, and
+// notes "##5 ignored, only allowed for minor ticks"; dash takes it and
+// prints the same note when it draws the graph (the immediate route), and
+// writes the option to the spec as typed.
+local bad ""
+local u24msg "##5 ignored, only allowed for minor ticks"
+_u05_rc "scatter mpg weight, xlabel(##5)" `"`u24msg'"'
+if r(trc) != 0 | r(drc) != 0 | r(tn) < 1 {
+    local bad `"`bad' [registration: twoway `r(trc)' (`r(tn)'), dash `r(drc)']"'
+}
+local u24log "`c(tmpdir)'dash_ov.log"
+local u24html "`c(tmpdir)'dash_u24_5.html"
+capture erase "`u24html'"
+capture log close _ovlog
+capture erase "`u24log'"
+sysuse auto, clear
+log using "`u24log'", name(_ovlog) text replace
+capture noisily dash scatter mpg weight, xlabel(##5) saving("`u24html'", replace)
+local u24rc = _rc
+log close _ovlog
+_ov_count "`u24log'" `"`u24msg'"'
+if `u24rc' != 0 | r(n) < 1 {
+    local bad `"`bad' [drawn: dash rc `u24rc', note lines `r(n)']"'
+}
+capture erase "`u24log'"
+capture erase "`u24html'"
+capture dash clear
+_u05_judge U24-5 `"`bad'"' "xlabel(##5) taken as twoway takes it, rc 0, with twoway's note when drawn"
 
 // ----------------------------------------------------------------
 // Summary

@@ -1230,6 +1230,20 @@ FUNCTIONS = {
  'GlyphMapper._rbar_finish': 'test/test_rbar_mwidth.py::TestWithoutMwidth::test_nothing_changes',
  'GlyphMapper._rbar_fill_base': 'test/test_rbar_mwidth.py::TestWithoutMwidth::test_nothing_changes',
  'GlyphMapper._rbar_mwidth_px': 'test/test_rbar_mwidth.py::TestMwidth::test_msize_scales_the_width',
+ # WP-31 S24 (D1)
+ '_dash_apply_minor_ticks': 'test/test_minor_ticks.py::TestMinorTicksAreDrawn::test_explicit_positions',
+ '_dash_note_major_between': 'test/test_minor_ticks.py::TestMajorBetweenIsIgnored::test_noted_and_default',
+ '_dash_minor_dated': 'test/test_minor_ticks.py::TestBetweenRule::test_a_date_axis_with_uneven_majors_draws_none',
+ '_dash_minor_rule': 'test/test_minor_ticks.py::TestTheHelpers::test_rule_of_even_majors',
+ '_dash_minor_rule.<locals>._even': 'test/test_minor_ticks.py::TestTheHelpers::test_rule_of_even_majors',
+ '_dash_minor_rule.<locals>._ok': 'test/test_minor_ticks.py::TestTheHelpers::test_rule_of_even_majors',
+ '_dash_minor_between': 'test/test_minor_ticks.py::TestTheHelpers::test_between_walks_twoways_rule',
+ '_dash_axis_majors': 'test/test_minor_ticks.py::TestBetweenRule::test_between_matches_twoway',
+ '_dash_minor_text': 'test/test_minor_ticks.py::TestMinorLabels::test_texts_and_units',
+ '_dash_axis_side_of': 'test/test_minor_ticks.py::TestAxisTwo::test_labels_use_frame_nodes',
+ '_dash_minor_label_model': 'test/test_minor_ticks.py::TestMinorLabels::test_texts_and_units',
+ '_dash_place_minor_counts': 'test/test_minor_ticks.py::TestMinorTicksAreDrawn::test_rule_forms',
+ '_dash_finish_minor_ticks': 'test/test_minor_ticks.py::TestAfterAMove::test_between_follows_the_majors',
 }
 
 

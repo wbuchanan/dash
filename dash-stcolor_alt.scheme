@@ -689,6 +689,28 @@ symbol dots  circle
 symbolsize dots  vtiny
 
 * ---------------------------------------------------------------------------
+* Added 14oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> stcolor -> stcolor_alt); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* twoway's default tick count and plot-region margin (WP-30 P1.3a).
+numticks_g horizontal_minor  0
+numticks_g vertical_minor    0
+
+* The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the
+* tick's colour, width, length and side, each axis role's style,
+* the alt-axis switches, the text boxes' justification and clock
+* positions, and system naturally_white.  Effective values, read
+* through style/ticksetstyle-*, gridstyle-*, tickstyle-major,
+* axisstyle-* and textboxstyle-* as the plot-region group's are.
+gsize minortick  half_tiny
+gsize tickgap    half_tiny
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -755,6 +777,8 @@ symbolsize dots  vtiny
 * provenance: graphsize y -- transcribed from scheme-stcolor_alt.scheme:11 `graphsize y 4'
 * provenance: numticks_g horizontal_major -- transcribed from scheme-s2color.scheme:291 `numticks_g horizontal_major 5'
 * provenance: numticks_g vertical_major -- transcribed from scheme-s2color.scheme:292 `numticks_g vertical_major 5'
+* provenance: numticks_g horizontal_minor -- transcribed from scheme-s2color.scheme:293 `numticks_g horizontal_minor 0'
+* provenance: numticks_g vertical_minor -- transcribed from scheme-s2color.scheme:294 `numticks_g vertical_minor 0'
 * provenance: margin twoway -- transcribed from scheme-s2color.scheme:719 `margin twoway medsmall'
 * provenance: gsize sidemargin -- transcribed from scheme-s2color.scheme:195 `gsize sidemargin relative3'
 * provenance: gsize medmargin -- transcribed from scheme-s2color.scheme:196 `gsize medmargin relative3p5'
@@ -846,6 +870,8 @@ symbolsize dots  vtiny
 * provenance: color minortick -- transcribed from scheme-s2color.scheme:350 `color minortick black'
 * provenance: linewidth tick -- transcribed from scheme-s2color.scheme:1206 `linewidth tick thin'
 * provenance: gsize tick -- transcribed from scheme-s2color.scheme:153 `gsize tick tiny'
+* provenance: gsize minortick -- transcribed from scheme-s2color.scheme:154 `gsize minortick half_tiny'
+* provenance: gsize tickgap -- transcribed from scheme-s2color.scheme:156 `gsize tickgap half_tiny'
 * provenance: tickposition axis_tick -- transcribed from scheme-s2color.scheme:1892 `tickposition axis_tick outside'
 * provenance: axisstyle horizontal_default -- transcribed from scheme-s2color.scheme:1821 `axisstyle horizontal_default horizontal_default'
 * provenance: axisstyle vertical_default -- transcribed from scheme-s2color.scheme:1822 `axisstyle vertical_default vertical_default'

@@ -4051,6 +4051,44 @@ widen that axis, as a label does, unless {cmd:norescale} is given; a line,
 {cmd:yline(}{it:#}{cmd:, axis(2))}, never widens an axis.
 
 {pstd}
+{ul:Minor ticks and labels.}  {cmd:xmtick()} and {cmd:ymtick()} draw minor
+ticks, and {cmd:xmlabel()} and {cmd:ymlabel()} minor ticks with a label at
+each, as {cmd:twoway} draws them, in the saved page and the served app.
+They take the grammar of {cmd:xtick()}: a numlist or
+{it:a}{cmd:(}{it:b}{cmd:)}{it:c}, with quoted text after a value in
+{cmd:xmlabel()}, {cmd:#}{it:N}, {cmd:minmax}, and the rule {cmd:##}{it:N},
+which only the minor options take: {it:N}-1 ticks between each pair of
+major ticks, the step the major rule's divided by {it:N}, continued in
+whole steps to the ends of the scale.  {cmd:##}{it:N} follows the major
+ticks after a filter move and a zoom; the other positions stay where they
+are, and they widen the axis, as {cmd:xtick()}'s do, unless
+{cmd:norescale}.  On major ticks that are no rule {cmd:##}{it:N} draws
+what {cmd:twoway} draws: nothing on a date axis, whose labels are calendar
+dates, and a single tick at 0 on an uneven list such as
+{cmd:xlabel(1000 2000 4000)}.  {it:Difference from twoway:} an evenly
+spaced list ({cmd:xlabel(1000 2000 3000)}) is read as the rule it spells,
+as {cmd:xlabel(1000(1000)3000)} is, where {cmd:twoway} draws the single
+tick at 0.  {cmd:##}{it:N} in {cmd:xlabel()} or {cmd:xtick()} is ignored
+with {cmd:twoway}'s note, {cmd:##5 ignored, only allowed for minor ticks}.
+A minor tick is the scheme's {cmd:gsize minortick} long ({cmd:half_tiny},
+half a major tick) in {cmd:color minortick} at {cmd:linewidth minortick};
+a minor label is written in {cmd:gsize minortick_label} ({cmd:vsmall}) in
+{cmd:color tick_label}, at the scheme's tick-label angle, a
+{cmd:gsize tickgap} from its tick, in the axis's format (or the option's
+{cmd:format()}, its quoted text, or with {cmd:valuelabel} its value
+label).  {cmd:grid} draws the minor grid in the scheme's
+{cmd:minor_grid} style.  Bokeh draws one set of minor ticks per axis, so
+an axis with both {cmd:xtick()} and {cmd:xmtick()} draws all of them at
+the major ticks' length: {cmd:xtick(10 20) xmtick(15)} draws 15 as long
+as 10 and 20.  With {cmd:axis(2)} the ticks and labels are on the second
+axis ({cmd:dash}'s own spellings are {opt xmtick2()}, {opt ymtick2()},
+{opt xmlabel2()} and {opt ymlabel2()}); there, labels placed by
+{cmd:##}{it:N} are placed when the page is built and do not move after a
+filter move.  On axes 3 to 9 minor ticks are not drawn; the option is
+named.  {opt tmtick()} and {opt tmlabel()} are drawn as {cmd:xmtick()}
+and {cmd:xmlabel()}.
+
+{pstd}
 {it:Examples:}
 
 {phang2}{cmd:. sysuse auto, clear}{p_end}
@@ -4106,7 +4144,7 @@ second axis ({cmd:ylabel(5000, axis(2) add)}) adds to that axis's default
 ticks.  The
 second axes also take the options below, which are {cmd:dash}'s own
 spellings of the {cmd:axis(2)} forms, as are their synonyms:
-{cmd:twoway} refuses all sixteen, r(198).  Given on a graph with no layer
+{cmd:twoway} refuses all twenty, r(198).  Given on a graph with no layer
 on that second axis, they are named in a warning when the dashboard is
 built, saved or served.
 
@@ -4144,6 +4182,15 @@ one x axis is drawn at the bottom, styled the same way by the x forms.
     axis(2).  No abbreviation.{p_end}
 {synopt:{opt xline2(linelist)}}lines at the top x axis's values.  No
     abbreviation.{p_end}
+{synopt:{opt ymtick2(rule)}}minor ticks on the right-hand y axis, in the
+    grammar {cmd:ymtick()} takes; twoway writes it with the sub-option
+    axis(2).  No abbreviation.{p_end}
+{synopt:{opt ymlabel2(rule)}}minor ticks with labels on the right-hand y
+    axis, in the grammar {cmd:ymlabel()} takes.  No abbreviation.{p_end}
+{synopt:{opt xmtick2(rule)}}minor ticks on the top x axis.  No
+    abbreviation.{p_end}
+{synopt:{opt xmlabel2(rule)}}minor ticks with labels on the top x axis.
+    No abbreviation.{p_end}
 {synoptline}
 
 {marker taxis}{...}
@@ -4167,9 +4214,8 @@ axis takes numbers only when its format is {cmd:%tc}, {cmd:%tC},
 {cmd:lfitci}, {cmd:qfitci}, {cmd:lpoly}, {cmd:lpolyci}, {cmd:kdensity},
 {cmd:function}, {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi}; the
 paired-coordinate types read their first x variable, and an operated x
-({cmd:L.t}) its variable.  {opt tmlabel()} and {opt tmtick()} are stored
-on {cmd:xmlabel()} and {cmd:xmtick()} and named in a warning until minor
-ticks are drawn; {cmd:tscale(log)} on a date axis is noted as
+({cmd:L.t}) its variable.  {opt tmlabel()} and {opt tmtick()} are drawn
+as {cmd:xmlabel()} and {cmd:xmtick()} are; {cmd:tscale(log)} on a date axis is noted as
 {cmd:xscale(log)} is.  What {cmd:twoway} refuses is refused in its words:
 a date literal in {cmd:xlabel()}, {cmd:xtick()}, {cmd:xmlabel()},
 {cmd:xmtick()} or {cmd:xline()} (r(198)) or in {cmd:xscale(range())}
@@ -4206,10 +4252,10 @@ numbers only, as in {cmd:twoway}.
     literals{p_end}
 {synopt:{cmdab:ttic:k(}{it:rule_or_values}{cmd:)}}{cmd:xtick()} with date
     literals{p_end}
-{synopt:{cmdab:tml:abel(}{it:rule_or_values}{cmd:)}}{cmd:xmlabel()}; stored,
-    not drawn{p_end}
-{synopt:{cmdab:tmt:ick(}{it:rule_or_values}{cmd:)}}{cmd:xmtick()}; stored,
-    not drawn{p_end}
+{synopt:{cmdab:tml:abel(}{it:rule_or_values}{cmd:)}}{cmd:xmlabel()} with
+    date literals{p_end}
+{synopt:{cmdab:tmt:ick(}{it:rule_or_values}{cmd:)}}{cmd:xmtick()} with date
+    literals{p_end}
 {synopt:{cmdab:tt:itle(}{it:tinfo}{cmd:)}}{cmd:xtitle()}{p_end}
 {synopt:{cmdab:tsc:ale(}{it:axis_suboptions}{cmd:)}}{cmd:xscale()}, its
     {cmd:range()} read as dates{p_end}
@@ -5308,15 +5354,6 @@ disagree in either direction.
     axis titles only.  {opt title2(string)} and
     {opt subtitle2(string)} are not {cmd:twoway} options at all:
     {cmd:twoway} refuses them, r(198), and {cmd:dash} names them.
-
-{phang2}{ul:Minor ticks and minor labels.}
-    {opt xmtick(numlist)}, {opt ymtick(numlist)}, {opt xmlabel(numlist)},
-    {opt ymlabel(numlist)}, and {opt tmlabel()} and {opt tmtick()}, their
-    time-axis spellings -- {cmd:dash} does not draw them.  {cmd:xtick()}
-    and {cmd:ytick()} are honoured: each adds tick marks without labels
-    beside the labels of {cmd:xlabel()} or {cmd:ylabel()}, or the default
-    ones, as {cmd:twoway} draws them, and a mark outside the data's range
-    widens the axis to show it, as in {cmd:twoway}.
 
 {phang2}{ul:Sizing for graph combine, and scale().}
     {opt fxsize(#)} and {opt fysize(#)} make a graph use only that
