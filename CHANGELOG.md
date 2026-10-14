@@ -406,7 +406,7 @@ and now matches Stata.
 
 <!-- WP-31 B5b -->
 
-<!-- WP-31 F1d -->
+- lpoly on a saved page after a filter move: the build's smooth (marked) -> Stata's local polynomial on the kept rows with its rule-of-thumb bandwidth recomputed; where that fit is exact the line is drawn at 0 (WP-31, F1d)
 
 <!-- WP-31 C9 -->
 

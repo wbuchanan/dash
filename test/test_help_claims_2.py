@@ -322,10 +322,12 @@ class TestTheHelpSaysWhatWasMeasured:
                 "well as its bars") in s
         # Flipped (WP-31 F1c): "its {cmd:lfit} and {cmd:qfit} lines".
         # Flipped (WP-31 F1b): and lfitci and qfitci with their bands.
+        # Flipped (WP-31 F1d): and lpoly.
         assert ("A saved dashboard recomputes those cards, its kernel density "
                 "curves, its histogram bar heights, its {cmd:lfit}, "
-                "{cmd:qfit} and {cmd:lowess} lines and its {cmd:lfitci} and "
-                "{cmd:qfitci} lines and bands in the browser") in s
+                "{cmd:qfit}, {cmd:lowess} and {cmd:lpoly} lines and its "
+                "{cmd:lfitci} and {cmd:qfitci} lines and bands in the "
+                "browser") in s
 
     def test_dash_serve_names_the_build_only_options(self):
         """HC2-25c."""
@@ -727,7 +729,8 @@ class TestWhatASavedPageRecomputes:
     density curves, its histogram bar heights and its lfit, qfit and lowess
     lines in the browser, and keeps its other computed layers, and its
     histogram bins, as they were built." (lfit and qfit since WP-31 F1a,
-    lowess since F1c, lfitci and qfitci with their bands since F1b.)
+    lowess since F1c, lfitci and qfitci with their bands since F1b, lpoly
+    since F1d.)
     The saved filter callback carries the layers it recomputes; the KPI half
     is test_filter_widget_data.py::test_the_filter_recomputes_the_card_in_both_modes,
     and "What histogram recompute means" (fixed edges) is test_export.py's
@@ -738,20 +741,21 @@ class TestWhatASavedPageRecomputes:
         # Flipped (WP-31 F1a): histogram and kdensity only, before the
         # saved page refitted lfit and qfit.  Flipped (WP-31 F1c): and
         # lowess, re-smoothed since.  Flipped (WP-31 F1b): and lfitci and
-        # qfitci, refitted with their bands since.
+        # qfitci, refitted with their bands since.  Flipped (WP-31 F1d): and
+        # lpoly.
         spec = _filtered_spec([plot_for(p) for p in _COMPUTED])
         r, _, _ = _saved(tmp_path, spec)
         cb = r.filter_callbacks[0]
         kinds = sorted(c["type"] for c in json.loads(
             cb.args["agg_configs_json"]))
         assert kinds == ["histogram", "kdensity", "lfit", "lfitci", "lowess",
-                         "qfit", "qfitci"], kinds
+                         "lpoly", "qfit", "qfitci"], kinds
 
     @pytest.mark.parametrize("ptype", [p for p in _COMPUTED
                                        if p not in ("histogram", "kdensity",
                                                     "lfit", "qfit",
                                                     "lowess", "lfitci",
-                                                    "qfitci")])
+                                                    "qfitci", "lpoly")])
     def test_another_computed_layer_is_kept_as_built(self, tmp_path, ptype):
         r, _, _ = _saved(tmp_path, _filtered_spec([plot_for(ptype)]))
         layer = {id(x.data_source) for x in _saved_figure(r).renderers}

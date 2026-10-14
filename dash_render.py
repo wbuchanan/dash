@@ -2026,7 +2026,8 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
 # The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
-_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci"})
+_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci",
+                                  "lpoly"})
 #: WP-31 F1c (D-16.e): the saved page re-smooths a lowess only when N*(2k+1) is at most this; above it the layer is left empty after a move.
 _DASH_LOWESS_JS_MAX_OPS = 2e8
 
@@ -17828,7 +17829,15 @@ class GlyphMapper:
 
     def _lpoly_grid_n(self, options: "dict[str, str]", layer: str,
                       n_sample: int) -> int:
-        """The number of grid points twoway lpoly and lpolyci draw at.
+        """The number of grid points twoway lpoly and lpolyci draw at:
+        ``_lpoly_grid_plan``'s first value."""
+        return self._lpoly_grid_plan(options, layer, n_sample)[0]
+
+    def _lpoly_grid_plan(self, options: "dict[str, str]", layer: str,
+                         n_sample: int) -> "tuple[int, int, float | None]":
+        """``(n, N, user)``: the grid count twoway lpoly and lpolyci draw
+        at, the _N it is decided on and the n() value read (None when
+        absent or unreadable).
 
         twoway_lpoly_parse.class:56 sets n = _N when the DATASET has fewer
         than 50 rows -- overriding n() -- and lpoly.ado:283-290 then takes
@@ -17838,7 +17847,9 @@ class GlyphMapper:
         cars (qualified_stat_truth.json), and `n(100)' on auto becomes 74.
         dash used min(sample N, 50) and never capped n() (the WP-18
         review).  Without a dataset -- the mapper on its own -- the layer's
-        own rows stand in for _N.
+        own rows stand in for _N.  The saved page applies the same rule to
+        N and user, carried in its refit config (WP-31 F1d, D-19.c): a
+        filter does not change _N.
         """
         N = n_sample
         if self.dataset is not None:
@@ -17849,9 +17860,9 @@ class GlyphMapper:
         user = _stat_option_float(options, "n", None, layer, lo=1.0,
                                   hi=10000.0)
         if N < 50:
-            return max(1, N)
+            return max(1, N), N, user
         n = 50 if user is None or user <= 1 else int(user)
-        return max(1, min(n, N))
+        return max(1, min(n, N)), N, user
 
     def map_lpoly(
         self,
@@ -17889,14 +17900,6 @@ class GlyphMapper:
         x, y, w, wtype = self._layer_units(source, view, options, "lpoly",
                                              xvar, yvar)
 
-        # None or one: dash.ado refuses as twoway does, r(2000)/r(2001),
-        # except in a by() panel, where twoway draws nothing in silence, rc
-        # 0 (measured 24sep2026).
-        if len(x) < 2:
-            return self._mark_silent(
-                self._empty_fit_line(fig, "x_lp", "y_lp", options,
-                                     color_idx, yvar))
-
         bwidth = _stat_option_float(options, "bwidth", None, "lpoly", lo=0.0)
         if bwidth is not None and bwidth <= 0.0:
             warnings.warn(
@@ -17906,8 +17909,11 @@ class GlyphMapper:
             )
             bwidth = None
 
+        # degree() 0-7, as dash.ado's rule (WP-31 C10b): the rule of
+        # thumb's constants stop at pe = 7.  The mapper read 0-3 and drew
+        # degree 0 for 4-7 (WP-31 F1d).
         degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
-                                        lo=0.0, hi=3.0) or 0.0)
+                                        lo=0.0, hi=7.0) or 0.0)
 
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
@@ -17918,9 +17924,35 @@ class GlyphMapper:
             )
             kernel = "epanechnikov"
 
-        # n(): the grid size, by twoway's rule (_lpoly_grid_n).  dash drew
+        # n(): the grid size, by twoway's rule (_lpoly_grid_plan).  dash drew
         # 200 points and read n() for nothing.
-        n_grid = self._lpoly_grid_n(options, "lpoly", len(x))
+        n_grid, _n_all, _n_user = self._lpoly_grid_plan(options, "lpoly",
+                                                        len(x))
+        _keepmiss = _dash_join_spec(options)[1] == "n"
+        # The saved page's refit (WP-31 F1d): S10's fit config with lpoly's
+        # own options -- bwidth (None: the rule of thumb on the kept rows),
+        # degree, kernel, _N and n() for the grid (D-19.c), and whether
+        # cmissing(n) keeps the grid points with no neighbour.
+        _cfg = dict(self._fit_agg_config("lpoly", xvar, yvar, wtype, w, fig,
+                                         options, ["x_lp", "y_lp"], n_grid,
+                                         None),
+                    bwidth=(float(bwidth) if bwidth is not None else None),
+                    degree=int(degree), kernel=str(kernel),
+                    n_dataset=int(_n_all),
+                    n_user=(float(_n_user) if _n_user is not None else None),
+                    keepmissing=bool(_keepmiss))
+
+        # None or one: dash.ado refuses as twoway does, r(2000)/r(2001),
+        # except in a by() panel, where twoway draws nothing in silence, rc
+        # 0 (measured 24sep2026).
+        if len(x) < 2:
+            _r_empty = self._mark_silent(
+                self._empty_fit_line(fig, "x_lp", "y_lp", options,
+                                     color_idx, yvar))
+            if not options.get("recast"):
+                self._tag_fit(_r_empty, source, view, _cfg)
+            return _r_empty
+
         lw = _dash_lpoly_weights(w, wtype)
         # WP-29 P0.7: one bandwidth per layer, from the layer's own rows
         # (per-plot if/in, by() panel, linked qualifier, served filter).
@@ -17939,8 +17971,7 @@ class GlyphMapper:
         valid = ~np.isnan(y_fit)
         # cmissing(n): a grid point with no neighbour is kept missing, so
         # the line breaks there, as twoway's does (WP-31 C6; E03).
-        _vkeep = np.isfinite(x_grid) if _dash_join_spec(options)[1] == "n" \
-            else valid
+        _vkeep = np.isfinite(x_grid) if _keepmiss else valid
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
@@ -17967,7 +17998,7 @@ class GlyphMapper:
         # 24sep2026).
         if not valid.any():
             self._mark_silent(r)
-        return r
+        return self._tag_fit(r, source, view, _cfg)
 
     def map_lpolyci(
         self,
@@ -27136,6 +27167,419 @@ function dash_lowess(x, y, bw, mean, noweight) {
     }
     return {xs: xs, ys: out};
 }
+// ---- WP-31 F1d (S19): lpoly, Stata's local polynomial smoother, and its
+// rule-of-thumb bandwidth.  S22 (lpolyci) builds on dash_lpoly_kw,
+// dash_lpoly_local, dash_lpoly_rot and dash_lpoly_fit.  The two tables
+// are spliced from _LPOLY_ROT_CONSTANTS and _KERNELS, never transcribed.
+const _DASH_LPOLY_ROT_C = JSON.parse('__DASH_LPOLY_ROT_CONSTANTS__');
+const _DASH_LPOLY_SUPPORT = JSON.parse('__DASH_LPOLY_SUPPORT__');
+// np.linspace(lo, hi, n): i * step + lo, the last point exactly hi.
+function dash_linspace(lo, hi, n) {
+    const k = Math.max(1, Math.trunc(n));
+    if (k === 1) return [lo];
+    const step = (hi - lo) / (k - 1);
+    const o = new Array(k);
+    for (let i = 0; i < k; i++) o[i] = i * step + lo;
+    o[k - 1] = hi;
+    return o;
+}
+// GlyphMapper._lpoly_grid_plan's count: N (every row in memory, fixed at
+// build) when N < 50; else n() (50 when absent or at most 1) capped at N.
+function dash_lpoly_grid_n(nDataset, nUser) {
+    const N = nDataset;
+    if (N < 50) return Math.max(1, N);
+    const n = (nUser === null || nUser === undefined || nUser <= 1)
+        ? 50 : Math.trunc(nUser);
+    return Math.max(1, Math.min(n, N));
+}
+// _dash_lpoly_weights: aweights scaled to mean 1, fweights raw; null
+// without a weight.
+function dash_lpoly_weights(w, wtype) {
+    return w ? dash_weight_norm(w, wtype, w.length) : null;
+}
+// _lpoly_kernel_weights: K((x - x0)/h), zero outside the kernel's strict
+// support (|z| < support; the gaussian's is infinite).
+function dash_lpoly_kw(x, x0, h, kernel) {
+    const k = (kernel in _DASH_LPOLY_SUPPORT) ? kernel : 'epanechnikov';
+    const kfn = dash_kernel(k), sup = _DASH_LPOLY_SUPPORT[k];
+    const out = new Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+        const z = (x[i] - x0) / h;
+        out[i] = (sup !== null && !(Math.abs(z) < sup)) ? 0 : kfn(z);
+    }
+    return out;
+}
+// invsym's sweep (_stata_invsym_keep), in float: the columns in order
+// first, then the largest current pivot (ties to the lowest index); a
+// pivot not positive, below rel of its column's original diagonal or
+// below floor is dropped.  The kept indices, sorted.
+function dash_invsym_keep(G, order, rel, floor) {
+    const n = G.length;
+    const S = G.map(r => r.slice());
+    const d0 = S.map((r, i) => r[i]);
+    let rem = [];
+    for (let i = 0; i < n; i++) rem.push(i);
+    const kept = [];
+    const sweep = (k) => {
+        const piv = S[k][k];
+        rem = rem.filter(c => c !== k);
+        if (piv > 0 && piv >= rel * d0[k] && piv >= floor) {
+            kept.push(k);
+            for (const i of rem) {
+                if (S[i][k] === 0) continue;
+                const q = S[i][k] / piv;
+                for (const j of rem) S[i][j] -= q * S[k][j];
+            }
+        }
+    };
+    for (const k of (order || [])) if (rem.indexOf(k) >= 0) sweep(k);
+    while (rem.length) {
+        let best = rem[0];
+        for (const c of rem) if (S[c][c] > S[best][best]) best = c;
+        sweep(best);
+    }
+    return kept.sort((a, b) => a - b);
+}
+// _lpoly_kept_columns (D-19.b): every column when a float sweep, the
+// intercept first and then the largest pivot, finds each pivot at least
+// 1e-6 of its diagonal and 1e-16; else invsym's sweep, intercept first,
+// at its own thresholds (1e-9, 1e-19), in float where Python decides it
+// exactly.
+function dash_lpoly_kept(G) {
+    const n = G.length;
+    const A = G.map(r => r.slice());
+    const d0 = A.map((r, i) => r[i]);
+    let rem = [];
+    for (let i = 0; i < n; i++) rem.push(i);
+    let k = 0;
+    while (rem.length) {
+        const piv = A[k][k];
+        if (!(piv >= 1e-6 * d0[k] && piv >= 1e-16)) {
+            return dash_invsym_keep(G, [0], 1e-9, 1e-19);
+        }
+        rem = rem.filter(c => c !== k);
+        for (const i of rem) {
+            const f = A[i][k] / piv;
+            for (let j = 0; j < n; j++) A[i][j] -= f * A[k][j];
+        }
+        if (rem.length) {
+            let best = rem[0];
+            for (const c of rem) if (A[c][c] > A[best][best]) best = c;
+            k = best;
+        }
+    }
+    const all = [];
+    for (let i = 0; i < n; i++) all.push(i);
+    return all;
+}
+// _lpoly_local_wls: the local weighted least squares at x0 on the
+// columns dash_lpoly_kept keeps of the raw window's Gram, in powers of
+// (x - x0)/h, by QR.  {pos, Z, Ainv ((Z'KZ)^-1), beta, K}, or null when no row
+// has weight, the intercept is not kept, or anything is singular or not
+// finite.
+function dash_lpoly_local(x, y, kw, x0, h, degree) {
+    const pos = [];
+    for (let i = 0; i < kw.length; i++) if (kw[i] > 0) pos.push(i);
+    if (pos.length < 1) return null;
+    const p = degree + 1;
+    const G = [];
+    for (let a = 0; a < p; a++) G.push(new Array(p).fill(0));
+    const pw = new Array(p);
+    for (const i of pos) {
+        const d = x[i] - x0;
+        pw[0] = 1;
+        for (let a = 1; a < p; a++) pw[a] = pw[a - 1] * d;
+        for (let a = 0; a < p; a++) {
+            for (let b = 0; b < p; b++) G[a][b] += pw[a] * kw[i] * pw[b];
+        }
+    }
+    for (const r of G) for (const v of r) if (!isFinite(v)) return null;
+    const K = dash_lpoly_kept(G);
+    if (K.indexOf(0) < 0) return null;
+    const q = K.length;
+    const Z = new Array(pos.length);
+    const cols = [];
+    for (let a = 0; a < q; a++) cols.push(new Array(pos.length));
+    const rhs = new Array(pos.length);
+    for (let r = 0; r < pos.length; r++) {
+        const i = pos[r], d = (x[i] - x0) / h, sk = Math.sqrt(kw[i]);
+        pw[0] = 1;
+        for (let a = 1; a < p; a++) pw[a] = pw[a - 1] * d;
+        const zr = K.map(c => pw[c]);
+        Z[r] = zr;
+        for (let a = 0; a < q; a++) cols[a][r] = sk * zr[a];
+        rhs[r] = sk * y[i];
+    }
+    // The weighted least squares by QR (sqrt(K w) times the design), and
+    // (Z'KZ)^-1 = R^-1 R^-T from its triangular factor.
+    const ls = dash_lstsq(cols, rhs);
+    if (ls === null) return null;
+    const beta = ls.b, R = ls.R;
+    const Ri = [];
+    for (let a = 0; a < q; a++) Ri.push(new Array(q).fill(0));
+    for (let c = 0; c < q; c++) {
+        Ri[c][c] = 1 / R[c][c];
+        for (let a = c - 1; a >= 0; a--) {
+            let acc = 0;
+            for (let k = a + 1; k <= c; k++) acc += R[a][k] * Ri[k][c];
+            Ri[a][c] = -acc / R[a][a];
+        }
+    }
+    const Ainv = [];
+    for (let a = 0; a < q; a++) {
+        Ainv.push(new Array(q).fill(0));
+        for (let b = 0; b < q; b++) {
+            let acc = 0;
+            for (let k = Math.max(a, b); k < q; k++) acc += Ri[a][k] * Ri[b][k];
+            Ainv[a][b] = acc;
+        }
+    }
+    for (const r of Ainv) for (const v of r) if (!isFinite(v)) return null;
+    return {pos: pos, Z: Z, Ainv: Ainv, beta: beta, K: K};
+}
+// _compute_lpoly_fit at the grid points xg: NaN where fewer than two rows
+// have a positive weight (kernel times w); degree 0 the weighted mean;
+// else the local fit's intercept.
+function dash_lpoly_fit(x, y, h, degree, kernel, w, xg) {
+    return xg.map(x0 => {
+        const kw = dash_lpoly_kw(x, x0, h, kernel);
+        if (w) for (let i = 0; i < kw.length; i++) kw[i] *= w[i];
+        let cnt = 0, sw = 0, sy = 0;
+        for (let i = 0; i < kw.length; i++) {
+            if (kw[i] > 0) cnt++;
+            sw += kw[i];
+            sy += kw[i] * y[i];
+        }
+        if (cnt < 2) return NaN;
+        if (degree === 0) return sy / sw;
+        const m = dash_lpoly_local(x, y, kw, x0, h, degree);
+        return m === null ? NaN : m.beta[0];
+    });
+}
+// numpy.polynomial.polynomial's polyder, polyint, polymul and polyval on
+// coefficients in increasing order.
+function dash_polyder(a, m) {
+    let c = a.slice();
+    for (let k = 0; k < m; k++) {
+        const d = [];
+        for (let i = 1; i < c.length; i++) d.push(i * c[i]);
+        c = d.length ? d : [0];
+    }
+    return c;
+}
+function dash_polyint(a) {
+    const o = [0];
+    for (let i = 0; i < a.length; i++) o.push(a[i] / (i + 1));
+    return o;
+}
+function dash_polymul(a, b) {
+    const o = new Array(a.length + b.length - 1).fill(0);
+    for (let i = 0; i < a.length; i++) {
+        for (let j = 0; j < b.length; j++) o[i + j] += a[i] * b[j];
+    }
+    return o;
+}
+function dash_polyval(a, z) {
+    let s = 0;
+    for (let i = a.length - 1; i >= 0; i--) s = s * z + a[i];
+    return s;
+}
+// Least squares by Householder QR: {b, R}, b the coefficients minimising
+// |y - sum_t b_t cols[t]| (cols the design's columns, each of length n)
+// and R the triangular factor (X'X = R'R); null when a column is a
+// combination of the earlier ones (a zero diagonal of R) or anything is
+// not finite.
+function dash_lstsq(cols, y) {
+    const q = cols.length, n = y.length;
+    const A = cols.map(c => c.slice()), r = y.slice();
+    const R = [];
+    for (let t = 0; t < q; t++) R.push(new Array(q).fill(0));
+    for (let t = 0; t < q; t++) {
+        const v = A[t];
+        let nrm = 0;
+        for (let i = t; i < n; i++) nrm += v[i] * v[i];
+        nrm = Math.sqrt(nrm);
+        if (!(nrm > 0) || !isFinite(nrm)) return null;
+        const alpha = v[t] > 0 ? -nrm : nrm;
+        v[t] -= alpha;
+        let vv = 0;
+        for (let i = t; i < n; i++) vv += v[i] * v[i];
+        const apply = (u) => {
+            let dot = 0;
+            for (let i = t; i < n; i++) dot += v[i] * u[i];
+            const f = 2 * dot / vv;
+            for (let i = t; i < n; i++) u[i] -= f * v[i];
+        };
+        if (vv > 0) {
+            for (let k = t + 1; k < q; k++) apply(A[k]);
+            apply(r);
+        }
+        R[t][t] = alpha;
+        for (let k = t + 1; k < q; k++) R[t][k] = A[k][t];
+    }
+    const b = new Array(q).fill(0);
+    for (let t = q - 1; t >= 0; t--) {
+        let acc = r[t];
+        for (let k = t + 1; k < q; k++) acc -= R[t][k] * b[k];
+        b[t] = acc / R[t][t];
+        if (!isFinite(b[t])) return null;
+    }
+    return {b: b, R: R};
+}
+// lpoly's rule-of-thumb bandwidth (_lpoly_rot_detail; D-19.a):
+// h = C (s2 (u - l) / (W I))^(1/(2pe+3)), pe the degree if odd else the
+// degree + 1, the weighted global fit of degree d = pe+3 solved in float
+// on the centred and scaled z = (x - c)/s (c the midrange, s the
+// half-range), s2 its weighted mean squared residual, I the integral of
+// its squared (pe+1)th derivative over l..u, 5% in from the ends of x.
+// NaN -- the caller draws y = 0 -- where Stata's r(bwidth) is missing
+// (quadcross overflow, a constant x, an underflowing derivative), and
+// where Python's twin does not take its exact route: fewer distinct x than
+// d+1 or a raw-power column invsym would drop (Python fits the columns
+// Stata keeps), or an exact global fit (s2 <= 1e-24 var(y): Stata's h is
+// its round-off, which Python emulates).
+function dash_lpoly_rot(x, y, w, degree, kernel) {
+    const n = x.length;
+    if (n < 2 || y.length !== n || (w && w.length !== n)) return NaN;
+    const ww = w ? w : new Array(n).fill(1);
+    degree = Math.trunc(degree);
+    const pe = (degree % 2) ? degree : degree + 1;
+    if (degree < 0 || pe > 7) return NaN;
+    for (let i = 0; i < n; i++) {
+        if (!isFinite(x[i]) || !isFinite(y[i]) || !isFinite(ww[i])) return NaN;
+    }
+    const d = pe + 3;
+    let mn = Infinity, mx = -Infinity;
+    for (const v of x) { if (v < mn) mn = v; if (v > mx) mx = v; }
+    if (!(mx > mn)) return NaN;
+    const rng = mx - mn, l = mn + 0.05 * rng, u = mx - 0.05 * rng;
+    // quadcross's overflow (sum w|x|^k, k <= 2d; sum w|x|^k|y|, k <= d),
+    // in log10, as Python's _lse.
+    const lmax = Math.log10(Number.MAX_VALUE);
+    const lse = (vs) => {
+        if (!vs.length) return -Infinity;
+        let top = -Infinity;
+        for (const v of vs) if (v > top) top = v;
+        let s = 0;
+        for (const v of vs) s += Math.pow(10, v - top);
+        return top + Math.log10(s);
+    };
+    const lw = [], lx = [], ly = [], nzx = [], nzy = [];
+    for (let i = 0; i < n; i++) {
+        if (!(ww[i] > 0)) continue;
+        const ax = Math.abs(x[i]), ay = Math.abs(y[i]);
+        lw.push(Math.log10(ww[i]));
+        nzx.push(ax > 0); nzy.push(ay > 0);
+        lx.push(ax > 0 ? Math.log10(ax) : 0);
+        ly.push(ay > 0 ? Math.log10(ay) : 0);
+    }
+    if (lse(lw) > lmax) return NaN;
+    for (let k = 1; k <= 2 * d; k++) {
+        const t = [];
+        for (let i = 0; i < lw.length; i++) if (nzx[i]) t.push(lw[i] + k * lx[i]);
+        if (lse(t) > lmax) return NaN;
+    }
+    for (let k = 0; k <= d; k++) {
+        const t = [];
+        for (let i = 0; i < lw.length; i++) {
+            if (k === 0 ? nzy[i] : (nzx[i] && nzy[i])) t.push(lw[i] + k * lx[i] + ly[i]);
+        }
+        if (lse(t) > lmax) return NaN;
+    }
+    let W = 0, swy = 0;
+    for (let i = 0; i < n; i++) { W += ww[i]; swy += ww[i] * y[i]; }
+    const ybar = swy / W;
+    let vy = 0, ymin = Infinity, ymax = -Infinity;
+    for (let i = 0; i < n; i++) {
+        vy += ww[i] * (y[i] - ybar) * (y[i] - ybar);
+        if (y[i] < ymin) ymin = y[i];
+        if (y[i] > ymax) ymax = y[i];
+    }
+    vy /= W;
+    const ycon = ymax === ymin;
+    if (!isFinite(vy) || (vy < 2.2250738585072014e-308 && !ycon)) return NaN;
+    // The raw-power Gram quadcross builds, sum w x^(i+j), swept as invsym
+    // sweeps it (largest pivot first, 1e-9 of its diagonal, 1e-19): the
+    // global fit is made on the raw columns K it keeps, as Stata's is.
+    // Python decides K exactly; this sweep is in float (D-19.a).
+    const xpw = new Array(2 * d + 1);
+    const Graw = [];
+    for (let a = 0; a <= d; a++) Graw.push(new Array(d + 1).fill(0));
+    const mom = new Array(2 * d + 1).fill(0);
+    for (let i = 0; i < n; i++) {
+        xpw[0] = ww[i];
+        for (let k = 1; k <= 2 * d; k++) xpw[k] = xpw[k - 1] * x[i];
+        for (let k = 0; k <= 2 * d; k++) mom[k] += xpw[k];
+    }
+    for (let a = 0; a <= d; a++) for (let b = 0; b <= d; b++) Graw[a][b] = mom[a + b];
+    const K = dash_invsym_keep(Graw, [], 1e-9, 1e-19);
+    if (!K.length) return NaN;
+    // The kept columns x^k = sum_j comb(k, j) c^(k-j) s^j z^j in the
+    // centred and scaled z = (x - c)/s, each scaled to unit length; the
+    // weighted least squares on them by Householder QR (dash_lstsq), its
+    // coefficients a in powers of z.
+    const c = (mn + mx) / 2, s = (mx - mn) / 2;
+    const B = K.map(k => {
+        const col = new Array(d + 1).fill(0);
+        let cb = 1;
+        for (let j = 0; j <= k; j++) {
+            if (j > 0) cb = cb * (k - j + 1) / j;
+            col[j] = cb * Math.pow(c, k - j) * Math.pow(s, j);
+        }
+        let nrm = 0;
+        for (const v of col) nrm += v * v;
+        nrm = Math.sqrt(nrm);
+        return col.map(v => v / nrm);
+    });
+    const q = K.length;
+    const cols = [];
+    for (let t = 0; t < q; t++) cols.push(new Array(n));
+    const rhs = new Array(n);
+    const zp = new Array(d + 1);
+    for (let i = 0; i < n; i++) {
+        const z = (x[i] - c) / s, sw = Math.sqrt(ww[i]);
+        zp[0] = 1;
+        for (let j = 1; j <= d; j++) zp[j] = zp[j - 1] * z;
+        for (let t = 0; t < q; t++) {
+            let v = 0;
+            for (let j = 0; j <= d; j++) v += zp[j] * B[t][j];
+            cols[t][i] = sw * v;
+        }
+        rhs[i] = sw * y[i];
+    }
+    const ls = dash_lstsq(cols, rhs);
+    if (ls === null) return NaN;
+    const bK = ls.b;
+    const a = new Array(d + 1).fill(0);
+    for (let t = 0; t < q; t++) for (let j = 0; j <= d; j++) a[j] += B[t][j] * bK[t];
+    let s2 = 0;
+    for (let i = 0; i < n; i++) {
+        const r = y[i] - dash_polyval(a, (x[i] - c) / s);
+        s2 += ww[i] * r * r;
+    }
+    s2 /= W;
+    // An exact global fit -- y constant, or a residual at round-off
+    // (Python's s2 <= 1e-24 var(y) is in exact arithmetic; float QR
+    // leaves about 1e-26 y^2, so 1e-20 here): Stata's h is its
+    // round-off, which Python emulates and this does not (D-19.a).
+    if (ycon || s2 <= 1e-20 * vy) return NaN;
+    const sp = Math.pow(s, pe + 1);
+    const D = dash_polyder(a, pe + 1).map(v => v / sp);
+    const Pi = dash_polyint(dash_polymul(D, D));
+    const zl = (l - c) / s, zu = (u - c) / s;
+    const I = s * (dash_polyval(Pi, zu) - dash_polyval(Pi, zl));
+    let dmax2 = 0;
+    for (let k = 0; k <= 200; k++) {
+        const v = dash_polyval(D, zl + (zu - zl) * k / 200);
+        if (v * v > dmax2) dmax2 = v * v;
+    }
+    if (!(isFinite(s2) && isFinite(I)) || !(dmax2 >= 2.2250738585072014e-308)
+            || !(I > 0)) return NaN;
+    const C = _DASH_LPOLY_ROT_C[kernel + "|" + pe];
+    if (C === undefined) return NaN;
+    const h = C * Math.pow(s2 * (u - l) / (W * I), 1 / (2 * pe + 3));
+    return (isFinite(h) && h > 0) ? h : NaN;
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -27492,6 +27936,30 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const t = (fit.df >= 1) ? dash_t_ppf(0.5 + ac.level / 200, fit.df) : NaN;
         dash_fit_write(src, ac, xg, yg, [yg.map((v, i) => v - t * se[i]),
                                          yg.map((v, i) => v + t * se[i])]);
+    } else if (ac.type === 'lpoly') {
+        // WP-31 F1d: map_lpoly on the kept rows -- fewer than two draw
+        // nothing; the grid of _lpoly_grid_plan on _N fixed at build; the
+        // bandwidth given, or the rule of thumb from the kept rows; where
+        // that is missing, y = 0 at every grid point, as twoway draws it;
+        // else the local fits, a grid point with fewer than two weighted
+        // rows missing: left out, or kept as a break under cmissing(n).
+        const n = fx.length;
+        if (n < 2) { dash_fit_write(src, ac, [], [], null); continue; }
+        const lw = dash_lpoly_weights(fw, ac.wtype);
+        const ng = dash_lpoly_grid_n(ac.n_dataset, ac.n_user);
+        const h = (ac.bwidth !== null && ac.bwidth !== undefined)
+            ? ac.bwidth : dash_lpoly_rot(fx, fy, lw, ac.degree, ac.kernel);
+        let lo = Infinity, hi = -Infinity;
+        for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
+        const xg = dash_linspace(lo, hi, ng);
+        const yg = isFinite(h)
+            ? dash_lpoly_fit(fx, fy, h, ac.degree, ac.kernel, lw, xg)
+            : xg.map(() => 0);
+        const kx = [], ky = [];
+        for (let i = 0; i < xg.length; i++) {
+            if (ac.keepmissing || isFinite(yg[i])) { kx.push(xg[i]); ky.push(yg[i]); }
+        }
+        dash_fit_write(src, ac, kx, ky, null);
     // DASH_FIT_BRANCHES_END
     }
 }
@@ -27570,7 +28038,15 @@ if (typeof stale_configs_json !== "undefined") {
         stale_status.text = _stl_any ? String(_stl_text.status_html || "") : "";
     }
 }
-""").replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN))
+""").replace("__DASH_ROW_ID__", json.dumps(_ROW_ID_COLUMN)).replace(
+    # WP-31 F1d: lpoly's rule-of-thumb constants and kernel supports,
+    # spliced from the Python tables, never transcribed.
+    "__DASH_LPOLY_ROT_CONSTANTS__",
+    json.dumps({"%s|%d" % k: v for k, v in _LPOLY_ROT_CONSTANTS.items()})
+).replace(
+    "__DASH_LPOLY_SUPPORT__",
+    json.dumps({k: (None if math.isinf(_sup) else _sup)
+                for k, (_sup, _f) in _KERNELS.items()}))
 
 
 # ===========================================================================

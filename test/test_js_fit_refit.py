@@ -157,7 +157,8 @@ class TestStaleKind:
         # lowess is refitted too (WP-31 F1c): TestStaleKind
         # test_lowess_is_refit.
         # lfitci and qfitci are refitted too (WP-31 F1b): TestCiStaleKind.
-        for t in ("fpfit", "fpfitci", "lpoly",
+        # lpoly too (WP-31 F1d): TestLpolyStaleKind.
+        for t in ("fpfit", "fpfitci",
                   "lpolyci", "mband", "mspline"):
             assert dr._dash_stale_kind(t, {}) == "fit", t
 
@@ -438,8 +439,10 @@ def _fit_data(renderers, ptype=None):
              and isinstance(r.glyph, Line)]
     assert len(lines) == 1, f"{len(lines)} lines"
     d = lines[0].data_source.data
-    # A lowess line's columns are x_lw and y_lw (WP-31 F1c).
-    cx, cy = ("x_lw", "y_lw") if "x_lw" in d else ("x", "y")
+    # A lowess line's columns are x_lw and y_lw (WP-31 F1c), an lpoly's
+    # x_lp and y_lp (F1d).
+    cx, cy = (("x_lw", "y_lw") if "x_lw" in d
+              else ("x_lp", "y_lp") if "x_lp" in d else ("x", "y"))
     return (np.asarray(d[cx], dtype=float), np.asarray(d[cy], dtype=float))
 
 
@@ -1093,3 +1096,443 @@ class TestTheSavedCiRefits:
         assert len(got["x_fit"]) == 100 and np.isfinite(got["y_fit"]).all()
         assert np.isnan(got["y_lower"]).all()
         assert np.isnan(got["y_upper"]).all()
+
+
+# ---- WP-31 F1d: lpoly ----
+#
+# GAPS3 F1d: an lpoly on the saved page kept the build's smooth after a
+# filter move, dimmed and keyed "(unfiltered)", while the served app
+# refitted it from the kept rows with Stata's rule-of-thumb bandwidth
+# derived from them.  The oracles are GlyphMapper._compute_lpoly_fit and
+# _lpoly_rot_detail (pinned to Stata by test_lpoly_rot.py on
+# lpoly_rot_truth.json and the U19 truth block), map_lpoly around them,
+# and the served app after the same move.
+
+#: S10's keys (lpoly takes no atobs) plus lpoly's own (D-19.c) and
+#: keepmissing, cmissing(n)'s kept missing grid points (WP-31 C6).
+_LP_KEYS = (_KEYS - {"atobs"}) | {"bwidth", "degree", "kernel",
+                                  "n_dataset", "n_user", "keepmissing"}
+_LP_TRUTH = os.path.join(_HERE, "fixtures", "lpoly_rot_truth.json")
+with open(_LP_TRUTH, encoding="utf-8") as _fh:
+    _LPT = json.load(_fh)
+_LP_DIVERGENT_FIXTURE = {i for dv in _LPT["divergences"] for i in dv["rows"]}
+_LP_KERNELS = ("epanechnikov", "epan2", "biweight", "cosine", "gaussian",
+               "parzen", "rectangle", "triangle")
+
+
+def _lp_sample(rec):
+    """x, y and lpoly's weights of a fixture row or curve: the dataset's
+    columns ``rec["x"]``/``rec["y"]`` at the row indices ``rec["idx"]``
+    (``datasets[ds]`` maps a column name to its values); the weight column
+    ``rec["w"]`` (empty: none), aweights scaled to mean 1, fweights raw
+    (``_dash_lpoly_weights``)."""
+    D = _LPT["datasets"][rec["ds"]]
+    idx = rec["idx"]
+    x = np.array([D[rec["x"]][i] for i in idx], dtype=float)
+    y = np.array([D[rec["y"]][i] for i in idx], dtype=float)
+    w = None
+    if rec.get("w"):
+        w = dr._dash_lpoly_weights(
+            np.array([D[rec["w"]][i] for i in idx], dtype=float),
+            "fw" if rec.get("wtype") == "fw" else "aw")
+    return x, y, w
+
+
+def _lp_list(v):
+    return None if v is None else [float(e) for e in v]
+
+
+def _js_batch(fn, calls):
+    """Run ``fn(*args)`` of the fit helpers on each argument list in
+    *calls*, in ONE node process; NaN comes back as None."""
+    return run_js(_fit_js() + "\nconst _calls = " + json.dumps(calls)
+                  + ";\nprocess.stdout.write(JSON.stringify(_calls.map("
+                  + "a => " + fn + "(...a))));")
+
+
+_ROT_CACHE = {}
+
+
+def _rot_pairs():
+    """{row id: (JS h, Python's _lpoly_rot_detail)} for every fixture row,
+    the JS run once."""
+    if not _ROT_CACHE:
+        calls, dets = [], []
+        for row in _LPT["rows"]:
+            x, y, w = _lp_sample(row)
+            calls.append([x.tolist(), y.tolist(), _lp_list(w),
+                          row["degree"], row["kernel"]])
+            dets.append(dr._lpoly_rot_detail(x, y, w, row["degree"],
+                                             row["kernel"]))
+        got = _js_batch("dash_lpoly_rot", calls)
+        for row, g, d in zip(_LPT["rows"], got, dets):
+            _ROT_CACHE[row["id"]] = (np.nan if g is None else float(g), d)
+    return _ROT_CACHE
+
+
+def _rot_agrees(js, det, rel):
+    h = det["h"]
+    if not np.isfinite(h):
+        return not np.isfinite(js)
+    return np.isfinite(js) and abs(js - h) <= rel * abs(h)
+
+
+def _rot_all_kept(row, det):
+    pe = row["degree"] if row["degree"] % 2 else row["degree"] + 1
+    return len(det["kept"]) == pe + 4
+
+
+class TestLpolyConfig:
+    def test_lpoly_config_keys(self):
+        r = _map("lpoly", _FRAME, {"bwidth": "400", "degree": "1",
+                                   "kernel": "biweight", "n": "20"})
+        cfg = r._dash_agg_config
+        assert set(cfg) == _LP_KEYS
+        assert r._dash_agg_source is r.data_source
+        assert hasattr(r, "_dash_agg_rows")
+        assert cfg["type"] == "lpoly" and cfg["cols"] == ["x_lp", "y_lp"]
+        assert cfg["bwidth"] == 400.0 and cfg["degree"] == 1
+        assert cfg["kernel"] == "biweight"
+        # No dataset: the layer's 30 rows stand in for _N (< 50: n = N).
+        assert cfg["n_dataset"] == 30 and cfg["n_user"] == 20.0
+        assert cfg["n"] == 30 and cfg["keepmissing"] is False
+        json.dumps(cfg, allow_nan=False)
+        d = _map("lpoly", _FRAME)._dash_agg_config
+        assert d["bwidth"] is None and d["degree"] == 0
+        assert d["kernel"] == "epanechnikov" and d["n_user"] is None
+        assert _map("lpoly", _FRAME, {"bwidth": "0"}
+                    )._dash_agg_config["bwidth"] is None
+        assert _map("lpoly", _FRAME, {"cmissing": "n"}
+                    )._dash_agg_config["keepmissing"] is True
+
+    def test_lpoly_grid_plan(self):
+        gm = _gm()
+        assert gm._lpoly_grid_plan({}, "lpoly", 30) == (30, 30, None)
+        gm.dataset = pd.DataFrame({"a": range(40)})
+        assert gm._lpoly_grid_plan({"n": "20"}, "lpoly", 5) == (40, 40, 20.0)
+        gm.dataset = pd.DataFrame({"a": range(74)})
+        assert gm._lpoly_grid_plan({}, "lpoly", 22) == (50, 74, None)
+        assert gm._lpoly_grid_plan({"n": "100"}, "lpoly", 22) == (74, 74,
+                                                                  100.0)
+        assert gm._lpoly_grid_plan({"n": "1"}, "lpoly", 22) == (50, 74, 1.0)
+        assert gm._lpoly_grid_plan({"n": "20.7"}, "lpoly", 22)[0] == 20
+        assert gm._lpoly_grid_n({"n": "100"}, "lpoly", 22) == 74
+
+    def test_lpoly_empty_layer_is_tagged(self):
+        r = _map("lpoly", _FRAME.iloc[:1])
+        assert len(r.data_source.data["x_lp"]) == 0
+        assert r._dash_agg_config["type"] == "lpoly"
+        assert r._dash_agg_source is r.data_source
+        assert r._dash_agg_config["n_dataset"] == 1
+
+    def test_a_recast_lpoly_is_not_tagged(self):
+        r = _map("lpoly", _FRAME, {"recast": "scatter"})
+        assert not hasattr(r, "_dash_agg_config")
+
+    @pytest.mark.parametrize("degree", [4, 5, 6, 7])
+    def test_degree_four_to_seven_is_fitted(self, degree):
+        # twoway draws degree 4-7 (WP-31 C10b); the mapper read degree()
+        # within 0-3 and drew degree 0 for them, with a warning.
+        opts = {"degree": str(degree), "bwidth": "900"}
+        r = _map("lpoly", _FRAME, opts)
+        assert r._dash_agg_config["degree"] == degree
+        x, y, _w = _rows(_FRAME, {})
+        _gx, gy = dr.GlyphMapper._compute_lpoly_fit(
+            x, y, bwidth=900.0, degree=degree, n_grid=30)
+        np.testing.assert_allclose(r.data_source.data["y_lp"],
+                                   gy[np.isfinite(gy)], rtol=1e-12)
+
+
+class TestLpolyStaleKind:
+    def test_lpoly_is_refit(self):
+        assert "lpoly" in dr._DASH_JS_REFIT_TYPES
+        assert dr._dash_stale_kind("lpoly", {}) is None
+        assert dr._dash_stale_kind("lpoly", {"recast": "scatter"}) == "fit"
+        # lpolyci is the S22 section's: still marked.
+        assert dr._dash_stale_kind("lpolyci", {}) == "fit"
+
+
+def _spliced(name):
+    js = dr._FILTER_JS
+    head = "const %s = JSON.parse('" % name
+    i = js.index(head) + len(head)
+    return json.loads(js[i:js.index("')", i)])
+
+
+class TestLpolyTables:
+    def test_rot_constants_are_spliced(self):
+        t = _spliced("_DASH_LPOLY_ROT_C")
+        assert len(t) == 32
+        assert t == {"%s|%d" % k: v
+                     for k, v in dr._LPOLY_ROT_CONSTANTS.items()}
+        assert t["epanechnikov|1"] == 0.7688119451983404
+
+    def test_supports_are_spliced(self):
+        t = _spliced("_DASH_LPOLY_SUPPORT")
+        assert set(t) == set(dr._KERNELS)
+        for k, (s, _f) in dr._KERNELS.items():
+            assert t[k] == (None if math.isinf(s) else s)
+
+
+@requires_node
+class TestLpolyKw:
+    @pytest.mark.parametrize("kernel", _LP_KERNELS)
+    def test_each_kernel(self, kernel):
+        sup = dr._KERNELS[kernel][0]
+        s = 3.0 if math.isinf(sup) else sup
+        z = [0.0, 0.3 * s, -0.3 * s, 0.6 * s, 0.999 * s, -0.999 * s, s, -s,
+             1.2 * s]
+        if math.isinf(sup):
+            z += [8.0, -40.0]
+        x0, h = 2500.0, 120.0
+        x = [x0 + h * v for v in z]
+        got = _js("dash_lpoly_kw(%s, %r, %r, %s)" % (
+            json.dumps(x), x0, h, json.dumps(kernel)))
+        want = dr._lpoly_kernel_weights(np.asarray(x), x0, h, kernel)
+        np.testing.assert_allclose(got, want, rtol=1e-14, atol=1e-300)
+        if not math.isinf(sup):
+            assert got[6] == 0 and got[7] == 0 and got[8] == 0
+            assert got[4] == pytest.approx(float(want[4]), rel=1e-14)
+
+
+_ROT_IDS = [r["id"] for r in _LPT["rows"]]
+_ROT_BY_ID = {r["id"]: r for r in _LPT["rows"]}
+#: The fixture rows where the saved page's rule of thumb is not Python's
+#: (D-19.a), measured at the F1d commit: 48 of 785, every one Python's
+#: "float" route -- an exact global fit on 2 to 5 rows of auto (mpg on
+#: weight, epanechnikov and gaussian, degree 0-3), where Stata's h is its
+#: round-off; the page draws y = 0 there.  The 737 others agree to 1e-6
+#: (1.8e-10 at most), the rows whose raw columns invsym cuts among them.
+_ROT_DIVERGENT_COUNT = 48
+
+
+@requires_node
+class TestRotTwin:
+    @pytest.mark.parametrize("rid", _ROT_IDS)
+    def test_fixture_rows(self, rid):
+        row = _ROT_BY_ID[rid]
+        js, det = _rot_pairs()[rid]
+        if det["route"] == "exact" and _rot_all_kept(row, det):
+            assert _rot_agrees(js, det, 1e-6), (js, det["h"])
+        elif not np.isfinite(det["h"]):
+            # Stata's r(bwidth) is missing: the page draws y = 0 too.
+            assert not np.isfinite(js), js
+        else:
+            assert (not np.isfinite(js)) or _rot_agrees(js, det, 1e-3), (
+                js, det)
+
+    def test_divergence_count_is_recorded(self):
+        pairs = _rot_pairs()
+        div = []
+        for rid, (js, det) in pairs.items():
+            if _rot_agrees(js, det, 1e-6):
+                continue
+            row = _ROT_BY_ID[rid]
+            div.append(rid)
+            assert (rid in _LP_DIVERGENT_FIXTURE or det["route"] == "float"
+                    or not _rot_all_kept(row, det)), (rid, js, det)
+        print("lpoly rule of thumb: %d of %d fixture rows diverge (D-19.a)"
+              % (len(div), len(pairs)))
+        assert len(div) == _ROT_DIVERGENT_COUNT, sorted(div)
+
+    def test_overflow_guard(self):
+        x = np.arange(1.0, 11.0) * 1e60
+        y = np.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0, 5.0, 3.0])
+        assert np.isnan(dr._lpoly_rot_detail(x, y, None, 0, "epanechnikov"
+                                             )["h"])
+        got = _js("dash_lpoly_rot(%s, %s, null, 0, 'epanechnikov')" % (
+            json.dumps(x.tolist()), json.dumps(y.tolist())))
+        assert got is None
+
+    def test_fewer_distinct_x_than_the_global_fit_is_missing(self):
+        # x of 0 and 1 only: Stata's r(bwidth) is missing (twoway draws
+        # y = 0); the scaled design is singular however round-off falls.
+        x = np.array([0.0, 1.0] * 20)
+        y = np.round(_RNG.normal(20.0, 3.0, 40), 2)
+        assert np.isnan(dr._lpoly_rot_detail(x, y, None, 0, "epanechnikov"
+                                             )["h"])
+        got = _js("dash_lpoly_rot(%s, %s, null, 0, 'epanechnikov')" % (
+            json.dumps(x.tolist()), json.dumps(y.tolist())))
+        assert got is None
+
+
+_LP_CURVE_IDS = [c["id"] for c in _LPT["curves"]]
+_LP_CURVES = {c["id"]: c for c in _LPT["curves"]}
+_FIT_CACHE = {}
+
+
+def _fit_pairs():
+    if not _FIT_CACHE:
+        calls = []
+        for c in _LPT["curves"]:
+            x, y, w = _lp_sample(c)
+            calls.append([x.tolist(), y.tolist(), float(c["bwidth"]),
+                          c["degree"], c["kernel"], _lp_list(w),
+                          [float(v) for v in c["gx"]]])
+        got = _js_batch("dash_lpoly_fit", calls)
+        for c, g in zip(_LPT["curves"], got):
+            _FIT_CACHE[c["id"]] = _nan(g)
+    return _FIT_CACHE
+
+
+@requires_node
+class TestLpolyFitTwin:
+    @pytest.mark.parametrize("cid", _LP_CURVE_IDS)
+    def test_fixture_curves(self, cid):
+        c = _LP_CURVES[cid]
+        x, y, w = _lp_sample(c)
+        _gx, want = dr.GlyphMapper._compute_lpoly_fit(
+            x, y, bwidth=float(c["bwidth"]), degree=c["degree"],
+            kernel=c["kernel"], w=w, x_grid=np.asarray(c["gx"], float))
+        np.testing.assert_allclose(_fit_pairs()[cid], want, rtol=1e-8,
+                                   atol=1e-10, equal_nan=True)
+
+    def test_kept_columns_two_values(self):
+        # foreign == 1 biweight degree(2) at Stata's 287.78: a window of
+        # two distinct x keeps {1, d^2} (_lpoly_kept_columns, Part C).
+        D = _LPT["datasets"]["auto"]
+        sel = [i for i, f in enumerate(D["foreign"]) if f == 1]
+        x = np.array([D["weight"][i] for i in sel], float)
+        y = np.array([D["mpg"][i] for i in sel], float)
+        h = 287.78
+        found = []
+        for x0 in np.linspace(x.min(), x.max(), 200):
+            kw = dr._lpoly_kernel_weights(x, x0, h, "biweight")
+            pos = kw > 0
+            if len(np.unique(x[pos])) != 2:
+                continue
+            X = np.vander(x[pos] - x0, 3, increasing=True)
+            G = (X * kw[pos][:, None]).T @ X
+            want = dr._lpoly_kept_columns(G)
+            got = _js("dash_lpoly_kept(%s)" % json.dumps(G.tolist()))
+            assert got == want, (x0, got, want)
+            found.append(want)
+        assert [0, 2] in found
+
+
+def _lpoly_case(df, opts, dataset=None):
+    gm = _gm()
+    if dataset is not None:
+        gm.dataset = dataset
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = gm.map_lpoly(figure(), ColumnDataSource(df), "y", "x",
+                         dict(opts))
+    x, y, w = _rows(df, opts)
+    got = js_runner.run_fit_js_block(r._dash_agg_config, x, y, w)
+    data = r.data_source.data
+    for c in ("x_lp", "y_lp"):
+        np.testing.assert_allclose(_nan(got[c]), np.asarray(data[c], float),
+                                   rtol=1e-8, atol=1e-10, equal_nan=True,
+                                   err_msg=c)
+    return got
+
+
+_LP_FRAME60 = pd.concat([_FRAME, _FRAME.assign(x=_FRAME["x"] + 7.3)],
+                        ignore_index=True)
+_LPOLY_CASES = [
+    ("default", _FRAME, {}, None),
+    ("bwidth(400) degree(1) n(20)", _FRAME,
+     {"bwidth": "400", "degree": "1", "n": "20"}, None),
+    ("biweight degree(3) aw", _FRAME,
+     {"kernel": "biweight", "degree": "3", "weight": "aweight",
+      "wexp": "w"}, None),
+    ("gaussian fw", _FRAME, {"kernel": "gaussian", "weight": "fweight",
+                             "wexp": "w"}, None),
+    ("degree(5) bwidth(900)", _FRAME, {"degree": "5", "bwidth": "900"},
+     None),
+    ("a 60-row dataset, n(20)", _LP_FRAME60.iloc[:25], {"n": "20"},
+     _LP_FRAME60),
+    ("a 60-row dataset, default n", _LP_FRAME60.iloc[:25], {},
+     _LP_FRAME60),
+    ("bwidth(60) leaves gaps", _FRAME, {"bwidth": "60"}, None),
+    ("bwidth(60) cmissing(n)", _FRAME, {"bwidth": "60", "cmissing": "n"},
+     None),
+    ("stairstep", _FRAME, {"connect": "stairstep"}, None),
+    ("one row", _FRAME.iloc[:1], {}, None),
+    ("x of 0 and 1 only: the line at 0", _FRAME.assign(
+        x=(np.arange(30) % 2).astype(float)), {}, None),
+]
+
+
+@requires_node
+class TestLpolyBranch:
+    @pytest.mark.parametrize("df,opts,dataset",
+                             [c[1:] for c in _LPOLY_CASES],
+                             ids=[c[0] for c in _LPOLY_CASES])
+    def test_matches_python(self, df, opts, dataset):
+        _lpoly_case(df, opts, dataset)
+
+    def test_one_row_writes_empty_columns(self):
+        assert _lpoly_case(_FRAME.iloc[:1], {}) == {"x_lp": [], "y_lp": []}
+
+    def test_x_of_two_values_draws_zero(self):
+        got = _lpoly_case(_FRAME.assign(x=(np.arange(30) % 2).astype(float)),
+                          {})
+        assert got["y_lp"] == [0.0] * 30
+
+    def test_cmissing_n_keeps_the_missing_points(self):
+        got = _lpoly_case(_FRAME, {"bwidth": "60", "cmissing": "n"})
+        y = _nan(got["y_lp"])
+        assert len(y) == 30 and np.isnan(y).any() and np.isfinite(y).any()
+
+
+#: (name, plots, move): a saved lpoly after a move equals the served one.
+_LP_REFIT = [
+    ("lpoly bwidth(400) degree(1) n(20)",
+     [plot_for("lpoly", {"bwidth": "400", "degree": "1", "n": "20"})], m)
+    for m in _MOVES
+] + [
+    ("lpoly", [plot_for("scatter"), plot_for("lpoly")], _MOVES[1]),
+    ("lpoly", [plot_for("scatter"), plot_for("lpoly")], _MOVES[2]),
+    ("lpoly gaussian [fw=rep]",
+     [plot_for("lpoly", {"kernel": "gaussian", "weight": "fweight",
+                         "wexp": "rep"})], _MOVES[1]),
+    ("lpoly biweight degree(3) [aw=weight] bwidth(900)",
+     [plot_for("lpoly", {"kernel": "biweight", "degree": "3",
+                         "weight": "aweight", "wexp": "weight",
+                         "bwidth": "900"})], _MOVES[0]),
+]
+
+
+@requires_node
+class TestTheSavedLpolyRefits:
+    @pytest.mark.parametrize("plots,move", [c[1:] for c in _LP_REFIT],
+                             ids=["%s-%s" % (c[0], c[2][0])
+                                  for c in _LP_REFIT])
+    def test_saved_equals_served(self, plots, move):
+        _, filt, action, _oracle = move
+        spec = _spec(plots, {"filter": filt})
+        r = _render(spec)
+        built = _fit_data(r.figures["g1"].renderers)
+        _move(r, action)
+        sx, sy = _fit_data(r.figures["g1"].renderers)
+        vx, vy = _served_fit_after(spec, action)
+        np.testing.assert_allclose(sx, vx, rtol=1e-8, atol=1e-9)
+        np.testing.assert_allclose(sy, vy, rtol=1e-8, atol=1e-9)
+        assert (built[1].shape != sy.shape
+                or not np.allclose(built[1], sy)), "the move changed nothing"
+
+    def test_an_exact_global_fit_draws_the_line_at_zero(self):
+        # D-19.a: on the five Foreign rows the global fit of degree 4 is
+        # exact; Stata's bandwidth is its round-off, which the served app
+        # emulates and the saved page does not: it draws y = 0 over the
+        # kept rows' range (BUGS.md "lpoly's default bandwidth on an
+        # exactly fitted y differs between the saved page and the served
+        # app").
+        spec = _spec([plot_for("scatter"), plot_for("lpoly")],
+                     {"filter": _MOVES[0][1]})
+        r = _render(spec)
+        _move(r, _MOVES[0][2])
+        sx, sy = _fit_data(r.figures["g1"].renderers)
+        kept = _DF.query("foreign == 1")["weight"]
+        assert len(sx) == 10 and (sy == 0).all()
+        assert sx[0] == kept.min() and sx[-1] == kept.max()
+
+    def test_a_move_leaving_one_row_empties_the_line(self):
+        spec = _spec([plot_for("scatter"), plot_for("lpoly")],
+                     {"filter": "price, type(slider)"})
+        r = _render(spec)
+        _move(r, ("Slider", 11385.0))
+        x, y = _fit_data(r.figures["g1"].renderers)
+        assert len(x) == 0 and len(y) == 0

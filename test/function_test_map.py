@@ -191,6 +191,7 @@ FUNCTIONS = {
  'GlyphMapper._layer_weight_values_state': 'test/test_saved_stale_cue.py::TestTheWeightColumn::test_the_value_state',
  'GlyphMapper._layer_weights': 'test/test_statistical_helpers.py::TestLayerWeights::test_an_unweighted_layer_is_masked_and_carries_no_weight',
  'GlyphMapper._lpoly_grid_n': 'test/test_statistical_truth.py::TestLpolyNullRule::test_the_grid_default_is_min_n_50',
+ 'GlyphMapper._lpoly_grid_plan': 'test/test_js_fit_refit.py::TestLpolyConfig::test_lpoly_grid_plan',
  'GlyphMapper._mark_insufficient': 'test/test_layer_reports.py::TestAByPanelIsAnsweredAsTwowayAnswersIt::test_mark_insufficient_marks_each_renderer',
  'GlyphMapper._mark_silent': 'test/test_layer_reports.py::TestASmootherTwowayDrawsInSilenceIsSilent::test_mark_silent_marks_each_renderer',
  'GlyphMapper._mark_unfit': 'test/test_layer_reports.py::TestAFitWithNothingToFitGivesTwowaysNote::test_mark_unfit_marks_each_renderer_it_is_given',

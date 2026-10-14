@@ -37,6 +37,8 @@ _ALLOWED_DUNDER_PREFIXES = (
     # A module's version, read by getattr (WP-30 P1.32's package floor).
     "__version__",
     "__dashq", "__dashfix", "__DASH_ROW_ID__",
+    # The tables _FILTER_JS splices in for lpoly (WP-31 F1d).
+    "__DASH_LPOLY_ROT_CONSTANTS__", "__DASH_LPOLY_SUPPORT__",
     # Bokeh's session-JWT member _dash_ws_payload bounds (WP-29 P0.12a).
     "__bk__zlib_",
 )

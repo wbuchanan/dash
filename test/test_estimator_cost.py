@@ -407,6 +407,24 @@ class TestTheJsTwinsAreBounded:
         assert len(got["data"]["x_lw"]) == 10_000
         assert got["ms"] < 2000.0, got["ms"]
 
+    @pytest.mark.parametrize("degree", [0, 3])
+    def test_lpoly_under_node_on_1e5_rows(self, degree):
+        # WP-31 F1d (M10): the default bandwidth (the rule of thumb's
+        # global fit of degree pe+3 on every kept row) and the local fits
+        # at 50 grid points, on 1e5 rows.
+        rng = np.random.default_rng(19)
+        x = rng.uniform(1000.0, 5000.0, 100_000)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 2.0, x.size)
+        ac = {"type": "lpoly", "cols": ["x_lp", "y_lp"], "n": 50,
+              "range": None, "wtype": None, "xaxiskind": None,
+              "yaxiskind": None, "bwidth": None, "degree": degree,
+              "kernel": "epanechnikov", "n_dataset": 100_000,
+              "n_user": None, "keepmissing": False}
+        got = js_runner.run_fit_js_block(ac, x, y, timed=True)
+        assert len(got["data"]["x_lp"]) == 50
+        assert all(v is not None for v in got["data"]["y_lp"])
+        assert got["ms"] < 2000.0, got["ms"]
+
     def test_lowess_is_capped_above_max_ops(self):
         # 20000 * (2 * 7999 + 1) = 3.2e8 > 2e8: the line is left empty.
         rng = np.random.default_rng(17)

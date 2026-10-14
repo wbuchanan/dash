@@ -2988,8 +2988,8 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpolyci"]
 # bar and rbar widths hold through a move (WP-30 P1.17a); the other eight
 # agreed already and are guards.  lfit and qfit refit in both modes (WP-31
-# F1a), lowess (F1c), lfitci and qfitci (F1b); the others agree through the
-# cue.
+# F1a), lowess (F1c), lfitci and qfitci (F1b), lpoly (F1d); the others
+# agree through the cue.
 _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
 
@@ -3397,6 +3397,18 @@ MOVE_CORPUS = [
                [plot_for("lfitci", {"stdf": "stdf"})]),
     _move_case("lfitci [fw=rep], dropdown", _MOVES[0],
                [plot_for("lfitci", {"weight": "fweight", "wexp": "rep"})]),
+
+    # WP-31 F1d: lpoly refits on the saved page
+    _move_case("lpoly, dropdown", _MOVES[0], [_sc(), plot_for("lpoly")]),
+    _move_case("lpoly degree(1) bwidth(400) n(20), range", _MOVES[1],
+               [plot_for("lpoly", {"degree": "1", "bwidth": "400",
+                                   "n": "20"})]),
+    _move_case("lpoly biweight degree(3) [aw=weight], slider", _MOVES[2],
+               [plot_for("lpoly", {"kernel": "biweight", "degree": "3",
+                                   "weight": "aweight", "wexp": "weight"})]),
+    _move_case("lpoly gaussian [fw=rep], dropdown", _MOVES[0],
+               [plot_for("lpoly", {"kernel": "gaussian", "weight": "fweight",
+                                   "wexp": "rep"})]),
 
     # WP-31 S09 (C10c): three y axes after a move (S35 extends the
     # profile to their ranges).

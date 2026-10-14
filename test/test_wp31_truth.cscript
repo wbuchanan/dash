@@ -3278,6 +3278,146 @@ if inlist("`only'", "", "S16") & `: list posof "S16" in w31_run' {
 }
 * ==== end S16 ====
 
+// S19 helpers (WP-31 F1d).  _u19_move: the saved page's lpoly line after
+// one filter move -- the page rendered, the widget set and its own
+// callback run under node (test/js_runner.py) -- written to a JSON file,
+// its point count in global u19_n.  _u19_gen_compare: the saved line
+// against Stata's lpoly gen(*gx* *gy*): the grid rows (gx not missing)
+// whose smooth is not missing, in grid order; global u19_ok 1 or 0 and
+// u19_msg.
+python:
+def _u19_move(sp, dp, kind, value, out):
+    import json
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    lp = [x for f in r.figures.values() for x in f.renderers
+          if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+          == "lpoly"]
+    d = lp[0].data_source.data
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump({"x": [float(v) for v in d["x_lp"]],
+                   "y": [float(v) for v in d["y_lp"]]}, fh)
+    Macro.setGlobal("u19_n", str(len(d["x_lp"])))
+
+
+def _u19_gen_compare(saved, gx, gy, rtol):
+    import json
+    import numpy as np
+    from sfi import Data, Macro
+    g = json.load(open(saved, encoding="utf-8"))
+    sx, sy = np.asarray(g["x"], float), np.asarray(g["y"], float)
+    miss = lambda v: v is None or v >= 8.98e307
+    xs, ys = [], []
+    for x, y in zip(Data.get(var=gx), Data.get(var=gy)):
+        if not miss(x) and not miss(y):
+            xs.append(float(x))
+            ys.append(float(y))
+    tx, ty = np.asarray(xs), np.asarray(ys)
+    ok = 0
+    if len(tx) != len(sx):
+        msg = "%d saved points, Stata %d" % (len(sx), len(tx))
+    elif not len(tx):
+        msg = "no points"
+    else:
+        dx = float(np.max(np.abs(sx - tx) / np.maximum(np.abs(tx), 1.0)))
+        dy = float(np.max(np.abs(sy - ty) / np.maximum(np.abs(ty), 1.0)))
+        ok = int(dx <= rtol and dy <= rtol)
+        msg = "%d points, largest relative difference x %.3g y %.3g" % (
+            len(sx), dx, dy)
+    Macro.setGlobal("u19_ok", str(ok))
+    Macro.setGlobal("u19_msg", msg)
+end
+
+* ==== S19 F1d: lpoly refits on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S19") & `: list posof "S19" in w31_run' {
+    display as text "S19 start " c(current_date) " " c(current_time)
+    local u19d "`w31_work'/s19"
+    capture mkdir "`u19d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U19-01..04, U19-06: after a move the saved smooth is Stata's lpoly
+    // on the kept rows, gen() on its grid: the default bandwidth (the
+    // rule of thumb from the kept rows; only through the curve, which
+    // agrees only when the bandwidth does) after the dropdown to Foreign;
+    // degree(1) bwidth(400) n(20) after the range to 4500-11385; [aw]
+    // biweight degree(2) after the dropdown to Domestic (degree 2's rule
+    // of thumb fits x^0..x^6 in raw powers: Stata's round-off there is
+    // test_lpoly_rot.py's 5e-5 tier; measured 8.1e-6); uslifeexp's
+    // years (an offset x; Stata's own round-off on raw powers is about
+    // 1e-5 there, test_lpoly_rot.py's tier) after the range to 1900-1950;
+    // degree(4) bwidth(800) after the dropdown to Foreign.  auto's _N is
+    // 74 and uslifeexp's 100, so lpoly's n is 50 unless n() is given.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U19-01|auto|(scatter mpg weight) (lpoly mpg weight)|foreign, type(dropdown)|Select|Foreign|lpoly mpg weight if foreign == 1, nograph gen(u19x u19y)|1e-6" "U19-02|auto|(lpoly mpg weight, degree(1) bwidth(400) n(20))|price, type(range)|RangeSlider|4500 11385|lpoly mpg weight if inrange(price, 4500, 11385), degree(1) bwidth(400) n(20) nograph gen(u19x u19y)|1e-6" "U19-03|auto|(lpoly mpg weight [aw=displacement], kernel(biweight) degree(2))|foreign, type(dropdown)|Select|Domestic|lpoly mpg weight if foreign == 0 [aw=displacement], kernel(biweight) degree(2) nograph gen(u19x u19y)|5e-5" "U19-04|uslifeexp|(lpoly le year)|year, type(range)|RangeSlider|1900 1950|lpoly le year if inrange(year, 1900, 1950), nograph gen(u19x u19y)|1e-4" "U19-06|auto|(lpoly mpg weight, degree(4) bwidth(800))|foreign, type(dropdown)|Select|Foreign|lpoly mpg weight if foreign == 1, degree(4) bwidth(800) nograph gen(u19x u19y)|1e-6" {
+        local ++k
+        mata: u19_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u19_t[1]); st_local("ds", u19_t[2]); st_local("cmd", u19_t[3]); st_local("filt", u19_t[4]); st_local("kind", u19_t[5]); st_local("val", u19_t[6]); st_local("lp", u19_t[7]); st_local("tol", u19_t[8])
+        sysuse `ds', clear
+        dash clear
+        capture noisily dash `cmd', name(zu19`k')
+        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u19d'/s`k'.json") datapath("`u19d'/d`k'.json") filter(`filt')
+        python: _u19_move("`u19d'/s`k'.json", "`u19d'/d`k'.json", "`kind'", "`val'", "`u19d'/g`k'.json")
+        quietly `lp'
+        python: _u19_gen_compare("`u19d'/g`k'.json", "u19x", "u19y", `tol')
+        _w31_expect `id' "(${u19_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u19_msg}"
+        _w31_done `id' "the saved `cmd' after the move to `val' is `lp' (${u19_msg})"
+    }
+
+    // ------------------------------------------------------------
+    // U19-05: a move leaving one row empties the saved smooth; twoway
+    // lpoly on that row is refused (rc measured here).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    capture noisily dash (scatter mpg weight) (lpoly mpg weight), name(zu195)
+    _w31_expect U19-05 "(_rc == 0)" "dash lpoly rc `=_rc'"
+    _dash_serve_spec, specpath("`u19d'/s5.json") datapath("`u19d'/d5.json") filter(price, type(slider))
+    python: _u19_move("`u19d'/s5.json", "`u19d'/d5.json", "Slider", "15906", "`u19d'/g5.json")
+    quietly count if price >= 15906
+    local nk = r(N)
+    _w31_expect U19-05 "(`nk' == 1)" "price >= 15906 keeps `nk' rows"
+    _w31_expect U19-05 "(${u19_n} == 0)" "the saved lpoly after the slider to 15906 holds ${u19_n} points"
+    capture noisily twoway lpoly mpg weight if price >= 15906, nodraw
+    local trc = _rc
+    _w31_expect U19-05 "(`trc' == 2001)" "twoway lpoly on one row: rc `trc'"
+    _w31_done U19-05 "one kept row: the saved smooth is empty; twoway refuses it (rc `trc')"
+
+    forvalues k = 1/6 {
+        foreach p in s d g {
+            capture erase "`u19d'/`p'`k'.json"
+        }
+    }
+    capture rmdir "`u19d'"
+    macro drop u19_n u19_ok u19_msg
+    capture mata: mata drop u19_t
+    capture graph drop _all
+    dash clear
+    display as text "S19 end " c(current_date) " " c(current_time)
+}
+* ==== end S19 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

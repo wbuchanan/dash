@@ -1975,7 +1975,6 @@ class TestWp30Tracking:
 WP31_OPEN = {
     "C8b": "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)",
     "B5b": "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)",
-    "F1d": "The saved page does not refit lpoly after a filter move (the lpoly twin)",
     "C9": "Weighted scatter markers are not sized by [aw]",
     "B1": "rpcap and rpspike are refused by name",
     "B2": "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list",

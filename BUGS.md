@@ -3358,11 +3358,11 @@
   - Suggested fix: WP-31 section 18 (dot rows): draw twoway's dot rows and declare and draw the d-options in both modes.
   - Resolution: Not fixed because WP-31 section 18 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
 
-- [ ] Title: The saved page does not refit lpoly after a filter move (the lpoly twin)
+- [x] Title: The saved page does not refit lpoly after a filter move (the lpoly twin)
   - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
   - Description: GAPS3.md F1, re-verified at 6370ca4: the lpoly twin; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
   - Suggested fix: WP-31 section 19 (js lpoly): port lpoly with its rule-of-thumb bandwidth to JavaScript, pinned to its Python twin.
-  - Resolution: Not fixed because WP-31 section 19 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+  - Resolution: Fixed 14oct2026 (WP-31, F1d). The saved page refits lpoly after every filter move, as the served app does: GlyphMapper.map_lpoly tags its line (also when it is empty, not when recast) with its source, the rows it is fitted from and S10's fit config plus bwidth (None for the rule of thumb), degree, kernel, n_dataset and n_user (the grid rule's _N, fixed at build, and n(), from the new GlyphMapper._lpoly_grid_plan, which _lpoly_grid_n now returns the first value of) and keepmissing (cmissing(n)); _FILTER_JS's lpoly branch draws nothing on fewer than two rows, takes the bandwidth given or dash_lpoly_rot's rule of thumb from the kept rows (the Fan-Gijbels constants and kernel supports spliced from _LPOLY_ROT_CONSTANTS and _KERNELS; the global fit of degree pe+3 on the raw columns a float invsym sweep keeps, solved by QR on the centred and scaled powers), draws y = 0 where that is missing, and else dash_lpoly_fit's local fits (dash_lpoly_kw, dash_lpoly_kept, dash_lpoly_local) on dash_lpoly_grid_n's grid, a point with fewer than two weighted rows left out or, under cmissing(n), kept as a break; _dash_stale_kind no longer marks it (_DASH_JS_REFIT_TYPES) unless recast. map_lpoly also reads degree() 0-7, as dash.ado's rule does, where it drew degree 0 for 4-7. Pinned by test/test_js_fit_refit.py::TestTheSavedLpolyRefits::test_saved_equals_served, ::TestRotTwin, ::TestLpolyFitTwin, ::TestLpolyBranch, ::TestLpolyConfig::test_degree_four_to_seven_is_fitted, test/test_wp31_truth.cscript U19-01 to U19-05. Residual, deferred (WP-31): the rule of thumb on an exactly fitted y draws the line at 0 on the saved page where the served app reproduces Stata's round-off value (GAPS3 F1d Tracked). Closes GAPS3 F1d (WP-31, F1d).
 
 - [ ] Title: Weighted scatter markers are not sized by [aw]
   - File Names and Line Numbers: dash_render.py:14944-14973
@@ -3909,3 +3909,9 @@
   - Description: GAPS3.md C6, found by WP-31 section 14 (C6 residual): on data with missing y, twoway mband draws 9 vertices where dash draws 8 (probe E04) and mspline 89 where dash draws 78 (E05); unrelated to cmissing().
   - Suggested fix: WP-31 section 25 (js mband mspline): measure twoway's band and spline vertices on data with missing y and match them in the Python twins before porting them to JavaScript.
   - Resolution: Not fixed because WP-31 section 25 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app
+  - File Names and Line Numbers: dash_render.py _FILTER_JS dash_lpoly_rot; _lpoly_rot_detail, _lpoly_rot_float
+  - Description: GAPS3.md F1, found by WP-31 section 19 (F1d residual): where lpoly's rule-of-thumb global fit is exact (y an exact polynomial in x, or no more rows than its pe+4 coefficients) Stata's r(bwidth) is the round-off of its float arithmetic; the served app emulates it (_lpoly_rot_float) and the saved page, after a filter move, draws the line at 0. Measured on test/fixtures/lpoly_rot_truth.json: 48 of 785 rows, all subsets of 2 to 5 auto cars.
+  - Suggested fix: Not scheduled in WP-31: port _lpoly_rot_float's exactly rounded sums and float invsym sweep to JavaScript, if a float emulation that agrees with the Python one across platforms can be shown.
+  - Resolution: Not fixed because no WP-31 section owns it. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift. Pinned by test/test_js_fit_refit.py::TestRotTwin::test_divergence_count_is_recorded.

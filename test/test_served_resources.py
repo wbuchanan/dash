@@ -479,12 +479,13 @@ class TestTheSavedPageIsUnchanged:
         # (diffed with every code string masked; nothing else differs); and
         # at WP-31 F1b, whose lfitci/qfitci branch changes only the filter
         # callback's code string (the base's _FILTER_JS gives the old
-        # digest on the new tree).
+        # digest on the new tree); and at WP-31 F1d, whose lpoly helpers
+        # and branch change only that code string too (likewise measured).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "3504f1d4f9c5ea6c8b671b287238878cec62e725ad5479f4eedb2a8d9c8db931")
+    "fe87cd2cc224dcd7ee77d5e9e4e2645915eb749c42975fb2fb6f5f2bb316aa09")
 
 
 # ===========================================================================
