@@ -361,7 +361,8 @@ class TestLpolyciCost:
 class TestTheJsTwinsAreBounded:
     """WP-31 F1a, F1b (M10): the saved page's lfit, qfit, lfitci and
     qfitci refits on 100,000 kept rows finish under 2 s of node's own time
-    each (lpoly since F1d, lpolyci since F1e)."""
+    each (lpoly since F1d, lpolyci since F1e, mband and mspline since
+    F1f)."""
 
     @pytest.mark.parametrize("ptype", ["lfit", "qfit"])
     def test_lfit_and_qfit_under_node_on_1e5_rows(self, ptype):
@@ -444,6 +445,23 @@ class TestTheJsTwinsAreBounded:
         assert len(got["band"]["y_lower"]) == 50
         assert all(v is not None for v in got["band"]["y_upper"])
         assert got["cache_size"] == 1
+        assert got["ms"] < 2000.0, got["ms"]
+
+    @pytest.mark.parametrize("ptype,cols", [("mband", ["x_mb", "y_mb"]),
+                                            ("mspline", ["x_sp", "y_sp"])])
+    def test_mband_and_mspline_under_node_on_1e5_rows(self, ptype, cols):
+        # WP-31 F1f (M10): the default band count (50 on 1e5 rows), the
+        # cross medians (two sorts per band) and mspline's spline.
+        rng = np.random.default_rng(25)
+        x = rng.uniform(1000.0, 5000.0, 100_000)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 2.0, x.size)
+        ac = {"type": ptype, "xvar": "x", "yvar": "y", "cols": cols,
+              "n": 100, "range": None, "wtype": None, "xdatekind": None,
+              "ydatekind": None, "xaxiskind": None, "yaxiskind": None,
+              "bands": None, "max_bands": 1000, "n_between": 10}
+        got = js_runner.run_fit_js_block(ac, x, y, timed=True)
+        assert len(got["data"][cols[0]]) == (50 if ptype == "mband"
+                                             else 49 * 10 + 50)
         assert got["ms"] < 2000.0, got["ms"]
 
     def test_lowess_is_capped_above_max_ops(self):

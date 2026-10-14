@@ -575,7 +575,7 @@ def _floats(v):
                           for e in v) + "]"
 
 
-def run_fit_js_block(ac, x, y, w=None, *, timed=False):
+def run_fit_js_block(ac, x, y, w=None, *, timed=False, data=None):
     """Run one fit branch of dash's REAL ``_FILTER_JS`` (WP-31 F1) on the
     kept rows *x*, *y* (Stata units) and weights *w*; return ``src.data``
     (with *timed*, ``{"data": src.data, "ms": node's own time}``).  The
@@ -586,8 +586,11 @@ def run_fit_js_block(ac, x, y, w=None, *, timed=False):
     names it last (``... || ac.type === '<type>') {``; WP-31 F1b).  The
     rows bypass ``dash_fit_rows`` (``run_fit_rows`` runs that alone).
     The harness declares ``_dash_lpci_cache`` as the callback does (WP-31
-    F1e)."""
-    return run_js(_fit_harness(ac, x, y, w, timed=timed))
+    F1e), and the layer's columns as the callback reads them,
+    ``_ac_data`` and ``_pick``: *data* (``{column: values}``, a missing
+    value NaN), or else *x* and *y* under ``ac.xvar`` and ``ac.yvar``
+    (WP-31 F1f: mband and mspline read the rows missing y or x)."""
+    return run_js(_fit_harness(ac, x, y, w, timed=timed, data=data))
 
 
 def _fit_block(ac):
@@ -607,13 +610,19 @@ def _fit_block(ac):
     return js[lo:nxt if (nxt != -1 and nxt < end) else end]
 
 
-def _fit_harness(ac, x, y, w=None, *, timed=False):
+def _fit_harness(ac, x, y, w=None, *, timed=False, data=None):
     block = _fit_block(ac)
+    if data is None:
+        data = {ac.get("xvar") or "x": x, ac.get("yvar") or "y": y}
     return (fit_helpers_js()
             + "const ac = " + json.dumps(ac)
             + ";\nconst fx = " + _floats(x)
             + ";\nconst fy = " + _floats(y)
             + ";\nconst fw = " + (_floats(w) if w is not None else "null")
+            + ";\nconst _ac_data = {" + ", ".join(
+                json.dumps(str(k)) + ": " + _floats(v)
+                for k, v in data.items()) + "}"
+            + ";\nconst _pick = (c) => c"
             + ";\nconst src = { data: null, change: { emit: () => {} } };"
             + "\nconst _dash_lpci_cache = new Map();"
             + "\nconst _dash_unrefit = {};"

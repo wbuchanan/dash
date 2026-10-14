@@ -502,7 +502,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
 - **F1d Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpoly after a filter move (the lpoly twin)", commit bbc640a.
 - **F1e Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpolyci after a filter move (the lpolyci twin)", commit 2b9ce0a.
-- **F1f Tracked:** Open (WP-31 section 25).
+- **F1f Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)", commit pending.
 - **F1g Tracked:** Open (WP-31 section 28).
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).

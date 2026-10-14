@@ -3483,6 +3483,15 @@ MOVE_CORPUS = [
                [plot_for("scatter", {"weight": "aweight", "wexp": "price"})]),
     _move_case("rscatter aweight after a move (WP-31 C9)", _MOVES[1],
                [plot_for("rscatter", {"weight": "aweight", "wexp": "price"})]),
+    # WP-31 F1f: mband and mspline recompute on the saved page
+    _move_case("mband, dropdown", _MOVES[0], [_sc(), plot_for("mband")]),
+    _move_case("mspline bands(5) n(4), range", _MOVES[1],
+               [plot_for("mspline", {"bands": "5", "n": "4"})]),
+    _move_case("mband bands(20) [aw=weight] (inert), slider", _MOVES[2],
+               [plot_for("mband", {"bands": "20", "weight": "aweight",
+                                   "wexp": "weight"})]),
+    _move_case("mspline on a date x, dropdown", _MOVES[0],
+               [plot_for("mspline", yvar="mpg", xvar="when")]),
 ]
 
 

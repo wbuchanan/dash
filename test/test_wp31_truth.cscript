@@ -5022,6 +5022,151 @@ if inlist("`only'", "", "S25") & `: list posof "S25" in w31_run' {
 }
 * ==== end S25 ====
 
+// S25 F1f helpers.  _u25_move: the saved page's mband or mspline line
+// after one filter move, the callback run under node, against twoway's
+// serset of the same rows in <csv> (_u25_tw) -- the vertex count and every
+// vertex to <rtol> relative; globals u25_ok (1 when equal), u25_n (the
+// saved vertex count), u25_cue (1
+// when the layer is dimmed or the graph's stale caption shows) and
+// u25_msg.
+python:
+def _u25_move(sp, dp, kind, value, csv, rtol):
+    import math
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with open(csv, encoding="utf-8") as fh:
+        want = [tuple(float(v) for v in ln.split(",")[:2][::-1])
+                for ln in fh if ln.strip()]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    lay = [x for f in r.figures.values() for x in f.renderers
+           if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+           in ("mband", "mspline")]
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    d = lay[0].data_source.data
+    cx, cy = lay[0]._dash_agg_config["cols"]
+    got = list(zip((float(v) for v in d[cx]), (float(v) for v in d[cy])))
+    ok = len(got) == len(want) and all(
+        math.isclose(p, q, rel_tol=float(rtol), abs_tol=1e-9)
+        for gp, wp in zip(got, want) for p, q in zip(gp, wp))
+    cue = [t for f in r.figures.values() for t in f.above
+           if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+    Macro.setGlobal("u25_ok", str(int(ok)))
+    Macro.setGlobal("u25_n", str(len(got)))
+    Macro.setGlobal("u25_cue", str(int(any(x.muted for x in lay) or (
+        bool(cue) and bool(cue[0].visible)))))
+    Macro.setGlobal("u25_msg", "saved %d vertices, twoway %d" % (
+        len(got), len(want)))
+end
+
+capture program drop _u25_saved
+program define _u25_saved
+    // _u25_saved <id> <dir> <k> <rtol> <filter> | <kind> | <value> | <twoway plot> | <dash command>
+    version 19
+    gettoken id 0 : 0
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken rtol 0 : 0
+    gettoken filt 0 : 0, parse("|")
+    gettoken bar 0 : 0, parse("|")
+    gettoken kind 0 : 0, parse("|")
+    gettoken bar 0 : 0, parse("|")
+    gettoken value 0 : 0, parse("|")
+    gettoken bar 0 : 0, parse("|")
+    gettoken tw 0 : 0, parse("|")
+    gettoken bar 0 : 0, parse("|")
+    local kind = strtrim("`kind'")
+    local value = strtrim("`value'")
+    _u25_tw "`dir'" `tw'
+    dash clear
+    capture noisily dash `0', name(zu25f`k')
+    _w31_expect `id' "(_rc == 0)" "dash `0' rc `=_rc'"
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json") filter(`filt')
+    python: import __main__ as _u25_m; _u25_m._u25_move("`dir'/s`k'.json", "`dir'/d`k'.json", "`kind'", "`value'", "`dir'/t.csv", "`rtol'")
+    _w31_expect `id' "(${u25_ok} == 1)" "`0', `kind' to `value': ${u25_msg}"
+    _w31_expect `id' "(${u25_cue} == 0)" "`0', `kind' to `value': the layer is marked (unfiltered)"
+    foreach p in s d {
+        capture erase "`dir'/`p'`k'.json"
+    }
+    capture erase "`dir'/t.csv"
+    dash clear
+end
+
+* ==== S25 F1f: mband and mspline recompute on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S25") & `: list posof "S25" in w31_run' {
+    display as text "S25 start " c(current_date) " " c(current_time)
+    local u25d "`w31_work'/s25f"
+    capture mkdir "`u25d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U25-01: mband after the dropdown to Foreign is twoway's mband on
+    // the 22 Foreign cars (the default band count on the kept rows:
+    // round(min(sqrt 22, 10 log10 22)) = 5 knots), not the build's.
+    // ------------------------------------------------------------
+    quietly count if foreign == 1
+    local nf = r(N)
+    local bf = max(min(`nf', 2), round(min(sqrt(`nf'), 10 * log10(`nf'))))
+    _u25_saved U25-01 "`u25d'" 1 1e-6 foreign, type(dropdown) | Select | Foreign | mband mpg weight if foreign == 1 | (scatter mpg weight) (mband mpg weight)
+    _w31_expect U25-01 "(${u25_n} == `bf')" "mband after the dropdown to Foreign: ${u25_n} knots, the rule on `nf' rows gives `bf'"
+    _w31_done U25-01 "mband after the dropdown to Foreign: twoway's `bf' knots on the `nf' kept rows"
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U25-02: mspline bands(5) n(4) after the price range to 4500-11385:
+    // (K-1)*4 + K points, as twoway's serset (floats: 1e-5).
+    // ------------------------------------------------------------
+    _u25_saved U25-02 "`u25d'" 2 1e-5 price, type(range) | RangeSlider | 4500 11385 | mspline mpg weight if inrange(price, 4500, 11385), bands(5) n(4) | (mspline mpg weight, bands(5) n(4))
+    _w31_done U25-02 "mspline bands(5) n(4) after the range to 4500-11385: twoway's points"
+
+    // ------------------------------------------------------------
+    // U25-03: mband bands(20) after the dropdown to Domestic.
+    // ------------------------------------------------------------
+    _u25_saved U25-03 "`u25d'" 3 1e-6 foreign, type(dropdown) | Select | Domestic | mband mpg weight if foreign == 0, bands(20) | (mband mpg weight, bands(20))
+    _w31_done U25-03 "mband bands(20) after the dropdown to Domestic: twoway's knots"
+
+    // ------------------------------------------------------------
+    // U25-04: mspline bands(2) on the Foreign cars is its two knots alone,
+    // as twoway's serset.
+    // ------------------------------------------------------------
+    _u25_saved U25-04 "`u25d'" 4 1e-6 foreign, type(dropdown) | Select | Foreign | mspline mpg weight if foreign == 1, bands(2) | (mspline mpg weight, bands(2))
+    _w31_done U25-04 "mspline bands(2) after the dropdown to Foreign: the two knots"
+
+    // ------------------------------------------------------------
+    // U25-05: a move leaving one row: mband is that one knot; twoway plots
+    // one point, rc 0.
+    // ------------------------------------------------------------
+    quietly summarize price
+    local pmax = r(max)
+    _u25_saved U25-05 "`u25d'" 5 1e-6 price, type(slider) | Slider | `pmax' | mband mpg weight if price >= `pmax' | (mband mpg weight)
+    _w31_done U25-05 "mband after the slider to `pmax' (one row): the one knot, as twoway's"
+
+    capture rmdir "`u25d'"
+    macro drop u25_ok u25_n u25_cue u25_msg
+    capture graph drop _all
+    dash clear
+    display as text "S25 end " c(current_date) " " c(current_time)
+}
+* ==== end S25 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

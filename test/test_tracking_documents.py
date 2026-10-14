@@ -1975,7 +1975,6 @@ class TestWp30Tracking:
 WP31_OPEN = {
     "B4a": "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)",
     "D1": "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read",
-    "F1f": "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)",
     "B4b": "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)",
     "D2": "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them",
     "F1g": "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)",

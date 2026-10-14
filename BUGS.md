@@ -3406,11 +3406,11 @@
   - Suggested fix: WP-31 section 24 (minor ticks labels): draw minor ticks as Bokeh minor ticks and minor labels as a second LabelSet along the axis.
   - Resolution: Not fixed because WP-31 section 24 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
 
-- [ ] Title: The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)
+- [x] Title: The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)
   - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381
   - Description: GAPS3.md F1, re-verified at 6370ca4: the mband and mspline twins; the whole row reads: The saved page recomputes only histogram and kdensity after a filter move; lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci, mband, mspline show a stale cue (decision WP-29 M3). The served app refits everything.
   - Suggested fix: WP-31 section 25 (js mband mspline): port mband and mspline to JavaScript, pinned to their Python twins.
-  - Resolution: Not fixed because WP-31 section 25 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+  - Resolution: Fixed 14oct2026 (WP-31, F1f). The saved page recomputes mband's cross medians and mspline's natural cubic spline from the kept rows after a filter move, as the served app does, and no longer marks either "(unfiltered)". GlyphMapper.map_mband and map_mspline tag their line (an empty layer's too; not a recast()) with the fit config plus bands (the user's bands(), or null for the default, which follows the kept rows), max_bands (_MAX_MBANDS) and, for mspline, n_between; _DASH_JS_REFIT_TYPES gains both. _FILTER_JS gains dash_median (Stata's median), dash_mband_default_bands (_gs_default_bands.ado's rule), dash_mband_sample (the kept rows with y or x, and the x range of those with an x: C6b), dash_cross_medians and dash_natural_cubic_spline (the Thomas algorithm), and one mband/mspline branch. The knots equal _cross_medians exactly on every stat_truth.json mband and mspline_knots record; the spline equals _natural_cubic_spline to 1e-9. Weights stay inert. Pinned by test/test_js_fit_refit.py::TestMbandTwin, ::TestSplineTwin, ::TestMbandBranch, ::TestMsplineBranch, ::TestTheSavedMbandRefits, test/test_saved_stale_cue.py::TestARefitLayerIsNeverMarked, test/test_wp31_truth.cscript U25-01 to U25-05. Closes GAPS3 F1 (WP-31, F1f).
 
 - [ ] Title: contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)
   - File Names and Line Numbers: dash.ado:4891-4893

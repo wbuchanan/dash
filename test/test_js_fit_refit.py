@@ -159,7 +159,9 @@ class TestStaleKind:
         # lfitci and qfitci are refitted too (WP-31 F1b): TestCiStaleKind.
         # lpoly too (WP-31 F1d): TestLpolyStaleKind.  Flipped (WP-31
         # F1e): listed lpolyci, refitted since (TestLpolyciStaleKind).
-        for t in ("fpfit", "fpfitci", "mband", "mspline"):
+        # Flipped (WP-31 F1f): listed mband and mspline, refitted since
+        # (TestMbandStaleKind).
+        for t in ("fpfit", "fpfitci"):
             assert dr._dash_stale_kind(t, {}) == "fit", t
 
 
@@ -441,8 +443,11 @@ def _fit_data(renderers, ptype=None):
     d = lines[0].data_source.data
     # A lowess line's columns are x_lw and y_lw (WP-31 F1c), an lpoly's
     # x_lp and y_lp (F1d).
+    # mband's x_mb and y_mb, mspline's x_sp and y_sp (F1f).
     cx, cy = (("x_lw", "y_lw") if "x_lw" in d
-              else ("x_lp", "y_lp") if "x_lp" in d else ("x", "y"))
+              else ("x_lp", "y_lp") if "x_lp" in d
+              else ("x_mb", "y_mb") if "x_mb" in d
+              else ("x_sp", "y_sp") if "x_sp" in d else ("x", "y"))
     return (np.asarray(d[cx], dtype=float), np.asarray(d[cy], dtype=float))
 
 
@@ -2029,3 +2034,315 @@ class TestTheExactFitIsMarked:
         stale = json.loads(cb.args["stale_configs_json"])
         assert len(aggs) == 2 and len(stale) == 1
         assert aggs[0]["mark"] == aggs[1]["mark"] == stale[0]["cond"]
+
+
+# ---- WP-31 F1f: mband and mspline ----
+#
+# The saved page recomputes the cross medians of the kept rows (mband) and
+# the natural cubic spline through them (mspline), as the served app
+# does.  The default band count follows the kept rows (D-25.a); the band
+# count and the bands' x range read every kept row with y or x, as twoway's
+# do (WP-31 C6b, GlyphMapper._mband_sample).
+
+_MB_KEYS = (_KEYS - {"atobs"}) | {"bands", "max_bands"}
+
+
+def _mb_map(ptype, df, opts=None, **kw):
+    """map_mband's or map_mspline's one renderer (they return a list)."""
+    [r] = _map(ptype, df, opts, **kw)
+    return r
+_SP_KEYS = _MB_KEYS | {"n_between"}
+
+
+class TestMbandConfig:
+    def test_mband_config_keys(self):
+        r = _mb_map("mband", _FRAME)
+        cfg = r._dash_agg_config
+        assert set(cfg) == _MB_KEYS
+        assert r._dash_agg_source is r.data_source
+        assert hasattr(r, "_dash_agg_rows")
+        assert cfg["type"] == "mband" and cfg["cols"] == ["x_mb", "y_mb"]
+        assert cfg["bands"] is None and cfg["max_bands"] == dr._MAX_MBANDS
+        assert _mb_map("mband", _FRAME, {"bands": "5"})._dash_agg_config[
+            "bands"] == 5
+        json.dumps(cfg, allow_nan=False)
+
+    def test_mspline_config_keys(self):
+        cfg = _mb_map("mspline", _FRAME)._dash_agg_config
+        assert set(cfg) == _SP_KEYS
+        assert cfg["cols"] == ["x_sp", "y_sp"]
+        assert cfg["bands"] is None and cfg["n_between"] == 10
+        cfg = _mb_map("mspline", _FRAME, {"bands": "5",
+                                       "n": "4"})._dash_agg_config
+        assert (cfg["bands"], cfg["n_between"]) == (5, 4)
+
+    @pytest.mark.parametrize("ptype", ["mband", "mspline"])
+    def test_mband_empty_layer_is_tagged(self, ptype):
+        r = _mb_map(ptype, _FRAME.assign(y=np.nan))
+        assert len(r.data_source.data[r._dash_agg_config["cols"][0]]) == 0
+        assert r._dash_agg_config["type"] == ptype
+        assert r._dash_agg_source is r.data_source
+
+    @pytest.mark.parametrize("ptype", ["mband", "mspline"])
+    def test_weights_are_inert_in_the_config(self, ptype):
+        cfg = _mb_map(ptype, _FRAME, _AW)._dash_agg_config
+        assert cfg["wvar"] is None and cfg["wtype"] is None
+
+    @pytest.mark.parametrize("ptype", ["mband", "mspline"])
+    def test_a_recast_layer_is_not_tagged(self, ptype):
+        r = _mb_map(ptype, _FRAME, {"recast": "scatter"})
+        assert not hasattr(r, "_dash_agg_config")
+
+
+class TestMbandStaleKind:
+    def test_mband_and_mspline_are_refit(self):
+        for t in ("mband", "mspline"):
+            assert t in dr._DASH_JS_REFIT_TYPES
+            assert dr._dash_stale_kind(t, {}) is None
+            assert dr._dash_stale_kind(t, {"recast": "scatter"}) == "fit"
+
+
+def _mb_datasets():
+    with open(_TRUTH) as fh:
+        truth = json.load(fh)
+    out = []
+    for sect, kx, ky in (("mband", "band_x", "band_y"),
+                         ("mspline_knots", "knot_x", "knot_y")):
+        for key, rec in sorted(truth[sect].items()):
+            out.append((sect + ":" + key, rec, kx, ky))
+    return truth, out
+
+
+def _mb_xy(truth, key):
+    ds = key.split(":")[0]
+    meta = truth["datasets"][ds]
+    df = pd.read_csv(os.path.join(_DATA, ds + ".csv")).dropna(
+        subset=[meta["x"], meta["y"]])
+    return df[meta["x"]].to_numpy(float), df[meta["y"]].to_numpy(float)
+
+
+def _mb_bands(rec, n):
+    import re
+    m = re.search(r"bands\((\d+)\)", rec.get("cmd", ""))
+    return int(m.group(1)) if m else dr._mband_default_bands(n)
+
+
+_MB_TRUTH, _MB_RECORDS = _mb_datasets()
+
+
+def _cm_js(x, y, B, span=None):
+    lo, hi = span if span is not None else (None, None)
+    got = _js("dash_cross_medians(%s, %s, %d, %s, %s)" % (
+        json.dumps([float(v) for v in x]), json.dumps([float(v) for v in y]),
+        B, json.dumps(lo), json.dumps(hi)))
+    return got["kx"], got["ky"]
+
+
+@requires_node
+class TestMbandTwin:
+    def test_default_bands(self):
+        ns = list(range(0, 301)) + [
+            int(v["N_xy"]) for v in _MB_TRUTH["mband_default_band_count"]
+            .values()]
+        got = _js_batch("dash_mband_default_bands", [[n] for n in ns])
+        assert got == [dr._mband_default_bands(n) for n in ns]
+        for v in _MB_TRUTH["mband_default_band_count"].values():
+            assert dr._mband_default_bands(int(v["N_xy"])) == int(
+                v["measured_default_bands"])
+
+    @pytest.mark.parametrize("case", [c[0] for c in _MB_RECORDS])
+    def test_fixture_knots(self, case):
+        _key, rec, kxk, kyk = [c for c in _MB_RECORDS if c[0] == case][0]
+        x, y = _mb_xy(_MB_TRUTH, case.split(":", 1)[1])
+        B = _mb_bands(rec, len(x))
+        gx, gy = _cm_js(x, y, B)
+        wx, wy = dr.GlyphMapper._cross_medians(x, y, B)
+        assert gx == list(wx) and gy == list(wy)
+        np.testing.assert_allclose(gx, rec[kxk], rtol=1e-6)
+        np.testing.assert_allclose(gy, rec[kyk], rtol=1e-6)
+
+    def test_edge_values_belong_above(self):
+        x = np.arange(11) / 10.0
+        y = np.array([7, 3, 10, 6, 2, 9, 5, 1, 8, 4, 0], dtype=float)
+        gx, gy = _cm_js(x, y, 10)
+        wx, wy = dr.GlyphMapper._cross_medians(x, y, 10)
+        assert len(gx) == 10 and gx == list(wx) and gy == list(wy)
+
+    def test_even_band_median(self):
+        x = np.array([1.0, 2, 3, 4, 10])
+        y = np.array([4.0, 1, 3, 2, 9])
+        gx, gy = _cm_js(x, y, 2)
+        assert gx == [2.5, 10.0] and gy == [2.5, 9.0]
+        wx, wy = dr.GlyphMapper._cross_medians(x, y, 2)
+        assert gx == list(wx) and gy == list(wy)
+
+    def test_constant_x_is_one_knot(self):
+        gx, gy = _cm_js([5.0, 5.0, 5.0], [2.0, 4.0, 6.0], 4)
+        assert (gx, gy) == ([5.0], [4.0])
+
+    def test_a_span_widens_the_bands(self):
+        # WP-31 C6b: the range of every row with x, the medians of the
+        # complete rows.
+        x, y = np.array([2.0, 3, 4]), np.array([5.0, 6, 7])
+        gx, gy = _cm_js(x, y, 2, (0.0, 6.0))
+        wx, wy = dr.GlyphMapper._cross_medians(x, y, 2, span=(0.0, 6.0))
+        assert gx == list(wx) == [2.0, 3.5] and gy == list(wy)
+
+    def test_the_sample(self):
+        ac = {"xvar": "x", "yvar": "y", "xdatekind": None,
+              "ydatekind": None}
+        d = {"x": [1.0, 2.0, None, 4.0, None, 9.0],
+             "y": [None, 1.0, 2.0, 3.0, None, None]}
+        got = run_js(_fit_js() + "process.stdout.write(JSON.stringify("
+                     "dash_mband_sample(" + json.dumps(ac) + ", "
+                     + json.dumps(d) + ", (c) => c)));")
+        n, span = dr.GlyphMapper._mband_sample(
+            np.array(d["x"], dtype=float), np.array(d["y"], dtype=float))
+        assert (got["n"], got["lo"], got["hi"]) == (n, *span)
+
+
+def _sp_grid(kx, n):
+    return np.concatenate([np.linspace(kx[i], kx[i + 1], n + 2)[:-1]
+                           for i in range(len(kx) - 1)] + [kx[-1:]])
+
+
+@requires_node
+class TestSplineTwin:
+    @pytest.mark.parametrize("case", sorted(_MB_TRUTH["mspline"]))
+    def test_fixture_curves(self, case):
+        rec = _MB_TRUTH["mspline_knots"][case]
+        kx = np.asarray(rec["knot_x"], float)
+        ky = np.asarray(rec["knot_y"], float)
+        n = int(_MB_TRUTH["mspline"][case]["n_option"])
+        xg = _sp_grid(kx, n)
+        got = _js("dash_natural_cubic_spline(%s, %s, %s)" % (
+            json.dumps(kx.tolist()), json.dumps(ky.tolist()),
+            json.dumps(xg.tolist())))
+        np.testing.assert_allclose(got, dr._natural_cubic_spline(kx, ky, xg),
+                                   rtol=1e-9, atol=1e-12)
+        assert len(got) == int(_MB_TRUTH["mspline"][case]["n_points"])
+
+    def test_two_knots(self):
+        got = _js("dash_natural_cubic_spline([1, 3], [2, 6], [1, 2, 3])")
+        assert got == pytest.approx([2.0, 4.0, 6.0], rel=1e-12)
+
+
+def _mb_case(ptype, df, opts):
+    """The branch on *df*'s rows against the mapper's source: the complete
+    rows as fx/fy, every row (missing y or x kept) as the layer's
+    columns."""
+    r = _mb_map(ptype, df, opts)
+    x, y, _w = _rows(df, opts)
+    raw = {"x": df["x"].to_numpy(float), "y": df["y"].to_numpy(float)}
+    got = js_runner.run_fit_js_block(r._dash_agg_config, x, y, data=raw)
+    data = r.data_source.data
+    for c in r._dash_agg_config["cols"]:
+        np.testing.assert_allclose(_nan(got[c]), np.asarray(data[c], float),
+                                   rtol=1e-9, atol=1e-12, equal_nan=True)
+    return got
+
+
+_MB_FRAME_MISSING = _FRAME.assign(
+    y=np.where(np.arange(30) % 7 == 3, np.nan, _FRAME["y"]),
+    x=np.where(np.arange(30) % 11 == 5, np.nan, _FRAME["x"]))
+_MB_CASES = [
+    ("default", _FRAME, {}),
+    ("bands(5) n(4)", _FRAME, {"bands": "5", "n": "4"}),
+    ("bands(20)", _FRAME, {"bands": "20"}),
+    ("two knots", _FRAME, {"bands": "2"}),
+    ("one row", _FRAME.iloc[:1], {}),
+    ("no rows", _FRAME.assign(y=np.nan), {}),
+    ("constant x", _FRAME.assign(x=2500.0), {}),
+    ("missing y and x", _MB_FRAME_MISSING, {}),
+    ("[aw=w] inert", _FRAME, _AW),
+    ("stairstep", _FRAME, {"connect": "stairstep"}),
+]
+
+
+@requires_node
+class TestMbandBranch:
+    @pytest.mark.parametrize("df,opts", [c[1:] for c in _MB_CASES],
+                             ids=[c[0] for c in _MB_CASES])
+    def test_matches_python(self, df, opts):
+        _mb_case("mband", df, opts)
+
+    def test_no_rows_writes_empty_columns(self):
+        assert _mb_case("mband", _FRAME.assign(y=np.nan), {}) == {
+            "x_mb": [], "y_mb": []}
+
+
+@requires_node
+class TestMsplineBranch:
+    @pytest.mark.parametrize("df,opts", [c[1:] for c in _MB_CASES],
+                             ids=[c[0] for c in _MB_CASES])
+    def test_matches_python(self, df, opts):
+        _mb_case("mspline", df, opts)
+
+    def test_two_knots_are_the_knots(self):
+        got = _mb_case("mspline", _FRAME, {"bands": "2"})
+        assert len(got["x_sp"]) == 2
+
+
+_MB_REFIT = [
+    ("mband", [plot_for("scatter"), plot_for("mband")]),
+    ("mspline", [plot_for("scatter"), plot_for("mspline")]),
+    ("mspline bands(5) n(4)",
+     [plot_for("mspline", {"bands": "5", "n": "4"})]),
+    ("mband bands(20) [aw=weight]",
+     [plot_for("mband", {"bands": "20", "weight": "aweight",
+                         "wexp": "weight"})]),
+]
+
+
+@requires_node
+class TestTheSavedMbandRefits:
+    @pytest.mark.parametrize("move", _MOVES, ids=[m[0] for m in _MOVES])
+    @pytest.mark.parametrize("plots", [s[1] for s in _MB_REFIT],
+                             ids=[s[0] for s in _MB_REFIT])
+    def test_saved_equals_served(self, plots, move):
+        _, filt, action, _oracle = move
+        spec = _spec(plots, {"filter": filt})
+        r = _render(spec)
+        built = _fit_data(r.figures["g1"].renderers)
+        _move(r, action)
+        sx, sy = _fit_data(r.figures["g1"].renderers)
+        vx, vy = _served_fit_after(spec, action)
+        np.testing.assert_allclose(sx, vx, rtol=1e-9, atol=1e-9)
+        np.testing.assert_allclose(sy, vy, rtol=1e-9, atol=1e-9)
+        assert (built[1].shape != sy.shape
+                or not np.allclose(built[1], sy)), "the move changed nothing"
+
+    def test_a_date_x(self):
+        spec = _spec([plot_for("mspline", yvar="mpg", xvar="when")],
+                     {"filter": _MOVES[1][1], "formats": {"when": "%td"}})
+        r = _render(spec)
+        _move(r, _MOVES[1][2])
+        sx, sy = _fit_data(r.figures["g1"].renderers)
+        vx, vy = _served_fit_after(spec, _MOVES[1][2])
+        np.testing.assert_allclose(sx, vx, rtol=0, atol=1.0)
+        np.testing.assert_allclose(sy, vy, rtol=1e-9)
+
+    @pytest.mark.parametrize("ptype", ["mband", "mspline"])
+    def test_rows_missing_y_after_a_move(self, ptype):
+        # WP-31 C6b on the saved page: the kept rows missing y still count
+        # in the band count and range.  The oracle is the mapper on the
+        # kept rows.
+        df = _DF.copy()
+        df.loc[[0, 4], "mpg"] = np.nan
+        spec = _spec([plot_for(ptype)], {"filter": _MOVES[2][1]})
+        r = _render(spec, df)
+        _move(r, _MOVES[2][2])
+        sx, sy = _fit_data(r.figures["g1"].renderers)
+        kept = df[df["price"] >= 4500].reset_index(drop=True)
+        o = _mb_map(ptype, kept, xvar="weight", yvar="mpg")
+        c = o._dash_agg_config["cols"]
+        np.testing.assert_allclose(sx, o.data_source.data[c[0]], rtol=1e-12)
+        np.testing.assert_allclose(sy, o.data_source.data[c[1]], rtol=1e-12)
+
+    def test_a_move_leaving_one_row_is_one_knot(self):
+        spec = _spec([plot_for("scatter"), plot_for("mband")],
+                     {"filter": "price, type(slider)"})
+        r = _render(spec)
+        _move(r, ("Slider", 11385.0))
+        x, y = _fit_data(r.figures["g1"].renderers)
+        assert (list(x), list(y)) == ([2650.0], [23.0])

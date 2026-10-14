@@ -59,7 +59,9 @@ from test_server_layer_defects import plot_for  # noqa: E402
 # lfit and qfit (WP-31 F1a), lowess (F1c), lfitci and qfitci (F1b),
 # lpoly (F1d) and lpolyci (F1e) are refitted by the saved page; see _REFIT.
 # Flipped (WP-31 F1e): held lpolyci, frozen until the page refitted it.
-_FROZEN = ["fpfit", "fpfitci", "mband", "mspline", "histogram", "kdensity"]
+# Flipped (WP-31 F1f): held mband and mspline, frozen until the page
+# recomputed them.
+_FROZEN = ["fpfit", "fpfitci", "histogram", "kdensity"]
 #: The frozen fit layer the cue's own mechanics are measured on.  It was
 #: lfit until the saved page refitted lfit (WP-31 F1a); fpfit stays frozen
 #: longest (WP-31 F1g refits it last).
@@ -306,7 +308,8 @@ class TestTheCueAppearsOnAMove:
 _GIVEN_WIDTHS = {"lpoly": {"bwidth": "400"},
                  "lpolyci": {"bwidth": "400", "pwidth": "600"}}
 #: WP-31 F1: the computed layers the saved page refits after a move.
-_REFIT = ["lfit", "qfit", "lowess", "lfitci", "qfitci", "lpoly", "lpolyci"]
+_REFIT = ["lfit", "qfit", "lowess", "lfitci", "qfitci", "lpoly", "lpolyci",
+          "mband", "mspline"]
 
 
 @requires_node
@@ -680,8 +683,9 @@ class TestTheStaleKind:
         fits = [t for t in _FROZEN if t not in ("histogram", "kdensity")]
         # 11 -> 9: F1a refits lfit and qfit; 9 -> 8: F1c refits lowess;
         # 8 -> 6: F1b refits lfitci and qfitci; 6 -> 5: F1d refits lpoly;
-        # 5 -> 4: F1e refits lpolyci
-        assert len(fits) == 4
+        # 5 -> 4: F1e refits lpolyci; 4 -> 2: F1f recomputes mband and
+        # mspline
+        assert len(fits) == 2
         for t in fits:
             assert dr._dash_stale_kind(t, {}) == "fit"
         assert dr._dash_stale_kind("histogram", {}) == "bins"

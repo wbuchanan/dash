@@ -2043,7 +2043,7 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
 })
 # The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
 _DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci",
-                                  "lpoly", "lpolyci"})
+                                  "lpoly", "lpolyci", "mband", "mspline"})
 #: WP-31 F1c (D-16.e): the saved page re-smooths a lowess only when N*(2k+1) is at most this; above it the layer is left empty after a move.
 _DASH_LOWESS_JS_MAX_OPS = 2e8
 
@@ -22492,6 +22492,15 @@ class GlyphMapper:
                                            lo=1.0, hi=300.0) or 10.0)
 
         kx, ky = self._cross_medians(x_clean, y_clean, n_bands, span=span)
+        # WP-31 F1f: the saved page recomputes the knots and the spline
+        # from the kept rows (D-25.a: a default band count follows them;
+        # D-25.b: _MAX_MBANDS travels as max_bands).  The weight is inert.
+        _cfg = dict(self._fit_agg_config("mspline", xvar, yvar, None, None,
+                                         fig, options, ["x_sp", "y_sp"],
+                                         _FIT_GRID, None),
+                    bands=(int(requested) if requested is not None
+                           else None),
+                    max_bands=int(_MAX_MBANDS), n_between=int(n_between))
         # No knot -- no observation -- is no curve, drawn in silence as
         # twoway draws it (with bands(), or in a by() panel; with neither,
         # dash.ado refuses it as twoway does).
@@ -22500,6 +22509,8 @@ class GlyphMapper:
             # width family survive the bail-out (WP-29 P0.18).
             r = self._empty_fit_line(fig, "x_sp", "y_sp", options,
                                      color_idx, yvar, width_kind="")
+            if not options.get("recast"):
+                self._tag_fit(r, source, view, _cfg)
             return self._mark_silent([r])
 
         if len(kx) < 3:
@@ -22530,7 +22541,7 @@ class GlyphMapper:
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
                      legend_label=yvar), role=None)
-        return [r]
+        return [self._tag_fit(r, source, view, _cfg)]
 
     @staticmethod
     def _mband_sample(x: "np.ndarray", y: "np.ndarray") -> tuple:
@@ -22664,6 +22675,14 @@ class GlyphMapper:
                    else _mband_default_bands(n_all))
         x_mids, y_meds = self._cross_medians(x_clean, y_clean, n_bands,
                                              span=span)
+        # WP-31 F1f: the saved page recomputes the cross medians from the
+        # kept rows (D-25.a, D-25.b; see map_mspline).
+        _cfg = dict(self._fit_agg_config("mband", xvar, yvar, None, None,
+                                         fig, options, ["x_mb", "y_mb"],
+                                         _FIT_GRID, None),
+                    bands=(int(requested) if requested is not None
+                           else None),
+                    max_bands=int(_MAX_MBANDS))
 
         if not len(x_mids):
             # No observation, drawn in silence as twoway draws it (see
@@ -22671,6 +22690,8 @@ class GlyphMapper:
             # style it so lwidth/lcolor/lpattern survive.
             r = self._empty_fit_line(fig, "x_mb", "y_mb", options,
                                      color_idx, yvar, width_kind="")
+            if not options.get("recast"):
+                self._tag_fit(r, source, view, _cfg)
             return self._mark_silent([r])
 
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
@@ -22690,7 +22711,7 @@ class GlyphMapper:
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, ""),
                      legend_label=yvar), role=None)
-        return [r]
+        return [self._tag_fit(r, source, view, _cfg)]
 
     def map_function(
         self,
@@ -28591,6 +28612,113 @@ function dash_fill_split_n(src, xc, ycols, pin) {
     src.data = out;
     src.change.emit();
 }
+// ---- mband / mspline (WP-31 F1f): Stata's cross medians and the natural
+// cubic spline, as GlyphMapper._cross_medians, _mband_default_bands and
+// _natural_cubic_spline compute them.
+// Stata's median (summarize, detail): the middle order statistic, the
+// mean of the two middle ones on an even count.
+function dash_median(v) {
+    const s = v.slice().sort((a, b) => a - b);
+    const m = s.length;
+    if (!m) return NaN;
+    return (m % 2) ? s[(m - 1) / 2] : (s[m / 2 - 1] + s[m / 2]) / 2;
+}
+// _gs_default_bands.ado: round(min(sqrt N, 10 log10 N)), at least
+// min(N, 2).
+function dash_mband_default_bands(n) {
+    if (n < 1) return 1;
+    return Math.max(Math.min(n, 2),
+                    Math.floor(Math.min(Math.sqrt(n), 10 * Math.log10(n)) + 0.5));
+}
+// What twoway's median bands read beyond the complete rows (WP-31 C6b,
+// GlyphMapper._mband_sample): n, the kept rows with y or x present (the
+// default band count's N), and lo/hi, the x range of the kept rows with
+// an x (null when none), dates in their Stata units.
+function dash_mband_sample(ac, data, pick) {
+    const xc = pick(data[ac.xvar]) || [], yc = pick(data[ac.yvar]) || [];
+    const fin = (v) => typeof v === "number" && isFinite(v);
+    const unit = (v, kind) => {
+        if (!fin(v)) return NaN;
+        if (!kind) return v;
+        const u = dash_stata_value_of(v, kind);
+        return u === null ? NaN : u;
+    };
+    let n = 0, lo = Infinity, hi = -Infinity;
+    const len = Math.max(xc.length, yc.length);
+    for (let i = 0; i < len; i++) {
+        const xv = unit(xc[i], ac.xdatekind), yv = unit(yc[i], ac.ydatekind);
+        const hx = isFinite(xv);
+        if (hx || isFinite(yv)) n++;
+        if (hx) { if (xv < lo) lo = xv; if (xv > hi) hi = xv; }
+    }
+    return lo <= hi ? {n: n, lo: lo, hi: hi} : {n: n, lo: null, hi: null};
+}
+// _cross_medians: the x range [lo, hi] (the complete rows' own when lo or
+// hi is null) cut into B equal-width bands, an observation in band
+// floor((x - lo) B / (hi - lo)) capped at B - 1 -- an edge belongs to the
+// band above; the median x and median y of each band's complete rows.
+// One knot (lo, median y) when the range does not vary.  Returns {kx, ky}.
+function dash_cross_medians(x, y, B, lo, hi) {
+    const n = x.length;
+    if (!n) return {kx: [], ky: []};
+    let mn = lo, mx = hi;
+    if (mn === null || mn === undefined || mx === null || mx === undefined) {
+        mn = Infinity; mx = -Infinity;
+        for (const v of x) { if (v < mn) mn = v; if (v > mx) mx = v; }
+    }
+    if (mx === mn) return {kx: [mn], ky: [dash_median(y)]};
+    B = Math.max(1, Math.trunc(B));
+    const gx = new Array(B).fill(null), gy = new Array(B).fill(null);
+    for (let i = 0; i < n; i++) {
+        let b = Math.floor((x[i] - mn) * B / (mx - mn));
+        if (b > B - 1) b = B - 1;
+        if (gx[b] === null) { gx[b] = []; gy[b] = []; }
+        gx[b].push(x[i]); gy[b].push(y[i]);
+    }
+    const kx = [], ky = [];
+    for (let b = 0; b < B; b++) {
+        if (gx[b] !== null) { kx.push(dash_median(gx[b])); ky.push(dash_median(gy[b])); }
+    }
+    return {kx: kx, ky: ky};
+}
+// _natural_cubic_spline through (kx, ky) at xg: second derivatives zero
+// at both ends, the interior ones from the tridiagonal system by the
+// Thomas algorithm; two knots are the chord, one its y.
+function dash_natural_cubic_spline(kx, ky, xg) {
+    const K = kx.length;
+    if (K < 2) return xg.map(() => K ? ky[0] : NaN);
+    const h = [];
+    for (let i = 0; i < K - 1; i++) h.push(kx[i + 1] - kx[i]);
+    const M = new Array(K).fill(0);
+    if (K > 2) {
+        const m = K - 2, a = [], b = [], c = [], rhs = [];
+        for (let i = 0; i < m; i++) {
+            a.push(h[i]); b.push(2 * (h[i] + h[i + 1])); c.push(h[i + 1]);
+            rhs.push(6 * ((ky[i + 2] - ky[i + 1]) / h[i + 1] - (ky[i + 1] - ky[i]) / h[i]));
+        }
+        for (let i = 1; i < m; i++) {
+            const f = a[i] / b[i - 1];
+            b[i] -= f * c[i - 1];
+            rhs[i] -= f * rhs[i - 1];
+        }
+        const sol = new Array(m).fill(0);
+        sol[m - 1] = rhs[m - 1] / b[m - 1];
+        for (let i = m - 2; i >= 0; i--) sol[i] = (rhs[i] - c[i] * sol[i + 1]) / b[i];
+        for (let i = 0; i < m; i++) M[i + 1] = sol[i];
+    }
+    // numpy's searchsorted(kx, v, side="right") - 1, clipped to [0, K-2];
+    // xg is sorted, so the segment only moves right.
+    let seg = 0;
+    return xg.map(v => {
+        while (seg > 0 && v < kx[seg]) seg--;
+        while (seg < K - 2 && v >= kx[seg + 1]) seg++;
+        const x0 = kx[seg], x1 = kx[seg + 1], y0 = ky[seg], y1 = ky[seg + 1];
+        const m0 = M[seg], m1 = M[seg + 1];
+        const hh = x1 - x0, t = x1 - v, u = v - x0;
+        return m0 * t * t * t / (6 * hh) + m1 * u * u * u / (6 * hh)
+            + (y0 / hh - m0 * hh / 6) * t + (y1 / hh - m1 * hh / 6) * u;
+    });
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -29051,6 +29179,31 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         } else {
             dash_fit_write(src, Object.assign({}, ac, {cols: ac.cols.slice(0, 2)}), R.lx, R.ly, null);
         }
+    } else if (ac.type === 'mband' || ac.type === 'mspline') {
+        // WP-31 F1f: the cross medians of the kept rows (mband), and the
+        // natural cubic spline through them at n_between points strictly
+        // between each pair of knots plus the knots (mspline; the knots
+        // alone when fewer than three).  The band count and range read
+        // every kept row with y or x (C6b); a default count follows them
+        // (D-25.a).  No complete row draws nothing.
+        const smp = dash_mband_sample(ac, _ac_data, _pick);
+        let B = (ac.bands === null || ac.bands === undefined)
+            ? dash_mband_default_bands(smp.n) : ac.bands;
+        B = Math.max(1, Math.min(Math.trunc(B), ac.max_bands || 1000));
+        const cm = dash_cross_medians(fx, fy, B, smp.lo, smp.hi);
+        if (ac.type === 'mband' || cm.kx.length < 3) {
+            dash_fit_write(src, ac, cm.kx, cm.ky, null);
+            continue;
+        }
+        const nb = Math.max(1, Math.min(300, Math.trunc(ac.n_between || 10)));
+        const xg = [];
+        for (let i = 0; i < cm.kx.length - 1; i++) {
+            // np.linspace(a, b, nb + 2)[:-1]: a + k (b - a) / (nb + 1).
+            const a = cm.kx[i], b = cm.kx[i + 1], step = (b - a) / (nb + 1);
+            for (let k = 0; k < nb + 1; k++) xg.push(a + k * step);
+        }
+        xg.push(cm.kx[cm.kx.length - 1]);
+        dash_fit_write(src, ac, xg, dash_natural_cubic_spline(cm.kx, cm.ky, xg), null);
     // DASH_FIT_BRANCHES_END
     }
 }

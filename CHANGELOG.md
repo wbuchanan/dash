@@ -414,7 +414,7 @@ and now matches Stata.
 
 <!-- WP-31 D1 -->
 
-<!-- WP-31 F1f -->
+- mband and mspline on a saved page after a filter move: the build's knots (marked) -> the cross medians and spline of the kept rows (WP-31, F1f)
 
 <!-- WP-31 D2 -->
 

@@ -1998,9 +1998,8 @@ it.  The saved page and the served app differ as follows:
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
-{col 5}Fit-line recompute on filter{col 38}lfit, qfit, lowess,{col 59}Yes
-{col 38}lfitci, qfitci, lpoly,
-{col 38}lpolyci
+{col 5}Fit-line recompute on filter{col 38}all but fpfit,{col 59}Yes
+{col 38}fpfitci (marked)
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
@@ -2024,10 +2023,12 @@ bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
-does not refit a fitted or smoothed line ({cmd:fpfit}, {cmd:fpfitci},
-{cmd:mband}, {cmd:mspline}, a {cmd:recast()}
+does not refit a fractional-polynomial fit ({cmd:fpfit}, {cmd:fpfitci}),
+a {cmd:recast()}
 fit, or a band or line {cmd:ciplot()} or {cmd:fitplot()} draws as another
-type).  A straight or quadratic fit and its confidence band ({cmd:lfit},
+type.  The median bands and median spline ({cmd:mband}, {cmd:mspline})
+are recomputed from the kept rows, the default number of bands following
+their count as {cmd:twoway}'s does.  A straight or quadratic fit and its confidence band ({cmd:lfit},
 {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}) are refitted from the rows that
 pass the filter, on {cmd:n()} points over their range or {cmd:range()},
 the band at its {cmd:level()} with {cmd:stdp}, {cmd:stdf} or {cmd:stdr}.  A
@@ -3361,7 +3362,10 @@ the knots is drawn at the knots plus {cmd:n()} equally spaced points
 between each adjacent pair -- a natural cubic spline, which reproduces
 Stata's plotted points to the precision Stata stores them at; with one
 or two knots only the knots are drawn, as in Stata.  An observation on
-a band's edge belongs to the band above it.  {cmd:mband} draws the same
+a band's edge belongs to the band above it.  As in {cmd:twoway}, the
+default number of bands counts every observation with y or x, and the
+bands cut the range of every observation with an x, the medians taken
+over the observations with both.  {cmd:mband} draws the same
 cross medians as a line, from two observations up.  A weight on either
 is accepted and, as in {cmd:twoway}, changes nothing -- not even a
 missing or zero weight drops its observation.
