@@ -1174,9 +1174,9 @@ class TestAnUnknownLineStyleIsNamedWithoutALine:
 
 
 class TestColourPalettes:
-    """dash.sthlp: colpalette() is viridis (the default for a continuous
-    colorvar()), magma, inferno, plasma, cividis, turbo, greys, blues or
-    reds -- each Bokeh's 256-colour palette of that name."""
+    """dash.sthlp: colpalette() is viridis, magma, inferno, plasma,
+    cividis, turbo, greys, blues or reds -- each Bokeh's 256-colour palette
+    of that name; without it the key is twoway's colour rule (WP-31 C8b)."""
 
     @pytest.mark.parametrize("mode", _MODES)
     @pytest.mark.parametrize("name", ["", "viridis", "magma", "inferno",
@@ -1190,7 +1190,12 @@ class TestColourPalettes:
         fig, _ = _render(mode, [plot_for("scatter", opts)])
         bars = [m for m in fig.right if isinstance(m, ColorBar)]
         assert bars, "no colour bar"
-        want = getattr(palettes, (name or "viridis").capitalize() + "256")
+        # Flipped (WP-31 C8b): viridis with no colpalette() was wrong
+        # because twoway draws the key in its colour rule, hue from blue to
+        # red under s2color (colorvar_options_truth.json D01); colpalette()
+        # stays dash's own.
+        want = (getattr(palettes, name.capitalize() + "256") if name else
+                dr._dash_colorrule_palette("hue", "#0000ff", "#ff0000", 256))
         assert list(bars[0].color_mapper.palette) == list(want)
 
 

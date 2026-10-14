@@ -906,7 +906,9 @@ end
     _gt_done CV-06 "hostile ztitle() text registered without expansion"
 
     // ------------------------------------------------------------
-    // CV-07: colorlevels() is no longer named; colorrule() still is
+    // CV-07: colorlevels() is no longer named; nor, since WP-31 C8b,
+    // colorrule() (Flipped: "colorrule() still is" was wrong because dash
+    // draws it as twoway does, colorvar_options_truth.json)
     // ------------------------------------------------------------
     capture dash clear
     capture log close _cvlog
@@ -917,8 +919,8 @@ end
     local cv7_rule = r(found)
     cert_log_has "`cvlog'", needle("colorlevels()")
     local cv7_lv = r(found)
-    _gt_expect CV-07 "(`cv7_rule' == 1 & `cv7_lv' == 0)" "colorrule() named `cv7_rule', colorlevels() named `cv7_lv'"
-    _gt_done CV-07 "the note names colorrule() and not colorlevels()"
+    _gt_expect CV-07 "(`cv7_rule' == 0 & `cv7_lv' == 0)" "colorrule() named `cv7_rule', colorlevels() named `cv7_lv'"
+    _gt_done CV-07 "the note names neither colorrule() nor colorlevels()"
 
     // ------------------------------------------------------------
     // CV-08: colorlevels() of 0, 1, a negative number and one over 100

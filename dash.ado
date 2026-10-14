@@ -447,7 +447,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
-        _dash_immediate _dash_say _dash_note _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_colorrule_check _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -955,6 +955,7 @@ program define _dash_parse_graph_opts, sclass
         TLIne(string asis) ///
         TLABEL2(string asis)      TTICK2(string asis)       TLINE2(string asis) ///
         TSCALE2(string asis)      TTITLE2(string asis) ///
+        CLEGend(string asis)      PLEGend(string asis)      PCYCle(string) ///
         * ///
     ]
 
@@ -1049,6 +1050,9 @@ program define _dash_parse_graph_opts, sclass
     sreturn local xline        : copy local xline
     sreturn local yline        : copy local yline
     sreturn local legend       : copy local legend
+    sreturn local clegend      : copy local clegend
+    sreturn local plegend      : copy local plegend
+    sreturn local pcycle       : copy local pcycle
     sreturn local by           : copy local by
     sreturn local xscale       : copy local xscale
     sreturn local yscale       : copy local yscale
@@ -1174,6 +1178,10 @@ program define _dash_parse_plot_opts, sclass
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
         COLORLEVels(string)       COLORVARMINMax ///
+        COLORSTart(string)        COLOREnd(string)          COLORRule(string) ///
+        COLORFILLONLY             COLORFORMISSing(string)   COLORKEYSRANge ///
+        COLORKEYSREVerse          COLORALLOWMULTIPLE        COLOROTHERLABel(string) ///
+        CLEGend(string asis)      PLEGend(string asis)      PCYCle(string) ///
         BWIDth(string)            DEGree(string)            PSTYle(string asis) ///
         CMISSing(string asis)     RECAST(string)            Connect(string asis) ///
         CMISSINGS(string asis)    RECASTAs(string)          TYpe(string) ///
@@ -1297,6 +1305,20 @@ program define _dash_parse_plot_opts, sclass
     if `: length local yla2' & !`: length local ylabel2' local ylabel2 : copy local yla2
     if `: length local ysc2' & !`: length local yscale2' local yscale2 : copy local ysc2
     if `: length local yti2' & !`: length local ytitle2' local ytitle2 : copy local yti2
+    // colorformissing() is twoway's name for the colour of missing values,
+    // dash's colormissing() (WP-31 C8b).  twoway has the one option and
+    // refuses colormissing() (colorvar_options_truth.json R04); given
+    // both, colorformissing() is read.
+    if `"`macval(colorformissing)'"' != "" local colormissing : copy local colorformissing
+    // colorvar(i.var) is colorvar(var) colordiscrete coloruseplegend
+    // (twoway_yxview_parse.class:213-218), read by value.  On a type
+    // twoway does not colour, _dash_cv_drop empties all three.
+    mata: st_local("_cv_iv", strofreal(anyof(("i.", "I."), substr(strtrim(st_local("colorvar")), 1, 2))))
+    if `_cv_iv' {
+        mata: st_local("colorvar", substr(strtrim(st_local("colorvar")), 3, .))
+        local colordiscrete colordiscrete
+        local coloruseplegend coloruseplegend
+    }
 
     // Options dash accepts but does not yet honour.  Each supplied one
     // is recorded by name so it is reported rather than silently
@@ -1323,8 +1345,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
     if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
-    if `: length local colorlist' local _dash_pending `"`_dash_pending' colorlist"'
-    if `: length local coloruseplegend' local _dash_pending `"`_dash_pending' coloruseplegend"'
     // As in the graph-level block: build-time options written on a graph.
     if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
     if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
@@ -1448,6 +1468,14 @@ program define _dash_parse_plot_opts, sclass
     sreturn local colormissing     : copy local colormissing
     sreturn local colorlevels      : copy local colorlevels
     sreturn local colorvarminmax   : copy local colorvarminmax
+    sreturn local colorstart       : copy local colorstart
+    sreturn local colorend         : copy local colorend
+    sreturn local colorrule        : copy local colorrule
+    sreturn local colorfillonly    : copy local colorfillonly
+    sreturn local colorkeysrange   : copy local colorkeysrange
+    sreturn local colorkeysreverse : copy local colorkeysreverse
+    sreturn local colorallowmultiple : copy local colorallowmultiple
+    sreturn local colorotherlabel  : copy local colorotherlabel
     sreturn local bwidth           : copy local bwidth
     sreturn local bw               : copy local bw
     sreturn local degree           : copy local degree
@@ -1570,6 +1598,9 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_xline        : copy local xline
     sreturn local g_yline        : copy local yline
     sreturn local g_legend       : copy local legend
+    sreturn local g_clegend      : copy local clegend
+    sreturn local g_plegend      : copy local plegend
+    sreturn local g_pcycle       : copy local pcycle
     sreturn local g_by           : copy local by
     sreturn local g_xscale       : copy local xscale
     sreturn local g_yscale       : copy local yscale
@@ -2252,7 +2283,8 @@ end
 // by _dash_process_segment before _dash_validate_opts with the layer's own
 // type and the type it is drawn as (recast(area) is silent too); empties
 // the options in s(), so the JSON writer writes none of them and the
-// renderer never sees them.  coloruseplegend is section 17's.  sclass: it
+// renderer never sees them; WP-31 C8b added the other colorvar options.
+// sclass: it
 // touches only those s() macros.
 // ================================================================
 program define _dash_cv_drop, sclass
@@ -2260,7 +2292,10 @@ program define _dash_cv_drop, sclass
     args own drawn
     local cv_silent "area fpfit fpfitci function histogram kdensity lfit lfitci lowess lpoly lpolyci mband mspline pcarrowi pci qfit qfitci rarea scatteri"
     if !`: list own in cv_silent' & !`: list drawn in cv_silent' exit
-    foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing colorlevels colorvarminmax {
+    local cv_opts "colorvar colordiscrete colorcuts colpalette colornlevels colormissing colorlevels colorvarminmax"
+    local cv_opts "`cv_opts' coloruseplegend colorlist colorstart colorend colorrule colorfillonly"
+    local cv_opts "`cv_opts' colorkeysrange colorkeysreverse colorallowmultiple colorotherlabel"
+    foreach o of local cv_opts {
         sreturn local `o' ""
     }
 end
@@ -2310,6 +2345,30 @@ program define _dash_fold_typed, sclass
         local _cv_view = cond("`vtype'" == "tsline", "line", "`vtype'")
         display as error "option colorvar() cannot be combined with multiple y variables in a `_cv_view' plot"
         exit 198
+    }
+    // WP-31 C8b: coloruseplegend needs colordiscrete, and colorrule() is
+    // read, as twoway_yxview_parse.class:226-228 and :342-395 read them,
+    // in its words (colorvar_options_truth.json R01, R02, R02b): an
+    // invalid % or * part is "invalid colorrule specification"; a rule
+    // twoway has no style for is two notes and r(198).  The rule is read
+    // by value, in Mata.
+    mata: st_local("_ft", strofreal(st_global("s(colorvar)") != "" & st_global("s(coloruseplegend)") != "" & st_global("s(colordiscrete)") == ""))
+    if `_ft' {
+        display as error "you must specify option colordiscrete with option coloruseplegend"
+        exit 198
+    }
+    mata: st_local("_ft", strofreal(st_global("s(colorvar)") != ""))
+    if `_ft' {
+        mata: _dash_colorrule_check(st_global("s(colorrule)"))
+        if "`_crc'" == "spec" {
+            display as error "invalid colorrule specification"
+            exit 198
+        }
+        if "`_crc'" == "rule" {
+            mata: _dash_note("named style ", st_local("_crn"), " not found in class zyx2rule, default attributes used")
+            mata: _dash_note("zyx2rule not found in scheme, default attributes used", "", "")
+            exit 198
+        }
     }
     local area_types "area rarea"
     local arrow_types "pcarrow pcbarrow pcarrowi"
@@ -4747,6 +4806,8 @@ program define _dash_plot_opts_to_json, rclass
                    blcolor bfcolor jitter jseed yaxis xaxis colorvar colpalette ///
                    colordiscrete coloruseplegend colornlevels colorcuts colormissing ///
                    colorlevels colorvarminmax ///
+                   colorstart colorend colorrule colorfillonly colorkeysrange ///
+                   colorkeysreverse colorallowmultiple colorotherlabel ///
                    bwidth degree pstyle cmissing recast connect bin width start ///
                    percent frequency density fraction kernel n level bands at ciopts ///
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
@@ -6158,6 +6219,13 @@ program define _dash_process_segment, rclass
     c_local _seg_xaxis_out `_seg_xa'
     c_local _seg_yaxes_out `_seg_yas'
     c_local _seg_xaxes_out `_seg_xas'
+    // Whether this segment draws a colorvar() layer, and says
+    // colorallowmultiple, for twoway's one-layer check in _dash_plot
+    // (WP-31 C8b).
+    mata: st_local("_seg_cv", strofreal(st_global("s(colorvar)") != ""))
+    mata: st_local("_seg_cvam", strofreal(st_global("s(colorallowmultiple)") != ""))
+    c_local _seg_cv_out `_seg_cv'
+    c_local _seg_cvam_out `_seg_cvam'
     // The variable this segment's x axis takes its label format from, for
     // the t-options' date literals (WP-30 P1.6, _dash_taxis_fold): the x of
     // the yx and range types (tsline and tsrline: the tsset variable), the
@@ -6180,7 +6248,7 @@ program define _dash_process_segment, rclass
     // over the accumulator, so a later group's legend(label(2 "B")) threw
     // away an earlier group's legend(label(1 "A")), which twoway keeps.
     foreach gkey in title subtitle note caption name saving xtitle ytitle xlabel ///
-            ylabel xline yline legend by xscale yscale aspectratio scheme ///
+            ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
             plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
             xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
@@ -7200,6 +7268,7 @@ program define _dash_plot
     // _dash_route_axis2, for the graph's "axisn" object (WP-31 C10c).
     mata: _dash_axisn_clear()
     local _g_ys ""
+    local _g_cvn 0
     local _g_xs ""
     local _tx_list ""
     // The by() panels drawn, for the added_text count (WP-30 P1.10).
@@ -7207,7 +7276,7 @@ program define _dash_plot
 
     // ---- Initialise graph-level option accumulators ----
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
-          ylabel xline yline legend by xscale yscale aspectratio scheme ///
+          ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
@@ -7244,7 +7313,7 @@ program define _dash_plot
         local _gund_acc : copy local _rp_gund_out
         mata: st_local("_g_names_n", strofreal(st_global("s(name)") != ""))
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
-              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
@@ -7352,8 +7421,10 @@ program define _dash_plot
         local _seg_yaxes_out   1
         local _seg_xaxes_out   1
         local _seg_xvar_out    ""
+        local _seg_cv_out      0
+        local _seg_cvam_out    0
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
-              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
@@ -7364,6 +7435,16 @@ program define _dash_plot
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
+        // twoway draws one colorvar() layer a graph: a later one is
+        // refused unless it says colorallowmultiple itself (WP-31 C8b,
+        // colorvar_options_truth.json R03, R03b, R03c).
+        if `_seg_cv_out' {
+            if `_g_cvn' & !`_seg_cvam_out' {
+                display as error "multiple contour, patch, or colorvar plots not allowed"
+                exit 198
+            }
+            local ++_g_cvn
+        }
         // This segment's axis options, as typed, and its layers' axes, for
         // twoway's axis check after the loop (WP-29 P0.5).
         mata: _dash_axreq_add(st_local("_seg_axreq_raw"), `k')
@@ -7435,7 +7516,7 @@ program define _dash_plot
         // refuses it.  The key is a word of the list and the values are
         // read by value, in Mata.
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
-              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
@@ -7467,7 +7548,7 @@ program define _dash_plot
     // set are merged, so a graph that names an option only inside a
     // segment keeps that value.
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
-              ylabel xline yline legend by xscale yscale aspectratio scheme ///
+              ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
               plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
               xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
@@ -7856,10 +7937,28 @@ program define _dash_plot
 
     // ---- Assemble graph_options JSON ----
     // Build JSON from the accumulated g_* locals
+    // pcycle(#) (WP-31 C8b): twoway numbers series mod(serid - 1, #) + 1
+    // and draws that p#.  A value that is not a number is "option pcycle()
+    // not allowed"; one that leaves a series no whole p# -- 0, -1, 1.5 on
+    // three series -- "option seriesid() not allowed", r(198) for each
+    // (colorvar_options_truth.json P02).  dash refuses every value that is
+    // not a positive integer, where twoway draws 1.5 on a graph of one or
+    // two series (P02f), whose numbers it leaves whole.  Read by value.
+    if `: length local g_pcycle' {
+        mata: st_local("_pcv", strofreal(strtoreal(strtrim(st_local("g_pcycle")))))
+        if missing(`_pcv') {
+            display as error "option pcycle() not allowed"
+            exit 198
+        }
+        if `_pcv' < 1 | `_pcv' != floor(`_pcv') {
+            display as error "option seriesid() not allowed"
+            exit 198
+        }
+    }
     local gopts_json "{"
     local gfirst = 1
     foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
-          ylabel xline yline legend by xscale yscale aspectratio scheme ///
+          ylabel xline yline legend clegend plegend pcycle by xscale yscale aspectratio scheme ///
           plotregion graphregion bgcolor plotbgcolor link filter ytitle2 ///
           xtitle2 ylabel2 xlabel2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///

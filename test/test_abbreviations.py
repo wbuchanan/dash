@@ -620,7 +620,10 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # ttic, tml, tmt, tt, tsc and tli (twoway's, taxis_truth.json ab_*).
     # 77 -> 76: A3d jitter() is documented by its full name, twoway's
     # minimum; jit:ter is gone.
-    assert len(seen) == 76, (
+    # 76 -> 88: WP-31 C8b documented colorr, colorst, colore, colorli,
+    # colorformiss, colorkeysran, colorkeysrev, colorotherlab,
+    # colorusepleg, cleg, pleg and pcyc (twoway's minimums).
+    assert len(seen) == 88, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -778,7 +781,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # (three).
     # 147 -> 144: C6 the note on the cmissing and connect pending lines
     # goes with them (three).
-    assert comments == {"_dash_parse_plot_opts": 144,
+    # 144 -> 151: C8b the notes on the colorformissing() fold (four) and
+    # on colorvar(i.var) (three).
+    assert comments == {"_dash_parse_plot_opts": 151,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

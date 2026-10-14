@@ -95,8 +95,6 @@ PLOT_VALUES = {
     "blabel": ("total", "bar", "bar"),
     "ciopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
     "color": ("maroon", "navy", "scatter"),
-    "colorlist": ("red blue", "green orange", "scatter"),
-    "coloruseplegend": ("coloruseplegend", "", "scatter"),
     "density": ("density", "frequency", "histogram"),
     "falpha": ("30", "80", "area"),
     "fitopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
@@ -184,6 +182,9 @@ def _graph_pending():
 # meaningful comparison is present against absent -- and a flag has no
 # default value to be confused with, so that comparison has no trap.
 FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
+         # WP-31 C8b: the colorvar flags.
+         "colorfillonly", "colorkeysrange", "colorkeysreverse",
+         "colorallowmultiple",
          # WP-31 C4: the fit flags.
          "atobs", "nofit",
          "frequency", "horizontal", "nodraw", "percent", "sort", "vertical",
@@ -219,6 +220,8 @@ def _render(tmp_path, ptype, popts, gopts, tag):
     # with missing values) names it as _yvar, which is not an option.
     popts = dict(popts)
     yv = popts.pop("_yvar", "mpg")
+    # A second layer, on price (WP-31 C8b: pcycle() numbers the second).
+    twin = popts.pop("_twin", None)
     plot = ({"type": ptype, **_PC_PLOT, "options": popts}
             if ptype in ("pcarrow", "pcbarrow", "pcspike", "pccapsym",
                          "pcscatter")
@@ -235,7 +238,8 @@ def _render(tmp_path, ptype, popts, gopts, tag):
                                        # (rarea's too, WP-31 C6).
                                        **({"yvar1": "mpg", "yvar2": "price"}
                                           if ptype in ("rbar", "rarea")
-                                          else {}))]}],
+                                          else {}))]
+                        + ([dict(plot, yvar="price")] if twin else [])}],
             "kpis": [],
             "build_options": {"layout": "auto", "registry": "g1",
                               "level": "95", "formats": {}, "theme": "",
@@ -282,7 +286,8 @@ class TestTheListIsCoveredAndHonest:
         # 44 -> 43 and 25 -> 24: P1.10 text() drawn
         # 43 -> 44: A4 mlalign declared and named
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere
-        assert len(_plot_pending()) == 42, sorted(_plot_pending())
+        # 42 -> 40: C8b colorlist() and coloruseplegend drawn
+        assert len(_plot_pending()) == 40, sorted(_plot_pending())
         assert len(_graph_pending()) == 24, sorted(_graph_pending())
 
 
@@ -437,7 +442,11 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            # twins (WP-30 P1.6; test_twoway_option_parity.cscript TA-01).
            "tlabel", "ttick", "tscale", "ttitle", "tline",
            # and their axis-2 forms, onto xlabel2() .. xtitle2() (part 2).
-           "tlabel2", "ttick2", "tline2", "tscale2", "ttitle2"}
+           "tlabel2", "ttick2", "tline2", "tscale2", "ttitle2",
+           # colorformissing() is twoway's spelling of colormissing(),
+           # copied onto it before the spec is written (WP-31 C8b;
+           # test_wp31_truth.cscript U17-03).
+           "colorformissing"}
 
 #: Options that decide where a command goes rather than what it draws.
 NOT_IN_FILE = {
@@ -452,6 +461,10 @@ NOT_IN_FILE = {
                   "never read: twoway draws the graph without it "
                   "(fit_options_truth.json; WP-31 C4), so dash takes it "
                   "and writes nothing (test_wp31_truth.cscript U11-04)",
+    "colorallowmultiple": "decides whether dash.ado refuses a second "
+                          "colorvar() layer, as twoway does (WP-31 C8b); the "
+                          "renderer draws each layer's key either way, so it "
+                          "is certified by test_wp31_truth.cscript U17-04",
     "replace": "lets saving() write over a file that exists (WP-27); the "
                "page is the same with or without it, so it is certified by "
                "test_path_validation.cscript PV-22..27",
@@ -470,6 +483,7 @@ NOT_IN_FILE = {
 #: an option that only means something in context (colpalette without
 #: colorvar, xlabel2 without a layer on the second axis) is probed in it.
 _CV = {"colorvar": "price"}
+_CVD = {"colorvar": "foreign", "colordiscrete": "colordiscrete"}
 _ML = {"mlabel": "foreign"}
 _FP_A = {"x": [2000.0, 3000.0], "y": [20.0, 25.0], "nobs": 10}
 _FP_B = {"x": [2000.0, 3000.0], "y": [18.0, 27.0], "nobs": 10}
@@ -552,6 +566,35 @@ LIVE_VALUES = {
     "colorvarminmax": ({**_CV, "colorvarminmax": "colorvarminmax"}, dict(_CV),
                        "scatter", {}),
     "colorvar": ({"colorvar": "foreign"}, {"colorvar": "price"}, "scatter", {}),
+    # WP-31 C8b: twoway's colorvar options, drawn (test_colorvar_options.py).
+    "colorlist": ({**_CVD, "colorlist": "red blue"},
+                  {**_CVD, "colorlist": "navy maroon"}, "scatter", {}),
+    # coloruseplegend: the flag itself is dash's default key form (a
+    # Legend); it decides that plegend(), not clegend(), places the key.
+    "coloruseplegend": ({**_CVD, "coloruseplegend": "coloruseplegend"},
+                        dict(_CVD), "scatter", {"plegend": "off"}),
+    "colorstart": ({**_CV, "colorstart": "green"},
+                   {**_CV, "colorstart": "navy"}, "scatter", {}),
+    "colorend": ({**_CV, "colorend": "green"},
+                 {**_CV, "colorend": "navy"}, "scatter", {}),
+    "colorrule": ({**_CV, "colorrule": "linear"},
+                  {**_CV, "colorrule": "chue"}, "scatter", {}),
+    "colorfillonly": ({**_CV, "colorfillonly": "colorfillonly"}, dict(_CV),
+                      "scatter", {}),
+    "colorkeysrange": ({**_CVD, "colorkeysrange": "colorkeysrange"},
+                       dict(_CVD), "scatter", {}),
+    "colorkeysreverse": ({**_CVD, "colorkeysreverse": "colorkeysreverse"},
+                         dict(_CVD), "scatter", {}),
+    "colorotherlabel": ({**_CVD, "colorcuts": "0", "colorotherlabel": "rest"},
+                        {**_CVD, "colorcuts": "0", "colorotherlabel": "other"},
+                        "scatter", {}),
+    # ---- graph-level (WP-31 C8b) ------------------------------------------
+    "clegend": (dict(_CV), dict(_CV), "scatter",
+                ("clegend", "position(6)", "position(9)")),
+    "plegend": ({**_CVD, "coloruseplegend": "coloruseplegend"},
+                {**_CVD, "coloruseplegend": "coloruseplegend"}, "scatter",
+                ("plegend", "off", "on")),
+    "pcycle": ({"_twin": 1}, {"_twin": 1}, "scatter", ("pcycle", "1", "2")),
     "colpalette": ({**_CV, "colpalette": "viridis"},
                    {**_CV, "colpalette": "magma"}, "scatter", {}),
     "degree": ({"degree": "0"}, {"degree": "2"}, "lpoly", {}),
@@ -794,8 +837,12 @@ class TestEveryDeclaredOptionIsClassified:
         # 201 -> 209: C4 atobs estopts predopts estcmd fitplot ciplot
         # smoothplot nofit declared; 209 -> 215: C5 gap baroffset area
         # boundary droplines nodropbase declared
-        assert len(_declared_plot()) == 215, len(_declared_plot())
-        assert len(_declared_graph()) == 85, len(_declared_graph())
+        # 215 -> 227 and 85 -> 88: C8b colorstart colorend colorrule
+        # colorfillonly colorformissing colorkeysrange colorkeysreverse
+        # colorallowmultiple colorotherlabel, and clegend plegend pcycle in
+        # both blocks, declared
+        assert len(_declared_plot()) == 227, len(_declared_plot())
+        assert len(_declared_graph()) == 88, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):
         """Pending, alias, route, or live -- a declared option with no

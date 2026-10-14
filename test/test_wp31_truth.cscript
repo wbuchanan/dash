@@ -3278,6 +3278,213 @@ if inlist("`only'", "", "S16") & `: list posof "S16" in w31_run' {
 }
 * ==== end S16 ====
 
+// S17 helpers (WP-31 C8b).  _u17_draw: what a registered dash graph draws,
+// saved and served (S03's _u03_docs builds both) -- into globals
+// u17_ok<s|v>, 1 when the first layer's colour mapper's palette starts
+// with the colours of fixture probe u17_want (lowest level first, within
+// 1/255 a channel); u17_c3<s|v>, 1 when the third Scatter is drawn in the
+// first's colour; u17_keys<s|v>, the colour keys drawn.
+python:
+def _u17_draw(sp, dp, app, probe):
+    import json
+    from sfi import Macro
+    want = []
+    if probe:
+        with open("fixtures/colorvar_options_truth.json", encoding="utf-8") as fh:
+            want = list(reversed(json.load(fh)["probes"][probe]["key"]["fills"]))
+    def rgb(h):
+        h = str(h).lstrip("#")
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)]
+    a, b = _u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        pal, cols, keys = None, [], 0
+        for f in figs:
+            for side in (f.right, f.left, f.above, f.below, f.center):
+                for m in side:
+                    t = type(m).__name__
+                    if t == "ColorBar" or (t == "Legend"
+                                           and m.name == "_dash_clegend"):
+                        keys += 1
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if type(g).__name__ != "Scatter" or str(
+                        getattr(r, "name", "") or "").startswith("_clegend_"):
+                    continue
+                tr = getattr(g.fill_color, "transform", None)
+                if tr is not None and pal is None:
+                    pal = list(tr.palette)
+                cols.append(str(g.fill_color).lower())
+        ok = int(bool(want) and pal is not None and len(pal) >= len(want)
+                 and all(abs(x - y) <= 1 for p, w in zip(pal, want)
+                         for x, y in zip(rgb(p), rgb(w))))
+        Macro.setGlobal("u17_ok" + sfx, str(ok))
+        Macro.setGlobal("u17_c3" + sfx,
+                        str(int(len(cols) >= 3 and cols[2] == cols[0])))
+        Macro.setGlobal("u17_keys" + sfx, str(keys))
+end
+
+capture program drop _u17_reg
+program define _u17_reg
+    // _u17_reg <dir> <probe or .> <dash command...>: register one graph,
+    // write its spec and data, and read what both modes draw.
+    version 19
+    gettoken dir 0 : 0
+    gettoken probe 0 : 0
+    if "`probe'" == "." local probe ""
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s.json") datapath("`dir'/d.json")
+    python: import __main__ as _u17_m; _u17_m._u17_draw("`dir'/s.json", "`dir'/d.json", "`dir'/a.py", "`probe'")
+end
+
+capture program drop _u17_try
+program define _u17_try, rclass
+    // _u17_try <log> <command...>: run it in its own log; r(rc), and
+    // r(note) 1 when the log holds dash's ignoring note.
+    version 19
+    gettoken lf 0 : 0
+    capture dash clear
+    capture log close u17l
+    quietly log using "`lf'", text replace name(u17l)
+    capture noisily `0'
+    local rc = _rc
+    quietly log close u17l
+    cert_log_has "`lf'", needle("ignoring unsupported")
+    return scalar note = r(found)
+    return scalar rc = `rc'
+end
+
+* ==== S17 C8b: colorvar options ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S17") & `: list posof "S17" in w31_run' {
+    display as text "S17 start " c(current_date) " " c(current_time)
+    local u17d "`w31_work'/s17"
+    capture mkdir "`u17d'"
+    local lf "`u17d'/try.log"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U17-01: colordiscrete's five levels in twoway's colours (hue from
+    // blue to red in six steps, D01), both modes, and no note.
+    // ------------------------------------------------------------
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colordiscrete name(zu1)
+    _w31_expect U17-01 "(r(rc) == 0 & r(note) == 0)" "dash rc `r(rc)', note `r(note)'"
+    _u17_reg "`u17d'" D01 scatter mpg weight, colorvar(rep78) colordiscrete name(zu1)
+    _w31_expect U17-01 "(${u17_oks} == 1 & ${u17_okv} == 1)" "level colours as twoway's: saved ${u17_oks}, served ${u17_okv}"
+    _w31_done U17-01 "colorvar(rep78) colordiscrete: the levels in twoway's hue colours, saved and served"
+
+    // ------------------------------------------------------------
+    // U17-02: colorlist(red blue) on five levels: twoway's rc, and the
+    // last colour repeated over the levels the list does not reach (D03).
+    // ------------------------------------------------------------
+    capture twoway scatter mpg weight, colorvar(rep78) colordiscrete colorlist(red blue) nodraw
+    local tw = _rc
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colordiscrete colorlist(red blue) name(zu2)
+    _w31_expect U17-02 "(`tw' == 0 & r(rc) == 0 & r(note) == 0)" "twoway r(`tw'), dash rc `r(rc)', note `r(note)'"
+    _u17_reg "`u17d'" D03 scatter mpg weight, colorvar(rep78) colordiscrete colorlist(red blue) name(zu2)
+    _w31_expect U17-02 "(${u17_oks} == 1 & ${u17_okv} == 1)" "colours as twoway's: saved ${u17_oks}, served ${u17_okv}"
+    _w31_done U17-02 "colorlist(red blue) on five levels: red, then blue four times, as twoway draws"
+
+    // ------------------------------------------------------------
+    // U17-03: colorformissing() is taken in silence; colormissing() is
+    // dash's own, which twoway refuses (R04).
+    // ------------------------------------------------------------
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colorformissing(gray) name(zu3)
+    _w31_expect U17-03 "(r(rc) == 0 & r(note) == 0)" "colorformissing(): dash rc `r(rc)', note `r(note)'"
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colormissing(gray) name(zu3)
+    _w31_expect U17-03 "(r(rc) == 0)" "colormissing(): dash rc `r(rc)'"
+    capture twoway scatter mpg weight, colorvar(rep78) colormissing(red) nodraw
+    _w31_expect U17-03 "(_rc == 198)" "twoway colormissing(): r(`=_rc')"
+    _w31_done U17-03 "colorformissing() taken in silence; colormissing() dash's own, refused by twoway"
+
+    // ------------------------------------------------------------
+    // U17-04: refusals in twoway's rc and words: coloruseplegend without
+    // colordiscrete (R01), a rule twoway has no style for (R02) and an
+    // invalid % or * part, and a second colorvar() layer without
+    // colorallowmultiple (R03) -- with it, drawn (R03b).
+    // ------------------------------------------------------------
+    local cases `" "scatter mpg weight, colorvar(rep78) coloruseplegend~you must specify option colordiscrete with option coloruseplegend" "scatter mpg weight, colorvar(rep78) colorrule(bogus)~named style bogus not found in class zyx2rule" "scatter mpg weight, colorvar(rep78) colorrule(hue *2 %x)~invalid colorrule specification" "scatter mpg weight, colorvar(rep78) || scatter price weight, colorvar(rep78)~multiple contour, patch, or colorvar plots not allowed" "'
+    foreach c of local cases {
+        gettoken cmd words : c, parse("~")
+        local words = substr(`"`words'"', 2, .)
+        capture log close u17t
+        quietly log using "`u17d'/tw.log", text replace name(u17t)
+        // Drawn, not nodraw: twoway refuses the rule and the second layer
+        // when it draws the graph (with nodraw both are rc 0).
+        capture noisily twoway `cmd' name(u17t, replace)
+        local tw = _rc
+        display as text "{p_end}"
+        quietly log close u17t
+        cert_log_has "`u17d'/tw.log", needle(`"`words'"')
+        local twf = r(found)
+        _u17_try "`lf'" dash `cmd' name(zu4)
+        local drc = r(rc)
+        cert_log_has "`lf'", needle(`"`words'"')
+        _w31_expect U17-04 "(`tw' == 198 & `drc' == 198 & `twf' & r(found))" `"`cmd': twoway r(`tw') words `twf', dash rc `drc' words `r(found)'"'
+    }
+    capture twoway scatter mpg weight, colorvar(rep78) || scatter price weight, colorvar(rep78) colorallowmultiple name(u17t, replace)
+    local tw = _rc
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) || scatter price weight, colorvar(rep78) colorallowmultiple name(zu4)
+    _w31_expect U17-04 "(`tw' == 0 & r(rc) == 0)" "colorallowmultiple: twoway r(`tw'), dash rc `r(rc)'"
+    capture erase "`u17d'/tw.log"
+    _w31_done U17-04 "coloruseplegend, colorrule() and a second colorvar() layer refused in twoway's rc and words"
+
+    // ------------------------------------------------------------
+    // U17-05: pcycle(2) draws the third series in p1; pcycle(0), (16),
+    // given twice, and colorrule() given twice: dash's rc is twoway's.
+    // ------------------------------------------------------------
+    _u17_reg "`u17d'" . scatter mpg trunk turn weight, pcycle(2) name(zu5)
+    _w31_expect U17-05 "(${u17_c3s} == 1 & ${u17_c3v} == 1)" "third series in p1: saved ${u17_c3s}, served ${u17_c3v}"
+    foreach o in "pcycle(0)" "pcycle(16)" "pcycle(2) pcycle(3)" "pcycle(abc)" {
+        capture twoway scatter mpg trunk turn weight, `o' nodraw
+        local tw = _rc
+        _u17_try "`lf'" dash scatter mpg trunk turn weight, `o' name(zu5)
+        _w31_expect U17-05 "(r(rc) == `tw')" "`o': twoway r(`tw'), dash rc `r(rc)'"
+    }
+    capture twoway scatter mpg weight, colorvar(rep78) colorrule(hue) colorrule(linear) nodraw
+    local tw = _rc
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colorrule(hue) colorrule(linear) name(zu5)
+    _w31_expect U17-05 "(`tw' == 198 & r(rc) == 198)" "colorrule() twice: twoway r(`tw'), dash rc `r(rc)'"
+    _w31_done U17-05 "pcycle(2) recycles p1 for the third series; pcycle() and colorrule() refused where twoway refuses them"
+
+    // ------------------------------------------------------------
+    // U17-06: colorvar(i.rep78) draws (it was r(111)) as colordiscrete
+    // coloruseplegend; clegend(position(6)) and plegend(off) are taken in
+    // silence.
+    // ------------------------------------------------------------
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(i.rep78) name(zu6)
+    _w31_expect U17-06 "(r(rc) == 0 & r(note) == 0)" "colorvar(i.rep78): dash rc `r(rc)', note `r(note)'"
+    dash clear
+    quietly dash scatter mpg weight, colorvar(i.rep78) name(zu6)
+    _dash_serve_spec, specpath("`u17d'/s.json") datapath("`u17d'/d.json")
+    cert_file_has "`u17d'/s.json", needle(`""colordiscrete":"colordiscrete""')
+    local f1 = r(found)
+    cert_file_has "`u17d'/s.json", needle(`""coloruseplegend":"coloruseplegend""')
+    local f2 = r(found)
+    cert_file_has "`u17d'/s.json", needle(`""colorvar":"rep78""')
+    _w31_expect U17-06 "(`f1' & `f2' & r(found))" "spec: colordiscrete `f1', coloruseplegend `f2', colorvar(rep78) `r(found)'"
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) clegend(position(6)) name(zu6)
+    _w31_expect U17-06 "(r(rc) == 0 & r(note) == 0)" "clegend(position(6)): dash rc `r(rc)', note `r(note)'"
+    _u17_try "`lf'" dash scatter mpg weight, colorvar(rep78) colordiscrete coloruseplegend plegend(off) name(zu6)
+    _w31_expect U17-06 "(r(rc) == 0 & r(note) == 0)" "plegend(off): dash rc `r(rc)', note `r(note)'"
+    _u17_reg "`u17d'" . scatter mpg weight, colorvar(rep78) colordiscrete coloruseplegend plegend(off) name(zu6)
+    _w31_expect U17-06 "(${u17_keyss} == 0 & ${u17_keysv} == 0)" "plegend(off): keys ${u17_keyss} / ${u17_keysv}"
+    _w31_done U17-06 "colorvar(i.rep78) draws as colordiscrete coloruseplegend; clegend() and plegend() taken and drawn"
+
+    capture erase "`lf'"
+    foreach f in s.json d.json a.py {
+        capture erase "`u17d'/`f'"
+    }
+    capture rmdir "`u17d'"
+    macro drop u17_*
+    capture graph drop _all
+    dash clear
+    display as text "S17 end " c(current_date) " " c(current_time)
+}
+* ==== end S17 ====
+
 // S19 helpers (WP-31 F1d).  _u19_move: the saved page's lpoly line after
 // one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

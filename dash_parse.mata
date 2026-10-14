@@ -93,6 +93,11 @@
 *!       Print before + value + after as one note, (note:  ...), in text
 *!       colour on Stata's error channel, as twoway prints its notes.
 *!
+*!   _dash_colorrule_check(t)
+*!       colorrule()'s text as twoway reads it: the caller's local _crc
+*!       "" (drawn), "spec" (an invalid % or * part) or "rule" (a rule twoway
+*!       has no style for, named in the local _crn).
+*!
 *!   _dash_is_digits(s, maxlen)
 *!       1 when s is 1..maxlen ASCII digits and nothing else.
 *!
@@ -1365,6 +1370,59 @@ void _dash_note(string scalar before, string scalar value,
     if (substr(t, 1, 12) == "dash: note: ") t = "dash: " + substr(t, 13, .)
     if (ustrlen(t) > 4000) t = usubstr(t, 1, 3997) + "..."
     errprintf("{txt}(note:  %s)\n", _dash_smcl_text(t))
+}
+
+// ============================================================
+// _dash_colorrule_check(t)
+//
+// colorrule(crule [%# [*#]]) read as twoway_yxview_parse.class:342-395
+// reads it (WP-31 C8b): the text before the first % or * is the rule; a
+// %# or *# alone that is not a number is ignored; with both, the
+// intensity is confirmed first -- not a number, both ignored (hue %50 *x
+// draws hue) -- then the opacity, whose failure is "invalid colorrule
+// specification".  A rule twoway has no zyx2rule style for (names are
+// case-sensitive: Hue is refused) is refused when the graph is drawn
+// (colorvar_options_truth.json R02, R02b, R02c, D04e).  Sets the
+// caller's locals _crc ("", "spec" or "rule") and _crn (the rule).  The
+// renderer's twin is dash_render.py's _dash_colorrule_parse.
+// ============================================================
+void _dash_colorrule_check(string scalar t)
+{
+    string scalar rule, num, other, a, b, inten, opac
+    real scalar   p1, p2, cut
+
+    st_local("_crc", "")
+    st_local("_crn", "")
+    t  = strtrim(t)
+    if (t == "") return
+    p1 = strpos(t, "%")
+    p2 = strpos(t, "*")
+    cut = (p1 & p2) ? min((p1, p2)) : max((p1, p2))
+    rule = t
+    if (cut) {
+        rule = strtrim(substr(t, 1, cut - 1))
+        num  = substr(t, cut + 1, .)
+        if (strtoreal(strtrim(num)) >= .) {
+            other = (substr(t, cut, 1) == "*" ? "%" : "*")
+            if (strpos(num, other)) {
+                a = substr(num, 1, strpos(num, other) - 1)
+                b = substr(num, strpos(num, other) + 1, .)
+                inten = (other == "%" ? a : b)
+                opac  = (other == "%" ? b : a)
+                if (strtoreal(strtrim(inten)) < . &
+                    strtoreal(strtrim(opac)) >= .) {
+                    st_local("_crc", "spec")
+                    return
+                }
+            }
+        }
+    }
+    if (rule == "" | anyof(("hue", "chue", "phue", "intensity", "linear",
+                            "revlinear"), rule)) return
+    // twoway's note names the rule's last word: colorrule(hue foo) is
+    // "named style foo not found" (R02b).
+    st_local("_crc", "rule")
+    st_local("_crn", tokens(rule)[cols(tokens(rule))])
 }
 
 // ============================================================

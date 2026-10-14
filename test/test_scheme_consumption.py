@@ -532,16 +532,18 @@ class TestNoParsedKeyIsDiscarded:
             f"categorical colour mappers, not one"
         )
         pal = list(mappers[0].palette)
-        sch = list(dr.scheme.p_colors)
-        # The palette is the scheme's p# cycle, one colour per factor in
-        # order and wrapping at fifteen: the thirty lengths drew economist's
-        # fifteen twice.  One shared colour passed a palette that took a
-        # single colour from the scheme.
+        # Flipped (WP-31 C8b): the scheme's p# cycle was wrong because
+        # twoway colours the levels by the scheme's colour rule -- under
+        # economist, intensity of its edkblue in n + 1 steps
+        # (colorvar_options_truth.json schemes economist) -- which the
+        # scheme still decides: s2color's would be hue.
         n = len(mappers[0].factors)
         assert n == 30, n
-        assert pal == [sch[i % 15] for i in range(n)], (
-            f"the discrete palette {pal[:4]} ignores the scheme's "
-            f"{sch[:4]}"
+        rule, start, end = dash_render._dash_colorrule_default(dr.scheme)
+        assert rule == "intensity" and end == "#3e647d"
+        assert pal == dash_render._dash_colorrule_palette(
+            rule, start, end, n + 1)[:n], (
+            f"the discrete palette {pal[:4]} ignores the scheme's rule"
         )
 
     def test_a_schemes_area_intensity_and_minor_grid_reach_both_modes(

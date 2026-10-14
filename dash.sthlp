@@ -3691,6 +3691,13 @@ the plot specification).
 {synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for plot {it:#}{p_end}
 {synopt:{cmdab:leg:end(lastlabel(}{it:#} {it:"text"}{cmd:))}}the last label applied,
     over {cmd:order()} and {cmd:label()}, to the {it:#}th row as drawn{p_end}
+{synopt:{cmdab:cleg:end(}{it:suboptions}{cmd:)}}place the colour key:
+    {cmd:off}, {cmd:position()}, {cmd:ring()}, {cmd:title()}, {cmd:width()},
+    {cmd:height()}; see {help dash##colorvar:Mapping a Variable to Colour}{p_end}
+{synopt:{cmdab:pleg:end(}{it:suboptions}{cmd:)}}place the colour keys
+    {cmd:coloruseplegend} puts in the plot legend{p_end}
+{synopt:{cmdab:pcyc:le(}{it:#}{cmd:)}}plot styles before {cmd:p1}
+    recurs{p_end}
 {synopt:{cmdab:xsiz:e(}{it:#}{cmd:)}}graph width in inches; see
     {help dash##geometry:Figure proportions}{p_end}
 {synopt:{cmdab:ysiz:e(}{it:#}{cmd:)}}graph height in inches{p_end}
@@ -4322,8 +4329,8 @@ With more than one y variable, {cmd:colorvar()} is refused on
     colour per value{p_end}
 {synopt:{cmdab:colorcut:s(}{it:numlist}{cmd:)}}explicit break points for the
     colour bins{p_end}
-{synopt:{cmdab:colpal:ette(}{it:name}{cmd:)}}the palette to map through:
-    {cmd:viridis} (the default for an unbinned {it:varname}), {cmd:magma},
+{synopt:{cmdab:colpal:ette(}{it:name}{cmd:)}}a palette to map through
+    instead of {cmd:colorrule()}'s colours: {cmd:viridis}, {cmd:magma},
     {cmd:inferno}, {cmd:plasma}, {cmd:cividis}, {cmd:turbo}, {cmd:greys},
     {cmd:blues} or {cmd:reds}{p_end}
 {synopt:{cmdab:colorn:levels(}{it:#}{cmd:)}}number of equal-width colour
@@ -4336,7 +4343,51 @@ With more than one y variable, {cmd:colorvar()} is refused on
     negative number or one over 100 draws 5 levels{p_end}
 {synopt:{cmdab:colorvarminm:ax}}add the minimum and maximum of {it:varname} to
     the cuts, and to the colour bar's ticks{p_end}
+{synopt:{cmdab:colorr:ule(}{it:rule} [{cmd:%}{it:#}] [{cmd:*}{it:#}]{cmd:)}}how
+    the level colours are made: {cmd:hue} (equally spaced hues from
+    {cmd:colorstart()} to {cmd:colorend()}), {cmd:chue} (the hues the other
+    way round the wheel), {cmd:phue} (the scheme's p1, p2, ...),
+    {cmd:intensity} (equally spaced intensities of {cmd:colorend()}),
+    {cmd:linear} or {cmd:revlinear} (RGB from start to end, or end to
+    start); {cmd:%}{it:#} an opacity and {cmd:*}{it:#} an intensity for
+    every level{p_end}
+{synopt:{cmdab:colorst:art(}{it:color}{cmd:)}}the rule's first colour{p_end}
+{synopt:{cmdab:colore:nd(}{it:color}{cmd:)}}the rule's last colour{p_end}
+{synopt:{cmdab:colorli:st(}{it:colors}{cmd:)}}one colour a level, in order;
+    a list shorter than the levels repeats its last colour{p_end}
+{synopt:{cmd:colorfillonly}}colour the fills only; outlines keep the series
+    colour{p_end}
+{synopt:{cmdab:colorformiss:ing(}{it:color}{cmd:)}}{cmd:twoway}'s spelling
+    of {cmd:colormissing()}; given both, {cmd:colorformissing()} is
+    read{p_end}
+{synopt:{cmdab:colorkeysran:ge}}draw each key entry's swatch as a
+    bar{p_end}
+{synopt:{cmdab:colorkeysrev:erse}}reverse the order of the key's levels{p_end}
+{synopt:{cmd:colorallowmultiple}}allow this {cmd:colorvar()} layer beside an
+    earlier one; without it the second is refused, as {cmd:twoway} refuses
+    it{p_end}
+{synopt:{cmdab:colorotherlab:el(}{it:text}{cmd:)}}the text of the key's gray
+    entry, the missing values and every value no level takes{p_end}
+{synopt:{cmdab:colorusepleg:end}}the keys in the plot legend, placed by
+    {cmd:plegend()}; it needs {cmd:colordiscrete}, as in {cmd:twoway}{p_end}
 {synoptline}
+
+{pstd}
+The graph options {cmd:clegend()}, {cmd:plegend()} and {cmd:pcycle()} go
+with it.  {cmd:clegend(}{it:suboptions}{cmd:)} places the colour key:
+{cmd:off}, {cmd:position()} (the key stays upright, below the plot at 6
+o'clock, as in {cmd:twoway}), {cmd:ring(0)} (inside the plot),
+{cmd:title()}, and on the colour bar {cmd:width()} and {cmd:height()}; its
+other sub-options are named in the note.  {cmd:plegend()} does the same for
+the keys {cmd:coloruseplegend} puts in the plot legend, where
+{cmd:clegend()} has no key to place and is named.  {cmd:pcycle(}{it:#}{cmd:)}
+is the number of plot styles before {cmd:p1} recurs: {cmd:scatter mpg trunk
+turn weight, pcycle(2)} draws its third series in {cmd:p1}.  It takes a
+positive integer, refused otherwise with {cmd:twoway}'s words ("option
+seriesid() not allowed"); {cmd:twoway} draws a fraction on a graph with too
+few series to reach a fractional style.
+{cmd:colorvar(i.}{it:varname}{cmd:)} is {cmd:colorvar(}{it:varname}{cmd:)
+colordiscrete coloruseplegend}, as in {cmd:twoway}.
 
 {pstd}
 {cmd:colorvar()}, {cmd:colordiscrete}, {cmd:colorcuts()},
@@ -4346,11 +4397,20 @@ other value is drawn in {cmd:colormissing()}'s colour with the missing
 values; a cut below the minimum is ignored, and the minimum is used if all
 are; {cmd:colorcuts()} and {cmd:colorlevels()} may not be combined.
 {cmd:colpalette()}, {cmd:colornlevels()} and {cmd:colormissing()} are
-{cmd:dash}'s, and {cmd:twoway} refuses them.  {cmd:twoway}'s other
-{cmd:colorvar} options, {cmd:colorrule()}, {cmd:colorstart()},
-{cmd:colorend()} and {cmd:colorformissing()}, are named in the note.  How the colours are drawn
+{cmd:dash}'s, and {cmd:twoway} refuses them.  Every other
+{cmd:colorvar} option {cmd:twoway} takes is drawn, in {cmd:twoway}'s
+colours (measured to 1/255 a channel): with no {cmd:colorrule()},
+{cmd:colorstart()} or {cmd:colorend()}, the scheme's rule -- hue from blue
+to red under {cmd:s2color} and {cmd:stcolor}, intensity of black under the
+mono schemes; {it:k} levels of {cmd:colordiscrete} take the first {it:k}
+of {it:k}+1 steps, {it:k} bins {it:k} steps.  {cmd:colorlist()} wins, then
+{cmd:colpalette()}, then the rule.  {cmd:colorkeysreverse} on a colour bar
+is named, because the bar cannot be reversed without reversing the
+mapping; under {cmd:coloruseplegend} it is taken in silence, as
+{cmd:twoway}'s plot legend keeps its order.  How the colours are drawn
 is {cmd:dash}'s: an unbinned numeric {it:varname} is mapped continuously
-through the palette and a colour bar is drawn beside the figure, where
+through the rule's colours in 256 steps and a colour bar is drawn beside
+the figure, where
 {cmd:twoway} bins it at its z axis's ticks.  The colour bar sits on the
 graph region with no box of its own: its tick labels take the scheme's
 {cmd:tick_label} size and colour, its title the {cmd:axis_title} size and
@@ -4360,8 +4420,8 @@ the key's right-hand side and draws an axis line on the side of its
 labels; {cmd:dash} draws the title above the bar and no axis line.
 {cmd:colordiscrete},
 {cmd:colorcuts()} and {cmd:colornlevels()} bin it, and a discrete key
-entry is drawn per bin, in the scheme's series colours unless
-{cmd:colpalette()} names a palette.  {cmd:twoway} wants a numeric
+entry is drawn per bin, in the rule's colours unless
+{cmd:colorlist()} or {cmd:colpalette()} names others.  {cmd:twoway} wants a numeric
 {it:varname} (a string one is r(7)); {cmd:dash} also takes a string
 variable, one colour and one key entry per value, an empty string drawn in
 {cmd:colormissing()}'s colour.
@@ -5197,13 +5257,6 @@ disagree in either direction.
     centred.
     {opt mlabwidth(size)} is not a {cmd:twoway} option: {cmd:twoway}
     refuses it, r(198), and {cmd:dash} names it.
-
-{phang2}{ul:colorvar() sub-options.}
-    {opt colorlist(colors)}, a colour for each level of {cmd:colorvar()},
-    and {opt coloruseplegend}, its keys in a contour-line legend -- both
-    Stata 18's; {cmd:dash} colours the levels with {cmd:colpalette()} and
-    draws its own key (see
-    {help dash##colorvar:Mapping a Variable to Colour}).
 
 {phang2}{ul:Options of other commands.}
     {opt ciopts(...)}, {opt lineopts(...)}, {opt fitopts(...)} --

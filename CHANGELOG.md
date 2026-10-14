@@ -402,7 +402,7 @@ and now matches Stata.
 
 - lowess on a saved page after a filter move: the build's smooth (marked) -> Stata's lowess on the kept rows; above 200 million window operations the line is left empty (WP-31, F1c)
 
-<!-- WP-31 C8b -->
+- `dash scatter mpg weight, colorvar(rep78) colordiscrete`: the levels in twoway's colours, hue from blue to red under s2color and stcolor (was: the scheme's p colours), and an unbinned colour bar in the same rule (was: viridis); colorrule(), colorstart(), colorend(), colorlist(), colorfillonly, colorformissing(), colorkeysrange, colorkeysreverse, colorotherlabel(), coloruseplegend, clegend(), plegend() and pcycle() are drawn (was: named in the note); colorvar(i.var) draws (was: r(111)); coloruseplegend without colordiscrete, an unknown colorrule(), and a second colorvar() layer without colorallowmultiple are refused, r(198), in twoway's words (WP-31, C8b)
 
 <!-- WP-31 B5b -->
 

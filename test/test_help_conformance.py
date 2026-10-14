@@ -548,9 +548,14 @@ class TestTheParsersFoundSomething:
         # fitplot(), ciplot(), smoothplot(), estopts(), predopts(), estcmd();
         # 192 -> 198: C5 the synopt entries of gap() baroffset() area()
         # boundary droplines() nodropbase.
-        assert len(found) == 198, (
-            f"{len(found)} options parsed out of dash.sthlp, 198 measured "
-            f"08oct2026: a reader of the parser lost a form, or the help "
+        # 198 -> 208: C8b the synopt entries of colorrule() colorstart()
+        # colorend() colorfillonly colorformissing() colorkeysrange
+        # colorkeysreverse colorallowmultiple colorotherlabel() and the
+        # graph options clegend() plegend() pcycle(); colorlist() and
+        # coloruseplegend leave Unsupported for synopt entries.
+        assert len(found) == 208, (
+            f"{len(found)} options parsed out of dash.sthlp, 208 measured "
+            f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
 
@@ -628,7 +633,10 @@ class TestTheParsersFoundSomething:
         # 214 -> 222: C4 atobs estopts predopts estcmd fitplot ciplot
         # smoothplot nofit declared; 222 -> 228: C5 gap baroffset area
         # boundary droplines nodropbase declared
-        assert len(_ado_declarations()) == 228
+        # 228 -> 240: C8b colorstart colorend colorrule colorfillonly
+        # colorformissing colorkeysrange colorkeysreverse
+        # colorallowmultiple colorotherlabel clegend plegend pcycle declared
+        assert len(_ado_declarations()) == 240
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -648,7 +656,8 @@ class TestTheParsersFoundSomething:
         # 44 -> 43: P1.10 text() drawn
         # 43 -> 44: A4 mlalign() declared and named
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere
-        assert len(_ignored_options()) == 42
+        # 42 -> 40: C8b colorlist() and coloruseplegend drawn
+        assert len(_ignored_options()) == 40
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -668,7 +677,8 @@ class TestTheParsersFoundSomething:
         # 44 -> 43: P1.10 text() drawn, its entry gone
         # 43 -> 44: A4 mlalign() in the marker outline entry
         # 44 -> 42: C6 cmissing() and connect() leave the "Not drawn" entry
-        assert len(_unsupported_section()) == 42
+        # 42 -> 40: C8b the "colorvar() sub-options" entry goes
+        assert len(_unsupported_section()) == 40
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -731,8 +741,10 @@ class TestTheParsersFoundSomething:
         # takes no plot-type spelling twoway refuses).
         # 397 -> 398: C4 the Fit options entry; 398 -> 404: C5 the six
         # synopt entries gap() .. nodropbase.
-        assert len(defs) == 404, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 404 "
+        # 404 -> 417: C8b eleven colorvar synopt entries and three graph
+        # ones, less the Unsupported entry they replace.
+        assert len(defs) == 417, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 417 "
             f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

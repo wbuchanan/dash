@@ -26,7 +26,7 @@
 *!           word on the types twoway drops it on (WP-31 C8a: area, rarea,
 *!           the fits and smooths, kdensity, histogram, function,
 *!           scatteri, pci, pcarrowi).  Its companions are kept with it
-*!           and named nowhere; twoway's other colorvar options are named;
+*!           and named nowhere, as are twoway's other colorvar options;
 *!           a variable that does not exist is still r(111) where twoway
 *!           reads it, and rc 0 where twoway drops the option.
 *!   HC7-03  jitter() (and its seed) kept, unnamed, on rscatter, rcapsym,
@@ -167,11 +167,11 @@ local faillist ""
 // until 24sep2026 nothing in this file required r(note) == 1: had
 // dash.ado's note stopped saying "ignoring unsupported", every one of
 // those checks would have passed without looking.  The same helper, the
-// same needle, on options the note must name: colorrule(), which dash
-// does not read (HC7-02; colorvar() itself is drawn on line since WP-31
-// C8a), and an option no plot type has.
+// same needle, on options the note must name: mlabwidth(), which twoway
+// refuses and dash names (colorrule(), the control until WP-31 C8b, is
+// drawn now), and an option no plot type has.
 local bad = 0
-foreach cmd in "scatter mpg weight, colorvar(price) colorrule(hue)" "scatter mpg weight, zq7nosuchopt(1)" {
+foreach cmd in "scatter mpg weight, mlabwidth(thick)" "scatter mpg weight, zq7nosuchopt(1)" {
     _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
     if r(rc) != 0 | r(note) != 1 {
         display as error "HC7-00 FAIL `cmd': rc `r(rc)', the ignoring note seen `r(note)' (want 1)"
@@ -328,20 +328,19 @@ if `rnote' | `nk' != 3 {
     display as error "HC7-02 FAIL: colorvar() and companions on scatter -- note `rnote', kept `nk' of 3"
     local bad = 1
 }
-// twoway's other colorvar options, which dash does not read, are named --
-// colorlevels() no longer among them (GAPS2 X2, WP-28): dash now reads
-// it, so it is dropped from the note while colorrule()/colorformissing()
-// stay named.
+// Flipped (WP-31 C8b): colorrule()/colorformissing() named was wrong,
+// because dash draws them as twoway does (colorvar_options_truth.json);
+// like colorlevels() (GAPS2 X2) they are taken and named nowhere.
 capture twoway scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) nodraw
 local tw = _rc
 _zh7_run `"dash scatter mpg weight, colorvar(price) colorlevels(4) colorrule(hue) colorformissing(red) name(zq7)"' "`logfile'"
 local drc = r(rc)
-_zh7_logged "`logfile'" "colorrule() colorformissing()"
+_zh7_logged "`logfile'" "colorrule()"
 local cv_named = r(found)
 _zh7_logged "`logfile'" "colorlevels()"
 local cv_lv_named = r(found)
-if `tw' != 0 | `drc' != 0 | `cv_named' != 1 | `cv_lv_named' != 0 {
-    display as error "HC7-02 FAIL: twoway's colorrule()/colorformissing() named, colorlevels() not: twoway r(`tw'), dash rc `drc', named `cv_named', colorlevels named `cv_lv_named'"
+if `tw' != 0 | `drc' != 0 | `cv_named' != 0 | `cv_lv_named' != 0 {
+    display as error "HC7-02 FAIL: colorrule(), colorformissing() and colorlevels() not named: twoway r(`tw'), dash rc `drc', named `cv_named', colorlevels named `cv_lv_named'"
     local bad = 1
 }
 // A variable that does not exist is refused on every type, as twoway does.

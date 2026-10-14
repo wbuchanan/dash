@@ -13978,10 +13978,12 @@ class GlyphMapper:
         raw_col       = source.data[varname]
         palette_key   = options.get("colpalette", "").strip().lower()
         force_discrete = bool(options.get("colordiscrete"))
-        # coloruseplegend is accepted for Stata 18 compatibility but is now
-        # redundant for discrete mappings — discrete always renders a Legend.
-        # The variable kept here for clarity / future use.
-        _use_plegend  = bool(options.get("coloruseplegend"))  # noqa: F841
+        # coloruseplegend (WP-31 C8b): dash's discrete key is always a
+        # Legend, twoway's plot-legend form; the flag picks which of
+        # clegend() and plegend() the key reads, and keeps the key's order
+        # under colorkeysreverse (measured: twoway's plot legend is not
+        # reversed, colorvar_options_truth.json D13r).
+        _use_plegend  = bool(options.get("coloruseplegend"))
         # colormissing() went to Bokeh untranslated, so any Stata colour
         # name Bokeh does not happen to share -- eltblue, ltbluishgray, the
         # whole Stata palette -- raised out of the mapper and took the entire
@@ -13999,6 +14001,53 @@ class GlyphMapper:
             if _a is not None:
                 _dash_style_note("colormissing", _raw_missing, "opacity",
                                  "opaque")
+
+        # WP-31 C8b: twoway's level colours.  colorrule() (rule, %opacity,
+        # *intensity), colorstart() and colorend() make them through
+        # _dash_colorrule_palette; with none given, the scheme's own rule
+        # and ends (_dash_colorrule_default).  dash.ado refused a rule name
+        # twoway does not know and a malformed %/* part.
+        try:
+            _crule, _copac, _cinten = _dash_colorrule_parse(
+                options.get("colorrule"))
+        except ValueError:
+            _crule, _copac, _cinten = (None, None, None)
+        _d_rule, _d_start, _d_end = _dash_colorrule_default(self.scheme)
+        if _crule not in _DASH_COLORRULES:
+            _crule = _d_rule
+
+        def _cv_colour(key, dflt):
+            raw = str(options.get(key, "") or "").strip()
+            if not raw:
+                return dflt
+            _c, _ = self.tr.parse_color_alpha(raw, key, base=dflt)
+            return _c or dflt
+
+        _c_start = _cv_colour("colorstart", _d_start)
+        _c_end = _cv_colour("colorend", _d_end)
+        _scheme_p = list(getattr(self.scheme, "p_colors", None) or [])
+
+        def _rule_palette(n):
+            return _dash_colorrule_palette(_crule, _c_start, _c_end, n,
+                                           intensity=_cinten,
+                                           scheme_p=_scheme_p)
+
+        # colorlist(): one colour a level, in order, the last repeated
+        # over levels it does not reach (D03); each read as a colour.
+        _c_list = []
+        for _tok in _dash_by_tokens(str(options.get("colorlist", "")
+                                        or "").strip()):
+            _c, _ = self.tr.parse_color_alpha(_dash_unquoted(_tok),
+                                              "colorlist")
+            if _c:
+                _c_list.append(_c)
+        _fill_only = bool(options.get("colorfillonly"))
+        _keys_range = bool(options.get("colorkeysrange"))
+        _keys_rev = bool(options.get("colorkeysreverse"))
+        _other_label = _dash_unquoted(str(options.get("colorotherlabel", "")
+                                          or "").strip())
+        _cleg = _dash_clegend_opts((self.z_options or {}).get("clegend", ""))
+        _pleg = str((self.z_options or {}).get("plegend", "") or "").strip()
 
         # Stata label metadata, populated by DashRenderer after _load_data().
         # Used to render value labels on legend entries and to display the
@@ -14198,18 +14247,25 @@ class GlyphMapper:
                 return
 
             non_missing_factors = list(labels)
-            # With no explicit palette(), the discrete colours are the
-            # scheme's own p1-p15 cycle -- the same colours the scheme gives
-            # overlaid series.  Bokeh's Category10 was used unconditionally,
-            # so `scatter mpg weight, colorvar(rep78) colordiscrete' drew
-            # Bokeh's blue/orange/green on an economist or mono dashboard.
-            if not palette_key and getattr(self.scheme, "p_colors", None):
-                pal_list = list(self.scheme.p_colors)
-            else:
-                pal_name = self._PALETTE_MAP.get(palette_key or "category10",
-                                                 "Category10_10")
+            # WP-31 C8b: the level colours twoway draws.  colorlist() wins;
+            # then dash's own colpalette() when typed; else the colour rule
+            # in twoway's steps: k levels of their own (colordiscrete, a
+            # string) from k + 1 steps, k bins from k (D01, D01f, D02a-c).
+            # The scheme's p1-p15 cycle, which this drew before, is twoway's
+            # only under colorrule(phue).
+            _n_lev = len(non_missing_factors)
+            if _c_list:
+                pal_list = (_c_list + [_c_list[-1]] * _n_lev)[:max(_n_lev, 1)]
+            elif palette_key:
+                pal_name = self._PALETTE_MAP.get(palette_key, "Category10_10")
                 pal_list = list(getattr(_bk_palettes, pal_name,
                                         _bk_palettes.Category10_10))
+            else:
+                _own_levels = (not is_numeric) or (
+                    force_discrete and cuts is None and nlevels is None) or (
+                    force_discrete and (cuts is not None
+                                        or nlevels is not None))
+                pal_list = _rule_palette(_n_lev + (1 if _own_levels else 0))
             while len(pal_list) < len(non_missing_factors):
                 pal_list += pal_list
             pal_colors = pal_list[:len(non_missing_factors)]
@@ -14218,30 +14274,44 @@ class GlyphMapper:
                                                 palette=pal_colors,
                                                 nan_color=missing_color)
             color_spec = {"field": color_field, "transform": mapper}
-            self._colorvar_paint(renderer.glyph, source, color_spec)
+            self._colorvar_paint(renderer.glyph, source, color_spec,
+                                 fill_only=_fill_only, opacity=_copac)
 
             # Discrete mappings always render as a Bokeh Legend with one entry
             # per category — matches Stata 18's default colordiscrete behavior
             # ("color legend" with discrete swatches) and ensures users can
             # identify the colored categories by name. Dummy invisible
             # renderers carry the per-factor color into the legend item.
+            # colorkeysrange (WP-31 C8b): twoway draws each entry's swatch
+            # as a bar, its texts unchanged (D11, D11b); dash's swatch is a
+            # Quad.  colorotherlabel() is the text of the gray entry, which
+            # holds missing values and every value no level takes, as
+            # twoway's one "Other" entry does (D05p, D13).
+            def _swatch(color, name):
+                if _keys_range:
+                    return fig.quad(left=[float("nan")], right=[float("nan")],
+                                    top=[float("nan")],
+                                    bottom=[float("nan")], color=color,
+                                    visible=False, name=name)
+                return fig.scatter(x=[float("nan")], y=[float("nan")],
+                                   color=color, size=0, visible=False,
+                                   name=name)
+
             legend_items = []
             for factor, color in (zip(non_missing_factors, pal_colors)
                                   if add_key else ()):
-                _r = fig.scatter(
-                    x=[float("nan")], y=[float("nan")],
-                    color=color, size=0,
-                    visible=False, name=f"{_DASH_SWATCH_PREFIX}{factor}",
-                )
+                _r = _swatch(color, f"{_DASH_SWATCH_PREFIX}{factor}")
                 legend_items.append(LegendItem(label=factor, renderers=[_r]))
+            # colorkeysreverse: the levels' order reversed, the gray entry
+            # last; twoway's plot legend keeps its order (D13r).
+            if _keys_rev and not _use_plegend:
+                legend_items.reverse()
             if has_missing and add_key:
                 # A model name, never a factor.
-                _rm = fig.scatter(
-                    x=[float("nan")], y=[float("nan")],
-                    color=missing_color, size=0,
-                    visible=False, name=f"{_DASH_SWATCH_PREFIX}__missing__",
-                )
-                legend_items.append(LegendItem(label="(missing)", renderers=[_rm]))
+                _rm = _swatch(missing_color,
+                              f"{_DASH_SWATCH_PREFIX}__missing__")
+                legend_items.append(LegendItem(
+                    label=_other_label or "(missing)", renderers=[_rm]))
             # Tagged, so _rebuild_legend can tell a colour key from a plot
             # legend.  Inspecting the items instead does not survive the
             # rewrite it has to survive, and gets the mixed case (a colorvar
@@ -14256,7 +14326,20 @@ class GlyphMapper:
             _dash_apply_z_options(fig, _legend, mapper, self.z_options,
                                  *self.z_context)
             if add_key:
-                fig.add_layout(_legend, "right")
+                # clegend() places the key; under coloruseplegend twoway
+                # puts the keys in the plot legend, which plegend() places
+                # and clegend() has no key to place (D-17c).
+                if _use_plegend:
+                    _place = _dash_clegend_opts(_pleg)
+                    if (self.z_options or {}).get("clegend"):
+                        _dash_style_note("clegend", self.z_options["clegend"],
+                                         "sub-option",
+                                         "the plot legend's placement")
+                else:
+                    _place = _cleg
+                self._colorvar_key_place(fig, _legend, _place,
+                                         "plegend" if _use_plegend
+                                         else "clegend")
 
         # ------------------------------------------------------------------
         # CONTINUOUS path — LinearColorMapper
@@ -14266,8 +14349,16 @@ class GlyphMapper:
             hi = float(np.nanmax(dom_vals))
             if lo == hi:
                 hi = lo + 1.0
-            pal_name = self._PALETTE_MAP.get(palette_key or "viridis", "Viridis256")
-            palette  = getattr(_bk_palettes, pal_name, _bk_palettes.Viridis256)
+            # WP-31 C8b: dash's own colpalette() when typed, else the colour
+            # rule in 256 steps (twoway's key is the rule's colours).
+            if palette_key:
+                pal_name = self._PALETTE_MAP.get(palette_key, "Viridis256")
+                palette = getattr(_bk_palettes, pal_name,
+                                  _bk_palettes.Viridis256)
+            elif _c_list:
+                palette = list(_c_list)
+            else:
+                palette = _rule_palette(256)
             mapper   = LinearColorMapper(palette=palette, low=lo, high=hi,
                                          nan_color=missing_color)
 
@@ -14310,10 +14401,16 @@ class GlyphMapper:
                 _cbar.color_mapper = mapper
 
             color_spec = {"field": varname, "transform": mapper}
-            self._colorvar_paint(renderer.glyph, source, color_spec)
+            self._colorvar_paint(renderer.glyph, source, color_spec,
+                                 fill_only=_fill_only, opacity=_copac)
 
+            if _keys_rev and add_key:
+                # twoway reverses the key and not the mapping; a ColorBar
+                # cannot be reversed without reversing its mapper.
+                _dash_style_note("colorkeysreverse", "", "continuous key",
+                                 "drawn unreversed")
             if _cbar is not None and add_key:
-                fig.add_layout(_cbar, "right")
+                self._colorvar_key_place(fig, _cbar, _cleg, "clegend")
 
         # ------------------------------------------------------------------
         # Strip the auto-generated `legend_label=yvar` item for *renderer*
@@ -14341,7 +14438,48 @@ class GlyphMapper:
                         except ValueError:
                             pass
 
-    def _colorvar_paint(self, glyph, source, color_spec) -> None:
+    def _colorvar_key_place(self, fig, key, place, which) -> None:
+        """Add the colour *key* (a Legend or a ColorBar) to *fig* where
+        *place* (``_dash_clegend_opts``) puts it (WP-31 C8b): ``off`` adds
+        nothing; ``position()`` takes a clock position's side, inside the
+        plot at ``ring(0)``; ``title()`` titles it; on a ColorBar
+        ``width()``/``height()`` size it (Stata's relative units, through
+        ``resolve_size``).  Every other sub-option, and width()/height() on
+        a Legend, is named once under *which*."""
+        if place.get("off"):
+            return
+        if place.get("title") is not None:
+            key.title = place["title"]
+        is_bar = type(key).__name__ == "ColorBar"
+        _named = list(place.get("other") or [])
+        for _k in ("width", "height"):
+            if place.get(_k) is None:
+                continue
+            if not is_bar:
+                _named.append(_k)
+                continue
+            try:
+                _pt = OptionTranslator.resolve_size(place[_k], "gap", 0.0)
+            except ValueError:
+                _named.append(_k)
+                continue
+            # The key stays upright wherever it is placed, as twoway's
+            # does below the plot (G01): width() is its thickness.
+            setattr(key, _k, max(1, int(round(_pt * 96.0 / 72.0))))
+        for _n in _named:
+            _dash_style_note(which, _n, "sub-option", "not drawn")
+        side = "right"
+        clock = place.get("position")
+        if clock is not None and place.get("ring") == 0 \
+                and clock in _DASH_CLOCK_INSIDE:
+            key.location = _DASH_CLOCK_INSIDE[clock]
+            side = "center"
+        elif clock is not None and clock in _DASH_CLOCK_SIDE:
+            side = _DASH_CLOCK_SIDE[clock]
+        fig.add_layout(key, side)
+
+    def _colorvar_paint(self, glyph, source, color_spec, fill_only=False,
+                        opacity=None) -> None:
         """Set *glyph*'s colour properties to colorvar()'s *color_spec*
         (WP-31 C8a, D-15c): ``fill_color`` and ``line_color`` wherever the
         glyph class has them -- a Segment or MultiLine its line, a Scatter,
@@ -14349,10 +14487,19 @@ class GlyphMapper:
         fill and outline alike.  A glyph that takes one colour for the
         whole of it (Bokeh's Line, which refuses a field) takes the colour
         of its first drawn point's level (D-15f, ``_colorvar_scalar``);
-        twoway colours each segment by the level of its start."""
-        for _p in ("fill_color", "line_color"):
+        twoway colours each segment by the level of its start.
+
+        *fill_only* (colorfillonly, WP-31 C8b) colours the fill and leaves
+        the outline in the series colour, as twoway does (D10); *opacity*
+        (colorrule()'s %#, 0-100) is drawn as the glyph's alpha."""
+        for _p in (("fill_color",) if fill_only
+                   else ("fill_color", "line_color")):
             if not hasattr(glyph, _p):
                 continue
+            if opacity is not None:
+                _ap = _p.replace("_color", "_alpha")
+                if hasattr(glyph, _ap):
+                    setattr(glyph, _ap, max(0.0, min(1.0, opacity / 100.0)))
             try:
                 setattr(glyph, _p, color_spec)
             except ValueError:
@@ -14448,7 +14595,9 @@ class GlyphMapper:
                                          "transform", None) is not None),
                             None)
                 if spec is not None:
-                    self._colorvar_paint(g, src, spec)
+                    self._colorvar_paint(
+                        g, src, spec,
+                        fill_only=bool(options.get("colorfillonly")))
                     continue
             self._apply_colorvar(fig, r, src, options,
                                  add_key=add_key and k == 0)
@@ -39473,6 +39622,205 @@ def _dash_colorvar_field(data, varname):
     return None
 
 
+#: The colour rules twoway's colorrule() names (style/zyx2rule-*.style);
+#: any other name is "named style ... not found in class zyx2rule", r(198)
+#: (WP-31 C8b, colorvar_options_truth.json R02, D04e: names are
+#: case-sensitive).
+_DASH_COLORRULES = ("hue", "chue", "phue", "intensity", "linear",
+                    "revlinear")
+
+#: The default colour rule, start and end of each scheme dash ships whose
+#: scheme file says otherwise than s2color's `zyx2rule contour hue',
+#: `color contour_begin blue', `color contour_end red' (WP-31 C8b; read
+#: from Stata's scheme files and their #include chains, and proved by the
+#: colours each draws: colorvar_options_truth.json schemes).
+_DASH_ZYX2_SCHEME_RULES = {
+    "economist": ("intensity", "#bfa19c", "#3e647d"),
+    **{s: ("intensity", "#f0f0f0", "#000000")
+       for s in ("s1mono", "s1manual", "s2mono", "s2manual", "s2gmanual",
+                 "sj", "stmono1", "stmono2", "stsj")},
+}
+
+
+def _dash_colorrule_parse(text):
+    """``(rule, opacity, intensity)`` of a colorrule() value, read as
+    twoway_yxview_parse.class:342-395 reads it (WP-31 C8b).
+
+    ``crule [%# [*#]]``, either order: the text before the first ``%`` or
+    ``*`` is the rule (None when there is none), ``%#`` the opacity
+    (0-100) and ``*#`` the intensity.  As twoway: an intensity or an
+    alone that is not a number, or an intensity that is not one beside an
+    opacity, is ignored (``hue %50 *x`` draws plain hue, R02c); an
+    intensity beside an opacity that is not a number is "invalid
+    colorrule specification" -- ValueError.  The
+    rule's NAME is not judged here (dash.ado refuses an unknown one).
+    """
+    t = str(text or "").strip()
+    if not t:
+        return (None, None, None)
+    cut = min([i for i in (t.find("%"), t.find("*")) if i >= 0],
+              default=-1)
+    if cut < 0:
+        return (t, None, None)
+    rule = t[:cut].strip() or None
+    rest = t[cut:]
+    op, num = rest[0], rest[1:]
+    opac = inten = None
+
+    def _num(s):
+        try:
+            v = float(s.strip())
+        except ValueError:
+            return None
+        return v if math.isfinite(v) else None
+
+    whole = _num(num)
+    if whole is not None:
+        if op == "*":
+            inten = whole
+        else:
+            opac = whole
+        return (rule, opac, inten)
+    other = "%" if op == "*" else "*"
+    if other not in num:
+        return (rule, None, None)
+    first, second = num.split(other, 1)
+    if op == "*":
+        inten, opac = _num(first), _num(second)
+    else:
+        opac, inten = _num(first), _num(second)
+    # twoway confirms the intensity first: not a number, both ignored;
+    # a number beside an opacity that is not one, refused.
+    if inten is None:
+        return (rule, None, None)
+    if opac is None:
+        raise ValueError("invalid colorrule specification")
+    return (rule, opac, inten)
+
+
+def _dash_colour_intensity(rgb, f):
+    """Stata's colour intensity ``*f`` of an ``(r, g, b)``: below 1 toward
+    white (``255 - f (255 - c)``), above 1 toward black (``c / f``),
+    rounded half up -- measured on twoway's level colours (D06, D09)."""
+    if f <= 1:
+        return tuple(int(255 - f * (255 - c) + 0.5) for c in rgb)
+    return tuple(int(c / f + 0.5) for c in rgb)
+
+
+def _dash_colorrule_palette(rule, start, end, k, intensity=None,
+                            scheme_p=()):
+    """The *k* colours twoway's colorrule() makes from *start* to *end*
+    (``#rrggbb``), lowest level first (WP-31 C8b, D-17a).
+
+    Step i of k is ``t = i / (k - 1)``.  ``hue`` interpolates the HSV
+    hue of start to that of end at full saturation and value (a grey's
+    hue is 0); ``chue`` the same always upward round the wheel (end + 360
+    when end <= start); ``linear`` the RGB, ``revlinear`` the RGB from end
+    to start; ``intensity`` is end at intensity ``(i + 1) / k``, start
+    ignored; ``phue`` is *scheme_p*'s i-th colour, then hue's.  *intensity*
+    (a colorrule() ``*#``) then applies to every colour.  Matched to
+    twoway's SVG within 1/255 a channel for every rule
+    (colorvar_options_truth.json D01-D09); any other rule is hue.
+    """
+    import colorsys
+
+    def _hx(c):
+        c = str(c or "").lstrip("#")
+        return tuple(int(c[j:j + 2], 16) for j in (0, 2, 4)) \
+            if re.fullmatch(r"[0-9A-Fa-f]{6}", c) else (0, 0, 0)
+
+    s, e = _hx(start), _hx(end)
+    hs = colorsys.rgb_to_hsv(*[c / 255.0 for c in s])[0] * 360.0
+    he = colorsys.rgb_to_hsv(*[c / 255.0 for c in e])[0] * 360.0
+    if rule == "chue" and he <= hs:
+        he += 360.0
+    pal = list(scheme_p or ())
+    out = []
+    k = max(int(k), 1)
+    for i in range(k):
+        t = i / (k - 1) if k > 1 else 0.0
+        if rule == "phue" and i < len(pal):
+            rgb = _hx(pal[i])
+        elif rule == "linear":
+            rgb = tuple(int(a + t * (b - a) + 0.5) for a, b in zip(s, e))
+        elif rule == "revlinear":
+            rgb = tuple(int(b + t * (a - b) + 0.5) for a, b in zip(s, e))
+        elif rule == "intensity":
+            rgb = _dash_colour_intensity(e, (i + 1) / k)
+        else:
+            h = (hs + t * (he - hs)) % 360.0
+            rgb = tuple(int(255 * x + 1e-9)
+                        for x in colorsys.hsv_to_rgb(h / 360.0, 1.0, 1.0))
+        if intensity is not None and intensity >= 0:
+            rgb = _dash_colour_intensity(rgb, intensity)
+        out.append("#%02x%02x%02x" % tuple(max(0, min(255, c))
+                                           for c in rgb))
+    return out
+
+
+def _dash_colorrule_default(scheme):
+    """``(rule, start, end)`` a colorvar() key takes under *scheme* (a
+    SchemeParser) with no colorrule(), colorstart() or colorend(): the
+    measured table for the schemes dash ships, s2color's hue from blue to
+    red otherwise (WP-31 C8b)."""
+    name = str(getattr(scheme, "name", "") or "")
+    return _DASH_ZYX2_SCHEME_RULES.get(name, ("hue", "#0000ff", "#ff0000"))
+
+
+#: clegend()'s sub-options dash places on the colour key (WP-31 C8b,
+#: clegend_option.sthlp): full name -> shortest spelling.
+_DASH_CLEGEND_SUBOPTS = {"position": "pos", "ring": "ring",
+                         "width": "width", "height": "height",
+                         "title": "ti", "off": "off", "on": "on"}
+
+
+def _dash_clegend_opts(text):
+    """clegend()'s sub-options as a dict (WP-31 C8b): ``position`` and
+    ``ring`` (int or None), ``width``/``height`` (the size text or None),
+    ``title`` (the text, its quotes off, or None), ``off``/``on`` (bool)
+    and ``other``: the typed names of every other sub-option, which the
+    caller names once.  A sub-option is read at any spelling from its
+    shortest to its full name, as twoway reads it."""
+    out = {"position": None, "ring": None, "width": None, "height": None,
+           "title": None, "off": False, "on": False, "other": []}
+    for tok in _dash_by_tokens(str(text or "").strip()):
+        nm, arg = tok, None
+        if "(" in tok:
+            nm, arg = tok.split("(", 1)
+            arg = arg[:-1] if arg.endswith(")") else arg
+        nm = nm.strip()
+        full = next((f for f, m in _DASH_CLEGEND_SUBOPTS.items()
+                     if f.startswith(nm) and nm.startswith(m)), None)
+        if full is None or (arg is None) != (full in ("off", "on")):
+            out["other"].append(nm)
+            continue
+        if full in ("off", "on"):
+            out[full] = True
+        elif full in ("position", "ring"):
+            try:
+                out[full] = int(float(arg.strip()))
+            except ValueError:
+                out["other"].append(nm)
+        elif full == "title":
+            out["title"] = _dash_unquoted(arg.strip())
+        else:
+            out[full] = arg.strip()
+    return out
+
+
+def _dash_pcycle(graph_opts):
+    """pcycle(#) of *graph_opts* as the number of p styles before p1
+    recurs (twowaygraph_g.class:474, ``mod(serid - 1, pcycle) + 1``), at
+    most the scheme's 15; None when not given (WP-31 C8b).  dash.ado has
+    refused a value that is not a positive integer."""
+    raw = str((graph_opts or {}).get("pcycle", "") or "").strip()
+    try:
+        v = int(float(raw))
+    except ValueError:
+        return None
+    return min(v, 15) if v >= 1 else None
+
+
 def _dash_value_labels_for(var, value_labels, value_label_names):
     """The value labels of *var*, ``{code: text}``, or ``{}`` (TR-14.6,
     WP-28 S14 -- the one copy of the lookup ``GlyphMapper._mlabel_value_labels``
@@ -42491,7 +42839,7 @@ _DASH_FIT_KEYS = {"lfit": "Fitted values", "qfit": "Fitted values",
                   "mband": "Median bands", "mspline": "Median spline"}
 
 
-def _dash_plot_style_indices(plots):
+def _dash_plot_style_indices(plots, pcycle=None):
     """The zero-based p# index each layer of *plots* draws in, as twoway
     numbers them.
 
@@ -42509,7 +42857,13 @@ def _dash_plot_style_indices(plots):
     draws in that p# instead, and only it: the plots after it keep their
     numbers (WP-30 P1.14a; measured 03oct2026: ``(scatter, pstyle(p3))
     (scatter)`` draws p3 then p2).
+
+    *pcycle* (pcycle(#), ``_dash_pcycle``) is the number of p styles
+    before p1 recurs, 15 when None (WP-31 C8b; twowaygraph_g.class:474;
+    ``scatter mpg trunk turn weight, pcycle(2)`` draws p1 p2 p1,
+    colorvar_options_truth.json P01).
     """
+    cyc = pcycle if isinstance(pcycle, int) and 1 <= pcycle <= 15 else 15
     out = []
     n = 0                                   # plots drawn before this layer
     for plot in (plots or ()):
@@ -42517,11 +42871,11 @@ def _dash_plot_style_indices(plots):
         is_ci = (isinstance(ptype, str)
                  and ptype.strip().lower() in _DASH_CI_TYPES)
         if is_ci:
-            line_series = (n + 1) % 15 + 1  # the line is plot n + 2
+            line_series = (n + 1) % cyc + 1  # the line is plot n + 2
             out.append(max(line_series - 1, 1) - 1)
             n += 2
         else:
-            out.append(n % 15)
+            out.append(n % cyc)
             n += 1
         _o = plot.get("options") if isinstance(plot, dict) else None
         if isinstance(_o, dict):
@@ -46819,7 +47173,8 @@ class DashRenderer:
         # after the layer loop so they never leak onto the next figure's
         # key (self.mapper is shared across every figure of a render).
         self.mapper.z_options = {k: graph_opts.get(k, "")
-                                 for k in ("zlabel", "ztitle", "zscale")}
+                                 for k in ("zlabel", "ztitle", "zscale",
+                                           "clegend", "plegend")}
         self.mapper.z_context = (_seen, _gkey)
         x_label, y_label = _dash_axis_labels(plots, graph_opts,
                                              self.variable_labels, _seen, _gkey)
@@ -46988,7 +47343,8 @@ class DashRenderer:
         # Add glyphs for each plot layer.  Each draws in the p# twoway
         # numbers it with, a ci fit counting as two plots
         # (_dash_plot_style_indices); pi stays the layer's own number.
-        _pstyle_idx = _dash_plot_style_indices(plots)
+        _pstyle_idx = _dash_plot_style_indices(plots,
+                                               _dash_pcycle(graph_opts))
         if not plots:
             # A graph with no plot (bare dash, as bare twoway draws one):
             # an annotation drawing nothing keeps Bokeh's MISSING_RENDERERS
@@ -49778,6 +50134,10 @@ class ServerAppBuilder:
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
+                      # colorvar()'s rules and clegend()'s sub-options
+                      # (WP-31 C8b).
+                      "_DASH_COLORRULES", "_DASH_ZYX2_SCHEME_RULES",
+                      "_DASH_CLEGEND_SUBOPTS",
                       # twoway's weight acceptance per layer, read by
                       # GlyphMapper._layer_weights.
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
@@ -50391,6 +50751,11 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # colorvar()'s colour rule, clegend() and
+                         # pcycle() (WP-31 C8b).
+                         "_dash_colorrule_parse", "_dash_colour_intensity",
+                         "_dash_colorrule_palette", "_dash_colorrule_default",
+                         "_dash_clegend_opts", "_dash_pcycle",
                          # a filled layer's vertices under cmissing(n) and
                          # rarea's connect() (WP-31 C6).
                          "_dash_fill_vertices",
@@ -52471,7 +52836,9 @@ class ServerAppBuilder:
             "        _p_qc = str(plot.get('qual_col') or '')",
             "        _g_q = _dash_qual_mask(g, _qual_masks)",
             "        _p_q = _dash_qual_mask(plot, _qual_masks)",
-            "        _sidx = _dash_plot_style_indices(g.get('plots', []))[pi]",
+            "        _sidx = _dash_plot_style_indices(",
+            "            g.get('plots', []),",
+            "            _dash_pcycle(g.get('graph_options', {})))[pi]",
             "        # The literal family draws from its own values, which no",
             "        # qualifier reaches, as in twoway and the live figure.",
             "        _p_lit = (str(plot.get('type', '') or '').lower()",
@@ -52530,7 +52897,8 @@ class ServerAppBuilder:
             "        # figure so _apply_colorvar draws them on this graph's",
             "        # colour key; reset after the layer loop below.",
             "        _DASH_MAPPER.z_options = {k: go.get(k, '')",
-            "                                  for k in ('zlabel', 'ztitle', 'zscale')}",
+            "                                  for k in ('zlabel', 'ztitle', 'zscale',",
+            "                                            'clegend', 'plegend')}",
             "        _DASH_MAPPER.z_context = (_reported_subopts, gname)",
             "        _src_list = graph_sources.get(gname)",
             "        src = (_src_list[-1] if isinstance(_src_list, list) and _src_list else shared_source)",
@@ -52547,7 +52915,7 @@ class ServerAppBuilder:
             "        _g_df_graph = g_df",
             "",
             "        plots = g.get('plots', [])",
-            "        _pstyle_idx = _dash_plot_style_indices(plots)",
+            "        _pstyle_idx = _dash_plot_style_indices(plots, _dash_pcycle(go))",
             "        xv = plots[0].get('xvar', '') if plots else ''",
             "        yv = plots[0].get('yvar', '') if plots else ''",
             "        # The axes' variables: a univariate first layer's is on x",

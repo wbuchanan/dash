@@ -264,7 +264,10 @@ DASH_GRAPH_KEYS = [
     "link", "filter",
     "ytitle2", "xtitle2", "ylabel2", "xlabel2", "yscale2", "xscale2",
 ]
-DASH_FLAGS = {"colordiscrete", "coloruseplegend"}
+DASH_FLAGS = {"colordiscrete", "coloruseplegend",
+              # WP-31 C8b: twoway's colorvar flags, declared.
+              "colorkeysrange", "colorkeysreverse", "colorfillonly",
+              "colorallowmultiple"}
 
 # dash's hard-coded abbreviation table today (dash_parse.mata, _expand_optkey).
 MATA_OPT_ALIAS = {
@@ -540,7 +543,9 @@ for spelling, full in DOC:
     # (WP-30 P1.6): the spec holds xlabel() for tlabel(), and so on.
     k = {"tlabel": "xlabel", "ttick": "xtick", "tmlabel": "xmlabel",
          "tmtick": "xmtick", "ttitle": "xtitle", "tscale": "xscale",
-         "tline": "xline", "text": "added_text_n"}.get(k, k)
+         "tline": "xline", "text": "added_text_n",
+         # colorformissing() is folded onto colormissing() (WP-31 C8b).
+         "colorformissing": "colormissing"}.get(k, k)
     if full in ("colorlevels", "colorvarminmax"):
         k = " ".join(sorted([full, "colorvar"]))
     add("A4", "dash.sthlp documents " + spelling + "() for " + full + "()",
@@ -939,8 +944,12 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
 // documented the seven time-axis options' minimums and full names (14).
 // 148 -> 146: WP-31 A3d documents jitter() by its full name, twoway's
 // minimum; the cmdab spellings jit and jitter are gone.
-if ${ZQA_NDOC} != 146 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (146 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// 146 -> 170: WP-31 C8b documents twelve options' minimums and full names:
+// colorrule() colorstart() colorend() colorlist() colorformissing()
+// colorkeysrange colorkeysreverse colorotherlabel() coloruseplegend
+// clegend() plegend() pcycle().
+if ${ZQA_NDOC} != 170 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (170 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }

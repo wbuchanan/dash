@@ -2043,6 +2043,11 @@ local f36 `"scatter mpg weight, clegend(red) plegend(red)"'
 local g36 "clegend() plegend()"
 local f37 `"(scatter mpg weight, colorstart(red)) (scatter price weight, colorstart(red)), title(T)"'
 local g37 "colorstart()"
+// Flipped (WP-31 C8b): rows 36 and 37 named in the note was wrong,
+// because dash draws clegend(), plegend() and colorstart() as twoway does
+// (colorvar_options_truth.json); taken once, drawn in silence.
+local s36 1
+local s37 1
 local f38 `"rbar mpg price weight, baroffset(1)"'
 local g38 "baroffset()"
 forvalues k = 33/38 {

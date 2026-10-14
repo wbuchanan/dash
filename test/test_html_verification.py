@@ -622,7 +622,7 @@ class TestColorvar:
 
 
     def test_colorvar_palette_viridis_default(self):
-        """CV-09: LinearColorMapper uses Viridis palette by default."""
+        """CV-09: LinearColorMapper uses twoway's hue rule by default."""
         from bokeh.models import LinearColorMapper
         from bokeh import palettes
         fig = figure()
@@ -632,8 +632,11 @@ class TestColorvar:
         bar = fig.right[0]
         mapper = bar.color_mapper
         assert isinstance(mapper, LinearColorMapper)
-        # Viridis256 starts with a dark purple (#440154)
-        assert "#440154" in list(mapper.palette)[:10]
+        # Flipped (WP-31 C8b): Viridis256 by default was wrong because
+        # twoway draws the key in its colour rule, hue from blue to red
+        # (colorvar_options_truth.json D01).
+        pal = list(mapper.palette)
+        assert len(pal) == 256 and pal[0] == "#0000ff" and pal[-1] == "#ff0000"
 
     def test_colorvar_palette_magma_option(self):
         """CV-10: colpalette(magma) selects Magma256 palette."""
