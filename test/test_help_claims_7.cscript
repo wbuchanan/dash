@@ -452,7 +452,9 @@ local y2 "(line mpg weight) (line price weight, yaxis(2)),"
 local x2 "(line mpg weight) (line mpg price, xaxis(2)),"
 local k = 0
 // the command up to and including its options' comma, the option as
-// written, the key dash writes
+// written, the key dash writes.  Flipped (WP-31 A3d): jit(5) is no longer
+// one of them -- dash refuses it as twoway does
+// (test_abbreviations.cscript U15-06).
 foreach case in ///
     "scatter mpg weight,|colv(price)|colorvar" ///
     "scatter mpg weight,|cv(price)|colorvar" ///
@@ -480,7 +482,6 @@ foreach case in ///
     "scatter mpg weight,|marker(D)|marker" ///
     "scatter mpg weight,|hover(price)|hover" ///
     "scatter mpg weight,|hov(price)|hover" ///
-    "scatter mpg weight,|jit(5)|jitter" ///
     "scatter mpg weight, jitter(5)|jse(3)|jseed" {
     local ++k
     gettoken plot rest : case, parse("|")

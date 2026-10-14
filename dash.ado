@@ -906,7 +906,7 @@ program define _dash_parse_graph_opts, sclass
     // the graph-level loops in _dash_process_segment and _dash_plot.
     // Capitalised letters are the minimum abbreviation: as a rule twoway's
     // own where twoway has the option (measured, abbrev_truth.json) --
-    // NAMe, ASPectratio and JITter are shorter, kept from dash's old table,
+    // NAMe and ASPectratio are shorter, kept from dash's old table,
     // and MEan and BWIDth longer -- and dash's own choice where it has not.
     // -syntax- ends the run of capitals at a digit, so T1title's minimum is
     // t, and YTITLE2's is ytitle -- which YTitle, declared first, takes.
@@ -1169,7 +1169,7 @@ program define _dash_parse_plot_opts, sclass
         AColor(string asis)       ALColor(string asis)      ALWidth(string asis) ///
         ALPattern(string asis) ///
         BARWidth(string asis)     BASE(string asis)         BLColor(string asis) ///
-        BFColor(string asis)      JITter(string asis)       JSEed(string) ///
+        BFColor(string asis)      JITTER(string asis)       JSEed(string) ///
         YAXis(string)             XAXis(string)             COLORVar(string) ///
         COLPALette(string)        COLORDIScrete             COLORUSEPLEGend ///
         COLORNlevels(string)      COLORCUTs(string asis)    COLORMissing(string) ///
@@ -5829,6 +5829,8 @@ program define _dash_process_segment, rclass
         // An option it declares whose value -syntax- could not bind:
         // refused as twoway refuses it, not named as unsupported.
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
+        // jitter() spelled shorter than twoway's minimum (WP-31 A3d).
+        _dash_refuse_jit
         // A second name() in this option list: -syntax- binds the first to
         // NAMe() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
@@ -9176,6 +9178,35 @@ program define _dash_refuse_unbound
     `parser' , `macval(opts)'
 end
 
+
+// ================================================================
+// _dash_refuse_jit  -- jitter() spelled shorter than twoway's minimum
+// ================================================================
+// WP-31 A3d.  twoway's minimum for jitter() is the full name: j(5),
+// ji(5), jit(5), jitt(5) and jitte(5) are "option <word>() not allowed",
+// and a bare jit "option jit not allowed", r(198); a value -syntax-
+// cannot bind, jit(x"' ...), is "type mismatch", r(109) (measured
+// 14oct2026, test_abbreviations.cscript U15-06).  dash declared JITter and
+// took them; it declares JITTER now, so -syntax- leaves them to the
+// catch-all, where the note would name them.  Called by
+// _dash_process_segment right after _dash_refuse_unbound, with the plot
+// parser's s() in place: the first such word of s(_unknown), read by
+// value, is refused in twoway's words.  It touches nothing in s().
+// ================================================================
+program define _dash_refuse_jit
+    version 19
+    mata: st_local("_rj_w", ustrregexm(" " + st_global("s(_unknown)") + " ", "[ ,](j|ji|jit|jitt|jitte)(\(|[ ,])") ? ustrregexs(1) + (ustrregexs(2) == "(" ? "()" : "") : "")
+    if "`_rj_w'" == "" exit
+    mata: _dash_unbound_cands(st_global("s(_unknown)"), 50)
+    forvalues i = 1/`_ru_n' {
+        if inlist("`_ru_nm`i''", "j", "ji", "jit", "jitt", "jitte") & `_ru_rc`i'' == 109 {
+            display as error "type mismatch"
+            exit 109
+        }
+    }
+    mata: _dash_say("err", "option ", st_local("_rj_w"), " not allowed")
+    exit 198
+end
 
 // ================================================================
 // _dash_opts_repeats <parser> <ptype> `"<options>"'  -- an option given

@@ -896,7 +896,7 @@ and now matches Stata.
 
 <!-- WP-31 A3c -->
 
-<!-- WP-31 A3d -->
+- `dash scatter mpg weight, jit(5)` (and j(), ji(), jitt(), jitte()): refused, r(198), "option jit() not allowed", as twoway refuses it; write jitter() in full (was: taken as jitter()) (WP-31, A3d)
 
 ### Removed
 

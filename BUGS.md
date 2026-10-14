@@ -3874,11 +3874,11 @@
   - Suggested fix: WP-31 section 32 (sizing scale aspect): raise the declaration to twoway's measured minimum and refuse asp() as twoway does.
   - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: jitter() takes jit, shorter than twoway's minimum
+- [x] Title: jitter() takes jit, shorter than twoway's minimum
   - File Names and Line Numbers: dash.ado plot `syntax' (JITter); test/test_abbreviations.py _SHORTER_THAN_TWOWAY
   - Description: GAPS3.md A3, found by WP-31 section 08 (A3 residual): dash takes jit() for jitter(), shorter than twoway's minimum.
   - Suggested fix: WP-31 section 15 (colorvar coverage): raise the declaration to twoway's measured minimum and refuse jit() as twoway does.
-  - Resolution: Not fixed because WP-31 section 15 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 14oct2026 (WP-31, A3d). Measured live (test_abbreviations.cscript U15-06): twoway's minimum for jitter() is the full name; j(), ji(), jit(), jitt() and jitte() are "option <word>() not allowed" and a bare jit "option jit not allowed", r(198), and jit() holding a value -syntax- cannot bind is "type mismatch", r(109). dash.ado declares JITTER in _dash_parse_plot_opts, and _dash_refuse_jit, called after _dash_refuse_unbound, refuses those spellings in twoway's words where -syntax- would leave them to the note; dash.sthlp documents jitter() by its full name. Pinned by test/test_abbreviations.py::TestJitterMinimum::test_dash_declares_twoways_minimum, test/test_abbreviations.py::TestTheLivePin::test_no_unpinned_minimum_is_shorter_than_twoways, test/test_abbreviations.cscript U15-06. Closes GAPS3 A3 (WP-31, A3d).
 
 - [ ] Title: kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve
   - File Names and Line Numbers: dash.ado _dash_fold_range; dash_render.py GlyphMapper.map_kdensity

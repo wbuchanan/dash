@@ -298,8 +298,9 @@ _SHORTER_THAN_TWOWAY = {
     "l2title": ("l", "l2"),
     "r2title": ("r", "r2"),
     "t2title": ("t", "t2"),
-    # jitter(): dash takes jit() .. jitte(); twoway only jitter().
-    "jitter": ("jit", "jitter"),
+    # Flipped (WP-31 A3d): jitter() was ("jit", "jitter") -- dash took
+    # jit() .. jitte(), which twoway refuses ("option jit() not allowed",
+    # r(198)); dash declares twoway's minimum, the full name, now.
     # name(): dash takes nam(); twoway only name() (graph-created oracle).
     "name": ("nam", "name"),
 }
@@ -617,7 +618,9 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     # 69 -> 70: and mlabt:extstyle() (part 2).
     # 70 -> 77: WP-30 P1.6 documented the seven time-axis minimums, tl,
     # ttic, tml, tmt, tt, tsc and tli (twoway's, taxis_truth.json ab_*).
-    assert len(seen) == 77, (
+    # 77 -> 76: A3d jitter() is documented by its full name, twoway's
+    # minimum; jit:ter is gone.
+    assert len(seen) == 76, (
         "%d documented abbreviations were checked" % len(seen))
     assert not bad, (
         "dash.sthlp documents %d spelling(s) dash rejects.\n  "
@@ -898,3 +901,27 @@ class TestTheAxisRouteKnowsDashsSpellings:
         assert len(set(lists)) == 1, set(lists)
         for key in ("ytick2", "xtick2", "yline2", "xline2"):
             assert key in lists[0], key
+
+
+class TestJitterMinimum:
+    """WP-31 A3d: twoway's minimum for jitter() is the full name (measured
+    14oct2026, test_abbreviations.cscript U15-06: j() ji() jit() jitt()
+    jitte() and bare jit are "option <word> not allowed", r(198)).  dash
+    declares JITTER, and refuses the shorter spellings in twoway's words
+    (_dash_refuse_jit), where -syntax- would leave them to the note."""
+
+    def test_dash_declares_twoways_minimum(self):
+        ado = open(ADO_PATH, encoding="utf-8").read()
+        assert "JITTER(string asis)" in ado
+        assert "JITter(" not in ado
+
+    def test_the_short_spellings_are_refused(self):
+        ado = open(ADO_PATH, encoding="utf-8").read()
+        body = ado[ado.index("program define _dash_refuse_jit"):]
+        body = body[:body.index("\nend\n")]
+        assert "(j|ji|jit|jitt|jitte)" in body
+        assert '"type mismatch"' in body and "exit 109" in body
+        assert "exit 198" in body
+        seg = ado[ado.index("_dash_refuse_unbound _dash_parse_plot_opts"):]
+        assert seg.index("_dash_refuse_jit") < seg.index("_dash_refuse_foreign")
+

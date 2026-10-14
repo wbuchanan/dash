@@ -4518,16 +4518,15 @@ saved dashboard and the served app alike, and {cmd:dash}'s note does not
 name them there.
 
 {synoptset 28}{...}
-{synopt:{cmdab:jit:ter(}{it:#}{cmd:)}}move each marker by uniform noise
+{synopt:{opt jitter(#)}}move each marker by uniform noise
     spanning {it:#}% of the data's range on each axis; {it:#} must be a
     number from 0 to 100, or a list of them, one per y (see
     {help dash##stylelists:Style lists}).  Drawn on the markers of {cmd:scatter},
     {cmd:connected}, {cmd:rconnected}, {cmd:dot}, {cmd:dropline},
     {cmd:scatteri}, {cmd:rscatter}, {cmd:rcapsym}, {cmd:pcscatter} and
     {cmd:pccapsym} (both ends), never on a connecting line or a spine, as
-    in {cmd:twoway}.
-    {cmd:dash} accepts {it:jit} for it, where {cmd:twoway} wants the full
-    name{p_end}
+    in {cmd:twoway}.  As in {cmd:twoway}, the name is not abbreviated:
+    {cmd:jit()} is refused{p_end}
 {synopt:{opt jitterseed(#)}}random-number seed for {cmd:jitter()}, spelled as
     in Stata; {it:#} must be a non-negative integer.  With no seed the noise
     differs on every render{p_end}

@@ -282,7 +282,9 @@ MATA_OPT_ALIAS = {
     "xsc": "xscale", "ysc": "yscale", "xl": "xline", "yl": "yline",
     "asp": "aspectratio", "bgc": "bgcolor", "pbgc": "plotbgcolor",
     "plotr": "plotregion", "graphr": "graphregion",
-    "jit": "jitter", "jse": "jseed", "yax": "yaxis", "xax": "xaxis",
+    # Flipped (WP-31 A3d): "jit": "jitter" -- jit() is refused now, as
+    # twoway refuses it (U15-06).
+    "jse": "jseed", "yax": "yaxis", "xax": "xaxis",
     "yti2": "ytitle2", "xti2": "xtitle2", "yla2": "ylabel2",
     "xla2": "xlabel2", "ysc2": "yscale2", "xsc2": "xscale2",
     "sch": "scheme", "cv": "colorvar", "colv": "colorvar",
@@ -935,8 +937,10 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
 // their full names (18); 134 since WP-30 P1.24 documented mlabv(),
 // mlabvposition(), mlabt() and mlabtextstyle(); 148 since WP-30 P1.6
 // documented the seven time-axis options' minimums and full names (14).
-if ${ZQA_NDOC} != 148 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (148 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// 148 -> 146: WP-31 A3d documents jitter() by its full name, twoway's
+// minimum; the cmdab spellings jit and jitter are gone.
+if ${ZQA_NDOC} != 146 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (146 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }
@@ -1064,6 +1068,41 @@ if `os07' {
 }
 else display as text "OS-07 PASS: dst() dl() dls() bml() land on their keys and are named in full"
 capture dash clear
+
+// U15-06 (WP-31 A3d): jitter()'s minimum is twoway's, the full name.
+// Each shorter spelling twoway refuses -- j() ji() jit() jitt() jitte(),
+// bare jit, and jit() holding a value -syntax- cannot bind -- dash refuses
+// with twoway's rc and first error line; jitter(5) both accept.
+local u1506 0
+local u15v = "x" + char(34) + char(39) + " _dup(3) " + char(34) + "INJ" + char(34) + " " + char(96) + char(34)
+local u15log "`c(tmpdir)'zu1506.log"
+local i 0
+foreach o in "j(5)" "ji(5)" "jit(5)" "jitt(5)" "jitte(5)" "jit" "jitter(5)" "@V@" {
+    local ++i
+    if "`o'" == "@V@" local o `"jit(`macval(u15v)')"'
+    foreach who in twoway dash {
+        capture dash clear
+        capture log close _zu15
+        quietly log using "`u15log'", text replace name(_zu15)
+        if "`who'" == "twoway" capture noisily twoway scatter mpg weight, `macval(o)' nodraw
+        else capture noisily dash scatter mpg weight, `macval(o)' name(zu1506)
+        local rc_`who' = _rc
+        quietly log close _zu15
+        python: from sfi import Macro as _u15M; _u15l = [l.rstrip() for l in open(_u15M.getLocal("u15log"), encoding="utf-8", errors="replace") if l.strip() and not l.lstrip().startswith((".", ">", "-")) and ":" not in l[:12] and "dash:" not in l]; _u15M.setLocal("line_`who'", (_u15l[0] if _u15l else "")[:120])
+    }
+    if `rc_twoway' != `rc_dash' | `"`line_twoway'"' != `"`line_dash'"' {
+        display as error `"U15-06 FAIL case `i': twoway r(`rc_twoway') [`line_twoway'], dash r(`rc_dash') [`line_dash']"'
+        local u1506 1
+    }
+    if `i' == 7 & `rc_dash' != 0 local u1506 1
+}
+capture erase "`u15log'"
+capture dash clear
+if `u1506' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' U15-06"'
+}
+else display as text "U15-06 PASS: j() ji() jit() jitt() jitte() and bare jit refused as twoway refuses them, jitter(5) taken"
 
 // ----------------------------------------------------------------
 // Report

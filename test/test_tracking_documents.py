@@ -2061,7 +2061,6 @@ WP31_OPEN = {
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
     "A3b": "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)",
     "A3c": "aspectratio() takes asp, shorter than twoway's minimum",
-    "A3d": "jitter() takes jit, shorter than twoway's minimum",
     "A5b": "A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed",
     "C10d": "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve",
     "C10e": "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed",

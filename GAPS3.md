@@ -422,7 +422,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
 - **A3b Tracked:** Open (WP-31 section 27).
 - **A3c Tracked:** Open (WP-31 section 32).
-- **A3d Tracked:** Open (WP-31 section 15).
+- **A3d Tracked:** Closed in WP-31, BUGS.md "jitter() takes jit, shorter than twoway's minimum", commit pending.
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
 - **A5b Tracked:** Open (WP-31 section 20).
