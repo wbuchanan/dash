@@ -342,7 +342,8 @@ _adv_log_run "`p283log'" `"dash `oparens'scatter mpg weight`cparens', saving("_t
 local p283_rc = r(rc)
 capture erase "_tmp_p283.html"
 assert `p283_rc' == 198
-local p283msg = "dash: unrecognised plot type '" + substr("`oparens'", 2, .) + "scatter'."
+// Flipped (WP-31 A2): in twoway's words, "<word> is not a twoway plot type".
+local p283msg = substr("`oparens'", 2, .) + "scatter is not a twoway plot type"
 cert_log_has "`p283log'", needle("`p283msg'")
 assert r(count) == 1
 display "P2-83 PASS: 50-level nested parens → graceful error (rc=`p283_rc')"
@@ -1428,7 +1429,8 @@ capture dash clear
 // P20-01 — the plot-type token
 _adv_p19_run "dash {bf:INJMARKPT} mpg weight, name(p2001)"
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("unrecognised plot type '{bf:INJMARKPT}'")
+// Flipped (WP-31 A2): twoway's sentence, "<word> is not a twoway plot type".
+cert_file_has "`r(log)'", needle("{bf:INJMARKPT} is not a twoway plot type")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P20-01 PASS: an unrecognised plot type is echoed as text, not SMCL"

@@ -307,7 +307,8 @@ assert r(rc) == 198
 local lg49 "`r(log)'"
 cert_file_has "`lg49'", needle("dash: 'contour' is a twoway plot type dash does not draw: it needs a surface interpolated over a grid. Use Stata's own twoway contour, or dash scatter y x, colorvar(z) to colour each point by z.")
 assert r(found) == 1
-cert_file_has "`lg49'", needle("unrecognised plot type")
+// Flipped (WP-31 A2): the generic refusal is twoway's sentence now.
+cert_file_has "`lg49'", needle("is not a twoway plot type")
 assert r(found) == 0
 cert_file_has "`lg49'", needle("Supported:")
 assert r(found) == 0
@@ -322,7 +323,8 @@ assert r(rc) == 198
 local lg50 "`r(log)'"
 cert_file_has "`lg50'", needle("dash: 'contourline' is a twoway plot type dash does not draw: it needs a surface interpolated over a grid. Use Stata's own twoway contourline, or dash scatter y x, colorvar(z) to colour each point by z.")
 assert r(found) == 1
-cert_file_has "`lg50'", needle("unrecognised plot type")
+// Flipped (WP-31 A2): the generic refusal is twoway's sentence now.
+cert_file_has "`lg50'", needle("is not a twoway plot type")
 assert r(found) == 0
 assert "${dash_graph_registry}" == ""
 display "P1A-50 PASS: twoway contourline is refused, r(198), as a plot type dash does not draw, naming what to use instead"
@@ -344,10 +346,11 @@ assert r(rc) == 198
 cert_file_has "`r(log)'", needle("dash: 'contourline' is a twoway plot type dash does not draw")
 assert r(found) == 1
 // twoway takes no abbreviation of either name: "contourl is not a twoway
-// plot type".  A prefix stays an unrecognised plot type here as well.
+// plot type".  A prefix stays an unrecognised plot type here as well,
+// refused in twoway's words (Flipped, WP-31 A2).
 _p1a_logrun "dash contourl mpg weight length, name(p1a51c)"
 assert r(rc) == 198
-cert_file_has "`r(log)'", needle("unrecognised plot type 'contourl'")
+cert_file_has "`r(log)'", needle("contourl is not a twoway plot type")
 assert r(found) == 1
 assert "${dash_graph_registry}" == ""
 display "P1A-51 PASS: the contour refusal echoes the token as typed, holds inside a multi-plot command, and is not given to a prefix"
@@ -616,7 +619,8 @@ foreach p159 in rpca rpspik {
     _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59c)"
     assert r(rc) == 198
     local lg59c "`r(log)'"
-    cert_file_has "`lg59c'", needle("unrecognised plot type")
+    // Flipped (WP-31 A2): twoway's sentence.
+    cert_file_has "`lg59c'", needle("`p159' is not a twoway plot type")
     assert r(found) == 1
 }
 assert "${dash_graph_registry}" == ""
@@ -1149,7 +1153,8 @@ foreach seg in "scatteri,name(p1a68)" "scatteri, name(p1a68)" ///
     "scatteri 1 2 || pci, name(p1a68)" "SC, name(p1a68)" "fn, name(p1a68)" {
     _p1a_logrun `"dash `seg'"'
     local rc68 = r(rc)
-    cert_file_has "`r(log)'", needle("unrecognised plot type")
+    // Flipped (WP-31 A2): the generic refusal is twoway's sentence.
+    cert_file_has "`r(log)'", needle("is not a twoway plot type")
     if r(found) | !inlist(`rc68', 100, 198) {
         display as error `"P1A-68: dash `seg' gave rc `rc68'"'
         exit 9
@@ -2426,6 +2431,53 @@ restore
 dash clear
 assert "${dash_graph_registry}" == ""
 display "P1A-84 PASS: a by() in any segment, and by()'s Total panel, are answered panel by panel as twoway answers them"
+
+// ================================================================
+// U08-5 (WP-31 A2) -- the thirteen shorter plot-type spellings dash took
+// are refused as twoway refuses them
+// ================================================================
+// Measured 13oct2026 (test/fixtures/bare_prefix_truth.json extras.*):
+// twoway ar, ba, sp, lfi, qfi, low, lpo, fp, kde, dr, tsl, tsrl and msp
+// are each "<word> is not a twoway plot type", r(198); twoway takes only
+// its own minimums -- sc li con hist rsc rl rcon fun -- and mbands and fn.
+// dash took all thirteen as the type they began.  dash prints twoway's
+// line, then its Supported: list, and registers nothing.
+sysuse auto, clear
+dash clear
+foreach w in ar ba sp lfi qfi low lpo fp kde dr tsl tsrl msp {
+    _p1a_logrun "dash `w' mpg weight, name(u085)"
+    local rc85 = r(rc)
+    local lg85 "`r(log)'"
+    if `rc85' != 198 {
+        display as error "U08-5 FAIL: dash `w' mpg weight gave rc `rc85', twoway r(198)"
+        exit 9
+    }
+    cert_file_has "`lg85'", needle("`w' is not a twoway plot type")
+    if !r(found) {
+        display as error "U08-5 FAIL: dash `w' did not say twoway's line"
+        exit 9
+    }
+    cert_file_has "`lg85'", needle("Supported:")
+    assert r(found) == 1
+}
+assert "${dash_graph_registry}" == ""
+display "U08-5 PASS: ar ba sp lfi qfi low lpo fp kde dr tsl tsrl msp are refused, r(198), in twoway's words"
+
+// ================================================================
+// U08-6 (WP-31 A2) -- the full names and twoway's spellings still register
+// ================================================================
+dash clear
+foreach c in "lfit mpg weight|lfit" "area mpg weight|area" ///
+    "kdensity mpg|kdensity" "sc mpg weight|scatter" "rl turn mpg weight|rline" ///
+    "hist mpg|histogram" "mbands mpg weight|mband" "fn y = x|function" {
+    gettoken cmd86 typ86 : c, parse("|")
+    local typ86 = substr("`typ86'", 2, .)
+    capture noisily dash `cmd86', name(u086, replace)
+    assert _rc == 0
+    assert strpos(`"${dash_json_u086}"', `""type":"`typ86'""') > 0
+}
+dash clear
+display "U08-6 PASS: lfit, area, kdensity and twoway's spellings register as their types"
 
 // ================================================================
 // P1A-85 -- a || segment with no plot: `|| , opts' and `|| if exp'

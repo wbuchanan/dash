@@ -3274,11 +3274,11 @@
   - Suggested fix: WP-31 section 08 (abbreviations prefix mlalign): draw an empty figure with axes only for the bare prefix and pin it with a cscript.
   - Resolution: Not fixed because WP-31 section 08 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's
+- [x] Title: Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's
   - File Names and Line Numbers: dash_parse.mata:1688-1730; dash.sthlp:302-333
   - Description: GAPS3.md A2, re-verified at 6370ca4: Plot-type abbreviations are a superset of twoway's (`lfi qfi ar ba sp low lpo fp kde dr tsl tsrl msp` accepted; twoway refuses them) and the help lists only twoway's eight.
   - Suggested fix: WP-31 section 08 (abbreviations prefix mlalign): refuse the extra abbreviations with twoway's not-a-twoway-plot-type r(198) and pin with test_parser.cscript.
-  - Resolution: Not fixed because WP-31 section 08 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 13oct2026 (WP-31, A2). Measured first (test/fixtures/bare_prefix_truth.json): twoway refuses ar, ba, sp, lfi, qfi, low, lpo, fp, kde, dr, tsl, tsrl and msp, each "<word> is not a twoway plot type", r(198), and takes sc li con hist rsc rl rcon fun, mbands and fn. _expand_plottype_str (dash_parse.mata) holds twoway's eight minimums and the full name of every other type, so dash refuses the thirteen as twoway does, and dash.ado's generic refusal in _dash_process_segment is twoway's line followed by dash's Supported: list; nothing is registered, so neither renderer is reached. dash.sthlp's Synonyms table went (a Case paragraph says the shorter names are refused). Pinned by test/test_plot_type_abbreviations.py::TestTheTable::test_only_twoways_minimums, test/test_parser.cscript U08-5, U08-6, test/test_help_claims_1.cscript HC1-08, test/test_wp31_truth.cscript U08-1, U08-2; fixture test/fixtures/bare_prefix_truth.json. Closes GAPS3 A2 (WP-31, A2).
 
 - [ ] Title: Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts
   - File Names and Line Numbers: test/test_abbreviations.py:41-53, :255

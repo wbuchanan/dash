@@ -418,7 +418,7 @@ One line per WP-31 entry (.ultraplan/sections/index.md, A4), rewritten in place 
 A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha on s3-bugs (DECISIONS A11).
 
 - **A1 Tracked:** Open (WP-31 section 08).
-- **A2 Tracked:** Open (WP-31 section 08).
+- **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit pending.
 - **A3 Tracked:** Open (WP-31 section 08).
 - **A4 Tracked:** Open (WP-31 section 08).
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.

@@ -1,0 +1,219 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "5fa366c215ec20394e54a472cae639612f07356d",
+  "extracted": "13 Oct 2026 20:10:17",
+  "source": "scripts/extract_bare_prefix_truth.do",
+  "stata_version": "19.5"
+ },
+ "bare": {
+  "gr_tw": {
+   "cmd": "gr tw, name(zb5, replace)",
+   "message": "",
+   "rc": 0
+  },
+  "graph_twoway": {
+   "cmd": "graph twoway, name(zb3, replace)",
+   "message": "",
+   "rc": 0
+  },
+  "plain": {
+   "cmd": "twoway",
+   "message": "",
+   "rc": 0
+  },
+  "tw": {
+   "cmd": "tw, name(zb4, replace)",
+   "message": "",
+   "rc": 0
+  },
+  "twoway": {
+   "cmd": "twoway, name(zb1, replace)",
+   "message": "",
+   "plot1_exists": false,
+   "rc": 0
+  },
+  "twoway_title": {
+   "cmd": "twoway, title(T) name(zb2, replace)",
+   "message": "",
+   "plot1_exists": false,
+   "rc": 0,
+   "title": "T"
+  }
+ },
+ "extras": {
+  "ar": {
+   "cmd": "twoway ar mpg weight, nodraw",
+   "message": "ar is not a twoway plot type",
+   "rc": 198
+  },
+  "ba": {
+   "cmd": "twoway ba mpg weight, nodraw",
+   "message": "ba is not a twoway plot type",
+   "rc": 198
+  },
+  "dr": {
+   "cmd": "twoway dr mpg weight, nodraw",
+   "message": "dr is not a twoway plot type",
+   "rc": 198
+  },
+  "fp": {
+   "cmd": "twoway fp mpg weight, nodraw",
+   "message": "fp is not a twoway plot type",
+   "rc": 198
+  },
+  "kde": {
+   "cmd": "twoway kde mpg, nodraw",
+   "message": "kde is not a twoway plot type",
+   "rc": 198
+  },
+  "lfi": {
+   "cmd": "twoway lfi mpg weight, nodraw",
+   "message": "lfi is not a twoway plot type",
+   "rc": 198
+  },
+  "low": {
+   "cmd": "twoway low mpg weight, nodraw",
+   "message": "low is not a twoway plot type",
+   "rc": 198
+  },
+  "lpo": {
+   "cmd": "twoway lpo mpg weight, nodraw",
+   "message": "lpo is not a twoway plot type",
+   "rc": 198
+  },
+  "msp": {
+   "cmd": "twoway msp mpg weight, nodraw",
+   "message": "msp is not a twoway plot type",
+   "rc": 198
+  },
+  "qfi": {
+   "cmd": "twoway qfi mpg weight, nodraw",
+   "message": "qfi is not a twoway plot type",
+   "rc": 198
+  },
+  "sp": {
+   "cmd": "twoway sp mpg weight, nodraw",
+   "message": "sp is not a twoway plot type",
+   "rc": 198
+  },
+  "tsl": {
+   "cmd": "twoway tsl mpg, nodraw",
+   "message": "tsl is not a twoway plot type",
+   "rc": 198
+  },
+  "tsrl": {
+   "cmd": "twoway tsrl mpg turn, nodraw",
+   "message": "tsrl is not a twoway plot type",
+   "rc": 198
+  }
+ },
+ "mla": {
+  "ml": {
+   "cmd": "twoway scatter mpg weight, ml(make) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlabel"
+  },
+  "mla": {
+   "cmd": "twoway scatter mpg weight, mla(make) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlabel"
+  },
+  "mla_center": {
+   "cmd": "twoway scatter mpg weight, mla(center) nodraw",
+   "message": "variable center not found",
+   "rc": 111,
+   "resolves_to": null
+  },
+  "mlab": {
+   "cmd": "twoway scatter mpg weight, mlab(make) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlabel"
+  },
+  "mlabe": {
+   "cmd": "twoway scatter mpg weight, mlabe(make) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlabel"
+  },
+  "mlabel": {
+   "cmd": "twoway scatter mpg weight, mlabel(make) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlabel"
+  },
+  "mlal": {
+   "cmd": "twoway scatter mpg weight, mlal(inside) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlalign"
+  },
+  "mlali": {
+   "cmd": "twoway scatter mpg weight, mlali(inside) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlalign"
+  },
+  "mlalign": {
+   "cmd": "twoway scatter mpg weight, mlalign(inside) nodraw",
+   "message": "",
+   "rc": 0,
+   "resolves_to": "mlalign"
+  }
+ },
+ "twoways": {
+  "con": {
+   "cmd": "twoway con mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "fn": {
+   "cmd": "twoway fn y = x, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "fun": {
+   "cmd": "twoway fun y = x, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "hist": {
+   "cmd": "twoway hist mpg, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "li": {
+   "cmd": "twoway li mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "mbands": {
+   "cmd": "twoway mbands mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "rcon": {
+   "cmd": "twoway rcon turn mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "rl": {
+   "cmd": "twoway rl turn mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "rsc": {
+   "cmd": "twoway rsc turn mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "sc": {
+   "cmd": "twoway sc mpg weight, nodraw",
+   "message": "",
+   "rc": 0
+  }
+ }
+}

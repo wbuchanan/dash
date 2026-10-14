@@ -44,7 +44,7 @@
 *!       target (cv, colv, pbgc, mlg, bw, xla2, ...) cannot survive as Stata
 *!       abbreviations.  They may stop working, but they must never be accepted
 *!       and quietly routed to a different option.
-*!   R4  REGRESSION GUARD: plot-type full names and today's short forms.
+*!   R4  REGRESSION GUARD: plot-type full names and twoway's short forms.
 *!
 *! A NOTE ON "AMBIGUOUS PREFIX PRODUCES STATA'S AMBIGUITY ERROR"
 *! ------------------------------------------------------------
@@ -288,13 +288,14 @@ MATA_OPT_ALIAS = {
 }
 
 # dash's hard-coded plot-type table today (_expand_plottype_str).
+# Flipped (WP-31 A2): the Mata table holds twoway's minimums only, and ar,
+# ba, sp, lfi, qfi, low, lpo, lpol, fp, fpf, kde, dr, tsl, tsrl and msp are
+# refused, "<word> is not a twoway plot type", r(198), as twoway refuses
+# them (test_parser.cscript U08-5); the short forms guarded are twoway's.
 MATA_PT_ALIAS = {
-    "sc": "scatter", "li": "line", "con": "connected", "ar": "area",
-    "ba": "bar", "sp": "spike", "lfi": "lfit", "qfi": "qfit",
-    "low": "lowess", "lpo": "lpoly", "lpol": "lpoly", "fp": "fpfit",
-    "fpf": "fpfit", "hist": "histogram", "kde": "kdensity",
-    "dr": "dropline", "tsl": "tsline", "tsrl": "tsrline",
-    "msp": "mspline", "func": "function",
+    "sc": "scatter", "li": "line", "con": "connected",
+    "hist": "histogram", "rsc": "rscatter", "rl": "rline",
+    "rcon": "rconnected", "func": "function",
 }
 MATA_PT_FULL = [
     "scatter", "line", "connected", "area", "bar", "spike", "lfit", "qfit",

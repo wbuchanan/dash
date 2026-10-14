@@ -857,7 +857,7 @@ and now matches Stata.
 
 - A date literal in a y label, tick or scale option is refused as twoway refuses it: dash scatter mpg weight, ylabel(2000m1) drew, and is now refused, r(198), "invalid label specifier, :  2000m1:", as are ytick(), ymlabel(), ymtick() and their axis(2) forms; yscale(range(2000m1)) is r(121), "range() invalid -- invalid numlist"; a %tm y variable does not change it, as in twoway. (WP-31, A8)
 
-<!-- WP-31 A2 -->
+- The thirteen shorter plot-type names only dash took -- ar, ba, sp, lfi, qfi, low, lpo, fp, kde, dr, tsl, tsrl and msp, and their longer prefixes short of the full name -- are refused, r(198), with twoway's line "lfi is not a twoway plot type"; dash drew them as area, bar, spike, lfit, qfit, lowess, lpoly, fpfit, kdensity, dropline, tsline, tsrline and mspline.  An unknown plot type is refused in the same words, followed by dash's Supported: list; it said "dash: unrecognised plot type '<word>'". (WP-31, A2)
 
 <!-- WP-31 A4 -->
 

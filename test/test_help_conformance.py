@@ -714,8 +714,10 @@ class TestTheParsersFoundSomething:
         # 404 -> 405: P1.10 part 2's ttext() entry.
         # WP-30 P1.27: 405 -> 407, the nodraw and graph-prefix differences.
         # 407 -> 410: C1 the three Arrowheads entries under Plot types.
-        assert len(defs) == 410, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 410 "
+        # 410 -> 397: A2 the Synonyms table's thirteen entries went (dash
+        # takes no plot-type spelling twoway refuses).
+        assert len(defs) == 397, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 397 "
             f"measured 13oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

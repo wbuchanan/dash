@@ -464,32 +464,11 @@ out on the same counts, and a graph that keeps it is not "nothing to
 graph".
 
 {pstd}
-{ul:Synonyms.}  {cmd:dash} also takes shorter names that {cmd:twoway}
-refuses, kept so that older {cmd:dash} do-files still run; a do-file that
-uses one runs in {cmd:dash} only.  Each name on the right is the plot type
-on its left:
-
-{synoptset 16}{...}
-{synopt:{cmd:area}}{cmd:ar}, {cmd:are}{p_end}
-{synopt:{cmd:bar}}{cmd:ba}{p_end}
-{synopt:{cmd:spike}}{cmd:sp}, {cmd:spi}, {cmd:spik}{p_end}
-{synopt:{cmd:dropline}}{cmd:dr}, {cmd:dro}, {cmd:drop}, {cmd:dropl},
-    {cmd:dropli}, {cmd:droplin}{p_end}
-{synopt:{cmd:lfit}}{cmd:lfi}{p_end}
-{synopt:{cmd:qfit}}{cmd:qfi}{p_end}
-{synopt:{cmd:fpfit}}{cmd:fp}, {cmd:fpf}, {cmd:fpfi}{p_end}
-{synopt:{cmd:lowess}}{cmd:low}, {cmd:lowe}, {cmd:lowes}{p_end}
-{synopt:{cmd:lpoly}}{cmd:lpo}, {cmd:lpol}{p_end}
-{synopt:{cmd:mspline}}{cmd:msp}, {cmd:mspl}, {cmd:mspli}, {cmd:msplin}{p_end}
-{synopt:{cmd:kdensity}}{cmd:kde}, {cmd:kden}, {cmd:kdens}, {cmd:kdensi},
-    {cmd:kdensit}{p_end}
-{synopt:{cmd:tsline}}{cmd:tsl}, {cmd:tsli}, {cmd:tslin}{p_end}
-{synopt:{cmd:tsrline}}{cmd:tsrl}, {cmd:tsrli}, {cmd:tsrlin}{p_end}
-{p2colreset}{...}
-
-{pstd}
-{cmd:dash} also reads a plot type without regard to case: {cmd:SC} and
-{cmd:Hist} draw a scatter and a histogram, where {cmd:twoway} refuses both.
+{ul:Case.}  {cmd:dash} takes no plot-type name shorter than {cmd:twoway}'s:
+{cmd:ar}, {cmd:lfi} or {cmd:kde} is refused, "{it:word} is not a twoway plot
+type", {cmd:r(198)}, as {cmd:twoway} refuses it.  It reads a plot type
+without regard to case: {cmd:SC} and {cmd:Hist} draw a scatter and a
+histogram, where {cmd:twoway} refuses both.
 
 {pstd}
 {ul:pccapsym.}  {cmd:pccapsym} draws each spike with the same marker at

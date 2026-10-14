@@ -43,9 +43,13 @@
 *!           for mband and fn for function (twowaygraph_g.class, _unab_cmd:
 *!           `syntax [, SCatter LIne CONnected HISTogram RSCatter RLine
 *!           RCONnected MBANDs FN FUNction *]'); dash refused both, r(198).
-*!   HC1-08  The shorter spellings only dash takes -- the Plot types
-*!           section's synonyms -- and a name in capitals: dash reads each
-*!           as the type named, twoway refuses each.
+*!   HC1-08  The shorter spellings dash took -- ar, ba, sp, lfi, qfi, low,
+*!           lpo, fp, kde, dr, tsl, tsrl, msp and their longer prefixes
+*!           short of twoway's full name -- are refused by dash, r(198),
+*!           with the line twoway logs in the same run ("<word> is not a
+*!           twoway plot type"); a name in capitals (SC, Hist) is still
+*!           read by dash as the type named, which twoway refuses.
+*!           Flipped (WP-31 A2): dash took the shorter spellings.
 *!   HC1-09  tsline and tsrline draw against the time variable tsset set,
 *!           as twoway does.  MEASURED FALSE: `tsline mpg turn' on tsset
 *!           data drew mpg against turn; twoway draws two series, mpg and
@@ -573,8 +577,31 @@ if `"`bad7'"' != "" | `n7' < 70 {
 else display as text "HC1-07 PASS: all `n7' plot-type spellings twoway takes, mbands and fn among them, are taken by dash as the same type"
 
 // ================================================================
-// HC1-08 -- the synonyms only dash takes
+// HC1-08 -- the shorter spellings are refused as twoway refuses them;
+// a name in capitals is dash's own
+// Flipped (WP-31 A2): dash took ar .. tsrlin as the types they begin;
+// twoway refuses each, "<word> is not a twoway plot type", r(198), and so
+// does dash now, in the same words.
 // ================================================================
+capture mata: mata drop _hc_ptline()
+mata:
+// The first line of a log that says a word is no twoway plot type.
+void _hc_ptline(string scalar fn, string scalar out)
+{
+    real scalar   fh
+    string scalar line, got
+    fh = fopen(fn, "r")
+    got = ""
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        if (strpos(line, " is not a twoway plot type")) {
+            got = strtrim(line)
+            break
+        }
+    }
+    fclose(fh)
+    st_local(out, got)
+}
+end
 local syn "ar:area are:area ba:bar sp:spike spi:spike spik:spike"
 local syn "`syn' dr:dropline dro:dropline drop:dropline dropl:dropline dropli:dropline droplin:dropline"
 local syn "`syn' lfi:lfit qfi:qfit fp:fpfit fpf:fpfit fpfi:fpfit"
@@ -582,8 +609,9 @@ local syn "`syn' low:lowess lowe:lowess lowes:lowess lpo:lpoly lpol:lpoly"
 local syn "`syn' msp:mspline mspl:mspline mspli:mspline msplin:mspline"
 local syn "`syn' kde:kdensity kden:kdensity kdens:kdensity kdensi:kdensity kdensit:kdensity"
 local syn "`syn' tsl:tsline tsli:tsline tslin:tsline tsrl:tsrline tsrli:tsrline tsrlin:tsrline"
-local syn "`syn' SC:scatter Hist:histogram"
 local bad8 ""
+local n8 0
+local lg8 "`c(tmpdir)'dash_hc08.log"
 foreach pair of local syn {
     gettoken sp full : pair, parse(":")
     local full = substr("`full'", 2, .)
@@ -591,6 +619,30 @@ foreach pair of local syn {
     if "`full'" == "tsline" local a "mpg"
     if "`full'" == "tsrline" local a "lo hi"
     if inlist("`full'", "histogram", "kdensity") local a "mpg"
+    graph drop _all
+    capture log close _hc08
+    quietly log using "`lg8'", text replace name(_hc08)
+    capture noisily twoway `sp' `a', nodraw
+    local twrc = _rc
+    quietly log close _hc08
+    mata: _hc_ptline(st_local("lg8"), "twl")
+    dash clear
+    quietly log using "`lg8'", text replace name(_hc08)
+    capture noisily dash `sp' `a', name(hc08)
+    local drc = _rc
+    quietly log close _hc08
+    mata: _hc_ptline(st_local("lg8"), "dl")
+    local n8 = `n8' + 1
+    if `twrc' != 198 | `drc' != 198 | `"`twl'"' == "" | `"`dl'"' != `"`twl'"' | `"${dash_graph_registry}"' != "" {
+        local bad8 `"`bad8' [`sp': twoway `twrc' "`twl'" dash `drc' "`dl'"]"'
+    }
+}
+capture erase "`lg8'"
+// A name in capitals: dash lower-cases the type, twoway refuses it.
+foreach pair in SC:scatter Hist:histogram {
+    gettoken sp full : pair, parse(":")
+    local full = substr("`full'", 2, .)
+    local a = cond("`full'" == "histogram", "mpg", "mpg weight")
     graph drop _all
     capture twoway `sp' `a', nodraw
     local twrc = _rc
@@ -604,12 +656,12 @@ foreach pair of local syn {
     }
 }
 dash clear
-if `"`bad8'"' != "" {
-    display as error `"HC1-08 FAIL:`bad8'"'
+if `"`bad8'"' != "" | `n8' != 37 {
+    display as error `"HC1-08 FAIL (`n8' spellings):`bad8'"'
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-08"'
 }
-else display as text "HC1-08 PASS: the synonyms the help lists, and SC and Hist, are dash's own: dash takes each, twoway refuses each"
+else display as text "HC1-08 PASS: the `n8' shorter spellings are refused, r(198), in twoway's words; SC and Hist are dash's own"
 
 // ================================================================
 // HC1-09 -- tsline and tsrline draw against the tsset time variable

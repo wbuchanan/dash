@@ -5171,7 +5171,11 @@ program define _dash_process_segment, rclass
             mata: _dash_say("err", "dash: '", st_local("plottype"), "' is a twoway plot type dash does not draw: " + st_local("_pt_why"))
             exit(198)
         }
-        mata: _dash_say("err", "dash: unrecognised plot type '", st_local("plottype"), "'. ")
+        // twoway's line for a word that is no plot type (WP-31 A2): dash
+        // printed a sentence of its own, and took lfi, ar and eleven more
+        // shorter spellings that twoway refuses with this line.  The
+        // Supported: list that follows is dash's own.
+        mata: _dash_say("err", "", st_local("plottype"), " is not a twoway plot type")
         display as error ///
             "Supported: scatter line connected area bar spike " _n ///
             "lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci " _n ///

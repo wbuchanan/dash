@@ -1704,12 +1704,14 @@ string scalar _expand_plottype_str(string scalar name) {
     string scalar full, minab
     real scalar   i
 
-    // (full name, minimum abbreviation).  Minimums are MEASURED against real
-    // twoway -- see scripts/extract_abbrev_truth.do and
-    // test/fixtures/abbrev_truth.json -- except where dash historically
-    // accepted something SHORTER, which is kept when it introduces no
-    // ambiguity.  Accepting more than twoway does cannot break drop-in parity
-    // and it keeps existing dash do-files working.
+    // (full name, minimum abbreviation).  Minimums are twoway's own, read
+    // from the declaration its plot types are parsed by (twowaygraph_g.class
+    // _unab_cmd: SCatter LIne CONnected HISTogram RSCatter RLine RCONnected
+    // MBANDs FN FUNction) and recorded in test/fixtures/abbrev_truth.json;
+    // every other type is its full name.  Nothing shorter is taken: dash
+    // took thirteen shorter spellings twoway refuses, "ar is not a twoway
+    // plot type", r(198) (WP-31 A2, DISCOVERY Q28;
+    // test/fixtures/bare_prefix_truth.json extras.*).
     //
     // Matching below accepts ANY prefix at least as long as the minimum, the
     // way Stata does, replacing the fixed one-short-form-each table that
@@ -1717,20 +1719,20 @@ string scalar _expand_plottype_str(string scalar name) {
     tbl = ("scatter","sc") \
         ("line","li") \
         ("connected","con") \
-        ("area","ar") \
-        ("bar","ba") \
-        ("spike","sp") \
-        ("lfit","lfi") \
-        ("qfit","qfi") \
+        ("area","area") \
+        ("bar","bar") \
+        ("spike","spike") \
+        ("lfit","lfit") \
+        ("qfit","qfit") \
         ("lfitci","lfitci") \
         ("qfitci","qfitci") \
-        ("lowess","low") \
-        ("lpoly","lpo") \
+        ("lowess","lowess") \
+        ("lpoly","lpoly") \
         ("lpolyci","lpolyci") \
-        ("fpfit","fp") \
+        ("fpfit","fpfit") \
         ("fpfitci","fpfitci") \
         ("histogram","hist") \
-        ("kdensity","kde") \
+        ("kdensity","kdensity") \
         ("rarea","rarea") \
         ("rbar","rbar") \
         ("rspike","rspike") \
@@ -1738,16 +1740,16 @@ string scalar _expand_plottype_str(string scalar name) {
         ("rline","rl") \
         ("rconnected","rcon") \
         ("dot","dot") \
-        ("dropline","dr") \
+        ("dropline","dropline") \
         ("rcapsym","rcapsym") \
         ("pcspike","pcspike") \
         ("pcarrow","pcarrow") \
         ("pcbarrow","pcbarrow") \
         ("pci","pci") \
         ("pcscatter","pcscatter") \
-        ("tsline","tsl") \
-        ("tsrline","tsrl") \
-        ("mspline","msp") \
+        ("tsline","tsline") \
+        ("tsrline","tsrline") \
+        ("mspline","mspline") \
         ("mband","mband") \
         ("rscatter","rsc") \
         ("function","fun") \
@@ -1782,7 +1784,7 @@ string scalar _expand_plottype_str(string scalar name) {
     // the one type whose minimum it reaches, or refused it, "s is not a
     // twoway plot type", r(198) -- s, r, pc, rc and every other prefix of
     // two names that reaches neither minimum among them -- which is what
-    // dash's "unrecognised plot type" says.  test_parser.cscript P1A-76 and
+    // dash says too, in those words (WP-31 A2).  test_parser.cscript P1A-76 and
     // test_no_orphans.py fail when a row lets a name reach two.
     for (i = 1; i <= rows(tbl); i++) {
         full  = tbl[i,1]

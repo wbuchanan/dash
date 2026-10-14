@@ -342,19 +342,6 @@ def _dash_spellings():
     return out
 
 
-def _synonym_table():
-    """{synonym: plot type} as the Plot types section's Synonyms table
-    lists them."""
-    sec = _plot_types()
-    block = _between(sec, "{ul:Synonyms.}", "{p2colreset}")
-    out = {}
-    for ptype, rest in re.findall(r"\{synopt:\{cmd:([a-z]+)\}\}(.*?)\{p_end\}",
-                                  block, re.S):
-        for syn in re.findall(r"\{cmd:([A-Za-z]+)\}", rest):
-            out[syn] = ptype
-    return out
-
-
 class TestThePlotTypeSpellings:
 
     def test_the_twoway_list_is_twoways_own(self):
@@ -386,21 +373,27 @@ class TestThePlotTypeSpellings:
                if dash.get(sp) != ptype}
         assert not bad, bad
 
-    def test_the_synonyms_are_the_spellings_only_dash_takes(self):
+    def test_dash_takes_no_spelling_twoway_refuses(self):
+        """Flipped (WP-31 A2): the section listed the shorter names only
+        dash took (ar .. tsrlin) under Synonyms; twoway refuses each, "ar
+        is not a twoway plot type", r(198), and so does dash now
+        (test/fixtures/bare_prefix_truth.json extras.*), so there is no
+        table and no spelling dash alone takes."""
         tw = _twoway_spellings()
         only_dash = {sp: p for sp, p in _dash_spellings().items()
                      if sp not in tw}
-        listed = {s: p for s, p in _synonym_table().items() if s.islower()}
-        assert listed == only_dash, (
-            sorted(set(listed.items()) ^ set(only_dash.items())))
+        assert only_dash == {}, only_dash
+        assert "{ul:Synonyms.}" not in _plot_types()
+        assert '"{it:word} is not a twoway plot' in _plot_types()
 
     def test_the_case_examples_are_spellings_read_lower_cased(self):
         """dash reads the name through strlower(); the capitals the help
         gives -- SC and Hist, which twoway refuses (HC1-08) -- are that,
         each a dash spelling once lower-cased, of the type it is said to
         draw."""
-        block = _between(_plot_types(), "{ul:Synonyms.}", "{ul:pccapsym.}")
-        tail = block.split("{p2colreset}", 1)[1]
+        # Flipped (WP-31 A2): the paragraph is Case, after the Synonyms
+        # table went.
+        tail = _between(_plot_types(), "{ul:Case.}", "{ul:pccapsym.}")
         caps = [c for c in re.findall(r"\{cmd:([A-Za-z]+)\}", tail)
                 if not c.islower()]
         assert set(caps) == {"SC", "Hist"}, caps

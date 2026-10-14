@@ -1454,6 +1454,115 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
 }
 * ==== end S07 ====
 
+// S08 helpers (WP-31 A2, A1, A4).  _u08_fixture: test/fixtures/
+// bare_prefix_truth.json's extras.* and twoways.* as dash commands, into
+// globals u08_xn/u08_xw<k>/u08_xc<k>/u08_xr<k>/u08_xt<k> (word, command,
+// twoway's rc, twoway's line) and u08_wn/u08_ww<k>/u08_wc<k>/u08_wf<k>
+// (word, command, the full type name twoway reads it as); _u08_hasline:
+// u08_found 1 when a line of the log, trimmed, is the text.
+python:
+import json as _u08_json, os as _u08_os
+with open(_u08_os.path.join("fixtures", "bare_prefix_truth.json"),
+          encoding="utf-8") as _u08_fh:
+    _U08_FIX = _u08_json.load(_u08_fh)
+_U08_FULL = {"sc": "scatter", "li": "line", "con": "connected",
+             "hist": "histogram", "rsc": "rscatter", "rl": "rline",
+             "rcon": "rconnected", "fun": "function", "mbands": "mband",
+             "fn": "function"}
+
+
+def _u08_cmd(cmd):
+    """twoway's probe as the dash command: no prefix, no nodraw."""
+    cmd = cmd[len("twoway "):] if cmd.startswith("twoway ") else cmd
+    return cmd.replace(", nodraw", ",")
+
+
+def _u08_fixture():
+    from sfi import Macro
+    for tag, grp in (("x", "extras"), ("w", "twoways")):
+        keys = sorted(_U08_FIX[grp])
+        Macro.setGlobal("u08_%sn" % tag, str(len(keys)))
+        for i, k in enumerate(keys, 1):
+            r = _U08_FIX[grp][k]
+            Macro.setGlobal("u08_%sw%d" % (tag, i), k)
+            Macro.setGlobal("u08_%sc%d" % (tag, i), _u08_cmd(r["cmd"]))
+            Macro.setGlobal("u08_%sr%d" % (tag, i), str(r["rc"]))
+            Macro.setGlobal("u08_%st%d" % (tag, i), r["message"])
+            Macro.setGlobal("u08_%sf%d" % (tag, i), _U08_FULL.get(k, ""))
+
+
+def _u08_hasline(path, text):
+    from sfi import Macro
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        got = [ln.strip() for ln in fh]
+    Macro.setGlobal("u08_found", "1" if text in got else "0")
+end
+
+* ==== S08 A2: Plot-type abbreviations ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S08") & `: list posof "S08" in w31_run' {
+    display as text "S08 start " c(current_date) " " c(current_time)
+    local u8d "`w31_work'/s08a"
+    capture mkdir "`u8d'"
+    sysuse auto, clear
+    quietly generate t = _n
+    quietly tsset t
+    python: _u08_fixture()
+    local lf "`u8d'/x.log"
+    local u8ls = c(linesize)
+    set linesize 200
+
+    // ------------------------------------------------------------
+    // U08-1: each of the thirteen shorter spellings dash took (ar ba sp
+    // lfi qfi low lpo fp kde dr tsl tsrl msp) is refused as twoway
+    // refuses it: r(198) and twoway's line "<word> is not a twoway plot
+    // type", registering nothing.
+    // ------------------------------------------------------------
+    _w31_expect U08-1 "(${u08_xn} == 13)" "the fixture holds ${u08_xn} extras, want 13"
+    // A loop header holds no ${...}: its brace ends the block scan.
+    local n8x = ${u08_xn}
+    forvalues i = 1/`n8x' {
+        local cmd "${u08_xc`i'}"
+        dash clear
+        quietly log using "`lf'", text replace name(u08x)
+        capture noisily dash `cmd' name(u081)
+        local rc = _rc
+        quietly log close u08x
+        python: _u08_hasline("`lf'", "${u08_xt`i'}")
+        _w31_expect U08-1 "(`rc' == ${u08_xr`i'})" "dash `cmd' rc `rc', twoway ${u08_xr`i'}"
+        _w31_expect U08-1 "(${u08_found} == 1)" "dash `cmd' did not log twoway's line [${u08_xt`i'}]"
+        _w31_expect U08-1 `"(`"${dash_graph_registry}"' == "")"' "dash `cmd' registered a graph"
+    }
+    _w31_done U08-1 "the thirteen shorter plot-type spellings are refused, r(198), in twoway's words"
+
+    // ------------------------------------------------------------
+    // U08-2: twoway's ten spellings (its eight minimums, mbands and fn)
+    // draw in twoway and register in dash as the full type.
+    // ------------------------------------------------------------
+    _w31_expect U08-2 "(${u08_wn} == 10)" "the fixture holds ${u08_wn} spellings, want 10"
+    // A loop header holds no ${...}: its brace ends the block scan.
+    local n8w = ${u08_wn}
+    forvalues i = 1/`n8w' {
+        local cmd "${u08_wc`i'}"
+        dash clear
+        capture noisily dash `cmd' name(u082)
+        local rc = _rc
+        _w31_expect U08-2 "(${u08_wr`i'} == 0)" "twoway ${u08_ww`i'} rc ${u08_wr`i'}"
+        _w31_expect U08-2 "(`rc' == 0)" "dash `cmd' rc `rc'"
+        mata: st_local("hit", strofreal(strpos(st_global("dash_json_u082"), char(34) + "type" + char(34) + ":" + char(34) + st_global("u08_wf`i'") + char(34)) > 0))
+        _w31_expect U08-2 "(`hit' == 1)" "dash `cmd' did not register type ${u08_wf`i'}"
+    }
+    _w31_done U08-2 "twoway's own plot-type spellings register as the type twoway reads"
+
+    set linesize `u8ls'
+    capture erase "`lf'"
+    capture rmdir "`u8d'"
+    tsset, clear
+    dash clear
+    display as text "S08 end " c(current_date) " " c(current_time)
+}
+* ==== end S08 ====
+
 // S10 helpers (WP-31 F1a).  _u10_move: the saved page's lfit or qfit line
 // after one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,
