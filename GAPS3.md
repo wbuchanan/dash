@@ -417,7 +417,7 @@ One line per WP-31 entry (.ultraplan/sections/index.md, A4), rewritten in place 
 `Partly closed in WP-31 (section NN, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").`
 A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha on s3-bugs (DECISIONS A11).
 
-- **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit fb02f1c.
+- **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit pending.
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.
 - **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.

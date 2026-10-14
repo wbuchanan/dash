@@ -120,12 +120,17 @@ class TestTheDisplayRule:
             with open(path, encoding="utf-8") as fh:
                 assert "dash__display" not in fh.read(), path
 
-    def test_the_prefix_strip_follows_the_guards(self):
+    def test_the_prefix_refusal_follows_the_guards(self):
+        """Flipped: dash replaces twoway, so `dash twoway ...' is refused as
+        `twoway twoway ...' is; nothing strips a prefix any more."""
         body = _program_body("dash")
         a = body.index("_dash_require_mata")
-        b = body.index("_dash_strip_prefix()")
+        b = body.index("_dash_prefix_word()")
         c = body.index('"`_subcmd\'" ==')
         assert a < b < c
+        assert "_dash_strip_prefix" not in _read("dash.ado")
+        assert "_dash_strip_prefix" not in _read("dash_parse.mata")
+        assert "dash__bare_tw" not in _read("dash.ado")
 
 
 class TestTheHelpStatesTheCommandForm:
@@ -133,11 +138,12 @@ class TestTheHelpStatesTheCommandForm:
     def _help(self):
         return _read("dash.sthlp")
 
-    def test_the_syntax_names_the_prefixes(self):
+    def test_the_syntax_refuses_the_prefixes(self):
+        """Flipped: the help said twoway, tw, two and graph twoway may
+        precede the plots; dash replaces twoway, so they are refused."""
         h = self._help()
-        assert "{cmd:graph twoway}" in h
         assert "twoway is not a twoway plot type" in h
-        assert "command twow is unrecognized" in h
+        assert "command twow is unrecognized" not in h
 
     def test_saving_takes_replace_and_asis_on_every_route(self):
         h = self._help()

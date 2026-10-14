@@ -229,9 +229,15 @@ assert r(found) == 1
 dash clear
 display "GE-03 PASS: dash build stores its page and its server app, and nothing else"
 
-// GE-05 -- the twoway-prefixed route stores its page; a registration right
-// after stores nothing (no stale path), saving() or not.
-dash twoway scatter mpg weight, saving("`ge_here'/ge05.html", replace)
+// GE-05 -- the one-line route stores its page; a registration right
+// after stores nothing (no stale path), saving() or not.  (Flipped
+// 14oct2026: this used the twoway-prefixed route, which dash now refuses
+// as twoway refuses `twoway twoway', r(198), writing nothing.)
+capture dash twoway scatter mpg weight, saving("`ge_here'/ge05.html", replace)
+assert _rc == 198
+capture confirm file "`ge_here'/ge05.html"
+assert _rc != 0
+dash scatter mpg weight, saving("`ge_here'/ge05.html", replace)
 _ge_r
 assert `"`ge_rf'"' == "`ge_here'/ge05.html"
 dash scatter mpg weight, name(ge05)

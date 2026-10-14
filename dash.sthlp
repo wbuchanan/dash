@@ -137,20 +137,14 @@ are graph options only, and a plot option there is refused, r(198).  A
 on the layers that honour it; see {help dash##weights:Weights}.
 
 {pstd}
-As in {cmd:twoway}, the {it:plot_specs} may be preceded by {cmd:twoway},
-{cmd:tw} or {cmd:two}, or by {cmd:graph twoway} ({cmd:gr} for {cmd:graph},
-and {cmd:tw} to {cmd:twoway} after it), so a command copied from a do-file
-runs as it is: {cmd:dash twoway (scatter mpg weight) (lfit mpg weight)}
-draws what {cmd:dash (scatter mpg weight) (lfit mpg weight)} draws, saved
-or served.  One is read: a second, as in
-{cmd:dash twoway twoway scatter mpg weight}, is refused as {cmd:twoway}
-refuses it, "twoway is not a twoway plot type", {cmd:r(198)};
-{cmd:twow}, {cmd:twowa}, {cmd:gra} and {cmd:grap} are refused with
-{cmd:r(199)}, "command twow is unrecognized", as Stata refuses them.
-{cmd:dash twoway} with nothing after it draws an empty graph, its axes and
-no plot, as {cmd:twoway} does, and takes graph options and a qualifier with
-no plot, {cmd:dash twoway, title(T)}; without the prefix, a command with no
-plot is refused.
+{cmd:dash} replaces {cmd:twoway}: type {cmd:dash} where you would type
+{cmd:twoway}, as in {cmd:dash (scatter mpg weight) (lfit mpg weight)}.
+{cmd:dash twoway scatter mpg weight} is therefore {cmd:twoway twoway scatter mpg weight},
+and is refused as {cmd:twoway} refuses that, "twoway is not a twoway plot type",
+{cmd:r(198)}; so are {cmd:tw}, {cmd:two}, {cmd:twow}, {cmd:twowa},
+{cmd:graph}, {cmd:gr}, {cmd:gra} and {cmd:grap}, in any case, before a
+plot, alone or before options.  To use a command copied from a do-file,
+replace its {cmd:twoway} (or {cmd:graph twoway}) with {cmd:dash}.
 
 
 {marker description}

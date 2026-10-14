@@ -682,7 +682,7 @@ class TestTheGuardOrder:
                 'mata: st_local("_dd_sub",',
                 'if "`_dd_sub\'" != "clear" {',
                 "_dash_require_deps",
-                "mata: _dash_strip_prefix()",
+                "mata: _dash_prefix_word()",
                 '"`_subcmd\'" ==']
         pos = []
         for w in want:

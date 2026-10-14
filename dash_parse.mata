@@ -51,9 +51,10 @@
 *!       the double quote, backtick, dollar sign or a control character
 *!       (1-31, 127) -- or 0.
 *!
-*!   _dash_strip_prefix()
-*!       Reads twoway, tw, two or graph twoway off the front of the
-*!       caller's `0' (WP-30 P1.27); sets _pf_kind and _pf_word.
+*!   _dash_prefix_word()
+*!       The caller's first word into _pf_word when it is one of twoway's own
+*!       command words (twoway tw two twow twowa graph gr gra grap, any
+*!       case), else "": dash replaces twoway, so dash.ado refuses it.
 *!
 *!   _dash_saving_parse(s, ext)
 *!       saving()'s one grammar, as twoway reads it; refuses r(198) or sets
@@ -285,11 +286,10 @@
 *!       Position (1-based) of the first comma outside quotes and
 *!       parentheses, or "0", into out_macro.
 *!
-*!   _dash_split_segs(input [, allow_empty])
+*!   _dash_split_segs(input)
 *!       Split the raw command line into plot segments, into the caller's
 *!       locals _n_segs, _seg_1 .. _seg_N (each with its plot type),
-*!       _graph_opts_raw and _graph_qual_raw.  allow_empty 1 (after a
-*!       twoway prefix) takes no plot as zero segments, not an error.
+*!       _graph_opts_raw and _graph_qual_raw.
 *!
 *!   _dash_extract_vars(json_str, out_macro)
 *!       The variables the plots of a spec name, blank-separated, into
@@ -409,10 +409,6 @@
 *!   _dash_spec_types_in(s, allowed)
 *!       1 when the graph spec s names a plot type and every type it names
 *!       is a word of allowed: a graph that needs no data.
-*!
-*!   _dash_spec_has_plots(json)
-*!       1 when the spec's "plots" array holds a record, 0 when it is
-*!       empty: a bare twoway prefix's graph, which needs no data.
 *!
 *!   _dash_reflines_positions(gjson)
 *!       The reference-line positions of one graph's JSON: the tokens of
@@ -965,59 +961,28 @@ real scalar _dash_cmd_metachar(string scalar path) {
 // ============================================================
 // twoway's command form (WP-30 P1.27)
 //
-// _dash_strip_prefix, _dash_saving_split, _dash_saving_parse,
+// _dash_prefix_word, _dash_saving_split, _dash_saving_parse,
 // _dash_seg_saving, _dash_launch_quote and _dash_launch_warn.  Every one
 // reads its text by value (st_local, never macro text) and is linear in
 // the length of what it reads.
 // ============================================================
 
-// _dash_strip_prefix() -- reads twoway's own command words off the front
-// of the caller's `0'.  twoway takes `twoway', `tw' and `two', and
-// `graph'/`gr' followed by `tw' to `twoway' (measured, StataNow 19.5);
-// Stata refuses `twow', `twowa', `gra', `grap' and a capitalised spelling
-// with r(199), "command twow is unrecognized", and a second prefix word
-// with r(198), "two is not a twoway plot type".  Sets the caller's locals
-// _pf_kind ("", "strip", "unrec" or "twice") and _pf_word; on "strip" the
-// rest of the command is written back to `0'.  Only whole words from a
-// closed list match; the one regex is anchored at the start.
-void _dash_strip_prefix()
+// _dash_prefix_word() -- dash replaces twoway, so a twoway command word
+// after dash is what it is after twoway: not a plot type.  `twoway
+// twoway ...', `twoway tw ...', `twoway graph ...' and the rest are each
+// "<word> is not a twoway plot type", r(198) (measured 14oct2026, StataNow
+// 19.5, for twoway tw two twow twowa graph gr gra grap and capitalised
+// spellings).  Sets the caller's local _pf_word to the first word of `0'
+// when it is one of those nine in any case, else "".  One anchored regex;
+// the word is compared from a closed list.
+void _dash_prefix_word()
 {
-    string scalar    s, w1, w2, rest, t, kind, word
-    string rowvector nine
+    string scalar w
 
-    nine = ("twoway", "tw", "two", "twow", "twowa", "graph", "gr", "gra", "grap")
-    s    = st_local("0")
-    kind = ""
-    word = ""
-    rest = ""
-    w1   = (ustrregexm(s, "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
-    if (anyof(("twoway", "tw", "two"), w1)) {
-        kind = "strip"
-        rest = substr(s, strlen(w1) + 1, .)
-    }
-    else if (anyof(("graph", "gr"), w1)) {
-        t  = substr(s, strlen(w1) + 1, .)
-        w2 = (ustrregexm(t, "^[ \t]+([a-zA-Z][a-zA-Z0-9_]*)") ? ustrregexs(1) : "")
-        if (anyof(("tw", "two", "twow", "twowa", "twoway"), w2)) {
-            kind = "strip"
-            rest = substr(t, strpos(t, w2) + strlen(w2), .)
-        }
-    }
-    else if (anyof(("twow", "twowa", "gra", "grap"), w1) |
-             (w1 != strlower(w1) & anyof(nine, strlower(w1)))) {
-        kind = "unrec"
-        word = w1
-    }
-    if (kind == "strip") {
-        t = (ustrregexm(rest, "^[ \t]*([a-zA-Z][a-zA-Z0-9_]*)") ? ustrregexs(1) : "")
-        if (anyof(nine, t)) {
-            kind = "twice"
-            word = t
-        }
-        else st_local("0", rest)
-    }
-    st_local("_pf_kind", kind)
-    st_local("_pf_word", word)
+    w = (ustrregexm(st_local("0"), "^[a-zA-Z][a-zA-Z0-9_]*") ? ustrregexs(0) : "")
+    if (!anyof(("twoway", "tw", "two", "twow", "twowa", "graph", "gr",
+                "gra", "grap"), strlower(w))) w = ""
+    st_local("_pf_word", w)
 }
 
 // _dash_saving_opt_toks(o) -- the words of saving()'s option text, with
@@ -2618,9 +2583,9 @@ void _dash_comma_pos(string scalar input, string scalar out_macro) {
 //       _graph_opts_raw (the options of (a) and (b), joined in order) and
 //       _graph_qual_raw (their qualifiers, joined).
 //
-void _dash_split_segs(string scalar input, | real scalar allow_empty) {
+void _dash_split_segs(string scalar input) {
     real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt, p
-    real   scalar  seg_start, n_segs, ae
+    real   scalar  seg_start, n_segs
     string scalar  piece
     string vector  pieces, segs
     string scalar  graph_opts_raw, graph_qual
@@ -2631,21 +2596,8 @@ void _dash_split_segs(string scalar input, | real scalar allow_empty) {
     segs   = J(1, 0, "")
     graph_opts_raw = ""
     graph_qual     = ""
-    // allow_empty (WP-31 A1): 1 only after a twoway prefix (dash.ado's
-    // dash__bare_tw).  twoway alone draws an empty graph, and so do
-    // `twoway, title(T)', `twoway if foreign==1' and `twoway ||' (measured
-    // 13oct2026, test/fixtures/bare_prefix_truth.json bare.*): no plot is
-    // then not an error, and the options and qualifier are the graph's.
-    ae = 0
-    if (args() >= 2) ae = (allow_empty != 0 & allow_empty < .)
 
     if (len == 0) {
-        if (ae) {
-            st_local("_n_segs", "0")
-            st_local("_graph_opts_raw", "")
-            st_local("_graph_qual_raw", "")
-            return
-        }
         errprintf("dash: empty plot specification.\n")
         exit(198)
     }
@@ -2723,7 +2675,7 @@ void _dash_split_segs(string scalar input, | real scalar allow_empty) {
     }
 
     n_segs = cols(segs)
-    if (n_segs == 0 & !ae) {
+    if (n_segs == 0) {
         errprintf("dash: no plot specifications found.\n")
         exit(198)
     }
@@ -9780,29 +9732,6 @@ real scalar _dash_spec_types_in(string scalar s, string scalar allowed)
         m = m + (strlen(s) - strlen(subinstr(s, k, "", .))) / strlen(k)
     }
     return(m == n)
-}
-
-// _dash_spec_has_plots(json) -- 1 when the spec's "plots" array holds a
-// record, 0 when it is empty ("plots":[]): a bare twoway prefix registers
-// an empty graph that needs no variable (WP-31 A1).  Byte scan, no regex.
-real scalar _dash_spec_has_plots(string scalar json)
-{
-    real scalar p, q, n
-
-    p = strpos(json, char(34) + "plots" + char(34))
-    if (!p) return(0)
-    q = strpos(substr(json, p, .), "[")
-    if (!q) return(0)
-    q = p + q
-    n = strlen(json)
-    // Mata's & does not short-circuit, so the bound is tested on its own
-    // (ascii("") is 1x0 and anyof would error past the end).
-    while (q <= n) {
-        if (!anyof((32, 9, 10, 13), ascii(substr(json, q, 1)))) break
-        q++
-    }
-    if (q > n) return(0)
-    return(substr(json, q, 1) == "{")
 }
 
 // GAPS2 G3 (WP-28 section 08): what the SAVED page embeds is not every

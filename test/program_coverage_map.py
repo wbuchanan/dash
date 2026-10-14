@@ -671,9 +671,6 @@ COVERAGE = {
         "_dash_lpolyci_opts": ("test_statistical_options.cscript:LB-11",),
         "_dash_spec_types_in": ("test_parser.cscript:P1A-75",
                                 "test_parser.cscript:P1A-74"),
-        # WP-31 S08 (A1): a bare twoway prefix's empty graph
-        "_dash_spec_has_plots": ("test_wp31_truth.cscript:U08-3",
-                                 "test_parser.cscript:U08-7"),
         # GAPS2 G3 (WP-28 section 08): e2e through _dash_prepare_spec and
         # _dash_render_immediate.
         "_dash_json_count_key": ("test_adversarial.cscript:DL-01",
@@ -725,7 +722,7 @@ COVERAGE = {
         "_dash_saving_parse": ("test_path_validation.cscript:PV-36", "test_path_validation.cscript:PV-37"),
         "_dash_saving_split": ("test_path_validation.cscript:PV-35",),
         "_dash_seg_saving": ("test_path_validation.cscript:PV-37",),
-        "_dash_strip_prefix": ("test_wp30_truth.cscript:CF-01", "test_wp30_truth.cscript:CF-03"),
+        "_dash_prefix_word": ("test_parser.cscript:TW-01",),
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
         "_dash_barwidth_typed": ("test_twoway_option_parity.cscript:BG-07",),
         # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)
