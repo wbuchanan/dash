@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "A4": "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable",
     "C10c": "Axes 3 to 9 are refused where twoway draws them (the axes part)",
     "C4": "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn",
     "C5": "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn",

@@ -1661,6 +1661,95 @@ if inlist("`only'", "", "S08") & `: list posof "S08" in w31_run' {
 }
 * ==== end S08 ====
 
+// S08 helpers (WP-31 A4).  _u08_mla: the fixture's mla.* as dash option
+// spellings, into u08_mn/u08_mk<k>/u08_mo<k>/u08_mr<k>/u08_mt<k>/u08_mb<k>
+// (key, option as typed, twoway's rc and line, the option twoway binds it
+// to); _u08_has: u08_found 1 when the log holds the text, its lines
+// joined.
+python:
+def _u08_mla():
+    from sfi import Macro
+    mla = _U08_FIX["mla"]
+    keys = sorted(mla)
+    Macro.setGlobal("u08_mn", str(len(keys)))
+    for i, k in enumerate(keys, 1):
+        r = mla[k]
+        opt = r["cmd"].split(", ", 1)[1].replace(" nodraw", "")
+        Macro.setGlobal("u08_mk%d" % i, k)
+        Macro.setGlobal("u08_mo%d" % i, opt)
+        Macro.setGlobal("u08_mr%d" % i, str(r["rc"]))
+        Macro.setGlobal("u08_mt%d" % i, r["message"])
+        Macro.setGlobal("u08_mb%d" % i, r["resolves_to"] or "")
+
+
+def _u08_has(path, text):
+    from sfi import Macro
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        got = " ".join(ln.strip().lstrip("> ") for ln in fh)
+    Macro.setGlobal("u08_found", "1" if text in got else "0")
+end
+
+* ==== S08 A4: mlalign ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S08") & `: list posof "S08" in w31_run' {
+    display as text "S08 start " c(current_date) " " c(current_time)
+    local u8d "`w31_work'/s08c"
+    capture mkdir "`u8d'"
+    sysuse auto, clear
+    local lf "`u8d'/m.log"
+    local u8ls = c(linesize)
+    set linesize 200
+
+    // ------------------------------------------------------------
+    // U08-4: the marker-label spellings bind as twoway binds them
+    // (fixture mla.*, from each spelling's saved .gph): ml(), mla(),
+    // mlab(), mlabe() and mlabel() are mlabel(), and dash records
+    // mlabel "make"; mla(center) is refused with twoway's rc and line;
+    // mlal(), mlali() and mlalign() are mlalign(), which dash takes and
+    // names in its note as mlalign() until it is drawn (WP-31 S34).
+    // ------------------------------------------------------------
+    python: _u08_mla()
+    _w31_expect U08-4 "(${u08_mn} == 9)" "the fixture holds ${u08_mn} spellings, want 9"
+    local n8m = ${u08_mn}
+    forvalues i = 1/`n8m' {
+        local opt "${u08_mo`i'}"
+        dash clear
+        quietly log using "`lf'", text replace name(u08m)
+        capture noisily dash scatter mpg weight, `opt' name(u084)
+        local rc = _rc
+        quietly log close u08m
+        _w31_expect U08-4 "(`rc' == ${u08_mr`i'})" "dash scatter mpg weight, `opt' rc `rc', twoway ${u08_mr`i'}"
+        if `rc' {
+            python: _u08_has("`lf'", "${u08_mt`i'}")
+            _w31_expect U08-4 "(${u08_found} == 1)" "dash `opt' did not say twoway's [${u08_mt`i'}]"
+            continue
+        }
+        if "${u08_mb`i'}" == "mlabel" {
+            mata: st_local("hit", strofreal(strpos(st_global("dash_json_u084"), char(34) + "mlabel" + char(34) + ":" + char(34) + "make" + char(34)) > 0))
+            _w31_expect U08-4 "(`hit' == 1)" "dash `opt' did not record mlabel make"
+        }
+        if "${u08_mb`i'}" == "mlalign" {
+            dash clear
+            quietly log using "`lf'", text replace name(u08m)
+            capture noisily dash scatter mpg weight, `opt' saving("`u8d'/m.html") replace
+            local rc = _rc
+            quietly log close u08m
+            _w31_expect U08-4 "(`rc' == 0)" "dash scatter mpg weight, `opt' saving() rc `rc'"
+            python: _u08_has("`lf'", "ignoring unsupported option(s): mlalign()")
+            _w31_expect U08-4 "(${u08_found} == 1)" "dash `opt' did not name mlalign() in its note"
+        }
+    }
+    _w31_done U08-4 "ml() mla() mlab() mlabe() are mlabel(), mla(center) is refused, and mlal() .. mlalign() are mlalign(), named until drawn, as twoway binds them"
+
+    set linesize `u8ls'
+    capture erase "`lf'"
+    capture erase "`u8d'/m.html"
+    capture rmdir "`u8d'"
+    dash clear
+    display as text "S08 end " c(current_date) " " c(current_time)
+}
+* ==== end S08 ====
+
 // S10 helpers (WP-31 F1a).  _u10_move: the saved page's lfit or qfit line
 // after one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

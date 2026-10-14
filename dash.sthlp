@@ -5094,9 +5094,12 @@ disagree in either direction.
     them, but does not draw dot rows or marker back lines.  A name
     {cmd:twoway} does not know is noted as {cmd:twoway} notes it.
 
-{phang2}{ul:A marker's outline pattern, and a label width.}
+{phang2}{ul:A marker's outline pattern and alignment, and a label width.}
     {opt mlpattern(linepatternstyle)} -- the pattern of a marker's outline,
     which {cmd:twoway} accepts and {cmd:dash} draws solid.
+    {opt mlalign(linealignmentstyle)} -- whether a marker's outline is
+    drawn inside, outside or centred on its edge; {cmd:dash} draws it
+    centred.
     {opt mlabwidth(size)} is not a {cmd:twoway} option: {cmd:twoway}
     refuses it, r(198), and {cmd:dash} names it.
 

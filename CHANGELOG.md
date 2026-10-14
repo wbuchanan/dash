@@ -859,7 +859,7 @@ and now matches Stata.
 
 - The thirteen shorter plot-type names only dash took -- ar, ba, sp, lfi, qfi, low, lpo, fp, kde, dr, tsl, tsrl and msp, and their longer prefixes short of the full name -- are refused, r(198), with twoway's line "lfi is not a twoway plot type"; dash drew them as area, bar, spike, lfit, qfit, lowess, lpoly, fpfit, kdensity, dropline, tsline, tsrline and mspline.  An unknown plot type is refused in the same words, followed by dash's Supported: list; it said "dash: unrecognised plot type '<word>'". (WP-31, A2)
 
-<!-- WP-31 A4 -->
+- mlalign() is declared with twoway's minimum, mlal(): mlal(inside) was named in the note as mlal() and is now named as mlalign() until it is drawn; mla() and ml() stay mlabel(), as twoway binds them (measured: twoway scatter mpg weight, mla(center) says "variable center not found", r(111), as dash does). (WP-31, A4)
 
 <!-- WP-31 D2 -->
 

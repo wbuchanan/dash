@@ -767,7 +767,8 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # pending lines (two, in each parser).
     # 134 -> 137: C1 the note on the mangle/barbsize/headlabel sreturn
     # lines (three).
-    assert comments == {"_dash_parse_plot_opts": 137,
+    # 137 -> 139: A4 the note on the mlalign pending line (two).
+    assert comments == {"_dash_parse_plot_opts": 139,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

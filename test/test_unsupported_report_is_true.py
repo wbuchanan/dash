@@ -125,6 +125,8 @@ PLOT_VALUES = {
     # WP-22 TR-22.3: twoway options that used to land in the note as
     # unknown, now declared -- named by their full names -- and not drawn.
     "mlabwidth": ("thick", "vthin", "scatter"),
+    # WP-31 A4: declared, named until WP-31 S34 draws it.
+    "mlalign": ("inside", "outside", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
     # WP-30 P1.14b: kept and named, not drawn (P2.9 dot rows, P2.8 marker
@@ -273,7 +275,8 @@ class TestTheListIsCoveredAndHonest:
         # 42 -> 44 and 23 -> 25: P1.6 tmlabel() and tmtick() declared and
         # named until minor ticks are drawn
         # 44 -> 43 and 25 -> 24: P1.10 text() drawn
-        assert len(_plot_pending()) == 43, sorted(_plot_pending())
+        # 43 -> 44: A4 mlalign declared and named
+        assert len(_plot_pending()) == 44, sorted(_plot_pending())
         assert len(_graph_pending()) == 24, sorted(_graph_pending())
 
 
@@ -743,7 +746,8 @@ class TestEveryDeclaredOptionIsClassified:
         # 195 -> 196 and 84 -> 85: P1.10 ttext declared
         # 196 -> 199: C1 mangle barbsize headlabel declared; 199 -> 200: C2
         # mwidth declared
-        assert len(_declared_plot()) == 200, len(_declared_plot())
+        # 200 -> 201: A4 mlalign declared
+        assert len(_declared_plot()) == 201, len(_declared_plot())
         assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

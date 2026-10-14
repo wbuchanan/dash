@@ -1173,7 +1173,8 @@ program define _dash_parse_plot_opts, sclass
     syntax [, ///
         MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
         MSAngle(string asis)      MFColor(string asis)      MLColor(string asis) ///
-        MLabel(string asis)       MLABColor(string asis)    MLABSize(string asis) ///
+        MLabel(string asis)       MLALign(string)           MLABColor(string asis) ///
+        MLABSize(string asis) ///
         MLABPosition(string asis) MLABGap(string asis)      MLABWidth(string) ///
         MALpha(string)            MARKER(string)            LColor(string asis) ///
         LWidth(string asis)       LPattern(string asis)     LALpha(string) ///
@@ -1348,6 +1349,9 @@ program define _dash_parse_plot_opts, sclass
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
+    // WP-31 A4: mlalign(), twoway's mlal() .. mlalign() (mla() is mlabel(),
+    // as in twoway), is named until WP-31 S34 draws it.
+    if `: length local mlalign' local _dash_pending `"`_dash_pending' mlalign"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
     // WP-30 P1.14b: dstyle() and dlstyle() style the dots of a dot plot
     // (P2.9) and bmlinestyle() a marker's back line (P2.8); dash draws
@@ -1427,6 +1431,7 @@ program define _dash_parse_plot_opts, sclass
     sreturn local mlabposition     : copy local mlabposition
     sreturn local mlabgap          : copy local mlabgap
     sreturn local mlabwidth        : copy local mlabwidth
+    sreturn local mlalign          : copy local mlalign
     sreturn local malpha           : copy local malpha
     sreturn local marker           : copy local marker
     sreturn local lcolor           : copy local lcolor
@@ -4716,7 +4721,7 @@ program define _dash_plot_opts_to_json, rclass
     // is byte-identical to what it was.  clcolor, clpattern and clwidth
     // (WP-22) are non-empty only on the types _dash_fold_cl keeps them for.
     foreach key in mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor ///
-                   mlabsize mlabposition mlabgap mlabwidth malpha marker lcolor ///
+                   mlabsize mlabposition mlabgap mlabwidth mlalign malpha marker lcolor ///
                    lwidth lpattern lalpha fcolor fintensity falpha barwidth base mwidth ///
                    blcolor bfcolor jitter jseed yaxis xaxis colorvar colpalette ///
                    colordiscrete coloruseplegend colornlevels colorcuts colormissing ///

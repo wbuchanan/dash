@@ -889,7 +889,8 @@ class TestKdensityRange:
         # 42 -> 44: P1.6 stores and names tmlabel() and tmtick().
         # Flipped (WP-30 P1.10): 44 -> 43, text() is drawn, so it is no
         # longer among the genuinely-unsupported.
-        assert len(pending) == 43, (len(pending), pending)
+        # 43 -> 44: A4 mlalign declared and named.
+        assert len(pending) == 44, (len(pending), pending)
         for really_pending in ("sort", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

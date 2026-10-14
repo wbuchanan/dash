@@ -543,8 +543,9 @@ class TestTheParsersFoundSomething:
         # text().
         # 179 -> 183: C1 the Arrowheads entries define mangle(),
         # barbsize() and headlabel, and name mfcolor() in barbsize()'s.
-        assert len(found) == 183, (
-            f"{len(found)} options parsed out of dash.sthlp, 183 measured "
+        # 183 -> 184: A4 the Unsupported entry defines mlalign().
+        assert len(found) == 184, (
+            f"{len(found)} options parsed out of dash.sthlp, 184 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -619,7 +620,8 @@ class TestTheParsersFoundSomething:
         # 208 -> 209: P1.10 part 2 declared ttext().
         # 209 -> 212: C1 mangle barbsize headlabel declared; 212 -> 213: C2
         # mwidth declared
-        assert len(_ado_declarations()) == 213
+        # 213 -> 214: A4 mlalign declared
+        assert len(_ado_declarations()) == 214
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -637,7 +639,8 @@ class TestTheParsersFoundSomething:
         # 44 -> 42: P1.9a horizontal drawn, vertical silent
         # 42 -> 44: P1.6 tmlabel() and tmtick() stored and named
         # 44 -> 43: P1.10 text() drawn
-        assert len(_ignored_options()) == 43
+        # 43 -> 44: A4 mlalign() declared and named
+        assert len(_ignored_options()) == 44
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -655,7 +658,8 @@ class TestTheParsersFoundSomething:
         # 42 -> 44: P1.6 names tmlabel() and tmtick() in "Minor ticks and
         # minor labels"
         # 44 -> 43: P1.10 text() drawn, its entry gone
-        assert len(_unsupported_section()) == 43
+        # 43 -> 44: A4 mlalign() in the marker outline entry
+        assert len(_unsupported_section()) == 44
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
