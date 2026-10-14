@@ -2926,155 +2926,6 @@ if inlist("`only'", "", "S14") & `: list posof "S14" in w31_run' {
 }
 * ==== end S14 ====
 
-// S16 helpers (WP-31 F1c).  _u16_move: the saved page's lowess line after
-// one filter move -- the page rendered, the widget set and its own
-// callback run under node (test/js_runner.py) -- written to a JSON file,
-// its point count in global u16_n.  _u16_gen_compare: the saved line
-// against Stata's lowess, gen() variable *s* on the rows where *touse* is
-// 1 and *s* is not missing, in the data's current order (sorted stably by
-// x); global u16_ok 1 or 0 and u16_msg.  _u16_said: does a log hold *text*.
-python:
-def _u16_move(sp, dp, kind, value, out):
-    import json
-    import os
-    import sys
-    import warnings
-    if os.getcwd() not in sys.path:
-        sys.path.insert(0, os.getcwd())
-    import dash_render as dr
-    import js_runner
-    from sfi import Macro
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        r = dr.DashRenderer(sp, dp)
-        r.render()
-    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
-    if kind == "Select":
-        w.value = [v for v, lab in w.options if lab == value][0]
-    elif kind == "RangeSlider":
-        w.value = tuple(float(v) for v in value.split())
-    else:
-        w.value = float(value)
-    cb = r.filter_callbacks[r.filter_widgets.index(w)]
-    js_runner.JsSession(r.filter_callbacks).run(cb)
-    lw = [x for f in r.figures.values() for x in f.renderers
-          if (getattr(x, "_dash_agg_config", None) or {}).get("type")
-          == "lowess"]
-    d = lw[0].data_source.data
-    with open(out, "w", encoding="utf-8") as fh:
-        json.dump({"x": [float(v) for v in d["x_lw"]],
-                   "y": [float(v) for v in d["y_lw"]]}, fh)
-    Macro.setGlobal("u16_n", str(len(d["x_lw"])))
-
-
-def _u16_gen_compare(saved, xvar, svar, touse, rtol):
-    import json
-    import numpy as np
-    from sfi import Data, Macro
-    g = json.load(open(saved, encoding="utf-8"))
-    gx, gy = np.asarray(g["x"], float), np.asarray(g["y"], float)
-    miss = lambda v: v is None or v >= 8.98e307
-    xs, ss = [], []
-    for x, s, t in zip(Data.get(var=xvar), Data.get(var=svar),
-                       Data.get(var=touse)):
-        if t == 1 and not miss(s) and not miss(x):
-            xs.append(float(x))
-            ss.append(float(s))
-    tx, ty = np.asarray(xs), np.asarray(ss)
-    ok = 0
-    if len(tx) != len(gx):
-        msg = "%d saved points, Stata %d" % (len(gx), len(tx))
-    elif not len(tx):
-        msg = "no points"
-    else:
-        dx = float(np.max(np.abs(gx - tx) / np.maximum(np.abs(tx), 1.0)))
-        dy = float(np.max(np.abs(gy - ty) / np.maximum(np.abs(ty), 1.0)))
-        ok = int(dx <= rtol and dy <= rtol)
-        msg = "%d points, largest relative difference x %.3g y %.3g" % (
-            len(gx), dx, dy)
-    Macro.setGlobal("u16_ok", str(ok))
-    Macro.setGlobal("u16_msg", msg)
-
-
-def _u16_said(log, text):
-    from sfi import Macro
-    with open(log, encoding="utf-8", errors="replace") as fh:
-        Macro.setGlobal("u16_said", "1" if text in fh.read() else "0")
-end
-
-* ==== S16 F1c: lowess re-smooths on the saved page ====
-local only : env WP31_ONLY
-if inlist("`only'", "", "S16") & `: list posof "S16" in w31_run' {
-    display as text "S16 start " c(current_date) " " c(current_time)
-    local u16d "`w31_work'/s16"
-    capture mkdir "`u16d'"
-    capture graph drop _all
-
-    // ------------------------------------------------------------
-    // U16-01..04: after a move the saved smooth is Stata's lowess on the
-    // kept rows (gen(), sorted stably by x): the default after the
-    // dropdown to Foreign; bwidth(.4) mean after the range to
-    // 4500-11385; noweight adjust after the dropdown to Domestic (adjust's
-    // mean is all 74 cars', in both); logit on foreign, constant 0 among
-    // the Domestic cars.
-    // ------------------------------------------------------------
-    local k 0
-    foreach c in "U16-01|(scatter mpg weight) (lowess mpg weight)|foreign, type(dropdown)|Select|Foreign|mpg|foreign == 1|" "U16-02|(lowess mpg weight, bwidth(.4) mean)|price, type(range)|RangeSlider|4500 11385|mpg|inrange(price, 4500, 11385)|bwidth(.4) mean" "U16-03|(lowess mpg weight, noweight adjust)|foreign, type(dropdown)|Select|Domestic|mpg|foreign == 0|noweight adjust" "U16-04|(lowess foreign weight, logit)|foreign, type(dropdown)|Select|Domestic|foreign|foreign == 0|logit" {
-        local ++k
-        mata: u16_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u16_t[1]); st_local("cmd", u16_t[2]); st_local("filt", u16_t[3]); st_local("kind", u16_t[4]); st_local("val", u16_t[5]); st_local("yv", u16_t[6]); st_local("cond", u16_t[7]); st_local("lo", u16_t[8])
-        sysuse auto, clear
-        dash clear
-        capture noisily dash `cmd', name(zu16`k')
-        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
-        _dash_serve_spec, specpath("`u16d'/s`k'.json") datapath("`u16d'/d`k'.json") filter(`filt')
-        python: _u16_move("`u16d'/s`k'.json", "`u16d'/d`k'.json", "`kind'", "`val'", "`u16d'/g`k'.json")
-        quietly lowess `yv' weight if `cond', `lo' generate(u16s) nograph
-        quietly generate byte u16u = (`cond')
-        quietly generate long u16o = _n
-        sort weight u16o
-        python: _u16_gen_compare("`u16d'/g`k'.json", "weight", "u16s", "u16u", 1e-8)
-        _w31_expect `id' "(${u16_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u16_msg}"
-        _w31_done `id' "the saved `cmd' after the move to `val' is lowess `yv' weight if `cond', `lo' (${u16_msg})"
-    }
-
-    // ------------------------------------------------------------
-    // U16-05: a move leaving two rows empties the saved smooth; twoway
-    // lowess on them draws nothing, rc 0, in silence.
-    // ------------------------------------------------------------
-    sysuse auto, clear
-    dash clear
-    capture noisily dash (scatter mpg weight) (lowess mpg weight), name(zu165)
-    _w31_expect U16-05 "(_rc == 0)" "dash lowess rc `=_rc'"
-    _dash_serve_spec, specpath("`u16d'/s5.json") datapath("`u16d'/d5.json") filter(price, type(slider))
-    python: _u16_move("`u16d'/s5.json", "`u16d'/d5.json", "Slider", "14500", "`u16d'/g5.json")
-    quietly count if price >= 14500
-    local nk = r(N)
-    _w31_expect U16-05 "(`nk' == 2)" "price >= 14500 keeps `nk' rows"
-    _w31_expect U16-05 "(${u16_n} == 0)" "the saved lowess after the slider to 14500 holds ${u16_n} points"
-    local lf "`u16d'/t5.log"
-    quietly log using "`lf'", text replace name(u16l)
-    capture noisily twoway lowess mpg weight if price >= 14500, nodraw
-    local trc = _rc
-    quietly log close u16l
-    python: _u16_said("`lf'", "(note:")
-    _w31_expect U16-05 "(`trc' == 0 & ${u16_said} == 0)" "twoway lowess on two rows: rc `trc', note ${u16_said}"
-    _w31_done U16-05 "two kept rows: the saved smooth is empty; twoway draws none (rc `trc', no note)"
-
-    forvalues k = 1/5 {
-        foreach p in s d g {
-            capture erase "`u16d'/`p'`k'.json"
-        }
-    }
-    capture erase "`lf'"
-    capture rmdir "`u16d'"
-    macro drop u16_n u16_ok u16_msg u16_said
-    capture mata: mata drop u16_t
-    capture graph drop _all
-    dash clear
-    display as text "S16 end " c(current_date) " " c(current_time)
-}
-* ==== end S16 ====
-
 // S15 helpers (WP-31 C8a).  _u15_draw: what a registered dash graph
 // draws, saved and served (S03's _u03_docs builds both) -- into globals
 // u15_<k>s (saved) and u15_<k>v (served): cv, 1 when a plot of the spec
@@ -3277,6 +3128,155 @@ if inlist("`only'", "", "S15") & `: list posof "S15" in w31_run' {
     display as text "S15 end " c(current_date) " " c(current_time)
 }
 * ==== end S15 ====
+
+// S16 helpers (WP-31 F1c).  _u16_move: the saved page's lowess line after
+// one filter move -- the page rendered, the widget set and its own
+// callback run under node (test/js_runner.py) -- written to a JSON file,
+// its point count in global u16_n.  _u16_gen_compare: the saved line
+// against Stata's lowess, gen() variable *s* on the rows where *touse* is
+// 1 and *s* is not missing, in the data's current order (sorted stably by
+// x); global u16_ok 1 or 0 and u16_msg.  _u16_said: does a log hold *text*.
+python:
+def _u16_move(sp, dp, kind, value, out):
+    import json
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    lw = [x for f in r.figures.values() for x in f.renderers
+          if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+          == "lowess"]
+    d = lw[0].data_source.data
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump({"x": [float(v) for v in d["x_lw"]],
+                   "y": [float(v) for v in d["y_lw"]]}, fh)
+    Macro.setGlobal("u16_n", str(len(d["x_lw"])))
+
+
+def _u16_gen_compare(saved, xvar, svar, touse, rtol):
+    import json
+    import numpy as np
+    from sfi import Data, Macro
+    g = json.load(open(saved, encoding="utf-8"))
+    gx, gy = np.asarray(g["x"], float), np.asarray(g["y"], float)
+    miss = lambda v: v is None or v >= 8.98e307
+    xs, ss = [], []
+    for x, s, t in zip(Data.get(var=xvar), Data.get(var=svar),
+                       Data.get(var=touse)):
+        if t == 1 and not miss(s) and not miss(x):
+            xs.append(float(x))
+            ss.append(float(s))
+    tx, ty = np.asarray(xs), np.asarray(ss)
+    ok = 0
+    if len(tx) != len(gx):
+        msg = "%d saved points, Stata %d" % (len(gx), len(tx))
+    elif not len(tx):
+        msg = "no points"
+    else:
+        dx = float(np.max(np.abs(gx - tx) / np.maximum(np.abs(tx), 1.0)))
+        dy = float(np.max(np.abs(gy - ty) / np.maximum(np.abs(ty), 1.0)))
+        ok = int(dx <= rtol and dy <= rtol)
+        msg = "%d points, largest relative difference x %.3g y %.3g" % (
+            len(gx), dx, dy)
+    Macro.setGlobal("u16_ok", str(ok))
+    Macro.setGlobal("u16_msg", msg)
+
+
+def _u16_said(log, text):
+    from sfi import Macro
+    with open(log, encoding="utf-8", errors="replace") as fh:
+        Macro.setGlobal("u16_said", "1" if text in fh.read() else "0")
+end
+
+* ==== S16 F1c: lowess re-smooths on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S16") & `: list posof "S16" in w31_run' {
+    display as text "S16 start " c(current_date) " " c(current_time)
+    local u16d "`w31_work'/s16"
+    capture mkdir "`u16d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U16-01..04: after a move the saved smooth is Stata's lowess on the
+    // kept rows (gen(), sorted stably by x): the default after the
+    // dropdown to Foreign; bwidth(.4) mean after the range to
+    // 4500-11385; noweight adjust after the dropdown to Domestic (adjust's
+    // mean is all 74 cars', in both); logit on foreign, constant 0 among
+    // the Domestic cars.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U16-01|(scatter mpg weight) (lowess mpg weight)|foreign, type(dropdown)|Select|Foreign|mpg|foreign == 1|" "U16-02|(lowess mpg weight, bwidth(.4) mean)|price, type(range)|RangeSlider|4500 11385|mpg|inrange(price, 4500, 11385)|bwidth(.4) mean" "U16-03|(lowess mpg weight, noweight adjust)|foreign, type(dropdown)|Select|Domestic|mpg|foreign == 0|noweight adjust" "U16-04|(lowess foreign weight, logit)|foreign, type(dropdown)|Select|Domestic|foreign|foreign == 0|logit" {
+        local ++k
+        mata: u16_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u16_t[1]); st_local("cmd", u16_t[2]); st_local("filt", u16_t[3]); st_local("kind", u16_t[4]); st_local("val", u16_t[5]); st_local("yv", u16_t[6]); st_local("cond", u16_t[7]); st_local("lo", u16_t[8])
+        sysuse auto, clear
+        dash clear
+        capture noisily dash `cmd', name(zu16`k')
+        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u16d'/s`k'.json") datapath("`u16d'/d`k'.json") filter(`filt')
+        python: _u16_move("`u16d'/s`k'.json", "`u16d'/d`k'.json", "`kind'", "`val'", "`u16d'/g`k'.json")
+        quietly lowess `yv' weight if `cond', `lo' generate(u16s) nograph
+        quietly generate byte u16u = (`cond')
+        quietly generate long u16o = _n
+        sort weight u16o
+        python: _u16_gen_compare("`u16d'/g`k'.json", "weight", "u16s", "u16u", 1e-8)
+        _w31_expect `id' "(${u16_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u16_msg}"
+        _w31_done `id' "the saved `cmd' after the move to `val' is lowess `yv' weight if `cond', `lo' (${u16_msg})"
+    }
+
+    // ------------------------------------------------------------
+    // U16-05: a move leaving two rows empties the saved smooth; twoway
+    // lowess on them draws nothing, rc 0, in silence.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    capture noisily dash (scatter mpg weight) (lowess mpg weight), name(zu165)
+    _w31_expect U16-05 "(_rc == 0)" "dash lowess rc `=_rc'"
+    _dash_serve_spec, specpath("`u16d'/s5.json") datapath("`u16d'/d5.json") filter(price, type(slider))
+    python: _u16_move("`u16d'/s5.json", "`u16d'/d5.json", "Slider", "14500", "`u16d'/g5.json")
+    quietly count if price >= 14500
+    local nk = r(N)
+    _w31_expect U16-05 "(`nk' == 2)" "price >= 14500 keeps `nk' rows"
+    _w31_expect U16-05 "(${u16_n} == 0)" "the saved lowess after the slider to 14500 holds ${u16_n} points"
+    local lf "`u16d'/t5.log"
+    quietly log using "`lf'", text replace name(u16l)
+    capture noisily twoway lowess mpg weight if price >= 14500, nodraw
+    local trc = _rc
+    quietly log close u16l
+    python: _u16_said("`lf'", "(note:")
+    _w31_expect U16-05 "(`trc' == 0 & ${u16_said} == 0)" "twoway lowess on two rows: rc `trc', note ${u16_said}"
+    _w31_done U16-05 "two kept rows: the saved smooth is empty; twoway draws none (rc `trc', no note)"
+
+    forvalues k = 1/5 {
+        foreach p in s d g {
+            capture erase "`u16d'/`p'`k'.json"
+        }
+    }
+    capture erase "`lf'"
+    capture rmdir "`u16d'"
+    macro drop u16_n u16_ok u16_msg u16_said
+    capture mata: mata drop u16_t
+    capture graph drop _all
+    dash clear
+    display as text "S16 end " c(current_date) " " c(current_time)
+}
+* ==== end S16 ====
 
 * ==== append new blocks above this line ====
 
