@@ -3904,11 +3904,11 @@
   - Suggested fix: WP-31 section 41 (colour width outline edges): measure the SVG colours twoway draws for fitplot() and ciplot() views and match them in both modes.
   - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: mband and mspline over data with missing y draw fewer vertices than twoway
+- [x] Title: mband and mspline over data with missing y draw fewer vertices than twoway
   - File Names and Line Numbers: dash_render.py GlyphMapper.map_mband, GlyphMapper.map_mspline; test/fixtures/area_cmissing_truth.json E04, E05
   - Description: GAPS3.md C6, found by WP-31 section 14 (C6 residual): on data with missing y, twoway mband draws 9 vertices where dash draws 8 (probe E04) and mspline 89 where dash draws 78 (E05); unrelated to cmissing().
   - Suggested fix: WP-31 section 25 (js mband mspline): measure twoway's band and spline vertices on data with missing y and match them in the Python twins before porting them to JavaScript.
-  - Resolution: Not fixed because WP-31 section 25 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 14oct2026 (WP-31, C6b). twoway's median bands read more than the complete rows (measured on auto with values set missing): the default band count is _gs_default_bands.ado's rule on the serset's N, every row with y or x present, and the bands cut the x range of every row with an x, a row with y missing included; the cross medians stay those of each band's complete rows, a band with none skipped. dash took both from the complete rows (71 rows and eight bands where twoway has 74 and nine on E04). GlyphMapper._mband_sample now reads N and the range from the layer's rows with missing values kept, and map_mband and map_mspline pass them to _cross_medians (new span argument), in both renderers. Pinned by test/test_mband_missing.py::TestAgainstTwoway, ::TestTheSample, ::TestTheBandSample, test/test_wp31_truth.cscript U25-06, U25-07, U25-08; fixture test/fixtures/area_cmissing_truth.json. Closes GAPS3 C6 (WP-31, C6b).
 
 - [x] Title: lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app
   - File Names and Line Numbers: dash_render.py _FILTER_JS dash_lpoly_rot; _lpoly_rot_detail, _lpoly_rot_float

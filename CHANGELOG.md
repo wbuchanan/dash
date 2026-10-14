@@ -493,7 +493,7 @@ and now matches Stata.
 
 <!-- WP-31 C4b -->
 
-<!-- WP-31 C6b -->
+- mband and mspline on data with a missing y or x: the band count and the bands' x range from the complete rows only (auto with mpg missing in 10/12: mband 8 vertices, mspline 78) -> from every row with y or x, as twoway does (9 and 89) (WP-31, C6b)
 
 - lpoly and lpolyci on a saved page after a filter move that leaves an exactly fitted rule of thumb (y an exact polynomial in x, or a few rows): the line drawn at 0 in silence -> the build's smooth and band, dimmed and keyed "(unfiltered)" (WP-31, C11b)
 

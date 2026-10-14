@@ -324,7 +324,11 @@ def _render_by_panels(tmp_path, linked):
 _MODES = ["saved", "served"]
 
 # The rows g==0 selects, the rest made missing: the dataset keeps its size.
-_MASKED_OUT = _DF.assign(y=np.where(_DF.g == 0, _DF.y, np.nan))
+# Both x and y (WP-31 C6b): a row with y alone missing is still in mband's
+# and mspline's band count and x range, as in twoway, where an excluded
+# row is not.
+_MASKED_OUT = _DF.assign(y=np.where(_DF.g == 0, _DF.y, np.nan),
+                         x=np.where(_DF.g == 0, _DF.x, np.nan))
 
 
 def _spec_plot(name, kind, if_expr=""):

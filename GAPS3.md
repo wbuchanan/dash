@@ -445,7 +445,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C4b Tracked:** Open (WP-31 section 41).
 - **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Closed in WP-31, BUGS.md "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn", commit b2af9fc.
-- **C6b Tracked:** Open (WP-31 section 25).
+- **C6b Tracked:** Closed in WP-31, BUGS.md "mband and mspline over data with missing y draw fewer vertices than twoway", commit pending.
 - **C7 Tracked:** Closed in WP-31, BUGS.md "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them", commit 44761fa.
 - **C8a Tracked:** Closed in WP-31, BUGS.md "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)", commit 46698dd.
 - **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.

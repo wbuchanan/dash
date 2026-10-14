@@ -4893,6 +4893,135 @@ if inlist("`only'", "", "S22") & `: list posof "S22" in w31_run' {
 }
 * ==== end S22 ====
 
+// S25 C6b helpers.  _u25_tw <twoway plot>: plot 1's serset of the drawn
+// twoway graph written to <dir>/t.csv (y, then x); _u25_cmp: the first
+// visible Line a registered dash graph draws, saved and served, against
+// that serset -- the vertex count and every vertex to 1e-6 relative (a
+// serset stores floats) -- as globals u25_s and u25_v (1 when equal) and
+// u25_msg.
+capture program drop _u25_tw
+program define _u25_tw
+    // _u25_tw <dir> <twoway plot ...>
+    version 19
+    gettoken dir 0 : 0
+    serset clear
+    capture graph drop u25t
+    quietly twoway (`0'), nodraw name(u25t, replace)
+    local id "`.u25t.plotregion1.plot1.serset.id'"
+    preserve
+    quietly serset set `id'
+    quietly serset use, clear
+    quietly export delimited using "`dir'/t.csv", replace novarnames
+    restore
+    capture graph drop u25t
+end
+
+python:
+def _u25_cmp(sp, dp, app, csv):
+    import math
+    from sfi import Macro
+    import __main__ as m
+    with open(csv, encoding="utf-8") as fh:
+        want = [tuple(float(v) for v in ln.split(",")[:2][::-1])
+                for ln in fh if ln.strip()]
+    a, b = m._u03_docs(sp, dp, app)
+    msg = []
+    for figs, sfx in ((a, "s"), (b, "v")):
+        got = None
+        for f in figs:
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if (type(g).__name__ != "Line" or got is not None
+                        or g.line_alpha == 0):
+                    continue
+                d = r.data_source.data
+                got = list(zip((float(v) for v in d[g.x]),
+                               (float(v) for v in d[g.y])))
+        got = got or []
+        ok = len(got) == len(want) and all(
+            math.isclose(p, q, rel_tol=1e-6, abs_tol=1e-9)
+            for gp, wp in zip(got, want) for p, q in zip(gp, wp))
+        Macro.setGlobal("u25_" + sfx, str(int(ok)))
+        msg.append("%s %d vertices" % ("saved" if sfx == "s" else "served",
+                                        len(got)))
+    Macro.setGlobal("u25_msg", ", ".join(msg) + "; twoway %d" % len(want))
+end
+
+capture program drop _u25_case
+program define _u25_case
+    // _u25_case <id> <dir> <k> <plot ...>: dash's line against twoway's.
+    version 19
+    gettoken id 0 : 0
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    _u25_tw "`dir'" `0'
+    dash clear
+    capture noisily dash (`0'), name(zu25`k')
+    _w31_expect `id' "(_rc == 0)" "dash `0' rc `=_rc'"
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u25_m; _u25_m._u25_cmp("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t.csv")
+    _w31_expect `id' "(${u25_s} == 1 & ${u25_v} == 1)" "`0': ${u25_msg}"
+    foreach p in s d {
+        capture erase "`dir'/`p'`k'.json"
+    }
+    capture erase "`dir'/a`k'.py"
+    capture erase "`dir'/t.csv"
+    dash clear
+end
+
+* ==== S25 C6b: mband and mspline over data with missing y or x ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S25") & `: list posof "S25" in w31_run' {
+    display as text "S25 start " c(current_date) " " c(current_time)
+    local u25d "`w31_work'/s25"
+    capture mkdir "`u25d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U25-06: auto with mpg missing in 10/12 (area_cmissing_truth.json
+    // E04, E05): the default band count is on the serset's N, the rows
+    // with y or x (74, nine bands), where dash counted the 71 complete
+    // rows (eight bands; mband 8 vertices for 9, mspline 78 for 89).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly replace mpg = . in 10/12
+    _u25_case U25-06 "`u25d'" 1 mband mpg weight
+    _u25_case U25-06 "`u25d'" 2 mspline mpg weight
+    _w31_done U25-06 "mpg missing in 10/12: mband and mspline draw twoway's vertices in both modes"
+
+    // ------------------------------------------------------------
+    // U25-07: weight missing on the 30 lightest cars, mpg present: those
+    // rows stay in N (nine bands over the rest's x range).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    sort weight, stable
+    quietly replace weight = . in 1/30
+    _u25_case U25-07 "`u25d'" 3 mband mpg weight
+    _u25_case U25-07 "`u25d'" 4 mspline mpg weight
+    _w31_done U25-07 "weight missing on 30 rows: mband and mspline draw twoway's vertices in both modes"
+
+    // ------------------------------------------------------------
+    // U25-08: mpg missing at the lightest car (its weight still sets the
+    // bands' x range) and both missing on five rows (out of N), with
+    // bands(3) n(2) and the default.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    sort weight, stable
+    quietly replace mpg = . in 1
+    quietly replace mpg = . in 40/44
+    quietly replace weight = . in 40/44
+    _u25_case U25-08 "`u25d'" 5 mband mpg weight
+    _u25_case U25-08 "`u25d'" 6 mspline mpg weight, bands(3) n(2)
+    _w31_done U25-08 "mpg missing at the x minimum and both missing on five rows: mband and mspline draw twoway's vertices in both modes"
+
+    capture rmdir "`u25d'"
+    macro drop u25_s u25_v u25_msg
+    capture graph drop _all
+    dash clear
+    display as text "S25 end " c(current_date) " " c(current_time)
+}
+* ==== end S25 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

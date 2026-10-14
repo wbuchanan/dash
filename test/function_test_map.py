@@ -171,6 +171,7 @@ FUNCTIONS = {
  'GlyphMapper._check_vars': 'test/test_glyphs.py::TestHardeningGuards::test_check_vars_ignores_empty_string_varnames',
  'GlyphMapper._compute_lpoly_fit': 'test/test_lpoly_rot.py::TestLocalFitRank::test_two_point_window_at_degree_two_keeps_the_square',
  'GlyphMapper._cross_medians': 'test/test_statistical_helpers.py::TestCrossMediansAgainstStata::test_tenths_each_in_their_own_band',
+ 'GlyphMapper._mband_sample': 'test/test_mband_missing.py::TestTheBandSample::test_counts_and_span',
  'GlyphMapper._default_lpoly_bwidth': 'test/test_lpoly_rot.py::TestRotAgainstStata::test_r_bwidth',
  'GlyphMapper._fitci_redrawn': 'test/test_js_fit_refit.py::TestCiConfig::test_a_band_or_line_drawn_as_another_type_is_not_tagged',
  'GlyphMapper._fitci_std_for': 'test/test_statistical_truth.py::TestFitciBandTypes::test_band_matches_the_plotted_serset',

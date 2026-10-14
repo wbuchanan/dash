@@ -22478,8 +22478,12 @@ class GlyphMapper:
 
         requested = _stat_option_float(options, "bands", None, "mspline",
                                        lo=1.0, hi=float(_MAX_MBANDS))
+        # WP-31 C6b: the default count is on the rows with y or x, the
+        # bands cut the range of the rows with x (_mband_sample).
+        n_all, span = self._mband_sample(
+            *self._masked_rows(source, view, xvar, yvar))
         n_bands = (int(requested) if requested is not None
-                   else _mband_default_bands(len(x_clean)))
+                   else _mband_default_bands(n_all))
         # n() may be 1 in Stata (measured: bands(8) n(1) draws 15 points)
         # and at most 300: twoway refuses n(301), "n must be between 1 and
         # 300", r(198), and so does dash.ado; a hand-written spec gets the
@@ -22487,7 +22491,7 @@ class GlyphMapper:
         n_between = int(_stat_option_float(options, "n", 10.0, "mspline",
                                            lo=1.0, hi=300.0) or 10.0)
 
-        kx, ky = self._cross_medians(x_clean, y_clean, n_bands)
+        kx, ky = self._cross_medians(x_clean, y_clean, n_bands, span=span)
         # No knot -- no observation -- is no curve, drawn in silence as
         # twoway draws it (with bands(), or in a by() panel; with neither,
         # dash.ado refuses it as twoway does).
@@ -22529,7 +22533,28 @@ class GlyphMapper:
         return [r]
 
     @staticmethod
-    def _cross_medians(x: "np.ndarray", y: "np.ndarray", n_bands: int
+    def _mband_sample(x: "np.ndarray", y: "np.ndarray") -> tuple:
+        """``(n, span)``: what twoway's median bands read from a layer's
+        rows beyond the complete ones (WP-31 C6b), *x* and *y* with their
+        missing values kept (:meth:`_masked_rows`).  *n* is the serset's N,
+        on which _gs_default_bands.ado computes the default band count: the
+        rows in which y or x is present (a row with both missing is not in
+        it).  *span* is ``(min, max)`` of the rows that have an x, the
+        range the bands cut; None when no row has one.  Measured
+        14oct2026 (test/test_mband_missing.py): with mpg missing in 10/12
+        of auto twoway mband draws nine bands, not the eight of the 71
+        complete rows (area_cmissing_truth.json E04, E05)."""
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        fx = np.isfinite(x)
+        n = int((fx | np.isfinite(y)).sum())
+        if not fx.any():
+            return n, None
+        return n, (float(x[fx].min()), float(x[fx].max()))
+
+    @staticmethod
+    def _cross_medians(x: "np.ndarray", y: "np.ndarray", n_bands: int,
+                       span: "tuple | None" = None
                        ) -> "tuple[np.ndarray, np.ndarray]":
         """The cross medians of *n_bands* equal-width x bands.
 
@@ -22551,12 +22576,20 @@ class GlyphMapper:
             silence (measured 24sep2026: y = 2 at x = 1 gives (2, 1); y =
             2 4 6 at x = 5 gives (4, 5)).  dash returned no knot, drew
             nothing and said so.
+
+            *span* is ``(min, max)`` of the x range the bands cut, when it
+            is not the complete rows' own: twoway cuts the range of every
+            observation that has an x, a row with y missing included
+            (WP-31 C6b, :meth:`_mband_sample`).
         """
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
         if len(x) == 0:
             return np.array([]), np.array([])
-        x_min, x_max = float(x.min()), float(x.max())
+        if span is None:
+            x_min, x_max = float(x.min()), float(x.max())
+        else:
+            x_min, x_max = float(span[0]), float(span[1])
         if x_max == x_min:
             return np.array([x_min]), np.array([float(np.median(y))])
         n_bands = max(1, int(n_bands))
@@ -22623,9 +22656,14 @@ class GlyphMapper:
         # allocated 8 GB in np.linspace before any drawing happened.
         requested = _stat_option_float(options, "bands", None, "mband",
                                        lo=1.0, hi=float(_MAX_MBANDS))
+        # WP-31 C6b: the default count is on the rows with y or x, the
+        # bands cut the range of the rows with x (_mband_sample).
+        n_all, span = self._mband_sample(
+            *self._masked_rows(source, view, xvar, yvar))
         n_bands = (int(requested) if requested is not None
-                   else _mband_default_bands(len(x_clean)))
-        x_mids, y_meds = self._cross_medians(x_clean, y_clean, n_bands)
+                   else _mband_default_bands(n_all))
+        x_mids, y_meds = self._cross_medians(x_clean, y_clean, n_bands,
+                                             span=span)
 
         if not len(x_mids):
             # No observation, drawn in silence as twoway draws it (see
@@ -53793,7 +53831,10 @@ class ServerAppBuilder:
             "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",
             "                    gname, _ln, _shared, _shared_pos, _fallback,",
             "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
-            "                    keep_missing=_dash_join_spec(opts)[1] == 'n')",
+            "                    # mband and mspline read the rows missing y or x too:",
+            "                    # the band count and range are twoway's (WP-31 C6b).",
+            "                    keep_missing=(_dash_join_spec(opts)[1] == 'n'",
+            "                                  or ptype in ('mband', 'mspline')))",
             "                _jo = (_dash_join_key(_ly_src, _sort_keys, _dash_sort_col_of(plot, spec))",
             "                       if ptype in _DASH_JOIN_TYPES and _ly_src is not None else None)",
             "                if _ly_src is not None:",

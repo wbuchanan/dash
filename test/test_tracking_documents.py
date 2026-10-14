@@ -2057,7 +2057,6 @@ WP31_OPEN = {
     "C10e": "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed",
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
     "C4b": "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured",
-    "C6b": "mband and mspline over data with missing y draw fewer vertices than twoway",
     "C8c": "A user-supplied scheme's colorvar() default colour rule falls back to s2color's",
     "C8d": "pcycle() refuses a fraction where twoway draws it on a graph of few series",
     "C8e": "colorkeysreverse on a colorvar() colour bar is named, not drawn",
