@@ -3485,6 +3485,197 @@ if inlist("`only'", "", "S17") & `: list posof "S17" in w31_run' {
 }
 * ==== end S17 ====
 
+// S18 helpers (WP-31 B5b).  _u18_draw: what both modes draw of a
+// registered dot graph's rows of dots (the renderer tagged dash_dots) --
+// the dots per run in the order of the runs' shared coordinate, each
+// run's lowest dot along the row, the axis the rows run along, the dots'
+// fill and size and the marker's size -- into globals u18_<k>s (saved)
+// and u18_<k>v (served); _u18_svg: twoway's own dots per run from its
+// SVG (the circles of the smallest radius, a dot's outline, one a dot,
+// grouped by the coordinate they share) into u18_tw.
+python:
+def _u18_draw(sp, dp, app):
+    from sfi import Macro
+    import __main__ as m
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        out = {"runs": "none", "lo": "none", "along": "none",
+               "fill": "none", "size": "-1", "msize": "-1"}
+        for f in figs:
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                if type(g).__name__ != "Scatter":
+                    continue
+                if "dash_dots" not in (r.tags or []):
+                    out["msize"] = "%.12g" % float(g.size)
+                    continue
+                d = r.data_source.data
+                runs = {}
+                for x, y in zip(d["x"], d["y"]):
+                    runs.setdefault(float(x), []).append(float(y))
+                ks = sorted(runs)
+                out["runs"] = " ".join(str(len(runs[k])) for k in ks) or "none"
+                out["lo"] = " ".join("%.12g" % min(runs[k]) for k in ks) or "none"
+                gx = g.x if isinstance(g.x, str) else g.x.field
+                out["along"] = "y" if gx == "x" else "x"
+                out["fill"] = str(g.fill_color).lower()
+                out["size"] = "%.12g" % float(g.size)
+        for k, v in out.items():
+            Macro.setGlobal("u18_%s%s" % (k, sfx), v)
+
+
+def _u18_svg(path, along):
+    from sfi import Macro
+    from svg_truth import svg_document
+    cs = [c for c in svg_document(path)["circles"] if c["r"] is not None]
+    if not cs:
+        Macro.setGlobal("u18_tw", "none")
+        return
+    rmin = min(round(c["r"], 3) for c in cs)
+    key = "cx" if along == "y" else "cy"
+    runs = {}
+    for c in cs:
+        if round(c["r"], 3) == rmin:
+            runs[round(c[key], 2)] = runs.get(round(c[key], 2), 0) + 1
+    ks = sorted(runs, reverse=(along == "x"))
+    Macro.setGlobal("u18_tw", " ".join(str(runs[k]) for k in ks))
+end
+
+capture program drop _u18_reg
+program define _u18_reg
+    // _u18_reg <dir> <k> <dash command...>: register one graph, write its
+    // spec and data, and read what both modes draw (_u18_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u18_m; _u18_m._u18_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+* ==== S18 B5b: dot rows ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S18") & `: list posof "S18" in w31_run' {
+    display as text "S18 start " c(current_date) " " c(current_time)
+    local u18d "`w31_work'/s18"
+    capture mkdir "`u18d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U18-01: dot mpg weight in 1/5 draws twoway's rows: the same dots
+    // per observation (75, from the base to curmin and to curmax), each
+    // row starting at twoway's base, in both modes, with no note.
+    // ------------------------------------------------------------
+    quietly twoway dot mpg weight in 1/5, name(u18t, replace)
+    local nd = `.u18t.plotregion1.plot1.num_dots'
+    local lo = `.u18t.plotregion1.yscale.curmin'
+    local hi = `.u18t.plotregion1.yscale.curmax'
+    local base = cond(`lo' <= 0 & `hi' >= 0, 0, cond(`hi' < 0, `hi', `lo'))
+    quietly graph export "`u18d'/t1.svg", replace
+    python: _u18_svg("`u18d'/t1.svg", "y")
+    local tw "${u18_tw}"
+    // No twoway graph in memory, so dash's note is about the dots alone.
+    graph drop u18t
+    _w31_expect U18-01 "(`nd' == 75)" "twoway num_dots `nd'"
+    local lf "`u18d'/n1.log"
+    dash clear
+    quietly log using "`lf'", text replace name(u18n)
+    dash dot mpg weight in 1/5
+    quietly log close u18n
+    _u18_reg "`u18d'" 1 dot mpg weight in 1/5, name(zu181)
+    _w31_expect U18-01 `"("${u18_runss}" == "`tw'" & "${u18_runsv}" == "`tw'")"' "dots per row: twoway `tw', saved ${u18_runss}, served ${u18_runsv}"
+    _u03_all `base' ${u18_los} ${u18_lov}
+    _w31_expect U18-01 "(r(ok))" "each row's first dot: saved ${u18_los}, served ${u18_lov}; twoway's base `base'"
+    cert_log_has "`lf'", needle("(note")
+    _w31_expect U18-01 "(r(count) == 0)" "the log notes `r(count)' times"
+    _w31_done U18-01 "dot mpg weight in 1/5: rows of `tw' dots from the base `base' in both modes, as twoway draws them"
+
+    // ------------------------------------------------------------
+    // U18-02: ndots(x) and ndots() on scatter are refused in twoway's
+    // words and codes; ndots(1), dotextend(maybe) and dlalign(x) are
+    // taken as twoway takes them, dlalign() named.
+    // ------------------------------------------------------------
+    foreach c in "dot mpg weight, ndots(x)" "scatter mpg weight, ndots(10)" "line mpg weight, dotextend(no)" {
+        capture twoway `c' nodraw
+        local trc = _rc
+        dash clear
+        capture dash `c'
+        local drc = _rc
+        _w31_expect U18-02 "(`trc' == 198 & `drc' == `trc')" "`c': twoway rc `trc', dash rc `drc'"
+    }
+    local lf2 "`u18d'/n2.log"
+    quietly log using "`lf2'", text replace name(u18n2)
+    capture noisily dash dot mpg weight, ndots(x)
+    quietly log close u18n2
+    cert_log_has "`lf2'", needle("option ndots() incorrectly specified")
+    _w31_expect U18-02 "(r(count) == 1)" "dash ndots(x) says twoway's line `r(count)' times"
+    foreach c in "ndots(1)" "dotextend(maybe)" "dlalign(x)" "baroffset(.5)" {
+        capture twoway dot mpg weight, `c' nodraw
+        local trc = _rc
+        dash clear
+        capture dash dot mpg weight, `c'
+        local drc = _rc
+        _w31_expect U18-02 "(`trc' == 0 & `drc' == 0)" "dot `c': twoway rc `trc', dash rc `drc'"
+    }
+    _u18_reg "`u18d'" 2 dot mpg weight in 1/5, ndots(1) name(zu182)
+    _w31_expect U18-02 `"("${u18_runss}" == "none" & "${u18_runsv}" == "none")"' "ndots(1) draws ${u18_runss} / ${u18_runsv} dots"
+    local lf3 "`u18d'/n3.log"
+    quietly log using "`lf3'", text replace name(u18n3)
+    dash clear
+    dash dot mpg weight, dlalign(x) name(zu183)
+    quietly log close u18n3
+    cert_log_has "`lf3'", needle("dlalign()")
+    _w31_expect U18-02 "(r(count) == 1)" "dlalign() named `r(count)' times"
+    _w31_done U18-02 "ndots() and dotextend() refused and taken as twoway does; ndots(1) draws no dot; dlalign() named"
+
+    // ------------------------------------------------------------
+    // U18-03: dcolor(red) dsize(medium): the dots are red and a medium
+    // marker's size, both modes.
+    // ------------------------------------------------------------
+    _u18_reg "`u18d'" 4 dot mpg weight, dcolor(red) dsize(medium) name(zu184)
+    _w31_expect U18-03 `"("${u18_fills}" == "#ff0000" & "${u18_fillv}" == "#ff0000")"' "dots filled ${u18_fills} / ${u18_fillv}"
+    _u03_all ${u18_msizes} ${u18_sizes} ${u18_sizev} ${u18_msizev}
+    _w31_expect U18-03 "(r(ok))" "dot size saved ${u18_sizes} served ${u18_sizev}, marker ${u18_msizes}"
+    // p() drops the d-options, as twoway's p(p3) dcolor(red) draws black
+    // dots (dot_truth.json D27).
+    _u18_reg "`u18d'" 6 dot mpg weight, p(p3) dcolor(red) name(zu186)
+    _w31_expect U18-03 `"("${u18_fills}" == "#000000" & "${u18_fillv}" == "#000000")"' "p(p3) dcolor(red): dots filled ${u18_fills} / ${u18_fillv}"
+    _w31_done U18-03 "dcolor(red) dsize(medium): red dots a medium marker (${u18_msizes} px) across, both modes; p() drops dcolor()"
+
+    // ------------------------------------------------------------
+    // U18-04: horizontal: the rows run along x at each observation's
+    // weight, as twoway's bar_drop_to y says, with its dots per row.
+    // ------------------------------------------------------------
+    quietly twoway dot mpg weight in 1/5, horizontal dotextend(no) name(u18t, replace)
+    local dt "`.u18t.plotregion1.plot1.bar_drop_to.stylename'"
+    quietly graph export "`u18d'/t4.svg", replace
+    python: _u18_svg("`u18d'/t4.svg", "x")
+    local tw "${u18_tw}"
+    _u18_reg "`u18d'" 5 dot mpg weight in 1/5, horizontal dotextend(no) name(zu185)
+    _w31_expect U18-04 `"("`dt'" == "y" & "${u18_alongs}" == "x" & "${u18_alongv}" == "x")"' "twoway drops to `dt'; dash's rows along ${u18_alongs} / ${u18_alongv}"
+    _w31_expect U18-04 `"("${u18_runss}" == "`tw'" & "${u18_runsv}" == "`tw'")"' "dots per row: twoway `tw', saved ${u18_runss}, served ${u18_runsv}"
+    _w31_done U18-04 "horizontal dotextend(no): rows along x of `tw' dots, both modes, as twoway draws them"
+
+    foreach f in t1.svg t4.svg n1.log n2.log n3.log {
+        capture erase "`u18d'/`f'"
+    }
+    foreach k in 1 2 4 5 6 {
+        foreach p in s d {
+            capture erase "`u18d'/`p'`k'.json"
+        }
+        capture erase "`u18d'/a`k'.py"
+    }
+    capture rmdir "`u18d'"
+    macro drop u18_*
+    capture graph drop _all
+    dash clear
+    display as text "S18 end " c(current_date) " " c(current_time)
+}
+* ==== end S18 ====
+
 // S19 helpers (WP-31 F1d).  _u19_move: the saved page's lpoly line after
 // one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

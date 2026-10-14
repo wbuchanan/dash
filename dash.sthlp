@@ -3168,7 +3168,8 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     each its own scale, and a {cmd:yaxis(2)} layer takes its base from
     that axis.  The base follows the axis when a filter moves.
     On {cmd:dot}, {cmd:base()} widens the y axis to reach it, as in
-    {cmd:twoway}, with no tick placed for it, and does not move the dots.
+    {cmd:twoway}, with no tick placed for it, and does not move the
+    markers; the rows of dots run over the axis it widens.
     On {cmd:function}, {cmd:base()} is the base of {cmd:droplines()},
     which {cmd:dash} draws (with no {cmd:base()}, the rule above); a value
     that is not a number is refused in {cmd:twoway}'s words,
@@ -3182,9 +3183,49 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     excluded ({cmd:option gap() must be between 0 and 100}, r(198)){p_end}
 {synopt:{opt baroffset(#)}}{cmd:bar} and {cmd:histogram}: each bar moved
     {it:#} bar widths, negative to the left.  {cmd:twoway} also takes it on
-    {cmd:area}, {cmd:spike} and {cmd:dropline}, where it draws nothing
-    different, and on {cmd:rbar} and {cmd:dot}, where {cmd:dash} names it
-    in the note{p_end}
+    {cmd:area}, {cmd:spike}, {cmd:dropline} and {cmd:dot}, where it draws
+    nothing different, and on {cmd:rbar}, where {cmd:dash} names it in the
+    note{p_end}
+{synopt:{opt dotextend(yes|no)}}{cmd:dot}: {cmd:dash} draws {cmd:dot} as
+    {cmd:twoway} does, a row of dots through each observation and then
+    its marker; the rows run up and down from the y axis's base (0 when
+    the axis's scale holds 0, else the scale's end nearest 0) to both
+    ends of the scale, or with {cmd:dotextend(no)} to the observation's
+    value, along x under {cmd:horizontal}.  {cmd:no}, {cmd:n},
+    {cmd:off} and {cmd:false} (lower case, as {cmd:twoway} reads them) are
+    no; anything else is yes.  The rows follow the axis when a filter
+    moves in {cmd:dash serve}; a saved page keeps each kept observation's
+    row where it was drawn, over the axis as it was built.  {cmd:twoway}
+    also takes it on {cmd:area}, {cmd:bar}, {cmd:spike} and
+    {cmd:dropline}, where it draws nothing different, and refuses it
+    elsewhere ({cmd:option dotextend() not allowed}, r(198)){p_end}
+{synopt:{opt ndots(#)}}{cmd:dot}: the dots over the scale's whole span,
+    75 by default; any number, as {cmd:twoway} takes it (the step is the
+    span divided by {it:#} - 1, so {cmd:ndots(1)} draws no dots, and a run
+    of more than 10,000 steps is not drawn); anything else is
+    {cmd:option ndots() incorrectly specified}, r(198).  Above 2,000,000
+    dots in one layer {cmd:dash} draws fewer and says how many.  Taken on
+    the types {cmd:dotextend()} is{p_end}
+{synopt:{opt dstyle(markerstyle)}}{cmd:dot}: the dots' overall style,
+    as {cmd:mstyle()} is the marker's; the dots are otherwise in the
+    scheme's {cmd:dots} style (a tiny black circle in {cmd:s2color}), and
+    no marker, colour or {cmd:pstyle()} option reaches them.
+    {cmd:twoway} takes the d-options on every plot type and draws nothing
+    with them but on {cmd:dot}{p_end}
+{synopt:{opt dsymbol(symbolstyle)}}{cmd:dot}: the dots' symbol, as
+    {cmd:msymbol()}{p_end}
+{synopt:{opt dcolor(colorstyle)}}{cmd:dot}: the dots' fill and outline
+    colour, as {cmd:mcolor()}{p_end}
+{synopt:{opt dfcolor(colorstyle)}}{cmd:dot}: the dots' fill colour, as
+    {cmd:mfcolor()}{p_end}
+{synopt:{opt dsize(markersizestyle)}}{cmd:dot}: the dots' size, as
+    {cmd:msize()}; a dot is drawn at least one pixel across{p_end}
+{synopt:{opt dlstyle(linestyle)}}{cmd:dot}: the dots' outline style, as
+    {cmd:mlstyle()}{p_end}
+{synopt:{opt dlcolor(colorstyle)}}{cmd:dot}: the dots' outline colour,
+    as {cmd:mlcolor()}{p_end}
+{synopt:{opt dlwidth(linewidthstyle)}}{cmd:dot}: the dots' outline
+    width, as {cmd:mlwidth()}{p_end}
 {synopt:{opt area(#)}}{cmd:kdensity}: every density multiplied by {it:#};
     positive ({cmd:option area() expects a positive number}, r(198)){p_end}
 {synopt:{opt boundary}}{cmd:kdensity}: the curve evaluated one bandwidth
@@ -5242,19 +5283,19 @@ disagree in either direction.
     {cmd:twoway} accepts them on every plot type, and on the others
     {cmd:dash} names them.
 
-{phang2}{ul:Dot and marker back-line styles.}
-    {opt dstyle(markerstyle)}, {opt dlstyle(linestyle)} and
-    {opt bmlinestyle(linestyle)} -- the dots of a {cmd:dot} plot and a
-    marker's back line; {cmd:dash} keeps them, for each y, and names
-    them, but does not draw dot rows or marker back lines.  A name
-    {cmd:twoway} does not know is noted as {cmd:twoway} notes it.
+{phang2}{ul:Marker back-line style.}
+    {opt bmlinestyle(linestyle)} -- a marker's back line; {cmd:dash}
+    keeps it, for each y, and names it, but does not draw marker back
+    lines.  A name {cmd:twoway} does not know is noted as {cmd:twoway}
+    notes it.
 
 {phang2}{ul:A marker's outline pattern and alignment, and a label width.}
     {opt mlpattern(linepatternstyle)} -- the pattern of a marker's outline,
     which {cmd:twoway} accepts and {cmd:dash} draws solid.
     {opt mlalign(linealignmentstyle)} -- whether a marker's outline is
     drawn inside, outside or centred on its edge; {cmd:dash} draws it
-    centred.
+    centred.  {opt dlalign(linealignmentstyle)} -- the same for the dots
+    of a {cmd:dot} plot, drawn centred too.
     {opt mlabwidth(size)} is not a {cmd:twoway} option: {cmd:twoway}
     refuses it, r(198), and {cmd:dash} names it.
 

@@ -145,12 +145,15 @@ class TestMapScatterJitter:
 
 class TestJitterOnOtherPlots:
     def test_jitter_on_dot_plot(self, auto_df, gm):
-        """JIT-06: jitter option works on map_dot (delegates to map_scatter)."""
+        """JIT-06: jitter option works on map_dot's markers (delegates to
+        map_scatter).
+
+        Flipped (WP-31 B5b): map_dot returns [dots, marker], its rows of
+        dots first (dot_truth.json D01); the marker is r[1]."""
         fig = figure()
         src = _make_source(auto_df, "weight", "mpg")
         r = gm.map_dot(fig, src, "mpg", "weight", {"jitter": "5", "jseed": "0"})
-        # map_dot returns a list with one renderer
-        renderer = r if hasattr(r, "glyph") else r[0]
+        renderer = r[1]
         assert renderer.glyph.x == dr._DASH_JITTER_X
 
     def test_jitter_on_dropline(self, auto_df, gm):

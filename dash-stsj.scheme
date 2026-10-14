@@ -685,6 +685,20 @@ horizontal text_option       center
 vertical_text text_option       middle
 
 * ---------------------------------------------------------------------------
+* Added 14oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s2mono -> stsj); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The dots of twoway dot (WP-31 B5b): markerstyle dots, its
+* outline linestyle dotmark.
+symbol dots  circle
+symbolsize dots  vtiny
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -795,6 +809,11 @@ vertical_text text_option       middle
 * provenance: gsize tinymargin -- transcribed from scheme-s2color.scheme:203 `gsize tinymargin relative0p3'
 * provenance: gsize emargin -- transcribed from scheme-s2color.scheme:204 `gsize emargin relative1p5'
 * provenance: gsize esubmargin -- transcribed from scheme-s2color.scheme:205 `gsize esubmargin relative4'
+* provenance: color dots -- transcribed from scheme-s2mono.scheme:65 `color dots black'
+* provenance: color dotmarkline -- transcribed from scheme-s2color.scheme:399 `color dotmarkline black'
+* provenance: symbol dots -- transcribed from scheme-s2color.scheme:512 `symbol dots circle'
+* provenance: symbolsize dots -- transcribed from scheme-s2color.scheme:255 `symbolsize dots vtiny'
+* provenance: linewidth dotmark -- transcribed from scheme-s2color.scheme:1224 `linewidth dotmark thin'
 * provenance: symbolsize p -- transcribed from scheme-s2color.scheme:274 `symbolsize p medium'
 * provenance: clockdir legend_position -- transcribed from scheme-s2color.scheme:1924 `clockdir legend_position 6'
 * provenance: numstyle legend_cols -- transcribed from scheme-s2color.scheme:39 `numstyle legend_cols 2'
@@ -921,8 +940,6 @@ vertical_text text_option       middle
 * provenance: color cvseline -- transcribed from scheme-s2mono.scheme:64 `color cvseline gs3'
 * provenance: color dot_arealine -- transcribed from scheme-s2color.scheme:397 `color dot_arealine gs8'
 * provenance: color dot_line -- transcribed from scheme-s2color.scheme:396 `color dot_line gs8'
-* provenance: color dotmarkline -- transcribed from scheme-s2color.scheme:399 `color dotmarkline black'
-* provenance: color dots -- transcribed from scheme-s2mono.scheme:65 `color dots black'
 * provenance: color fp_line -- transcribed from scheme-s2mono.scheme:115 `color fp_line gs6'
 * provenance: color fpall -- transcribed from scheme-s2mono.scheme:122 `color fpall gs8'
 * provenance: color fpall_line -- transcribed from scheme-s2mono.scheme:125 `color fpall_line gs8'
@@ -992,7 +1009,6 @@ vertical_text text_option       middle
 * provenance: linewidth dendrogram -- transcribed from scheme-s2color.scheme:1213 `linewidth dendrogram medium'
 * provenance: linewidth dot_area -- transcribed from scheme-s2color.scheme:1223 `linewidth dot_area medium'
 * provenance: linewidth dot_line -- transcribed from scheme-s2color.scheme:1222 `linewidth dot_line medthick'
-* provenance: linewidth dotmark -- transcribed from scheme-s2color.scheme:1224 `linewidth dotmark thin'
 * provenance: linewidth dots -- transcribed from scheme-s2color.scheme:1221 `linewidth dots vvthin'
 * provenance: linewidth foreground -- transcribed from scheme-s2color.scheme:1200 `linewidth foreground thin'
 * provenance: linewidth fp -- transcribed from scheme-s2color.scheme:1241 `linewidth fp medium'

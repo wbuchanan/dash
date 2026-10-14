@@ -2021,15 +2021,18 @@ forvalues k = 1/`n14f' {
     local x`k' 198
 }
 // Taken more than once by twoway, so named in the note as before: the
-// same word on a type that takes it again (baroffset() on dot), a plot
+// same word on a type that takes it again (dlalign() on dot), a plot
 // option in two plot groups or two || segments, and two options each
 // given once.
 // Flipped (WP-31 C5): rows 33 and 38 were bar's baroffset() and
 // scatter's nodropbase, which was wrong once dash draws the one and takes
 // the other in silence where twoway draws nothing different; dot's
 // baroffset(), which dash does not draw yet, and rbar's stand in.
-local f33 `"dot mpg weight, baroffset(1) baroffset(2)"'
-local g33 "baroffset()"
+// Flipped (WP-31 B5b): row 33's dot baroffset() was wrong because twoway
+// draws nothing different with it on dot (dot_truth.json D28, D29), so
+// dash takes it in silence; dot's dlalign(), which dash names, stands in.
+local f33 `"dot mpg weight, dlalign(inside) dlalign(outside)"'
+local g33 "dlalign()"
 // Flipped (WP-31 C4): rows 34 and 35 expected atobs and nofit named in
 // the note, which was wrong once dash draws them; twoway's answer is the
 // same, and dash now draws both layers in silence (s34, s35).

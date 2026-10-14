@@ -1202,6 +1202,9 @@ program define _dash_parse_plot_opts, sclass
         LStyle(string asis)       MLStyle(string asis)      MLPattern(string) ///
         ASTyle(string asis) ALstyle(string asis) BSTyle(string asis) BLstyle(string asis) CLStyle(string asis) P(string) ///
         DSTyle(string asis)       DLstyle(string asis)      BMLinestyle(string asis) ///
+        DOTEXtend(string) NDOTs(string) Dsymbol(string asis) DColor(string asis) ///
+        DFColor(string asis) DSIZe(string asis) DLColor(string asis) ///
+        DLWidth(string asis) DLAlign(string asis) ///
         BLABEL(string)            HORizontal                VERTical ///
         SORT                      RAnge(string asis)        COLORLIst(string asis) ///
         SORT1(string)             CLColor(string asis)      CLPattern(string asis) ///
@@ -1359,12 +1362,16 @@ program define _dash_parse_plot_opts, sclass
     // as in twoway), is named until WP-31 S34 draws it.
     if `: length local mlalign' local _dash_pending `"`_dash_pending' mlalign"'
     if `: length local mlpattern' local _dash_pending `"`_dash_pending' mlpattern"'
-    // WP-30 P1.14b: dstyle() and dlstyle() style the dots of a dot plot
-    // (P2.9) and bmlinestyle() a marker's back line (P2.8); dash draws
-    // neither, so each is kept in the spec and named here.
-    if `: length local dstyle' local _dash_pending `"`_dash_pending' dstyle"'
-    if `: length local dlstyle' local _dash_pending `"`_dash_pending' dlstyle"'
+    // WP-30 P1.14b: bmlinestyle() styles a marker's back line (P2.8);
+    // dash does not draw it, so it is kept in the spec and named here.
+    // WP-31 B5b: dstyle(), dlstyle() and the other d-options are drawn on
+    // dot's rows of dots; twoway accepts them on every type and draws
+    // nothing else with them (test/fixtures/dot_truth.json D11k, D11n-t),
+    // so elsewhere they are silent.
     if `: length local bmlinestyle' local _dash_pending `"`_dash_pending' bmlinestyle"'
+    // WP-31 B5b: dlalign() is accepted and named: a stroke cannot be
+    // aligned in Bokeh (as mlalign()).
+    if `: length local dlalign' local _dash_pending `"`_dash_pending' dlalign"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
     // fitarea_options, the look of a ci fit's band: twoway takes ac(),
     // alc(), alw() and alp() (measured 24sep2026; al() is alstyle()).
@@ -1530,6 +1537,15 @@ program define _dash_parse_plot_opts, sclass
     sreturn local dstyle           : copy local dstyle
     sreturn local dlstyle          : copy local dlstyle
     sreturn local bmlinestyle      : copy local bmlinestyle
+    sreturn local dotextend        : copy local dotextend
+    sreturn local ndots            : copy local ndots
+    sreturn local dsymbol          : copy local dsymbol
+    sreturn local dcolor           : copy local dcolor
+    sreturn local dfcolor          : copy local dfcolor
+    sreturn local dsize            : copy local dsize
+    sreturn local dlcolor          : copy local dlcolor
+    sreturn local dlwidth          : copy local dlwidth
+    sreturn local dlalign          : copy local dlalign
     sreturn local clstyle          : copy local clstyle
     sreturn local p                : copy local p
     sreturn local mlpattern        : copy local mlpattern
@@ -2441,12 +2457,14 @@ program define _dash_fold_typed, sclass
         exit 198
     }
     if "`ptype'" == "histogram" & `_ft' local named "`named' mwidth"
-    // WP-31 C5: baroffset() moves rbar's bars and dot's rows in twoway
-    // (yxview__barlike_draw draw_fixed; section 18 reads dot's), which
-    // map_rbar and map_dot do not draw yet: named there.  On bar and
-    // histogram it is drawn; on area, spike and dropline twoway draws
-    // nothing different, so it is silent.
-    local bo_named "rbar dot"
+    // WP-31 C5: baroffset() moves rbar's bars in twoway
+    // (yxview__barlike_draw draw_fixed), which map_rbar does not draw
+    // yet: named there.  On bar and histogram it is drawn; on area, spike,
+    // dropline and dot twoway draws nothing different, so it is silent
+    // (WP-31 B5b: dot's rows and markers stay where they were under
+    // baroffset(.5) and baroffset(5), test/fixtures/dot_truth.json D28,
+    // D29).
+    local bo_named "rbar"
     mata: st_local("_ft", strofreal(st_global("s(baroffset)") != ""))
     if `_ft' & `: list ptype in bo_named' local named "`named' baroffset"
     mata: st_local("_ft", strofreal(st_global("s(msize)") != "" & st_global("s(mwidth)") == ""))
@@ -3276,7 +3294,9 @@ program define _dash_option_rules
         bin@histogram ///
         width@kdensity|histogram ///
         start@histogram ///
-        barwidth@area|bar|spike|dropline|dot|rbar|histogram
+        barwidth@area|bar|spike|dropline|dot|rbar|histogram ///
+        ndots@area|bar|spike|dropline|dot ///
+        dotextend@area|bar|spike|dropline|dot
     // END applies
     c_local _dash_rules_plot  `"`plot'"'
     c_local _dash_rules_graph `"`graph'"'
@@ -4279,6 +4299,16 @@ program define _dash_validate_opts, sclass
             exit 198
         }
     }
+    // WP-31 B5b: ndots() takes any number, its first word read (twoway
+    // draws ndots(10 20) with 10 dots, ndots(2.5) and ndots(-3) as given),
+    // and anything else is twoway's "option ndots() incorrectly specified",
+    // r(198) (test/fixtures/dot_truth.json D04-D04e, D11g, D11v, D11w).
+    tempname _ndT
+    mata: st_strscalar(st_local("_ndT"), st_global("s(ndots)"))
+    if strtrim(scalar(`_ndT')) != "" & missing(real(word(scalar(`_ndT'), 1))) {
+        display as error "option ndots() incorrectly specified"
+        exit 198
+    }
 
     // Options that have a type-specific rule for THIS type: their untyped
     // rule is skipped below, so the specific one wins.
@@ -4788,6 +4818,9 @@ program define _dash_plot_opts_to_json, rclass
     // p() sets the whole seriesstyle, dots and marker back line included
     // (twoway_yxview_parse.class:631, 729, 740; WP-30 P1.14b).
     local _dash_p_drops "`_dash_p_drops' dstyle dlstyle bmlinestyle"
+    // dcolor(red) p(p3): the dots stay black (WP-31 B5b,
+    // test/fixtures/dot_truth.json D27), so the d-options go too.
+    local _dash_p_drops "`_dash_p_drops' dsymbol dcolor dfcolor dsize dlcolor dlwidth"
     // p(p3) mcolor(red%50): p3, opacity 100.
     local _dash_p_drops "`_dash_p_drops' mlabcolor mlabsize mlabposition mlabgap mlabangle mlabformat mlabwidth"
     // mlabcolor(red), mlabposition(9), mlabformat(), mlabgap(5) p(p3): each
@@ -4812,6 +4845,7 @@ program define _dash_plot_opts_to_json, rclass
                    percent frequency density fraction kernel n level bands at ciopts ///
                    lineopts fitopts color mlwidth mstyle lstyle mlstyle ///
                    clstyle astyle alstyle bstyle blstyle dstyle dlstyle bmlinestyle p mlpattern ///
+                   dotextend ndots dsymbol dcolor dfcolor dsize dlcolor dlwidth dlalign ///
                    blabel horizontal vertical sort range range_var colorlist jitterseed ///
                    discrete stdp stdf stdr mean noweight adjust logit ///
                    clcolor clpattern clwidth mlabangle mlabformat ///

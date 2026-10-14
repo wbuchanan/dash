@@ -523,8 +523,11 @@ def _mk_layers(ptype):
 
 
 def _marker_widths(fig, n=3):
+    # dot's rows of dots are outlined in linestyle dotmark, no p# marker
+    # outline (WP-31 B5b; test/fixtures/dot_truth.json D01, D25).
     ws = [r.glyph.line_width for r in fig.renderers
-          if type(getattr(r, "glyph", None)).__name__ == "Scatter"]
+          if type(getattr(r, "glyph", None)).__name__ == "Scatter"
+          and "dash_dots" not in (getattr(r, "tags", None) or ())]
     assert ws and len(ws) % n == 0, ws
     h = len(ws) // n
     return [ws[i * h:(i + 1) * h] for i in range(n)]

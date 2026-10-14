@@ -1905,6 +1905,20 @@ def extract(stata_base: str, scheme: str) -> dict:
                                 class_default=False),
         "symbolsize": scalar("symbolsize", "symbolsize", ["p"],
                              lambda t: resolve_sized(r, "symbolsize", t)),
+        # WP-31 B5b: twoway dot's rows of dots, markerstyle dots
+        # (style/markerstyle-dots.style: symbol, size and fill `scheme
+        # dots', outline linestyle dotmark, whose linestyle-dotmark.style
+        # reads `linewidth dotmark' and `color dotmarkline').
+        "dots_color": color_of("dots_color", ["dots"]),
+        "dotmarkline_color": color_of("dotmarkline_color", ["dotmarkline"]),
+        "dots_symbol": scalar("dots_symbol", "symbol", ["dots"],
+                              lambda t: t.strip()),
+        "dots_symbolsize": scalar(
+            "dots_symbolsize", "symbolsize", ["dots"],
+            lambda t: resolve_sized(r, "symbolsize", t)),
+        "dotmark_line_width": scalar(
+            "dotmark_line_width", "linewidth", ["dotmark"],
+            lambda t: resolve_linewidth(r, t), class_default=True),
         # WP-30 P1.20b: Stata's margin ladder (`gsize <x>margin'), the
         # sizes the marginstyles of plotregion(margin()) name.
         **{f"margin_ladder_{k}": scalar(
@@ -2218,6 +2232,14 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
     group(["Stata's margin ladder, the sizes plotregion(margin()) names",
            "(WP-30 P1.20b)."],
           [scalar("gsize", k, f"margin_ladder_{k}") for k in MARGIN_LADDER])
+    group(["The dots of twoway dot (WP-31 B5b): markerstyle dots, its",
+           "outline linestyle dotmark."], [
+        scalar("color", "dots", "dots_color"),
+        scalar("color", "dotmarkline", "dotmarkline_color"),
+        scalar("symbol", "dots", "dots_symbol"),
+        scalar("symbolsize", "dots", "dots_symbolsize", use_name=True),
+        scalar("linewidth", "dotmark", "dotmark_line_width", use_name=True),
+    ])
     group(["Marker size and legend placement."], [
         scalar("symbolsize", "p", "symbolsize", use_name=True),
         scalar("clockdir", "legend_position", "legend_position"),

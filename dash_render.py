@@ -2053,6 +2053,11 @@ _DASH_STALE_STATUS_HTML = (
     '(grid unfiltered) were computed before the filter was applied, and a '
     'saved page does not recompute them; dash serve does.</p>')
 
+#: WP-31 B5b (D-18 risk 1): the most dots one dot layer draws.  twoway
+#: draws ndots() per observation and end (75 by default); above this many in
+#: all the rows are drawn with fewer dots, and the note says how many.
+_DASH_DOTS_MAX = 2_000_000
+
 
 def _dash_stale_kind(ptype, options):
     """The stale cue's kind for a layer (WP-29 P0.17): ``"fit"``,
@@ -11155,6 +11160,29 @@ class SchemeParser:
             return self.default_marker_size(index)
         return self._markersize_px(kw)
 
+    def dots_style(self) -> "dict[str, Any]":
+        """The look of twoway dot's rows of dots (WP-31 B5b):
+        markerstyle dots (style/markerstyle-dots.style) -- ``symbol
+        dots``, ``symbolsize dots`` and fill ``color dots`` -- with the
+        outline linestyle dotmark (linestyle-dotmark.style: ``linewidth
+        dotmark``, ``color dotmarkline``).  s2color's circle, vtiny, black,
+        black and thin where a scheme sets none.  Returns ``{"marker",
+        "hollow", "factor", "size", "fill", "fill_alpha", "line",
+        "line_alpha", "line_width"}``, sizes in pixels; a new dict each
+        call (measured: test/fixtures/dot_truth.json D01, D18)."""
+        marker, hollow, factor = self._symbol_traits("symbol dots", "circle")
+        kw = str(getattr(self, "_props", {}).get("symbolsize dots", "")
+                 or "").strip() or "vtiny"
+        fill, fa = self._color_alpha("color dots", "#000000")
+        line, la = self._color_alpha("color dotmarkline", "#000000")
+        return {"marker": marker, "hollow": hollow, "factor": factor,
+                "size": self._markersize_px(kw),
+                "fill": fill, "fill_alpha": fa, "line": line,
+                "line_alpha": la,
+                "line_width": self._lwidth(
+                    "linewidth dotmark",
+                    OptionTranslator.translate_lwidth("thin"))}
+
     #: The chains a plot's line width follows, by the style file that sets
     #: it (StataNow 19.5, ado/base/style): "lineplot" is linestyle-p#line
     #: (`set width scheme p#lineplot') -- line, lfit, qfit, lowess, lpoly,
@@ -13176,9 +13204,10 @@ class GlyphMapper:
         ("fintensity", ("area",)),
         ("p", _PSTYLE_ROLES),
     )
-    #: Declared options dash does not draw (dot rows P2.9, marker back
-    #: lines P2.8) whose names twoway still notes (plan E9.7, D-36i): read
-    #: for the note only.
+    #: Style options no marker reads whose names twoway still notes (plan
+    #: E9.7, D-36i): read here for the note only.  bmlinestyle() is not
+    #: drawn (marker back lines, P2.8); dstyle() and dlstyle() style dot's
+    #: rows of dots, which GlyphMapper._dot_style draws (WP-31 B5b).
     _STYLE_NOTE_ONLY: tuple = (("dstyle", "marker"), ("dlstyle", "line"),
                                ("bmlinestyle", "line"))
 
@@ -20102,23 +20131,32 @@ class GlyphMapper:
         view=None,
         color_idx: int = 0,
     ) -> list:
-        """Add dot plot glyphs to *fig*.
+        """Add twoway dot's picture to *fig*: a row of dots through each
+        observation, then its marker (WP-31 B5b).
 
-        A dot plot in Stata is a scatter plot where the y-axis is categorical
-        and dots are stacked horizontally.  This implementation renders a
-        standard scatter with the y-variable mapped to the y-axis, which
-        approximates the visual output for continuous y values.
+        twoway draws, for every observation, dots from the axis's base to
+        both ends of the scale (``dotextend(yes)``, the default) or to the
+        value (``dotextend(no)``), ``ndots()`` of them (75) over the
+        scale's span, in markerstyle dots, and then the marker
+        (yxview_dot_draw.ado; test/fixtures/dot_truth.json D01-D22).  The
+        rows run along y at each x (along x under ``horizontal``, which
+        _dash_transpose_layer turns).  The marker is map_scatter's, so
+        colorvar(), mlabel(), jitter() and the key stay; the dots are one
+        Scatter renderer (``_dot_rows``) over a source of their own,
+        drawn first, with no key and no tooltip, which
+        _dash_finish_auto_bases refills from the finished axis in both
+        modes and after a served move (``_dot_fill``).
 
         Args:
             fig:     Bokeh Figure object.
             source:  Shared ColumnDataSource.
             yvar:    Name of the y variable.
-            xvar:    Name of the x variable (categorical/grouping variable).
+            xvar:    Name of the x variable.
             options: Translated plot-level options dict.
 
         Returns:
-            The scatter GlyphRenderer map_scatter returns.  With
-            ``base()`` it carries ``_dash_axis_include`` ``{"y": base}``.
+            ``[dots renderer, marker renderer]``.  With ``base()`` the
+            marker carries ``_dash_axis_include`` ``{"y": base}``.
         """
         rs = self.map_scatter(fig, source, yvar, xvar, options, view=view,
                               color_idx=color_idx)
@@ -20131,7 +20169,323 @@ class GlyphMapper:
         if _b is not None and math.isfinite(_b):
             for r in (rs if isinstance(rs, (list, tuple)) else [rs]):
                 r._dash_axis_include = {"y": float(_b)}
-        return rs
+        marker_r = rs[-1] if isinstance(rs, (list, tuple)) else rs
+        dots_r = self._dot_rows(fig, marker_r, options)
+        if _b is not None and math.isfinite(_b):
+            dots_r._dash_axis_include = {"y": float(_b)}
+        return [dots_r, marker_r]
+
+    #: The d-options and the m-option each styles the dots as (WP-31 B5b;
+    #: twoway_dot.sthlp), in twoway's factor order (mstyle first).
+    _DOT_OPTS: tuple = (("dstyle", "mstyle"), ("dsymbol", "msymbol"),
+                        ("dfcolor", "mfcolor"), ("dsize", "msize"),
+                        ("dcolor", "mcolor"), ("dlstyle", "mlstyle"),
+                        ("dlcolor", "mlcolor"), ("dlwidth", "mlwidth"))
+
+    def _dot_rows(self, fig, marker_r, options):
+        """The dots renderer of a dot layer (WP-31 B5b, D-18b): one Scatter
+        over a ColumnDataSource of its own (``x`` the observation's
+        position, ``y`` the dot's along the row, and the marker source's
+        row identity, so the saved page's filter keeps a kept
+        observation's dots), inserted before *marker_r* in
+        ``fig.renderers`` as twoway draws the dots before the markers;
+        tagged ``dash_dots`` (no key, no tooltip, no part of the axis
+        hull) and ``dash_dots:`` + ``{"extend", "ndots"}``.
+
+        The look is the scheme's dots style (``SchemeParser.dots_style``)
+        and the d-options over it, read through the marker options'
+        translators (``_dot_style``).  colorvar() leaves the dots in
+        their style, as twoway draws them (dot_truth.json D09).  The rows
+        are filled at once over the layer's own values (``_dot_fill``)
+        and again over the finished axis."""
+        src_cols = {"x": [], "y": []}
+        msrc = getattr(marker_r, "data_source", None)
+        if msrc is not None and _ROW_ID_COLUMN in msrc.data:
+            src_cols[_ROW_ID_COLUMN] = []
+        src = ColumnDataSource(src_cols)
+        st = self.scheme.dots_style()
+        kw = dict(x="x", y="y", source=src, marker=st["marker"],
+                  size=float(st["size"]) * float(st["factor"]),
+                  fill_color=st["fill"], line_color=st["line"],
+                  line_width=float(st["line_width"]))
+        if st["fill_alpha"] is not None:
+            kw["fill_alpha"] = st["fill_alpha"]
+        if st["hollow"]:
+            kw["fill_alpha"] = 0.0
+        if st["line_alpha"] is not None:
+            kw["line_alpha"] = st["line_alpha"]
+        dr = fig.scatter(**kw)
+        self._dot_style(dr, options, (st["hollow"], 1.0))
+        rends = list(fig.renderers)
+        if marker_r in rends and dr in rends:
+            rends.remove(dr)
+            rends.insert(rends.index(marker_r), dr)
+            fig.renderers = rends
+        ext = str((options or {}).get("dotextend", "") or "").strip()
+        # twoway's yesno reads lowercase no, n, off, false and their
+        # abbreviations as no and anything else as yes (yesno.class
+        # _unabbrev; dot_truth.json D05-D05j).
+        extend = ext not in ("n", "no", "off", "f", "fa", "fal", "fals",
+                             "false")
+        nd = 75.0
+        _raw = str((options or {}).get("ndots", "") or "").split()
+        if _raw:
+            try:
+                nd = float(_raw[0])
+            except ValueError:
+                nd = 75.0
+            if not math.isfinite(nd):
+                nd = 75.0
+        dr.tags = ["dash_dots", "dash_dots:" + json.dumps(
+            {"extend": bool(extend), "ndots": nd}, sort_keys=True,
+            separators=(",", ":"), allow_nan=False)]
+        dr._dash_dots_marker = marker_r
+        self._dot_fill(dr)
+        return dr
+
+    def _dot_style(self, dr, options, traits):
+        """Style the dots renderer *dr* by the d-options (WP-31 B5b,
+        D-18d): each d-option is its m-twin on the dots (dstyle() is
+        mstyle(), dcolor() mcolor() ...) through ``_apply_marker_opts``,
+        so a value reads as the marker option's does.  A name dash does not
+        know is noted under the d-option's own name and the dots keep the
+        scheme's value (an unknown colour draws black, as twoway draws
+        it).  A size above zero is drawn at least 1 px across (D-18c):
+        vtiny is 0.384 px.  dlalign() is named by dash.ado, never read."""
+        opts = options or {}
+        mo: dict = {}
+        ref = getattr(self.scheme, "size_ref_in", 4.0)
+        for dname, mname in self._DOT_OPTS:
+            v = str(opts.get(dname, "") or "").strip()
+            if not v:
+                continue
+            try:
+                if dname == "dsymbol":
+                    self.tr.translate_msymbol(v)
+                elif dname == "dsize":
+                    self.tr.translate_msize(v, 1.0, ref)
+                elif dname == "dlwidth":
+                    self.tr.translate_lwidth(v, 1.0, ref)
+            except (ValueError, TypeError):
+                _dash_style_note(dname, v, {"dsymbol": "marker symbol",
+                                            "dsize": "size"}.get(
+                                                dname, "line width"))
+                continue
+            if dname in ("dcolor", "dfcolor", "dlcolor") \
+                    and not OptionTranslator._means_no_color(v) \
+                    and OptionTranslator.stata_colour(v)[0] == "unknown":
+                _dash_style_note(dname, v, "colour", "black")
+                v = "black"
+            mo[mname] = v
+        if mo:
+            self._apply_marker_opts(dr, mo, traits=traits)
+        g = dr.glyph
+        if isinstance(g.size, (int, float)) and 0 < g.size < 1.0:
+            g.size = 1.0
+
+    @staticmethod
+    def _dot_positions(lo, hi, vals, extend=True, ndots=75, limit=None):
+        """Where twoway dot draws its dots, along the row (WP-31 B5b;
+        yxview_dot_draw.ado), as ``(positions, rows, ndots used)``:
+        *rows* the index into *vals* each dot belongs to.
+
+        The scale is ``[lo, hi]``; the base is 0 when the scale holds it,
+        else the end nearer 0; ``delta = (hi - lo) / (ndots - 1)``.  Each
+        observation's rows run from the base to *lo* and then to *hi*
+        (*extend*) or to its value (``dotextend(no)``), as Stata's
+        ``forvalues x = base(step)end`` steps them: the step added to the
+        last dot until it passes the end, so round-off may leave the end
+        itself out (measured: 74 distinct dots over 14..22 at ndots 75, 75
+        over 14..50; dot_truth.json D01, D10).  A run more than 10,000
+        steps long is not drawn; ndots(1) draws none; a step of 0 none; a
+        negative one only the base's own dot.  A missing value draws no
+        row.  Over *limit* dots in all, ndots is lowered until they fit.
+        Vectorised: one step sequence each way, every run a prefix of it."""
+        empty = (np.empty(0, dtype=float), np.empty(0, dtype=np.int64), ndots)
+        try:
+            lo, hi, nd = float(lo), float(hi), float(ndots)
+        except (TypeError, ValueError):
+            return empty
+        if not (math.isfinite(lo) and math.isfinite(hi)
+                and math.isfinite(nd)):
+            return empty
+        if lo > hi:
+            lo, hi = hi, lo
+        vals = np.asarray(vals, dtype=float).ravel()
+        n = len(vals)
+        if extend:
+            ok = np.isfinite(vals)
+            ends = np.where(ok[:, None], np.array([[lo, hi]]),
+                            np.nan).ravel()
+            rows = np.repeat(np.arange(n, dtype=np.int64), 2)
+        else:
+            ends = vals.copy()
+            rows = np.arange(n, dtype=np.int64)
+        base = 0.0 if lo <= 0.0 <= hi else (hi if hi < 0.0 else lo)
+
+        def build(nd):
+            if nd == 1.0:
+                return None
+            delta = (hi - lo) / (nd - 1.0)
+            if not math.isfinite(delta) or delta == 0.0:
+                return None
+            fin = np.isfinite(ends)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                ok = fin & ~(np.abs(ends - base) / delta > 10000.0)
+            up_end = ends >= base
+            counts = np.zeros(len(ends), dtype=np.int64)
+            up = down = np.empty(0)
+            if delta > 0:
+                for sign in (1, -1):
+                    sel = ok & (up_end if sign == 1 else ~up_end)
+                    if not sel.any():
+                        continue
+                    far = ends[sel].max() if sign == 1 else ends[sel].min()
+                    seq = []
+                    x = base
+                    if sign == 1:
+                        while x <= far:
+                            seq.append(x)
+                            x += delta
+                    else:
+                        while x >= far:
+                            seq.append(x)
+                            x -= delta
+                    seq = np.asarray(seq, dtype=float)
+                    if sign == 1:
+                        up = seq
+                        counts[sel] = np.searchsorted(seq, ends[sel],
+                                                      side="right")
+                    else:
+                        down = seq
+                        counts[sel] = np.searchsorted(-seq, -ends[sel],
+                                                      side="right")
+            else:
+                # A negative step reaches nothing but the base itself.
+                up = np.array([base])
+                counts[ok & (ends == base)] = 1
+            return counts, up, down, up_end
+
+        got = build(nd)
+        if got is None:
+            return empty
+        counts = got[0]
+        total = int(counts.sum())
+        if limit is not None and total > int(limit) and nd > 2:
+            nd2 = max(2.0, math.floor((nd - 1.0) * float(limit) / total))
+            while True:
+                got = build(nd2)
+                if got is None or int(got[0].sum()) <= int(limit) \
+                        or nd2 <= 2.0:
+                    break
+                nd2 = max(2.0, math.floor(nd2 * 0.9))
+            if got is None:
+                return empty
+            nd = nd2
+        counts, up, down, up_end = got
+        total = int(counts.sum())
+        if not total:
+            return np.empty(0, dtype=float), np.empty(0, dtype=np.int64), nd
+        starts = np.repeat(np.cumsum(counts) - counts, counts)
+        k = np.arange(total, dtype=np.int64) - starts
+        is_up = np.repeat(up_end, counts)
+        pos = np.empty(total, dtype=float)
+        if is_up.any():
+            pos[is_up] = up[k[is_up]]
+        if (~is_up).any():
+            pos[~is_up] = down[k[~is_up]]
+        return pos, np.repeat(rows, counts), nd
+
+    @staticmethod
+    def _dot_fill(dr, scale=None, fig=None):
+        """Fill the dots renderer *dr*'s source over the scale (WP-31
+        B5b, D-18a): *scale*, else *fig*'s finished scale on the axis the
+        rows run along (:func:`_dash_axis_scale`), else the layer's own
+        values with its base() -- the provisional rows a figure that is
+        never finished keeps.  The observations are the marker's
+        (``dr._dash_dots_marker``) through its view, read in the axis's
+        units; the axis is the one the dots' ``y`` column is drawn on
+        (``x`` under horizontal).  Writes nothing when the rows are
+        unchanged.  Returns whether it wrote.  Never raises."""
+        try:
+            m = getattr(dr, "_dash_dots_marker", None)
+            spec = None
+            for t in getattr(dr, "tags", None) or ():
+                if isinstance(t, str) and t.startswith("dash_dots:") \
+                        and len(t) <= 200:
+                    spec = json.loads(t[len("dash_dots:"):])
+            if m is None or not isinstance(spec, dict):
+                return False
+            along = ("y" if _dash_spec_field(getattr(dr.glyph, "y", None))
+                     == "y" else "x")
+            across = "x" if along == "y" else "y"
+            mdata = m.data_source.data
+            first = next(iter(mdata), None)
+            n = len(mdata[first]) if first else 0
+            filt = getattr(getattr(m, "view", None), "filter", None)
+            rows = np.arange(n, dtype=np.int64)
+            if filt is not None:
+                idx = getattr(filt, "indices", None)
+                if idx is not None:
+                    rows = np.asarray(list(idx), dtype=np.int64)
+                    rows = rows[(rows >= 0) & (rows < n)]
+                else:
+                    bools = getattr(filt, "booleans", None)
+                    if bools is not None:
+                        rows = np.flatnonzero(
+                            np.asarray(list(bools)[:n], dtype=bool))
+
+            def col(letter):
+                v = getattr(m.glyph, letter, None)
+                f = _dash_spec_field(v)
+                if not f or f not in mdata:
+                    return np.full(len(rows), np.nan)
+                c = _dash_float_values(mdata[f], coerce=True)[rows]
+                u = _dash_spec_units(v)
+                return _dash_date_units(c, u) if u else c
+
+            vals, pos = col(along), col(across)
+            keep = np.isfinite(vals) & np.isfinite(pos)
+            vals, pos, rows = vals[keep], pos[keep], rows[keep]
+            if scale is None and fig is not None:
+                name = getattr(dr, along + "_range_name",
+                               "default") or "default"
+                scale = _dash_axis_scale(fig, along, name)
+            if scale is None:
+                inc = (getattr(m, "_dash_axis_include", None)
+                       or {}).get(along)
+                ext = list(vals) + ([float(inc)] if isinstance(
+                    inc, (int, float)) and not isinstance(inc, bool)
+                    and math.isfinite(float(inc)) else [])
+                if not ext:
+                    scale = None
+                else:
+                    scale = (float(min(ext)), float(max(ext)))
+            if scale is None:
+                along_v = np.empty(0)
+                obs = np.empty(0, dtype=np.int64)
+            else:
+                nd = float(spec.get("ndots", 75))
+                along_v, obs, used = GlyphMapper._dot_positions(
+                    scale[0], scale[1], vals, bool(spec.get("extend", True)),
+                    nd, limit=_DASH_DOTS_MAX)
+                if used != nd:
+                    _dash_warn_once(
+                        ("dot-rows-cap", nd, used),
+                        f"(note: dot: more than {_DASH_DOTS_MAX:,} dots; "
+                        f"the rows are drawn with ndots({used:g}))")
+            new = {"x": pos[obs].tolist(), "y": along_v.tolist()}
+            old = dr.data_source.data
+            if _ROW_ID_COLUMN in old and _ROW_ID_COLUMN in mdata:
+                ids = list(mdata[_ROW_ID_COLUMN])
+                new[_ROW_ID_COLUMN] = [ids[int(i)] for i in rows[obs]]
+            if all(k in old and list(old[k]) == v for k, v in new.items()) \
+                    and set(old) == set(new):
+                return False
+            dr.data_source.data = new
+            return True
+        except Exception:  # noqa: BLE001 -- never raises
+            return False
 
     # ------------------------------------------------------------------
     # Phase 3 additional plot types
@@ -34907,6 +35261,9 @@ def _dash_secondary_values(fig, range_attr, name):
         src = getattr(r, "data_source", None)
         if g is None or src is None or _dash_is_swatch(r):
             continue
+        # WP-31 B5b: dot's rows are drawn from the scale, not part of it.
+        if "dash_dots" in (getattr(r, "tags", None) or ()):
+            continue
         if getattr(r, range_attr, "default") != name:
             continue
         data = src.data
@@ -35079,6 +35436,14 @@ def _dash_finish_auto_bases(fig):
             n += 1
         except Exception:  # noqa: BLE001 -- never raises
             continue
+    # WP-31 B5b: twoway dot's rows span the finished scale from its base
+    # (yxview_dot_draw.ado reads the scale's curmin and curmax), so each
+    # dots renderer is refilled from it here, after every finish and every
+    # served move's re-finish (GlyphMapper._dot_fill).
+    for r in getattr(fig, "renderers", None) or ():
+        if "dash_dots" in (getattr(r, "tags", None) or ()):
+            if GlyphMapper._dot_fill(r, fig=fig):
+                n += 1
     return n
 
 
@@ -35107,6 +35472,9 @@ def _dash_layer_extent(renderers, range_attr, name, kind=None, role="data"):
         g = getattr(r, "glyph", None)
         src = getattr(r, "data_source", None)
         if g is None or src is None or _dash_is_swatch(r):
+            continue
+        # WP-31 B5b: dot's rows are drawn from the scale, not part of it.
+        if "dash_dots" in (getattr(r, "tags", None) or ()):
             continue
         if getattr(r, range_attr, "default") != name:
             continue
@@ -35383,6 +35751,9 @@ def _dash_axis_plan(figures, facet_map, zoom=True):
                     g = getattr(r, "glyph", None)
                     src = getattr(r, "data_source", None)
                     if g is None or src is None or _dash_is_swatch(r):
+                        continue
+                    # WP-31 B5b: dot's rows are drawn from the scale.
+                    if "dash_dots" in (getattr(r, "tags", None) or ()):
                         continue
                     if getattr(r, range_attr, "default") != name:
                         continue
@@ -43207,7 +43578,9 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     out = []
     n = 1
     for plot, rends in plot_renderers:
-        rends = [r for r in rends if not _dash_is_swatch(r)]
+        # WP-31 B5b: twoway keys dot's marker, not its rows of dots.
+        rends = [r for r in rends if not _dash_is_swatch(r)
+                 and "dash_dots" not in (getattr(r, "tags", None) or ())]
         ptype = str(plot.get("type", "")).lower()
         if ptype in _DASH_CI_TYPES:
             if rends:
@@ -43420,7 +43793,9 @@ def _dash_build_hover(fig, xvar, y1var, y2var, hover_extra,
     _rends = [r for r in fig.renderers if getattr(r, "data_source", None)
               is not None
               and "dash_ci_outline" not in (getattr(r, "tags", None) or [])
-              and "dash_join_none" not in (getattr(r, "tags", None) or [])]
+              and "dash_join_none" not in (getattr(r, "tags", None) or [])
+              # WP-31 B5b: dot's rows answer for nothing; the marker does.
+              and "dash_dots" not in (getattr(r, "tags", None) or [])]
     if not _rends:
         return
 
@@ -50115,6 +50490,9 @@ class ServerAppBuilder:
                       # out as re.compile(pattern, flags) below.
                       "_DASH_UNSAFE_BY", "_DASH_BY_SUPPORTED",
                       "_NONSELECTION_ALPHA", "_ROW_ID_COLUMN",
+                      # GlyphMapper._dot_fill's cap on a dot layer's dots
+                      # (WP-31 B5b).
+                      "_DASH_DOTS_MAX",
                       # The __dash-prefixed column names GlyphMapper reads
                       # (G1, WP-28): the pc row identity, the marker-label
                       # columns and the jitter columns, and the suffix the

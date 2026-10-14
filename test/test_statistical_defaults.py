@@ -891,7 +891,9 @@ class TestKdensityRange:
         # longer among the genuinely-unsupported.
         # 43 -> 44: A4 mlalign declared and named.
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere.
-        assert len(pending) == 42, (len(pending), pending)
+        # 42 -> 40: C8b colorlist() and coloruseplegend drawn; 40 -> 39: B5b
+        # dstyle() dlstyle() drawn, dlalign() named.
+        assert len(pending) == 39, (len(pending), pending)
         for really_pending in ("sort", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

@@ -50,7 +50,9 @@ def _renderers(d):
 
 
 def _of(d, cls):
-    return [r for r in _renderers(d) if type(r.glyph).__name__ == cls]
+    # dot's rows of dots are markerstyle dots, not its marker (WP-31 B5b).
+    return [r for r in _renderers(d) if type(r.glyph).__name__ == cls
+            and "dash_dots" not in (getattr(r, "tags", None) or ())]
 
 
 def _fill(d, cls):

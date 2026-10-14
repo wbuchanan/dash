@@ -1051,7 +1051,11 @@ capture dash clear
 // OS-07 (WP-30 P1.14b): twoway's minimums of dstyle(), dlstyle() and
 // bmlinestyle() (test/fixtures/style_name_truth.json D grid: dst(), dl(),
 // dls() and bml() are rc 0) land on the full keys, by value, and the note
-// names each by its full name; dash draws none of them (P2.9, P2.8).
+// names bmlinestyle() by its full name; dash does not draw it (P2.8).
+// Flipped (WP-31 B5b): dstyle() and dlstyle() named in the note was wrong:
+// dash draws them on dot's rows of dots, and on scatter twoway accepts
+// them and draws nothing different (dot_truth.json D11k), so they are
+// silent.
 local os07 0
 local i 0
 foreach c in "dst(p3)|dstyle" "dl(p3)|dlstyle" "dls(p3)|dlstyle" "bml(p3)|bmlinestyle" {
@@ -1066,7 +1070,7 @@ foreach c in "dst(p3)|dstyle" "dl(p3)|dlstyle" "dls(p3)|dlstyle" "bml(p3)|bmline
     quietly log close _znp
     mata: st_local("hit", strofreal(strpos(st_global("dash_json_zos`i'"), char(34) + "`key'" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
     mata: st_local("nn", strofreal(_znp_logn(st_local("znp_log"), "`key'()")))
-    if `rc' | !`hit' | !`nn' {
+    if `rc' | !`hit' | (`nn' != ("`key'" == "bmlinestyle")) {
         display as error "OS-07 FAIL: `opt': rc `rc', key `hit', named `nn'"
         local os07 1
     }
@@ -1075,7 +1079,7 @@ if `os07' {
     local nfail = `nfail' + 1
     local faillist `"`faillist' OS-07"'
 }
-else display as text "OS-07 PASS: dst() dl() dls() bml() land on their keys and are named in full"
+else display as text "OS-07 PASS: dst() dl() dls() bml() land on their keys; bml() is named in full"
 capture dash clear
 
 // U15-06 (WP-31 A3d): jitter()'s minimum is twoway's, the full name.

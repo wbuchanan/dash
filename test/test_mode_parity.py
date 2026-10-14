@@ -2425,6 +2425,13 @@ CORPUS = [
     _case("rbar mwidth msize(large)",
           [plot_for("rbar", {"mwidth": "mwidth", "msize": "large"})]),
     _case("dot base(50)", [plot_for("dot", {"base": "50"})]),
+    # WP-31 B5b: dot's rows of dots and the d-options.
+    _case("dot dotextend(no) ndots(20) dcolor(gray)",
+          [plot_for("dot", {"dotextend": "no", "ndots": "20",
+                            "dcolor": "gray"})]),
+    _case("dot horizontal", [plot_for("dot", {"horizontal": "horizontal"})]),
+    _case("dot colorvar", [plot_for("dot", {"colorvar": "rep",
+                                            "colordiscrete": "colordiscrete"})]),
     # WP-31 C5
     _case("histogram gap(20) baroffset(.5)",
           [plot_for("histogram", {"gap": "20", "baroffset": ".5"})]),
@@ -3121,8 +3128,9 @@ _OWN_QUALIFIER_MOVES = [
     _own("an rspike with its own if, range", _MOVES[1],
          [plot_for("rspike", if_expr="mpg > 18")], {0: {0: [4, 5, 8, 10]}}),
     # count if foreign == 1 in 3/8: 3 (4, 6, 8).
+    # Its glyph 0 is its rows of dots, 1 its markers (WP-31 B5b).
     _own("a dot plot with its own in, dropdown", _MOVES[0],
-         [plot_for("dot", in_expr="3/8")], {0: {0: [4, 6, 8]}}),
+         [plot_for("dot", in_expr="3/8")], {0: {1: [4, 6, 8]}}),
     # Labelled, with its own in: list obs weight rep if foreign == 1 in
     # 3/8 gives 4, 6, 8 with rep 5, 3, 4.  Compared whole with the saved
     # page since WP-27: its labels are drawn from the layer's own rows,
@@ -3438,6 +3446,9 @@ MOVE_CORPUS = [
                [_sc(), plot_for("lfit", {"estopts": "noconstant", "points": {
                    "x": [2000.0, 3000.0, 4000.0], "y": [11.0, 21.0, 31.0],
                    "nobs": 10}})]),
+    # WP-31 B5b: the served rows follow the re-finished axis.
+    _move_case("dot rows after a move (WP-31 B5b)", _MOVES[0],
+               [plot_for("dot")]),
 ]
 
 

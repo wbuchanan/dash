@@ -522,6 +522,12 @@ class TestAPerPlotQualifierIsRead:
         # (measured 24sep2026).  all() alone passed a layer that drew no
         # renderer in either mode.
         layers = {"connected": 2, "dropline": 2}.get(ptype, 1)
+        if ptype == "dot":
+            # Its rows of dots come first (WP-31 B5b), 76 for each of the
+            # five cars over the scale 10..40 at 75 dots (base 10: one dot
+            # to the scale's foot, 75 to its top), then the five markers.
+            assert srv[0] == ("Scatter", 5 * 76), srv
+            srv = srv[1:]
         assert [n for _, n in srv] == [5] * layers, (
             "%s drew %r rows under `if foreign==1'; five observations "
             "satisfy it" % (ptype, srv)

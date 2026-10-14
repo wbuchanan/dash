@@ -947,7 +947,10 @@ local bad = 0
 // function left this list too, which was wrong once they are drawn
 // (test_wp31_truth.cscript U12-03, U12-04): they are asked below, with
 // no note.
-local pairs `""dot mpg weight|dotextend(no)|dotextend""'
+// Flipped (WP-31 B5b): dotextend() on dot left this list, which was wrong
+// once dash draws twoway's dot rows (test_wp31_truth.cscript U18-01); it
+// is asked below, with no note.  The list is empty.
+local pairs ""
 foreach p of local pairs {
     local b1 = strpos(`"`p'"', "|")
     local spec = substr(`"`p'"', 1, `b1' - 1)
@@ -968,7 +971,7 @@ foreach p of local pairs {
         local bad = 1
     }
 }
-foreach p in "kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "function y = x|range(0 5) droplines(1 2)|droplines" {
+foreach p in "kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "function y = x|range(0 5) droplines(1 2)|droplines" "dot mpg weight|dotextend(no)|dotextend" {
     local b1 = strpos(`"`p'"', "|")
     local spec = substr(`"`p'"', 1, `b1' - 1)
     local rest = substr(`"`p'"', `b1' + 1, .)
@@ -983,7 +986,7 @@ foreach p in "kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "funct
         local bad = 1
     }
 }
-_hc6_tally HC6-55 `bad' "dotextend(): twoway takes it; dash names it in the note; area(), boundary and droplines() are drawn, unnamed"
+_hc6_tally HC6-55 `bad' "area(), boundary, droplines() and dot's dotextend() are drawn, unnamed"
 
 
 // HC6-55b (WP-29 P0.9): lpolyci's pwidth() and var() are honoured, as

@@ -291,28 +291,42 @@ class TestMapArea:
 # dot plot type — scatter glyph renderer
 # ================================================================
 class TestMapDot:
-    """Unit tests for map_dot — scatter (circle) renderer."""
+    """Unit tests for map_dot -- its rows of dots, then its markers."""
 
     def test_dot_returns_renderer(self, fig, cds, gm):
-        """map_dot returns a GlyphRenderer."""
+        """map_dot returns [dots, marker], two GlyphRenderers.
+
+        Flipped (WP-31 B5b): map_dot draws twoway's dot rows before the
+        marker (dot_truth.json D01)."""
         from bokeh.models import GlyphRenderer
-        r = gm.map_dot(fig, cds, "mpg", "weight", {})
-        assert isinstance(r, GlyphRenderer)
+        rs = gm.map_dot(fig, cds, "mpg", "weight", {})
+        assert isinstance(rs, list) and len(rs) == 2
+        assert all(isinstance(r, GlyphRenderer) for r in rs)
+        assert "dash_dots" in rs[0].tags and "dash_dots" not in rs[1].tags
 
     def test_dot_produces_scatter_glyph(self, fig, cds, gm):
-        """map_dot produces a Scatter glyph (circle marker)."""
+        """map_dot's marker is a Scatter glyph (circle marker).
+
+        Flipped (WP-31 B5b): map_dot draws twoway's dot rows before the
+        marker (dot_truth.json D01); the marker is r[1]."""
         from bokeh.models.glyphs import Scatter
-        r = gm.map_dot(fig, cds, "mpg", "weight", {})
+        r = gm.map_dot(fig, cds, "mpg", "weight", {})[1]
         assert isinstance(r.glyph, Scatter)
 
     def test_dot_mcolor_applied(self, fig, cds, gm):
-        """mcolor option applied to dot fill color."""
-        r = gm.map_dot(fig, cds, "mpg", "weight", {"mcolor": "red"})
+        """mcolor option applied to the marker's fill color.
+
+        Flipped (WP-31 B5b): map_dot draws twoway's dot rows before the
+        marker (dot_truth.json D01); the marker is r[1]."""
+        r = gm.map_dot(fig, cds, "mpg", "weight", {"mcolor": "red"})[1]
         assert r.glyph.fill_color == "#ff0000"
 
     def test_dot_msize_applied(self, fig, cds, gm):
-        """msize(large) option applied to dot size."""
-        r = gm.map_dot(fig, cds, "mpg", "weight", {"msize": "large"})
+        """msize(large) option applied to the marker's size.
+
+        Flipped (WP-31 B5b): map_dot draws twoway's dot rows before the
+        marker (dot_truth.json D01); the marker is r[1]."""
+        r = gm.map_dot(fig, cds, "mpg", "weight", {"msize": "large"})[1]
         assert r.glyph.size > 8  # large is bigger than default
 
 

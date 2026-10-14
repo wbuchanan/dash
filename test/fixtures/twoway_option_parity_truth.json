@@ -2,7 +2,7 @@
  "_meta": {
   "answers": 1554,
   "born_date": "12 Aug 2026",
-  "dash_commit": "660be062bc26ecd502405457258d43dc1f18c4ec",
+  "dash_commit": "8dde8eec306efb3e2ce4fe3c8238738b9514aafc",
   "extracted": "14 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_twoway_option_parity.cscript",
@@ -3461,7 +3461,7 @@
    "log": "option plegend() not allowed\n",
    "rc": 198
   },
-  "log|TP-14f|twoway dot mpg weight, baroffset(1) baroffset(2) nodraw": {
+  "log|TP-14f|twoway dot mpg weight, dlalign(inside) dlalign(outside) nodraw": {
    "log": "",
    "rc": 0
   },

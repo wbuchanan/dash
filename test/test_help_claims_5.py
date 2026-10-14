@@ -964,8 +964,11 @@ class TestAFacetedGraphInALinkGroup:
         served = _served_figures(doc)
         for figs in (saved, served):
             assert len(figs) == 3
+            # dot's rows of dots draw from a source of their own, the
+            # rows its marker draws (WP-31 B5b); the markers share one.
             markers = [rr for f in figs for rr in f.renderers
-                       if type(rr.glyph).__name__ == "Scatter"]
+                       if type(rr.glyph).__name__ == "Scatter"
+                       and "dash_dots" not in (rr.tags or [])]
             assert len({id(rr.data_source) for rr in markers}) == 1, (
                 "the panels and g2 draw two sources")
             # What is not selected is dimmed.  (The saved page dims to
@@ -978,7 +981,8 @@ class TestAFacetedGraphInALinkGroup:
             for f in figs:
                 assert any(isinstance(t, BoxSelectTool) for t in f.tools)
             panel_views = [rr.view for f in figs[:2] for rr in f.renderers
-                           if type(rr.glyph).__name__ == "Scatter"]
+                           if type(rr.glyph).__name__ == "Scatter"
+                           and "dash_dots" not in (rr.tags or [])]
             # One marker renderer a panel, two panels (measured 24sep2026,
             # every type here, both modes): `panel_views and' passed a
             # panel that drew no markers at all.

@@ -432,3 +432,18 @@ class TestTheJsTwinsAreBounded:
         got = js_runner.run_fit_js_block(self._LW, x, 0.5 * x, timed=True)
         assert got["data"] == {"x_lw": [], "y_lw": []}
         assert got["ms"] < 200.0, got["ms"]
+
+
+class TestDotRows:
+    """WP-31 B5b: twoway dot's rows over 100,000 observations -- 7.6
+    million dots at 75 a row -- are placed within two seconds, both ways
+    (GlyphMapper._dot_positions: one step sequence each way, every row a
+    prefix of it)."""
+
+    def test_under_two_seconds(self):
+        vals = np.random.default_rng(18).uniform(10.0, 40.0, 100_000)
+        for extend in (True, False):
+            t0 = time.perf_counter()
+            pos, rows, nd = GM._dot_positions(10.0, 40.0, vals, extend, 75)
+            assert time.perf_counter() - t0 < 2.0, extend
+            assert nd == 75 and len(pos) == len(rows) > 100_000

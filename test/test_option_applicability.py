@@ -8,7 +8,7 @@ mpg weight, kernel(gaussian)`` is r(198) "option kernel() not allowed".
 dash wrote every such option to the spec and drew nothing different.
 
 Which type takes which option is measured, never typed:
-scripts/extract_applicability_truth.do probes twelve value options on
+scripts/extract_applicability_truth.do probes fourteen value options on
 forty types into test/fixtures/applicability_truth.json, and
 scripts/gen_applicability_table.py writes the ``applies`` block of
 ``_dash_option_rules`` from it.  ``_dash_validate_opts`` reads the block and
@@ -39,8 +39,10 @@ _GEN = os.path.join(_ROOT, "scripts", "gen_applicability_table.py")
 _BEGIN = "// BEGIN applies"
 _END = "// END applies"
 
+# WP-31 B5b: ndots() and dotextend(), dot's own two, measured too.
 OPTIONS = ("kernel", "n", "level", "bwidth", "bands", "range", "base",
-           "degree", "bin", "width", "start", "barwidth")
+           "degree", "bin", "width", "start", "barwidth", "ndots",
+           "dotextend")
 
 with open(_FIXTURE, encoding="utf-8") as _fh:
     TRUTH = json.load(_fh)
@@ -99,7 +101,8 @@ class TestTheFixture:
     def test_every_pair_was_measured(self):
         assert tuple(TRUTH["options"]) == OPTIONS
         assert len(TRUTH["types"]) == 40
-        assert len(PAIRS) == 480
+        # 480 -> 560: B5b ndots() and dotextend() on the forty types
+        assert len(PAIRS) == 560
         for key, rec in PAIRS.items():
             assert rec["rc"] in (0, 198) or rec["message"], key
 

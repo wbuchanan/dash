@@ -9077,8 +9077,10 @@ if inlist("`only'", "", "S36") & `: list posof "S36" in w30_run' {
     _w30_expect OS-04 "(`trc' == 0 & `tw_n' == 0 & `drc' == 0 & r(n) == 1)" "twoway rc `trc' notes `tw_n'; dash rc `drc' notes `r(n)'"
     _w30_done OS-04 "pstyle(fpall) is named as not drawn by dash, rc 0 as in twoway"
 
-    // OS-06: dstyle(), dlstyle() and bmlinestyle() are kept by value and
-    // named.
+    // OS-06: dstyle(), dlstyle() and bmlinestyle() are kept by value;
+    // bmlinestyle() is named.  Flipped (WP-31 B5b): dstyle() and dlstyle()
+    // named on dot was wrong once dash draws dot's rows of dots with them
+    // (test_wp31_truth.cscript U18-01): they are kept and not named.
     _s36_run `"dash dot mpg weight, dstyle(p3) dlstyle(p3) name(zos6a)"' "`s36log'"
     local drc = r(rc)
     _s36_count "`s36log'" "dstyle() dlstyle()"
@@ -9089,8 +9091,8 @@ if inlist("`only'", "", "S36") & `: list posof "S36" in w30_run' {
     _s36_count "`s36log'" "bmlinestyle()"
     local n2 = r(n)
     mata: st_local("k2", strofreal(strpos(st_global("dash_json_zos6b"), char(34) + "bmlinestyle" + char(34) + ":" + char(34) + "p3" + char(34)) > 0))
-    _w30_expect OS-06 "(`drc' == 0 & `n1' == 1 & `n2' == 1 & `k1' & `k2')" "rc `drc', named `n1' `n2', kept `k1' `k2'"
-    _w30_done OS-06 "dstyle() dlstyle() bmlinestyle() are kept by value and named"
+    _w30_expect OS-06 "(`drc' == 0 & `n1' == 0 & `n2' == 1 & `k1' & `k2')" "rc `drc', named `n1' `n2', kept `k1' `k2'"
+    _w30_done OS-06 "dstyle() dlstyle() bmlinestyle() are kept by value; bmlinestyle() is named"
     capture dash clear
     capture erase "`s36log'"
     capture erase "`w30_work'/zos3.html"

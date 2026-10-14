@@ -421,7 +421,7 @@ local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b
 // Flipped (WP-31 C8b): colorlist() and coloruseplegend named in the note
 // was wrong, because dash draws them as twoway does
 // (colorvar_options_truth.json); given here and not named.
-local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmlinestyle ciopts dlstyle dstyle filter fitopts fxsize fysize l1title l2title link lineopts mlabwidth mlpattern play r1title r2title scale subtitle2 t1title t2title title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
+local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmlinestyle ciopts filter fitopts fxsize fysize l1title l2title link lineopts mlabwidth mlpattern play r1title r2title scale subtitle2 t1title t2title title2 xmlabel xmtick xoverhangs ymlabel ymtick yoverhangs"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -429,7 +429,7 @@ local p_names "acolor alcolor alpattern alwidth at b1title b2title blabel bmline
 // Flipped (WP-30 P1.8a): connect(), cmissing() and sort named in the note
 // was wrong, because a scatter given connect() is drawn as twoway's
 // connected plot, its line joined in x order under sort.
-local p_honoured "mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend"
+local p_honoured "mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"

@@ -1,5 +1,5 @@
 *! extract_applicability_truth.do -- WP-31 section 04 (C3): measure which
-*! plot types twoway accepts each of twelve value options on.  Every probe
+*! plot types twoway accepts each of fourteen value options on.  Every probe
 *! is `twoway <type> ..., <opt>(<value>) nodraw' under capture noisily with
 *! its own log, and the return code and the first message line are
 *! recorded per pair.  twoway only: the output is the same before and after
@@ -68,7 +68,7 @@ local types scatter line connected area bar spike dropline dot tsline tsrline //
     pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri ///
     lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband ///
     kdensity histogram function
-local options kernel n level bwidth bands range base degree bin width start barwidth
+local options kernel n level bwidth bands range base degree bin width start barwidth ndots dotextend
 local v_kernel "gaussian"
 local v_n "50"
 local v_level "90"
@@ -81,6 +81,9 @@ local v_bin "5"
 local v_width "1"
 local v_start "0"
 local v_barwidth ".5"
+* WP-31 B5b: twoway dot's own two (dot_truth.json D11d, D11l).
+local v_ndots "10"
+local v_dotextend "no"
 
 global ZA_TYPES "`types'"
 global ZA_OPTIONS "`options'"

@@ -111,10 +111,17 @@ class TestDotBase:
         assert not [n for n in notes if "base" in n], notes
 
     def test_the_dots_do_not_move(self, tmp_path):
+        """The markers stay where they were.
+
+        Flipped (WP-31 B5b): map_dot draws twoway's dot rows before the
+        marker (dot_truth.json D01), a second Scatter; the markers are
+        the one not tagged dash_dots."""
         f0, _ = _yfig("saved", tmp_path)
         f, _ = _yfig("saved", tmp_path, base="50")
-        [s0] = bg._glyphs([f0], "Scatter")
-        [s] = bg._glyphs([f], "Scatter")
+        [s0] = [r for r in bg._glyphs([f0], "Scatter")
+                if "dash_dots" not in r.tags]
+        [s] = [r for r in bg._glyphs([f], "Scatter")
+               if "dash_dots" not in r.tags]
         y0 = s0.data_source.data[s0.glyph.y if isinstance(s0.glyph.y, str)
                                  else s0.glyph.y.field]
         y = s.data_source.data[s.glyph.y if isinstance(s.glyph.y, str)

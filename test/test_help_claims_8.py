@@ -1216,6 +1216,10 @@ class TestTheShippedFiles:
             r"margin(?! twoway| by_indiv| subheading| text_option)|barlabel|"
             r"barstyle|bar_",
             k))
+        # Flipped (WP-31 B5b): `symbol dots' and `symbolsize dots' are
+        # carried because dash draws twoway dot's rows of dots in them
+        # (SchemeParser.dots_style; test_dot_rows.py).
+        bad = [k for k in bad if k not in ("symbol dots", "symbolsize dots")]
         assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn
 
 

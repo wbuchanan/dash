@@ -553,8 +553,11 @@ class TestTheParsersFoundSomething:
         # colorkeysreverse colorallowmultiple colorotherlabel() and the
         # graph options clegend() plegend() pcycle(); colorlist() and
         # coloruseplegend leave Unsupported for synopt entries.
-        assert len(found) == 208, (
-            f"{len(found)} options parsed out of dash.sthlp, 208 measured "
+        # 208 -> 217: B5b the synopt entries of dotextend() ndots()
+        # dsymbol() dcolor() dfcolor() dsize() dlcolor() dlwidth() and the
+        # Unsupported entry's dlalign() (dstyle() and dlstyle() move).
+        assert len(found) == 217, (
+            f"{len(found)} options parsed out of dash.sthlp, 217 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -636,7 +639,8 @@ class TestTheParsersFoundSomething:
         # 228 -> 240: C8b colorstart colorend colorrule colorfillonly
         # colorformissing colorkeysrange colorkeysreverse
         # colorallowmultiple colorotherlabel clegend plegend pcycle declared
-        assert len(_ado_declarations()) == 240
+        # 240 -> 249: B5b the nine dot options declared
+        assert len(_ado_declarations()) == 249
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -657,7 +661,8 @@ class TestTheParsersFoundSomething:
         # 43 -> 44: A4 mlalign() declared and named
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
-        assert len(_ignored_options()) == 40
+        # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
+        assert len(_ignored_options()) == 39
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -678,7 +683,9 @@ class TestTheParsersFoundSomething:
         # 43 -> 44: A4 mlalign() in the marker outline entry
         # 44 -> 42: C6 cmissing() and connect() leave the "Not drawn" entry
         # 42 -> 40: C8b the "colorvar() sub-options" entry goes
-        assert len(_unsupported_section()) == 40
+        # 40 -> 39: B5b dstyle() and dlstyle() leave it with their entry,
+        # dlalign() joins the marker outline entry
+        assert len(_unsupported_section()) == 39
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -743,8 +750,9 @@ class TestTheParsersFoundSomething:
         # synopt entries gap() .. nodropbase.
         # 404 -> 417: C8b eleven colorvar synopt entries and three graph
         # ones, less the Unsupported entry they replace.
-        assert len(defs) == 417, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 417 "
+        # 417 -> 427: B5b the ten synopt entries dotextend() .. dlwidth().
+        assert len(defs) == 427, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 427 "
             f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

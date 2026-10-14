@@ -783,7 +783,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # goes with them (three).
     # 144 -> 151: C8b the notes on the colorformissing() fold (four) and
     # on colorvar(i.var) (three).
-    assert comments == {"_dash_parse_plot_opts": 151,
+    # 151 -> 156: B5b the pending note -- bmlinestyle's two lines, the
+    # d-options' four and dlalign's two for dstyle/dlstyle's three.
+    assert comments == {"_dash_parse_plot_opts": 156,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

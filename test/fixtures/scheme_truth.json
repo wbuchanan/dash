@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-09T06:36:33Z",
+    "generated_utc": "2026-10-14T17:25:19Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11344,6 +11344,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -12263,6 +12277,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -14670,6 +14689,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -17334,6 +17388,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -18253,6 +18321,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -20660,6 +20733,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -23324,6 +23432,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -24243,6 +24365,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -26650,6 +26777,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -29392,6 +29554,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -30325,6 +30501,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -32716,6 +32897,41 @@
         "value": "small",
         "file": "scheme-stmono1.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s1mono.scheme",
+        "line": 50
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -35558,6 +35774,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -36507,6 +36737,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -38914,6 +39149,41 @@
         "value": "small",
         "file": "scheme-stmono2.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 65
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -41865,6 +42135,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -42811,6 +43095,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -45218,6 +45507,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 65
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -48090,6 +48414,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -49006,6 +49344,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -51413,6 +51756,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -54153,6 +54531,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -55099,6 +55491,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -57506,6 +57903,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 65
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -60379,6 +60811,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -61295,6 +61741,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -63702,6 +64153,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -66365,6 +66851,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -67281,6 +67781,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -69688,6 +70193,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s1color.scheme",
+        "line": 71
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -72432,6 +72972,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -73362,6 +73916,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -75753,6 +76312,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s1mono.scheme",
+        "line": 50
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -78518,6 +79112,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#ffffff",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -79434,6 +80042,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -81841,6 +82454,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s1rcolor.scheme",
+        "line": 87
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "white",
+        "file": "scheme-s1rcolor.scheme",
+        "line": 83
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -84515,6 +85163,20 @@
       "sztype": "relative",
       "pt_at_4in": 7.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -85444,6 +86106,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -87882,6 +88549,41 @@
         "value": "large",
         "file": "scheme-economist.scheme",
         "line": 95
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-economist.scheme",
+        "line": 158
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-economist.scheme",
+        "line": 86
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -90751,6 +91453,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -91697,6 +92413,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -94104,6 +94825,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 65
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -97055,6 +97811,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -98001,6 +98771,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -100408,6 +101183,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 65
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -103360,6 +104170,20 @@
       "sztype": "relative",
       "pt_at_4in": 6.34
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -104299,6 +105123,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -106690,6 +107519,41 @@
         "value": "2.2",
         "file": "scheme-s1manual.scheme",
         "line": 50
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s1mono.scheme",
+        "line": 50
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -109518,6 +110382,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -110478,6 +111356,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -112869,6 +113752,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2mono.scheme",
+        "line": 65
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -115840,6 +116758,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -116756,6 +117688,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -119163,6 +120100,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -121826,6 +122798,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -122745,6 +123731,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -125152,6 +126143,41 @@
         "value": "small",
         "file": "scheme-sttrans.scheme",
         "line": 36
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -127817,6 +128843,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -128736,6 +129776,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -131143,6 +132188,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -133806,6 +134886,20 @@
       "sztype": "relative",
       "pt_at_4in": 4.4
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -134722,6 +135816,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -137129,6 +138228,41 @@
         "value": "medium",
         "file": "scheme-s2color.scheme",
         "line": 274
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -139793,6 +140927,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -140712,6 +141860,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -143119,6 +144272,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -145784,6 +146972,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -146703,6 +147905,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -149110,6 +150317,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -151774,6 +153016,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -152693,6 +153949,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -155100,6 +156361,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -157765,6 +159061,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -158684,6 +159994,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -161091,6 +162406,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",
@@ -163757,6 +165107,20 @@
       "sztype": "relative",
       "pt_at_4in": 3.0
     },
+    "dots_color": "#000000",
+    "dotmarkline_color": "#000000",
+    "dots_symbol": "circle",
+    "dots_symbolsize": {
+      "name": "vtiny",
+      "value": 0.1,
+      "sztype": "relative",
+      "pt_at_4in": 0.29
+    },
+    "dotmark_line_width": {
+      "name": "thin",
+      "value": 0.2,
+      "pt_at_4in": 0.576
+    },
     "margin_ladder_sidemargin": "relative3",
     "margin_ladder_medmargin": "relative3p5",
     "margin_ladder_medsmmargin": "relative2p2",
@@ -164676,6 +166040,11 @@
       "numticks_vertical_major": "numticks_g vertical_major",
       "margin_twoway": "margin twoway",
       "symbolsize": "symbolsize p",
+      "dots_color": "color dots",
+      "dotmarkline_color": "color dotmarkline",
+      "dots_symbol": "symbol dots",
+      "dots_symbolsize": "symbolsize dots",
+      "dotmark_line_width": "linewidth dotmark",
       "margin_ladder_sidemargin": "gsize sidemargin",
       "margin_ladder_medmargin": "gsize medmargin",
       "margin_ladder_medsmmargin": "gsize medsmmargin",
@@ -167083,6 +168452,41 @@
         "value": "small",
         "file": "scheme-stcolor.scheme",
         "line": 13
+      },
+      "dots_color": {
+        "kind": "transcribed",
+        "directive": "color dots",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 406
+      },
+      "dotmarkline_color": {
+        "kind": "transcribed",
+        "directive": "color dotmarkline",
+        "value": "black",
+        "file": "scheme-s2color.scheme",
+        "line": 399
+      },
+      "dots_symbol": {
+        "kind": "transcribed",
+        "directive": "symbol dots",
+        "value": "circle",
+        "file": "scheme-s2color.scheme",
+        "line": 512
+      },
+      "dots_symbolsize": {
+        "kind": "transcribed",
+        "directive": "symbolsize dots",
+        "value": "vtiny",
+        "file": "scheme-s2color.scheme",
+        "line": 255
+      },
+      "dotmark_line_width": {
+        "kind": "transcribed",
+        "directive": "linewidth dotmark",
+        "value": "thin",
+        "file": "scheme-s2color.scheme",
+        "line": 1224
       },
       "margin_ladder_sidemargin": {
         "kind": "transcribed",

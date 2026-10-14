@@ -404,7 +404,7 @@ and now matches Stata.
 
 - `dash scatter mpg weight, colorvar(rep78) colordiscrete`: the levels in twoway's colours, hue from blue to red under s2color and stcolor (was: the scheme's p colours), and an unbinned colour bar in the same rule (was: viridis); colorrule(), colorstart(), colorend(), colorlist(), colorfillonly, colorformissing(), colorkeysrange, colorkeysreverse, colorotherlabel(), coloruseplegend, clegend(), plegend() and pcycle() are drawn (was: named in the note); colorvar(i.var) draws (was: r(111)); coloruseplegend without colordiscrete, an unknown colorrule(), and a second colorvar() layer without colorallowmultiple are refused, r(198), in twoway's words (WP-31, C8b)
 
-<!-- WP-31 B5b -->
+- `dash dot mpg weight`: 75 dots per observation from the axis base to both ends of the scale, then the marker, as twoway draws them (was: markers only); dotextend(no) runs them to the value, ndots() sets their number and dstyle() dsymbol() dcolor() dfcolor() dsize() dlstyle() dlcolor() dlwidth() style them (were: named or unknown); ndots() other than a number and ndots() or dotextend() on a type twoway refuses them on are refused in twoway's words, r(198); baroffset() on dot is taken in silence (was: named) (WP-31, B5b)
 
 - lpoly on a saved page after a filter move: the build's smooth (marked) -> Stata's local polynomial on the kept rows with its rule-of-thumb bandwidth recomputed; where that fit is exact the line is drawn at 0 (WP-31, F1d)
 

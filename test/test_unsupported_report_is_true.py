@@ -119,11 +119,15 @@ PLOT_VALUES = {
     "mlalign": ("inside", "outside", "scatter"),
     "mlcolor": ("navy", "maroon", "scatter"),
     "mlpattern": ("dash", "dot", "scatter"),
-    # WP-30 P1.14b: kept and named, not drawn (P2.9 dot rows, P2.8 marker
-    # back lines); twoway accepts all three on scatter (plan E9.7).
-    "dstyle": ("p3", "p5", "scatter"),
-    "dlstyle": ("p3", "p5", "scatter"),
+    # WP-30 P1.14b: kept and named, not drawn (P2.8 marker back lines);
+    # twoway accepts it on scatter (plan E9.7).
+    # Flipped (WP-31 B5b): dstyle ("p3", "p5", "scatter") and dlstyle
+    # ("p3", "p5", "scatter") -- named and inert -- were wrong because
+    # twoway styles dot's rows of dots with them (dot_truth.json D08);
+    # they are in LIVE_VALUES on dot.
     "bmlinestyle": ("p3", "p5", "scatter"),
+    # WP-31 B5b: accepted and named; a stroke cannot be aligned in Bokeh.
+    "dlalign": ("inside", "outside", "dot"),
     "mlwidth": ("thick", "vthin", "scatter"),
     "n": ("30", "70", "kdensity"),
     "nodraw": ("nodraw", "", "scatter"),
@@ -287,7 +291,8 @@ class TestTheListIsCoveredAndHonest:
         # 43 -> 44: A4 mlalign declared and named
         # 44 -> 42: C6 cmissing() and connect() drawn everywhere
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
-        assert len(_plot_pending()) == 40, sorted(_plot_pending())
+        # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
+        assert len(_plot_pending()) == 39, sorted(_plot_pending())
         assert len(_graph_pending()) == 24, sorted(_graph_pending())
 
 
@@ -534,6 +539,18 @@ LIVE_VALUES = {
     "mwidth": ({"mwidth": "mwidth", "msize": "large"},
                {"mwidth": "mwidth", "msize": "tiny"}, "rbar", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
+    # WP-31 B5b: dot's rows of dots and their look (test_dot_rows.py;
+    # dot_truth.json D02, D03, D07, D08, D12, D14, D15).
+    "dotextend": ({"dotextend": "no"}, {"dotextend": "yes"}, "dot", {}),
+    "ndots": ({"ndots": "10"}, {"ndots": "40"}, "dot", {}),
+    "dstyle": ({"dstyle": "p3"}, {"dstyle": "p7"}, "dot", {}),
+    "dlstyle": ({"dlstyle": "p3"}, {"dlstyle": "p7"}, "dot", {}),
+    "dsymbol": ({"dsymbol": "square"}, {"dsymbol": "triangle"}, "dot", {}),
+    "dcolor": ({"dcolor": "red"}, {"dcolor": "blue"}, "dot", {}),
+    "dfcolor": ({"dfcolor": "red"}, {"dfcolor": "blue"}, "dot", {}),
+    "dlcolor": ({"dlcolor": "red"}, {"dlcolor": "blue"}, "dot", {}),
+    "dsize": ({"dsize": "small"}, {"dsize": "large"}, "dot", {}),
+    "dlwidth": ({"dlwidth": "thin"}, {"dlwidth": "thick"}, "dot", {}),
     # WP-31 C5: drawn (test_distribution_odds.py).
     "gap": ({"gap": "10"}, {"gap": "60"}, "histogram", {}),
     "baroffset": ({"baroffset": ".5"}, {"baroffset": "-.5"}, "bar", {}),
@@ -841,7 +858,8 @@ class TestEveryDeclaredOptionIsClassified:
         # colorfillonly colorformissing colorkeysrange colorkeysreverse
         # colorallowmultiple colorotherlabel, and clegend plegend pcycle in
         # both blocks, declared
-        assert len(_declared_plot()) == 227, len(_declared_plot())
+        # 227 -> 236: B5b the nine dot options declared
+        assert len(_declared_plot()) == 236, len(_declared_plot())
         assert len(_declared_graph()) == 88, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

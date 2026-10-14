@@ -157,6 +157,10 @@ def _glyph_colors(fig):
     for r in fig.renderers:
         if not isinstance(r, GlyphRenderer) or dr._dash_is_swatch(r):
             continue
+        # dot's rows of dots are markerstyle dots, no p# marker (WP-31
+        # B5b; test/fixtures/dot_truth.json D01, D25).
+        if "dash_dots" in (r.tags or []):
+            continue
         kind = type(r.glyph).__name__
         if kind == "Segment":
             out["Segment"].add(str(_val(r.glyph.line_color)).lower())
@@ -428,6 +432,7 @@ class TestMarkColourIsForMarkers:
                      for r in fig.renderers
                      if isinstance(r, GlyphRenderer)
                      and not dr._dash_is_swatch(r)
+                     and "dash_dots" not in (r.tags or [])
                      and type(r.glyph).__name__ == "Scatter"}
             assert (got["Scatter"], lines) == ({mark}, {OUTLINE}), (
                 ptype, mode, got["Scatter"], lines)

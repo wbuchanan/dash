@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "4e2bd9066b5eef555a20ad89c9810ea3b2dfbefe",
-  "extracted": "13 Oct 2026 15:57:22",
+  "dash_commit": "8dde8eec306efb3e2ce4fe3c8238738b9514aafc",
+  "extracted": "14 Oct 2026 13:26:54",
   "source": "scripts/extract_applicability_truth.do",
   "stata_version": "19.5"
  },
@@ -18,7 +18,9 @@
   "bin",
   "width",
   "start",
-  "barwidth"
+  "barwidth",
+  "ndots",
+  "dotextend"
  ],
  "pairs": {
   "bands@area": {
@@ -1221,6 +1223,206 @@
    "message": "option degree() not allowed",
    "rc": 198
   },
+  "dotextend@area": {
+   "cmd": "twoway area mpg weight, dotextend(no) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "dotextend@bar": {
+   "cmd": "twoway bar mpg weight, dotextend(no) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "dotextend@connected": {
+   "cmd": "twoway connected mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@dot": {
+   "cmd": "twoway dot mpg weight, dotextend(no) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "dotextend@dropline": {
+   "cmd": "twoway dropline mpg weight, dotextend(no) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "dotextend@fpfit": {
+   "cmd": "twoway fpfit mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@function": {
+   "cmd": "twoway function y = x, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@histogram": {
+   "cmd": "twoway histogram mpg, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@kdensity": {
+   "cmd": "twoway kdensity mpg, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@lfit": {
+   "cmd": "twoway lfit mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@lfitci": {
+   "cmd": "twoway lfitci mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@line": {
+   "cmd": "twoway line mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@lowess": {
+   "cmd": "twoway lowess mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@lpoly": {
+   "cmd": "twoway lpoly mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@mband": {
+   "cmd": "twoway mband mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@mspline": {
+   "cmd": "twoway mspline mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@qfit": {
+   "cmd": "twoway qfit mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@qfitci": {
+   "cmd": "twoway qfitci mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rarea": {
+   "cmd": "twoway rarea yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rbar": {
+   "cmd": "twoway rbar yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rcap": {
+   "cmd": "twoway rcap yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rline": {
+   "cmd": "twoway rline yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rspike": {
+   "cmd": "twoway rspike yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@scatter": {
+   "cmd": "twoway scatter mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@scatteri": {
+   "cmd": "twoway scatteri 20 2000, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@spike": {
+   "cmd": "twoway spike mpg weight, dotextend(no) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "dotextend@tsline": {
+   "cmd": "twoway tsline mpg, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@tsrline": {
+   "cmd": "twoway tsrline yl yh, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
   "kernel@area": {
    "cmd": "twoway area mpg weight, kernel(gaussian) nodraw",
    "message": "option kernel() not allowed",
@@ -1819,6 +2021,206 @@
   "n@tsrline": {
    "cmd": "twoway tsrline yl yh, n(50) nodraw",
    "message": "option n() not allowed",
+   "rc": 198
+  },
+  "ndots@area": {
+   "cmd": "twoway area mpg weight, ndots(10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "ndots@bar": {
+   "cmd": "twoway bar mpg weight, ndots(10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "ndots@connected": {
+   "cmd": "twoway connected mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@dot": {
+   "cmd": "twoway dot mpg weight, ndots(10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "ndots@dropline": {
+   "cmd": "twoway dropline mpg weight, ndots(10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "ndots@fpfit": {
+   "cmd": "twoway fpfit mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@function": {
+   "cmd": "twoway function y = x, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@histogram": {
+   "cmd": "twoway histogram mpg, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@kdensity": {
+   "cmd": "twoway kdensity mpg, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@lfit": {
+   "cmd": "twoway lfit mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@lfitci": {
+   "cmd": "twoway lfitci mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@line": {
+   "cmd": "twoway line mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@lowess": {
+   "cmd": "twoway lowess mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@lpoly": {
+   "cmd": "twoway lpoly mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@mband": {
+   "cmd": "twoway mband mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@mspline": {
+   "cmd": "twoway mspline mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@qfit": {
+   "cmd": "twoway qfit mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@qfitci": {
+   "cmd": "twoway qfitci mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rarea": {
+   "cmd": "twoway rarea yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rbar": {
+   "cmd": "twoway rbar yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rcap": {
+   "cmd": "twoway rcap yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rline": {
+   "cmd": "twoway rline yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rspike": {
+   "cmd": "twoway rspike yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@scatter": {
+   "cmd": "twoway scatter mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@scatteri": {
+   "cmd": "twoway scatteri 20 2000, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@spike": {
+   "cmd": "twoway spike mpg weight, ndots(10) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "ndots@tsline": {
+   "cmd": "twoway tsline mpg, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@tsrline": {
+   "cmd": "twoway tsrline yl yh, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
    "rc": 198
   },
   "range@area": {

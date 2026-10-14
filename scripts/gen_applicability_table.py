@@ -17,7 +17,7 @@ import os
 import sys
 
 OPTIONS = ("kernel", "n", "level", "bwidth", "bands", "range", "base",
-           "degree", "bin", "width", "start", "barwidth")
+           "degree", "bin", "width", "start", "barwidth", "ndots", "dotextend")
 TYPES = ("scatter", "line", "connected", "area", "bar", "spike", "dropline",
          "dot", "tsline", "tsrline", "rarea", "rbar", "rspike", "rcap",
          "rline", "rconnected", "rcapsym", "rscatter", "pcspike", "pccapsym",

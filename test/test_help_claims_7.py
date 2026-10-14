@@ -105,10 +105,15 @@ def _render_uncached(mode, plots, go=None, bo=None):
 
 
 def _glyphs(fig):
-    """The glyph renderers a layer drew -- not a colour key's swatches."""
+    """The glyph renderers a layer drew -- not a colour key's swatches,
+    and not dot's rows of dots, which are drawn in markerstyle dots and
+    which no marker or colour option reaches (WP-31 B5b; twoway's
+    color(), mcolor(), msymbol(), pstyle() and mstyle() leave them black:
+    test/fixtures/dot_truth.json D23-D26)."""
     return [r for r in fig.renderers
             if getattr(r, "glyph", None) is not None
-            and not dr._dash_is_swatch(r)]
+            and not dr._dash_is_swatch(r)
+            and "dash_dots" not in (getattr(r, "tags", None) or ())]
 
 
 def _field(glyph, attr):
