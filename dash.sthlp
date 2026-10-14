@@ -3157,14 +3157,15 @@ a graph of histograms alone are still drawn by {cmd:dash}.
 {synopt:{opt area(#)}}{cmd:kdensity}: every density multiplied by {it:#};
     positive ({cmd:option area() expects a positive number}, r(198)){p_end}
 {synopt:{opt boundary}}{cmd:kdensity}: the curve evaluated one bandwidth
-    past the data at each end; not with {cmd:range()} ({cmd:only one of
-    options range() or boundary is allowed}, r(198)).  After a filter move
+    past the data at each end; not with {cmd:range()}
+    ({cmd:only one of options range() or boundary is allowed}, r(198)).
+    After a filter move
     the saved page keeps the curve's grid and marks it (see the stale
     cue){p_end}
 {synopt:{opt droplines(numlist)}}{cmd:function}: a line from the base to
     the curve at each {it:x}, drawn before the curve in its line style;
-    every {it:x} within {cmd:range()} ({cmd:some droplines not within
-    range() option}, r(198)){p_end}
+    every {it:x} within {cmd:range()}
+    ({cmd:some droplines not within range() option}, r(198)){p_end}
 {synopt:{opt nodropbase}}{cmd:area}: the area closes along the line from
     its first point to its last instead of dropping to the base; taken on
     every type, drawing nothing different on the others{p_end}

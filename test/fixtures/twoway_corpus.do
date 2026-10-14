@@ -467,13 +467,14 @@ dashprobe kd_horizontal    "kdensity mpg"  "horizontal"
 
 // ================================================================
 // 21. twoway function  (help twoway_function)
-//     droplines() is legal only together with range(), hence the twoway-only
-//     extra; the dash side still sees droplines() alone.
+//     droplines() is legal only with every x inside range(), so both sides
+//     get range(0 10): since WP-31 C5 dash refuses a dropline outside
+//     the range as twoway does (some droplines not within range() option).
 // ================================================================
 dashprobe fn_range         "function x"  "range(0 10)"
 dashprobe fn_n             "function x"  "n(50)"
 dashprobe fn_horizontal    "function x"  "horizontal"
-dashprobe fn_droplines     "function x"  "droplines(2 4 6)"  "range(0 10)"
+dashprobe fn_droplines     "function x"  "droplines(2 4 6) range(0 10)"
 dashprobe fn_base          "function x"  "base(0)"
 dashprobe fn_lcolor        "function x"  "lcolor(red)"
 

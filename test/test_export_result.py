@@ -72,8 +72,10 @@ class TestDashIsRclass:
 
     def test_every_writing_route_posts_the_result(self):
         body = _code(_program_body(ADO, "dash"))
+        # Flipped (14oct2026): the twoway-prefix route ("strip") is gone --
+        # dash replaces twoway, so `dash twoway ...' is refused r(198).
+        assert "_dash_strip_prefix" not in body
         routes = {
-            "strip": r'_dash_plot `macval\(0\)\'\n\s*_dash_result\n\s*return add\n\s*exit',
             "build": r'_dash_build `macval\(_args\)\'\n\s*_dash_result\n\s*return add\n\s*exit',
             "plot": r'_dash_plot `macval\(0\)\'\n\s*_dash_result\n\s*return add\s*$',
         }

@@ -9062,7 +9062,8 @@ program define _dash_fit_points
         local lo : word 1 of `range'
         local hi : word 2 of `range'
     }
-    if !inlist("`ptype'", "lfitci", "qfitci", "fpfitci") local std ""
+    local _fp_ci "lfitci qfitci fpfitci"
+    if !`: list ptype in _fp_ci' local std ""
     else if "`std'" == "" local std stdp
     if "`level'" == "" local level = c(level)
     local ao = ("`atobs'" != "")
@@ -9074,7 +9075,8 @@ program define _dash_fit_points
     local w ""
     if "`weight'" != "" local w "`weight'`exp'"
     capture classutil drop .__dash_fit_ss
-    if inlist("`ptype'", "fpfit", "fpfitci") {
+    local _fp_fp "fpfit fpfitci"
+    if `: list ptype in _fp_fp' {
         if `"`macval(estcmd)'"' == "" local estcmd regress
         capture noisily twoway__fpfit_serset, sersetname(__dash_fit_ss) ///
             x(`x') y(`y') touse(`touse') cmd(`macval(estcmd)') ///
@@ -9083,7 +9085,8 @@ program define _dash_fit_points
     }
     else {
         local gen twoway__lfit_serset
-        if inlist("`ptype'", "qfit", "qfitci") local gen twoway__qfit_serset
+        local _fp_q "qfit qfitci"
+        if `: list ptype in _fp_q' local gen twoway__qfit_serset
         capture noisily `gen', sersetname(__dash_fit_ss) x(`x') y(`y') ///
             touse(`touse') regopts(`macval(estopts)') ///
             predopts(`macval(predopts)') atobs(`ao') points(`pts') ///
