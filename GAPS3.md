@@ -429,7 +429,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit 79c9f79.
 - **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit ec00ad8.
 - **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit e07f97e.
-- **B1 Tracked:** Open (WP-31 section 21).
+- **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit pending.
 - **B2 Tracked:** Open (WP-31 section 21).
 - **B3 Tracked:** Open (WP-31 section 21).
 - **B4a Tracked:** Open (WP-31 section 23).

@@ -117,7 +117,7 @@
 *!
 *!   _dash_undrawn_plottype(name)
 *!       name, lower case, when it is a twoway plot type dash refuses by
-*!       name -- contour, contourline, rpcap, rpspike -- else "".
+*!       name -- contour, contourline -- else "".
 *!
 *!   _dash_kernel_full(word)
 *!       The full kernel name, lower case, for a word twoway's kernel()
@@ -1813,12 +1813,16 @@ string scalar _expand_plottype_str(string scalar name) {
         ("function","fun") \
         ("scatteri","scatteri") \
         ("pccapsym","pccapsym") \
-        ("pcarrowi","pcarrowi")
+        ("pcarrowi","pcarrowi") \
+        ("rpcap","rpcap") \
+        ("rpspike","rpspike")
     // pccapsym and pcarrowi (WP-22): twoway takes neither by any shorter
     // name -- measured 23sep2026, pc .. pccapsy and pcarr, pcarro are "not
     // a twoway plot type", and pcarrow is its own type -- so the minimum
     // is the full name.  pcarrow still wins "pcarrow": pcarrowi's
-    // minimum is eight letters.
+    // minimum is eight letters.  rpcap and rpspike (WP-31 B1): full names
+    // only -- rpca and rpspik are "not a twoway plot type" (measured
+    // 23sep2026 and 14oct2026, test/fixtures/rangept_truth.json abbrev.*).
 
     // twoway's two spellings that are no prefix of the name, from the
     // declaration its plot types are read by (twowaygraph_g.class, program
@@ -1865,19 +1869,18 @@ void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
 // contour and contourline are twoway plot types (graph_twoway.sthlp) that
 // draw a surface interpolated over a grid of z values -- a data model no
 // dash plot has (twoway builds them on zyx2view_g, measured from the .gph).
-// rpcap and rpspike (y ylow yhigh x, a range drawn with a point on it)
-// are twoway plot types in StataNow 19.5 that dash does not draw either.
 // dash.ado refuses each by name, with what to use instead, rather than as
 // an unrecognised plot type (WP-22 TR-22.1, BR-22.1).  twoway takes no
-// abbreviation of any of them -- measured 23sep2026: cont .. contou,
-// contourl .. contourlin, rpc .. rpca and rpsp .. rpspik are "not a twoway
-// plot type", and con is connected -- so only the full names match.
+// abbreviation of either -- measured 23sep2026: cont .. contou and
+// contourl .. contourlin are "not a twoway plot type", and con is
+// connected -- so only the full names match.  rpcap and rpspike were
+// refused here too until WP-31 B1 drew them.
 // Returns the name, lower case, or "".
 string scalar _dash_undrawn_plottype(string scalar name) {
     string scalar s
 
     s = strlower(strtrim(name))
-    if (anyof(("contour", "contourline", "rpcap", "rpspike"), s)) {
+    if (anyof(("contour", "contourline"), s)) {
         return(s)
     }
     return("")

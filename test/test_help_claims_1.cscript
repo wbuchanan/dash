@@ -999,7 +999,7 @@ else display as text "HC1-18 PASS: twoway refuses link(), filter(), layout(), th
 dash clear
 
 // ================================================================
-// HC1-19 -- no plot type: r(198) with the list; the four by name
+// HC1-19 -- no plot type: r(198) with the list; the undrawn by name
 // ================================================================
 _hc_logged 19 dash zqnotaplottype mpg weight, name(hc19)
 local rc = r(rc)
@@ -1011,15 +1011,15 @@ local want19 scatter line connected area bar spike dropline dot scatteri pci ///
         pcarrowi rarea rbar rspike rcap rcapsym rscatter rline rconnected ///
         pcspike pccapsym pcarrow pcbarrow pcscatter tsline tsrline lfit qfit ///
         fpfit lfitci qfitci fpfitci lowess lpoly lpolyci mspline mband ///
-        histogram kdensity function
+        histogram kdensity function rpcap rpspike
 local miss19 : list want19 - _hc_sup
 local extra19 : list _hc_sup - want19
 local miss19 "`miss19' `extra19'"
 local miss19 = strtrim("`miss19'")
 local bad19 ""
-foreach t in contour contourline rpcap rpspike {
+// Flipped (WP-31 B1): rpcap and rpspike are drawn, no longer refused.
+foreach t in contour contourline {
     local a "mpg weight turn"
-    if inlist("`t'", "rpcap", "rpspike") local a "mpg lo hi weight"
     graph drop _all
     capture twoway `t' `a', nodraw
     local twrc = _rc
@@ -1037,7 +1037,7 @@ if _rc {
     local nfail = `nfail' + 1
     local faillist `"`faillist' HC1-19"'
 }
-else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 40 plot types listed; the four undrawn twoway types are refused by name"
+else display as text "HC1-19 PASS: a word that is no plot type is r(198) with all 42 plot types listed; the undrawn twoway types are refused by name"
 dash clear
 
 // ================================================================

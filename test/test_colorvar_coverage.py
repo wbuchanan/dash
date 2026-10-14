@@ -8,7 +8,7 @@ test/fixtures/colorvar_types_truth.json (StataNow 19.5):
 * ``types[<t>]``: ``twoway <t> ..., colorvar(z)`` for every type of
   test_twoway_option_parity.cscript's m6 list -- rc, each plot's ``.cvar``
   (the colour variable's serset column, missing when none) and the
-  distinct colours of the exported SVG.  ``coloured`` are the 21 types whose
+  distinct colours of the exported SVG.  ``coloured`` are the 23 types whose
   view carries the colour variable; ``cv_silent`` the 19 where twoway takes
   colorvar() and draws nothing for it (twoway_yxview_parse.class:206-208:
   area, rarea and the classes with ``.allowcolorvar = 0``), where it does

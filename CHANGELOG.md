@@ -1001,7 +1001,7 @@ Changed behaviour.
 
 - yaxis(3) to yaxis(9) and xaxis(3) to xaxis(9) are drawn: dash scatter mpg weight, yaxis(3) was refused, r(198), "dash draws two axes", and is now drawn as twoway draws it, in the saved page and the served app -- with three or more y axes all on the left, axis 1 nearest the plot and the others outward in number order, with two the higher-numbered on the right (x axes alike, below and above), a layer naming several axes tying them into one scale; ylabel(), ytitle(), ytick(), yline() and yscale() with axis(3) to axis(9) reach that axis; yaxis(10) is refused with twoway's r(125) "yaxis() invalid -- invalid numlist has elements outside of allowed range". (WP-31, C10c)
 
-<!-- WP-31 B1 -->
+- rpcap and rpspike are drawn: dash rpcap lo hi turn weight was refused, r(198), "a twoway plot type dash does not draw", and now draws a spike from y1 to y2 at x, caps as wide as the marker (rpcap) and the marker at y3, in the saved page and the served app, after a filter move too, with the y axis over all three; any other number of variables is refused in twoway's words, "you must specify four variables with twoway rpcap", r(102) or r(103). (WP-31, B1)
 
 <!-- WP-31 B2 -->
 

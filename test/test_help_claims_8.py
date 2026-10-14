@@ -1883,7 +1883,8 @@ class TestThePackageDescription:
         assert "Unsupported Stata twoway options" in pkg
 
     def test_the_number_of_plot_types_is_the_dispatch_tables(self):
-        words = {40: "forty"}
+        # 40 -> 42: WP-31 B1 rpcap and rpspike drawn.
+        words = {40: "forty", 42: "forty-two"}
         n = len(dr._dash_plot_type_names())
         assert "%s twoway plot types" % words.get(n, str(n)) in _pkg_text()
 

@@ -255,6 +255,7 @@ this file says so under the option concerned.
     coordinates are written on the command line{p_end}
 {synopt:range}{cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap},
     {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline}, {cmd:rconnected}{p_end}
+{synopt:range with a point}{cmd:rpcap}, {cmd:rpspike}{p_end}
 {synopt:paired coordinates}{cmd:pcspike}, {cmd:pccapsym}, {cmd:pcarrow},
     {cmd:pcbarrow}, {cmd:pcscatter}{p_end}
 {synopt:time series}{cmd:tsline}, {cmd:tsrline} -- drawn against the
@@ -485,6 +486,17 @@ both ends: the line options style the spike, the marker options the
 markers, and {cmd:mlabel()} labels the first point.
 
 {pstd}
+{ul:rpcap and rpspike.}  Four variables {it:y1 y2 y3 x}: a spike from
+{it:y1} to {it:y2} at {it:x}, caps as wide as the marker ({cmd:rpcap}),
+and the marker at {it:y3}; {opt msize()} sizes caps and marker together;
+the y axis spans all three, and its title is the three variables' labels
+joined by {cmd:/} unless they are the same; {cmd:horizontal} turns the
+layer.  Drawn in both modes and redrawn from the kept rows after a filter
+move.  Two, three or five variables are refused as {cmd:twoway} refuses
+them: "you must specify four variables with twoway rpcap", {cmd:r(102)}
+or {cmd:r(103)}.
+
+{pstd}
 {ul:Bars and range caps.}  {cmd:bar} and {cmd:rbar} draw each bar one unit
 of {it:x} wide whatever the spacing of {it:x}, as {cmd:twoway} does, and
 {cmd:barwidth(}{it:#}{cmd:)} sets another width in the same units.  On a
@@ -597,13 +609,12 @@ and is refused without them, as {cmd:twoway} refuses it:
 {cmd:varlist required}, {cmd:r(100)}.
 
 {pstd}
-{ul:Not drawn.}  Four {cmd:twoway} plot types are not drawn by {cmd:dash}:
+{ul:Not drawn.}  Two {cmd:twoway} plot types are not drawn by {cmd:dash}:
 {cmd:contour} and {cmd:contourline}, which interpolate a surface over a
-grid from their three variables; and {cmd:rpcap} and {cmd:rpspike}, which
-mark a point on a range.  Each is refused with {cmd:r(198)} and a message
-naming what to use instead: {cmd:twoway} itself, {cmd:dash scatter}
-{it:y x}{cmd:,} {cmd:colorvar(}{it:z}{cmd:)} for the first two, or a range
-plot and a {cmd:scatter} of the point in one graph for the last two.  Any other word
+grid from their three variables.  Each is refused with {cmd:r(198)} and a
+message naming what to use instead: {cmd:twoway} itself, or
+{cmd:dash scatter} {it:y x}{cmd:,} {cmd:colorvar(}{it:z}{cmd:)}.  Any
+other word
 that is not a plot type is refused too, and the message lists the plot
 types above.  A plot type cannot be handled as an unknown option is --
 named in a note and drawn around -- because it is what would be drawn.
@@ -830,7 +841,7 @@ there, is an invalid point.  The literal is read as data and never run.
     does {cmd:dash} (see {it:Where a graph-level option may be written}
     under 3. above) -- so a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
-    names the four {cmd:twoway} plot types it refuses -- and can draw the
+    names the two {cmd:twoway} plot types it refuses -- and can draw the
     values it is given: a few values {cmd:twoway} accepts, such as
     {cmd:bin(2000)}, are more than {cmd:dash} draws and are refused (see
     {help dash##validation:Option values} below).  Anything {cmd:dash}
@@ -4337,7 +4348,8 @@ to the tooltip of every layer whose marks are observations --
 {cmd:scatter}, {cmd:connected}, {cmd:line}, {cmd:tsline}, {cmd:area},
 {cmd:dot}, {cmd:dropline}, {cmd:bar}, {cmd:spike}, every range type
 ({cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap}, {cmd:rcapsym},
-{cmd:rline}, {cmd:tsrline}, {cmd:rconnected}, {cmd:rscatter}) and every
+{cmd:rline}, {cmd:tsrline}, {cmd:rconnected}, {cmd:rscatter}, {cmd:rpcap},
+{cmd:rpspike}) and every
 paired-coordinate type drawn from variables ({cmd:pcspike},
 {cmd:pcarrow}, {cmd:pcbarrow}, {cmd:pcscatter}, {cmd:pccapsym}) -- in the
 saved dashboard and the served app alike.  {cmd:hover()} given more than
@@ -4659,7 +4671,8 @@ name them there.
     number from 0 to 100, or a list of them, one per y (see
     {help dash##stylelists:Style lists}).  Drawn on the markers of {cmd:scatter},
     {cmd:connected}, {cmd:rconnected}, {cmd:dot}, {cmd:dropline},
-    {cmd:scatteri}, {cmd:rscatter}, {cmd:rcapsym}, {cmd:pcscatter} and
+    {cmd:scatteri}, {cmd:rscatter}, {cmd:rcapsym}, {cmd:rpcap}, {cmd:rpspike},
+    {cmd:pcscatter} and
     {cmd:pccapsym} (both ends), never on a connecting line or a spine, as
     in {cmd:twoway}.  As in {cmd:twoway}, the name is not abbreviated:
     {cmd:jit()} is refused{p_end}
@@ -4674,7 +4687,8 @@ name them there.
     between -360 and 360, as in {cmd:twoway}.  Drawn on every plot type
     that draws markers: {cmd:scatter}, {cmd:connected}, {cmd:rconnected},
     {cmd:dot}, {cmd:dropline}, {cmd:scatteri}, {cmd:rscatter},
-    {cmd:rcapsym}, {cmd:pcscatter} and {cmd:pccapsym}{p_end}
+    {cmd:rcapsym}, {cmd:rpcap}, {cmd:rpspike}, {cmd:pcscatter} and
+    {cmd:pccapsym}{p_end}
 {synopt:{opt marker(symbol)}}{cmd:dash}'s own synonym for
     {cmd:msymbol()}, which wins if both are given; {cmd:twoway} refuses
     {cmd:marker()}{p_end}

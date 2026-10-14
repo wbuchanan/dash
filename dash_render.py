@@ -1419,6 +1419,9 @@ def _dash_layer_axis_names(plot, key):
         keys = (letter + "1var", letter + "2var")
     elif ptype in _DASH_RANGE_TYPES and letter == "y":
         keys = ("yvar1", "yvar2")
+    elif ptype in _DASH_RANGEPT_TYPES and letter == "y":
+        # WP-31 B1: twoway ranges y over all three (y3xview_g.ranges).
+        keys = ("yvar1", "yvar2", "yvar")
     else:
         keys = (key,)
     names = [str(plot.get(k, "") or "") for k in keys]
@@ -1452,6 +1455,10 @@ def _dash_axis_vars(plots, axis_no=1):
                         if role == "x" else "")
             if role == "x":
                 return p.get("xvar", "") or p.get("x1var", "") or ""
+            if ptype in _DASH_RANGEPT_TYPES:
+                # WP-31 B1: the range's first end, as for a range layer;
+                # yvar is its marker (y3).
+                return p.get("yvar1", "") or ""
             return (p.get("yvar", "") or p.get("yvar1", "")
                     or p.get("y1var", "") or "")
         return None
@@ -1539,7 +1546,8 @@ def _dash_layer_tick_format(plot, dim, numeric_formats, date_vars):
         return ((_of(v) if dim == "x" else _fixed("%6.4g", v)), False)
     if ptype in ("lowess", "fpfit", "fpfitci"):
         return ((_of(xv) if dim == "x" else _fixed("%9.0g", yv)), False)
-    if ptype in _DASH_RANGE_TYPES:
+    if ptype in _DASH_RANGE_TYPES or ptype in _DASH_RANGEPT_TYPES:
+        # A range-point layer's y is its first end too (WP-31 B1).
         if dim == "x":
             return (_of(xv), False)
         return (_of(plot.get("yvar1", "") or yv), False)
@@ -20957,6 +20965,60 @@ class GlyphMapper:
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
         return [spine, bot_dot, top_dot]
 
+    def map_rpcap(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        y2var: str,
+        xvar: str,
+        options: dict[str, str],
+        view=None,
+        color_idx: int = 0,
+        y3var: str = "",
+    ) -> list:
+        """rpcap (WP-31 B1): map_rcap's spike and caps from *y1var* to
+        *y2var* at *xvar*, then the layer's marker at *y3var*.
+
+        twoway draws the spike, a cap ``marker.size`` wide at each end and
+        then the y3 points in the layer's marker style
+        (``yxview_rpcap_draw.ado``), so msize() sizes caps and marker
+        together; colorvar() colours all of them under one key.
+
+        Returns:
+            ``[spine, bottom_cap, top_cap, marker]``.
+        """
+        rs = self.map_rcap(fig, source, y1var, y2var, xvar, options,
+                           view=view, color_idx=color_idx)
+        pt = self.map_scatter(fig, source, y3var, xvar, options, view=view,
+                              color_idx=color_idx, colorvar_key=False)
+        return list(rs or []) + ([pt] if pt is not None else [])
+
+    def map_rpspike(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        y1var: str,
+        y2var: str,
+        xvar: str,
+        options: dict[str, str],
+        view=None,
+        color_idx: int = 0,
+        y3var: str = "",
+    ) -> list:
+        """rpspike (WP-31 B1): map_rspike's spike from *y1var* to *y2var*
+        at *xvar*, then the layer's marker at *y3var*
+        (``yxview_rpspike_draw.ado``).
+
+        Returns:
+            ``[spike, marker]``.
+        """
+        rs = self.map_rspike(fig, source, y1var, y2var, xvar, options,
+                             view=view, color_idx=color_idx)
+        pt = self.map_scatter(fig, source, y3var, xvar, options, view=view,
+                              color_idx=color_idx, colorvar_key=False)
+        return list(rs or []) + ([pt] if pt is not None else [])
+
     def map_scatteri(
         self,
         fig: Any,
@@ -29558,6 +29620,11 @@ _DASH_UNIVARIATE_TYPES = frozenset({"histogram", "kdensity"})
 # four.
 _DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter",
                             "pccapsym"})
+#: The range-point types (WP-31 B1): four variables y1 y2 y3 x, a range
+#: from y1 to y2 at x with a marker at y3 (twoway's y3xview), written with
+#: the keys yvar1, yvar2, yvar (y3) and xvar.  Drawn by the range branch
+#: of both build loops, the marker variable riding along.
+_DASH_RANGEPT_TYPES = frozenset({"rpcap", "rpspike"})
 
 #: Plot types that carry no variable names -- an inline coordinate list or
 #: an expression.  Both renderers branch on these by name BEFORE the
@@ -35562,13 +35629,13 @@ _DASH_X_COORDS = ("x", "x0", "x1", "x2", "left", "right")
 _DASH_HORIZONTAL_TYPES = (
     "area", "bar", "spike", "dropline", "dot", "histogram", "kdensity",
     "rarea", "rbar", "rspike", "rcap", "rcapsym", "rline", "rconnected",
-    "rscatter", "pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym",
-    "pci", "pcarrowi", "function", "tsrline")
+    "rscatter", "rpcap", "rpspike", "pcspike", "pcarrow", "pcbarrow",
+    "pcscatter", "pccapsym", "pci", "pcarrowi", "function", "tsrline")
 _DASH_VERTICAL_TYPES = (
     "area", "bar", "spike", "dropline", "dot", "histogram",
     "rarea", "rbar", "rspike", "rcap", "rcapsym", "rline", "rconnected",
-    "rscatter", "pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym",
-    "pci", "pcarrowi", "tsrline")
+    "rscatter", "rpcap", "rpspike", "pcspike", "pcarrow", "pcbarrow",
+    "pcscatter", "pccapsym", "pci", "pcarrowi", "tsrline")
 #: Types that keep their own type under recast() and carry the target
 #: (S45): a flag is refused only when both refuse it (E4).
 _DASH_DERIVED_ORIENT_TYPES = (
@@ -43997,6 +44064,13 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
         return [(_DASH_HIST_YTITLES[_dash_histogram_ymode(opts)], L(var))]
     if ptype in _DASH_RANGE_TYPES:
         return [(pair("yvar1", "yvar2"), L(plot.get("xvar")))]
+    if ptype in _DASH_RANGEPT_TYPES:
+        # WP-31 B1: twoway's y3xview_g.dimtitle -- L(y1), then L(y2) and
+        # L(y3) joined with "/" unless all three are the same.
+        l1, l2, l3 = (L(plot.get(k)) for k in ("yvar1", "yvar2", "yvar"))
+        if l1 != l2 or l1 != l3:
+            l1 = "/".join([l1] + [v for v in (l2, l3) if v])
+        return [(l1, L(plot.get("xvar")))]
     if ptype in _DASH_PC_TYPES:
         return [(pair("y1var", "y2var"), pair("x1var", "x2var"))]
     if ptype == "scatteri":
@@ -44198,6 +44272,9 @@ def _dash_hover_layer_vars(plot):
     ptype = str(plot.get("type", "") or "").lower()
     if ptype in _DASH_PC_TYPES:
         keys = ("x1var", "y1var", "x2var", "y2var")
+    elif ptype in _DASH_RANGEPT_TYPES:
+        # WP-31 B1: the range's ends, then its marker (y3).
+        keys = ("xvar", "yvar1", "yvar2", "yvar")
     else:
         keys = ("xvar", "yvar", "yvar1", "yvar2")
     out = []
@@ -46228,6 +46305,9 @@ def _dash_glyph_dispatch(mapper):
         "rcapsym":    mapper.map_rcapsym,
         "tsrline":    mapper.map_tsrline,
         "rscatter":   mapper.map_rscatter,
+        # WP-31 B1: the range-point types, a range with a marker at y3.
+        "rpcap":      mapper.map_rpcap,
+        "rpspike":    mapper.map_rpspike,
     }
     return dispatch, range_dispatch
 
@@ -46701,14 +46781,15 @@ def _dash_note_no_second_y(plot_type):
 
 def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
                     y2var="", view=None, color_idx=0, order=None,
-                    marker_view=None):
+                    marker_view=None, y3var=""):
     """Dispatch one plot layer to the GlyphMapper method that draws it.
 
     *order* is the layer's join key (``_dash_join_key``), one value per row
     of *source*; it reaches the mapper of a joining type only
     (``_DASH_JOIN_TYPES``).  tsline and tsrline join in time order and take
     none.  *marker_view* reaches connected alone: its markers' view
-    (map_connected; WP-30 P1.8a).
+    (map_connected; WP-30 P1.8a).  *y3var* reaches the range-point types
+    alone (``_DASH_RANGEPT_TYPES``): their marker variable (WP-31 B1).
     """
     _before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
     try:
@@ -46718,6 +46799,10 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
         # Guard: skip the glyph if a required variable is missing from the CDS.
         if pt not in _DASH_PC_TYPES and pt != "pci":
             _vars_needed = [v for v in [yvar, xvar, y2var] if v]
+            if pt in _DASH_RANGEPT_TYPES:
+                # The marker variable too: a layer without it draws
+                # nothing, with the note, as the other guards do.
+                _vars_needed.append(y3var)
             if _vars_needed and not mapper._check_vars(source, *_vars_needed):
                 return None
 
@@ -46726,6 +46811,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
                 if pt in _DASH_JOIN_TYPES and order is not None else {})
         if pt == "connected" and marker_view is not None:
             _jkw["marker_view"] = marker_view
+        if pt in _DASH_RANGEPT_TYPES:
+            _jkw["y3var"] = y3var
         rfn = range_dispatch.get(pt)
         if rfn is not None and not y2var:
             # A range type with no second y variable fell through to "no glyph
@@ -48371,6 +48458,15 @@ class DashRenderer:
                 px2var = plot.get("x2var", "")
                 self._add_pc_glyph(fig, source_for_plot, ptype, py1var, px1var, py2var, px2var, popts,
                                    view=_plot_view, color_idx=_pstyle_idx[pi])
+            elif ptype.lower() in _DASH_RANGEPT_TYPES:
+                # WP-31 B1: rpcap and rpspike, a range with its marker
+                # at yvar (y3); tested before _RANGE_TYPES, so yvar1 is
+                # never read by the plain range branch for them.
+                self._add_glyph(fig, source_for_plot, ptype,
+                                plot.get("yvar1", ""), pxvar, popts,
+                                y2var=plot.get("yvar2", ""), view=_plot_view,
+                                color_idx=_pstyle_idx[pi],
+                                y3var=plot.get("yvar", ""))
             elif ptype.lower() in _RANGE_TYPES:
                 py1var = plot.get("yvar1", "")
                 py2var = plot.get("yvar2", "")
@@ -48607,6 +48703,7 @@ class DashRenderer:
         color_idx: int = 0,
         order=None,
         marker_view=None,
+        y3var: str = "",
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -48623,10 +48720,11 @@ class DashRenderer:
             order:      The layer's join key (``_dash_join_key``), or None.
             marker_view: A connected layer's markers' view, or None
                         (``_dash_add_glyph``).
+            y3var:      A range-point layer's marker variable (WP-31 B1).
         """
         _dash_add_glyph(self.mapper, fig, source, plot_type, yvar, xvar,
                         options, y2var=y2var, view=view, color_idx=color_idx,
-                        order=order, marker_view=marker_view)
+                        order=order, marker_view=marker_view, y3var=y3var)
 
     def _add_pc_glyph(
         self,
@@ -51044,6 +51142,8 @@ class ServerAppBuilder:
                       # two modes came to disagree about which types exist.
                       "_DASH_RANGE_TYPES", "_DASH_UNIVARIATE_TYPES",
                       "_DASH_PC_TYPES", "_DASH_LITERAL_TYPES",
+                      # WP-31 B1: rpcap and rpspike.
+                      "_DASH_RANGEPT_TYPES",
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_HIST_YTITLES",
@@ -53657,15 +53757,20 @@ class ServerAppBuilder:
             "                        plot.get('y1var', ''), plot.get('x1var', ''),",
             "                        plot.get('y2var', ''), plot.get('x2var', ''),",
             "                        opts, color_idx=_sidx)",
-            "            elif ptype in _DASH_RANGE_TYPES:",
+            "            elif ptype in _DASH_RANGE_TYPES or ptype in _DASH_RANGEPT_TYPES:",
             "                y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
             "                y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
+            "                # WP-31 B1: a range-point layer's marker variable (y3)",
+            "                # rides along in its source.",
+            "                y3var = (plot.get('yvar', '') or ''",
+            "                         if ptype in _DASH_RANGEPT_TYPES else '')",
             "                if not y2var:",
             "                    # The saved page's words (_dash_add_glyph).",
             "                    _dash_note_no_second_y(ptype)",
             "                _ly_src, _ly_view, _ok = _dash_range_source(",
             "                    g_df, y1var, y2var, xvar, opts.get('mlabel', ''),",
-            "                    extra_cols=_hv + _dash_option_columns(opts, df.columns),",
+            "                    extra_cols=_hv + ([y3var] if y3var else [])",
+            "                    + _dash_option_columns(opts, df.columns),",
             "                    df=df, gname=gname, linked_names=_ln,",
             "                    shared_source=_shared, shared_pos=_shared_pos)",
             "                # A joining layer's join key, read by frame label.",
@@ -53678,7 +53783,7 @@ class ServerAppBuilder:
             "                    _dash_add_glyph(",
             "                        _m, fig, _ly_src, ptype, y1var, xvar,",
             "                        opts, y2var=y2var, view=_ly_view, color_idx=_sidx,",
-            "                        order=_jo)",
+            "                        order=_jo, y3var=y3var)",
             "            else:",
             "                _ly_src, _ly_view = _dash_layer_source(",
             "                    g_df, df, xvar, yvar, opts.get('mlabel', ''),",

@@ -4190,6 +4190,285 @@ if inlist("`only'", "", "S20") & `: list posof "S20" in w31_run' {
 }
 * ==== end S20 ====
 
+// S21 helpers (WP-31 B1).  _u21_draw: what both modes draw of a
+// registered one-graph spec, optionally after one filter move (the saved
+// page's own callback under node, test/js_runner.py; the served app's
+// widget callbacks) -- the spike, cap and marker renderers, the marker's
+// y and x fields, the spike's x0/y0/x1 fields, cap and marker sizes, the
+// rows each renderer holds, the y range and the y axis title -- into
+// globals u21_<key>s (saved) and u21_<key>v (served); and the spec's
+// first plot's type and variable keys into u21_spec.
+python:
+def _u21_draw(sp, dp, app, kind="", value=""):
+    import json
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    from bokeh.document import Document
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    if kind:
+        import js_runner
+        w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+        w.value = [v for v, lab in w.options if lab == value][0]
+        cb = r.filter_callbacks[r.filter_widgets.index(w)]
+        js_runner.JsSession(r.filter_callbacks).run(cb)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u21_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u21_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+        if kind:
+            ws = [m for m in doc.models if type(m).__name__ == kind]
+            w = ws[0]
+            w.value = [v for v, lab in w.options if lab == value][0]
+            for key in ("value", "value_throttled"):
+                for cb in list(w._callbacks.get(key, [])):
+                    cb("value", None, w.value)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+
+    def fld(v):
+        return v if isinstance(v, str) else (getattr(v, "field", None) or "")
+
+    for figs, sfx in ((list(r.figures.values()), "s"), (sv, "v")):
+        out = {"nseg": 0, "ncap": 0, "nmk": 0, "mky": "", "mkx": "",
+               "segx0": "", "segx1": "", "segy0": "", "capsz": [],
+               "mksz": "", "rows": [], "y0": "", "y1": "", "yt": ""}
+        f = figs[0]
+        out["y0"] = "%.12g" % float(f.y_range.start)
+        out["y1"] = "%.12g" % float(f.y_range.end)
+        out["yt"] = str(f.yaxis[0].axis_label or "")
+        for x in f.renderers:
+            g = getattr(x, "glyph", None)
+            if g is None or dr._dash_is_swatch(x):
+                continue
+            t = type(g).__name__
+            d = x.data_source.data
+            col = "weight" if "weight" in d else sorted(d)[0]
+            if t == "Segment":
+                out["nseg"] += 1
+                out["segx0"], out["segx1"] = fld(g.x0), fld(g.x1)
+                out["segy0"] = fld(g.y0)
+            elif t == "Scatter" and "dash_cap" in (x.tags or []):
+                out["ncap"] += 1
+                out["capsz"].append("%.12g" % float(g.size))
+            elif t == "Scatter":
+                out["nmk"] += 1
+                out["mky"], out["mkx"] = fld(g.y), fld(g.x)
+                out["mksz"] = "%.12g" % float(g.size)
+            else:
+                continue
+            out["rows"].append(str(len(d[col])))
+        for k, v in out.items():
+            if isinstance(v, list):
+                v = " ".join(v) or "none"
+            Macro.setGlobal("u21_%s%s" % (k, sfx), str(v) if v != "" else "none")
+    p = json.load(open(sp, encoding="utf-8"))["graphs"][0]["plots"][0]
+    Macro.setGlobal("u21_spec", " ".join(
+        "%s=%s" % (k, p.get(k, "")) for k in ("type", "yvar1", "yvar2",
+                                              "yvar", "xvar")))
+end
+
+capture program drop _u21_reg
+program define _u21_reg
+    // _u21_reg <dir> <k> <kind> <value> <dash command...>: register one
+    // graph, write its spec and data (with a dropdown filter on foreign
+    // when <kind> is not "-"), and read what both modes draw (_u21_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken kind 0 : 0
+    gettoken value 0 : 0
+    dash clear
+    capture quietly dash `0'
+    if _rc {
+        // Refused: nothing drawn, every count 0 and every size unequal.
+        local rc = _rc
+        foreach m in s v {
+            foreach g in nseg ncap nmk {
+                global u21_`g'`m' 0
+            }
+            foreach g in mky mkx segx0 segx1 segy0 rows yt {
+                global u21_`g'`m' "none"
+            }
+            global u21_capsz`m' -2
+            global u21_mksz`m' -1
+            global u21_y0`m' -1
+            global u21_y1`m' -1
+        }
+        global u21_spec "rc `rc'"
+        exit
+    }
+    if "`kind'" == "-" {
+        _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+        python: import __main__ as _u21_m; _u21_m._u21_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+    }
+    else {
+        _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json") filter(foreign, type(dropdown))
+        python: import __main__ as _u21_m; _u21_m._u21_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`kind'", "`value'")
+    }
+end
+
+* ==== S21 B1: rpcap and rpspike ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S21") & `: list posof "S21" in w31_run' {
+    display as text "S21 start " c(current_date) " " c(current_time)
+    local u21d "`w31_work'/s21"
+    capture mkdir "`u21d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    generate lo = turn - 5
+    generate hi = turn + 5
+
+    // ------------------------------------------------------------
+    // U21-1: dash rpcap lo hi turn weight registers the four roles
+    // twoway reads (y3xview: yvar, y2var, y3var, xvar) and draws, in
+    // both modes, one spike, two caps and one marker at turn, the caps
+    // as wide as the marker.
+    // ------------------------------------------------------------
+    quietly twoway rpcap lo hi turn weight, name(u21t, replace)
+    local r1 "`.u21t.plotregion1.plot1.serset.sers[`.u21t.plotregion1.plot1.yvar'].name'"
+    local r2 "`.u21t.plotregion1.plot1.serset.sers[`.u21t.plotregion1.plot1.y2var'].name'"
+    local r3 "`.u21t.plotregion1.plot1.serset.sers[`.u21t.plotregion1.plot1.y3var'].name'"
+    graph drop u21t
+    _u21_reg "`u21d'" 1 - - rpcap lo hi turn weight, name(zu211)
+    _w31_expect U21-1 `"("${u21_spec}" == "type=rpcap yvar1=`r1' yvar2=`r2' yvar=`r3' xvar=weight")"' "spec ${u21_spec}; twoway's roles `r1' `r2' `r3'"
+    foreach m in s v {
+        _w31_expect U21-1 `"(${u21_nseg`m'} == 1 & ${u21_ncap`m'} == 2 & ${u21_nmk`m'} == 1)"' "`m': ${u21_nseg`m'} spikes, ${u21_ncap`m'} caps, ${u21_nmk`m'} markers"
+        _w31_expect U21-1 `"("${u21_mky`m'}" == "turn")"' "`m': marker y ${u21_mky`m'}"
+        _u03_all ${u21_mksz`m'} ${u21_capsz`m'}
+        _w31_expect U21-1 "(r(ok))" "`m': caps ${u21_capsz`m'}, marker ${u21_mksz`m'}"
+    }
+    _w31_done U21-1 "rpcap: one spike, two caps as wide as the marker (${u21_mkszs} px) and a marker at turn, both modes"
+
+    // ------------------------------------------------------------
+    // U21-2: rpspike: one spike and one marker, no cap.
+    // ------------------------------------------------------------
+    _u21_reg "`u21d'" 2 - - rpspike lo hi turn weight, name(zu212)
+    foreach m in s v {
+        _w31_expect U21-2 `"(${u21_nseg`m'} == 1 & ${u21_ncap`m'} == 0 & ${u21_nmk`m'} == 1 & "${u21_mky`m'}" == "turn")"' "`m': ${u21_nseg`m'} spikes, ${u21_ncap`m'} caps, ${u21_nmk`m'} markers at ${u21_mky`m'}"
+    }
+    _w31_done U21-2 "rpspike: one spike and one marker at turn, no cap, both modes"
+
+    // ------------------------------------------------------------
+    // U21-3: the y axis spans the three variables (y3xview_g.ranges):
+    // the range of rcap lo hi with scatter turn on the same x, both
+    // modes, and twoway's ranges agree.
+    // ------------------------------------------------------------
+    quietly twoway rpcap lo hi turn weight, name(u21t, replace)
+    local ta = "`.u21t.yaxis1.major.min' `.u21t.yaxis1.major.max'"
+    quietly twoway (rcap lo hi weight) (scatter turn weight), name(u21t, replace)
+    local tb = "`.u21t.yaxis1.major.min' `.u21t.yaxis1.major.max'"
+    graph drop u21t
+    _w31_expect U21-3 `"("`ta'" == "`tb'")"' "twoway rpcap y major `ta', rcap and scatter `tb'"
+    _u21_reg "`u21d'" 3 - - rpcap lo hi turn weight, name(zu213)
+    local a "${u21_y0s} ${u21_y1s} ${u21_y0v} ${u21_y1v}"
+    _u21_reg "`u21d'" 4 - - (rcap lo hi weight) (scatter turn weight), name(zu214)
+    local b "${u21_y0s} ${u21_y1s} ${u21_y0v} ${u21_y1v}"
+    _w31_expect U21-3 `"("`a'" == "`b'")"' "rpcap y range `a'; rcap and scatter `b'"
+    _w31_done U21-3 "the y range spans lo, hi and turn as twoway's does: `a'"
+
+    // ------------------------------------------------------------
+    // U21-4: msize(large) sizes caps and marker together, larger than
+    // the default (twoway: marker.size.gmval grows the same way).
+    // ------------------------------------------------------------
+    quietly twoway rpcap lo hi turn weight, name(u21t, replace)
+    local g0 = `.u21t.plotregion1.plot1.style.marker.size.gmval'
+    quietly twoway rpcap lo hi turn weight, msize(large) name(u21t, replace)
+    local g1 = `.u21t.plotregion1.plot1.style.marker.size.gmval'
+    graph drop u21t
+    _w31_expect U21-4 "(`g1' > `g0')" "twoway marker size `g0' -> `g1'"
+    _u21_reg "`u21d'" 5 - - rpcap lo hi turn weight, name(zu215)
+    local d0 "${u21_mkszs}"
+    _u21_reg "`u21d'" 6 - - rpcap lo hi turn weight, msize(large) name(zu216)
+    foreach m in s v {
+        _u03_all ${u21_mksz`m'} ${u21_capsz`m'}
+        _w31_expect U21-4 "(r(ok) & ${u21_mksz`m'} > `d0')" "`m': msize(large) caps ${u21_capsz`m'}, marker ${u21_mksz`m'}, default `d0'"
+    }
+    _w31_done U21-4 "msize(large): caps and marker ${u21_mkszs} px, larger than the default `d0'"
+
+    // ------------------------------------------------------------
+    // U21-5: horizontal: twoway drops to y; the spike runs lo to hi
+    // along x at weight, the marker at x = turn.
+    // ------------------------------------------------------------
+    quietly twoway rpcap lo hi turn weight, horizontal name(u21t, replace)
+    local dt "`.u21t.plotregion1.plot1.bar_drop_to.stylename'"
+    graph drop u21t
+    _w31_expect U21-5 `"("`dt'" == "y")"' "twoway bar_drop_to `dt'"
+    _u21_reg "`u21d'" 7 - - rpcap lo hi turn weight, horizontal name(zu217)
+    foreach m in s v {
+        _w31_expect U21-5 `"("${u21_segx0`m'} ${u21_segx1`m'} ${u21_segy0`m'} ${u21_mkx`m'}" == "lo hi weight turn")"' "`m': spike x0 ${u21_segx0`m'} x1 ${u21_segx1`m'} y0 ${u21_segy0`m'}; marker x ${u21_mkx`m'}"
+    }
+    _w31_done U21-5 "horizontal: the spike lo..hi along x at weight, the marker at turn, both modes"
+
+    // ------------------------------------------------------------
+    // U21-6: the y title is L(y1)/L(y2)/L(y3) when the labels differ
+    // and the one label when they are equal (y3xview_g.dimtitle).
+    // ------------------------------------------------------------
+    label variable lo "Low"
+    label variable hi "High"
+    label variable turn "Turn"
+    quietly twoway rpcap lo hi turn weight, name(u21t, replace)
+    local t1 `"`.u21t.yaxis1.title.text[1]'"'
+    _u21_reg "`u21d'" 8 - - rpcap lo hi turn weight, name(zu218)
+    _w31_expect U21-6 `"("${u21_yts}" == "`t1'" & "${u21_ytv}" == "`t1'")"' "labels differ: twoway `t1', dash ${u21_yts} / ${u21_ytv}"
+    label variable lo "Turn"
+    label variable hi "Turn"
+    quietly twoway rpcap lo hi turn weight, name(u21t, replace)
+    local t2 `"`.u21t.yaxis1.title.text[1]'"'
+    graph drop u21t
+    _u21_reg "`u21d'" 9 - - rpcap lo hi turn weight, name(zu219)
+    _w31_expect U21-6 `"("${u21_yts}" == "`t2'" & "${u21_ytv}" == "`t2'")"' "labels equal: twoway `t2', dash ${u21_yts} / ${u21_ytv}"
+    _w31_done U21-6 "y title `t1' when the labels differ, `t2' when equal, as twoway writes it"
+    label variable lo ""
+    label variable hi ""
+    label variable turn "Turn Circle (ft.)"
+
+    // ------------------------------------------------------------
+    // U21-7: a dropdown move to Foreign keeps the foreign cars' rows in
+    // every renderer of the layer, both modes.
+    // ------------------------------------------------------------
+    quietly count if foreign == 1
+    local nk = r(N)
+    foreach t in rpcap rpspike {
+        _u21_reg "`u21d'" 10 Select Foreign `t' lo hi turn weight, name(zu2110)
+        foreach m in s v {
+            local ok = ("${u21_rows`m'}" != "none")
+            foreach n in ${u21_rows`m'} {
+                if "`n'" != "`nk'" local ok 0
+            }
+            _w31_expect U21-7 "(`ok')" "`t' `m': rows after the move ${u21_rows`m'}, foreign cars `nk'"
+        }
+    }
+    _w31_done U21-7 "after the move to Foreign every renderer of rpcap and rpspike holds the `nk' kept rows, both modes"
+
+    forvalues k = 1/10 {
+        foreach p in s d {
+            capture erase "`u21d'/`p'`k'.json"
+        }
+        capture erase "`u21d'/a`k'.py"
+    }
+    capture rmdir "`u21d'"
+    macro drop u21_*
+    capture graph drop _all
+    dash clear
+    display as text "S21 end " c(current_date) " " c(current_time)
+}
+* ==== end S21 ====
+
 // S22 helpers (WP-31 F1e).  _u22_move_roles: the saved page's lpolyci
 // line and band after one filter move -- the page rendered, the widget
 // set and its own callback run under node (test/js_runner.py) -- written

@@ -129,8 +129,18 @@ class TestTheTypeSets:
         acc = _truth()["accept"]
         h = {t for t, v in acc.items() if v["h"]["rc"] == 0}
         v = {t for t, r in acc.items() if r["v"]["rc"] == 0}
-        assert set(dr._DASH_HORIZONTAL_TYPES) == h and len(h) == 24
-        assert set(dr._DASH_VERTICAL_TYPES) == v and len(v) == 22
+        # WP-31 B1: rpcap and rpspike take both, measured in
+        # test/fixtures/rangept_truth.json (probes horizontal.*, vertical.*).
+        with open(os.path.join(_HERE, "fixtures", "rangept_truth.json"),
+                  encoding="utf-8") as fh:
+            rp = json.load(fh)["probes"]
+        h |= {t for t in ("rpcap", "rpspike")
+              if rp["horizontal." + t]["rc"] == 0}
+        v |= {t for t in ("rpcap", "rpspike")
+              if rp["vertical." + t]["rc"] == 0}
+        # 24 -> 26 and 22 -> 24: WP-31 B1 rpcap and rpspike drawn.
+        assert set(dr._DASH_HORIZONTAL_TYPES) == h and len(h) == 26
+        assert set(dr._DASH_VERTICAL_TYPES) == v and len(v) == 24
         with open(_ADO, encoding="utf-8") as fh:
             ado = fh.read()
         for name, want in (("_hz_htypes", h), ("_hz_vtypes", v),
@@ -319,6 +329,10 @@ def _tplot(t, opts=None, y="Yvar", x="Xvar"):
     if t == "tsrline":
         return {"type": t, "yvar1": "Lovar", "yvar2": "Hivar",
                 "xvar": "Tvar", "options": o}
+    if t in dr._DASH_RANGEPT_TYPES:
+        # WP-31 B1: the range and its marker at y3.
+        return {"type": t, "yvar1": "Lovar", "yvar2": "Hivar", "yvar": y,
+                "xvar": x, "options": o}
     if t in ("pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter"):
         return {"type": t, "y1var": "Lovar", "x1var": x, "y2var": "Hivar",
                 "x2var": x, "options": o}
@@ -483,6 +497,7 @@ class TestUprightIsUntouched:
         monkeypatch.setattr(dr, "_dash_transpose_layer", _boom,
                             raising=False)
         patched = page({})
-        assert len(types) == 40
+        # 40 -> 42: WP-31 B1 rpcap and rpspike drawn.
+        assert len(types) == 42
         assert plain == patched
         assert plain == vert

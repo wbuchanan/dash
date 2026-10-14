@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "8dde8eec306efb3e2ce4fe3c8238738b9514aafc",
-  "extracted": "14 Oct 2026 13:26:54",
+  "dash_commit": "d887f0d02f0945deb0cae9d85dc1cfcb3acd2d63",
+  "extracted": "14 Oct 2026 16:24:40",
   "source": "scripts/extract_applicability_truth.do",
   "stata_version": "19.5"
  },
@@ -185,6 +185,16 @@
   },
   "bands@rline": {
    "cmd": "twoway rline yl yh weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, bands(5) nodraw",
    "message": "option bands() not allowed",
    "rc": 198
   },
@@ -388,6 +398,16 @@
    "message": "option barwidth() not allowed",
    "rc": 198
   },
+  "barwidth@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
   "barwidth@rscatter": {
    "cmd": "twoway rscatter yl yh weight, barwidth(.5) nodraw",
    "message": "option barwidth() not allowed",
@@ -585,6 +605,16 @@
   },
   "base@rline": {
    "cmd": "twoway rline yl yh weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, base(0) nodraw",
    "message": "option base() not allowed",
    "rc": 198
   },
@@ -788,6 +818,16 @@
    "message": "option bin() not allowed",
    "rc": 198
   },
+  "bin@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
   "bin@rscatter": {
    "cmd": "twoway rscatter yl yh weight, bin(5) nodraw",
    "message": "option bin() not allowed",
@@ -985,6 +1025,16 @@
   },
   "bwidth@rline": {
    "cmd": "twoway rline yl yh weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, bwidth(.5) nodraw",
    "message": "option bwidth() not allowed",
    "rc": 198
   },
@@ -1188,6 +1238,16 @@
    "message": "option degree() not allowed",
    "rc": 198
   },
+  "degree@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
   "degree@rscatter": {
    "cmd": "twoway rscatter yl yh weight, degree(1) nodraw",
    "message": "option degree() not allowed",
@@ -1385,6 +1445,16 @@
   },
   "dotextend@rline": {
    "cmd": "twoway rline yl yh weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, dotextend(no) nodraw",
    "message": "option dotextend() not allowed",
    "rc": 198
   },
@@ -1588,6 +1658,16 @@
    "message": "option kernel() not allowed",
    "rc": 198
   },
+  "kernel@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
   "kernel@rscatter": {
    "cmd": "twoway rscatter yl yh weight, kernel(gaussian) nodraw",
    "message": "option kernel() not allowed",
@@ -1785,6 +1865,16 @@
   },
   "level@rline": {
    "cmd": "twoway rline yl yh weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, level(90) nodraw",
+   "message": "option level() not allowed",
+   "rc": 198
+  },
+  "level@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, level(90) nodraw",
    "message": "option level() not allowed",
    "rc": 198
   },
@@ -1988,6 +2078,16 @@
    "message": "option n() not allowed",
    "rc": 198
   },
+  "n@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
   "n@rscatter": {
    "cmd": "twoway rscatter yl yh weight, n(50) nodraw",
    "message": "option n() not allowed",
@@ -2185,6 +2285,16 @@
   },
   "ndots@rline": {
    "cmd": "twoway rline yl yh weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, ndots(10) nodraw",
    "message": "option ndots() not allowed",
    "rc": 198
   },
@@ -2388,6 +2498,16 @@
    "message": "option range() not allowed",
    "rc": 198
   },
+  "range@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
   "range@rscatter": {
    "cmd": "twoway rscatter yl yh weight, range(1 10) nodraw",
    "message": "option range() not allowed",
@@ -2585,6 +2705,16 @@
   },
   "start@rline": {
    "cmd": "twoway rline yl yh weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, start(0) nodraw",
    "message": "option start() not allowed",
    "rc": 198
   },
@@ -2788,6 +2918,16 @@
    "message": "option width() not allowed",
    "rc": 198
   },
+  "width@rpcap": {
+   "cmd": "twoway rpcap yl yh mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@rpspike": {
+   "cmd": "twoway rpspike yl yh mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
   "width@rscatter": {
    "cmd": "twoway rscatter yl yh weight, width(1) nodraw",
    "message": "option width() not allowed",
@@ -2843,6 +2983,8 @@
   "rconnected",
   "rcapsym",
   "rscatter",
+  "rpcap",
+  "rpspike",
   "pcspike",
   "pccapsym",
   "pcarrow",

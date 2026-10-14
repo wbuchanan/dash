@@ -115,6 +115,9 @@ def type_arity(full, families):
         return 1
     if full in families.get("_pt_pc", ()):
         return 4
+    # WP-31 B1: rpcap and rpspike, y1 y2 y3 x.
+    if full in families.get("_pt_rangept", ()):
+        return 4
     if full == "tsrline":
         return 2
     if full in families.get("_pt_range", ()):
@@ -149,7 +152,7 @@ def build_cases(table=None, families=None):
 
 
 def variable_taking_types(table=None, families=None):
-    """The 36 plot types tested here, in table order."""
+    """The 38 plot types tested here, in table order."""
     if table is None:
         table = read_plottype_table()
     if families is None:

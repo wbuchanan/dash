@@ -158,8 +158,8 @@ class TestNoPlotTypeTestIsAStringInlist:
 class TestTheFamiliesAreNamedOnce:
     def test_every_family_is_defined(self):
         fams = _families()
-        for name in ("_pt_univar", "_pt_range", "_pt_pc", "_pt_literal",
-                     "_pt_ts"):
+        for name in ("_pt_univar", "_pt_range", "_pt_pc", "_pt_rangept",
+                     "_pt_literal", "_pt_ts"):
             assert name in fams, f"{name} is not defined"
 
     def test_no_family_is_redefined_elsewhere(self):
@@ -177,6 +177,8 @@ class TestTheFamiliesAreNamedOnce:
         fams = _families()
         assert set(fams["_pt_range"]) == set(dr._DASH_RANGE_TYPES)
         assert set(fams["_pt_pc"]) == set(dr._DASH_PC_TYPES)
+        # WP-31 B1: rpcap and rpspike, routed by a family of their own.
+        assert set(fams["_pt_rangept"]) == set(dr._DASH_RANGEPT_TYPES)
         assert set(fams["_pt_literal"]) == set(dr._DASH_LITERAL_TYPES)
         # Exactly: the renderer's univariate set carried the alias "hist"
         # too, which dash.ado never writes (the Mata table expands it
@@ -192,7 +194,8 @@ class TestTheFamiliesAreNamedOnce:
     def test_the_routing_families_do_not_overlap(self):
         """A type in two routing families would be parsed by the first."""
         fams = _families()
-        order = ("_pt_univar", "_pt_range", "_pt_pc", "_pt_literal")
+        order = ("_pt_univar", "_pt_range", "_pt_pc", "_pt_rangept",
+                 "_pt_literal")
         seen = {}
         for name in order:
             for t in fams[name]:

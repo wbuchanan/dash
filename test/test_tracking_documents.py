@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "B1": "rpcap and rpspike are refused by name",
     "B2": "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list",
     "B3": "matamatrix() is read as a varlist and refused r(101) or r(111)",
     "B4a": "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)",

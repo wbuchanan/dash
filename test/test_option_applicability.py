@@ -100,9 +100,11 @@ class TestTheFixture:
 
     def test_every_pair_was_measured(self):
         assert tuple(TRUTH["options"]) == OPTIONS
-        assert len(TRUTH["types"]) == 40
+        # 40 -> 42: WP-31 B1 rpcap and rpspike drawn.
+        assert len(TRUTH["types"]) == 42
         # 480 -> 560: B5b ndots() and dotextend() on the forty types
-        assert len(PAIRS) == 560
+        # 560 -> 588: WP-31 B1 the fourteen options on rpcap and rpspike
+        assert len(PAIRS) == 588
         for key, rec in PAIRS.items():
             assert rec["rc"] in (0, 198) or rec["message"], key
 

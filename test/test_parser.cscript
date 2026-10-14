@@ -463,6 +463,7 @@ local fam_var   "histogram kdensity"
 local fam_yvar1 "rarea rbar rspike rcap rline rconnected rcapsym rscatter"
 local fam_y1var "pcspike pcarrow pcbarrow pcscatter pccapsym"
 local fam_yvar  "scatter line connected area bar spike lfit qfit lfitci qfitci lowess lpoly lpolyci fpfit fpfitci dot dropline mspline mband"
+local fam_rpt   "rpcap rpspike"
 local n56 = 0
 // tsline and tsrline, of the standard and the range family, draw against
 // the time variable tsset set and take no x of their own, as twoway does
@@ -502,6 +503,13 @@ foreach t of local fam_yvar {
     assert strpos(`"`_js56'"', `""type":"`t'","yvar":"mpg","xvar":"weight""') > 0
     local ++n56
 }
+// WP-31 B1: rpcap and rpspike, y1 y2 y3 x.
+foreach t of local fam_rpt {
+    _dash_process_segment "`t' lo hi mpg weight" _pt56 _js56
+    assert "`_pt56'" == "`t'"
+    assert strpos(`"`_js56'"', `""type":"`t'","yvar1":"lo","yvar2":"hi","yvar":"mpg","xvar":"weight""') > 0
+    local ++n56
+}
 _dash_process_segment "scatteri 20 3000" _pt56 _js56
 assert strpos(`"`_js56'"', `""type":"scatteri","values":[[20,3000]]"') > 0
 // pci is written one record per segment, as pcarrowi is (P1A-63): it was
@@ -513,11 +521,13 @@ assert strpos(`"`_js56'"', `""type":"pcarrowi","values":[[20,3000,30,4000]]"') >
 _dash_process_segment "function y=x" _pt56 _js56
 assert strpos(`"`_js56'"', `""type":"function","expr":"x""') > 0
 local n56 = `n56' + 4
-assert `n56' == 40
+// 40 -> 42: WP-31 B1 rpcap and rpspike drawn
+assert `n56' == 42
 _dash_plottype_families
 assert "`_pt_univar'"  == "histogram kdensity"
 assert "`_pt_range'"   == "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
 assert "`_pt_pc'"      == "pcspike pcarrow pcbarrow pcscatter pccapsym"
+assert "`_pt_rangept'" == "rpcap rpspike"
 assert "`_pt_literal'" == "scatteri pci pcarrowi function"
 local _pt_range "`_pt_range' zz10 zz11"
 foreach ptype in rarea tsrline zz10 zz11 {
@@ -527,7 +537,7 @@ local ptype "zz12"
 assert !`: list ptype in _pt_range'
 capture noisily display inlist("zz10", "rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym", "rscatter", "tsrline", "zz10")
 assert _rc == 130
-display "P1A-56 PASS: all 40 plot types are routed by family lists, and a tenth range member is found where inlist() would be r(130)"
+display "P1A-56 PASS: all 42 plot types are routed by family lists, and a tenth range member is found where inlist() would be r(130)"
 
 // ================================================================
 // P1A-57 -- the Mata table: the full names only, as twoway takes them
@@ -551,11 +561,12 @@ display "P1A-57 PASS: pccapsym and pcarrowi expand by their full names only, as 
 mata:
 bs = char(92)
 q  = char(34)
-// _dash_undrawn_plottype: the four names, any case, and nothing else.
+// _dash_undrawn_plottype: the names, any case, and nothing else.
+// Flipped (WP-31 B1): rpcap and rpspike are drawn, so no longer named.
 assert(_dash_undrawn_plottype("contour") == "contour")
 assert(_dash_undrawn_plottype(" CONTOURLINE ") == "contourline")
-assert(_dash_undrawn_plottype("RPCAP") == "rpcap")
-assert(_dash_undrawn_plottype("rpspike") == "rpspike")
+assert(_dash_undrawn_plottype("RPCAP") == "")
+assert(_dash_undrawn_plottype("rpspike") == "")
 assert(_dash_undrawn_plottype("contourl") == "")
 assert(_dash_undrawn_plottype("rpca") == "")
 assert(_dash_undrawn_plottype("scatter") == "")
@@ -598,22 +609,23 @@ end
 display "P1A-58 PASS: the Mata helpers read, escape and number immediate values as twoway does"
 
 // ================================================================
-// P1A-59 -- rpcap and rpspike: twoway plot types in StataNow 19.5 that
-// dash does not draw, refused by name with what to use instead
+// P1A-59 -- rpcap and rpspike: twoway plot types in StataNow 19.5,
+// drawn since WP-31 B1
 // ================================================================
 // Measured 23sep2026: twoway rpcap / rpspike y ylow yhigh x run (rc 0)
 // and take no abbreviation -- rpc .. rpca and rpsp .. rpspik are not
-// twoway plot types -- and dash answered each as an unrecognised plot
-// type (BR-22.1).
+// twoway plot types.  Flipped (WP-31 B1): dash refused both by name,
+// r(198) "a twoway plot type dash does not draw"; the refusal was dash's
+// gap, twoway draws them, and so does dash now.
 sysuse auto, clear
 dash clear
 foreach p159 in rpcap rpspike {
-    local p159r = cond("`p159'" == "rpcap", "rcap", "rspike")
     _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59b)"
-    assert r(rc) == 198
-    local lg59b "`r(log)'"
-    cert_file_has "`lg59b'", needle("dash: '`p159'' is a twoway plot type dash does not draw: it marks a point on a range. Use Stata's own twoway `p159', or draw the two together: dash (`p159r' ylow yhigh x) (scatter y x).")
-    assert r(found) == 1
+    assert r(rc) == 0
+    _dash_process_segment "`p159' mpg turn length weight" _pt59 _js59
+    assert "`_pt59'" == "`p159'"
+    assert strpos(`"`_js59'"', `""type":"`p159'","yvar1":"mpg","yvar2":"turn","yvar":"length","xvar":"weight""') > 0
+    dash clear
 }
 foreach p159 in rpca rpspik {
     _p1a_logrun "dash `p159' mpg turn length weight, name(p1a59c)"
@@ -624,7 +636,49 @@ foreach p159 in rpca rpspik {
     assert r(found) == 1
 }
 assert "${dash_graph_registry}" == ""
-display "P1A-59 PASS: rpcap and rpspike are refused, r(198), as twoway plot types dash does not draw; their prefixes stay unrecognised"
+display "P1A-59 PASS: rpcap and rpspike register their four variables, as twoway reads them; their prefixes stay unrecognised"
+
+// ================================================================
+// U21-8 -- WP-31 B1: rpcap and rpspike take four variables, and any
+// other count is refused in twoway's words and code, measured here
+// beside dash's (twoway_y3xview_parse): one "too few variables
+// specified", two, three or five "you must specify four variables with
+// twoway rpcap", r(102) below four and r(103) above.  recast() on them
+// finds rpcap or rpspike, else draws rpspike, as twoway does
+// (test/fixtures/rangept_truth.json recast.*).
+// ================================================================
+sysuse auto, clear
+quietly generate double lo = turn - 5
+quietly generate double hi = turn + 5
+foreach t in rpcap rpspike {
+    foreach v in "turn" "turn weight" "lo hi weight" "lo hi turn weight price" {
+        quietly log using "`c(tmpdir)'u218t.log", text replace name(u218t)
+        capture noisily twoway `t' `v', nodraw
+        local trc = _rc
+        quietly log close u218t
+        dash clear
+        _p1a_logrun "dash `t' `v', name(u218)"
+        local drc = r(rc)
+        local lg218 "`r(log)'"
+        assert `drc' == `trc' & inlist(`trc', 102, 103)
+        local w218 = cond(`: word count `v'' == 1, "too few variables specified", "you must specify four variables with twoway `t'")
+        cert_file_has "`c(tmpdir)'u218t.log", needle("`w218'")
+        assert r(found) == 1
+        cert_file_has "`lg218'", needle("`w218'")
+        assert r(found) == 1
+    }
+    dash clear
+    _dash_process_segment "`t' lo hi turn weight, recast(rspike)" _pt218 _js218
+    // rpcap is drawn as rpspike; rpspike stays itself.
+    local rf218 = cond("`t'" == "rpcap", `","recast_from":"rpcap""', "")
+    assert strpos(`"`_js218'"', `""type":"rpspike"`rf218',"yvar1":"lo""') > 0
+    _dash_process_segment "`t' lo hi turn weight, recast(rpcap)" _pt218 _js218
+    assert strpos(`"`_js218'"', `""type":"rpcap""') > 0
+}
+capture erase "`c(tmpdir)'u218t.log"
+drop lo hi
+assert "${dash_graph_registry}" == ""
+display "U21-8 PASS: rpcap and rpspike refuse 1, 2, 3 and 5 variables in twoway's words and codes; recast() finds rpcap and rpspike, else rpspike"
 
 // ================================================================
 // P1A-60..67 -- scatteri and pci read their immediate values as twoway
@@ -1536,7 +1590,8 @@ display "P1A-76: `p76rows' rows read, `p76np' distinct prefixes, `p76two' reachi
 // it held when this was written.
 assert `p76rows' >= 40
 assert "`p76first'" == "scatter,sc"
-assert "`p76last'" == "pcarrowi,pcarrowi"
+// WP-31 B1: rpspike is the last row since rpcap and rpspike are drawn.
+assert "`p76last'" == "rpspike,rpspike"
 assert `p76np' >= 186
 if `"$P76_BAD"' != "" {
     display as error "P1A-76 FAIL:$P76_BAD"

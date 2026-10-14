@@ -226,6 +226,9 @@ def _expected(ptype, textcol, df=_DF):
             pts = [(r["weight"], r["mpg"]), (r["weight"], r["price"])]
         elif ptype in _FIRST_POINT:
             pts = [(r["weight"], r["mpg"])]
+        elif ptype in _AT_Y3:
+            # plot_for's y3 is foreign.
+            pts = [(r["weight"], r["foreign"])]
         else:
             pts = []
         for x, y in pts:
@@ -252,6 +255,10 @@ _BOTH_ENDS = ("rcapsym", "rconnected", "rscatter")
 #: placed at the tail of the arrow" (twoway_pcarrow.sthlp); measured ten
 #: labels, all at the first point, on all four.
 _FIRST_POINT = ("pcscatter", "pccapsym", "pcarrow", "pcbarrow")
+#: Labels at the y3 marker (WP-31 B1): rpcap and rpspike draw their y3
+#: points with _draw_points, labels and all -- measured 74 labels on
+#: auto's 74 cars (test/fixtures/rangept_truth.json probes mlabel.rpcap).
+_AT_Y3 = ("rpcap", "rpspike")
 #: twoway accepts mlabel() and draws no label, without a note.
 _NO_LABEL = ("line", "spike", "area", "lfit", "qfit", "lowess", "lpoly",
              "fpfit", "lfitci", "qfitci", "lpolyci", "fpfitci", "rarea",
@@ -274,7 +281,7 @@ _MARKER_TYPES = ("scatter", "connected", "dot", "dropline", "rscatter",
 def test_the_partition_covers_every_plot_type_once():
     """A plot type added to dash must be measured and placed here."""
     groups = (_AT_POINT, _BOTH_ENDS, _FIRST_POINT, _NO_LABEL, _REFUSED,
-              _IMMEDIATE)
+              _IMMEDIATE, _AT_Y3)
     flat = [t for g in groups for t in g]
     assert len(flat) == len(set(flat)), "a type is in two groups"
     assert set(flat) == set(dr._dash_plot_type_names())
@@ -421,7 +428,7 @@ def test_labels_are_drawn_where_twoway_draws_them():
     """Every labelling type, one sweep: each label at the point twoway puts
     it, once, in both modes."""
     bad = []
-    for ptype in _AT_POINT + _BOTH_ENDS + _FIRST_POINT:
+    for ptype in _AT_POINT + _BOTH_ENDS + _FIRST_POINT + _AT_Y3:
         std, srv, std_w, srv_w = _both([plot_for(ptype, {"mlabel": "make"})])
         want = _expected(ptype, "make")
         if std_w != srv_w:
@@ -754,7 +761,8 @@ def _texts_of(fig):
     return [d[2] for d in _drawn_labels(fig)]
 
 
-@pytest.mark.parametrize("ptype", _AT_POINT + _BOTH_ENDS + _FIRST_POINT)
+@pytest.mark.parametrize("ptype", _AT_POINT + _BOTH_ENDS + _FIRST_POINT
+                         + _AT_Y3)
 def test_a_value_labelled_variable_draws_its_labels(ptype):
     std, srv, std_w, srv_w = _both([plot_for(ptype, {"mlabel": "foreign"})])
     assert std_w == srv_w

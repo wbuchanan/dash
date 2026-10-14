@@ -11,7 +11,7 @@ Scope: current working tree, especially `dash.ado`, `dash_parse.mata`, `dash_ren
 
 - The current parser and renderer implement **40 canonical `twoway` plot types** in eight families.
 - The documented `twoway` universe in this project contains **45 types**, so type-level coverage is **40/45, or about 89%**.
-- Four plot types are recognized and explicitly refused: `contour`, `contourline`, `rpcap`, and `rpspike`.
+- Four plot types are recognized and explicitly refused: `contour`, `contourline`, `rpcap`, and `rpspike`. [WP-31 B1: corrected -- `rpcap` and `rpspike` drawn; 42 plot types]
 - Stata's specialty `sunflower` surface is also absent from the parser and renderer. It is not one of the four types that the project's help file describes as explicitly refused, so it should be treated as an additional unrecognized surface if it is in the intended compatibility scope.
 - The command accepts the familiar layered `twoway` syntax, `||`, multiple y variables, `if`/`in`, plot abbreviations, graph-level options, per-layer options, `by()` facets, weights on supported statistical layers, immediate-coordinate plots, and no-data `function` plots.
 - The live parser currently declares **176 option names**. Tests track **48 known accepted-but-not-generally-honored names**, although some of those are conditionally honored on particular graph types and some are not genuine `twoway` options in the position where `dash` accepts them. The test that pins the older total at 171 is stale relative to the current parser.
@@ -21,7 +21,7 @@ The strongest coverage is in ordinary observational graphics, direct styling, ti
 
 The largest remaining parity gaps are:
 
-1. Surface/grid graphics (`contour`, `contourline`) and range-point graphics (`rpcap`, `rpspike`).
+1. Surface/grid graphics (`contour`, `contourline`) and range-point graphics (`rpcap`, `rpspike`). [WP-31 B1: corrected -- `rpcap` and `rpspike` drawn]
 2. Horizontal orientation for bars, spikes, droplines, and range bars. [WP-30 P1.9b, commit a5e3757: corrected -- horizontal drawn on every type twoway turns (P1.9a, commit 7229a0c) and kept through moves]
 3. Stata's default dataset-order line connection: `dash` always connects relevant plots in x order. [WP-29 P0.1, commit b0d170d: corrected -- line, connected, area, rline, rarea and rconnected join in the data's order unless `sort` or `sort(varlist)` is given, as twoway does; tsline and tsrline join in time order]
 4. `cmissing(n)`, `sort(varlist)`, `connect()`, `recast()`, `text()`, and graph-editor `play()` behavior. [WP-29 P0.1, commit b0d170d: partly closed; open: `cmissing(n)`, `connect()`, `recast()`, `text()` and `play()` (`sort(varlist)` is honoured on the six joining types)] [WP-30 P1.8a, commit fa52891: corrected -- connect() and cmissing() drawn] [WP-30 P1.8b, commit f20751d: corrected -- recast() drawn] [WP-30 P1.10, commit 56b3597: corrected -- text() drawn] [WP-31 C6, commit b2af9fc: corrected -- cmissing(n) drawn on every type; connect() drawn on rarea]
@@ -100,8 +100,8 @@ The “supported options” column lists the material, graph-specific options ra
 | Functions | `function` | `y = f(x)`; `range()` default 0–1; `n()` default 300; line/connecting-line styles; no dataset required | **HC, E** | No row filtering/linking; variable-valued ranges, `base()`/droplines and some of Stata's expression surface are unavailable; unevaluated expressions draw nothing with a note [WP-30 P1.22, commit 47677f8: corrected -- every registered function is evaluated by Stata (WP-29 P0.6); a spec without points is drawn by a ten-function fallback whose note names what it needs] [WP-31 C10a: corrected -- range(# .) on the fits and range(varname) on kdensity and function read, n(1), kdensity bwidth(0), lowess bwidth() reset to .8, level() any number on lfitci, qfitci and fpfitci] [WP-31 C5, commit c44d542: corrected -- `droplines()` and `base()` drawn] |
 | Unsupported surface/grid | `contour` | None | None | Explicitly refused; suggested fallback is Stata `twoway` or `dash scatter y x, colorvar(z)` |
 | Unsupported surface/grid | `contourline` | None | None | Explicitly refused; no surface interpolation or contour labels/legend |
-| Unsupported range-point | `rpcap` | None | None | Explicitly refused; suggested workaround is a range layer plus a separate scatter layer |
-| Unsupported range-point | `rpspike` | None | None | Explicitly refused; suggested workaround is a range layer plus a separate scatter layer |
+| Range-point | `rpcap` | Spike y1..y2 at x, caps as wide as the marker, marker at y3; `msize()`, `horizontal`, `colorvar()`, `jitter()`, `mlabel()`; a weight is named, not drawn (twoway sizes the marker by it) | **FS, HC, E** | Explicitly refused [WP-31 B1: corrected -- drawn in both modes and after a filter move] |
+| Range-point | `rpspike` | Spike y1..y2 at x, marker at y3; as `rpcap` without caps | **FS, HC, E** | Explicitly refused [WP-31 B1: corrected -- drawn in both modes and after a filter move] |
 
 ## Common supported plot options
 

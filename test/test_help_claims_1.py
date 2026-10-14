@@ -410,11 +410,12 @@ class TestThePlotTypeSpellings:
 class TestThePlotTypesSection:
 
     def test_it_says_four_types_are_refused_and_so_does_item_5(self):
-        refused = ("contour", "contourline", "rpcap", "rpspike")
-        assert "Four {cmd:twoway} plot types are not drawn" in _plot_types()
+        # Flipped (WP-31 B1): rpcap and rpspike are drawn; four -> two.
+        refused = ("contour", "contourline")
+        assert "Two {cmd:twoway} plot types are not drawn" in _plot_types()
         diff = _prose(_differences())
-        assert "the four twoway plot types it refuses" in diff
-        assert "the two twoway plot types" not in diff
+        assert "the two twoway plot types it refuses" in diff
+        assert "the four twoway plot types" not in diff
         for name in refused:
             assert name not in dr._dash_plot_type_names()
 

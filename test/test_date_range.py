@@ -729,6 +729,10 @@ def _plot_for(ptype, options=None):
     if ptype in _RANGE:
         return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "xvar": "date",
                 "options": o}
+    if ptype in dr._DASH_RANGEPT_TYPES:
+        # WP-31 B1: the range and its marker (y3).
+        return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "yvar": "hi",
+                "xvar": "date", "options": o}
     if ptype in _PC:
         return {"type": ptype, "y1var": "lo", "x1var": "date", "y2var": "hi",
                 "x2var": "date", "options": o}

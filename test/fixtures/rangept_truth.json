@@ -1,0 +1,1484 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "d887f0d02f0945deb0cae9d85dc1cfcb3acd2d63",
+  "extracted": "14 Oct 2026 16:28:42",
+  "source": "scripts/extract_rangept_truth.do",
+  "stata_version": "19.5"
+ },
+ "advice": {
+  "matamatrix": {
+   "message": "nosuch is not a mata matrix",
+   "rc": 198
+  },
+  "matamatrix_title": [
+   "{p2col :{bf:[G-2] twoway mata} {hline 2}}Two-way graphs of mata matrices{p_end}"
+  ],
+  "sunflower": [
+   "{title:Description}",
+   "",
+   "{pstd}",
+   "{cmd:twoway} {cmd:sunflower} is a special type of {cmd:twoway} graph.  We",
+   "recommend the {cmd:sunflower} command over {cmd:twoway} {cmd:sunflower}; see"
+  ]
+ },
+ "draw": {
+  "rcap_scatter": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 2.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 150,
+   "n_hlines": 159,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 81,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": ""
+  },
+  "rpcap": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 79,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  },
+  "rpcap_colorvar": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 158,
+   "n_hlines": 168,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 80,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  },
+  "rpcap_hz": {
+   "N": null,
+   "bar_drop_to": "y",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 148,
+   "n_hlines": 83,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 154,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    20.0,
+    60.0
+   ],
+   "xtitle": "lo/hi/Turn circle (ft.)",
+   "yaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "ytitle": "Weight (lbs.)"
+  },
+  "rpcap_msize": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 2.4306,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 79,
+   "radii": [
+    35.02,
+    39.34
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  },
+  "rpcap_weight": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_paths": 0,
+   "n_radii": 114,
+   "n_vlines": 79,
+   "radii": [
+    33.04,
+    76.96
+   ],
+   "radii_vary_with_weight": true,
+   "roles": {
+    "wvar": "price",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  },
+  "rpspike": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 79,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  },
+  "rpspike_colorvar": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 158,
+   "n_hlines": 20,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 80,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  },
+  "rpspike_hz": {
+   "N": null,
+   "bar_drop_to": "y",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 148,
+   "n_hlines": 83,
+   "n_paths": 0,
+   "n_radii": 2,
+   "n_vlines": 6,
+   "radii": [
+    22.03,
+    26.35
+   ],
+   "roles": {
+    "wvar": "",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    20.0,
+    60.0
+   ],
+   "xtitle": "lo/hi/Turn circle (ft.)",
+   "yaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "ytitle": "Weight (lbs.)"
+  },
+  "rpspike_weight": {
+   "N": null,
+   "bar_drop_to": "x",
+   "legend_keys": 1.0,
+   "marker_size_gmval": 1.52778,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_paths": 0,
+   "n_radii": 114,
+   "n_vlines": 79,
+   "radii": [
+    33.04,
+    76.96
+   ],
+   "radii_vary_with_weight": true,
+   "roles": {
+    "wvar": "price",
+    "xvar": "weight",
+    "y2var": "hi",
+    "y3var": "turn",
+    "yvar": "lo"
+   },
+   "xaxis_major": [
+    2000.0,
+    5000.0
+   ],
+   "xtitle": "Weight (lbs.)",
+   "yaxis_major": [
+    20.0,
+    60.0
+   ],
+   "ytitle": "lo/hi/Turn circle (ft.)"
+  }
+ },
+ "probes": {
+  "abbrev.rpca": {
+   "message": "rpca is not a twoway plot type",
+   "rc": 198
+  },
+  "abbrev.rpspik": {
+   "message": "rpspik is not a twoway plot type",
+   "rc": 198
+  },
+  "abbrev.sunflow": {
+   "message": "sunflow is not a twoway plot type",
+   "rc": 198
+  },
+  "advice.matamatrix": {
+   "message": "nosuch is not a mata matrix",
+   "rc": 198
+  },
+  "barwidth.rpcap": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth.rpspike": {
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "counts.rpcap_1": {
+   "message": "too few variables specified",
+   "rc": 102
+  },
+  "counts.rpcap_2": {
+   "message": "you must specify four variables with twoway rpcap",
+   "rc": 102
+  },
+  "counts.rpcap_3": {
+   "message": "you must specify four variables with twoway rpcap",
+   "rc": 102
+  },
+  "counts.rpcap_4": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "counts.rpcap_5": {
+   "message": "you must specify four variables with twoway rpcap",
+   "rc": 103
+  },
+  "counts.rpspike_1": {
+   "message": "too few variables specified",
+   "rc": 102
+  },
+  "counts.rpspike_2": {
+   "message": "you must specify four variables with twoway rpspike",
+   "rc": 102
+  },
+  "counts.rpspike_3": {
+   "message": "you must specify four variables with twoway rpspike",
+   "rc": 102
+  },
+  "counts.rpspike_4": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "counts.rpspike_5": {
+   "message": "you must specify four variables with twoway rpspike",
+   "rc": 103
+  },
+  "draw.sunflower": {
+   "centres": [
+    [
+     1122.4,
+     650.1
+    ],
+    [
+     1147.5,
+     1110.2
+    ],
+    [
+     1231.1,
+     1167.7
+    ],
+    [
+     1262.5,
+     2511.5
+    ],
+    [
+     1281.2,
+     1167.7
+    ],
+    [
+     1306.2,
+     592.7
+    ],
+    [
+     1323.0,
+     247.5
+    ],
+    [
+     1331.3,
+     592.7
+    ]
+   ],
+   "message": null,
+   "n_circles": 26,
+   "n_hlines": 15,
+   "n_texts": 14,
+   "n_vlines": 23,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    1157.9,
+    1262.5,
+    1289.5,
+    1479.6,
+    1479.6,
+    1479.6
+   ]
+  },
+  "fw.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "headlabel.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "horizontal.rpcap": {
+   "centres": [
+    [
+     1373.0,
+     1434.7
+    ],
+    [
+     1373.0,
+     1434.7
+    ],
+    [
+     1456.5,
+     2244.4
+    ],
+    [
+     1456.5,
+     2244.4
+    ],
+    [
+     1540.1,
+     2272.4
+    ],
+    [
+     1540.1,
+     2272.4
+    ],
+    [
+     1540.1,
+     2398.0
+    ],
+    [
+     1540.1,
+     2398.0
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 83,
+   "n_texts": 11,
+   "n_vlines": 154,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    955.4,
+    1038.9,
+    1122.4,
+    1122.4,
+    1205.9,
+    1205.9
+   ]
+  },
+  "horizontal.rpspike": {
+   "centres": [
+    [
+     1373.0,
+     1434.7
+    ],
+    [
+     1373.0,
+     1434.7
+    ],
+    [
+     1456.5,
+     2244.4
+    ],
+    [
+     1456.5,
+     2244.4
+    ],
+    [
+     1540.1,
+     2272.4
+    ],
+    [
+     1540.1,
+     2272.4
+    ],
+    [
+     1540.1,
+     2398.0
+    ],
+    [
+     1540.1,
+     2398.0
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 83,
+   "n_texts": 11,
+   "n_vlines": 6,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    1289.5,
+    2124.9,
+    2960.3,
+    3795.7
+   ]
+  },
+  "hzvt.rpcap": {
+   "message": "may not combine options horizontal and vertical",
+   "rc": 198
+  },
+  "iw.rpcap": {
+   "message": "iweights not allowed",
+   "rc": 101
+  },
+  "jitter.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1648.3
+    ],
+    [
+     454.0,
+     1648.3
+    ],
+    [
+     454.0,
+     1656.1
+    ],
+    [
+     454.0,
+     1656.1
+    ],
+    [
+     510.7,
+     1489.9
+    ],
+    [
+     510.7,
+     1489.9
+    ],
+    [
+     574.2,
+     1670.9
+    ],
+    [
+     574.2,
+     1670.9
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "matamatrix.defined": {
+   "centres": [
+    [
+     454.0,
+     2425.9
+    ],
+    [
+     454.0,
+     2425.9
+    ],
+    [
+     3795.7,
+     164.2
+    ],
+    [
+     3795.7,
+     164.2
+    ]
+   ],
+   "message": null,
+   "n_circles": 4,
+   "n_hlines": 11,
+   "n_texts": 12,
+   "n_vlines": 6,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    1289.5,
+    2124.9,
+    2960.3,
+    3795.7
+   ]
+  },
+  "matamatrix.line": {
+   "centres": [],
+   "message": null,
+   "n_circles": 0,
+   "n_hlines": 11,
+   "n_texts": 12,
+   "n_vlines": 6,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    1289.5,
+    2124.9,
+    2960.3,
+    3795.7
+   ]
+  },
+  "matamatrix.upper": {
+   "message": "variable M not found",
+   "rc": 111
+  },
+  "mlabel.rpcap": {
+   "centres": [
+    [
+     454.2,
+     1634.3
+    ],
+    [
+     454.2,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.6
+    ],
+    [
+     495.4,
+     1464.6
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 85,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "mlabvpos.rpcap": {
+   "centres": [
+    [
+     454.2,
+     1634.3
+    ],
+    [
+     454.2,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.6
+    ],
+    [
+     495.4,
+     1464.6
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 85,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "plain.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "pw.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "recast.rcap_rpcap": {
+   "centres": [],
+   "message": null,
+   "n_circles": 0,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "recast.rpcap_rcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "recast.rpcap_rpspike": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "recast.rpcap_rspike": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "recast.rpcap_scatter": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "sort.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "string.rpcap": {
+   "message": "string variables not allowed in varlist;",
+   "rc": 109
+  },
+  "vertical.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "vertical.rpspike": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  }
+ },
+ "title": {
+  "differs": "Low/High/Turn",
+  "same": "Turn",
+  "same_hz": "Turn"
+ }
+}

@@ -268,6 +268,8 @@ FUNCTIONS = {
  'GlyphMapper.map_rbar': 'test/test_glyphs.py::TestHardeningGuards::test_rbar_empty_source_no_crash',
  'GlyphMapper.map_rcap': 'test/test_glyphs.py::TestLegendLabelCoverage::test_rcap_legend',
  'GlyphMapper.map_rcapsym': 'test/test_glyphs.py::TestLegendLabelCoverage::test_rcapsym_legend',
+ 'GlyphMapper.map_rpcap': 'test/test_rangept_layers.py::TestRpcapDraws::test_spike_caps_and_marker',
+ 'GlyphMapper.map_rpspike': 'test/test_rangept_layers.py::TestRpspikeDraws::test_spike_and_marker',
  'GlyphMapper.map_rconnected': 'test/test_glyphs.py::TestMapRconnected::test_rconnected_has_lines',
  'GlyphMapper.map_rline': 'test/test_glyphs.py::TestLegendLabelCoverage::test_rline_legend',
  'GlyphMapper.map_rscatter': 'test/test_glyphs.py::TestNewPlotTypes::test_map_rscatter_adds_scatter_renderer',

@@ -48,7 +48,9 @@ def _table():
 class TestTheTable:
     def test_only_twoways_minimums(self):
         rows, _ = _table()
-        assert len(rows) == 40, len(rows)
+        # 40 -> 42: WP-31 B1 rpcap and rpspike drawn (full names only,
+        # test/fixtures/rangept_truth.json abbrev.*).
+        assert len(rows) == 42, len(rows)
         bad = [(full, mn) for full, mn in rows
                if mn != TWOWAY_MINIMUMS.get(full, full)]
         assert not bad, (

@@ -62,9 +62,10 @@ gen yh = mpg + 1
 gen t = _n
 tsset t
 
-* The forty types (the dash.ado "Supported:" set) and their commands.
+* The forty-two types (the dash.ado "Supported:" set) and their commands;
+* rpcap and rpspike since WP-31 B1.
 local types scatter line connected area bar spike dropline dot tsline tsrline ///
-    rarea rbar rspike rcap rline rconnected rcapsym rscatter ///
+    rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike ///
     pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri ///
     lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband ///
     kdensity histogram function
@@ -97,6 +98,9 @@ foreach o of local options {
         else if "`t'" == "tsrline" local a "tsrline yl yh"
         else if inlist("`t'", "rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym", "rscatter") {
             local a "`t' yl yh weight"
+        }
+        else if inlist("`t'", "rpcap", "rpspike") {
+            local a "`t' yl yh mpg weight"
         }
         else if inlist("`t'", "pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter") {
             local a "`t' mpg weight trunk turn"

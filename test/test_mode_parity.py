@@ -1451,7 +1451,13 @@ CORPUS = [
         "rcap", "rline", "rconnected", "dot", "dropline", "rcapsym",
         "scatteri", "pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter",
         "tsline", "tsrline", "mspline", "mband", "rscatter", "function",
-        "pccapsym", "pcarrowi")],
+        "pccapsym", "pcarrowi", "rpcap", "rpspike")],
+    # WP-31 B1: rpcap's caps and marker sized together, turned, weighted.
+    _case("rpcap msize(large)", [plot_for("rpcap", {"msize": "large"})]),
+    _case("rpcap horizontal",
+          [plot_for("rpcap", {"horizontal": "horizontal"})]),
+    _case("rpcap aweight",
+          [plot_for("rpcap", {"weight": "aweight", "wexp": "price"})]),
     # WP-22: the two twoway types dash drew nowhere until then, with what
     # each honours beyond the bare glyphs -- pccapsym's marker labels (the
     # served pc source must carry the label column) and marker and line
@@ -3024,6 +3030,8 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
 # agree through the cue.
 _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
+# WP-31 B1: rpcap and rpspike, the range and its marker, after a move.
+_MOVED_LAYERS += ["rpcap", "rpspike"]
 
 #: WP-29 P0.18: moves that leave 2 and 1 rows of _DF.
 _EMPTYING_MOVES = [
@@ -4318,9 +4326,11 @@ class TestHoverReachesEveryLayerOrIsReported:
     it cannot: a computed layer's points are not observations."""
 
     def test_the_forty_types_are_partitioned(self):
-        assert len(_ALL_PLOT_TYPES) == 40, _ALL_PLOT_TYPES
+        # 40 -> 42 and 23 -> 25: WP-31 B1 rpcap and rpspike drawn, one
+        # mark per observation.
+        assert len(_ALL_PLOT_TYPES) == 42, _ALL_PLOT_TYPES
         assert _HOVER_COMPUTED | _HOVER_LITERAL <= set(_ALL_PLOT_TYPES)
-        assert len(_HOVER_HONOURED) == 23, sorted(_HOVER_HONOURED)
+        assert len(_HOVER_HONOURED) == 25, sorted(_HOVER_HONOURED)
 
     @pytest.mark.parametrize("mode", ("saved", "served"))
     @pytest.mark.parametrize("ptype", _ALL_PLOT_TYPES)

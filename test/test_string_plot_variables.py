@@ -217,7 +217,8 @@ class TestTheGeneratedRegion:
         # macro; the template itself is what is checked here.
         assert "display as text \"`sv' PASS" in region
         types = mod.variable_taking_types()
-        assert len(types) == 36
+        # 36 -> 38: WP-31 B1 rpcap and rpspike drawn.
+        assert len(types) == 38
         assert not ({"scatteri", "pci", "pcarrowi", "function"} & set(types))
 
     def test_the_arity_table_matches_dash_ado(self):

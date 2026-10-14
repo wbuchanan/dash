@@ -2204,7 +2204,7 @@ program define _dash_fold_mlabv, sclass
     if _rc exit _rc
     sreturn local mlabvposition `"`_mv_name'"'
     if "`_mv_name'" == "" exit
-    local mv_range "rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline"
+    local mv_range "rarea rbar rcap rcapsym rconnected rline rscatter rspike tsrline rpcap rpspike"
     local mv_fit   "lfit qfit fpfit lfitci qfitci fpfitci mspline mband"
     local mv_smooth "lowess lpoly lpolyci kdensity"
     local mv_all : list mv_range | mv_fit
@@ -2499,8 +2499,8 @@ end
 program define _dash_hz_check, sclass
     version 19
     args ptype target kind S
-    local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline
-    local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline
+    local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline
+    local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline
     local _hz_derived lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mband mspline kdensity function histogram
     if `"`s(horizontal)'`s(vertical)'"' == "" exit
     mata: st_local("_hz_order", _dash_hz_order(st_strscalar("`S'")))
@@ -2669,7 +2669,7 @@ program define _dash_sort_opt, sclass
     if _rc exit 198
     local _so_six "line connected area rline rarea rconnected"
     local _so_ts "tsline tsrline"
-    local _so_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
+    local _so_ser "scatter line connected area bar spike dropline dot rarea rbar rspike rcap rcapsym rscatter rline rconnected rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym mband mspline"
     if `: list ptype in _so_ser' {
         // Every token is a name now (namelist), so tokens() splits it
         // whole and each reaches unab as a name.
@@ -2788,11 +2788,17 @@ program define _dash_recast_opt, sclass
     local _yx      "scatter line connected area bar spike dropline dot"
     local _rng     "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     local _pc      "pcspike pccapsym pcarrow pcbarrow pcscatter"
+    // rpcap and rpspike are y3xview sources (WP-31 B1): recast() on them
+    // finds rpcap or rpspike, else twoway's notes and rpspike
+    // (rangept_truth.json recast.*: recast(rspike), (scatter) and (rcap)
+    // draw rpspike).
+    local _rpt     "rpcap rpspike"
     local _derived "lfit qfit lowess lpoly fpfit mspline mband kdensity function histogram scatteri"
     // pci and pcarrowi are yxyxview sources (twoway_pci_parse.class): the
     // pc names, drawn by the literal mapper (WP-31 C7).
     local _rc_lit "pci pcarrowi"
     if `: list ptype in _pc' local _rc_class yxyxtype
+    else if `: list ptype in _rpt' local _rc_class y3xtype
     else if `: list ptype in _rc_lit' local _rc_class yxyxtype
     else if "`ptype'" == "function" local _rc_class functiontype
     else if `: list ptype in _rng' | "`ptype'" == "histogram" local _rc_class y2xtype
@@ -2802,6 +2808,7 @@ program define _dash_recast_opt, sclass
     local _sp_rng "rscatter:3 rline:3 rconnected:3 rarea:5 rbar:4 rcap:4 rcapsym:7 rspike:6"
     local _sp_pc "pcarrow:4 pcbarrow:5 pcline:3 pcspike:4 pccapsym:6 pcscatter:4"
     if "`_rc_class'" == "yxyxtype" local _sp "`_sp_pc'"
+    else if "`_rc_class'" == "y3xtype" local _sp "rpcap:5 rpspike:7"
     else if "`_rc_class'" == "y2xtype" local _sp "`_sp_yx' `_sp_rng'"
     else if "`_rc_class'" == "functiontype" local _sp "`_sp_yx' function:8"
     else local _sp "`_sp_yx'"
@@ -2826,6 +2833,7 @@ program define _dash_recast_opt, sclass
         if "`_rc_class'" == "yxtype" local _rc_name scatter
         else if "`_rc_class'" == "y2xtype" local _rc_name rspike
         else if "`_rc_class'" == "yxyxtype" local _rc_name pcspike
+        else if "`_rc_class'" == "y3xtype" local _rc_name rpspike
         else exit
     }
     // pci and pcarrowi keep their type; the literal mapper draws the
@@ -4909,6 +4917,7 @@ end
 //   _pt_univar   one variable                       histogram kdensity
 //   _pt_range    y1 y2 [x]                          the range types
 //   _pt_pc       y1 x1 y2 x2                        the paired-coordinate types
+//   _pt_rangept  y1 y2 y3 x                         rpcap rpspike (WP-31 B1)
 //   _pt_literal  literal values or an expression    scatteri pci pcarrowi function
 //   _pt_imm      immediate values, read as twoway   scatteri pci pcarrowi
 //                reads them (dash_parse.mata 2c)
@@ -4919,6 +4928,7 @@ program define _dash_plottype_families
     c_local _pt_univar  "histogram kdensity"
     c_local _pt_range   "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     c_local _pt_pc      "pcspike pcarrow pcbarrow pcscatter pccapsym"
+    c_local _pt_rangept "rpcap rpspike"
     c_local _pt_literal "scatteri pci pcarrowi function"
     c_local _pt_imm     "scatteri pci pcarrowi"
     c_local _pt_ts      "tsline tsrline"
@@ -5283,18 +5293,13 @@ program define _dash_process_segment, rclass
         // a data model no dash plot has.  They were answered "unrecognised
         // plot type", as if twoway had no such type; they are named for
         // what they are now, with what to use instead (WP-22 TR-22.1).
-        // rpcap and rpspike, twoway plot types since Stata 19
-        // (whatsnew18to19), so the advice holds on every Stata dash runs on,
-        // are refused the same way, with their own reason (BR-22.1).
-        // _pt_nodraw is one of those four names or "": never user text.
+        // rpcap and rpspike were refused the same way until WP-31 B1 drew
+        // them (_pt_rangept).
+        // _pt_nodraw is one of those names or "": never user text.
         mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
         if "`_pt_nodraw'" != "" {
             if "`_pt_nodraw'" == "contour" | "`_pt_nodraw'" == "contourline" {
                 local _pt_why "it needs a surface interpolated over a grid. Use Stata's own twoway `_pt_nodraw', or dash scatter y x, colorvar(z) to colour each point by z."
-            }
-            else {
-                local _pt_rng = cond("`_pt_nodraw'" == "rpcap", "rcap", "rspike")
-                local _pt_why "it marks a point on a range. Use Stata's own twoway `_pt_nodraw', or draw the two together: dash (`_pt_rng' ylow yhigh x) (scatter y x)."
             }
             mata: _dash_say("err", "dash: '", st_local("plottype"), "' is a twoway plot type dash does not draw: " + st_local("_pt_why"))
             exit(198)
@@ -5310,7 +5315,7 @@ program define _dash_process_segment, rclass
             "histogram kdensity rarea rbar rspike rcap rline rconnected " _n ///
             "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow " _n ///
             "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband " _n ///
-            "rscatter function"
+            "rscatter function rpcap rpspike"
         exit(198)
     }
 
@@ -5343,6 +5348,7 @@ program define _dash_process_segment, rclass
     //   3v  : _pt_range    rarea rbar rspike rcap rline rconnected rcapsym
     //                      rscatter tsrline
     //   4v  : _pt_pc       pcspike pcarrow pcbarrow pcscatter pccapsym
+    //   4v  : _pt_rangept  rpcap rpspike (y1 y2 y3 x; WP-31 B1)
     //   any : _pt_literal  scatteri pci pcarrowi function
     //
     // pcscatter takes FOUR VARIABLES in Stata -- `pcscatter y1 x1 y2 x2' --
@@ -5459,6 +5465,31 @@ program define _dash_process_segment, rclass
         local x1var = word("`vl'", 2)
         local y2var = word("`vl'", 3)
         local x2var = word("`vl'", 4)
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
+    }
+    else if `: list ptype in _pt_rangept' {
+        // rpcap and rpspike (WP-31 B1): y1 y2 y3 x, a range from y1 to y2
+        // at x and a marker at y3 (twoway_y3xview_parse).  twoway's
+        // count, measured 14oct2026 (test/fixtures/rangept_truth.json
+        // counts.*): one variable "too few variables specified"; two,
+        // three or five "you must specify four variables with twoway
+        // rpcap", r(102) below four and r(103) above.
+        _dash_parse_varpart_4v `macval(varpart)'
+        local vl = "`s(varlist)'"
+        local nv : word count `vl'
+        if `nv' != 4 {
+            if `nv' == 1 {
+                display as error "too few variables specified"
+                exit 102
+            }
+            display as error "you must specify four variables with twoway `ptype'"
+            exit cond(`nv' < 4, 102, 103)
+        }
+        local yvar1 = word("`vl'", 1)
+        local yvar2 = word("`vl'", 2)
+        local yvar  = word("`vl'", 3)
+        local xvar  = word("`vl'", 4)
         mata: st_local("if_cl", st_global("s(if_clause)"))
         mata: st_local("in_cl", st_global("s(in_clause)"))
     }
@@ -6167,7 +6198,7 @@ program define _dash_process_segment, rclass
             usubstr(strlower(subinstr(st_local("_ts_first"), ".", "", .)), 1, 32) + " = " + st_local("_ts_first"), "")
         exit 5
     }
-    local _ts_sortx "scatter line connected area bar spike dropline dot mspline mband rarea rbar rspike rcap rline rconnected rcapsym rscatter"
+    local _ts_sortx "scatter line connected area bar spike dropline dot mspline mband rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike"
     mata: st_local("_ts_sort", strofreal(st_global("s(sort)") != ""))
     if `_ts_sort' & strpos("`xvar'", ".") & `: list ptype in _ts_sortx' {
         display as error "factor-variable and time-series operators not allowed"
@@ -6353,6 +6384,14 @@ program define _dash_process_segment, rclass
         _dash_json_str "`y2var'" _jy2
         _dash_json_str "`x2var'" _jx2
         local vfields `""y1var":"`_jy1'","x1var":"`_jx1'","y2var":"`_jy2'","x2var":"`_jx2'""'
+    }
+    else if `: list ptype in _pt_rangept' {
+        // WP-31 B1: the range's ends, its marker (y3) and x.
+        _dash_json_str "`yvar1'" _jy1
+        _dash_json_str "`yvar2'" _jy2
+        _dash_json_str "`yvar'"  _jyv
+        _dash_json_str "`xvar'"  _jxv
+        local vfields `""yvar1":"`_jy1'","yvar2":"`_jy2'","yvar":"`_jyv'","xvar":"`_jxv'""'
     }
     else if "`ptype'" == "function" {
         _dash_json_str `"`macval(expr)'"' _jex

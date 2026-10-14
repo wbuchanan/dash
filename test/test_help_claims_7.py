@@ -116,6 +116,14 @@ def _glyphs(fig):
             and "dash_dots" not in (getattr(r, "tags", None) or ())]
 
 
+def _is_cap(r):
+    """A range cap: a "dash" marker drawn as a line (map_rcap, tagged
+    dash_cap), which twoway draws in the line style -- no marker option
+    turns, reshapes or fades it, and its fill is never drawn (WP-31 B1:
+    rpcap's caps beside its marker)."""
+    return "dash_cap" in (getattr(r, "tags", None) or ())
+
+
 def _field(glyph, attr):
     v = getattr(glyph, attr, None)
     if isinstance(v, str):
@@ -674,10 +682,14 @@ class TestLegendReadsItsSuboptionsNotItsLabels:
 #: whose markers twoway jitters (colorvar_types_truth.json jitter), are
 #: jittered too; dash.ado named jitter() there.
 _JITTER_TYPES = {"scatter", "connected", "rconnected", "dot", "dropline",
-                 "scatteri", "rscatter", "rcapsym", "pcscatter", "pccapsym"}
+                 "scatteri", "rscatter", "rcapsym", "pcscatter", "pccapsym",
+                 # WP-31 B1: rpcap's and rpspike's y3 markers, which
+                 # twoway jitters (rangept_truth.json jitter.rpcap).
+                 "rpcap", "rpspike"}
 #: The plot types that draw markers, and so take msangle() and malpha().
 _MARKER_TYPES = {"scatter", "connected", "rconnected", "dot", "dropline",
-                 "scatteri", "rscatter", "rcapsym", "pcscatter", "pccapsym"}
+                 "scatteri", "rscatter", "rcapsym", "pcscatter", "pccapsym",
+                 "rpcap", "rpspike"}
 
 
 def _coords(fig, only=None):
@@ -721,7 +733,7 @@ class TestMsangle:
     def test_the_types_msangle_turns(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"msangle": "45"})])
         angles = {round(float(r.glyph.angle), 9) for r in _glyphs(fig)
-                  if type(r.glyph).__name__ == "Scatter"}
+                  if type(r.glyph).__name__ == "Scatter" and not _is_cap(r)}
         if ptype in _MARKER_TYPES:
             assert angles == {round(math.radians(45), 9)}, angles
         else:
@@ -753,7 +765,8 @@ def _alphas(fig, markers):
              round(float(getattr(r.glyph, "fill_alpha", -1)), 6),
              round(float(getattr(r.glyph, "line_alpha", -1)), 6))
             for r in _glyphs(fig)
-            if (type(r.glyph).__name__ == "Scatter") == markers]
+            if (type(r.glyph).__name__ == "Scatter"
+                and not _is_cap(r)) == markers]
 
 
 class TestAlphaOptions:
@@ -780,7 +793,8 @@ def _colours(fig):
         g = r.glyph
         out.setdefault(type(g).__name__, set()).update(
             str(getattr(g, a)).lower() for a in ("fill_color", "line_color")
-            if hasattr(g, a) and not str(getattr(g, a)).startswith("{"))
+            if hasattr(g, a) and not str(getattr(g, a)).startswith("{")
+            and not (a == "fill_color" and _is_cap(r)))
     return out
 
 
@@ -835,7 +849,7 @@ class TestMarkerIsMsymbol:
     def test_marker_sets_the_symbol(self, mode, ptype):
         fig, _ = _render(mode, [plot_for(ptype, {"marker": "D"})])
         marks = {str(r.glyph.marker) for r in _glyphs(fig)
-                 if type(r.glyph).__name__ == "Scatter"}
+                 if type(r.glyph).__name__ == "Scatter" and not _is_cap(r)}
         assert marks == {"diamond"}, marks
 
     @pytest.mark.parametrize("mode", _MODES)
@@ -855,7 +869,7 @@ _HOVER_TYPES = {"scatter", "connected", "line", "tsline", "area", "dot",
                 "dropline", "bar", "spike", "rarea", "rbar", "rspike",
                 "rcap", "rcapsym", "rline", "tsrline", "rconnected",
                 "rscatter", "pcspike", "pcarrow", "pcbarrow", "pcscatter",
-                "pccapsym"}
+                "pccapsym", "rpcap", "rpspike"}
 
 
 def _hover_rows(fig):

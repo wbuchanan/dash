@@ -3093,6 +3093,14 @@ _sv_case "SV-84" "pccapsym" 1 "make mpg weight price"
 _sv_case "SV-85" "pccapsym" 2 "mpg make weight price"
 _sv_case "SV-86" "pccapsym" 3 "mpg weight make price"
 _sv_case "SV-87" "pccapsym" 4 "mpg weight price make"
+_sv_case "SV-88" "rpcap" 1 "make mpg weight price"
+_sv_case "SV-89" "rpcap" 2 "mpg make weight price"
+_sv_case "SV-90" "rpcap" 3 "mpg weight make price"
+_sv_case "SV-91" "rpcap" 4 "mpg weight price make"
+_sv_case "SV-92" "rpspike" 1 "make mpg weight price"
+_sv_case "SV-93" "rpspike" 2 "mpg make weight price"
+_sv_case "SV-94" "rpspike" 3 "mpg weight make price"
+_sv_case "SV-95" "rpspike" 4 "mpg weight price make"
 
 capture program drop _sv_case
 capture dash clear

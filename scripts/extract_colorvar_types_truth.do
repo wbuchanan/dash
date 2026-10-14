@@ -11,7 +11,8 @@
 *!   DASH_REPO=<repo> <repo>/scripts/stata_slot.sh <scratch> <repo>/scripts/extract_colorvar_types_truth.do
 *!
 *! PROBES
-*!   C_<type>  every type of test_twoway_option_parity.cscript's m6 list,
+*!   C_<type>  every type of test_twoway_option_parity.cscript's m6 list
+*!             and rpcap and rpspike (WP-31 B1),
 *!             `twoway <cmd>, colorvar(z)': rc, and per plot the view's
 *!             .cvar (the serset column of the colour variable, . when
 *!             none) and .hascolorvar; the distinct colours of the SVG with
@@ -110,8 +111,11 @@ generate hi = mpg + 2
 generate x2 = weight + 500
 set scheme s2color
 
-* C_<type>: the m6 list (test/test_twoway_option_parity.cscript).
+* C_<type>: the m6 list (test/test_twoway_option_parity.cscript), and
+* rpcap and rpspike.
 local m6 `"scatter "scatter y t" line "line y t" connected "connected y t" scatteri "scatteri 100 480" area "area y t" bar "bar y t" spike "spike y t" dropline "dropline y t" dot "dot y t" rarea "rarea y y2 t" rbar "rbar y y2 t" rspike "rspike y y2 t" rcap "rcap y y2 t" rcapsym "rcapsym y y2 t" rscatter "rscatter y y2 t" rline "rline y y2 t" rconnected "rconnected y y2 t" pcspike "pcspike y t y2 t" pccapsym "pccapsym y t y2 t" pcarrow "pcarrow y t y2 t" pcbarrow "pcbarrow y t y2 t" pcscatter "pcscatter y t y2 t" pci "pci 100 480 110 490" pcarrowi "pcarrowi 100 480 110 490" tsline "tsline y" tsrline "tsrline y y2" mband "mband y t" mspline "mspline y t" lowess "lowess y t" lfit "lfit y t" qfit "qfit y t" fpfit "fpfit y t" lfitci "lfitci y t" qfitci "qfitci y t" fpfitci "fpfitci y t" lpoly "lpoly y t" lpolyci "lpolyci y t" kdensity "kdensity y" histogram "histogram t" function "function y = x, range(480 539)""'
+* WP-31 B1: rpcap and rpspike, drawn since then (y1 y2 y3 x).
+local m6 `"`m6' rpcap "rpcap y y3 y2 t" rpspike "rpspike y y3 y2 t""'
 local ckeys ""
 while `"`m6'"' != "" {
     gettoken ty m6 : m6

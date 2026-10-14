@@ -2,7 +2,7 @@ v 3
 d 'DASH': Interactive HTML dashboards from twoway syntax
 d
 d dash converts Stata twoway plot syntax into interactive dashboards
-d powered by the Bokeh visualization library: forty twoway plot types,
+d powered by the Bokeh visualization library: forty-two twoway plot types,
 d multi-graph layouts, linked brushing, filter widgets
 d (dropdown/slider/range) and KPI cards.  Most twoway options are
 d honoured; the rest are accepted and named in a note -- see

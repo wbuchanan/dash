@@ -70,6 +70,8 @@ _DF = pd.DataFrame({
 _RANGE = {"rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
           "rcapsym", "rscatter", "tsrline"}
 _PC = {"pcspike", "pcarrow", "pcbarrow", "pcscatter", "pccapsym"}
+#: WP-31 B1: the range-point types, y1 y2 y3 x.
+_RANGEPT = {"rpcap", "rpspike"}
 
 #: Derived from the dispatch tables, not written by hand: a plot type added
 #: to the code is in every sweep here and in test_server_facets.py the same
@@ -88,6 +90,9 @@ def plot_for(ptype, options=None, **extra):
     elif ptype in _PC:
         p = {"type": ptype, "y1var": "mpg", "x1var": "weight",
              "y2var": "price", "x2var": "foreign", "options": o}
+    elif ptype in _RANGEPT:
+        p = {"type": ptype, "yvar1": "mpg", "yvar2": "price",
+             "yvar": "foreign", "xvar": "weight", "options": o}
     elif ptype == "scatteri":
         p = {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
              "options": o}

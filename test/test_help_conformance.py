@@ -751,8 +751,9 @@ class TestTheParsersFoundSomething:
         # 404 -> 417: C8b eleven colorvar synopt entries and three graph
         # ones, less the Unsupported entry they replace.
         # 417 -> 427: B5b the ten synopt entries dotextend() .. dlwidth().
-        assert len(defs) == 427, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 427 "
+        # 427 -> 428: B1 the Plot types table's "range with a point" row.
+        assert len(defs) == 428, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 428 "
             f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
