@@ -5771,7 +5771,7 @@ if inlist("`only'", "", "S21") & `: list posof "S21" in w30_run' {
     global S21_TWIF "(scatter mpg weight) (scatter price weight, yaxis(2)) if foreign"
     _s21_case NS-10 auto "" "(scatter mpg weight) (scatter price weight, yaxis(2))" "drop Foreign"
     global S21_TWIF ""
-    _w30_done NS-10 "after a move the axes are twoway's under the same if, saved and served (the saved lfit stays unfiltered)"
+    _w30_done NS-10 "after a move the axes are twoway's under the same if, saved and served (the lfit case served only; the saved lfit refit since WP-31 F1a is pinned by U10)"
     foreach s in s2color stgcolor_mv stcolor s1rcolor economist s2manual stmono1 stgcolor stcolor_alt s2gmanual stgcolor_alt stcolor_meta s1manual stsj stcolor_mv sj meta s2color8 s1mono stmono2 stcoloralias s2mono sttrans stgcolor_meta s1color s2gcolor {
         _s21_case NS-11 auto "`s'" "scatter mpg weight"
     }
