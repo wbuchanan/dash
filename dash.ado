@@ -447,7 +447,7 @@ program define _dash_require_mata
         _dash_sort_reset _dash_sort_scan _dash_sort_export ///
         _dash_tsop_reset _dash_tsop_canon _dash_tsop_rewrite _dash_tsop_export _dash_tsop_meta ///
         _dash_wexp_ok _dash_wexp_reset _dash_wexp_rewrite _dash_wexp_export ///
-        _dash_immediate _dash_say _dash_note _dash_spec_types_in _dash_split_segs ///
+        _dash_immediate _dash_say _dash_note _dash_spec_has_plots _dash_spec_types_in _dash_split_segs ///
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
@@ -7135,7 +7135,11 @@ program define _dash_plot
     mata: _dash_check_utf8(strtrim(st_local("0")))
 
     // ---- Split on || / () into segments + graph opts ----
-    mata: _dash_split_segs(strtrim(st_local("0")))
+    // dash replaces twoway: with no plot it draws twoway's empty graph
+    // (`dash', `dash, title(T)', `dash if foreign==1', `dash ||'; measured
+    // 13oct2026, test/fixtures/bare_prefix_truth.json bare.*; maintainer
+    // decision 14oct2026), so no plot is not an error here.
+    mata: _dash_split_segs(strtrim(st_local("0")), 1)
     // Now locals _n_segs, _seg_1 .. _seg_N, _graph_opts_raw are set.
 
     // From here to the registry every piece of the command is the user's
@@ -9749,8 +9753,11 @@ program define _dash_render_immediate
     _dash_plottype_families
     local _varfree = 0
     if "`needed_vars'" == "" & `_dts_n' == 0 {
+        // A graph with no plot (bare dash, as bare twoway) needs no
+        // variable either: twoway draws it empty.
         mata: st_local("_varfree", strofreal(_dash_spec_types_in( ///
-            st_local("json_spec"), st_local("_pt_literal"))))
+            st_local("json_spec"), st_local("_pt_literal")) | ///
+            !_dash_spec_has_plots(st_local("json_spec"))))
         if !`_varfree' {
             display as error "dash: no variables identified in plot specification."
             exit(198)
@@ -11028,7 +11035,8 @@ program define _dash_prepare_spec, rclass
             if "${dash_kpi_`gname'}" == "1" continue
             mata: st_local("_gvf", strofreal(_dash_spec_types_in( ///
                 st_global("dash_json_" + st_local("gname")), ///
-                st_local("_pt_literal"))))
+                st_local("_pt_literal")) | ///
+                !_dash_spec_has_plots(st_global("dash_json_" + st_local("gname")))))
             if !`_gvf' {
                 display as error "`cmdname': no variables identified across registered graphs."
                 exit(198)

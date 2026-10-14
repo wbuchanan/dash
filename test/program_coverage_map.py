@@ -736,6 +736,7 @@ COVERAGE = {
         "_dash_saving_split": ("test_path_validation.cscript:PV-35",),
         "_dash_seg_saving": ("test_path_validation.cscript:PV-37",),
         "_dash_prefix_word": ("test_parser.cscript:TW-01",),
+        "_dash_spec_has_plots": ("test_parser.cscript:TW-02",),
         # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
         "_dash_barwidth_typed": ("test_twoway_option_parity.cscript:BG-07",),
         # WP-30 S18 (P1.5): Axis format fallbacks (P1.5)

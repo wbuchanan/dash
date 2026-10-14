@@ -300,10 +300,11 @@
 *!       Position (1-based) of the first comma outside quotes and
 *!       parentheses, or "0", into out_macro.
 *!
-*!   _dash_split_segs(input)
+*!   _dash_split_segs(input [, allow_empty])
 *!       Split the raw command line into plot segments, into the caller's
 *!       locals _n_segs, _seg_1 .. _seg_N (each with its plot type),
-*!       _graph_opts_raw and _graph_qual_raw.
+*!       _graph_opts_raw and _graph_qual_raw.  allow_empty 1 (_dash_plot's
+*!       call: bare dash is bare twoway) takes no plot as zero segments.
 *!
 *!   _dash_extract_vars(json_str, out_macro)
 *!       The variables the plots of a spec name, blank-separated, into
@@ -423,6 +424,10 @@
 *!   _dash_spec_types_in(s, allowed)
 *!       1 when the graph spec s names a plot type and every type it names
 *!       is a word of allowed: a graph that needs no data.
+*!
+*!   _dash_spec_has_plots(json)
+*!       1 when the spec's "plots" array holds a record, 0 when it is
+*!       empty: bare dash's graph, which needs no data.
 *!
 *!   _dash_reflines_positions(gjson)
 *!       The reference-line positions of one graph's JSON: the tokens of
@@ -2597,9 +2602,9 @@ void _dash_comma_pos(string scalar input, string scalar out_macro) {
 //       _graph_opts_raw (the options of (a) and (b), joined in order) and
 //       _graph_qual_raw (their qualifiers, joined).
 //
-void _dash_split_segs(string scalar input) {
+void _dash_split_segs(string scalar input, | real scalar allow_empty) {
     real   scalar  i, len, depth, in_dq, in_cq, c_code, nxt, p
-    real   scalar  seg_start, n_segs
+    real   scalar  seg_start, n_segs, ae
     string scalar  piece
     string vector  pieces, segs
     string scalar  graph_opts_raw, graph_qual
@@ -2610,8 +2615,21 @@ void _dash_split_segs(string scalar input) {
     segs   = J(1, 0, "")
     graph_opts_raw = ""
     graph_qual     = ""
+    // allow_empty (WP-31 A1): 1 from _dash_plot, for every plot command --
+    // dash replaces twoway, and twoway alone draws an empty graph, and so do
+    // `twoway, title(T)', `twoway if foreign==1' and `twoway ||' (measured
+    // 13oct2026, test/fixtures/bare_prefix_truth.json bare.*): no plot is
+    // then not an error, and the options and qualifier are the graph's.
+    ae = 0
+    if (args() >= 2) ae = (allow_empty != 0 & allow_empty < .)
 
     if (len == 0) {
+        if (ae) {
+            st_local("_n_segs", "0")
+            st_local("_graph_opts_raw", "")
+            st_local("_graph_qual_raw", "")
+            return
+        }
         errprintf("dash: empty plot specification.\n")
         exit(198)
     }
@@ -2689,7 +2707,7 @@ void _dash_split_segs(string scalar input) {
     }
 
     n_segs = cols(segs)
-    if (n_segs == 0) {
+    if (n_segs == 0 & !ae) {
         errprintf("dash: no plot specifications found.\n")
         exit(198)
     }
@@ -9845,6 +9863,29 @@ real scalar _dash_spec_types_in(string scalar s, string scalar allowed)
         m = m + (strlen(s) - strlen(subinstr(s, k, "", .))) / strlen(k)
     }
     return(m == n)
+}
+
+// _dash_spec_has_plots(json) -- 1 when the spec's "plots" array holds a
+// record, 0 when it is empty ("plots":[]): bare dash, as bare twoway,
+// registers an empty graph that needs no variable (WP-31 A1).  Byte scan, no regex.
+real scalar _dash_spec_has_plots(string scalar json)
+{
+    real scalar p, q, n
+
+    p = strpos(json, char(34) + "plots" + char(34))
+    if (!p) return(0)
+    q = strpos(substr(json, p, .), "[")
+    if (!q) return(0)
+    q = p + q
+    n = strlen(json)
+    // Mata's & does not short-circuit, so the bound is tested on its own
+    // (ascii("") is 1x0 and anyof would error past the end).
+    while (q <= n) {
+        if (!anyof((32, 9, 10, 13), ascii(substr(json, q, 1)))) break
+        q++
+    }
+    if (q > n) return(0)
+    return(substr(json, q, 1) == "{")
 }
 
 // GAPS2 G3 (WP-28 section 08): what the SAVED page embeds is not every

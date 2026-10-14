@@ -967,7 +967,7 @@ Changed behaviour.
 
 - A time-series operator in an option's variable is refused as twoway refuses it, with or without tsset: dash scatter mpg weight, mlabel(L.make) said r(198) "mlabel() must name a variable, not a time-series expression" on tsset data and r(111) "variable L.make not found" otherwise, and now says twoway's "variable L not found", r(111); colorvar(L.mpg) and by(L.foreign) say "factor-variable and time-series operators not allowed", r(101). twoway draws none of them. (WP-31, A6)
 
-- `dash twoway` with nothing after it is refused as `twoway twoway` is, "twoway is not a twoway plot type", r(198), not "empty plot specification": dash replaces twoway, so a twoway prefix is not dash's. (WP-31, A1)
+- `dash` with no plot draws the empty graph `twoway` draws: `dash`, `dash, title(T)`, `dash if foreign==1` and `dash ||` were refused, r(198), "empty plot specification"; `dash twoway` is refused as `twoway twoway` is, "twoway is not a twoway plot type", r(198), since dash replaces twoway. (WP-31, A1)
 
 - The option-abbreviation truth was an 18 Sep 2026 pre-fix record; it is regenerated live and every option minimum is pinned both ways. (WP-31, A3)
 

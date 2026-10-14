@@ -2512,6 +2512,59 @@ assert "${dash_graph_registry}" == ""
 display "TW-01 PASS: dash twoway, tw, two, twow, twowa, graph, gr, gra, grap and their capitalised forms are refused as twoway refuses them after twoway, r(198)"
 
 // ================================================================
+// TW-02 -- dash alone is twoway alone: an empty graph
+// ================================================================
+// twoway with no plot draws an empty graph, rc 0, and takes graph options
+// and a qualifier (test/fixtures/bare_prefix_truth.json bare.*; measured
+// again here).  dash replaces twoway, so `dash', `dash, title(T)',
+// `dash if foreign==1' and `dash ||' register a graph with no plot, as the
+// maintainer decided 14oct2026; dash refused them, r(198).
+sysuse auto, clear
+dash clear
+foreach f in "" ", title(T)" "if foreign==1" "||" {
+    capture twoway `f'
+    local trc = _rc
+    capture graph drop _all
+    // Without name() dash draws the page at once, as twoway draws the graph.
+    _p1a_logrun "dash `f'"
+    local drc = r(rc)
+    local lg "`r(log)'"
+    if `trc' != 0 | `drc' != 0 {
+        display as error "TW-02 FAIL: [`f'] twoway rc `trc', dash rc `drc'"
+        exit 9
+    }
+    foreach bad in "MISSING_RENDERERS" "empty plot specification" "no plot specifications" {
+        cert_file_has "`lg'", needle("`bad'")
+        if r(found) {
+            display as error "TW-02 FAIL: [`f'] dash said `bad'"
+            exit 9
+        }
+    }
+    // With name() the empty graph registers with no plot.
+    dash clear
+    local nm = cond(`"`f'"' == "" | substr(`"`f'"', 1, 1) != ",", `"`f', name(tw02)"', `"`f' name(tw02)"')
+    capture noisily dash `nm'
+    assert _rc == 0
+    if strpos(`"${dash_json_tw02}"', `""plots":[]"') == 0 {
+        display as error "TW-02 FAIL: [`nm'] the graph holds a plot or did not register"
+        exit 9
+    }
+    dash clear
+}
+dash clear
+quietly dash, title(T) name(tw02t)
+assert strpos(`"${dash_json_tw02t}"', `""title":"T""') > 0
+dash clear
+mata:
+_tw2q = char(34)
+st_local("tw2a", strofreal(_dash_spec_has_plots("{" + _tw2q + "plots" + _tw2q + ":[]," + _tw2q + "graph_options" + _tw2q + ":{}}")))
+st_local("tw2b", strofreal(_dash_spec_has_plots("{" + _tw2q + "plots" + _tw2q + ":[ {" + _tw2q + "type" + _tw2q + ":" + _tw2q + "scatter" + _tw2q + "}]}")))
+st_local("tw2c", strofreal(_dash_spec_has_plots("{}")))
+end
+assert `tw2a' == 0 & `tw2b' == 1 & `tw2c' == 0
+display "TW-02 PASS: dash, dash, title(T), dash if foreign==1 and dash || draw twoway's empty graph"
+
+// ================================================================
 // P1A-85 -- a || segment with no plot: `|| , opts' and `|| if exp'
 //           are the graph's, as twoway reads them
 // ================================================================

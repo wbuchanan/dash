@@ -45866,6 +45866,13 @@ class DashRenderer:
         # numbers it with, a ci fit counting as two plots
         # (_dash_plot_style_indices); pi stays the layer's own number.
         _pstyle_idx = _dash_plot_style_indices(plots)
+        if not plots:
+            # A graph with no plot (bare dash, as bare twoway draws one):
+            # an annotation drawing nothing keeps Bokeh's MISSING_RENDERERS
+            # warning out of Stata's output -- twoway draws it in silence.
+            from bokeh.models import BoxAnnotation
+            fig.add_layout(BoxAnnotation(visible=False,
+                                         name="dash_empty_graph"))
         for pi, plot in enumerate(plots):
             ptype = plot.get("type", "scatter")
             pxvar = plot.get("xvar", xvar)
@@ -51550,6 +51557,13 @@ class ServerAppBuilder:
             "        # The sources whose rows are data rows -- the graph's own and",
             "        # each layer's -- for the primary-renderers limit (WP-28 B2).",
             "        _prim_srcs = [src]",
+            "        if not plots:",
+            "            # Bare dash, as bare twoway: no plot.  An annotation",
+            "            # drawing nothing keeps Bokeh's MISSING_RENDERERS",
+            "            # warning out of the output, as the saved renderer does.",
+            "            from bokeh.models import BoxAnnotation",
+            "            fig.add_layout(BoxAnnotation(visible=False,",
+            "                                         name='dash_empty_graph'))",
             '        for pi, plot in enumerate(plots):',
             "            # Lower-cased, exactly as _dash_draw_layer and the saved",
             "            # renderer read it.  `hist' was re-spelled `histogram'",

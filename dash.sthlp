@@ -145,6 +145,9 @@ and is refused as {cmd:twoway} refuses that, "twoway is not a twoway plot type",
 {cmd:graph}, {cmd:gr}, {cmd:gra} and {cmd:grap}, in any case, before a
 plot, alone or before options.  To use a command copied from a do-file,
 replace its {cmd:twoway} (or {cmd:graph twoway}) with {cmd:dash}.
+With no plot, {cmd:dash} draws the empty graph {cmd:twoway} draws:
+{cmd:dash}, {cmd:dash, title(T)}, {cmd:dash if foreign==1} and
+{cmd:dash ||} each register a graph with axes and no plot.
 
 
 {marker description}
