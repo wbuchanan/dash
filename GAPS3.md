@@ -436,8 +436,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit c0c5139.
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
-- **C4 Tracked:** Closed in WP-31, BUGS.md "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn", commit pending.
-- **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit pending.
+- **C4 Tracked:** Closed in WP-31, BUGS.md "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn", commit 660be06.
+- **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Open (WP-31 section 14).
 - **C7 Tracked:** Open (WP-31 section 14).
 - **C8a Tracked:** Open (WP-31 section 15).
@@ -485,7 +485,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E13 Tracked:** Open (WP-31 section 41).
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Open (WP-31 section 13).
-- **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit pending.
+- **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
 - **F1d Tracked:** Open (WP-31 section 19).
 - **F1e Tracked:** Open (WP-31 section 22).
 - **F1f Tracked:** Open (WP-31 section 25).
