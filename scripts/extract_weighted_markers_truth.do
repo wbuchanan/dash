@@ -168,6 +168,28 @@ foreach t in lfit qfit lfitci qfitci fpfit fpfitci lpoly lpolyci kdensity msplin
 }
 _zm_run A5b_histogram_expr : twoway histogram mpg [fw=rep78-rep78],
 _zm_run A5b_histogram_var : twoway histogram mpg [fw=zero],
+* ---- A5b: the weight text each type's parser takes (serset.class new,
+* _genwt; series.class new): a text -syntax varlist(min=1 max=1)- reads as
+* one variable is used as typed, token by token ----
+foreach t in scatter line mspline mband rscatter pcscatter bar tsline function lfit {
+    local v "mpg weight"
+    if "`t'" == "rscatter" local v "lo hi weight"
+    if "`t'" == "pcscatter" local v "mpg weight hi x2"
+    if "`t'" == "tsline" local v "mpg"
+    if "`t'" == "function" local v "y = x"
+    local k 0
+    foreach f in "price-price" "price - price" "(price)" "( price )" "pri-pri" "price+1" "price-mpg" "((price))" "pri" {
+        local ++k
+        _zm_run X_`t'_`k' : twoway `t' `v' [aw=`f'],
+    }
+}
+* An all-zero text the parser refuses: the parser's answer comes first.
+_zm_run X_zero_order : twoway scatter mpg weight [aw=zero-zero],
+* An option twoway refuses comes before the weight text.
+_zm_run X_option_order : twoway scatter mpg weight [aw=price-price], bwidth(2)
+* mspline and mband take a weight and say nothing.
+_zm_run I_mspline : twoway mspline mpg weight [aw=price],
+_zm_run I_mband : twoway mband mpg weight [aw=price],
 
 python:
 import csv, json, os, re

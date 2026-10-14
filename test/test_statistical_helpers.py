@@ -429,10 +429,15 @@ class TestLayerWeights:
     def test_an_inert_weight_changes_no_row(self, layer):
         # twoway draws the same curve with missing or zero weights (measured
         # 23sep2026: [aw=rep78] and a 0/1 weight give the unweighted serset).
+        # Flipped (WP-31 A5b): the weight was named "does not use it",
+        # which was wrong because twoway takes it and says nothing
+        # (weighted_markers_truth.json I_mspline, I_mband).
         dr._dash_reset_notes()
-        with pytest.warns(UserWarning, match="does not use it"):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             x, y, w, wt = GM._layer_weights(
                 self._src(), None, {"weight": "aweight", "wexp": "w"}, layer, "x", "y")
+        assert not caught, [str(c.message) for c in caught]
         np.testing.assert_array_equal(x, [1, 2, 3, 5, 6])
         assert w is None and wt is None
 

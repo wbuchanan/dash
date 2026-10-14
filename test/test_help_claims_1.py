@@ -234,7 +234,9 @@ class TestTheSyntaxDiagram:
         text = _syntax()
         for w in ("aweight", "fweight", "pweight"):
             assert "{cmd:[%s=}" % w in text, w
-        assert "one variable" in _prose(text)
+        # Flipped (WP-31 A5b): "one variable" was wrong because twoway
+        # evaluates a weight expression (WP-31 A5) and so does dash.
+        assert "or an expression, as in twoway" in _prose(text)
 
     def test_the_kpi_diagram_shows_name_with_replace(self):
         kpi = _between(_syntax(), "{ul:KPI card}", "{ul:Build dashboard")

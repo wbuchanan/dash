@@ -5759,6 +5759,8 @@ program define _dash_process_segment, rclass
     // saved before the clear below destroys them.
     mata: st_local("_seg_weight", st_global("s(_weight)"))
     mata: st_local("_seg_wexp", st_global("s(_wexp)"))
+    // The weight text as typed, for twoway's yxview reading (WP-31 A5b).
+    local _seg_wexp_typed : copy local _seg_wexp
 
     // ---- weights (WP-18) ----
     // Which type honours which weight is twoway's own acceptance table,
@@ -6220,6 +6222,19 @@ program define _dash_process_segment, rclass
                 exit 2001
             }
         }
+    }
+
+    // ---- The weight text as twoway's views read it (WP-31 A5b) ----
+    // scatter, line and every other yxview type, mspline and mband among
+    // them, read a weight text that -syntax varlist(min=1 max=1)- takes as
+    // one variable as typed (_dash_wexp_yx): [aw=price-price] is "- not
+    // allowed", r(101), [aw=(price)] "( invalid name", r(198), where the
+    // fits, kdensity, histogram, lpoly and function evaluate it.  twoway
+    // judges it when it builds the plot's data: after the options, before
+    // the weights' values (weighted_markers_truth.json X_*).
+    local _wt_ownparse "lfit qfit lfitci qfitci fpfit fpfitci lpoly lpolyci kdensity histogram lowess function"
+    if `"`_seg_weight'"' != "" & !`: list ptype in _wt_ownparse' & !`: list ptype in _pt_imm' {
+        _dash_wexp_yx `macval(_seg_wexp_typed)'
     }
 
     // ---- A weighted marker layer with no weight above zero (WP-31 C9) ----
@@ -7160,6 +7175,36 @@ end
 // on a refusal; the names come back in the caller's local
 // _dash_wexp_vars.
 // ================================================================
+// _dash_wexp_yx <weight text>  -- twoway's yxview views (WP-31 A5b).
+// serset.class's new uses a weight text that -syntax varlist(min=1 max=1
+// numeric)- takes as one variable as typed (_genwt), and reads each of its
+// words as a series name (series.class new: -syntax [anything]-, then the
+// variable's type), so price-price, pri-pri, "price - price", (price) and
+// "( price )" are refused with Stata's own words and code, as twoway
+// refuses them, and any other text -- price+1, price-mpg, ((price)), pri
+// -- is generated and taken.  Measured: weighted_markers_truth.json X_*.
+program define _dash_wexp_yx
+    version 19
+    local _wy_x `"`macval(0)'"'
+    capture syntax varlist(min=1 max=1 numeric)
+    if _rc exit
+    foreach _wy_t of local _wy_x {
+        local 0 `"`macval(_wy_t)'"'
+        capture syntax [anything]
+        if _rc {
+            local _wy_rc = _rc
+            capture noisily syntax [anything]
+            exit `_wy_rc'
+        }
+        capture local _wy_ty : type `_wy_t'
+        if _rc {
+            local _wy_rc = _rc
+            capture noisily local _wy_ty : type `_wy_t'
+            exit `_wy_rc'
+        }
+    }
+end
+
 program define _dash_wexp_gen
     version 19
     args cmdname

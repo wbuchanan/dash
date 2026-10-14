@@ -360,6 +360,7 @@ COVERAGE = {
         "_dash_tsop_gen": ("test_parser.cscript:TSO-06", "test_parser.cscript:TSO-11"),
         # WP-31 S07 (A5): weight expressions
         "_dash_wexp_gen": ("test_wp31_truth.cscript:U07-1", "test_wp31_truth.cscript:U07-3"),
+        "_dash_wexp_yx": ("test_statistical_options.cscript:U20-08",),
         # WP-30 S45 (P1.8b): recast() (P1.8 part b)
         "_dash_recast_opt": ("test_twoway_option_parity.cscript:RC-01", "test_twoway_option_parity.cscript:RC-13"),
         "_dash_recast_s": ("test_twoway_option_parity.cscript:RC-09", "test_twoway_option_parity.cscript:RC-11"),

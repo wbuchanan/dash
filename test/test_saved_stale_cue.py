@@ -746,10 +746,10 @@ class TestTheWeightColumn:
         ("lowess", "lowess", _AW, None,
          "dash: lowess [aweight=w]: twoway lowess refuses it (weights not "
          "allowed, r(101)); the layer is drawn unweighted."),
-        ("inert", "mspline", _AW, None,
-         "dash: mspline [aweight=w]: twoway mspline accepts the weight and "
-         "does not use it (measured: the curve equals the unweighted one), "
-         "so neither does dash."),
+        # Flipped (WP-31 A5b): the inert weight was named, which was wrong
+        # because twoway takes it and says nothing
+        # (weighted_markers_truth.json I_mspline, I_mband).
+        ("inert", "mspline", _AW, None, None),
         ("negative", "fpfit", _AW, [1.0, -1.0, 1.0, 1.0],
          "dash: fpfit [aweight=w]: 1 negative weight(s) -- fracpoly cannot "
          "fit it, and twoway draws nothing; dash draws nothing for this "
@@ -775,7 +775,7 @@ class TestTheWeightColumn:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             dr.GlyphMapper._layer_weights(src, None, opts, layer, "y", "x")
-        assert [str(c.message) for c in caught] == [msg]
+        assert [str(c.message) for c in caught] == ([msg] if msg else [])
 
 
 # ---------------------------------------------------------------------------

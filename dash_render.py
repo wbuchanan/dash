@@ -16485,7 +16485,7 @@ class GlyphMapper:
 
     @staticmethod
     def _layer_weights(source: ColumnDataSource, view, options, layer: str,
-                       *varnames: str, units=None) -> tuple:
+                       *varnames: str, units=None, shown=None) -> tuple:
         """``_masked`` plus the layer's weight: ``(cols..., w, wtype)``.
 
         The weight clause of a plot -- ``[aweight=price]`` -- reaches the
@@ -16520,7 +16520,9 @@ class GlyphMapper:
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
         wname = _DASH_WEIGHT_NAMES.get(wtype, wtype)
-        clause = f"[{wname}={wexp}]"
+        # A weight expression's column (__dashw<k>, __dasht<k>) is named
+        # by the expression as typed, *shown* (WP-31 A5b).
+        clause = f"[{wname}={shown or wexp}]"
         if why == "missing":
             _dash_warn_once(
                 ("weight-missing", layer, wexp),
@@ -16550,11 +16552,9 @@ class GlyphMapper:
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
         if why == "inert":
-            _dash_warn_once(
-                ("weight-inert", layer, wtype),
-                f"dash: {layer} {clause}: twoway {layer} accepts the weight "
-                f"and does not use it (measured: the curve equals the "
-                f"unweighted one), so neither does dash.")
+            # twoway takes the weight, draws the unweighted curve and says
+            # nothing (weighted_markers_truth.json I_mspline, I_mband), and
+            # so does dash (WP-31 A5b; DISCOVERY Q36).
             return (*GlyphMapper._masked(source, view, *varnames,
                                           units=units), None, None)
         cols = GlyphMapper._masked(source, view, *varnames, wexp,
@@ -16609,7 +16609,19 @@ class GlyphMapper:
         included -- read in its Stata units, as twoway computes a layer
         (WP-29 P0.8): ``units`` is this mapper's ``date_vars``."""
         return self._layer_weights(source, view, options, layer, *varnames,
-                                   units=dict(self.date_vars or {}) or None)
+                                   units=dict(self.date_vars or {}) or None,
+                                   shown=self._wexp_shown(options))
+
+    def _wexp_shown(self, options) -> "str | None":
+        """The weight as a note names it (WP-31 A5b): a column dash made
+        from an expression -- ``__dashw<k>``, ``__dasht<k>`` -- by its
+        label, the expression as typed (``_dash_tsop_labels``); else None,
+        and the note names the variable."""
+        _wt, wexp = _dash_weight_spec(options)
+        if not wexp.startswith(_DASH_RESERVED_PREFIX):
+            return None
+        lab = (getattr(self, "variable_labels", None) or {}).get(wexp)
+        return str(lab) if lab else None
 
     def _cmiss_gap_x(self, source, view, xvar, yvar, options,
                      distinct=False):

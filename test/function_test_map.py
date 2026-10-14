@@ -188,6 +188,7 @@ FUNCTIONS = {
  'GlyphMapper._is_empty': 'test/test_glyphs.py::TestHardeningGuards::test_is_empty_false_for_nonempty_source',
  'GlyphMapper._join_order': 'test/test_join_order.py::TestTheJoinOrderRule::test_the_precedence',
  'GlyphMapper._layer_weight_column': 'test/test_saved_stale_cue.py::TestTheWeightColumn::test_it_decides_as_layer_weights_does',
+ 'GlyphMapper._wexp_shown': 'test/test_weight_expressions.py::TestTheNotesNameTheExpression::test_a_partly_zero_expression_is_named_as_typed',
  'GlyphMapper._weight_markers': 'test/test_weighted_markers.py::TestAfterAMove::test_saved_is_marked',
  'GlyphMapper._layer_weight_values_state': 'test/test_saved_stale_cue.py::TestTheWeightColumn::test_the_value_state',
  'GlyphMapper._rot_conditional': 'test/test_js_fit_refit.py::TestTheExactFitIsMarked::test_rot_conditional',

@@ -485,6 +485,7 @@ and now matches Stata.
 <!-- WP-31 F2 -->
 
 - `dash lfit mpg weight [aw=price-price]` (or any weight zero on every row): twoway's "(note:  regress could not fit model)" alone, and on kdensity and histogram nothing (was: also "74 observation(s) with a zero or negative weight are excluded", naming the internal column __dashw1) (WP-31, A5b)
+- `dash scatter mpg weight [aw=price-price]`: r(101) "- not allowed", and `[aw=(price)]` r(198) "( invalid name", as twoway reads a weight on scatter, line, the other glyph types, mspline and mband (was: evaluated); `dash mspline mpg weight [aw=w]`: no note (was: "accepts the weight and does not use it"); a note naming a weight expression names it as typed (was: __dashw1) (WP-31, A5b)
 
 <!-- WP-31 C10d -->
 

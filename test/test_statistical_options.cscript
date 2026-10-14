@@ -1104,6 +1104,59 @@ _so_tally LB-20 `bad' "pwidth() and var() on lpoly, scatter, lfitci and kdensity
 capture dash clear
 macro drop lb_*
 
+// ================================================================
+// U20-08 (WP-31 A5b): the weight text twoway's views take.  scatter,
+// line, the other yxview types, mspline and mband read a weight text that
+// -syntax varlist(min=1 max=1 numeric)- takes as one variable as typed,
+// token by token (serset.class new and _genwt, series.class new), so
+// [aw=price-price] is "- not allowed", r(101), and [aw=(price)] "( invalid
+// name", r(198), where an expression such as [aw=price+1] is evaluated
+// (weighted_markers_truth.json X_*); the text is judged after the
+// options, and before the weights' values.  Compared live with twoway.
+// ================================================================
+sysuse auto, clear
+quietly generate t = _n
+quietly tsset t
+quietly generate double lo = mpg - 2
+quietly generate double hi = mpg + 2
+quietly generate double zero = 0
+local bad = 0
+foreach tv in "scatter|mpg weight" "line|mpg weight" "mspline|mpg weight" "rscatter|lo hi weight" "bar|mpg weight" "tsline|mpg" "function|y = x" "lfit|mpg weight" {
+    gettoken t v : tv, parse("|")
+    local v = substr(`"`v'"', 2, .)
+    foreach f in "price-price" "price - price" "(price)" "( price )" "pri-pri" "price+1" "price-mpg" "((price))" "pri" {
+        capture twoway `t' `v' [aw=`f'], nodraw
+        local trc = _rc
+        capture dash clear
+        _so_probe U20-08 `"dash `t' `v' [aw=`f'], name(u208)"' `trc'
+        if r(bad) local bad = 1
+    }
+}
+foreach c in "price-price|- not allowed" "price - price|- invalid name" "(price)|( invalid name" "( price )|unmatched open parenthesis" {
+    gettoken f nd : c, parse("|")
+    local nd = substr(`"`nd'"', 2, .)
+    local erc = cond(strpos(`"`f'"', " - ") | strpos(`"`f'"', "(") , 198, 101)
+    _so_probe U20-08 `"dash scatter mpg weight [aw=`f'], name(u208)"' `erc'
+    if r(bad) local bad = 1
+    _so_count "`c(tmpdir)'dash_so.log" "`nd'"
+    if r(n) == 0 {
+        display as error `"U20-08 FAIL: [aw=`f'] is not refused in twoway's words, `nd'"'
+        local bad = 1
+    }
+}
+// The order: the text before the weights' values, the options before it.
+_so_probe U20-08 `"dash scatter mpg weight [aw=zero-zero], name(u208)"' 101
+if r(bad) local bad = 1
+_so_count "`c(tmpdir)'dash_so.log" "- not allowed"
+if r(n) == 0 local bad = 1
+_so_probe U20-08 `"dash scatter mpg weight [aw=price-price], bwidth(2) name(u208)"' 198
+if r(bad) local bad = 1
+_so_count "`c(tmpdir)'dash_so.log" "option bwidth() not allowed"
+if r(n) == 0 local bad = 1
+_so_tally U20-08 `bad' "the weight text is read as twoway's views read it: price-price r(101), (price) r(198), in twoway's words, after the options and before the values"
+capture dash clear
+tsset, clear
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

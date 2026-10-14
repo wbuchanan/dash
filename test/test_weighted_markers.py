@@ -99,6 +99,8 @@ class TestTheFixture:
                 want = 101
             elif k.startswith("A5b_lpoly"):
                 want = 2000
+            elif k.startswith("X_"):
+                continue  # test_weight_expressions.TestTheYxviewWeightText
             assert rec["rc"] == want, k
 
     def test_twoway_says_nothing_of_a_marker_weight(self):

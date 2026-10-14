@@ -133,8 +133,8 @@ to the plot it is written in.  A {cmd:||} piece that holds no plot --
 are graph options only, and a plot option there is refused, r(198).  A
 {it:weight} belongs to a plot, too:
 {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=}{it:varname}{cmd:]} or
-{cmd:[pweight=}{it:varname}{cmd:]}, one variable rather than an expression
-on the layers that honour it; see {help dash##weights:Weights}.
+{cmd:[pweight=}{it:varname}{cmd:]}, or an expression, as in {cmd:twoway};
+see {help dash##weights:Weights}.
 
 {pstd}
 {cmd:dash} replaces {cmd:twoway}: type {cmd:dash} where you would type
@@ -3564,6 +3564,18 @@ An expression holding a backtick, a dollar sign, a double quote, a
 semicolon, a tab or a line break never reaches a command line: Stata's
 weight syntax refuses most of them as {cmd:twoway} does, and {cmd:dash}
 refuses the rest, r(198).
+
+{pstd}
+On {cmd:scatter}, {cmd:line} and the other glyph layers, and on
+{cmd:mspline} and {cmd:mband}, {cmd:twoway} reads a weight that names one
+variable as that variable's name, word by word, so a range of one
+variable, {cmd:[aw=price-price]}, is refused ({cmd:- not allowed},
+r(101)), and so are {cmd:[aw=price - price]} and {cmd:[aw=(price)]}
+(r(198)); {cmd:dash} refuses them with the same words and codes, after
+the plot's options, as {cmd:twoway} does.  Any other expression,
+{cmd:[aw=price+1]} or {cmd:[aw=((price))]}, is taken.  A weight on
+{cmd:mspline} or {cmd:mband} is taken without a word, as in
+{cmd:twoway}.
 
 {pstd}
 On {cmd:scatter}, {cmd:connected}, {cmd:dot}, {cmd:dropline},

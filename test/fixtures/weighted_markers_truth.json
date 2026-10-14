@@ -205,6 +205,20 @@
   "radii": [],
   "rc": 0
  },
+ "I_mband": {
+  "cmd": "twoway mband mpg weight [aw=price]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "I_mspline": {
+  "cmd": "twoway mspline mpg weight [aw=price]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
  "R_1": {
   "cmd": "twoway scatter mpg weight, msize(1)",
   "fill_radii": [
@@ -2326,10 +2340,1004 @@
   ],
   "rc": 0
  },
+ "X_bar_1": {
+  "cmd": "twoway bar mpg weight [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_bar_2": {
+  "cmd": "twoway bar mpg weight [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_bar_3": {
+  "cmd": "twoway bar mpg weight [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_bar_4": {
+  "cmd": "twoway bar mpg weight [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_bar_5": {
+  "cmd": "twoway bar mpg weight [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_bar_6": {
+  "cmd": "twoway bar mpg weight [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_bar_7": {
+  "cmd": "twoway bar mpg weight [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_bar_8": {
+  "cmd": "twoway bar mpg weight [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_bar_9": {
+  "cmd": "twoway bar mpg weight [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_1": {
+  "cmd": "twoway function y = x [aw=price-price]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_2": {
+  "cmd": "twoway function y = x [aw=price - price]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_3": {
+  "cmd": "twoway function y = x [aw=(price)]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_4": {
+  "cmd": "twoway function y = x [aw=( price )]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_5": {
+  "cmd": "twoway function y = x [aw=pri-pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_6": {
+  "cmd": "twoway function y = x [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_7": {
+  "cmd": "twoway function y = x [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_8": {
+  "cmd": "twoway function y = x [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_function_9": {
+  "cmd": "twoway function y = x [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_1": {
+  "cmd": "twoway lfit mpg weight [aw=price-price]",
+  "fill_radii": [],
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_2": {
+  "cmd": "twoway lfit mpg weight [aw=price - price]",
+  "fill_radii": [],
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_3": {
+  "cmd": "twoway lfit mpg weight [aw=(price)]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_4": {
+  "cmd": "twoway lfit mpg weight [aw=( price )]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_5": {
+  "cmd": "twoway lfit mpg weight [aw=pri-pri]",
+  "fill_radii": [],
+  "lines": [
+   "(note:  regress could not fit model)"
+  ],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_6": {
+  "cmd": "twoway lfit mpg weight [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_7": {
+  "cmd": "twoway lfit mpg weight [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_8": {
+  "cmd": "twoway lfit mpg weight [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_lfit_9": {
+  "cmd": "twoway lfit mpg weight [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_line_1": {
+  "cmd": "twoway line mpg weight [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_line_2": {
+  "cmd": "twoway line mpg weight [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_line_3": {
+  "cmd": "twoway line mpg weight [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_line_4": {
+  "cmd": "twoway line mpg weight [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_line_5": {
+  "cmd": "twoway line mpg weight [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_line_6": {
+  "cmd": "twoway line mpg weight [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_line_7": {
+  "cmd": "twoway line mpg weight [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_line_8": {
+  "cmd": "twoway line mpg weight [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_line_9": {
+  "cmd": "twoway line mpg weight [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mband_1": {
+  "cmd": "twoway mband mpg weight [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_mband_2": {
+  "cmd": "twoway mband mpg weight [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_mband_3": {
+  "cmd": "twoway mband mpg weight [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_mband_4": {
+  "cmd": "twoway mband mpg weight [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_mband_5": {
+  "cmd": "twoway mband mpg weight [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_mband_6": {
+  "cmd": "twoway mband mpg weight [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mband_7": {
+  "cmd": "twoway mband mpg weight [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mband_8": {
+  "cmd": "twoway mband mpg weight [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mband_9": {
+  "cmd": "twoway mband mpg weight [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mspline_1": {
+  "cmd": "twoway mspline mpg weight [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_mspline_2": {
+  "cmd": "twoway mspline mpg weight [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_mspline_3": {
+  "cmd": "twoway mspline mpg weight [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_mspline_4": {
+  "cmd": "twoway mspline mpg weight [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_mspline_5": {
+  "cmd": "twoway mspline mpg weight [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_mspline_6": {
+  "cmd": "twoway mspline mpg weight [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mspline_7": {
+  "cmd": "twoway mspline mpg weight [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mspline_8": {
+  "cmd": "twoway mspline mpg weight [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_mspline_9": {
+  "cmd": "twoway mspline mpg weight [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_option_order": {
+  "cmd": "twoway scatter mpg weight [aw=price-price], bwidth(2)",
+  "lines": [
+   "option bwidth() not allowed"
+  ],
+  "rc": 198
+ },
+ "X_pcscatter_1": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_pcscatter_2": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_pcscatter_3": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_pcscatter_4": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_pcscatter_5": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_pcscatter_6": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=price+1]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_pcscatter_7": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=price-mpg]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.84,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.84,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.52,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.52,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_pcscatter_8": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=((price))]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_pcscatter_9": {
+  "cmd": "twoway pcscatter mpg weight hi x2 [aw=pri]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_rscatter_1": {
+  "cmd": "twoway rscatter lo hi weight [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_rscatter_2": {
+  "cmd": "twoway rscatter lo hi weight [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_rscatter_3": {
+  "cmd": "twoway rscatter lo hi weight [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_rscatter_4": {
+  "cmd": "twoway rscatter lo hi weight [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_rscatter_5": {
+  "cmd": "twoway rscatter lo hi weight [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_rscatter_6": {
+  "cmd": "twoway rscatter lo hi weight [aw=price+1]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_rscatter_7": {
+  "cmd": "twoway rscatter lo hi weight [aw=price-mpg]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.84,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.84,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.52,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.52,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_rscatter_8": {
+  "cmd": "twoway rscatter lo hi weight [aw=((price))]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_rscatter_9": {
+  "cmd": "twoway rscatter lo hi weight [aw=pri]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93,
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61,
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_scatter_1": {
+  "cmd": "twoway scatter mpg weight [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_scatter_2": {
+  "cmd": "twoway scatter mpg weight [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_scatter_3": {
+  "cmd": "twoway scatter mpg weight [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_scatter_4": {
+  "cmd": "twoway scatter mpg weight [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_scatter_5": {
+  "cmd": "twoway scatter mpg weight [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_scatter_6": {
+  "cmd": "twoway scatter mpg weight [aw=price+1]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_scatter_7": {
+  "cmd": "twoway scatter mpg weight [aw=price-mpg]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.84,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.52,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_scatter_8": {
+  "cmd": "twoway scatter mpg weight [aw=((price))]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_scatter_9": {
+  "cmd": "twoway scatter mpg weight [aw=pri]",
+  "fill_radii": [
+   38.6,
+   41.32,
+   37.36,
+   41.57,
+   51.72,
+   45.16,
+   40.08,
+   42.93
+  ],
+  "lines": [],
+  "radii": [
+   34.28,
+   37.0,
+   33.04,
+   37.25,
+   47.4,
+   40.84,
+   35.76,
+   38.61
+  ],
+  "rc": 0
+ },
+ "X_tsline_1": {
+  "cmd": "twoway tsline mpg [aw=price-price]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_tsline_2": {
+  "cmd": "twoway tsline mpg [aw=price - price]",
+  "lines": [
+   "- invalid name"
+  ],
+  "rc": 198
+ },
+ "X_tsline_3": {
+  "cmd": "twoway tsline mpg [aw=(price)]",
+  "lines": [
+   "( invalid name"
+  ],
+  "rc": 198
+ },
+ "X_tsline_4": {
+  "cmd": "twoway tsline mpg [aw=( price )]",
+  "lines": [
+   "invalid something: unmatched open parenthesis or bracket"
+  ],
+  "rc": 198
+ },
+ "X_tsline_5": {
+  "cmd": "twoway tsline mpg [aw=pri-pri]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
+ "X_tsline_6": {
+  "cmd": "twoway tsline mpg [aw=price+1]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_tsline_7": {
+  "cmd": "twoway tsline mpg [aw=price-mpg]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_tsline_8": {
+  "cmd": "twoway tsline mpg [aw=((price))]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_tsline_9": {
+  "cmd": "twoway tsline mpg [aw=pri]",
+  "fill_radii": [],
+  "lines": [],
+  "radii": [],
+  "rc": 0
+ },
+ "X_zero_order": {
+  "cmd": "twoway scatter mpg weight [aw=zero-zero]",
+  "lines": [
+   "- not allowed"
+  ],
+  "rc": 101
+ },
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "d887f0d02f0945deb0cae9d85dc1cfcb3acd2d63",
-  "extracted": "14 Oct 2026 16:11:31",
+  "dash_commit": "60021f2fc53b98fbc175443877dbb3f13ebf4e4b",
+  "extracted": "14 Oct 2026 16:59:56",
   "source": "scripts/extract_weighted_markers_truth.do",
   "stata_version": "19.5"
  },
