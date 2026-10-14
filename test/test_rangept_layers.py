@@ -304,22 +304,42 @@ class TestServedCarries:
 
 class TestWeightMeasured:
 
-    def test_twoway_sizes_the_markers_and_dash_names_the_weight(self):
-        """twoway sizes rpcap's and rpspike's y3 markers by an aweight
-        (fixture draw.rpcap_weight: 114 radii where the unweighted graph
-        draws 2; fweight and pweight taken, iweight refused).  The weighted
-        marker machinery is section 20's (batch 7); until it is wired here
-        dash draws every marker at the layer's size and names the weight
-        in its note, so neither name is on a list that honours one."""
+    def test_twoway_sizes_the_markers_and_so_does_dash(self):
+        """twoway sizes rpcap's and rpspike's y3 markers by an aweight,
+        fweight or pweight (fixture draw.rpcap_weight: 114 radii where the
+        unweighted graph draws 2) and refuses an iweight, r(101); the
+        weight text is read as its other yxview views read it
+        (wexp.*: [aw=price-price] r(101), [aw=(price)] r(198)), no
+        weight above zero stops it, r(198) (wzero.*), and labelled or
+        point markers keep their size (wmlabel.*, wpoint.*).  Flipped
+        (WP-31 B1, after section 20's weighted markers landed): dash
+        named the weight and drew every marker at one size."""
         for t in ("rpcap", "rpspike"):
             assert _T["draw"][t + "_weight"]["radii_vary_with_weight"]
         p = _T["probes"]
         assert p["fw.rpcap"]["rc"] == 0 and p["pw.rpcap"]["rc"] == 0
         assert (p["iw.rpcap"]["rc"], p["iw.rpcap"]["message"]) == (
             101, "iweights not allowed")
+        assert (p["wexp.rpcap_minus"]["rc"],
+                p["wexp.rpcap_minus"]["message"]) == (101, "- not allowed")
+        assert (p["wexp.rpcap_paren"]["rc"],
+                p["wexp.rpcap_paren"]["message"]) == (198, "( invalid name")
+        assert p["wzero.rpcap"]["rc"] == p["wzero.rpspike"]["rc"] == 198
+        assert p["wmlabel.rpcap"]["n_radii"] == p["plain.rpcap"]["n_radii"]
         with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
             ado = fh.read()
-        lists = re.findall(r'^\s*local _wt_honoured "([^"]*)"', ado, re.M)
-        words = set(" ".join(lists).split())
+        m = re.search(r'local _wt_markers "([^"]*)"', ado)
         for t in ("rpcap", "rpspike"):
-            assert t not in words and t not in dr._DASH_WEIGHT_ACCEPTS, t
+            assert t in m.group(1).split(), t
+            assert dr._DASH_WEIGHT_ACCEPTS[t] == ("aw", "fw", "pw")
+            assert t in dr.GlyphMapper._WEIGHTED_MARKER_TYPES
+
+    @pytest.mark.parametrize("mode", _MODES)
+    def test_the_marker_is_sized_and_the_caps_are_not(self, mode, tmp_path):
+        f = _fig(mode, tmp_path, opts={"weight": "aweight", "wexp": "price"})
+        [mk] = _markers(f)
+        assert isinstance(mk.glyph.size, str)
+        sizes = np.asarray(mk.data_source.data[mk.glyph.size], dtype=float)
+        assert len(set(np.round(sizes, 9))) > 1
+        for c in _caps(f):
+            assert not isinstance(c.glyph.size, str)

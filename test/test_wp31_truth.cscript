@@ -4281,6 +4281,27 @@ def _u21_draw(sp, dp, app, kind="", value=""):
                                               "yvar", "xvar")))
 end
 
+// _u21_wsized: whether the marker and the caps of a weighted rpcap read
+// their size from a column, saved and served, into u21_ws / u21_wv as
+// "<marker 1|0> <any cap 1|0>".
+python:
+def _u21_wsized(sp, dp, app):
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        mk = cap = 0
+        for x in figs[0].renderers:
+            g = getattr(x, "glyph", None)
+            if type(g).__name__ != "Scatter":
+                continue
+            if "dash_cap" in (x.tags or []):
+                cap = cap or int(isinstance(g.size, str))
+            else:
+                mk = int(isinstance(g.size, str))
+        Macro.setGlobal("u21_w" + sfx, "%d %d" % (mk, cap))
+end
+
 capture program drop _u21_reg
 program define _u21_reg
     // _u21_reg <dir> <k> <kind> <value> <dash command...>: register one
@@ -4454,6 +4475,39 @@ if inlist("`only'", "", "S21") & `: list posof "S21" in w31_run' {
         }
     }
     _w31_done U21-7 "after the move to Foreign every renderer of rpcap and rpspike holds the `nk' kept rows, both modes"
+
+    // ------------------------------------------------------------
+    // U21-11: a weight on rpcap and rpspike as twoway takes it: the y3
+    // markers are sized by [aw=price] (the spec carries the weight, both
+    // modes draw a size column on the marker and none on the caps);
+    // [aw=price-price], [aw=(price)], [iw=price] and a weight zero on
+    // every row are refused with twoway's codes (twoway's drawn graph).
+    // ------------------------------------------------------------
+    quietly generate double zero = 0
+    foreach t in rpcap rpspike {
+        foreach w in "aw=price-price" "aw=(price)" "iw=price" "aw=zero" "aw=price" "fw=rep78" {
+            // Drawn, not nodraw: a weight zero on every row stops twoway
+            // when it draws the markers (rangept_truth.json wzero.*).
+            capture twoway `t' lo hi turn weight [`w'], name(u21w, replace)
+            local trc = _rc
+            capture graph drop _all
+            dash clear
+            capture dash `t' lo hi turn weight [`w'], name(zu2111)
+            local drc = _rc
+            _w31_expect U21-11 "(`trc' == `drc')" "`t' [`w']: twoway rc `trc', dash rc `drc'"
+        }
+    }
+    dash clear
+    quietly dash rpcap lo hi turn weight [aw=price], name(zu2111)
+    _dash_serve_spec, specpath("`u21d'/s11.json") datapath("`u21d'/d11.json")
+    python: import __main__ as _u21_m; _u21_m._u21_wsized("`u21d'/s11.json", "`u21d'/d11.json", "`u21d'/a11.py")
+    _w31_expect U21-11 `"("${u21_ws}" == "1 0" & "${u21_wv}" == "1 0")"' "marker sized, caps sized: saved ${u21_ws}, served ${u21_wv}"
+    foreach p in s d {
+        capture erase "`u21d'/`p'11.json"
+    }
+    capture erase "`u21d'/a11.py"
+    drop zero
+    _w31_done U21-11 "rpcap and rpspike take, size and refuse a weight as twoway does"
 
     forvalues k = 1/10 {
         foreach p in s d {

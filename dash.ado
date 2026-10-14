@@ -5825,7 +5825,7 @@ program define _dash_process_segment, rclass
     // (yxview.class _draw_weighted_points); the markerless glyph types take
     // a weight and draw nothing different, as twoway does, and say nothing
     // (test/fixtures/weighted_markers_truth.json W01-W10).
-    local _wt_markers "scatter connected dot dropline rscatter rcapsym rconnected pcscatter pccapsym"
+    local _wt_markers "scatter connected dot dropline rscatter rcapsym rconnected pcscatter pccapsym rpcap rpspike"
     local _wt_honoured "lfit qfit lfitci qfitci lpoly lpolyci fpfit fpfitci histogram kdensity mspline mband `_wt_markers'"
     // The types that refuse a pweight: a list, like every plot-type family,
     // rather than a string inlist() (TR-22.4).

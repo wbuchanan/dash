@@ -402,6 +402,7 @@ _DASH_WEIGHT_ACCEPTS = {
     "rscatter": ("aw", "fw", "pw"), "rcapsym": ("aw", "fw", "pw"),
     "rconnected": ("aw", "fw", "pw"), "pcscatter": ("aw", "fw", "pw"),
     "pccapsym": ("aw", "fw", "pw"),
+    "rpcap": ("aw", "fw", "pw"), "rpspike": ("aw", "fw", "pw"),
     "lfit": ("aw", "fw", "pw"), "qfit": ("aw", "fw", "pw"),
     "lfitci": ("aw", "fw", "pw"), "qfitci": ("aw", "fw", "pw"),
     "fpfit": ("aw", "fw", "pw"), "fpfitci": ("aw", "fw", "pw"),
@@ -16386,7 +16387,10 @@ class GlyphMapper:
     #: W01-W10).
     _WEIGHTED_MARKER_TYPES = frozenset({
         "scatter", "connected", "dot", "dropline", "rscatter", "rcapsym",
-        "rconnected", "pcscatter", "pccapsym"})
+        "rconnected", "pcscatter", "pccapsym",
+        # WP-31 B1: the y3 markers (rangept_truth.json draw.rpcap_weight),
+        # drawn by map_scatter inside map_rpcap and map_rpspike.
+        "rpcap", "rpspike"})
 
     def _weight_markers(self, renderer, options, layer: str) -> None:
         """Size *renderer*'s markers by the layer's weight, as twoway does

@@ -72,6 +72,7 @@ sysuse auto, clear
 set scheme s2color
 generate lo = turn - 5
 generate hi = turn + 5
+generate zero = 0
 
 * Graphs: key | command.  Class values and the SVG of each.
 global ZR_GRAPHS ""
@@ -169,7 +170,18 @@ local P37 "vertical.rpcap|twoway rpcap lo hi turn weight, vertical"
 local P38 "vertical.rpspike|twoway rpspike lo hi turn weight, vertical"
 local P39 "horizontal.rpspike|twoway rpspike lo hi turn weight, horizontal"
 local P40 "horizontal.rpcap|twoway rpcap lo hi turn weight, horizontal"
-forvalues k = 1/40 {
+* The weight text as the y3 view reads it, and when the weight sizes
+* nothing (WP-31 B1, beside section 20's weighted_markers_truth.json).
+local P41 "wexp.rpcap_minus|twoway rpcap lo hi turn weight [aw=price-price]"
+local P42 "wexp.rpcap_paren|twoway rpcap lo hi turn weight [aw=(price)]"
+local P43 "wexp.rpcap_plus|twoway rpcap lo hi turn weight [aw=price+1]"
+local P44 "wzero.rpcap|twoway rpcap lo hi turn weight [aw=zero]"
+local P45 "wmlabel.rpcap|twoway rpcap lo hi turn weight [aw=price], mlabel(make)"
+local P46 "wpoint.rpcap|twoway rpcap lo hi turn weight [aw=price], msymbol(p)"
+local P47 "wexp.rpspike_minus|twoway rpspike lo hi turn weight [aw=price-price]"
+local P48 "wzero.rpspike|twoway rpspike lo hi turn weight [aw=zero]"
+local P49 "wfw.rpspike|twoway rpspike lo hi turn weight [fw=rep78]"
+forvalues k = 1/49 {
     gettoken key rest : P`k', parse("|")
     gettoken bar cmd : rest, parse("|")
     local opt = cond(strpos(`"`cmd'"', ","), " ", ", ")
@@ -271,6 +283,9 @@ for k, key in enumerate(G("ZR_PROBES").split(), 1):
         written.append(sp)
         doc = svg_document(sp)
         probes[key]["n_circles"] = len(doc["circles"])
+        probes[key]["n_radii"] = len(set(round(c["r"], 3)
+                                         for c in doc["circles"]
+                                         if c.get("r") is not None))
         probes[key]["n_vlines"] = len(doc["vlines"])
         probes[key]["n_hlines"] = len(doc["hlines"])
         probes[key]["n_texts"] = len(doc["texts"])

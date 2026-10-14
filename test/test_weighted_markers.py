@@ -49,7 +49,10 @@ with open(FIXTURE, encoding="utf-8") as _fh:
 MODES = ["saved", "served"]
 #: The marker types twoway sizes by the weight (W08-W10).
 MARKER_TYPES = ["scatter", "connected", "dot", "dropline", "rscatter",
-                "rcapsym", "rconnected", "pcscatter", "pccapsym"]
+                "rcapsym", "rconnected", "pcscatter", "pccapsym",
+                # WP-31 B1: the y3 markers (rangept_truth.json
+                # draw.rpcap_weight, wexp.*, wzero.*, wmlabel.*, wpoint.*).
+                "rpcap", "rpspike"]
 #: A stroke radius of a marker drawn at size zero in twoway's SVG.
 _ZERO_R = 0.25
 
@@ -188,6 +191,10 @@ def _markers(figs):
             if type(g).__name__ != "Scatter":
                 continue
             if "dash_dots" in (r.tags or []) or dr._dash_is_swatch(r):
+                continue
+            # A range cap is a line, as wide as the unweighted marker
+            # (rpcap, WP-31 B1).
+            if "dash_cap" in (r.tags or []):
                 continue
             out.append(r)
     return out

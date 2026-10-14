@@ -3594,8 +3594,9 @@ the plot's options, as {cmd:twoway} does.  Any other expression,
 
 {pstd}
 On {cmd:scatter}, {cmd:connected}, {cmd:dot}, {cmd:dropline},
-{cmd:rscatter}, {cmd:rcapsym}, {cmd:rconnected}, {cmd:pcscatter} and
-{cmd:pccapsym} an {cmd:aweight}, {cmd:fweight} or {cmd:pweight} sizes the
+{cmd:rscatter}, {cmd:rcapsym}, {cmd:rconnected}, {cmd:pcscatter},
+{cmd:pccapsym}, {cmd:rpcap} and {cmd:rpspike} (the marker at {it:y3}, not
+the caps) an {cmd:aweight}, {cmd:fweight} or {cmd:pweight} sizes the
 markers as {cmd:twoway} does: the smallest weight draws its marker at 1.5
 times the marker's size -- {cmd:msize()} included -- and every other at
 1.5*sqrt({it:w}/{it:wmin}) times it, all scaled down together so the

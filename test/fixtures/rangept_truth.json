@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "d887f0d02f0945deb0cae9d85dc1cfcb3acd2d63",
-  "extracted": "14 Oct 2026 16:28:42",
+  "dash_commit": "ff82353f0f295a5d39910337a74670c274a92ced",
+  "extracted": "14 Oct 2026 17:08:06",
   "source": "scripts/extract_rangept_truth.do",
   "stata_version": "19.5"
  },
@@ -421,6 +421,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -489,6 +490,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 10,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -545,6 +547,7 @@
    "message": null,
    "n_circles": 26,
    "n_hlines": 15,
+   "n_radii": 1,
    "n_texts": 14,
    "n_vlines": 23,
    "rc": 0,
@@ -597,6 +600,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 12,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -649,6 +653,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -701,6 +706,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 83,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 154,
    "rc": 0,
@@ -753,6 +759,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 83,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 6,
    "rc": 0,
@@ -811,6 +818,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -847,6 +855,7 @@
    "message": null,
    "n_circles": 4,
    "n_hlines": 11,
+   "n_radii": 2,
    "n_texts": 12,
    "n_vlines": 6,
    "rc": 0,
@@ -864,6 +873,7 @@
    "message": null,
    "n_circles": 0,
    "n_hlines": 11,
+   "n_radii": 0,
    "n_texts": 12,
    "n_vlines": 6,
    "rc": 0,
@@ -918,6 +928,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 85,
    "n_vlines": 79,
    "rc": 0,
@@ -970,6 +981,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 85,
    "n_vlines": 79,
    "rc": 0,
@@ -1022,6 +1034,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1074,6 +1087,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 114,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1093,6 +1107,7 @@
    "message": null,
    "n_circles": 0,
    "n_hlines": 10,
+   "n_radii": 0,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1145,6 +1160,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 10,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1197,6 +1213,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 10,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1249,6 +1266,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 10,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1301,6 +1319,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 10,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1353,6 +1372,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1409,6 +1429,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 158,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1461,6 +1482,7 @@
    "message": null,
    "n_circles": 148,
    "n_hlines": 10,
+   "n_radii": 2,
    "n_texts": 11,
    "n_vlines": 79,
    "rc": 0,
@@ -1474,6 +1496,238 @@
     681.0,
     691.4
    ]
+  },
+  "wexp.rpcap_minus": {
+   "message": "- not allowed",
+   "rc": 101
+  },
+  "wexp.rpcap_paren": {
+   "message": "( invalid name",
+   "rc": 198
+  },
+  "wexp.rpcap_plus": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_radii": 110,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "wexp.rpspike_minus": {
+   "message": "- not allowed",
+   "rc": 101
+  },
+  "wfw.rpspike": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 10,
+   "n_radii": 12,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "wmlabel.rpcap": {
+   "centres": [
+    [
+     454.2,
+     1634.3
+    ],
+    [
+     454.2,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.6
+    ],
+    [
+     495.4,
+     1464.6
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     526.3,
+     1634.3
+    ]
+   ],
+   "message": null,
+   "n_circles": 148,
+   "n_hlines": 158,
+   "n_radii": 2,
+   "n_texts": 85,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "wpoint.rpcap": {
+   "centres": [
+    [
+     454.0,
+     1634.3
+    ],
+    [
+     495.4,
+     1464.8
+    ],
+    [
+     495.4,
+     1690.8
+    ],
+    [
+     526.3,
+     1634.3
+    ],
+    [
+     629.4,
+     1577.7
+    ],
+    [
+     681.0,
+     1690.8
+    ],
+    [
+     691.3,
+     1521.2
+    ],
+    [
+     722.2,
+     1747.4
+    ]
+   ],
+   "message": null,
+   "n_circles": 74,
+   "n_hlines": 158,
+   "n_radii": 1,
+   "n_texts": 11,
+   "n_vlines": 79,
+   "rc": 0,
+   "vline_x": [
+    390.8,
+    454.2,
+    495.4,
+    495.4,
+    526.3,
+    629.5,
+    681.0,
+    691.4
+   ]
+  },
+  "wzero.rpcap": {
+   "message": null,
+   "rc": 198
+  },
+  "wzero.rpspike": {
+   "message": null,
+   "rc": 198
   }
  },
  "title": {
