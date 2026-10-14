@@ -2495,6 +2495,135 @@ if inlist("`only'", "", "S12") & `: list posof "S12" in w31_run' {
 }
 * ==== end S12 ====
 
+// S13 helpers (WP-31 F1b).  _u13_move: the saved page's lfitci or qfitci
+// after one filter move -- the page rendered, the widget set and its own
+// callback run under node (test/js_runner.py) -- its four columns (x,
+// line, lower, upper; a missing limit as null) written to a JSON file,
+// the point count in global u13_n and the count of finite limits in
+// u13_band.  _u13_close: each saved column against a column of twoway's
+// serset (_u10_ss's JSON, rows in grid order), a missing value equal to
+// a missing value; global u13_ok 1 or 0 and u13_msg.
+python:
+def _u13_move(sp, dp, kind, value, out):
+    import json
+    import math
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    fits = [x for f in r.figures.values() for x in f.renderers
+            if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+            in ("lfitci", "qfitci")]
+    d = fits[0].data_source.data
+
+    def col(c):
+        out = []
+        for v in d[c]:
+            v = float("nan") if v is None else float(v)
+            out.append(v if math.isfinite(v) else None)
+        return out
+
+    cols = {c: col(c) for c in ("x_fit", "y_fit", "y_lower", "y_upper")}
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(cols, fh)
+    Macro.setGlobal("u13_n", str(len(cols["x_fit"])))
+    Macro.setGlobal("u13_band", str(sum(v is not None
+                                        for v in cols["y_lower"])))
+
+
+def _u13_close(tw, saved, rtol):
+    import json
+    import numpy as np
+    from sfi import Macro
+    t = json.load(open(tw, encoding="utf-8"))
+    g = json.load(open(saved, encoding="utf-8"))
+    arr = lambda c: np.asarray([np.nan if v is None else v for v in c],
+                               float)
+    tcols = {k: arr(c) for k, c in t.items()}
+    ok, said = 1, []
+    for c in ("x_fit", "y_fit", "y_lower", "y_upper"):
+        gv = arr(g[c])
+        hit = [k for k, tv in tcols.items() if len(tv) == len(gv)
+               and len(gv) and np.allclose(gv, tv, rtol=rtol, atol=1e-12,
+                                           equal_nan=True)]
+        if hit:
+            said.append("%s=%s" % (c, hit[0]))
+        else:
+            ok = 0
+            said.append("%s matches no serset column (%s; %d saved rows)"
+                        % (c, " ".join(tcols), len(gv)))
+    Macro.setGlobal("u13_ok", str(ok))
+    Macro.setGlobal("u13_msg", ", ".join(said))
+end
+
+* ==== S13 F1b: lfitci and qfitci refit on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S13") & `: list posof "S13" in w31_run' {
+    display as text "S13 start " c(current_date) " " c(current_time)
+    local u13d "`w31_work'/s13"
+    capture mkdir "`u13d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U13-01..05: after a move the saved line and band are twoway's on
+    // the kept rows: lfitci after the dropdown to Foreign; qfitci,
+    // level(90) n(20) after the range to 4500-11385; lfitci, stdf after
+    // the dropdown to Domestic; lfitci [fw=rep78] after the dropdown to
+    // Foreign; and lfitci after the slider to 14500, which keeps two
+    // rows: the line, and limits missing in both (df 0).
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U13-01|(scatter mpg weight) (lfitci mpg weight)|foreign, type(dropdown)|Select|Foreign|lfitci mpg weight if foreign == 1, n(100)" "U13-02|(qfitci mpg weight, level(90) n(20))|price, type(range)|RangeSlider|4500 11385|qfitci mpg weight if inrange(price, 4500, 11385), level(90) n(20)" "U13-03|(lfitci mpg weight, stdf)|foreign, type(dropdown)|Select|Domestic|lfitci mpg weight if foreign == 0, stdf n(100)" "U13-04|lfitci mpg weight [fw=rep78]|foreign, type(dropdown)|Select|Foreign|lfitci mpg weight if foreign == 1 [fw=rep78], n(100)" "U13-05|(scatter mpg weight) (lfitci mpg weight)|price, type(slider)|Slider|14500|lfitci mpg weight if price >= 14500, n(100)" {
+        local ++k
+        mata: u13_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u13_t[1]); st_local("cmd", u13_t[2]); st_local("filt", u13_t[3]); st_local("kind", u13_t[4]); st_local("val", u13_t[5]); st_local("tw", u13_t[6])
+        sysuse auto, clear
+        dash clear
+        capture noisily dash `cmd', name(zu13`k')
+        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u13d'/s`k'.json") datapath("`u13d'/d`k'.json") filter(`filt')
+        python: _u13_move("`u13d'/s`k'.json", "`u13d'/d`k'.json", "`kind'", "`val'", "`u13d'/g`k'.json")
+        _u10_ss "`u13d'/t`k'.json" "`u13d'/t`k'.gph" `tw'
+        // A serset stores floats: twoway's values are read to 3e-7.
+        python: _u13_close("`u13d'/t`k'.json", "`u13d'/g`k'.json", 3e-7)
+        _w31_expect `id' "(${u13_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u13_msg}"
+        if "`id'" == "U13-05" {
+            quietly count if price >= 14500
+            _w31_expect `id' "(r(N) == 2)" "price >= 14500 keeps `r(N)' rows"
+            _w31_expect `id' "(${u13_n} == 100 & ${u13_band} == 0)" "two kept rows: ${u13_n} line points, ${u13_band} finite limits"
+        }
+        _w31_done `id' "the saved `cmd' after the move to `val' is twoway `tw' (${u13_n} points, ${u13_band} finite limits; ${u13_msg})"
+    }
+
+    forvalues k = 1/5 {
+        foreach p in s d g t {
+            capture erase "`u13d'/`p'`k'.json"
+        }
+    }
+    capture rmdir "`u13d'"
+    macro drop u13_n u13_band u13_ok u13_msg
+    capture mata: mata drop u13_t
+    dash clear
+    display as text "S13 end " c(current_date) " " c(current_time)
+}
+* ==== end S13 ====
+
 // S16 helpers (WP-31 F1c).  _u16_move: the saved page's lowess line after
 // one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

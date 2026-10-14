@@ -391,7 +391,7 @@ and now matches Stata.
 
 - histogram mpg, gap(20) draws bars 0.8 of a bin wide (was: the full bin), and baroffset() moves histogram and bar bars by bar widths; kdensity mpg, area(74) draws the density 74 times higher and boundary runs it one bandwidth past the data (both were named and ignored); function droplines() draws its drop lines from base() or twoway's default base, and area ..., nodropbase closes the area on the line from its first point to its last, saved and served. gap() outside 0-100, area() not positive, boundary with range(), function base() not a number and a dropline outside range() are refused in twoway's words. (WP-31, C5)
 
-<!-- WP-31 F1b -->
+- lfitci and qfitci on a saved page after a filter move: the build's line and band, dimmed and keyed "(unfiltered)" -> regress and predict on the kept rows, the band at level() with stdp, stdf or stdr, as the served app draws it; a move leaving two rows (lfitci) or three (qfitci) draws the line with no band. A band or line drawn as another type by ciplot() or fitplot() keeps the mark. (WP-31, F1b)
 
 <!-- WP-31 C6 -->
 

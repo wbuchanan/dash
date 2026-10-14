@@ -476,12 +476,15 @@ class TestTheSavedPageIsUnchanged:
         # WP-31 F1c, which re-smooths the lowess layer: its source moves into
         # the filter callback's agg_sources with its config, its stale-cue
         # args, caption and 0.3 muted alpha go, and the code string grows
-        # (diffed with every code string masked; nothing else differs).
+        # (diffed with every code string masked; nothing else differs); and
+        # at WP-31 F1b, whose lfitci/qfitci branch changes only the filter
+        # callback's code string (the base's _FILTER_JS gives the old
+        # digest on the new tree).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "569ce64d97a16a3945e49dc734d470c0d2576f68c2173df46164ce8b28dd14d0")
+    "3504f1d4f9c5ea6c8b671b287238878cec62e725ad5479f4eedb2a8d9c8db931")
 
 
 # ===========================================================================

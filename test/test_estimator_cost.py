@@ -359,8 +359,9 @@ class TestLpolyciCost:
 
 @js_runner.requires_node
 class TestTheJsTwinsAreBounded:
-    """WP-31 F1a (M10): the saved page's lfit and qfit refits on 100,000
-    kept rows finish under 2 s of node's own time each."""
+    """WP-31 F1a, F1b (M10): the saved page's lfit, qfit, lfitci and
+    qfitci refits on 100,000 kept rows finish under 2 s of node's own time
+    each."""
 
     @pytest.mark.parametrize("ptype", ["lfit", "qfit"])
     def test_lfit_and_qfit_under_node_on_1e5_rows(self, ptype):
@@ -371,6 +372,21 @@ class TestTheJsTwinsAreBounded:
               "wtype": None, "xaxiskind": None, "yaxiskind": None}
         got = js_runner.run_fit_js_block(ac, x, y, timed=True)
         assert len(got["data"]["x"]) == 100
+        assert got["ms"] < 2000.0, got["ms"]
+
+    @pytest.mark.parametrize("ptype", ["lfitci", "qfitci"])
+    def test_lfitci_and_qfitci_under_node_on_1e5_rows(self, ptype):
+        # WP-31 F1b: the line and its band (fweighted, stdf) on 1e5 rows.
+        rng = np.random.default_rng(13)
+        x = rng.uniform(1000.0, 5000.0, 100_000)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 2.0, x.size)
+        w = rng.integers(1, 6, x.size).astype(float)
+        ac = {"type": ptype, "cols": ["x_fit", "y_fit", "y_lower", "y_upper"],
+              "n": 100, "range": None, "wtype": "fw", "xaxiskind": None,
+              "yaxiskind": None, "level": 95.0, "std": "stdf"}
+        got = js_runner.run_fit_js_block(ac, x, y, w, timed=True)
+        assert len(got["data"]["y_lower"]) == 100
+        assert all(v is not None for v in got["data"]["y_lower"])
         assert got["ms"] < 2000.0, got["ms"]
 
     #: A lowess config as map_lowess writes it (WP-31 F1c).

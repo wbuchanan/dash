@@ -2957,7 +2957,8 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  "lpolyci"]
 # bar and rbar widths hold through a move (WP-30 P1.17a); the other eight
 # agreed already and are guards.  lfit and qfit refit in both modes (WP-31
-# F1a); the others agree through the cue.
+# F1a), lowess (F1c), lfitci and qfitci (F1b); the others agree through the
+# cue.
 _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
 
@@ -3349,6 +3350,16 @@ MOVE_CORPUS = [
     _move_case("lowess logit on a 0/1 y, dropdown", _MOVES[0],
                [plot_for("lowess", {"logit": "logit"}, yvar="foreign",
                          xvar="weight")]),
+    # WP-31 F1b: lfitci and qfitci refit on the saved page (the 5-minute
+    # %tc case of D-13.c is test_js_fit_refit.py::TestCiBranch::
+    # test_nearly_collinear_design: _DF has no %tc column).
+    _move_case("lfitci, dropdown", _MOVES[0], [_sc(), plot_for("lfitci")]),
+    _move_case("qfitci level(90), range", _MOVES[1],
+               [_sc(), plot_for("qfitci", {"level": "90"})]),
+    _move_case("lfitci stdf, slider", _MOVES[2],
+               [plot_for("lfitci", {"stdf": "stdf"})]),
+    _move_case("lfitci [fw=rep], dropdown", _MOVES[0],
+               [plot_for("lfitci", {"weight": "fweight", "wexp": "rep"})]),
 
     # WP-31 S09 (C10c): three y axes after a move (S35 extends the
     # profile to their ranges).

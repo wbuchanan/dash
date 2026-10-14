@@ -156,7 +156,8 @@ class TestStaleKind:
         assert dr._dash_stale_kind("lfit", {"recast": "scatter"}) == "fit"
         # lowess is refitted too (WP-31 F1c): TestStaleKind
         # test_lowess_is_refit.
-        for t in ("lfitci", "qfitci", "fpfit", "fpfitci", "lpoly",
+        # lfitci and qfitci are refitted too (WP-31 F1b): TestCiStaleKind.
+        for t in ("fpfit", "fpfitci", "lpoly",
                   "lpolyci", "mband", "mspline"):
             assert dr._dash_stale_kind(t, {}) == "fit", t
 
@@ -789,3 +790,306 @@ class TestPartnerKeys:
                                                         xu), rtol=1e-9)
         cfg = dict(_map("qfit", _FRAME)._dash_agg_config, atobs=True)
         assert js_runner.run_fit_js_block(cfg, x, y)["x"] == xu.tolist()
+
+
+# ---- WP-31 F1b: lfitci and qfitci ----
+#
+# GAPS3 F1b: an lfitci or qfitci on the saved page kept the build's line
+# and band after a filter move, dimmed and keyed "(unfiltered)", while the
+# served app refitted both from the kept rows.  The oracle is map_lfitci
+# and map_qfitci (regress, predict stdp/stdf/stdr, invttail at level()),
+# pinned to twoway by test_statistical_truth.py's ci_bands and fitci_std
+# and the U13 truth block, run on the same rows; and the served app after
+# the same move.
+
+_CI_COLS = ["x_fit", "y_fit", "y_lower", "y_upper"]
+#: S10's keys plus the band's level and standard error (D-13.b).
+_CI_KEYS = _KEYS | {"level", "std"}
+_FW = {"weight": "fweight", "wexp": "w"}
+_PWT = {"weight": "pweight", "wexp": "w"}
+
+
+def _ci_map(ptype, df, opts=None):
+    """``(line, band)``: the ci mapper's two renderers on *df*."""
+    rends = _map(ptype, df, opts)
+    assert len(rends) == 2
+    return rends[0], rends[1]
+
+
+class TestCiConfig:
+    def test_lfitci_config_keys(self):
+        line, band = _ci_map("lfitci", _FRAME)
+        cfg = line._dash_agg_config
+        assert set(cfg) == _CI_KEYS
+        assert cfg["type"] == "lfitci" and cfg["cols"] == _CI_COLS
+        assert cfg["level"] == 95.0 and isinstance(cfg["level"], float)
+        assert cfg["std"] == "stdp" and cfg["n"] == 100
+        assert line._dash_agg_source is line.data_source
+        assert band.data_source is line.data_source
+        assert hasattr(line, "_dash_agg_rows")
+        json.dumps(cfg, allow_nan=False)
+
+    def test_qfitci_config_keys(self):
+        line, _band = _ci_map("qfitci", _FRAME, {
+            "level": "90", "stdr": "stdr", "n": "3", "range": "1000 6000"})
+        cfg = line._dash_agg_config
+        assert set(cfg) == _CI_KEYS
+        assert cfg["type"] == "qfitci"
+        assert (cfg["level"], cfg["std"]) == (90.0, "stdr")
+        # qfitci reads n() as given: n(3) plots 3 (qfit's n(3) plots 100).
+        assert cfg["n"] == 3 and cfg["range"] == [1000.0, 6000.0]
+
+    def test_the_band_renderer_is_not_tagged(self):
+        for t in ("lfitci", "qfitci"):
+            _line, band = _ci_map(t, _FRAME)
+            assert not hasattr(band, "_dash_agg_config")
+            outline = getattr(band, "_dash_ci_outline", None)
+            assert outline is None or not hasattr(outline,
+                                                  "_dash_agg_config")
+
+    def test_std_none_for_aw_stdf(self):
+        line, _ = _ci_map("lfitci", _FRAME, dict(_AW, stdf="stdf"))
+        assert line._dash_agg_config["std"] == "none"
+        line, _ = _ci_map("qfitci", _FRAME, dict(_FW, stdf="stdf"))
+        assert line._dash_agg_config["std"] == "stdf"
+
+    def test_an_empty_layer_is_tagged(self):
+        for t in ("lfitci", "qfitci"):
+            line, band = _ci_map(t, _FRAME.iloc[:1], {"level": "90"})
+            cfg = line._dash_agg_config
+            assert cfg["type"] == t and cfg["level"] == 90.0
+            assert line._dash_agg_source is line.data_source
+            assert band.data_source is line.data_source
+            assert len(line.data_source.data["x_fit"]) == 0
+
+    def test_a_points_layer_is_not_tagged(self):
+        # estopts()/predopts()/estcmd(): Stata's points, frozen (D3).
+        pts = {"x": [2000.0, 3000.0], "y": [11.0, 21.0],
+               "lo": [9.0, 20.0], "hi": [13.0, 22.0], "nobs": 30}
+        for t in ("lfitci", "qfitci"):
+            rends = _map(t, _FRAME, {"estopts": "noconstant",
+                                     "points": dict(pts)})
+            rends = rends if isinstance(rends, list) else [rends]
+            assert not any(hasattr(r, "_dash_agg_config") for r in rends)
+
+    @pytest.mark.parametrize("opts", [{"ciplot": "rline"},
+                                      {"fitplot": "scatter"}],
+                             ids=["ciplot(rline)", "fitplot(scatter)"])
+    def test_a_band_or_line_drawn_as_another_type_is_not_tagged(self, opts):
+        # Drawn from a fresh source by _dash_draw_range_as/_dash_draw_xy_as,
+        # which the page does not refit: the layer keeps the cue.
+        for t in ("lfitci", "qfitci"):
+            gm = _gm()
+            fig = figure()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                getattr(gm, "map_" + t)(fig, ColumnDataSource(_FRAME), "y",
+                                        "x", dict(opts))
+            assert not any(hasattr(r, "_dash_agg_config")
+                           for r in fig.renderers)
+            assert dr._dash_stale_kind(t, opts) == "fit"
+
+
+class TestCiStaleKind:
+    def test_lfitci_and_qfitci_are_refit(self):
+        for t in ("lfitci", "qfitci"):
+            assert dr._dash_stale_kind(t, {}) is None
+            # rarea and line are twoway's own band and line.
+            assert dr._dash_stale_kind(t, {"ciplot": "rarea",
+                                           "fitplot": "line"}) is None
+            assert dr._dash_stale_kind(t, {"nofit": "nofit"}) is None
+        assert {"lfitci", "qfitci"} <= dr._DASH_JS_REFIT_TYPES
+
+
+def _ci_case(ptype, df, opts):
+    """The ci branch on *df*'s kept rows against the mapper's columns."""
+    line, _band = _ci_map(ptype, df, opts)
+    x, y, w = _rows(df, opts)
+    got = js_runner.run_fit_js_block(line._dash_agg_config, x, y, w)
+    data = line.data_source.data
+    assert sorted(got) == sorted(_CI_COLS)
+    for c in _CI_COLS:
+        np.testing.assert_allclose(_nan(got[c]), np.asarray(data[c], float),
+                                   rtol=1e-8, atol=1e-10, equal_nan=True,
+                                   err_msg=c)
+    return {c: _nan(got[c]) for c in _CI_COLS}
+
+
+_LFITCI_CASES = [
+    ("default", _FRAME, {}),
+    ("level(90)", _FRAME, {"level": "90"}),
+    ("level(0)", _FRAME, {"level": "0"}),
+    ("level(-20)", _FRAME, {"level": "-20"}),
+    ("level(100)", _FRAME, {"level": "100"}),
+    ("stdf", _FRAME, {"stdf": "stdf"}),
+    ("stdr", _FRAME, {"stdr": "stdr"}),
+    ("aw", _FRAME, _AW),
+    ("aw stdf", _FRAME, dict(_AW, stdf="stdf")),
+    ("fw", _FRAME, _FW),
+    ("fw stdf", _FRAME, dict(_FW, stdf="stdf")),
+    ("pw", _FRAME, _PWT),
+    ("constant x", _FRAME.assign(x=2500.0), {}),
+    ("two rows", _FRAME.iloc[:2], {}),
+    ("one row", _FRAME.iloc[:1], {}),
+    ("range(1000 6000)", _FRAME, {"range": "1000 6000"}),
+    ("atobs", _FRAME, {"atobs": "atobs"}),
+    ("stairstep", _FRAME, {"connect": "stairstep", "n": "5"}),
+]
+
+
+@requires_node
+class TestCiBranch:
+    @pytest.mark.parametrize("df,opts", [c[1:] for c in _LFITCI_CASES],
+                             ids=[c[0] for c in _LFITCI_CASES])
+    def test_lfitci_matches_python(self, df, opts):
+        _ci_case("lfitci", df, opts)
+
+    def test_two_rows_draw_the_line_and_no_band(self):
+        got = _ci_case("lfitci", _FRAME.iloc[:2], {})
+        assert np.isfinite(got["y_fit"]).sum() == 100
+        assert np.isnan(got["y_lower"]).all()
+        assert np.isnan(got["y_upper"]).all()
+        got = _ci_case("qfitci", _FRAME.iloc[:3], {})
+        assert np.isfinite(got["y_fit"]).sum() == 100
+        assert np.isnan(got["y_lower"]).all()
+
+    @pytest.mark.parametrize("ptype", ["lfitci", "qfitci"])
+    def test_nearly_collinear_design(self, ptype):
+        # D-13.c: a 5-minute %tc x (1.9e12 + 300000 i).  _dash_wls's rank
+        # cut on the raw design and dash_wls's Gram-Schmidt keep the same
+        # columns on the centred, scaled design: line and band agree.
+        _ci_case(ptype, _FRAME.assign(x=1.9e12 + 300000.0 * np.arange(30)),
+                 {})
+
+    def test_one_row_writes_empty_columns(self):
+        got = _ci_case("lfitci", _FRAME.iloc[:1], {})
+        assert all(len(v) == 0 for v in got.values())
+
+    def test_level_100_draws_no_band(self):
+        got = _ci_case("qfitci", _FRAME, {"level": "100"})
+        assert np.isfinite(got["y_fit"]).all()
+        assert np.isnan(got["y_lower"]).all()
+
+    @pytest.mark.parametrize("ptype", ["lfitci", "qfitci"])
+    @pytest.mark.parametrize("std", ["stdp", "stdf", "stdr"])
+    def test_the_band_is_statas_on_auto(self, ptype, std):
+        # stat_truth.json fitci_std: twoway's serset (float) on auto.
+        with open(_TRUTH) as fh:
+            truth = json.load(fh)["fitci_std"]["auto:%s:%s" % (ptype, std)]
+        auto = pd.read_csv(os.path.join(_DATA, "auto.csv"))
+        df = auto[["mpg", "weight"]].rename(columns={"mpg": "y",
+                                                     "weight": "x"})
+        opts = {} if std == "stdp" else {std: std}
+        line, _ = _ci_map(ptype, df, opts)
+        x, y, w = _rows(df, opts)
+        got = js_runner.run_fit_js_block(line._dash_agg_config, x, y, w)
+        at = [i - 1 for i in truth["sample_index"]]
+        for col, key in (("x_fit", "fit_x"), ("y_fit", "fit"),
+                         ("y_lower", "lower"), ("y_upper", "upper")):
+            np.testing.assert_allclose(np.asarray(got[col])[at], truth[key],
+                                       rtol=1e-6, err_msg=col)
+
+    @pytest.mark.parametrize("df,opts", [
+        (_FRAME, {}),
+        (_FRAME, {"level": "99"}),
+        (_FRAME, _AW),
+        (_FRAME, dict(_FW, stdf="stdf")),
+        (_FRAME, dict(_PWT, stdr="stdr")),
+        (_FRAME.iloc[:3], {}),
+        (_FRAME.iloc[:2], {}),
+        (_FRAME.iloc[:1], {}),
+        (_FRAME.assign(x=np.where(np.arange(30) % 2, 1.0, 3.0)), {}),
+        (_FRAME.assign(x=np.where(np.arange(30) % 2, -1.0, 2.0)), {}),
+        (_FRAME, {"n": "3"}),
+        (_FRAME.assign(x=2500.0), {}),
+        (_FRAME.assign(x=_FRAME["x"] + 1e7), {}),
+    ], ids=["default", "level(99)", "aw", "fw stdf", "pw stdr",
+            "three rows", "two rows", "one row", "two values, x^2 kept",
+            "two values, x kept", "n(3) plots 3", "constant x",
+            "1e7 offset"])
+    def test_qfitci_matches_python(self, df, opts):
+        _ci_case("qfitci", df, opts)
+
+
+@requires_node
+class TestCiWrite:
+    def test_rows(self):
+        # dash_fit_write keeps a row whose band is missing (twoway's
+        # missing limits, a NaN cell) and drops one a finite value of
+        # which has no date on its axis (_drop_off_dates).
+        ac = {"cols": _CI_COLS, "xaxiskind": None, "yaxiskind": "td"}
+        got = _js("(() => { const s = {data: null, change: {emit: () => "
+                  "{}}}; dash_fit_write(s, " + json.dumps(ac) + ", "
+                  "[1, 2, 3], [10, 11, 12], [[NaN, 1e12, 9], "
+                  "[NaN, 13, 13]]); return s.data; })()")
+        assert got["x_fit"] == [1, 3]
+        assert got["y_lower"][0] is None and got["y_upper"][0] is None
+        assert got["y_fit"] == [10 * 86_400_000.0 + _E,
+                                12 * 86_400_000.0 + _E]
+
+
+def _ci_data(renderers):
+    """The four columns of the one ci layer's line source, after checking
+    the band reads the same source."""
+    lines = [r for r in renderers if isinstance(r, GlyphRenderer)
+             and isinstance(r.glyph, Line) and "y_lower" in r.data_source.data]
+    assert len(lines) == 1, f"{len(lines)} ci lines"
+    src = lines[0].data_source
+    bands = [r for r in renderers if isinstance(r, GlyphRenderer)
+             and r is not lines[0] and r.data_source is src]
+    assert bands, "the band does not read the line's source"
+    return {c: np.asarray(src.data[c], dtype=float) for c in _CI_COLS}
+
+
+def _served_ci_after(spec, action):
+    doc, _ = _served(spec)
+    kind, want = action
+    w = [m for m in _widgets_of(doc) if type(m).__name__ == kind][0]
+    if kind == "Select":
+        want = [v for v, lab in w.options if lab == want][0]
+    _fire(w, want)
+    return _ci_data([m for m in doc.models if isinstance(m, GlyphRenderer)])
+
+
+_CI_SPECS = [
+    ("lfitci", [plot_for("scatter"), plot_for("lfitci")]),
+    ("qfitci", [plot_for("scatter"), plot_for("qfitci")]),
+    ("lfitci level(90) stdf", [plot_for("lfitci", {"level": "90",
+                                                   "stdf": "stdf"})]),
+    ("qfitci [aw=rep] n(7)", [plot_for("qfitci", {"weight": "aweight",
+                                                  "wexp": "rep", "n": "7"})]),
+    ("lfitci [fw=rep] nofit", [plot_for("lfitci", {"weight": "fweight",
+                                                   "wexp": "rep",
+                                                   "nofit": "nofit"})]),
+]
+
+
+@requires_node
+class TestTheSavedCiRefits:
+    @pytest.mark.parametrize("move", _MOVES, ids=[m[0] for m in _MOVES])
+    @pytest.mark.parametrize("plots", [s[1] for s in _CI_SPECS],
+                             ids=[s[0] for s in _CI_SPECS])
+    def test_saved_equals_served(self, plots, move):
+        _, filt, action, _oracle = move
+        spec = _spec(plots, {"filter": filt})
+        r = _render(spec)
+        built = _ci_data(r.figures["g1"].renderers)
+        _move(r, action)
+        saved = _ci_data(r.figures["g1"].renderers)
+        served = _served_ci_after(spec, action)
+        for c in _CI_COLS:
+            np.testing.assert_allclose(saved[c], served[c], rtol=1e-8,
+                                       atol=1e-9, equal_nan=True, err_msg=c)
+        assert (built["y_lower"].shape != saved["y_lower"].shape
+                or not np.allclose(built["y_lower"], saved["y_lower"],
+                                   equal_nan=True)), "the move changed nothing"
+
+    def test_a_move_leaving_two_rows_draws_the_line_and_no_band(self):
+        spec = _spec([plot_for("scatter"), plot_for("lfitci")],
+                     {"filter": "price, type(slider)"})
+        r = _render(spec)
+        _move(r, ("Slider", 10000.0))
+        got = _ci_data(r.figures["g1"].renderers)
+        assert len(got["x_fit"]) == 100 and np.isfinite(got["y_fit"]).all()
+        assert np.isnan(got["y_lower"]).all()
+        assert np.isnan(got["y_upper"]).all()

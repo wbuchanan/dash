@@ -2026,7 +2026,7 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
 # The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
-_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess"})
+_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci"})
 #: WP-31 F1c (D-16.e): the saved page re-smooths a lowess only when N*(2k+1) is at most this; above it the layer is left empty after a move.
 _DASH_LOWESS_JS_MAX_OPS = 2e8
 
@@ -2059,7 +2059,8 @@ def _dash_stale_kind(ptype, options):
     saved page redraws or never computes -- for a kdensity drawn over
     ``range()``, whose grid is the user's and twoway's, and for a fit the
     saved page refits (``_DASH_JS_REFIT_TYPES``, WP-31 F1) unless it is
-    recast."""
+    recast, or is a ci layer whose band or line ciplot()/fitplot() draws
+    as another type (``GlyphMapper._fitci_redrawn``, WP-31 F1b)."""
     t = str(ptype or "").lower()
     if t not in _DASH_COMPUTED_ONLY_TYPES:
         return None
@@ -2071,9 +2072,12 @@ def _dash_stale_kind(ptype, options):
             warnings.simplefilter("ignore")
             rng = _dash_range_pair(options or {}, "kdensity", "")
         return None if rng is not None else "grid"
-    if t in _DASH_JS_REFIT_TYPES and not (options or {}).get("recast"):
+    if t in _DASH_JS_REFIT_TYPES and not (options or {}).get("recast") \
+            and not (t in ("lfitci", "qfitci")
+                     and GlyphMapper._fitci_redrawn(options)):
         # A recast fit is drawn by _dash_draw_xy_as, which the page does
-        # not refit (GAPS3 C16): it keeps the cue.
+        # not refit (GAPS3 C16): it keeps the cue.  So does a ci layer's
+        # band or line drawn as another type (WP-31 F1b).
         return None
     return "fit"
 
@@ -16251,6 +16255,41 @@ class GlyphMapper:
         return r
 
     @staticmethod
+    def _fitci_redrawn(options) -> bool:
+        """Does ciplot() or fitplot() draw a ci layer's band or line as
+        another type than twoway's rarea and line (WP-31 C4)?  Such a part
+        is drawn by ``_dash_draw_range_as``/``_dash_draw_xy_as`` on a fresh
+        source the saved page does not refit, so the layer is not tagged
+        and keeps the stale cue (WP-31 F1b)."""
+        o = options if isinstance(options, dict) else {}
+        ci = str(o.get("ciplot", "") or "").strip()
+        fp = str(o.get("fitplot", "") or "").strip()
+        return ci not in ("", "rarea") or fp not in ("", "line")
+
+    def _tag_fitci(self, line_r, ptype, source, view, xvar, yvar, wtype, w,
+                   fig, options):
+        """Hand an lfitci or qfitci layer to the saved page's refit (WP-31
+        F1b): only the LINE renderer is tagged -- the band and its outline
+        read the same source and follow it.  S10's config with the
+        columns ``x_fit y_fit y_lower y_upper``, the grid as the mapper
+        reads it (n() as given), atobs, the band's level (the float
+        ``_resolve_level`` returns, any finite number) and its standard
+        error as ``_fitci_std_for`` decided it at build ("none" for
+        stdf/stdr with an aweight or pweight; D-13.b).  A layer whose band
+        or line is drawn as another type is left untagged
+        (``_fitci_redrawn``)."""
+        if self._fitci_redrawn(options) or options.get("recast"):
+            return line_r
+        cfg = self._fit_agg_config(
+            ptype, xvar, yvar, wtype, w, fig, options,
+            ["x_fit", "y_fit", "y_lower", "y_upper"],
+            *self._fit_grid_spec(options))
+        cfg["atobs"] = bool(str(options.get("atobs", "") or "").strip())
+        cfg["level"] = float(_resolve_level(options, self.default_level))
+        cfg["std"] = str(self._fitci_std_for(options, wtype, ptype))
+        return self._tag_fit(line_r, source, view, cfg)
+
+    @staticmethod
     def _axis_kind(fig, axis, options=None):
         """The date kind of the axis a layer with *options* is drawn on for
         letter *axis*: ``axis + "2"`` under ``xaxis(2)``/``yaxis(2)``, else
@@ -16956,6 +16995,9 @@ class GlyphMapper:
             self._mark_unfit([line_r, band_r], "regress")
             if n == 1:
                 self._mark_insufficient([line_r, band_r])
+            # The saved page's refit (WP-31 F1b).
+            self._tag_fitci(line_r, "lfitci", source, view, xvar, yvar,
+                            wtype, w, fig, options)
             return [line_r, band_r]
 
         # `regress y x [weight]' then `predict, stdp|stdf|stdr' on Stata's
@@ -17001,6 +17043,9 @@ class GlyphMapper:
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
             color_idx=color_idx,
         )
+        # The saved page's refit (WP-31 F1b): line and band from ci_source.
+        self._tag_fitci(line_r, "lfitci", source, view, xvar, yvar, wtype,
+                        w, fig, options)
         return [line_r, band_r]
 
     @staticmethod
@@ -17083,6 +17128,9 @@ class GlyphMapper:
             self._ci_line_restyle(line_r, options)
             # twoway qfitci on none or one: nothing, and regress's note.
             self._mark_unfit([line_r, band_r], "regress")
+            # The saved page's refit (WP-31 F1b).
+            self._tag_fitci(line_r, "qfitci", source, view, xvar, yvar,
+                            wtype, w, fig, options)
             return [line_r, band_r]
 
         x_fit = _fit_grid(x, options, "qfitci")
@@ -17135,6 +17183,12 @@ class GlyphMapper:
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
             color_idx=color_idx,
         )
+        # The saved page's refit (WP-31 F1b): line and band from ci_source.
+        # The LinAlgError bootstrap above is a fallback _dash_wls leaves
+        # unreachable (it omits a collinear column); the page refits the
+        # analytic band.
+        self._tag_fitci(line_r, "qfitci", source, view, xvar, yvar, wtype,
+                        w, fig, options)
         return [line_r, band_r]
 
     def map_lowess(
@@ -27010,6 +27064,39 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const kx = [], ky = [];
         for (let i = 0; i < ys.length; i++) if (isFinite(ys[i])) { kx.push(sm.xs[i]); ky.push(ys[i]); }
         dash_fit_write(src, ac, kx, ky, null);
+    } else if (ac.type === 'lfitci' || ac.type === 'qfitci') {
+        // WP-31 F1b: map_lfitci and map_qfitci on the kept rows -- regress
+        // on [1, x - mean(x)] or _qfit_design's design, predict stdp, stdf
+        // or stdr (ac.std, "none" where twoway refuses it) on the grid,
+        // the band at invttail(df, (1 - level/100)/2) as _dash_ci_t: NaN
+        // (no band, the line alone) with df < 1 or a level at or past 100.
+        // Fewer than two rows draw nothing.  dash_fit_write keeps a row
+        // whose limits are NaN, as the build's columns hold them.
+        const n = fx.length;
+        if (n < 2) { dash_fit_write(src, ac, [], [], [[], []]); continue; }
+        const xg = dash_fit_grid(fx, ac.n, ac.range, ac.atobs);
+        let X, Xg;
+        if (ac.type === 'lfitci') {
+            let mu = 0;
+            for (const v of fx) mu += v;
+            mu /= n;
+            X = fx.map(v => [1, v - mu]);
+            Xg = xg.map(v => [1, v - mu]);
+        } else {
+            const d = dash_qfit_design(fx, xg);
+            X = d.X; Xg = d.Xg;
+        }
+        const fit = dash_wls(X, fy, fw, ac.wtype);
+        if (fit === null) { dash_fit_write(src, ac, [], [], [[], []]); continue; }
+        const yg = Xg.map(r => {
+            let s = 0;
+            for (let j = 0; j < r.length; j++) s += r[j] * fit.beta[j];
+            return s;
+        });
+        const se = dash_fitci_se(Xg, fit, ac.std);
+        const t = (fit.df >= 1) ? dash_t_ppf(0.5 + ac.level / 200, fit.df) : NaN;
+        dash_fit_write(src, ac, xg, yg, [yg.map((v, i) => v - t * se[i]),
+                                         yg.map((v, i) => v + t * se[i])]);
     // DASH_FIT_BRANCHES_END
     }
 }

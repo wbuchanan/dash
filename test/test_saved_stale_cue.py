@@ -2,8 +2,9 @@
 
 A saved page's filter callback (``dash_render._FILTER_JS``) redraws every
 row layer from the kept rows, but a fitted or smoothed line keeps the fit
-it had at build (lfitci, qfitci, fpfit, fpfitci, lpoly, lpolyci, mband,
-mspline; lfit and qfit are refitted since WP-31 F1a, lowess since F1c), a histogram
+it had at build (fpfit, fpfitci, lpoly, lpolyci, mband, mspline; lfit and
+qfit are refitted since WP-31 F1a, lowess since F1c, lfitci and qfitci since
+F1b), a histogram
 keeps its bins and a density its grid.  Measured on ``test_mode_parity._DF`` with the dropdown moved to
 Foreign: the lfit still starts at 29.1052, Stata's all-rows ``regress mpg
 weight`` value at weight 1800 (29.105207), where ``regress mpg weight if
@@ -54,10 +55,10 @@ from test_mode_parity import (_DF, _fire, _served, _spec,  # noqa: E402
 from test_saved_filter_layers import _MOVES, _render  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
-#: The ten layers a saved page computes at build and does not refit.
-# lfit and qfit (WP-31 F1a) and lowess (F1c) are refitted by the saved
-# page; see _REFIT.
-_FROZEN = ["lfitci", "qfitci", "fpfit", "fpfitci",
+#: The eight layers a saved page computes at build and does not refit.
+# lfit and qfit (WP-31 F1a), lowess (F1c), lfitci and qfitci (F1b) are
+# refitted by the saved page; see _REFIT.
+_FROZEN = ["fpfit", "fpfitci",
            "lpoly", "lpolyci", "mband", "mspline", "histogram", "kdensity"]
 #: The frozen fit layer the cue's own mechanics are measured on.  It was
 #: lfit until the saved page refitted lfit (WP-31 F1a); fpfit stays frozen
@@ -231,7 +232,9 @@ class TestTheCueAppearsOnAMove:
 
     def test_every_renderer_of_a_ci_layer_is_dimmed_and_both_keys_marked(
             self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfitci")],
+        # fpfitci: the ci layer still frozen (lfitci is refitted since
+        # WP-31 F1b).
+        r = _render(_spec([plot_for("scatter"), plot_for("fpfitci")],
                           {"filter": _MOVES[0][1]}))
         _one_cue(r)
         _act(r, _MOVES[0][2])
@@ -241,7 +244,7 @@ class TestTheCueAppearsOnAMove:
         assert all(x.muted for x in rends)
         labs = sorted(_text(i.label) for i in _items_of(r.figures["g1"],
                                                          rends))
-        assert labs == ["95% CI (unfiltered)", "Fitted values (unfiltered)"]
+        assert labs == ["95% CI (unfiltered)", "Predicted mpg (unfiltered)"]
 
     @pytest.mark.parametrize("move", _MOVES, ids=["dropdown", "range",
                                                   "slider"])
@@ -301,7 +304,7 @@ class TestTheCueAppearsOnAMove:
 
 
 #: WP-31 F1: the computed layers the saved page refits after a move.
-_REFIT = ["lfit", "qfit", "lowess"]
+_REFIT = ["lfit", "qfit", "lowess", "lfitci", "qfitci"]
 
 
 @requires_node
@@ -377,6 +380,11 @@ _AW = {"weight": "aweight", "wexp": "w"}
 #: lpoly refuses a pweight (r(101)): the frozen layer with a refused weight
 #: since lowess is re-smoothed (WP-31 F1c).
 _PW = {"weight": "pweight", "wexp": "w"}
+#: A ci layer drawn from the points Stata computed (estopts(), WP-31 C4):
+#: frozen with the kind "fit" whatever its type.
+_POINTS = {"estopts": "noconstant",
+           "points": {"x": [2000.0, 3000.0], "y": [11.0, 21.0],
+                      "lo": [9.0, 20.0], "hi": [13.0, 22.0], "nobs": 9}}
 
 
 @requires_node
@@ -474,11 +482,13 @@ class TestTheWeightedSample:
         _assert_marked(r)
 
     def test_a_negative_weight_on_lfit_is_outside_the_sample(self):
-        # lfitci, as lfit excludes a negative weight and is still frozen:
-        # lfit itself is refitted by the saved page (WP-31 F1a).
+        # An lfitci drawn from Stata's points (estopts(), WP-31 C4), as
+        # lfit excludes a negative weight and that layer is still frozen:
+        # lfit (F1a) and lfitci (F1b) themselves are refitted by the saved
+        # page.
         df = _wdf(z=[0.0, 0.0, 0.0, 1.0] + [0.0] * 6)
         df.loc[3, "w"] = -1.0
-        r = self._run(df, plot_for("lfitci", _AW))
+        r = self._run(df, plot_for("lfitci", dict(_AW, **_POINTS)))
         _assert_clear(r)
 
     def test_a_weight_twoway_refuses_is_not_read(self):
@@ -659,8 +669,9 @@ class TestTheStaleKind:
 
     def test_each_type(self):
         fits = [t for t in _FROZEN if t not in ("histogram", "kdensity")]
-        # 11 -> 9: F1a refits lfit and qfit; 9 -> 8: F1c refits lowess
-        assert len(fits) == 8
+        # 11 -> 9: F1a refits lfit and qfit; 9 -> 8: F1c refits lowess;
+        # 8 -> 6: F1b refits lfitci and qfitci
+        assert len(fits) == 6
         for t in fits:
             assert dr._dash_stale_kind(t, {}) == "fit"
         assert dr._dash_stale_kind("histogram", {}) == "bins"
@@ -773,9 +784,10 @@ class TestTheFrozenTag:
         r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN),
                            plot_for("histogram"),
                            plot_for(_STAND_IN, if_expr="price > 20000"),
-                           # lfitci: a layer that drops a negative weight
-                           # ("positive"), as lfit did (WP-31 F1a).
-                           plot_for("lfitci", _AW),
+                           # fpfitci [aw]: a weighted frozen layer
+                           # ("positive"); lfitci is refitted since WP-31
+                           # F1b.
+                           plot_for("fpfitci", _AW),
                            # A refused weight: lpoly [pw] (lowess is
                            # re-smoothed since WP-31 F1c).
                            plot_for("lpoly", _PW)],
@@ -786,7 +798,7 @@ class TestTheFrozenTag:
             if t is not None and not any(t is u for u in tags):
                 tags.append(t)
         assert [t["type"] for t in tags] == [_STAND_IN, "histogram",
-                                             _STAND_IN, "lfitci", "lpoly"]
+                                             _STAND_IN, "fpfitci", "lpoly"]
         lf, hi, empty, wl, lw = tags
         assert lf["vars"] == ["mpg", "weight"] and lf["kind"] == "fit"
         assert hi["vars"] == ["mpg"] and hi["kind"] == "bins"
@@ -849,8 +861,9 @@ class TestTheRegistry:
 class TestTheCueArgs:
 
     def test_the_models_and_lists(self):
+        # fpfitci: a frozen ci layer (lfitci is refitted since WP-31 F1b).
         r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN),
-                           plot_for("lfitci")],
+                           plot_for("fpfitci")],
                           {"filter": "foreign, type(dropdown)",
                            "csv": "1"},
                           {"by": "foreign"}))

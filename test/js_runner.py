@@ -579,12 +579,21 @@ def run_fit_js_block(ac, x, y, w=None, *, timed=False):
     """Run one fit branch of dash's REAL ``_FILTER_JS`` (WP-31 F1) on the
     kept rows *x*, *y* (Stata units) and weights *w*; return ``src.data``
     (with *timed*, ``{"data": src.data, "ms": node's own time}``).  The
-    branch runs from its ``} else if (ac.type === '<type>') {`` line to the
-    next branch or the ``// DASH_FIT_BRANCHES_END`` marker; the rows bypass
-    ``dash_fit_rows`` (``run_fit_rows`` runs that alone)."""
+    branch runs from its head to the next branch or the
+    ``// DASH_FIT_BRANCHES_END`` marker; the head is the earliest of
+    ``} else if (ac.type === '<type>') {``, a shared head that names the
+    type first (``} else if (ac.type === '<type>' || ...``) and one that
+    names it last (``... || ac.type === '<type>') {``; WP-31 F1b).  The
+    rows bypass ``dash_fit_rows`` (``run_fit_rows`` runs that alone)."""
     js = dr._FILTER_JS
-    head = "} else if (ac.type === '%s') {" % ac["type"]
-    lo = js.index(head) + len(head)
+    t = ac["type"]
+    heads = ["} else if (ac.type === '%s') {" % t,
+             "} else if (ac.type === '%s' || " % t,
+             "|| ac.type === '%s') {" % t]
+    found = [(p, h) for p, h in ((js.find(h), h) for h in heads) if p != -1]
+    assert found, "no branch for %r in _FILTER_JS" % t
+    p, h = min(found)
+    lo = p + len(h) if h.endswith("{") else js.index("{", p) + 1
     nxt = js.find("} else if (ac.type === '", lo)
     end = js.index("// DASH_FIT_BRANCHES_END", lo)
     block = js[lo:nxt if (nxt != -1 and nxt < end) else end]
