@@ -3986,7 +3986,10 @@ if "`bad'" != "" {
 }
 else display as text "CM-10 PASS: c(J) and cmissing(n) are taken in silence where twoway draws the same picture"
 
-// CM-11: named, not drawn (P2.42, P2.43).
+// CM-11: drawn and not named.  Flipped (WP-31 C6): "named, not drawn"
+// (P2.42, P2.43) was wrong because twoway splits area and rarea and
+// breaks lowess at their missing points and steps rarea's bounds, and
+// dash now draws them so (area_cmissing_truth.json A01, R01, E01).
 local bad ""
 foreach c in "area mpg weight, cmissing(n)|cmissing()" "rarea lo hi weight, c(J)|connect()" "lowess mpg weight, cmissing(n)|cmissing()" {
     gettoken cmd nm : c, parse("|")
@@ -3994,14 +3997,14 @@ foreach c in "area mpg weight, cmissing(n)|cmissing()" "rarea lo hi weight, c(J)
     _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
     local rc = r(rc)
     _ztp_logged "`logfile'" "`nm'"
-    if `rc' | !r(found) local bad "`bad' `cmd'"
+    if `rc' | r(found) local bad "`bad' `cmd'"
 }
 if "`bad'" != "" {
     local nfail = `nfail' + 1
     local faillist "`faillist' CM-11"
     display as error "CM-11 FAIL:`bad'"
 }
-else display as text "CM-11 PASS: cmissing(n) on area and lowess, c(J) on rarea are named"
+else display as text "CM-11 PASS: cmissing(n) on area and lowess, c(J) on rarea are drawn and not named"
 
 // CM-12: P20, P23 -- per y: a scatter y given an element is connected.
 local bad ""

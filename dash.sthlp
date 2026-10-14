@@ -435,10 +435,20 @@ are style lists ({cmd:c(l J)}, {cmd:c(. l)}, {cmd:cmissing(n ..)}),
 the last counts.  A misplaced {cmd:..} is refused, r(198), and a
 {cmd:cmissing()} value that is neither yes nor no is refused, r(101),
 where {cmd:twoway} draws a connecting line, in {cmd:twoway}'s words.
-{cmd:cmissing(n)} on {cmd:area} and {cmd:rarea}, and on {cmd:lowess},
-{cmd:lpoly}, {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci}
-and {cmd:qfitci}, and {cmd:connect()} other than direct on {cmd:rarea},
-are named in the note and not drawn.
+{cmd:cmissing(n)} splits an {cmd:area} or {cmd:rarea} where it splits a
+line: one filled region per run of observations present in {it:x} and
+the {it:y}(s), as {cmd:twoway} closes one polygon per run.  It breaks
+the line of the fits and smooths where their own result is missing, as
+{cmd:twoway}'s does: {cmd:lowess}, {cmd:fpfit} and {cmd:fpfitci} at an
+observation that has {it:x} and no {it:y}, {cmd:lpoly} and
+{cmd:lpolyci} at a grid point with no neighbour, the band of the
+{cmd:ci} types with its line.  {cmd:area} ignores {cmd:connect()}, as
+{cmd:twoway} does; {cmd:rarea} draws both bounds by it ({cmd:J} steps
+each bound, and the step toward an observation missing a bound is drawn
+when a present one follows it, as in {cmd:twoway}).  After a filter
+move the served app redraws the split; the saved page joins the fill
+across the gap again, and a {cmd:lowess} line, which the saved page
+recomputes, too, until a later release.
 
 {phang2}{opt cmissings(y|n ...)} is {cmd:twoway}'s other spelling of
 {cmd:cmissing()}, and is read as it.
@@ -5217,11 +5227,6 @@ disagree in either direction.
     {cmd:nobrowser}.
 
 {phang2}{ul:Not drawn.}
-    {opt cmissing(n)} on {cmd:area} and {cmd:rarea}, and on the fits that
-    make missing points of their own ({cmd:lowess}, {cmd:lpoly},
-    {cmd:lpolyci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lfitci},
-    {cmd:qfitci}), and {opt connect()} other than direct on {cmd:rarea}
-    -- see {ul:Connecting and missing values} under the plot types.
     {cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}, and a range type or
     an unknown name on {cmd:histogram} -- see {ul:Recast} under
     Statistical Layer Options.

@@ -393,7 +393,7 @@ and now matches Stata.
 
 - lfitci and qfitci on a saved page after a filter move: the build's line and band, dimmed and keyed "(unfiltered)" -> regress and predict on the kept rows, the band at level() with stdp, stdf or stdr, as the served app draws it; a move leaving two rows (lfitci) or three (qfitci) draws the line with no band. A band or line drawn as another type by ciplot() or fitplot() keeps the mark. (WP-31, F1b)
 
-<!-- WP-31 C6 -->
+- area mpg weight, cmissing(n): the fill breaks at a missing row, one filled region per run of present rows, as twoway draws it (was: bridged, cmissing() named in the note); rarea draws connect() on both bounds (rarea lo hi x, connect(stairstep) is stepped, was: direct and named); lowess, lpoly, lpolyci, fpfit and fpfitci break their line, and the ci types their band, where their own result is missing (was: bridged, named). (WP-31, C6)
 
 <!-- WP-31 C7 -->
 

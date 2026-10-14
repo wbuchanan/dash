@@ -2624,6 +2624,235 @@ if inlist("`only'", "", "S13") & `: list posof "S13" in w31_run' {
 }
 * ==== end S13 ====
 
+// S14 helpers (WP-31 C6).  _u14_svg: twoway's drawing read from its SVG
+// (scripts/svg_truth.py's axis fit maps pixels to data): each closed
+// subpath's x extent (an area's or rarea's polygons), the first closed
+// subpath's vertex count and each open subpath's vertex count, into
+// globals u14_tpoly, u14_tnv and u14_truns.  _u14_draw: what a registered
+// dash graph draws, saved and served (_u03_docs): the first VArea's
+// filled runs (its vertex list split at each zero-height pair) as x
+// extents, its vertex count, and the first visible Line's runs, into
+// u14_poly<s|v>, u14_nv<s|v> and u14_runs<s|v>.
+python:
+def _u14_fit(path, axis):
+    from svg_truth import svg_axis_reading
+    pairs = svg_axis_reading(path, axis).get("pairs") or []
+    n = float(len(pairs))
+    mx = sum(p for p, _ in pairs) / n
+    mv = sum(v for _, v in pairs) / n
+    b = (sum((p - mx) * (v - mv) for p, v in pairs)
+         / sum((p - mx) ** 2 for p, _ in pairs))
+    return (mv - b * mx, b)
+
+
+def _u14_svg(path):
+    import re
+    from sfi import Macro
+    fx = _u14_fit(path, "x")
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    polys, runs, nv = [], [], []
+    for el in re.findall(r"<path[^>]*>", text):
+        m = re.search(r'\sd="([^"]*)"', el)
+        if not m:
+            continue
+        for sub in re.split(r"(?=M)", m.group(1)):
+            nums = re.findall(r"[ML]\s*(-?[0-9.]+)\s+(-?[0-9.]+)", sub)
+            if not nums:
+                continue
+            xs = [fx[0] + fx[1] * float(a) for a, _ in nums]
+            if "Z" in sub or "z" in sub:
+                polys.append("%.1f:%.1f" % (min(xs), max(xs)))
+                nv.append(str(len(nums)))
+            else:
+                runs.append(str(len(nums)))
+    Macro.setGlobal("u14_tpoly", " ".join(polys))
+    Macro.setGlobal("u14_tnv", nv[0] if nv else "0")
+    Macro.setGlobal("u14_truns", " ".join(runs))
+
+
+def _u14_draw(sp, dp, app):
+    import math
+    from sfi import Macro
+    a, b = _u03_docs(sp, dp, app)
+
+    def num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return float("nan")
+
+    for figs, sfx in ((a, "s"), (b, "v")):
+        poly, nv, runs = [], "0", []
+        for f in figs:
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                t = type(g).__name__
+                d = r.data_source.data
+                if t == "VArea" and not poly:
+                    xs = [num(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
+                    y1 = [num(v) for v in d[g.y1 if isinstance(g.y1, str) else g.y1.field]]
+                    y2 = [num(v) for v in d[g.y2 if isinstance(g.y2, str) else g.y2.field]]
+                    rid = d.get("__dash_row__")
+                    nv = str(len(xs))
+                    cur, i = [], 0
+                    while i < len(xs):
+                        syn = (lambda k: (rid[k] is None if rid is not None
+                                          else y1[k] == y2[k]))
+                        if (cur and i + 1 < len(xs) and syn(i) and syn(i + 1)
+                                and y1[i] == y2[i] and y1[i + 1] == y2[i + 1]):
+                            poly.append("%.1f:%.1f" % (min(cur), max(cur)))
+                            cur = []
+                            i += 2
+                            continue
+                        if math.isfinite(xs[i]):
+                            cur.append(xs[i])
+                        i += 1
+                    if cur:
+                        poly.append("%.1f:%.1f" % (min(cur), max(cur)))
+                elif t == "Line" and not runs and g.line_alpha != 0:
+                    xs = [num(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
+                    ys = [num(v) for v in d[g.y if isinstance(g.y, str) else g.y.field]]
+                    n = 0
+                    for x, y in zip(xs, ys):
+                        if math.isfinite(x) and math.isfinite(y):
+                            n += 1
+                        elif n:
+                            runs.append(str(n))
+                            n = 0
+                    if n:
+                        runs.append(str(n))
+        Macro.setGlobal("u14_poly" + sfx, " ".join(poly))
+        Macro.setGlobal("u14_nv" + sfx, nv)
+        Macro.setGlobal("u14_runs" + sfx, " ".join(runs))
+end
+
+capture program drop _u14_reg
+program define _u14_reg
+    // _u14_reg <dir> <k> <dash command...>: register one graph under a
+    // log (<dir>/n<k>.log), write its spec and data, and read what both
+    // modes draw (_u14_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly log using "`dir'/n`k'.log", text replace name(u14l)
+    capture noisily dash `0'
+    local rc = _rc
+    quietly log close u14l
+    if `rc' exit `rc'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u14_m; _u14_m._u14_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u14_tw
+program define _u14_tw
+    // _u14_tw <svg> <twoway command...>: draw it, export the SVG and read
+    // it (_u14_svg).
+    version 19
+    gettoken svg 0 : 0
+    capture graph drop _all
+    quietly twoway `0' name(u14t, replace)
+    quietly graph export "`svg'", name(u14t) replace as(svg)
+    python: import __main__ as _u14_m; _u14_m._u14_svg("`svg'")
+end
+
+capture program drop _u14_close
+program define _u14_close, rclass
+    // _u14_close "<a:b ...>" "<c:d ...>" tol: the two lists of extents
+    // hold as many pairs, each end within tol (r(ok)).
+    version 19
+    args a b tol
+    local na : word count `a'
+    local nb : word count `b'
+    local ok = (`na' == `nb') & (`na' > 0)
+    forvalues i = 1/`na' {
+        if !`ok' continue, break
+        local p : word `i' of `a'
+        local q : word `i' of `b'
+        gettoken p0 p1 : p, parse(":")
+        gettoken q0 q1 : q, parse(":")
+        local p1 = substr("`p1'", 2, .)
+        local q1 = substr("`q1'", 2, .)
+        if abs(`p0' - `q0') > `tol' | abs(`p1' - `q1') > `tol' local ok 0
+    }
+    return scalar ok = `ok'
+end
+
+* ==== S14 C6: cmissing and connect on areas ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S14") & `: list posof "S14" in w31_run' {
+    display as text "S14 start " c(current_date) " " c(current_time)
+    local u14d "`w31_work'/s14"
+    capture mkdir "`u14d'"
+    capture graph drop _all
+    set scheme stcolor
+    sysuse auto, clear
+    quietly replace mpg = . in 10/12
+    quietly generate lo = mpg - 2
+    quietly generate hi = mpg + 2
+
+    // ------------------------------------------------------------
+    // U14-01: area in 1/20, cmissing(n) sort: dash's filled regions are
+    // twoway's polygons (x extents), both modes; no note names cmissing.
+    // ------------------------------------------------------------
+    _u14_tw "`u14d'/t1.svg" area mpg weight in 1/20, cmissing(n) sort
+    local tp "${u14_tpoly}"
+    _u14_reg "`u14d'" 1 area mpg weight in 1/20, cmissing(n) sort name(zu1)
+    _u14_close "`tp'" "${u14_polys}" 2
+    local oks = r(ok)
+    _u14_close "`tp'" "${u14_polyv}" 2
+    local okv = r(ok)
+    cert_log_has "`u14d'/n1.log", needle("cmissing")
+    local nn = r(count)
+    _w31_expect U14-01 "(`oks') & (`okv') & (`: word count `tp'' == 3) & (`nn' == 0)" "twoway `tp'; dash saved ${u14_polys} served ${u14_polyv}; note names cmissing `nn' times"
+    _w31_done U14-01 "area cmissing(n) fills twoway's three polygons, saved and served, and names nothing"
+
+    // ------------------------------------------------------------
+    // U14-02: rarea connect(stairstep): twoway's polygon has dash's
+    // vertices plus its move-to and closing repeats; c(J) is taken.
+    // ------------------------------------------------------------
+    _u14_tw "`u14d'/t2.svg" rarea lo hi weight in 1/20, connect(stairstep) sort
+    local tnv "${u14_tnv}"
+    _u14_reg "`u14d'" 2 rarea lo hi weight in 1/20, connect(stairstep) sort name(zu2)
+    cert_log_has "`u14d'/n2.log", needle("connect")
+    local nn = r(count)
+    _w31_expect U14-02 "(`tnv' == 2 * ${u14_nvs} + 2) & (`tnv' == 2 * ${u14_nvv} + 2) & (`nn' == 0)" "twoway vertices `tnv', dash saved ${u14_nvs} served ${u14_nvv} per bound; note names connect `nn' times"
+    capture noisily twoway rarea lo hi weight, connect(J) nodraw
+    local tw = _rc
+    dash clear
+    capture noisily dash rarea lo hi weight, connect(J)
+    local dr = _rc
+    _w31_expect U14-02 "(`tw' == 0) & (`dr' == 0)" "connect(J): twoway r(`tw'), dash r(`dr')"
+    _w31_done U14-02 "rarea connect(stairstep) draws twoway's stepped polygon vertex for vertex, saved and served"
+
+    // ------------------------------------------------------------
+    // U14-03: lowess cmissing(n): dash's line breaks into twoway's runs
+    // at the rows with no mpg; no note.
+    // ------------------------------------------------------------
+    _u14_tw "`u14d'/t3.svg" lowess mpg weight, cmissing(n)
+    local tr "${u14_truns}"
+    _u14_reg "`u14d'" 3 lowess mpg weight, cmissing(n) name(zu3)
+    cert_log_has "`u14d'/n3.log", needle("cmissing")
+    local nn = r(count)
+    _w31_expect U14-03 `"("${u14_runss}" == "`tr'") & ("${u14_runsv}" == "`tr'") & (`: word count `tr'' == 4) & (`nn' == 0)"' "twoway runs `tr'; dash saved ${u14_runss} served ${u14_runsv}; note names cmissing `nn' times"
+    _w31_done U14-03 "lowess cmissing(n) breaks where twoway's does, saved and served, and names nothing"
+
+    forvalues k = 1/3 {
+        foreach p in s d {
+            capture erase "`u14d'/`p'`k'.json"
+        }
+        capture erase "`u14d'/a`k'.py"
+        capture erase "`u14d'/n`k'.log"
+        capture erase "`u14d'/t`k'.svg"
+    }
+    capture rmdir "`u14d'"
+    capture graph drop _all
+    dash clear
+    display as text "S14 end " c(current_date) " " c(current_time)
+}
+* ==== end S14 ====
+
 // S16 helpers (WP-31 F1c).  _u16_move: the saved page's lowess line after
 // one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

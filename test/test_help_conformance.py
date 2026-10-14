@@ -647,7 +647,8 @@ class TestTheParsersFoundSomething:
         # 42 -> 44: P1.6 tmlabel() and tmtick() stored and named
         # 44 -> 43: P1.10 text() drawn
         # 43 -> 44: A4 mlalign() declared and named
-        assert len(_ignored_options()) == 44
+        # 44 -> 42: C6 cmissing() and connect() drawn everywhere
+        assert len(_ignored_options()) == 42
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -666,7 +667,8 @@ class TestTheParsersFoundSomething:
         # minor labels"
         # 44 -> 43: P1.10 text() drawn, its entry gone
         # 43 -> 44: A4 mlalign() in the marker outline entry
-        assert len(_unsupported_section()) == 44
+        # 44 -> 42: C6 cmissing() and connect() leave the "Not drawn" entry
+        assert len(_unsupported_section()) == 42
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(

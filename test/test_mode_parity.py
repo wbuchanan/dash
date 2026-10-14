@@ -2400,6 +2400,11 @@ CORPUS = [
     _case("area nodropbase",
           [plot_for("area", {"nodropbase": "nodropbase"})]),
     _case("bar baroffset(.5)", [plot_for("bar", {"baroffset": ".5"})]),
+    # WP-31 C6: cmissing(n) on area and connect() on rarea, drawn alike.
+    _case("area cmissing(n)", [plot_for("area", {"cmissing": "n"})]),
+    _case("rarea connect(stairstep) cmissing(n)",
+          [plot_for("rarea", {"connect": "stairstep", "cmissing": "n",
+                              "sort": "sort"})]),
     # WP-31 C10a: the values twoway accepts, drawn alike in both modes.
     _case("lfit range(. 4000) (WP-31 C10a)",
           [plot_for("lfit", {"range": ". 4000"})]),

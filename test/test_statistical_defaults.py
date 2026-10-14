@@ -890,7 +890,8 @@ class TestKdensityRange:
         # Flipped (WP-30 P1.10): 44 -> 43, text() is drawn, so it is no
         # longer among the genuinely-unsupported.
         # 43 -> 44: A4 mlalign declared and named.
-        assert len(pending) == 44, (len(pending), pending)
+        # 44 -> 42: C6 cmissing() and connect() drawn everywhere.
+        assert len(pending) == 42, (len(pending), pending)
         for really_pending in ("sort", "scale"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (

@@ -94,17 +94,9 @@ PLOT_VALUES = {
     "bin": ("5", "9", "histogram"),
     "blabel": ("total", "bar", "bar"),
     "ciopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
-    # Flipped (WP-30 P1.8a): ("n", "y", "line") was wrong because dash draws
-    # cmissing(n) on line as twoway does (connect_truth.json P08); it stays
-    # named, and inert, on area (P2.42).
-    "cmissing": ("n", "y", "area"),
     "color": ("maroon", "navy", "scatter"),
     "colorlist": ("red blue", "green orange", "scatter"),
     "coloruseplegend": ("coloruseplegend", "", "scatter"),
-    # Flipped (WP-30 P1.8a): ("l", "J", "line") was wrong because dash draws
-    # connect() on line as twoway does (connect_truth.json P02); it stays
-    # named, and inert, as anything but direct on rarea (P2.42).
-    "connect": ("direct", "stairstep", "rarea"),
     "density": ("density", "frequency", "histogram"),
     "falpha": ("30", "80", "area"),
     "fitopts": ("lcolor(red)", "lcolor(blue)", "lfitci"),
@@ -223,21 +215,27 @@ _PC_PLOT = {"y1var": "mpg", "x1var": "weight", "y2var": "price",
 
 
 def _render(tmp_path, ptype, popts, gopts, tag):
+    # A probe on another y (WP-31 C6: cmissing() on pricemiss, the column
+    # with missing values) names it as _yvar, which is not an option.
+    popts = dict(popts)
+    yv = popts.pop("_yvar", "mpg")
     plot = ({"type": ptype, **_PC_PLOT, "options": popts}
             if ptype in ("pcarrow", "pcbarrow", "pcspike", "pccapsym",
                          "pcscatter")
             # WP-31 C5: a function layer is its expression (droplines()).
             else {"type": ptype, "expr": "x^2", "options": popts}
             if ptype == "function"
-            else {"type": ptype, "yvar": "mpg", "xvar": "weight",
+            else {"type": ptype, "yvar": yv, "xvar": "weight",
                   "options": popts})
     spec = {"graphs": [{"name": "g1",
                         "graph_options": dict(gopts, name="g1"),
                         "options": dict(gopts),
                         "plots": [dict(plot,
-                                       # WP-31 C2: a range layer's bounds.
+                                       # WP-31 C2: a range layer's bounds
+                                       # (rarea's too, WP-31 C6).
                                        **({"yvar1": "mpg", "yvar2": "price"}
-                                          if ptype == "rbar" else {}))]}],
+                                          if ptype in ("rbar", "rarea")
+                                          else {}))]}],
             "kpis": [],
             "build_options": {"layout": "auto", "registry": "g1",
                               "level": "95", "formats": {}, "theme": "",
@@ -283,7 +281,8 @@ class TestTheListIsCoveredAndHonest:
         # named until minor ticks are drawn
         # 44 -> 43 and 25 -> 24: P1.10 text() drawn
         # 43 -> 44: A4 mlalign declared and named
-        assert len(_plot_pending()) == 44, sorted(_plot_pending())
+        # 44 -> 42: C6 cmissing() and connect() drawn everywhere
+        assert len(_plot_pending()) == 42, sorted(_plot_pending())
         assert len(_graph_pending()) == 24, sorted(_graph_pending())
 
 
@@ -475,6 +474,17 @@ _ML = {"mlabel": "foreign"}
 _FP_A = {"x": [2000.0, 3000.0], "y": [20.0, 25.0], "nobs": 10}
 _FP_B = {"x": [2000.0, 3000.0], "y": [18.0, 27.0], "nobs": 10}
 LIVE_VALUES = {
+    # Flipped (WP-31 C6): PLOT_VALUES cmissing ("n", "y", "area") -- "named
+    # and inert on area" -- was wrong because twoway splits the area at a
+    # missing row (area_cmissing_truth.json A01); probed on pricemiss, the
+    # column with missing values.
+    "cmissing": ({"cmissing": "n", "_yvar": "pricemiss"},
+                 {"cmissing": "y", "_yvar": "pricemiss"}, "area", {}),
+    # Flipped (WP-31 C6): PLOT_VALUES connect ("direct", "stairstep",
+    # "rarea") was wrong because twoway draws rarea's bounds stepped
+    # (area_cmissing_truth.json R01).
+    "connect": ({"connect": "stairstep"}, {"connect": "direct"}, "rarea",
+                {}),
     # WP-31 C4: the fit options, drawn (test_fit_options.py).  atobs and
     # nofit are flags; estopts(), predopts() and estcmd() change the page
     # through the points Stata computed for them, which dash.ado writes.

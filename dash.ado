@@ -1323,13 +1323,8 @@ program define _dash_parse_plot_opts, sclass
     if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
     if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
-    // cmissing and connect stay here, as sort does: _dash_connect_opt
-    // takes them off where dash draws them or twoway draws the same
-    // picture without them (WP-30 P1.8a).
-    if `: length local cmissing' local _dash_pending `"`_dash_pending' cmissing"'
     if `: length local colorlist' local _dash_pending `"`_dash_pending' colorlist"'
     if `: length local coloruseplegend' local _dash_pending `"`_dash_pending' coloruseplegend"'
-    if `: length local connect' local _dash_pending `"`_dash_pending' connect"'
     // As in the graph-level block: build-time options written on a graph.
     if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
     if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
@@ -2816,12 +2811,9 @@ end
 // lists ("." for an empty element), so the per-y writer gives each y its
 // own value; on scatter s(_cn_types) holds connected for a y given a
 // connect() element, else scatter, and s(_cn_any) 1 when any is.  It takes
-// connect and cmissing off s(_pending) except where dash does not draw
-// them: connect() other than direct on rarea, cmissing(n) on area, rarea
-// and the fits whose own missing points twoway breaks at (cm_named, the
-// matrix's cmissing(n) rows that differ from the plain fit) -- named in
-// the note (P2.42, P2.43).  Values are read by value; echoes go through
-// _dash_say and _dash_note.
+// connect and cmissing off s(_pending) on every type: dash draws both
+// wherever twoway does (WP-31 C6; test/fixtures/area_cmissing_truth.json).
+// Values are read by value; echoes go through _dash_say and _dash_note.
 // ================================================================
 program define _dash_connect_opt, sclass
     version 19
@@ -2832,7 +2824,6 @@ program define _dash_connect_opt, sclass
     mata: st_local("_cn_m", st_global("s(cmissing)"))
     if !`: length local _cn_c' & !`: length local _cn_m' exit
     local cm_refuse "line connected lfit qfit fpfit lpoly lowess mspline mband kdensity function tsline lfitci qfitci lpolyci fpfitci rline rconnected tsrline"
-    local cm_named "area rarea fpfit fpfitci lfitci lowess lpoly lpolyci qfitci"
     if "`nser'" == "" local nser 1
     foreach kind in connect cmissing {
         mata: st_local("_cn_bad", strofreal(_dash_stylelist_bad(st_global("s(`kind')"))))
@@ -2846,7 +2837,6 @@ program define _dash_connect_opt, sclass
     local _cn_out ""
     local _cn_types ""
     local _cn_any 0
-    local _cn_nondirect 0
     if `: length local _cn_c' {
         forvalues i = 1/`nser' {
             mata: st_local("e", _dash_stylelist_pick(st_global("s(connect)"), `i'))
@@ -2863,13 +2853,11 @@ program define _dash_connect_opt, sclass
                 local _cn_out "`_cn_out' `v'"
                 local _cn_types "`_cn_types' connected"
                 local _cn_any 1
-                if "`v'" != "direct" local _cn_nondirect 1
             }
         }
         sreturn local connect "`: list retokenize _cn_out'"
     }
     local _mn_out ""
-    local _cn_no 0
     if `: length local _cn_m' {
         forvalues i = 1/`nser' {
             mata: st_local("e", _dash_stylelist_pick(st_global("s(cmissing)"), `i'))
@@ -2884,7 +2872,6 @@ program define _dash_connect_opt, sclass
                 local v ""
             }
             if "`v'" == "" local v "."
-            if "`v'" == "n" local _cn_no 1
             local _mn_out "`_mn_out' `v'"
         }
         sreturn local cmissing "`: list retokenize _mn_out'"
@@ -2893,10 +2880,11 @@ program define _dash_connect_opt, sclass
         sreturn local _cn_types "`: list retokenize _cn_types'"
         sreturn local _cn_any "`_cn_any'"
     }
+    // WP-31 C6: cmissing(n) is drawn on every type (area and rarea split
+    // the fill; the estimators break their line at their own missing
+    // points) and connect() on rarea, so neither is ever named.
     mata: st_local("_cn_p", st_global("s(_pending)"))
-    local _cn_rm ""
-    if !("`ptype'" == "rarea" & `_cn_nondirect') local _cn_rm "connect"
-    if !(`_cn_no' & `: list ptype in cm_named') local _cn_rm "`_cn_rm' cmissing"
+    local _cn_rm "connect cmissing"
     local _cn_k : list _cn_p - _cn_rm
     sreturn local _pending `"`_cn_k'"'
 end

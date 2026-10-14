@@ -695,18 +695,16 @@ class TestTheAdoTables:
         body = ado[ado.index("program define _dash_connect_opt"):]
         body = body[:body.index("\nend\n")]
         refuse = re.search(r'local cm_refuse "([^"]*)"', body).group(1)
-        named = re.search(r'local cm_named "([^"]*)"', body).group(1)
         M = _FIX["matrix"]
         want_refuse = {t for t in M if M[t]["cmissing(x)"]["rc"] == 101}
-        # Named: area and rarea (P2.42) and the fits whose cmissing(n) path
-        # differs from their plain one (P2.43); line, connected, the range
-        # lines and tsline/tsrline are drawn.
-        drawn = {"line", "connected", "rline", "rconnected", "tsline",
-                 "tsrline", "function"}
-        want_named = {t for t in M if M[t]["cmissing(n)"]["same_as_base"]
-                      is False} - drawn
         assert set(refuse.split()) == want_refuse
-        assert set(named.split()) == want_named
+        # Flipped (WP-31 C6): cm_named -- area, rarea and the fits whose
+        # cmissing(n) path differs (P2.42, P2.43), named in the note -- was
+        # wrong because dash now draws cmissing(n) on every type and
+        # connect() on rarea as twoway does (area_cmissing_truth.json A01,
+        # R01, R02, E01-E07): both always leave the pending list.
+        assert "cm_named" not in body
+        assert 'local _cn_rm "connect cmissing"' in body
 
 
 class TestTheHelp:

@@ -15446,9 +15446,21 @@ class GlyphMapper:
         # have nothing left to filter.
         # The row positions as well, so the caller's other columns -- the
         # variables hover() names -- can ride along with each point.
-        _area_idx = self._join_order(
-            source, self._masked_index(source, view, xvar, yvar), xvar,
-            options, order)
+        # cmissing(n) (WP-31 C6): the rows missing x or y stay in the join
+        # order, so the fill and the outline break where they sit.  area
+        # ignores connect() (area_cmissing_truth.json A03).
+        _cmiss_n = _dash_join_spec(options)[1] == "n"
+        if _cmiss_n:
+            _n_rows = len(source.data[xvar])
+            _sel = self._view_mask(view, _n_rows)
+            _rows = np.arange(_n_rows)
+            _area_idx = self._join_order(
+                source, _rows if _sel is None else _rows[_sel], xvar,
+                options, order)
+        else:
+            _area_idx = self._join_order(
+                source, self._masked_index(source, view, xvar, yvar), xvar,
+                options, order)
         x_arr = _dash_float_values(source.data[xvar])[_area_idx]
         y_arr = _dash_float_values(source.data[yvar])[_area_idx]
         # The row identity, for the border line's copy: the saved page's
@@ -15469,6 +15481,19 @@ class GlyphMapper:
         # _y1_col = baseline, yvar = upper boundary
         area_source = ColumnDataSource(self._carry_cols(
             source, {xvar: x_arr, _y1_col: y1_base, yvar: y_arr}, _area_idx))
+        # Split at each gap (D-14a): the fill's vertex list holds a
+        # zero-height pair at the run's end and the next run's start, each
+        # at its own y, so the base column's default value, written later
+        # by _dash_finish_auto_bases, keeps those two (_dash_base_pin).
+        _pin_rows = None
+        _ok = np.isfinite(x_arr) & np.isfinite(y_arr)
+        _nodrop = bool(str(options.get("nodropbase", "") or "").strip())
+        if _cmiss_n and not _nodrop and not bool(_ok.all()):
+            _xi, _yi, _col = _dash_fill_vertices(x_arr, _ok, "direct", "n")
+            area_source.data = _dash_fill_rebuild(
+                area_source.data, xvar, (_y1_col, yvar), yvar, _xi, _yi,
+                _col)
+            _pin_rows = np.flatnonzero(_col)
         # The fill is the resolved colour at the p#area intensity, opaque,
         # as twoway draws it (WP-30 P1.2b).
         # A named style's areastyle is the base (WP-30 P1.14a, D-32e).
@@ -15493,7 +15518,6 @@ class GlyphMapper:
         # (twoway_area.sthlp; yxview_parse .drop_base = 0, measured
         # 14oct2026 drop_base "no"; WP-31 C5).  A Patch, whose closing edge
         # is that chord, over the same rows; it has no base to tag.
-        _nodrop = bool(str(options.get("nodropbase", "") or "").strip())
         if _nodrop:
             r = fig.patch(x=xvar, y=yvar, source=area_source,
                           fill_color=self._blend_intensity(
@@ -15510,6 +15534,8 @@ class GlyphMapper:
         self._style_restyle(r, options, ("area",))
         if not _nodrop:
             self._tag_base(r, "y1", _base is None, _zero)
+        if _pin_rows is not None and len(_pin_rows):
+            r._dash_base_pin = (yvar, _pin_rows)
         if _fill_a is not None:
             r.glyph.fill_alpha = _fill_a
 
@@ -15525,10 +15551,17 @@ class GlyphMapper:
             if _area_ids is not None and _ROW_ID_COLUMN not in _border_data:
                 _border_data[_ROW_ID_COLUMN] = _area_ids
             border_source = ColumnDataSource(_border_data)
-            line_r = fig.line(x=xvar, y=yvar, source=border_source,
-                               line_color=border_color, line_width=self.scheme.plot_line_width(color_idx, "area"))
-            # A named style's outline is not drawn here (P2.12).
-            self._apply_line_opts(line_r, options, role=None)
+            # Through the join, so cmissing(n) breaks the outline where it
+            # breaks the fill (WP-31 C6); area ignores connect().  A named
+            # style's outline is not drawn here (P2.12).
+            _dash_join_glyph(
+                self, fig, {k: v for k, v in options.items()
+                            if k != "connect"},
+                dict(x=xvar, y=yvar, source=border_source,
+                     line_color=border_color,
+                     line_width=self.scheme.plot_line_width(color_idx,
+                                                            "area")),
+                role=None)
 
         # No marker labels: twoway draws none on an area (measured).
         return r
@@ -16182,6 +16215,40 @@ class GlyphMapper:
         (WP-29 P0.8): ``units`` is this mapper's ``date_vars``."""
         return self._layer_weights(source, view, options, layer, *varnames,
                                    units=dict(self.date_vars or {}) or None)
+
+    def _cmiss_gap_x(self, source, view, xvar, yvar, options,
+                     distinct=False):
+        """The x values (Stata units, sorted) at which an estimator's own
+        result is missing under cmissing(n) (WP-31 C6): the layer's rows
+        that have an x and no y -- lowess and fpfit predict at every row of
+        the sample and leave these missing, so twoway's line breaks there
+        (area_cmissing_truth.json E01, E06).  *distinct*: fpfit's rule,
+        one point per distinct x, missing only where no row at that x has
+        a y.  Empty unless the layer's cmissing() is n."""
+        if _dash_join_spec(options)[1] != "n":
+            return np.asarray([], dtype=float)
+        xs, ys = self._masked_rows(source, view, xvar, yvar)
+        gx = xs[np.isfinite(xs) & ~np.isfinite(ys)]
+        if distinct:
+            have = xs[np.isfinite(xs) & np.isfinite(ys)]
+            gx = np.setdiff1d(np.unique(gx), have)
+        return np.sort(gx)
+
+    def _masked_rows(self, source, view, *varnames):
+        """*varnames*' float columns over the rows *view* selects, a date
+        in its Stata units, missing values kept (``_masked`` drops
+        them)."""
+        cols = [_dash_float_values(source.data[v]) for v in varnames]
+        units = dict(self.date_vars or {})
+        for _i, _v in enumerate(varnames):
+            _k = units.get(_v)
+            if _k in _STATA_DATE_KINDS:
+                cols[_i] = _dash_date_units(cols[_i], _k)
+        n = len(cols[0]) if cols else 0
+        sel = GlyphMapper._view_mask(view, n)
+        if sel is not None:
+            cols = [c[sel] for c in cols]
+        return cols
 
     @staticmethod
     def _fit_grid_spec(options) -> tuple:
@@ -17327,6 +17394,11 @@ class GlyphMapper:
         # on either side, as twoway's cmissing(y) default does.
         _keep = np.isfinite(y_lw)
         x_lw, y_lw = x_lw[_keep], y_lw[_keep]
+        # cmissing(n): a row of the sample with no y has no smooth, and
+        # twoway's line breaks there (WP-31 C6; E01).
+        x_lw, (y_lw,) = _dash_insert_breaks(
+            x_lw, [y_lw], self._cmiss_gap_x(source, view, xvar, yvar,
+                                            options))
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
@@ -17749,11 +17821,15 @@ class GlyphMapper:
                 x, y, bwidth=bw, degree=degree, kernel=kernel,
                 n_grid=n_grid, w=lw)
         valid = ~np.isnan(y_fit)
+        # cmissing(n): a grid point with no neighbour is kept missing, so
+        # the line breaks there, as twoway's does (WP-31 C6; E03).
+        _vkeep = np.isfinite(x_grid) if _dash_join_spec(options)[1] == "n" \
+            else valid
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x", options)
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y", options)
+        _xd, _ox = self._on_axis(fig, x_grid[_vkeep], xvar, "x", options)
+        _yd, _oy = self._on_axis(fig, y_fit[_vkeep], yvar, "y", options)
         _xd, _yd = self._drop_off_dates("lpoly", "point(s)", _ox | _oy,
                                         _xd, _yd)
         lp_src = ColumnDataSource({
@@ -17826,6 +17902,10 @@ class GlyphMapper:
             band_src = ColumnDataSource({"x_lp": list(bx), "y_lp": list(by),
                                          "y_lower": list(blo),
                                          "y_upper": list(bhi)})
+            # cmissing(n): the band split at its missing points (WP-31 C6;
+            # E02), as an area is.
+            _dash_fill_split(band_src, "x_lp", ("y_lower", "y_upper",
+                                                "y_lp"), "y_lower", options)
             return self._render_ci_band(
                 fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
                 options, line_width=_lw_px, band_source=band_src,
@@ -17913,6 +17993,11 @@ class GlyphMapper:
             lo = y_fit - z * se
             hi = y_fit + z * se
         banded = valid & np.isfinite(se) & np.isfinite(lo) & np.isfinite(hi)
+        _any_valid = bool(valid.any())
+        if _dash_join_spec(options)[1] == "n":
+            # cmissing(n): the missing points are kept, so the line and the
+            # band break there (WP-31 C6; E02).
+            valid = banded = np.isfinite(x_grid)
         # WP-29 P0.8: computed in Stata units, drawn where the figure's axes
         # draw the variables; a point with no date there is dropped.
         _xd, _ox = _on(x_grid[valid], xvar, "x")
@@ -17928,7 +18013,7 @@ class GlyphMapper:
         line_r, band_r = _draw(_xd.tolist(), _yd.tolist(), _bx.tolist(),
                                _by.tolist(), _bl.tolist(), _bu.tolist())
         # Missing at every grid point: drawn in silence, as lpoly's is.
-        if not valid.any():
+        if not _any_valid:
             self._mark_silent([line_r, band_r])
         return [line_r, band_r]
 
@@ -18308,11 +18393,17 @@ class GlyphMapper:
         y_fit = self._predict_fp2(x_grid, fit)
 
         valid = ~np.isnan(y_fit)
+        # cmissing(n): an x with no row in the sample has no prediction,
+        # and twoway's line breaks there (WP-31 C6; E06).
+        _gx, (_gy,) = _dash_insert_breaks(
+            x_grid[valid], [y_fit[valid]],
+            self._cmiss_gap_x(source, view, xvar, yvar, options,
+                              distinct=True))
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x", options)
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y", options)
+        _xd, _ox = self._on_axis(fig, _gx, xvar, "x", options)
+        _yd, _oy = self._on_axis(fig, _gy, yvar, "y", options)
         _xd, _yd = self._drop_off_dates("fpfit", "point(s)", _ox | _oy,
                                         _xd, _yd)
         fp_src = ColumnDataSource({
@@ -18414,10 +18505,16 @@ class GlyphMapper:
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
-        _xd, _ox = self._on_axis(fig, x_grid[valid], xvar, "x", options)
-        _yd, _oy = self._on_axis(fig, y_fit[valid], yvar, "y", options)
-        _yl, _ol = self._on_axis(fig, y_lower[valid], yvar, "y", options)
-        _yu, _ou = self._on_axis(fig, y_upper[valid], yvar, "y", options)
+        # cmissing(n): the line and the band break at an x with no row in
+        # the sample (WP-31 C6; E07).
+        _gx, (_gy, _gl, _gu) = _dash_insert_breaks(
+            x_grid[valid], [y_fit[valid], y_lower[valid], y_upper[valid]],
+            self._cmiss_gap_x(source, view, xvar, yvar, options,
+                              distinct=True))
+        _xd, _ox = self._on_axis(fig, _gx, xvar, "x", options)
+        _yd, _oy = self._on_axis(fig, _gy, yvar, "y", options)
+        _yl, _ol = self._on_axis(fig, _gl, yvar, "y", options)
+        _yu, _ou = self._on_axis(fig, _gu, yvar, "y", options)
         _xd, _yd, _yl, _yu = self._drop_off_dates(
             "fpfitci", "point(s)", _ox | _oy | _ol | _ou, _xd, _yd, _yl, _yu)
         ci_src = ColumnDataSource({
@@ -18426,9 +18523,17 @@ class GlyphMapper:
             "y_lower": _yl.tolist(),
             "y_upper": _yu.tolist(),
         })
+        # A band split at its missing points draws from its own copy; the
+        # line keeps its NaN rows and breaks there (WP-31 C6).
+        _band_src = ColumnDataSource(dict(ci_src.data))
+        if not _dash_fill_split(_band_src, "x_fp",
+                                ("y_lower", "y_upper", "y_fp"), "y_lower",
+                                options):
+            _band_src = None
         line_r, band_r = self._render_ci_band(
             fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
             line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
+            band_source=_band_src,
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
             color_idx=color_idx,
         )
@@ -19093,10 +19198,25 @@ class GlyphMapper:
             view = None
 
         # Masked and rebuilt in the join order rather than reordered in
-        # place, because the source is shared.
-        _ord = self._join_order(
-            source, self._masked_index(source, view, xvar, y1var, y2var),
-            xvar, options, order)
+        # place, because the source is shared.  connect() and cmissing(n)
+        # (WP-31 C6): the rows missing x or a bound stay in the join order
+        # and both bounds are drawn through _dash_fill_vertices -- stairs
+        # and twoway's split at each gap (area_cmissing_truth.json R01,
+        # R02, R03); connect(none) draws the band as direct (R04).
+        _style, _cmiss = _dash_join_spec(options)
+        _expand = _cmiss == "n" or _style in ("stairstep", "stepstair")
+        if _expand:
+            _n_rows = len(source.data[xvar])
+            _sel = self._view_mask(view, _n_rows)
+            _rows = np.arange(_n_rows)
+            _ord = self._join_order(
+                source, _rows if _sel is None else _rows[_sel], xvar,
+                options, order)
+        else:
+            _ord = self._join_order(
+                source, self._masked_index(source, view, xvar, y1var,
+                                           y2var),
+                xvar, options, order)
         _cols = {
             v: _dash_float_values(source.data[v])[_ord]
             for v in (xvar, y1var, y2var)
@@ -19105,6 +19225,15 @@ class GlyphMapper:
         # ride along in the same order: each point is an observation.
         source = ColumnDataSource(self._carry_cols(source, _cols, _ord))
         view = None
+        if _expand:
+            _ok = (np.isfinite(_cols[xvar]) & np.isfinite(_cols[y1var])
+                   & np.isfinite(_cols[y2var]))
+            _xi, _yi, _col = _dash_fill_vertices(_cols[xvar], _ok, _style,
+                                                 _cmiss)
+            # A gap's zero-height pair sits on the lower bound.
+            source.data = _dash_fill_rebuild(source.data, xvar,
+                                             (y1var, y2var), y1var, _xi,
+                                             _yi, _col)
 
         # The fill is the resolved colour at the p#area intensity (WP-30
         # P1.2b); its 0.5 opacity is section 24's.
@@ -34038,7 +34167,15 @@ def _dash_finish_auto_bases(fig):
             col = data[field]
             val = min(max(bs["zero"], sc[0]), sc[1])
             new = np.full(len(col), val, dtype=float)
-            if np.array_equal(np.asarray(col, dtype=float), new):
+            # A split area's zero-height gap vertices keep their height of
+            # 0: the base there is the layer's own y (WP-31 C6,
+            # map_area's _dash_base_pin).
+            pin = getattr(r, "_dash_base_pin", None)
+            if pin and pin[0] in data and len(data[pin[0]]) == len(col):
+                rows = np.asarray(pin[1], dtype=np.int64)
+                new[rows] = _dash_float_values(data[pin[0]])[rows]
+            if np.array_equal(np.asarray(col, dtype=float), new,
+                              equal_nan=True):
                 continue
             data[field] = new
             n += 1
@@ -43124,6 +43261,156 @@ def _dash_join_glyph(mapper, fig, options, line_kwargs, role="line",
     return r
 
 
+def _dash_fill_vertices(xs, ok, style="direct", cmiss="y"):
+    """The vertices of a filled layer (area, rarea, a ci band) for rows
+    *xs* in join order, *ok* marking the rows present in x and every y.
+
+    Returns ``(xi, yi, col)``: per vertex the row its x and its y(s) come
+    from, and whether it is a zero-height vertex no observation owns
+    (WP-31 C6, section 14 D-14a).  Measured on twoway
+    (test/fixtures/area_cmissing_truth.json):
+
+    * cmissing(y) joins the present rows (a missing row is passed over);
+    * cmissing(n) closes the polygon at the last present row before a gap
+      and opens a new one at the first after it (A01, R02): drawn as one
+      vertex list, the gap is a pair of zero-height vertices -- *col* --
+      at the run's end and the next run's start, so nothing is filled
+      between them; missing rows before the first or after the last
+      present row are dropped;
+    * rarea's stairstep inserts ``(x[b], y[a])`` after a present row a
+      whenever the next row b has an x, present or not (towards a missing
+      b only when a present row follows), and stepstair
+      ``(x[a], y[b])`` before a present row b whenever a has an x (R01,
+      R03; a line's stairs pass a missing row over instead).
+
+    *style* outside stairstep/stepstair is direct (area ignores
+    connect(): A03 draws A00's polygon).  O(n).
+    """
+    x = np.asarray(xs, dtype=float)
+    ok = np.asarray(ok, dtype=bool)
+    n = min(len(x), len(ok))
+    xfin = np.isfinite(x[:n])
+    out_x, out_y, out_c = [], [], []
+    gap = False
+
+    def emit(a, b):
+        nonlocal gap
+        if gap and out_x:
+            # The run before ends, the run after starts: two zero-height
+            # vertices, each at its own row.
+            out_x.extend((out_x[-1], a))
+            out_y.extend((out_y[-1], b))
+            out_c.extend((True, True))
+        gap = False
+        out_x.append(a)
+        out_y.append(b)
+        out_c.append(False)
+
+    prev = -1
+    pending = None
+    for b in range(n):
+        if prev >= 0:
+            a = prev
+            if style == "stairstep" and ok[a] and xfin[b]:
+                if ok[b]:
+                    emit(b, a)
+                else:
+                    # The corner towards a missing row is drawn only when
+                    # a present row follows it (R01: 3900, not 4330).
+                    pending = (b, a)
+            elif style == "stepstair" and ok[b] and xfin[a]:
+                emit(a, b)
+        if ok[b]:
+            if pending is not None:
+                emit(*pending)
+                pending = None
+            emit(b, b)
+        elif cmiss == "n":
+            gap = True
+            pending = None
+        prev = b
+    return (np.asarray(out_x, dtype=np.int64),
+            np.asarray(out_y, dtype=np.int64),
+            np.asarray(out_c, dtype=bool))
+
+
+def _dash_fill_rebuild(data, xcol, ycols, pin, xi, yi, col):
+    """A filled layer's columns rebuilt over :func:`_dash_fill_vertices`'
+    vertices (WP-31 C6).
+
+    *xcol* is taken from each vertex's x row and every column of *ycols*
+    from its y row, except at a zero-height vertex (*col*), where each
+    takes the *pin* column's value of that row, so the vertex has no
+    height.  Any other column -- the row id, a hover() variable -- holds
+    its row's value where an observation owns the vertex (x row = y row,
+    not zero-height) and null elsewhere (NaN for a float column on a
+    source with no row id), as :func:`_dash_join_glyph` writes a line's
+    synthetic vertices.  A column of another length is left out.  Returns
+    the new data dict; *data* is not changed.
+    """
+    xi = np.asarray(xi, dtype=np.int64)
+    yi = np.asarray(yi, dtype=np.int64)
+    col = np.asarray(col, dtype=bool)
+    xs = _dash_float_values(data[xcol])
+    n0 = len(xs)
+    rowid = _ROW_ID_COLUMN in data
+    own = (xi == yi) & ~col
+    pinv = _dash_float_values(data[pin])[yi]
+    new = {}
+    for c, vals in data.items():
+        if len(vals) != n0:
+            continue
+        if c == xcol:
+            new[c] = xs[xi]
+            continue
+        if c in ycols:
+            new[c] = np.where(col, pinv, _dash_float_values(vals)[yi])
+            continue
+        if (not rowid) and np.asarray(vals).dtype.kind == "f":
+            new[c] = np.where(own, np.asarray(vals, dtype=float)[yi], np.nan)
+            continue
+        arr = np.asarray(vals, dtype=object)
+        new[c] = [v if o else None for v, o in zip(arr[yi], own)]
+    return new
+
+
+def _dash_fill_split(src, xcol, ycols, pin, options):
+    """Split a band *src* (a ColumnDataSource drawn as a VArea between
+    ``ycols[0]`` and ``ycols[1]``) at its missing points when the layer's
+    cmissing() is n (WP-31 C6): its data rebuilt in place over
+    :func:`_dash_fill_vertices` with each gap's zero-height pair on
+    *pin*.  Nothing happens under cmissing(y) or when every row is
+    present.  Returns True when the data were rebuilt."""
+    if _dash_join_spec(options)[1] != "n":
+        return False
+    data = src.data
+    ok = np.isfinite(_dash_float_values(data[xcol]))
+    for c in ycols[:2]:
+        ok &= np.isfinite(_dash_float_values(data[c]))
+    if bool(ok.all()):
+        return False
+    xi, yi, col = _dash_fill_vertices(data[xcol], ok, "direct", "n")
+    src.data = _dash_fill_rebuild(data, xcol, tuple(ycols), pin, xi, yi,
+                                  col)
+    return True
+
+
+def _dash_insert_breaks(xs, cols, gap_x):
+    """*xs* (ascending) and its parallel *cols* with a missing point at
+    each of *gap_x*: x the gap's, every column NaN, placed after the
+    points at or below it (WP-31 C6; an estimator's own missing points,
+    _cmiss_gap_x).  Returns ``(xs, cols)`` as float arrays; unchanged when
+    *gap_x* is empty."""
+    xs = np.asarray(xs, dtype=float)
+    cols = [np.asarray(c, dtype=float) for c in cols]
+    g = np.asarray(gap_x, dtype=float)
+    if not len(g):
+        return xs, cols
+    at = np.searchsorted(xs, g, side="right")
+    return (np.insert(xs, at, g),
+            [np.insert(c, at, np.nan) for c in cols])
+
+
 def _dash_join_hide(r, options):
     """Hide renderer *r*'s line when the layer's connect() is none: line
     alpha 0 in every glyph state, after the line options were applied (a
@@ -49355,6 +49642,12 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # a filled layer's vertices under cmissing(n) and
+                         # rarea's connect() (WP-31 C6).
+                         "_dash_fill_vertices",
+                         "_dash_fill_rebuild",
+                         "_dash_insert_breaks",
+                         "_dash_fill_split",
                          "_dash_fit_points_of",
                          # a layer's yaxis()/xaxis() numbers (WP-31 C10b;
                          # the tie is _dash_axis_groups', C10c).

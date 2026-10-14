@@ -773,7 +773,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 139 -> 144: C4 the note on the fit options' sreturn lines (five);
     # 144 -> 147: C5 the note on the gap ... nodropbase sreturn lines
     # (three).
-    assert comments == {"_dash_parse_plot_opts": 147,
+    # 147 -> 144: C6 the note on the cmissing and connect pending lines
+    # goes with them (three).
+    assert comments == {"_dash_parse_plot_opts": 144,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
