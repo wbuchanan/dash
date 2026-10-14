@@ -432,7 +432,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit 6aea1e5.
 - **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit eae52c8.
 - **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit ff82353.
-- **B4a Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)", commit pending.
+- **B4a Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)", commit 8e78c4d.
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
@@ -445,7 +445,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C4b Tracked:** Open (WP-31 section 41).
 - **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Closed in WP-31, BUGS.md "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn", commit b2af9fc.
-- **C6b Tracked:** Closed in WP-31, BUGS.md "mband and mspline over data with missing y draw fewer vertices than twoway", commit pending.
+- **C6b Tracked:** Closed in WP-31, BUGS.md "mband and mspline over data with missing y draw fewer vertices than twoway", commit 6dd0c80.
 - **C7 Tracked:** Closed in WP-31, BUGS.md "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them", commit 44761fa.
 - **C8a Tracked:** Closed in WP-31, BUGS.md "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)", commit 46698dd.
 - **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.
@@ -468,7 +468,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C17 Tracked:** Open (WP-31 section 34).
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
-- **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit pending.
+- **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Open (WP-31 section 35).
 - **D1c Tracked:** Open (WP-31 section 33).
 - **D2 Tracked:** Open (WP-31 section 27).
@@ -504,7 +504,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
 - **F1d Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpoly after a filter move (the lpoly twin)", commit bbc640a.
 - **F1e Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpolyci after a filter move (the lpolyci twin)", commit 2b9ce0a.
-- **F1f Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)", commit pending.
+- **F1f Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)", commit 54554e2.
 - **F1g Tracked:** Open (WP-31 section 28).
 - **F2 Tracked:** Open (WP-31 section 47).
 - **F3 Tracked:** Open (WP-31 section 47).
