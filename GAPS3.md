@@ -417,10 +417,10 @@ One line per WP-31 entry (.ultraplan/sections/index.md, A4), rewritten in place 
 `Partly closed in WP-31 (section NN, commit <sha>): <what is closed>; open: <what remains> (BUGS.md "<residual title>").`
 A closing commit writes `commit pending`; the merger's step k.3b replaces it with the landed sha on s3-bugs (DECISIONS A11).
 
-- **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit pending.
-- **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit pending.
-- **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit pending.
-- **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit pending.
+- **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit fb02f1c.
+- **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.
+- **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
+- **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
 - **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit 79c9f79.
 - **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit ec00ad8.
@@ -445,7 +445,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C9 Tracked:** Open (WP-31 section 20).
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
-- **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit pending.
+- **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Open (WP-31 section 31).
@@ -483,7 +483,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E11 Tracked:** Open (WP-31 section 32).
 - **E12 Tracked:** Open (WP-31 section 40).
 - **E13 Tracked:** Open (WP-31 section 41).
-- **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit pending.
+- **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Open (WP-31 section 13).
 - **F1c Tracked:** Open (WP-31 section 16).
 - **F1d Tracked:** Open (WP-31 section 19).
