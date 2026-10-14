@@ -147,8 +147,10 @@ or served.  One is read: a second, as in
 refuses it, "twoway is not a twoway plot type", {cmd:r(198)};
 {cmd:twow}, {cmd:twowa}, {cmd:gra} and {cmd:grap} are refused with
 {cmd:r(199)}, "command twow is unrecognized", as Stata refuses them.
-{cmd:dash twoway} with nothing after it is refused; {cmd:twoway} draws an
-empty graph.
+{cmd:dash twoway} with nothing after it draws an empty graph, its axes and
+no plot, as {cmd:twoway} does, and takes graph options and a qualifier with
+no plot, {cmd:dash twoway, title(T)}; without the prefix, a command with no
+plot is refused.
 
 
 {marker description}

@@ -2480,6 +2480,46 @@ dash clear
 display "U08-6 PASS: lfit, area, kdensity and twoway's spellings register as their types"
 
 // ================================================================
+// U08-7 (WP-31 A1) -- the helpers of the bare twoway prefix
+// ================================================================
+// twoway alone draws an empty graph, and takes graph options and a
+// qualifier with no plot (test/fixtures/bare_prefix_truth.json bare.*;
+// `twoway if foreign==1' and `twoway ||' rc 0 too, measured 13oct2026).
+// _dash_split_segs takes no plot as zero segments only with allow_empty,
+// which dash.ado passes after a prefix; _dash_spec_has_plots tells such a
+// graph from one with plots.
+mata:
+_u87q = char(34)
+st_local("u87a", strofreal(_dash_spec_has_plots("{" + _u87q + "plots" + _u87q + ":[]," + _u87q + "graph_options" + _u87q + ":{}}")))
+st_local("u87b", strofreal(_dash_spec_has_plots("{" + _u87q + "plots" + _u87q + ":[ {" + _u87q + "type" + _u87q + ":" + _u87q + "scatter" + _u87q + "}]}")))
+st_local("u87c", strofreal(_dash_spec_has_plots("{" + _u87q + "plots" + _u87q + ":[  ")))
+st_local("u87d", strofreal(_dash_spec_has_plots("{}")))
+end
+assert `u87a' == 0 & `u87b' == 1 & `u87c' == 0 & `u87d' == 0
+mata: _dash_split_segs("", 1)
+assert `_n_segs' == 0 & `"`_graph_opts_raw'"' == "" & `"`_graph_qual_raw'"' == ""
+mata: _dash_split_segs(", title(T)", 1)
+assert `_n_segs' == 0 & `"`_graph_opts_raw'"' == "title(T)"
+mata: _dash_split_segs("if foreign==1", 1)
+assert `_n_segs' == 0 & `"`_graph_qual_raw'"' == "if foreign==1"
+capture mata: _dash_split_segs("", 0)
+assert _rc == 198
+capture mata: _dash_split_segs(", title(T)")
+assert _rc == 198
+// Without a prefix, a command with no plot is still refused; the prefix's
+// flag never outlives its command.
+sysuse auto, clear
+dash clear
+capture noisily dash , title(T) name(u087)
+assert _rc == 198
+capture noisily dash twoway if foreign==1, name(u087)
+assert _rc == 0
+assert `"${dash__bare_tw}"' == ""
+assert strpos(`"${dash_json_u087}"', `""plots":[]"') > 0
+dash clear
+display "U08-7 PASS: _dash_split_segs takes no plot as zero segments after a prefix only, and _dash_spec_has_plots tells an empty graph"
+
+// ================================================================
 // P1A-85 -- a || segment with no plot: `|| , opts' and `|| if exp'
 //           are the graph's, as twoway reads them
 // ================================================================
