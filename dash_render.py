@@ -1927,6 +1927,8 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci",
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
+# The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
+_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit"})
 
 # ---- The saved page's stale cue (WP-29 P0.17, decision M3) ----
 # A saved page does not refit a computed layer after a filter move; while
@@ -1954,8 +1956,10 @@ _DASH_STALE_STATUS_HTML = (
 def _dash_stale_kind(ptype, options):
     """The stale cue's kind for a layer (WP-29 P0.17): ``"fit"``,
     ``"bins"`` (histogram), ``"grid"`` (kdensity), or None for a layer a
-    saved page redraws or never computes -- and for a kdensity drawn over
-    ``range()``, whose grid is the user's and twoway's."""
+    saved page redraws or never computes -- for a kdensity drawn over
+    ``range()``, whose grid is the user's and twoway's, and for a fit the
+    saved page refits (``_DASH_JS_REFIT_TYPES``, WP-31 F1) unless it is
+    recast."""
     t = str(ptype or "").lower()
     if t not in _DASH_COMPUTED_ONLY_TYPES:
         return None
@@ -1967,6 +1971,10 @@ def _dash_stale_kind(ptype, options):
             warnings.simplefilter("ignore")
             rng = _dash_range_pair(options or {}, "kdensity", "")
         return None if rng is not None else "grid"
+    if t in _DASH_JS_REFIT_TYPES and not (options or {}).get("recast"):
+        # A recast fit is drawn by _dash_draw_xy_as, which the page does
+        # not refit (GAPS3 C16): it keeps the cue.
+        return None
     return "fit"
 
 
@@ -15944,6 +15952,77 @@ class GlyphMapper:
                                    units=dict(self.date_vars or {}) or None)
 
     @staticmethod
+    def _fit_grid_spec(options) -> tuple:
+        """``(n, range)``: what :func:`_fit_grid` reads from *options*, for
+        the saved page's refit (WP-31 F1a).  *n* is the point count it uses;
+        *range* is ``[lo, hi]`` as written, either one None for a ``.`` (the
+        data's own bound, ``_dash_range_bounds``), or None for no range()
+        or one that cannot be read (the observed range).  Silent: the
+        mapper has already named what it cannot read."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            n = int(_stat_option_float(options, "n", float(_FIT_GRID),
+                                       "fit", lo=1.0, hi=10000.0)
+                    or _FIT_GRID)
+        parts = str((options or {}).get("range", "") or "").strip().split()
+        rng = None
+        if len(parts) == 2:
+            try:
+                rng = [None if t == "." else float(t) for t in parts]
+            except (TypeError, ValueError):
+                rng = None
+            if rng is not None and not all(
+                    v is None or math.isfinite(v) for v in rng):
+                rng = None
+        return n, rng
+
+    def _fit_agg_config(self, ptype, xvar, yvar, wtype, w, fig, options,
+                        cols, n, rng):
+        """The saved page's refit config for a fit layer (WP-31 F1a,
+        D-10.a): the columns the page reads the kept rows from, the weight
+        and its rules, the date kinds the rows are read in and the kinds
+        the axes draw the output in (``_unit_kind``, as ``_on_axis``
+        places it), the output columns, the grid count and range().  Every
+        value is a plain str, int, float, None or list."""
+        dv = dict(self.date_vars or {})
+        wvar = str((options or {}).get("wexp", "") or "").strip() or None
+        if wtype is None:
+            wvar = None
+
+        def _kind(v):
+            k = dv.get(v) if v else None
+            return str(k) if k in _STATA_DATE_KINDS else None
+
+        def _axis(v, letter):
+            k = self._unit_kind(fig, v, letter, options)
+            return str(k) if k in _STATA_DATE_KINDS else None
+
+        cfg = {"type": str(ptype), "xvar": str(xvar), "yvar": str(yvar),
+               "wvar": wvar, "wtype": (str(wtype) if wvar else None),
+               # A negative weight: dropped with its row, or the layer
+               # draws nothing (_layer_weight_values_state).
+               "wneg": ("drop" if ptype in _DASH_WEIGHT_NEG_EXCLUDED
+                        else "empty"),
+               "xdatekind": _kind(xvar), "ydatekind": _kind(yvar),
+               "wdatekind": _kind(wvar),
+               "xaxiskind": _axis(xvar, "x"), "yaxiskind": _axis(yvar, "y"),
+               "cols": [str(c) for c in cols], "n": int(n),
+               "range": ([None if v is None else float(v) for v in rng]
+                         if rng else None)}
+        style = _dash_join_spec(options)[0]
+        if style not in ("direct", "none"):
+            cfg["join"] = {"style": str(style)}
+        return cfg
+
+    def _tag_fit(self, r, source, view, cfg):
+        """Hand renderer *r* to the saved page's refit (WP-31 F1a): its own
+        source, the config and the rows it is fitted from."""
+        r._dash_agg_source = r.data_source
+        r._dash_agg_config = cfg
+        r._dash_agg_rows = self._agg_member_ids(source, view)
+        return r
+
+    @staticmethod
     def _axis_kind(fig, axis, options=None):
         """The date kind of the axis a layer with *options* is drawn on for
         letter *axis*: ``axis + "2"`` under ``xaxis(2)``/``yaxis(2)``, else
@@ -16333,10 +16412,22 @@ class GlyphMapper:
         # In a by() panel of one, twoway prints the note, then
         # "insufficient observations", and draws on, rc 0 (measured
         # 24sep2026): _mark_insufficient.
+        # The saved page's refit config (WP-31 F1a), on the grid this
+        # layer draws: three points for a stair or recast and no n().
+        _lf_opts = options
+        if ((_dash_join_spec(options)[0] in ("stairstep", "stepstair")
+                or options.get("recast"))
+                and not str(options.get("n", "") or "").strip()):
+            _lf_opts = dict(options, n="3")
+        _cfg = self._fit_agg_config("lfit", xvar, yvar, _wt, w, fig,
+                                    options, ["x", "y"],
+                                    *self._fit_grid_spec(_lf_opts))
         if len(x) < 2:
             r = self._mark_unfit(
                 self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
                 "regress")
+            if not options.get("recast"):
+                self._tag_fit(r, source, view, _cfg)
             return self._mark_insufficient(r) if len(x) == 1 else r
 
         # numpy's `w' multiplies the UNSQUARED residual, so the regression
@@ -16360,14 +16451,10 @@ class GlyphMapper:
         # twoway's lfit evaluates three points, min, middle and max (its
         # n() default; range(1000 6000) plots 1000, 3500, 6000): the same
         # straight line as 100, but stairs over it step twice, not 99
-        # times (connect_truth.json F-lfit-J; WP-30 P1.8a).
-        _lf_opts = options
-        # So does a recast lfit: lfit y x, recast(scatter) draws three
-        # markers (recast_truth.json D-lfit-scatter; WP-30 P1.8b).
-        if ((_dash_join_spec(options)[0] in ("stairstep", "stepstair")
-                or options.get("recast"))
-                and not str(options.get("n", "") or "").strip()):
-            _lf_opts = dict(options, n="3")
+        # times (connect_truth.json F-lfit-J; WP-30 P1.8a).  So does a
+        # recast lfit: lfit y x, recast(scatter) draws three markers
+        # (recast_truth.json D-lfit-scatter; WP-30 P1.8b).  _lf_opts is
+        # set above, before the empty-layer return.
         x_fit = _fit_grid(x, _lf_opts, "lfit")
         y_fit = np.polyval(coeffs, x_fit)
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
@@ -16388,7 +16475,7 @@ class GlyphMapper:
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"), line_dash="solid",
                      legend_label=yvar), role=None)
-        return r
+        return self._tag_fit(r, source, view, _cfg)
 
     def map_qfit(
         self,
@@ -16423,11 +16510,6 @@ class GlyphMapper:
         # could not fit the model, rc 0 (measured 24sep2026).  Two are
         # fitted: regress omits x or x^2 and draws the other (_qfit_design).
         # dash drew nothing there, and said the layer drew nothing.
-        if len(x) < 2:
-            return self._mark_unfit(
-                self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
-                "regress")
-
         # Stata's grid, as map_lfit uses -- see the note there -- except
         # that twoway_qfit_parse.class reads a points count of 3 as lfit's
         # default and draws 100: `qfit y x, n(3)' plots 100 points
@@ -16439,6 +16521,18 @@ class GlyphMapper:
                 _qopts.pop("n", None)
         except ValueError:
             pass
+        # The saved page's refit config (WP-31 F1a).
+        _cfg = self._fit_agg_config("qfit", xvar, yvar, _wt, w, fig,
+                                    options, ["x", "y"],
+                                    *self._fit_grid_spec(_qopts))
+
+        if len(x) < 2:
+            r = self._mark_unfit(
+                self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
+                "regress")
+            return (r if options.get("recast")
+                    else self._tag_fit(r, source, view, _cfg))
+
         x_fit = _fit_grid(x, _qopts, "qfit")
         # The regression qfitci draws its line from (_qfit_design,
         # _dash_wls): one fit for both, so an x with two values is the
@@ -16449,8 +16543,9 @@ class GlyphMapper:
         try:
             y_fit = Xg @ _dash_wls(X, y, w, _wt)["beta"]
         except np.linalg.LinAlgError:
-            return self._empty_fit_line(fig, "x", "y", options, color_idx,
-                                        yvar)
+            r = self._empty_fit_line(fig, "x", "y", options, color_idx, yvar)
+            return (r if options.get("recast")
+                    else self._tag_fit(r, source, view, _cfg))
         # WP-29 P0.8: computed in Stata units, drawn where the figure's
         # axes draw the variables (_on_axis); a point with no date there
         # is dropped with one note.
@@ -16469,7 +16564,7 @@ class GlyphMapper:
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar), role=None)
-        return r
+        return self._tag_fit(r, source, view, _cfg)
 
     def map_lfitci(
         self,
@@ -25552,6 +25647,409 @@ function dash_kernel(name) {
             return z => (Math.abs(z) < S5 ? 0.75 * (1 - z * z / 5) / S5 : 0);
     }
 }
+// ---- WP-31 F1: the fit layers' shared helpers (S10) ----
+// Every later estimator port (lfitci..fpfitci, contour) builds on these.
+// Named function declarations, hoisted, so js_runner.run_fit_js_block's
+// helper slice carries them; later sections insert theirs before the
+// helpers' end marker below.
+// The kept rows of a fit layer: x, y (and a weight) as PAIRS, a row
+// surviving only when every one is a finite number (a date read in its
+// Stata units, dash_stata_value_of) -- the joint drop
+// GlyphMapper._layer_units applies.  Then the weight's rules, in
+// _layer_weights' order: a negative weight empties the layer when
+// ac.wneg is "empty" (twoway refuses it), a non-integer fweight empties
+// it (regress cannot use it), and a weight of zero or below leaves the
+// sample with its row.  null when a column is missing.
+function dash_fit_rows(ac, data, pick) {
+    const xc = pick(data[ac.xvar]), yc = pick(data[ac.yvar]);
+    if (!xc || !yc) return null;
+    const wc = ac.wvar ? pick(data[ac.wvar]) : null;
+    if (ac.wvar && !wc) return null;
+    const fin = (v) => typeof v === "number" && isFinite(v);
+    const x = [], y = [], w = [];
+    for (let i = 0; i < xc.length; i++) {
+        let xv = xc[i], yv = yc[i], wv = wc ? wc[i] : 1;
+        if (!fin(xv) || !fin(yv) || !fin(wv)) continue;
+        if (ac.xdatekind) { xv = dash_stata_value_of(xv, ac.xdatekind); if (xv === null) continue; }
+        if (ac.ydatekind) { yv = dash_stata_value_of(yv, ac.ydatekind); if (yv === null) continue; }
+        if (wc && ac.wdatekind) { wv = dash_stata_value_of(wv, ac.wdatekind); if (wv === null) continue; }
+        x.push(xv); y.push(yv); w.push(wv);
+    }
+    if (!wc) return {x: x, y: y, w: null};
+    let neg = false, frac = false;
+    for (const v of w) { if (v < 0) neg = true; if (v !== Math.floor(v)) frac = true; }
+    if ((neg && ac.wneg === "empty") || (frac && ac.wtype === "fw")) {
+        return {x: [], y: [], w: []};
+    }
+    const kx = [], ky = [], kw = [];
+    for (let i = 0; i < w.length; i++) {
+        if (w[i] > 0) { kx.push(x[i]); ky.push(y[i]); kw.push(w[i]); }
+    }
+    return {x: kx, y: ky, w: kw};
+}
+// Weights as regress uses them (_dash_weight_norm): aweights and
+// pweights scaled to sum to n, fweights raw, unit weights when none.
+function dash_weight_norm(w, wtype, n) {
+    if (!w) return new Array(n).fill(1);
+    if (wtype === "fw") return w.slice();
+    let s = 0;
+    for (const v of w) s += v;
+    return w.map(v => v * (w.length / s));
+}
+// Stata's grid (_fit_grid, _dash_range_bounds): n points from the kept
+// rows' min to max, or over range() -- [lo, hi] as written, null for a
+// "." (the data's own bound), read in either order -- as numpy's
+// linspace places them (i * step + lo, the last point exactly hi); one
+// point, at the low end, for n(1).
+function dash_fit_grid(x, n, range) {
+    let lo = Infinity, hi = -Infinity;
+    for (const v of x) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (!(lo <= hi)) { lo = 0; hi = 0; }
+    if (range) {
+        const a = (range[0] === null) ? lo : range[0];
+        const b = (range[1] === null) ? hi : range[1];
+        if (isFinite(a) && isFinite(b)
+                && isFinite(Math.max(a, b) - Math.min(a, b))) {
+            lo = Math.min(a, b); hi = Math.max(a, b);
+        }
+    }
+    const k = Math.max(1, Math.floor(n));
+    if (k === 1) return [lo];
+    const step = (hi - lo) / (k - 1);
+    const out = new Array(k);
+    for (let i = 0; i < k; i++) out[i] = (step === 0) ? lo : i * step + lo;
+    out[k - 1] = hi;
+    return out;
+}
+// _dash_units_to_axis: a Stata value of date kind as epoch ms on the
+// axis (a period kind at its period's start, a fraction of a period
+// linearly toward the next one's); the value itself when kind is null (a
+// date sharing a numeric axis, _on_axis); NaN when not a number, outside
+// Stata's dates (01jan0100 to 31dec9999), or of an unknown kind.
+function dash_axis_value_of(v, kind) {
+    if (!(typeof v === "number" && isFinite(v))) return NaN;
+    if (!kind) return v;
+    const E = -315619200000, LO = -58695840000000, HI = 253717919999999;
+    const civil = (y, m) => {
+        // Days after 01jan1970 of the first of month m (1-12) of year y,
+        // proleptic Gregorian (era arithmetic; no Date object).
+        const yy = m <= 2 ? y - 1 : y;
+        const era = Math.floor(yy / 400);
+        const yoe = yy - era * 400;
+        const doy = Math.floor((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5);
+        const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+        return era * 146097 + doe - 719468;
+    };
+    const per = {tw: 52, tm: 12, tq: 4, th: 2, ty: 0};
+    let out;
+    if (kind === "td") out = v * 86400000 + E;
+    else if (kind === "tc" || kind === "tC") out = v + E;
+    else if (kind in per) {
+        if (!(Math.abs(v) < 1e7)) return NaN;
+        const start = (u) => {
+            const p = per[kind];
+            const year = p ? 1960 + Math.floor(u / p) : u;
+            const sub = p ? u - (year - 1960) * p : 0;
+            if (!(year >= 100 && year <= 9999)) return NaN;
+            let days;
+            if (kind === "tm") days = civil(year, sub + 1);
+            else if (kind === "tq") days = civil(year, 3 * sub + 1);
+            else if (kind === "th") days = civil(year, 6 * sub + 1);
+            else if (kind === "tw") days = civil(year, 1) + 7 * sub;
+            else days = civil(year, 1);
+            const ms = days * 86400000 - E;
+            return (ms >= LO && ms <= HI) ? ms + E : NaN;
+        };
+        const f = Math.floor(v);
+        const a = start(f);
+        out = (v === f) ? a : a + (v - f) * (start(f + 1) - a);
+    } else return NaN;
+    return (isFinite(out) && out >= LO + E && out <= HI + E) ? out : NaN;
+}
+// The weighted mean, np.average(v, weights=w).
+function dash_wmean(v, w) {
+    let s = 0, sw = 0;
+    for (let i = 0; i < v.length; i++) { s += w[i] * v[i]; sw += w[i]; }
+    return s / sw;
+}
+// A k x k linear system A x = b by Gaussian elimination with partial
+// pivoting; null when it is singular or the solution is not finite.
+function dash_solve(A, b) {
+    const k = b.length;
+    const M = A.map((row, i) => row.slice().concat([b[i]]));
+    for (let col = 0; col < k; col++) {
+        let p = col;
+        for (let r = col + 1; r < k; r++) {
+            if (Math.abs(M[r][col]) > Math.abs(M[p][col])) p = r;
+        }
+        if (!(Math.abs(M[p][col]) > 0)) return null;
+        if (p !== col) { const t = M[p]; M[p] = M[col]; M[col] = t; }
+        for (let r = col + 1; r < k; r++) {
+            const f = M[r][col] / M[col][col];
+            if (f === 0) continue;
+            for (let c = col; c <= k; c++) M[r][c] -= f * M[col][c];
+        }
+    }
+    const x = new Array(k).fill(0);
+    for (let r = k - 1; r >= 0; r--) {
+        let s = M[r][k];
+        for (let c = r + 1; c < k; c++) s -= M[r][c] * x[c];
+        x[r] = s / M[r][r];
+        if (!isFinite(x[r])) return null;
+    }
+    return x;
+}
+// regress y X [w], as _dash_wls reports it (D-10.c): X is an array of
+// rows [1, x1, ...] with its constant column.  A column whose residual on
+// the earlier kept ones is below 1e-12 of its own norm is omitted, its
+// coefficient 0 (twice-orthogonalised Gram-Schmidt, in column order); the
+// kept columns are centred and scaled through T (Z = X T); the normal
+// equations Z'WZ b = Z'Wy are solved by dash_solve.  _dash_wls's
+// near-singular rank cut is not ported: a system dash_solve cannot solve
+// is no fit.  Returns {beta (length k), keep, T, Ainv ((Z'WZ)^-1), resid,
+// rss, N, df, s2, rank, meat (pweights: the HC1 sandwich's middle on Z,
+// else null)}, or null.
+function dash_wls(X, y, w, wtype) {
+    const n = X.length;
+    if (!n) return null;
+    const k = X[0].length;
+    const ww = dash_weight_norm(w, wtype, n);
+    const sw = ww.map(Math.sqrt);
+    const keep = [], Q = [];
+    for (let j = 0; j < k; j++) {
+        const v = X.map((r, i) => r[j] * sw[i]);
+        let nv0 = 0;
+        for (const e of v) nv0 += e * e;
+        nv0 = Math.sqrt(nv0);
+        if (!(nv0 > 0) || !isFinite(nv0)) continue;
+        for (let pass = 0; pass < 2; pass++) {
+            for (const q of Q) {
+                let d = 0;
+                for (let i = 0; i < n; i++) d += q[i] * v[i];
+                for (let i = 0; i < n; i++) v[i] -= d * q[i];
+            }
+        }
+        let nv = 0;
+        for (const e of v) nv += e * e;
+        nv = Math.sqrt(nv);
+        if (nv > 1e-12 * nv0) { keep.push(j); Q.push(v.map(e => e / nv)); }
+    }
+    if (!keep.length) return null;
+    const kk = keep.length;
+    const Xk = X.map(r => keep.map(j => r[j]));
+    let W = 0;
+    for (const v of ww) W += v;
+    const T = [];
+    for (let i = 0; i < kk; i++) { T.push(new Array(kk).fill(0)); T[i][i] = 1; }
+    const consts = [];
+    for (let j = 0; j < kk; j++) {
+        let lo = Infinity, hi = -Infinity;
+        for (const r of Xk) { if (r[j] < lo) lo = r[j]; if (r[j] > hi) hi = r[j]; }
+        if (hi - lo === 0) consts.push(j);
+    }
+    for (let j = 0; j < kk; j++) {
+        if (consts.indexOf(j) >= 0) continue;
+        let mu = 0;
+        if (consts.length) {
+            for (let i = 0; i < n; i++) mu += ww[i] * Xk[i][j];
+            mu /= W;
+        }
+        let ss = 0;
+        for (let i = 0; i < n; i++) ss += ww[i] * (Xk[i][j] - mu) * (Xk[i][j] - mu);
+        const sd = Math.sqrt(ss / W) || 1;
+        if (consts.length) T[consts[0]][j] = -mu / sd;
+        T[j][j] = 1 / sd;
+    }
+    const Z = Xk.map(r => {
+        const z = new Array(kk).fill(0);
+        for (let c = 0; c < kk; c++) for (let m = 0; m < kk; m++) z[c] += r[m] * T[m][c];
+        return z;
+    });
+    const A = [], g = new Array(kk).fill(0);
+    for (let a = 0; a < kk; a++) A.push(new Array(kk).fill(0));
+    for (let i = 0; i < n; i++) {
+        const zi = Z[i], wi = ww[i];
+        for (let a = 0; a < kk; a++) {
+            g[a] += wi * zi[a] * y[i];
+            for (let b = 0; b < kk; b++) A[a][b] += wi * zi[a] * zi[b];
+        }
+    }
+    const bz = dash_solve(A, g);
+    if (bz === null) return null;
+    const Ainv = [];
+    for (let c = 0; c < kk; c++) {
+        const e = new Array(kk).fill(0);
+        e[c] = 1;
+        const col = dash_solve(A, e);
+        if (col === null) return null;
+        Ainv.push(col);
+    }
+    const resid = new Array(n);
+    let rss = 0;
+    for (let i = 0; i < n; i++) {
+        let p = 0;
+        for (let a = 0; a < kk; a++) p += Z[i][a] * bz[a];
+        resid[i] = y[i] - p;
+        rss += ww[i] * resid[i] * resid[i];
+    }
+    const beta = new Array(k).fill(0);
+    for (let m = 0; m < kk; m++) {
+        let s = 0;
+        for (let c = 0; c < kk; c++) s += T[m][c] * bz[c];
+        beta[keep[m]] = s;
+    }
+    const df = W - kk;
+    const s2 = df > 0 ? rss / df : NaN;
+    let meat = null;
+    if (wtype === "pw") {
+        meat = [];
+        for (let a = 0; a < kk; a++) meat.push(new Array(kk).fill(0));
+        const fac = n / Math.max(n - kk, 1);
+        for (let i = 0; i < n; i++) {
+            const u = ww[i] * ww[i] * resid[i] * resid[i] * fac;
+            for (let a = 0; a < kk; a++) for (let b = 0; b < kk; b++) meat[a][b] += u * Z[i][a] * Z[i][b];
+        }
+    }
+    return {beta: beta, keep: keep, T: T, Ainv: Ainv, resid: resid, rss: rss,
+            N: W, df: df, s2: s2, rank: kk, meat: meat};
+}
+// _dash_fitci_se at the grid design Xg (rows [1, xg, ...]): stdp =
+// sqrt(z0' V z0) on the T basis, V = s2 Ainv (pweights: Ainv meat Ainv);
+// stdf = sqrt(stdp^2 + s2); stdr = sqrt(s2 - stdp^2), NaN below 0; "none"
+// is NaN everywhere.
+function dash_fitci_se(Xg, fit, std) {
+    const kk = fit.keep.length;
+    return Xg.map(r => {
+        const zk = fit.keep.map(j => r[j]);
+        const z = new Array(kk).fill(0);
+        for (let c = 0; c < kk; c++) for (let m = 0; m < kk; m++) z[c] += zk[m] * fit.T[m][c];
+        let v = 0;
+        if (fit.meat === null) {
+            for (let a = 0; a < kk; a++) for (let b = 0; b < kk; b++) v += z[a] * fit.Ainv[a][b] * z[b];
+            v *= fit.s2;
+        } else {
+            const az = new Array(kk).fill(0);
+            for (let a = 0; a < kk; a++) for (let b = 0; b < kk; b++) az[a] += fit.Ainv[a][b] * z[b];
+            for (let a = 0; a < kk; a++) for (let b = 0; b < kk; b++) v += az[a] * fit.meat[a][b] * az[b];
+        }
+        const stdp2 = Math.max(v, 0);
+        if (std === "none") return NaN;
+        if (std === "stdf") return Math.sqrt(stdp2 + fit.s2);
+        if (std === "stdr") { const d = fit.s2 - stdp2; return d >= 0 ? Math.sqrt(d) : NaN; }
+        return Math.sqrt(stdp2);
+    });
+}
+// Student's t quantile as _t_ppf computes it: the regularised incomplete
+// beta (_betainc; Lentz's continued fraction, _betacf) through lgamma
+// (Lanczos, g = 7, nine terms), inverted by bisection.  NaN for p outside
+// (0, 1) or df <= 0, where Python raises.
+function dash_lgamma(x) {
+    const C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+               771.32342877765313, -176.61502916214059, 12.507343278686905,
+               -0.13857109526572012, 9.9843695780195716e-6,
+               1.5056327351493116e-7];
+    if (x < 0.5) return Math.log(Math.PI / Math.abs(Math.sin(Math.PI * x))) - dash_lgamma(1 - x);
+    x -= 1;
+    let a = C[0];
+    const t = x + 7.5;
+    for (let i = 1; i < 9; i++) a += C[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+function dash_betacf(a, b, x) {
+    const TINY = 1e-300, EPS = 3e-16, ITMAX = 300;
+    const qab = a + b, qap = a + 1, qam = a - 1;
+    let c = 1, d = 1 - qab * x / qap;
+    if (Math.abs(d) < TINY) d = TINY;
+    d = 1 / d;
+    let h = d;
+    for (let m = 1; m <= ITMAX; m++) {
+        const m2 = 2 * m;
+        let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+        c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+        d = 1 / d; h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+        c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+        d = 1 / d;
+        const delta = d * c;
+        h *= delta;
+        if (Math.abs(delta - 1) < EPS) break;
+    }
+    return h;
+}
+function dash_betainc(a, b, x) {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const lb = dash_lgamma(a + b) - dash_lgamma(a) - dash_lgamma(b);
+    if (x < (a + 1) / (a + b + 2)) {
+        return Math.exp(lb + a * Math.log(x) + b * Math.log1p(-x)) * dash_betacf(a, b, x) / a;
+    }
+    return 1 - Math.exp(lb + b * Math.log1p(-x) + a * Math.log(x)) * dash_betacf(b, a, 1 - x) / b;
+}
+function dash_t_cdf(t, df) {
+    const xx = df / (df + t * t);
+    const p = 0.5 * dash_betainc(0.5 * df, 0.5, xx);
+    return t > 0 ? 1 - p : p;
+}
+function dash_t_ppf(p, df) {
+    if (!(p > 0 && p < 1) || !(df > 0)) return NaN;
+    if (Math.abs(p - 0.5) < 1e-15) return 0;
+    let lo = -1, hi = 1;
+    while (dash_t_cdf(lo, df) > p) { lo *= 2; if (lo < -1e12) break; }
+    while (dash_t_cdf(hi, df) < p) { hi *= 2; if (hi > 1e12) break; }
+    for (let i = 0; i < 200; i++) {
+        const mid = 0.5 * (lo + hi);
+        if (dash_t_cdf(mid, df) < p) lo = mid; else hi = mid;
+        if (hi - lo < 1e-13 * Math.max(1, Math.abs(mid))) break;
+    }
+    return 0.5 * (lo + hi);
+}
+// _qfit_design: the quadratic design on x and the grid xg, centred and
+// scaled (np.mean, and np.std's population sd); an x with exactly two
+// values a and b keeps x^2 when |a + b| > 1 and x otherwise, as regress
+// omits the other.  Returns {X, Xg}.
+function dash_qfit_design(x, xg) {
+    const mean = (v) => { let s = 0; for (const e of v) s += e; return s / v.length; };
+    const sdev = (v, mu) => { let s = 0; for (const e of v) s += (e - mu) * (e - mu); return Math.sqrt(s / v.length); };
+    const vals = Array.from(new Set(x)).sort((a, b) => a - b);
+    if (vals.length === 2 && Math.abs(vals[0] + vals[1]) > 1) {
+        const s = Math.max(Math.abs(vals[0]), Math.abs(vals[1])) || 1;
+        const q = x.map(v => (v / s) ** 2), qg = xg.map(v => (v / s) ** 2);
+        const qmu = mean(q), qsd = sdev(q, qmu) || 1;
+        return {X: q.map(v => [1, (v - qmu) / qsd]),
+                Xg: qg.map(v => [1, (v - qmu) / qsd])};
+    }
+    const mu = mean(x), sd = sdev(x, mu) || 1;
+    const z = x.map(v => (v - mu) / sd), zg = xg.map(v => (v - mu) / sd);
+    return {X: z.map(v => [1, v, v * v]), Xg: zg.map(v => [1, v, v * v])};
+}
+// A fit's output written to its source: xs and ys (and the extra
+// columns in more, a band's) are Stata values, placed on the axes with
+// dash_axis_value_of (ac.xaxiskind, ac.yaxiskind); a point a finite value
+// of which has no date on its axis is dropped, as _drop_off_dates drops
+// it.  ac.cols names the columns, x then y then the extras; a stair or
+// stepped join is rebuilt as the build drew it.  Empty arrays clear the
+// layer (D-10.e).
+function dash_fit_write(src, ac, xs, ys, more) {
+    const names = ac.cols;
+    const out = {};
+    for (const c of names) dash_own_col(out, c);
+    const extra = more || [];
+    for (let i = 0; i < xs.length; i++) {
+        const vals = [[xs[i], ac.xaxiskind], [ys[i], ac.yaxiskind]]
+            .concat(extra.map(col => [col[i], ac.yaxiskind]));
+        const drawn = vals.map(p => dash_axis_value_of(p[0], p[1]));
+        if (drawn.some((d, j) => isFinite(vals[j][0]) && !isFinite(d))) continue;
+        for (let j = 0; j < drawn.length; j++) out[names[j]].push(drawn[j]);
+    }
+    src.data = ac.join
+        ? dash_join_rebuild(out, {x: names[0], y: names[1],
+                                  style: ac.join.style, cmiss: "y"}, null)
+        : out;
+    src.change.emit();
+}
+// DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
 const agg_configs = JSON.parse(agg_configs_json);
@@ -25576,7 +26074,18 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         for (let i = 0; i < _rid.length; i++) if (_m.has(_rid[i])) _keep.push(i);
     }
     const _pick = (c) => (_keep === null || !c) ? c : _keep.map(i => c[i]);
-    const raw_col = _pick(_ac_data[ac.varname]);
+    // Two shapes (WP-31 F1, D-10.b): a histogram or a density reads one
+    // variable (ac.varname) into vals/wts below; a fit layer reads x, y
+    // and a weight jointly (ac.xvar, ac.yvar, ac.wvar) into fx/fy/fw, and
+    // its vals stay empty.
+    let fx = null, fy = null, fw = null;
+    if (!ac.varname) {
+        if (!(ac.xvar && ac.yvar)) continue;
+        const _fr = dash_fit_rows(ac, _ac_data, _pick);
+        if (_fr === null) continue;
+        fx = _fr.x; fy = _fr.y; fw = _fr.w;
+    }
+    const raw_col = ac.varname ? _pick(_ac_data[ac.varname]) : [];
     if (!raw_col) continue;
     // A weighted layer ([fweight] on a histogram, [aweight]/[fweight] on a
     // kdensity) names its weight column in ac.wvar: the values and the
@@ -25772,6 +26281,41 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
                 {x: "x", y: "y", style: ac.join.style, cmiss: "y"}, null);
         }
         src.change.emit();
+    } else if (ac.type === 'lfit') {
+        // WP-31 F1a: map_lfit on the kept rows -- fewer than two draw
+        // nothing; an x with no spread is the (weighted) mean of y; else
+        // least squares on [1, x - mean], on _fit_grid's points.
+        const n = fx.length;
+        if (n < 2) { dash_fit_write(src, ac, [], [], null); continue; }
+        const xg = dash_fit_grid(fx, ac.n, ac.range);
+        let lo = Infinity, hi = -Infinity;
+        for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
+        let yg;
+        if (hi - lo === 0) {
+            const m = dash_wmean(fy, fw || new Array(n).fill(1));
+            yg = xg.map(() => m);
+        } else {
+            const mu = dash_wmean(fx, dash_weight_norm(fw, ac.wtype, n));
+            const fit = dash_wls(fx.map(v => [1, v - mu]), fy, fw, ac.wtype);
+            if (fit === null) { dash_fit_write(src, ac, [], [], null); continue; }
+            yg = xg.map(v => fit.beta[0] + fit.beta[1] * (v - mu));
+        }
+        dash_fit_write(src, ac, xg, yg, null);
+    } else if (ac.type === 'qfit') {
+        // WP-31 F1a: map_qfit on the kept rows (_qfit_design, _dash_wls).
+        const n = fx.length;
+        if (n < 2) { dash_fit_write(src, ac, [], [], null); continue; }
+        const xg = dash_fit_grid(fx, ac.n, ac.range);
+        const d = dash_qfit_design(fx, xg);
+        const fit = dash_wls(d.X, fy, fw, ac.wtype);
+        if (fit === null) { dash_fit_write(src, ac, [], [], null); continue; }
+        const yg = d.Xg.map(r => {
+            let s = 0;
+            for (let j = 0; j < r.length; j++) s += r[j] * fit.beta[j];
+            return s;
+        });
+        dash_fit_write(src, ac, xg, yg, null);
+    // DASH_FIT_BRANCHES_END
     }
 }
 // ---- Marks on the layers a saved page does not recompute (WP-29 P0.17) ----

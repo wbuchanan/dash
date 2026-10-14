@@ -364,9 +364,11 @@ class TestBrushedCopiesFollowTheGlyph:
         from test_mode_parity import _spec
         from test_saved_filter_layers import _render
         from test_server_layer_defects import plot_for
+        # fpfit: a fit the saved page still marks (lfit is refitted,
+        # WP-31 F1a).
         r = _render(_spec([plot_for("scatter"),
-                           plot_for("lfit", {"lcolor": "green",
-                                             "lpattern": "dash"})],
+                           plot_for("fpfit", {"lcolor": "green",
+                                              "lpattern": "dash"})],
                           {"filter": "foreign, type(dropdown)"}))
         [x] = _layer_rends(r)
         want = dr._dash_stale_glyph(x.glyph)

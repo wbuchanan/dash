@@ -2928,7 +2928,8 @@ _MOVED_LAYERS = ["scatter", "line", "lfit", "lfitci", "histogram", "kdensity",
                  # WP-29 P0.9: lpolyci's analytic band refits after a move.
                  "lpolyci"]
 # bar and rbar widths hold through a move (WP-30 P1.17a); the other eight
-# agreed already and are guards.
+# agreed already and are guards.  lfit and qfit refit in both modes (WP-31
+# F1a); the others agree through the cue.
 _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
 
@@ -3298,6 +3299,15 @@ MOVE_CORPUS = [
     _move_case("line yaxis(1 2), dropdown to Foreign (WP-31 C10b)",
                _MOVES[0], [plot_for("line", {"yaxis": "1 2"}),
                            plot_for("line", {"yaxis": "2"}, yvar="price")]),
+    # WP-31 F1a: lfit and qfit refit on the saved page
+    _move_case("lfit, dropdown", _MOVES[0], [_sc(), plot_for("lfit")]),
+    _move_case("qfit, range", _MOVES[1], [_sc(), plot_for("qfit")]),
+    _move_case("lfit [aw=weight], slider", _MOVES[2],
+               [plot_for("lfit", {"weight": "aweight", "wexp": "weight"})]),
+    _move_case("lfit on a date x, range", _MOVES[1],
+               [plot_for("lfit", yvar="mpg", xvar="when")]),
+    _move_case("qfit with range(1500 5500) n(7), dropdown", _MOVES[0],
+               [plot_for("qfit", {"range": "1500 5500", "n": "7"})]),
 ]
 
 
@@ -4562,12 +4572,14 @@ class TestTheStaleStatusSkip:
     def test_a_saved_page_with_a_fit_and_a_filter_compares_equal_to_its_served_twin(
             self):
         from test_server_layer_defects import plot_for
-        spec = _spec([_sc(), plot_for("lfit")],
+        # fpfit: a fit the saved page still marks (lfit is refitted since
+        # WP-31 F1a, and its page has no status Div).
+        spec = _spec([_sc(), plot_for("fpfit")],
                      {"filter": "foreign, type(dropdown)"})
         r, _ = _standalone(spec)
         assert any(_is_stale_status(m)
                    for m in r._last_layout_root.references())
-        pair = _render_pair("lfit with a dropdown", spec)
+        pair = _render_pair("fpfit with a dropdown", spec)
         assert pair["std"]["tree"] == pair["srv"]["tree"]
 
 

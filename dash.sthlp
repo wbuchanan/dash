@@ -1228,8 +1228,9 @@ server recomputes, from the rows the filters leave, every layer computed
 from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
-curves and its histogram bar heights in the browser, and keeps its other
-computed layers, and its histogram bins, as they were built; see
+curves, its histogram bar heights and its {cmd:lfit} and {cmd:qfit} lines in
+the browser, and keeps its other computed layers, and its histogram bins, as
+they were built; see
 {help dash##server_mode:Server Mode}.  The dashboard opens only through a
 link holding a key made for each launch; see
 {help dash##server_mode:Server Mode}.
@@ -1992,7 +1993,7 @@ it.  The saved page and the served app differ as follows:
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
-{col 5}Fit-line recompute on filter{col 38}No; marked{col 59}Yes
+{col 5}Fit-line recompute on filter{col 38}lfit, qfit only{col 59}Yes
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
@@ -2016,9 +2017,11 @@ bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
-does not refit a fitted or smoothed line ({cmd:lfit}, {cmd:qfit},
-{cmd:lfitci}, {cmd:qfitci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess},
-{cmd:lpoly}, {cmd:lpolyci}, {cmd:mband}, {cmd:mspline}).  When a move
+does not refit a fitted or smoothed line ({cmd:lfitci}, {cmd:qfitci},
+{cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess}, {cmd:lpoly}, {cmd:lpolyci},
+{cmd:mband}, {cmd:mspline}, or a {cmd:recast()} fit).  A straight or
+quadratic fit ({cmd:lfit}, {cmd:qfit}) is refitted from the rows that pass
+the filter, on {cmd:n()} points over their range or {cmd:range()}.  When a move
 removes observations such a line, a histogram's bins or a density's grid was
 computed from, the page marks the layer: it is dimmed, its legend key reads
 "(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows

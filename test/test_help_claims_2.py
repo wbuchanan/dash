@@ -321,7 +321,8 @@ class TestTheHelpSaysWhatWasMeasured:
         assert ("every layer computed from the data -- a histogram's bins as "
                 "well as its bars") in s
         assert ("A saved dashboard recomputes those cards, its kernel density "
-                "curves and its histogram bar heights in the browser") in s
+                "curves, its histogram bar heights and its {cmd:lfit} and "
+                "{cmd:qfit} lines in the browser") in s
 
     def test_dash_serve_names_the_build_only_options(self):
         """HC2-25c."""
@@ -720,24 +721,28 @@ class TestWhatTheServerRecomputes:
 
 class TestWhatASavedPageRecomputes:
     """dash.sthlp: "A saved dashboard recomputes those cards, its kernel
-    density curves and its histogram bar heights in the browser, and keeps
-    its other computed layers, and its histogram bins, as they were built."
+    density curves, its histogram bar heights and its lfit and qfit lines in
+    the browser, and keeps its other computed layers, and its histogram
+    bins, as they were built." (lfit and qfit since WP-31 F1a.)
     The saved filter callback carries the layers it recomputes; the KPI half
     is test_filter_widget_data.py::test_the_filter_recomputes_the_card_in_both_modes,
     and "What histogram recompute means" (fixed edges) is test_export.py's
     and test_filter_widget_parity.py's."""
 
-    def test_the_callback_recomputes_histogram_and_kdensity_only(self,
-                                                                 tmp_path):
+    def test_the_callback_recomputes_histogram_kdensity_lfit_and_qfit(
+            self, tmp_path):
+        # Flipped (WP-31 F1a): histogram and kdensity only, before the
+        # saved page refitted lfit and qfit.
         spec = _filtered_spec([plot_for(p) for p in _COMPUTED])
         r, _, _ = _saved(tmp_path, spec)
         cb = r.filter_callbacks[0]
         kinds = sorted(c["type"] for c in json.loads(
             cb.args["agg_configs_json"]))
-        assert kinds == ["histogram", "kdensity"], kinds
+        assert kinds == ["histogram", "kdensity", "lfit", "qfit"], kinds
 
     @pytest.mark.parametrize("ptype", [p for p in _COMPUTED
-                                       if p not in ("histogram", "kdensity")])
+                                       if p not in ("histogram", "kdensity",
+                                                    "lfit", "qfit")])
     def test_another_computed_layer_is_kept_as_built(self, tmp_path, ptype):
         r, _, _ = _saved(tmp_path, _filtered_spec([plot_for(ptype)]))
         layer = {id(x.data_source) for x in _saved_figure(r).renderers}

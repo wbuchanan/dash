@@ -2,9 +2,9 @@
 
 A saved page's filter callback (``dash_render._FILTER_JS``) redraws every
 row layer from the kept rows, but a fitted or smoothed line keeps the fit
-it had at build (lfit, qfit, lfitci, qfitci, fpfit, fpfitci, lowess, lpoly,
-lpolyci, mband, mspline), a histogram keeps its bins and a density its
-grid.  Measured on ``test_mode_parity._DF`` with the dropdown moved to
+it had at build (lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci,
+mband, mspline; lfit and qfit are refitted since WP-31 F1a), a histogram
+keeps its bins and a density its grid.  Measured on ``test_mode_parity._DF`` with the dropdown moved to
 Foreign: the lfit still starts at 29.1052, Stata's all-rows ``regress mpg
 weight`` value at weight 1800 (29.105207), where ``regress mpg weight if
 foreign==1`` gives 29.91739 -- and nothing on the page said so.
@@ -54,9 +54,14 @@ from test_mode_parity import (_DF, _fire, _served, _spec,  # noqa: E402
 from test_saved_filter_layers import _MOVES, _render  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
-#: The thirteen layers a saved page computes at build and does not refit.
-_FROZEN = ["lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci", "lowess",
+#: The eleven layers a saved page computes at build and does not refit.
+# lfit and qfit are refitted by the saved page (WP-31 F1a); see _REFIT.
+_FROZEN = ["lfitci", "qfitci", "fpfit", "fpfitci", "lowess",
            "lpoly", "lpolyci", "mband", "mspline", "histogram", "kdensity"]
+#: The frozen fit layer the cue's own mechanics are measured on.  It was
+#: lfit until the saved page refitted lfit (WP-31 F1a); fpfit stays frozen
+#: longest (WP-31 F1g refits it last).
+_STAND_IN = "fpfit"
 
 
 def _kind_of(t):
@@ -294,6 +299,33 @@ class TestTheCueAppearsOnAMove:
         assert not any(x.muted for x in layer)
 
 
+#: WP-31 F1: the computed layers the saved page refits after a move.
+_REFIT = ["lfit", "qfit"]
+
+
+@requires_node
+class TestARefitLayerIsNeverMarked:
+    """A layer the saved page refits (WP-31 F1a) is never dimmed, keyed
+    "(unfiltered)" or named in the status line: it shows the fit on the
+    kept rows, as the served app does."""
+
+    @pytest.mark.parametrize("move", _MOVES, ids=[m[0] for m in _MOVES])
+    @pytest.mark.parametrize("t", _REFIT)
+    def test_not_marked(self, t, move):
+        _, filt, action, _oracle = move
+        r = _render(_spec([plot_for("scatter"), plot_for(t)],
+                          {"filter": filt}))
+        _act(r, action)
+        f = r.figures["g1"]
+        rends = list(f.renderers[1:])
+        assert rends and not any(x.muted for x in rends)
+        for it in _items_of(f, rends):
+            assert not _text(it.label).endswith(
+                dr._DASH_STALE_SUFFIX["fit"]), _text(it.label)
+        st = r.filter_callbacks[0].args.get("stale_status")
+        assert st is None or st.visible is False
+
+
 @requires_node
 class TestTheCueClears:
 
@@ -301,7 +333,7 @@ class TestTheCueClears:
                                                   "slider"])
     def test_moving_back_to_every_row_clears_it(self, move):
         _, filt, action, _o = move
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": filt}))
         _one_cue(r)
         built = _cue(r)["labels"]
@@ -313,7 +345,7 @@ class TestTheCueClears:
         assert _status(r) == (False, "")
 
     def test_a_second_move_keeps_it_and_the_reset_clears_it(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": "foreign, type(dropdown) || "
                                      "price, type(range)"}))
         _one_cue(r)
@@ -353,14 +385,14 @@ class TestNoFalseCue:
                                                               opts):
         df = _wdf()
         df.loc[df["foreign"] == 0, col] = np.nan
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit", opts)],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN, opts)],
                           {"filter": "foreign, type(dropdown)"}), df)
         _one_cue(r)
         _act(r, ("Select", "Foreign"))
         _assert_clear(r)
 
     def test_the_slider_at_its_minimum_marks_nothing(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": "price, type(slider)"}))
         _one_cue(r)
         _set(r, "Slider", _widget(r, "Slider").start)
@@ -369,7 +401,7 @@ class TestNoFalseCue:
     def test_an_empty_fit_is_never_marked(self):
         for _, filt, action, _o in _MOVES:
             r = _render(_spec([plot_for("scatter"),
-                               plot_for("lfit", if_expr="price > 20000")],
+                               plot_for(_STAND_IN, if_expr="price > 20000")],
                               {"filter": filt}))
             _one_cue(r)
             cb = r.filter_callbacks[0]
@@ -421,13 +453,13 @@ class TestTheWeightedSample:
         df = _wdf()
         dropped = df.index[df["z"] == 1]
         assert list(df.loc[dropped, "w"]) == [0.0]
-        r = self._run(df, plot_for("lfit", _AW))
+        r = self._run(df, plot_for(_STAND_IN, _AW))
         _assert_clear(r)
 
     def test_dropping_a_positive_weight_row_marks_it(self):
         df = _wdf(z=[1.0] + [0.0] * 9)
         assert df.loc[df["z"] == 1, "w"].tolist() == [1.0]
-        r = self._run(df, plot_for("lfit", _AW))
+        r = self._run(df, plot_for(_STAND_IN, _AW))
         _assert_marked(r)
 
     def test_dropping_the_negative_weight_rows_of_an_fpfit_marks_it(self):
@@ -438,9 +470,11 @@ class TestTheWeightedSample:
         _assert_marked(r)
 
     def test_a_negative_weight_on_lfit_is_outside_the_sample(self):
+        # lfitci, as lfit excludes a negative weight and is still frozen:
+        # lfit itself is refitted by the saved page (WP-31 F1a).
         df = _wdf(z=[0.0, 0.0, 0.0, 1.0] + [0.0] * 6)
         df.loc[3, "w"] = -1.0
-        r = self._run(df, plot_for("lfit", _AW))
+        r = self._run(df, plot_for("lfitci", _AW))
         _assert_clear(r)
 
     def test_a_weight_twoway_refuses_is_not_read(self):
@@ -467,7 +501,7 @@ def _panel(r, title):
 class TestTheCueFollowsEachTarget:
 
     def test_by_panels(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": "foreign, type(dropdown)"},
                           {"by": "foreign"}))
         dom, fo = _panel(r, "Domestic"), _panel(r, "Foreign")
@@ -477,7 +511,7 @@ class TestTheCueFollowsEachTarget:
         _assert_clear(r, fo)
 
     def test_by_with_total(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": "foreign, type(dropdown)"},
                           {"by": "foreign, total"}))
         _one_cue(r, _panel(r, "Total"))
@@ -490,7 +524,7 @@ class TestTheCueFollowsEachTarget:
         assert (_DF.loc[(_DF["foreign"] == 1) & (_DF["price"] < 4500)]
                 .shape[0]) == 1
         spec = _spec([plot_for("scatter"),
-                      plot_for("lfit", if_expr="foreign == 1")],
+                      plot_for(_STAND_IN, if_expr="foreign == 1")],
                      {"filter": "foreign, type(dropdown) || "
                                 "price, type(range)"})
         r = _render(spec)
@@ -501,8 +535,8 @@ class TestTheCueFollowsEachTarget:
         _assert_marked(r)
 
     def test_an_excluded_graph_has_no_cue(self):
-        graphs = [("g1", [plot_for("scatter"), plot_for("lfit")]),
-                  ("g2", [plot_for("scatter"), plot_for("lfit")])]
+        graphs = [("g1", [plot_for("scatter"), plot_for(_STAND_IN)]),
+                  ("g2", [plot_for("scatter"), plot_for(_STAND_IN)])]
         spec = _spec(graphs=graphs)
         spec["build_options"]["filters"] = [
             {"varname": "foreign", "type": "dropdown", "exclude": ["g1"]}]
@@ -518,7 +552,7 @@ class TestTheCueFollowsEachTarget:
         assert not any(x.muted for x in r.figures["g1"].renderers)
 
     def test_a_linked_pair(self):
-        graphs = [("g1", [plot_for("scatter")]), ("g2", [plot_for("lfit")])]
+        graphs = [("g1", [plot_for("scatter")]), ("g2", [plot_for(_STAND_IN)])]
         r = _render(_spec(build_options={"filter": "foreign, type(dropdown)",
                                          "link": "g1 g2"}, graphs=graphs))
         _act(r, ("Select", "Foreign"))
@@ -526,7 +560,7 @@ class TestTheCueFollowsEachTarget:
 
     def test_a_date_filter_and_a_fit_on_a_date_x(self):
         r = _render(_spec([plot_for("scatter", xvar="when"),
-                           plot_for("lfit", xvar="when")],
+                           plot_for(_STAND_IN, xvar="when")],
                           {"filter": "when, type(range)",
                            "formats": {"when": "%td"}}))
         w = _widget(r, "DateRangeSlider")
@@ -538,13 +572,13 @@ class TestTheCueFollowsEachTarget:
 
     def test_a_fit_on_the_second_axis(self):
         r = _render(_spec([plot_for("scatter"),
-                           plot_for("lfit", {"yaxis": "2"})],
+                           plot_for(_STAND_IN, {"yaxis": "2"})],
                           {"filter": "foreign, type(dropdown)"}))
         _act(r, ("Select", "Foreign"))
         _assert_marked(r)
 
     def test_only_an_lfit_with_no_scatter_is_marked(self):
-        r = _render(_spec([plot_for("lfit")],
+        r = _render(_spec([plot_for(_STAND_IN)],
                           {"filter": "foreign, type(dropdown)"}))
         _act(r, ("Select", "Foreign"))
         _assert_marked(r)
@@ -553,7 +587,7 @@ class TestTheCueFollowsEachTarget:
 class TestNoCueWithoutAFilter:
 
     @pytest.mark.parametrize("plots,bo", [
-        ([plot_for("scatter"), plot_for("lfit")], {}),
+        ([plot_for("scatter"), plot_for(_STAND_IN)], {}),
         ([plot_for("scatter")], {"filter": "foreign, type(dropdown)"}),
     ], ids=["no filter", "a filter with a scatter only"])
     def test_the_page_gains_no_model(self, plots, bo):
@@ -605,7 +639,7 @@ class TestTheStaleGlyph:
 
     def test_it_follows_a_restyle_made_after_the_draw(self):
         r = _render(_spec([plot_for("scatter"),
-                           plot_for("lfit", {"lcolor": "green",
+                           plot_for(_STAND_IN, {"lcolor": "green",
                                              "lpattern": "dash"})],
                           {"filter": "foreign, type(dropdown)"}))
         [x] = _layer_rends(r)
@@ -619,7 +653,7 @@ class TestTheStaleKind:
 
     def test_each_type(self):
         fits = [t for t in _FROZEN if t not in ("histogram", "kdensity")]
-        assert len(fits) == 11
+        assert len(fits) == 9  # 11 -> 9: F1a refits lfit and qfit
         for t in fits:
             assert dr._dash_stale_kind(t, {}) == "fit"
         assert dr._dash_stale_kind("histogram", {}) == "bins"
@@ -630,7 +664,9 @@ class TestTheStaleKind:
             assert dr._dash_stale_kind("kdensity", {"range": "x"}) == "grid"
         assert caught == []
         assert dr._dash_stale_kind("scatter", {}) is None
-        assert dr._dash_stale_kind("LFIT", {}) == "fit"
+        assert dr._dash_stale_kind("FPFIT", {}) == "fit"
+        for t in _REFIT:
+            assert dr._dash_stale_kind(t, {}) is None
 
 
 def _wsrc():
@@ -727,10 +763,12 @@ def _ids_where(r, mask):
 class TestTheFrozenTag:
 
     def test_the_tag_of_each_kind(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit"),
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN),
                            plot_for("histogram"),
-                           plot_for("lfit", if_expr="price > 20000"),
-                           plot_for("lfit", _AW),
+                           plot_for(_STAND_IN, if_expr="price > 20000"),
+                           # lfitci: a layer that drops a negative weight
+                           # ("positive"), as lfit did (WP-31 F1a).
+                           plot_for("lfitci", _AW),
                            plot_for("lowess", _AW)],
                           {"filter": "foreign, type(dropdown)"}), _wdf())
         tags = []
@@ -738,8 +776,8 @@ class TestTheFrozenTag:
             t = getattr(x, "_dash_frozen", None)
             if t is not None and not any(t is u for u in tags):
                 tags.append(t)
-        assert [t["type"] for t in tags] == ["lfit", "histogram", "lfit",
-                                             "lfit", "lowess"]
+        assert [t["type"] for t in tags] == [_STAND_IN, "histogram",
+                                             _STAND_IN, "lfitci", "lowess"]
         lf, hi, empty, wl, lw = tags
         assert lf["vars"] == ["mpg", "weight"] and lf["kind"] == "fit"
         assert hi["vars"] == ["mpg"] and hi["kind"] == "bins"
@@ -756,7 +794,7 @@ class TestTheFrozenTag:
                 for x in r2.figures["g1"].renderers}.values()
         assert (t2["wvar"], t2["wrule"]) == ("w", "any")
 
-        r3 = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r3 = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                            {"filter": "foreign, type(dropdown)"},
                            {"by": "foreign"}))
         for k, f in r3.figures.items():
@@ -781,15 +819,15 @@ class TestTheFrozenTag:
 class TestTheRegistry:
 
     def test_one_entry_per_layer_by_figure(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit"),
-                           plot_for("lfit", {"lcolor": "red"})],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN),
+                           plot_for(_STAND_IN, {"lcolor": "red"})],
                           {"filter": "foreign, type(dropdown)"}))
         reg = r.frozen_layer_registry
         assert list(reg) == ["g1"]
         assert len(reg["g1"]) == 2
         for tag, rends in reg["g1"]:
             assert all(x._dash_frozen is tag for x in rends)
-        r2 = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r2 = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                            {"filter": "foreign, type(dropdown)"},
                            {"by": "foreign"}))
         reg2 = r2.frozen_layer_registry
@@ -802,7 +840,7 @@ class TestTheRegistry:
 class TestTheCueArgs:
 
     def test_the_models_and_lists(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit"),
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN),
                            plot_for("lfitci")],
                           {"filter": "foreign, type(dropdown)",
                            "csv": "1"},
@@ -837,7 +875,7 @@ class TestTheCueArgs:
             "status_html": dr._DASH_STALE_STATUS_HTML}
 
     def test_the_status_is_last_before_the_csv_button(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": "foreign, type(dropdown)",
                            "csv": "1"}))
         st = r.filter_callbacks[0].args["stale_status"]
@@ -862,7 +900,7 @@ class TestTheTitlePlacement:
 
     def test_the_cue_sits_nearest_the_frame_with_a_top_legend_and_subtitle(
             self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": "foreign, type(dropdown)"},
                           {"title": "T", "subtitle": "S",
                            "legend": "position(12)"}))
@@ -880,7 +918,7 @@ class TestTheTitlePlacement:
         for bo, go in [({}, {}), ({}, {"by": "foreign"}),
                        ({"layout": "bs"}, {"by": "foreign"}),
                        ({"layout": "bs"}, {})]:
-            r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+            r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                               dict(bo, filter="foreign, type(dropdown)"),
                               go))
             for f in r.figures.values():
@@ -911,20 +949,20 @@ class TestThePageSize:
 
     def test_member_ids_are_one_shared_model_per_set(self):
         for filt in ("foreign, type(dropdown)", _THREE):
-            r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+            r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                               {"filter": filt}, {"by": "foreign"}))
             cbs = r.filter_callbacks
             ms = cbs[0].args["stale_members"]
             assert len(ms) == 2
             assert all(cb.args["stale_members"] is ms for cb in cbs)
             assert len(cbs[0].args["stale_configs_json"]) < 2048
-            html = _html(_spec([plot_for("scatter"), plot_for("lfit")],
+            html = _html(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                                {"filter": filt}, {"by": "foreign"}))
             assert html.count("dash_stale_members") == 2
 
     def test_page_size_grows_sublinearly_in_filters(self):
         df = _big_df()
-        fit = [plot_for("scatter"), plot_for("lfit")]
+        fit = [plot_for("scatter"), plot_for(_STAND_IN)]
         sc = [plot_for("scatter")]
         go = {"by": "foreign"}
         d_fit = (len(_html(_spec(fit, {"filter": _FOUR}, go), df))
@@ -974,7 +1012,7 @@ class TestTheCueAgainstHostileInput:
     @requires_node
     def test_a_variable_named_proto_is_a_column(self):
         df = _DF.rename(columns={"mpg": "__proto__"})
-        spec = _spec([plot_for("lfit", yvar="__proto__")],
+        spec = _spec([plot_for(_STAND_IN, yvar="__proto__")],
                      {"filter": "foreign, type(dropdown)"})
         r = _render(spec, df)
         _act(r, ("Select", "Foreign"))
@@ -986,7 +1024,7 @@ class TestTheCueAgainstHostileInput:
         _assert_clear(r)
 
     def test_every_callback_carries_the_same_lists(self):
-        r = _render(_spec([plot_for("scatter"), plot_for("lfit")],
+        r = _render(_spec([plot_for("scatter"), plot_for(_STAND_IN)],
                           {"filter": _THREE}))
         cbs = r.filter_callbacks
         assert len(cbs) == 3
@@ -1008,7 +1046,7 @@ class TestTheCueAgainstHostileInput:
 
     def test_the_brush_code_holds_no_stale_block(self):
         from test_mode_parity import _kpi
-        spec = _spec([plot_for("scatter"), plot_for("lfit")],
+        spec = _spec([plot_for("scatter"), plot_for(_STAND_IN)],
                      {"filter": "foreign, type(dropdown)"},
                      kpis=[_kpi(update="brush")])
         r = _render(spec)
@@ -1036,7 +1074,7 @@ class TestBothLayouts:
                                   "bs-left"])
     def test_the_title_is_in_each_figure_and_the_status_in_the_filter_area(
             self, layout, pos):
-        spec = _spec([plot_for("scatter"), plot_for("lfit")],
+        spec = _spec([plot_for("scatter"), plot_for(_STAND_IN)],
                      {"filter": "foreign, type(dropdown) || "
                                 "price, type(range)",
                       "layout": layout, "filter_position": pos},

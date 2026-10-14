@@ -1978,7 +1978,6 @@ WP31_OPEN = {
     "A3": "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts",
     "A4": "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable",
     "C10c": "Axes 3 to 9 are refused where twoway draws them (the axes part)",
-    "F1a": "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)",
     "C4": "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn",
     "C5": "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn",
     "F1b": "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)",

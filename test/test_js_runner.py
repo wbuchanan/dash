@@ -333,6 +333,27 @@ class TestRunFilterJsBlock:
         np.testing.assert_array_equal(got["top"], tops)
 
 
+@js_runner.requires_node
+class TestRunFitJsBlock:
+    def test_runs_the_lfit_branch_on_three_rows(self):
+        ac = {"type": "lfit", "cols": ["x", "y"], "n": 100, "range": None,
+              "wtype": None, "xaxiskind": None, "yaxiskind": None}
+        got = js_runner.run_fit_js_block(ac, [1.0, 2.0, 3.0],
+                                         [2.0, 4.0, 6.0])
+        assert set(got) == {"x", "y"} and len(got["x"]) == 100
+        np.testing.assert_allclose(got["y"], 2.0 * np.asarray(got["x"]),
+                                   rtol=1e-12)
+
+
+@js_runner.requires_node
+class TestRunFitRows:
+    def test_joint_masking(self):
+        ac = {"xvar": "a", "yvar": "b", "wvar": None}
+        got = js_runner.run_fit_rows(ac, {"a": [1, None, 3],
+                                          "b": [4, 5, float("nan")]})
+        assert got == {"x": [1], "y": [4], "w": None}
+
+
 # ---------------------------------------------------------------------------
 # The migrated shims still report what they reported before
 # ---------------------------------------------------------------------------

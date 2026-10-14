@@ -30,6 +30,11 @@ fncov_mutate.py --map.
 
 FUNCTIONS = {
  'GlyphMapper._drop_off_dates': 'test/test_date_units.py::TestOutOfRange::test_out_of_range_edges_never_reach_the_page_json',
+ 'GlyphMapper._fit_agg_config': 'test/test_js_fit_refit.py::TestTheConfig::test_lfit_config_keys',
+ 'GlyphMapper._fit_agg_config.<locals>._axis': 'test/test_js_fit_refit.py::TestTheConfig::test_date_kinds',
+ 'GlyphMapper._fit_agg_config.<locals>._kind': 'test/test_js_fit_refit.py::TestTheConfig::test_date_kinds',
+ 'GlyphMapper._fit_grid_spec': 'test/test_js_fit_refit.py::TestFitGrid::test_matches_python',
+ 'GlyphMapper._tag_fit': 'test/test_js_fit_refit.py::TestTheConfig::test_an_empty_layer_is_tagged',
  'GlyphMapper._fp_screen': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._column': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._wsum': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',

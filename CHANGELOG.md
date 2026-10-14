@@ -385,7 +385,7 @@ and now matches Stata.
 
 - hover() given inside a layer and again after the comma kept only the rightmost list: dash (scatter mpg weight, hover(make)), hover(price) showed price alone in the tooltip, and now shows make and price, in the order written, each variable once, saved and served. (WP-31, A7)
 
-<!-- WP-31 F1a -->
+- lfit and qfit on a saved page after a filter move: the build's fit, dimmed and keyed "(unfiltered)", is now the fit on the kept rows, as the served app draws it: dash scatter mpg weight || lfit mpg weight with a foreign dropdown moved to Foreign drew the all-cars line from 29.105 at weight 1800 and now draws regress mpg weight if foreign == 1's, on n() points over the kept rows' range or range(); a move leaving fewer than two rows draws no line. A recast() lfit or qfit keeps the mark. (WP-31, F1a)
 
 <!-- WP-31 C4 -->
 

@@ -554,3 +554,61 @@ def run_filter_js_block(kind, ac, vals, wts=None):
         return json.loads(res.stdout)
     finally:
         os.unlink(path)
+
+
+def fit_helpers_js():
+    """The JavaScript a fit branch of ``_FILTER_JS`` needs, run on its own
+    (WP-31 F1): the display-format helpers (``dash_stata_value_of``),
+    ``dash_own_col`` and ``dash_join_rebuild`` (declared above
+    ``dash_pctl``), every helper from ``dash_pctl`` to the "agg_sources"
+    comment, and ``ROW_ID``."""
+    js = dr._FILTER_JS
+    return (dr._DASH_FMT_JS + "\n"
+            + js[js.index("function dash_own_col"):js.index("const ROW_ID = ")]
+            + js[js.index("function dash_pctl"):
+                 js.index("// agg_sources is a Bokeh model list")]
+            + "\nconst ROW_ID = " + json.dumps(dr._ROW_ID_COLUMN) + ";\n")
+
+
+def _floats(v):
+    return "[" + ",".join("NaN" if not math.isfinite(float(e)) else repr(float(e))
+                          for e in v) + "]"
+
+
+def run_fit_js_block(ac, x, y, w=None, *, timed=False):
+    """Run one fit branch of dash's REAL ``_FILTER_JS`` (WP-31 F1) on the
+    kept rows *x*, *y* (Stata units) and weights *w*; return ``src.data``
+    (with *timed*, ``{"data": src.data, "ms": node's own time}``).  The
+    branch runs from its ``} else if (ac.type === '<type>') {`` line to the
+    next branch or the ``// DASH_FIT_BRANCHES_END`` marker; the rows bypass
+    ``dash_fit_rows`` (``run_fit_rows`` runs that alone)."""
+    js = dr._FILTER_JS
+    head = "} else if (ac.type === '%s') {" % ac["type"]
+    lo = js.index(head) + len(head)
+    nxt = js.find("} else if (ac.type === '", lo)
+    end = js.index("// DASH_FIT_BRANCHES_END", lo)
+    block = js[lo:nxt if (nxt != -1 and nxt < end) else end]
+    harness = (fit_helpers_js()
+               + "const ac = " + json.dumps(ac)
+               + ";\nconst fx = " + _floats(x)
+               + ";\nconst fy = " + _floats(y)
+               + ";\nconst fw = " + (_floats(w) if w is not None else "null")
+               + ";\nconst src = { data: null, change: { emit: () => {} } };"
+               + "\nconst _t0 = process.hrtime.bigint();"
+               + "\nfor (let _i = 0; _i < 1; _i++) {\n" + block + "\n}"
+               + "\nconst _ms = Number(process.hrtime.bigint() - _t0) / 1e6;"
+               + "\nprocess.stdout.write(JSON.stringify("
+               + ("{data: src.data, ms: _ms}" if timed else "src.data")
+               + "));")
+    return run_js(harness)
+
+
+def run_fit_rows(ac, data, keep=None):
+    """``dash_fit_rows`` of ``_FILTER_JS`` on a ``{column: list}`` *data*
+    object (a literal, so NaN stays NaN), each column picked at the row
+    positions *keep* (a layer's ``member_ids``) when given."""
+    pick = ("(c) => c" if keep is None else
+            "(c) => c ? %s.map(i => c[i]) : c" % json.dumps(list(keep)))
+    return run_js(fit_helpers_js() + "const d = " + json.dumps(data)
+                  + ";\nprocess.stdout.write(JSON.stringify(dash_fit_rows("
+                  + json.dumps(ac) + ", d, " + pick + ")));")

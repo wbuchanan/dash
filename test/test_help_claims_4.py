@@ -1487,7 +1487,8 @@ class TestTheSavedPageNeedsNoNetwork:
 
 
 class TestAFitLineOnAFilterMove:
-    """Fit-line recompute on filter: No on the saved page, Yes served."""
+    """Fit-line recompute on filter: lfit and qfit on the saved page (WP-31
+    F1a; it was No), Yes served."""
 
     _FIT = [{"type": "lfit", "yvar": "price", "xvar": "weight",
              "options": {}}]
@@ -1501,38 +1502,42 @@ class TestAFitLineOnAFilterMove:
                     return rr.data_source
         raise AssertionError("no fitted line was drawn")
 
-    def test_the_saved_page_keeps_its_line(self, tmp_path, truth):
+    def test_the_saved_page_refits_its_line(self, tmp_path, truth):
+        """Flipped (WP-31 F1a): the saved page kept the build's line; it
+        now draws the fit of the kept rows, as dash draws it for them."""
+        df = _auto(truth)
         spec = _pair_spec(filters=_AGG_FILTERS, plots2=self._FIT)
-        r = _saved(tmp_path, spec, _auto(truth))
+        r = _saved(tmp_path, spec, df)
         src = self._fit_source(r.figures.values())
-        before = {c: [float(v) for v in src.data[c]] for c in ("x", "y")}
         r.filter_widgets[0].value = _AGG_MOVE
         out = _run_js_full(r.filter_callbacks[0].args,
                            r.filter_callbacks[0].code)["sources"]
-        after = out.get(src.id, before)
-        assert {c: [float(v) for v in after[c]] for c in ("x", "y")} \
-            == before
+        after = out[src.id]
+        kept = df[(df.weight >= _AGG_MOVE[0]) & (df.weight <= _AGG_MOVE[1])]
+        ref = _saved(tmp_path, _pair_spec(plots2=self._FIT),
+                     kept.reset_index(drop=True))
+        want = self._fit_source(ref.figures.values())
+        for c in ("x", "y"):
+            assert np.allclose(np.asarray(after[c], dtype=float),
+                               np.asarray(want.data[c], dtype=float),
+                               rtol=1e-9), c
 
-    def test_the_saved_page_marks_its_line(self, tmp_path, truth):
-        """WP-29 P0.17: the line is not refitted, and it is marked -- its
-        renderer muted and its graph's caption shown -- after the move."""
+    def test_the_saved_page_does_not_mark_its_line(self, tmp_path, truth):
+        """Flipped (WP-31 F1a): WP-29 P0.17 marked the unrefitted line --
+        its renderer muted, its graph's caption shown -- after the move; a
+        refitted line is never marked, and the graph has no caption."""
         from js_runner import JsSession
         spec = _pair_spec(filters=_AGG_FILTERS, plots2=self._FIT)
         r = _saved(tmp_path, spec, _auto(truth))
         src = self._fit_source(r.figures.values())
-        before = {c: [float(v) for v in src.data[c]] for c in ("x", "y")}
         rend = [rr for f in r.figures.values() for rr in f.renderers
                 if rr.data_source is src]
         cues = [t for f in r.figures.values() for t in f.above
                 if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
-        assert rend and len(cues) == 1, (
-            f"no Title tagged dash_stale_cue ({len(cues)} found)")
+        assert rend and cues == []
         r.filter_widgets[0].value = _AGG_MOVE
         JsSession(r.filter_callbacks).run(r.filter_callbacks[0])
-        assert {c: [float(v) for v in src.data[c]] for c in ("x", "y")} \
-            == before
-        assert all(rr.muted for rr in rend)
-        assert cues[0].visible is True
+        assert not any(rr.muted for rr in rend)
 
     def test_the_served_app_draws_it_again_from_the_kept_rows(self, tmp_path,
                                                               truth):

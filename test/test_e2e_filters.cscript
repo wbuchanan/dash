@@ -502,10 +502,12 @@ dash clear
 restore
 
 // ================================================================
-// SCU-01 / SCU-02 / SCU-03 (WP-29 P0.17): the saved page marks a fit a
-// filter move left computed from removed observations, and clears it on
-// moving back; the served app refits to Stata's own regress and carries
-// no cue; a page with no filter carries no cue model.
+// SCU-01 / SCU-02 / SCU-03 (WP-29 P0.17; SCU-01 and SCU-03 flipped,
+// WP-31 F1a): the saved page refits an lfit after a filter move to
+// Stata's own regress on the kept rows and marks nothing -- it marked the
+// unrefitted line before the saved page refitted lfit -- and the served
+// app refits it alike, with no cue; a page with no filter carries no cue
+// model, and a page whose fit it still does not refit (fpfit) one.
 // ================================================================
 preserve
 sysuse auto, clear
@@ -526,6 +528,7 @@ spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight")],
                    [{"varname": "foreign", "type": "dropdown"}])
 _, r = ftc.saved(df, strings, spec, [(0, 1.0)])
 a = ftc.stale_state(r)
+saved_ends = ftc.line_ends(r.figures["g1"])
 _, r = ftc.saved(df, strings, spec, [(0, 1.0), (0, None)])
 b = ftc.stale_state(r)
 _, doc = ftc.served(df, strings, spec, [(0, 1.0)])
@@ -533,23 +536,20 @@ _, doc = ftc.served(df, strings, spec, [(0, 1.0)])
 got = ftc.line_ends(fig)
 want = tuple(float(Macro.getGlobal(k))
              for k in ("scu_x0", "scu_y0", "scu_x1", "scu_y1"))
-print("SCU-01 saved after the move:", a)
+print("SCU-01 saved after the move:", a, saved_ends)
 print("SCU-01 saved moved back:", b)
 print("SCU-01 served line ends:", got, "Stata:", want)
-ok = (a["titles"] == [True] and a["muted"] and all(a["muted"])
-      and any(l.endswith(" (unfiltered)") for l in a["labels"])
-      and a["status_visible"]
-      and a["status_text"] == dr._DASH_STALE_STATUS_HTML
-      and b["titles"] == [False] and not any(b["muted"])
-      and not any(l.endswith("(unfiltered)") for l in b["labels"])
-      and not b["status_visible"] and b["status_text"] == ""
+ok = (a["titles"] == [] and a["muted"] == []
+      and not any(l.endswith("(unfiltered)") for l in a["labels"])
+      and not a["status_visible"]
+      and b["titles"] == [] and b["muted"] == []
       and all(abs(g - w) <= 1e-9 * max(1.0, abs(w))
-              for g, w in zip(got, want))
+              for ends in (got, saved_ends) for g, w in zip(ends, want))
       and ftc.served_stale_models(doc) == 0)
 ftc.put("scu_01", int(ok))
 end
 assert "${scu_01}" == "1"
-display "SCU-01 PASS: the saved lfit is marked after the move to Foreign and cleared on moving back; served ends (${scu_x0}, ${scu_y0}) (${scu_x1}, ${scu_y1}) are regress's, with no cue"
+display "SCU-01 PASS: the saved and served lfit after the move to Foreign end at (${scu_x0}, ${scu_y0}) (${scu_x1}, ${scu_y1}), regress's, and neither is marked"
 
 quietly summarize price
 global scu_pmin = r(min)
@@ -562,7 +562,8 @@ python:
 import filter_truth_check as ftc
 from sfi import Macro
 df, strings = ftc.frame_from_stata(["mpg", "weight", "price"])
-spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight")],
+# fpfit: a fit the saved page still marks (lfit is refitted, WP-31 F1a).
+spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight", "fpfit")],
                    [{"varname": "price", "type": "slider"}])
 pmin = float(Macro.getGlobal("scu_pmin"))
 _, r = ftc.saved(df, strings, spec, [(0, pmin)])
@@ -578,7 +579,7 @@ restore
 preserve
 sysuse auto, clear
 dash clear
-dash (scatter mpg weight) (lfit mpg weight), name(gscu)
+dash (scatter mpg weight) (fpfit mpg weight), name(gscu)
 tempfile scu3a scu3b
 dash build, saving("`scu3a'.html") replace
 cert_file_count "`scu3a'.html", needle("dash_stale_cue")
@@ -592,7 +593,7 @@ cert_file_count "`scu3b'.html", needle("dash_stale_status")
 assert r(count) == 1
 capture erase "`scu3a'.html"
 capture erase "`scu3b'.html"
-display "SCU-03 PASS: a page with no filter holds no cue model; with filter(foreign) one caption and one status line"
+display "SCU-03 PASS: an fpfit page with no filter holds no cue model; with filter(foreign) one caption and one status line"
 dash clear
 restore
 

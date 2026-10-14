@@ -38,6 +38,7 @@ sys.path.insert(0, os.path.join(_HERE, ".."))
 sys.path.insert(0, _HERE)
 
 import dash_render as dr  # noqa: E402
+import js_runner  # noqa: E402
 from dash_render import GlyphMapper as GM  # noqa: E402
 
 _FIXTURE = os.path.join(_HERE, "fixtures", "stat_truth.json")
@@ -354,3 +355,20 @@ class TestLpolyciCost:
         t_lp = best(m.map_lpoly)
         t_ci = best(m.map_lpolyci)
         assert t_ci <= 20.0 * t_lp, (t_ci, t_lp)
+
+
+@js_runner.requires_node
+class TestTheJsTwinsAreBounded:
+    """WP-31 F1a (M10): the saved page's lfit and qfit refits on 100,000
+    kept rows finish under 2 s of node's own time each."""
+
+    @pytest.mark.parametrize("ptype", ["lfit", "qfit"])
+    def test_lfit_and_qfit_under_node_on_1e5_rows(self, ptype):
+        rng = np.random.default_rng(5)
+        x = rng.uniform(1000.0, 5000.0, 100_000)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 2.0, x.size)
+        ac = {"type": ptype, "cols": ["x", "y"], "n": 100, "range": None,
+              "wtype": None, "xaxiskind": None, "yaxiskind": None}
+        got = js_runner.run_fit_js_block(ac, x, y, timed=True)
+        assert len(got["data"]["x"]) == 100
+        assert got["ms"] < 2000.0, got["ms"]

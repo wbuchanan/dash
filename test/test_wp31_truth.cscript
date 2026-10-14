@@ -1454,6 +1454,219 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
 }
 * ==== end S07 ====
 
+// S10 helpers (WP-31 F1a).  _u10_move: the saved page's lfit or qfit line
+// after one filter move -- the page rendered, the widget set and its own
+// callback run under node (test/js_runner.py) -- written to a JSON file,
+// its point count in global u10_n.  _u10_ss: twoway's serset of one plot
+// (drawn nodraw, saved, read back) written to a JSON file of its columns.
+// _u10_close: the saved line against twoway's serset (either column
+// order), the x converted to axis milliseconds for a date kind; global
+// u10_ok 1 or 0 and u10_msg.
+python:
+def _u10_move(sp, dp, kind, value, out):
+    import json
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    fits = [x for f in r.figures.values() for x in f.renderers
+            if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+            in ("lfit", "qfit")]
+    d = fits[0].data_source.data
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump({"x": [float(v) for v in d["x"]],
+                   "y": [float(v) for v in d["y"]]}, fh)
+    Macro.setGlobal("u10_n", str(len(d["x"])))
+
+
+def _u10_take(out):
+    import json
+    from sfi import Data
+    cols = {}
+    for i in range(Data.getVarCount()):
+        cols[Data.getVarName(i)] = [None if v is None or v >= 8.98e307
+                                    else float(v) for v in Data.get(var=i)]
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(cols, fh)
+
+
+def _u10_close(tw, saved, xkind, rtol, xatol, lin=0):
+    import json
+    import numpy as np
+    import dash_render as dr
+    from sfi import Macro
+    t = json.load(open(tw, encoding="utf-8"))
+    g = json.load(open(saved, encoding="utf-8"))
+    gx, gy = np.asarray(g["x"], float), np.asarray(g["y"], float)
+    if xkind:
+        # The saved x is axis ms; twoway's serset holds Stata units.
+        gx = dr._dash_date_units(gx, xkind)
+    cols = {k: np.asarray([np.nan if v is None else v for v in c], float)
+            for k, c in t.items()}
+    msg = "no column pair of twoway's serset (%s) matches the %d saved points" % (
+        " ".join(cols), len(gx))
+    ok = 0
+    worst = []
+    for a in cols:
+        for b in cols:
+            if a == b:
+                continue
+            tx, ty = cols[a], cols[b]
+            keep = np.isfinite(tx) & np.isfinite(ty)
+            tx, ty = tx[keep], ty[keep]
+            if len(tx) == len(gx) and len(gx):
+                worst.append("%s/%s: x %.3g y %.3g" % (
+                    a, b, float(np.max(np.abs(gx - tx) / np.maximum(np.abs(tx), 1e-300))),
+                    float(np.max(np.abs(gy - ty) / np.maximum(np.abs(ty), 1e-300)))))
+            else:
+                worst.append("%s/%s: %d rows" % (a, b, len(tx)))
+            # twoway predicts at its grid as stored (a float x), so a
+            # straight line is also read at those x: on a %td x the float
+            # day is 0.001 off, a slope of 2 a day 0.002 in y.
+            if len(tx) == len(gx) and len(gx) and np.allclose(
+                    gx, tx, rtol=rtol, atol=float(xatol)) and (np.allclose(
+                    gy, ty, rtol=rtol, atol=1e-12) or (lin and np.allclose(
+                    np.interp(tx, gx, gy), ty, rtol=rtol, atol=1e-12))):
+                ok, msg = 1, "%d points agree (x %s, y %s)" % (len(gx), a, b)
+    if not ok:
+        msg += " (largest relative differences " + "; ".join(worst) + ")"
+    Macro.setGlobal("u10_ok", str(ok))
+    Macro.setGlobal("u10_msg", msg)
+
+
+def _u10_said(log, text):
+    from sfi import Macro
+    with open(log, encoding="utf-8", errors="replace") as fh:
+        Macro.setGlobal("u10_said", "1" if text in fh.read() else "0")
+end
+
+capture program drop _u10_ss
+program define _u10_ss
+    // _u10_ss <out.json> <gph> <twoway plot ...>
+    version 19
+    gettoken out 0 : 0
+    gettoken gph 0 : 0
+    preserve
+    capture erase "`gph'"
+    quietly twoway (`0'), nodraw saving("`gph'", replace)
+    capture graph drop _all
+    capture serset drop _all
+    quietly graph use "`gph'", nodraw
+    quietly serset set 0
+    quietly serset use, clear
+    // A program's python runs in its own namespace: reach the do-file's.
+    python: __import__("__main__")._u10_take("`out'")
+    capture graph drop _all
+    capture erase "`gph'"
+    restore
+end
+
+* ==== S10 F1a: lfit and qfit refit on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S10") & `: list posof "S10" in w31_run' {
+    display as text "S10 start " c(current_date) " " c(current_time)
+    local u10d "`w31_work'/s10"
+    capture mkdir "`u10d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U10-01..03: after a move the saved line is twoway's line on the
+    // kept rows: lfit after the dropdown to Foreign, qfit, n(50) after
+    // the range to 4500-11385, lfit [aw=displacement] after the
+    // dropdown to Domestic.  twoway's lfit draws 3 points by default
+    // (the same line), so it is asked for dash's 100.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U10-01|(scatter mpg weight) (lfit mpg weight)|foreign, type(dropdown)|Select|Foreign|lfit mpg weight if foreign == 1, n(100)" "U10-02|(scatter mpg weight) (qfit mpg weight, n(50))|price, type(range)|RangeSlider|4500 11385|qfit mpg weight if inrange(price, 4500, 11385), n(50)" "U10-03|lfit mpg weight [aw=displacement]|foreign, type(dropdown)|Select|Domestic|lfit mpg weight if foreign == 0 [aw=displacement], n(100)" {
+        local ++k
+        mata: u10_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u10_t[1]); st_local("cmd", u10_t[2]); st_local("filt", u10_t[3]); st_local("kind", u10_t[4]); st_local("val", u10_t[5]); st_local("tw", u10_t[6])
+        sysuse auto, clear
+        dash clear
+        capture noisily dash `cmd', name(zu10`k')
+        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u10d'/s`k'.json") datapath("`u10d'/d`k'.json") filter(`filt')
+        python: _u10_move("`u10d'/s`k'.json", "`u10d'/d`k'.json", "`kind'", "`val'", "`u10d'/g`k'.json")
+        _u10_ss "`u10d'/t`k'.json" "`u10d'/t`k'.gph" `tw'
+        // A serset stores floats: twoway's values are read to 3e-7.
+        python: _u10_close("`u10d'/t`k'.json", "`u10d'/g`k'.json", "", 3e-7, 0)
+        _w31_expect `id' "(${u10_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u10_msg}"
+        _w31_done `id' "the saved `cmd' after the move to `val' is twoway `tw' (${u10_msg})"
+    }
+
+    // ------------------------------------------------------------
+    // U10-04: a move leaving one row empties the saved line; twoway on
+    // that row draws no line (rc and note measured).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    capture noisily dash (scatter mpg weight) (lfit mpg weight), name(zu104)
+    _w31_expect U10-04 "(_rc == 0)" "dash lfit rc `=_rc'"
+    _dash_serve_spec, specpath("`u10d'/s4.json") datapath("`u10d'/d4.json") filter(price, type(slider))
+    python: _u10_move("`u10d'/s4.json", "`u10d'/d4.json", "Slider", "15906", "`u10d'/g4.json")
+    _w31_expect U10-04 "(${u10_n} == 0)" "the saved lfit after the slider to 15906 holds ${u10_n} points"
+    quietly count if price >= 15906
+    _w31_expect U10-04 "(r(N) == 1)" "price >= 15906 keeps `r(N)' rows"
+    local lf "`u10d'/t4.log"
+    quietly log using "`lf'", text replace name(u10l)
+    capture noisily twoway lfit mpg weight if price >= 15906, nodraw
+    local trc = _rc
+    quietly log close u10l
+    python: _u10_said("`lf'", "could not fit model")
+    _w31_expect U10-04 "(`trc' != 0 | ${u10_said} == 1)" "twoway lfit on one row: rc `trc', note ${u10_said}"
+    _w31_done U10-04 "one kept row: the saved line is empty; twoway draws none (rc `trc', note ${u10_said})"
+
+    // ------------------------------------------------------------
+    // U10-05: a %td x refits in days and is drawn in axis milliseconds:
+    // the saved points after the slider to 4, read back in days
+    // (_dash_date_units), are twoway's serset to its float precision.
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 10
+    quietly generate x = _n
+    quietly generate y = 2 * x + 1
+    quietly generate d = mdy(1, _n, 2020)
+    format d %td
+    dash clear
+    capture noisily dash lfit y d, name(zu105)
+    _w31_expect U10-05 "(_rc == 0)" "dash lfit y d rc `=_rc'"
+    _dash_serve_spec, specpath("`u10d'/s5.json") datapath("`u10d'/d5.json") filter(x, type(slider))
+    python: _u10_move("`u10d'/s5.json", "`u10d'/d5.json", "Slider", "4", "`u10d'/g5.json")
+    _u10_ss "`u10d'/t5.json" "`u10d'/t5.gph" lfit y d if x >= 4, n(100)
+    python: _u10_close("`u10d'/t5.json", "`u10d'/g5.json", "td", 3e-7, 0, 1)
+    _w31_expect U10-05 "(${u10_ok} == 1)" "dash lfit y d (%td) after the slider to 4: ${u10_msg}"
+    _w31_done U10-05 "a %td x refits in days and draws in ms (${u10_msg})"
+
+    forvalues k = 1/5 {
+        foreach p in s d g t {
+            capture erase "`u10d'/`p'`k'.json"
+        }
+    }
+    capture erase "`lf'"
+    capture rmdir "`u10d'"
+    macro drop u10_n u10_ok u10_msg u10_said
+    capture mata: mata drop u10_t
+    dash clear
+    display as text "S10 end " c(current_date) " " c(current_time)
+}
+* ==== end S10 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

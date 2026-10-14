@@ -3,7 +3,8 @@
 Node runs the page's script against stand-ins; whether ``renderer.muted``,
 ``Title.visible`` and ``LegendItem.label = {value}`` do what the cue needs
 is only proved in a browser.  Each case builds the saved page of a scatter
-and an lfit with a ``foreign`` dropdown, appends a probe script, and runs
+and an fpfit (a fit the page still marks; lfit is refitted since WP-31
+F1a) with a ``foreign`` dropdown, appends a probe script, and runs
 headless Chrome with ``--dump-dom``.  The probe snapshots the page, moves
 the dropdown to Foreign, snapshots again, moves it back, and snapshots a
 third time, in both layouts and both filter positions.
@@ -114,7 +115,7 @@ _PROBE = r"""
 
 
 def _page(layout, pos):
-    spec = _spec([plot_for("scatter"), plot_for("lfit")],
+    spec = _spec([plot_for("scatter"), plot_for("fpfit")],
                  {"filter": "foreign, type(dropdown)", "layout": layout,
                   "filter_position": pos},
                  {"title": "T", "subtitle": "S", "legend": "position(12)"})
@@ -178,12 +179,12 @@ class TestInChrome:
             if hasattr(dr, "_DASH_STALE_STATUS_HTML") else None
         b, a, k = got["before"], got["after"], got["back"]
         assert (b["muted"], b["caption"]) == ([False], [False]), b
-        assert "Fitted values" in b["labels"], b
+        assert "Predicted mpg" in b["labels"], b
         assert b["status"] is None, b
         assert (a["muted"], a["caption"]) == ([True], [True]), a
-        assert "Fitted values (unfiltered)" in a["labels"], a
+        assert "Predicted mpg (unfiltered)" in a["labels"], a
         assert a["status"] == text, a
         assert (k["muted"], k["caption"]) == ([False], [False]), k
-        assert "Fitted values" in k["labels"], k
-        assert "Fitted values (unfiltered)" not in k["labels"], k
+        assert "Predicted mpg" in k["labels"], k
+        assert "Predicted mpg (unfiltered)" not in k["labels"], k
         assert k["status"] is None, k
