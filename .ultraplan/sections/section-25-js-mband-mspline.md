@@ -217,3 +217,16 @@ TR-25.8's entries.
 - **Decisions for maintainer ratification.** D-25.a (the default band count follows the kept rows), D-25.b (`max_bands` in the config).
 - **R12.** S25 is batch 8's only `_FILTER_JS` editor; S23 adds NEW module functions and S24 edits axis code -- no overlap.
 - **Cscript**: `twoway mband`'s serset holds `__000000` x and y variables named after the plotted variables; read through `serset use`; values are float32 -- compare at 1e-5 relative.
+
+## Addendum (14oct2026, DECISIONS D16): row C6b added to this section
+
+### C6b: mband and mspline over data with missing y draw fewer vertices than twoway
+
+**Gap.** S14 measured (test/fixtures/area_cmissing_truth.json E04, E05) that on data with missing y twoway mband draws 9 vertices where dash draws 8, and mspline 89 where dash draws 78; it is not a cmissing() effect.
+
+**Requirement.** Before porting the twins to JavaScript, measure twoway's mband and mspline vertices (serset) on data with missing y (and missing x) and match them in `map_mband`/`map_mspline`; the JavaScript twins then match the corrected Python. Both modes.
+
+**Tests.** pytest pinning the vertex counts and values to the fixture's E04/E05 (or a new extract), and a `* ==== S25 C6b: ... ====` truth block. One commit, subject ending `(WP-31 C6b)`, BEFORE the F1f commit, so F1f's twins are written against the corrected Python.
+
+**Process (binding).** As every row: failing tests first with saved failure text; close the BUGS.md entry "mband and mspline over data with missing y draw fewer vertices than twoway" (Resolution ending `Closes GAPS3 C6 (WP-31, C6b).`), delete its `"C6b":` WP31_OPEN line, rewrite GAPS3.md's `- **C6b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C6b -->` under `### Results that change` with a line ending `(WP-31, C6b)`. dash replaces twoway (D13).
+

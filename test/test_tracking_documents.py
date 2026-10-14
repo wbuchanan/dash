@@ -2066,6 +2066,7 @@ WP31_OPEN = {
     "C10e": "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed",
     "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
     "C4b": "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured",
+    "C6b": "mband and mspline over data with missing y draw fewer vertices than twoway",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2190,6 +2191,7 @@ WP31_LISTS = {
     "C10e": ("Results that change",),
     "C18b": ("Fixed in WP-31",),
     "C4b": ("Results that change",),
+    "C6b": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2313,6 +2315,7 @@ WP31_SECTION = {
     "C10e": 35,
     "C18b": 47,
     "C4b": 41,
+    "C6b": 25,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2516,8 +2519,9 @@ class TestWp31Tracking:
         assert not bad, "\n".join(bad)
 
     def test_each_entry_sits_in_its_changelog_lists(self):
-        # 110 -> 118: DECISIONS D14 adds the eight batch 1-4 gaps.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 118
+        # 110 -> 118: DECISIONS D14 adds the eight batch 1-4 gaps; 118 -> 119:
+        # D16 adds C6b.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 119
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

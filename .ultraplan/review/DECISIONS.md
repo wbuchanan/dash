@@ -21,6 +21,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D13 | **dash replaces twoway**: `dash twoway`, `dash tw`, `dash graph twoway` ... are refused as `twoway twoway` is, r(198); bare `dash`, `dash, title(T)`, `dash if ...` and `dash ||` draw twoway's empty graph. No section may document or test a twoway prefix as accepted. | A1 (4b1be95, ac4357f); S56, S57, S59 |
 | D14 | **Gaps found in batches 1-4 that no section owned are added to the sections aligned with them** (index.md "Batch 1-4 gap additions"): A5b S20, C10d S46, C18b S47, A3b S27, A3c S32, A3d S15, C10e S35, C4b S41. | those sections |
 | D15 | **S01's ratification items are kept as built** (14oct2026): the dashboard-extension (H2) lines sit under `### Fixed in WP-31`, and a truth-script shard part with no block ends 0 (D-01.d, D-01.f). | S01 (landed) |
+| D16 | **Batch 5 additions** (14oct2026): S14's measured mband/mspline vertex difference on data with missing y is row C6b, added to S25 (which re-derives both twins); the saved page re-bridging a lowess line under cmissing(n) after a filter move joins S52's A23 work (fill and line bridging after a move). | S25, S52 |
 
 ## Architect rulings (process and feasibility; from the reviews)
 

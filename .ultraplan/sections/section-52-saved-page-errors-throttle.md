@@ -216,3 +216,8 @@ None new (the served app is unchanged); `MOVE_CORPUS` already covers slider move
 - **Decisions.** D-52.a (wrapper at the :31459 assembly; brush wrapped at the `CustomJS` construction), D-52.b (string literal), D-52.c (`_hooks` list), D-52.d (reset writes `value_throttled`), D-52.e (bin twin) are settled by DECISIONS A28 and REVIEW-4 R4-02..R4-04, R4-07, R4-11, R4-12; D-52.f/D-52.g by A23. Open for ratification: dropdowns keep `value` (D-52.d's last clause).
 - **Tracked line (A11):** `commit pending`; no amend. **A14:** this section has one row; no truth-script block (no twoway truth).
 - **Cscript**: `cert_file_has` clobbers r(); read `r(found)` into a local at once. The saved page's JSON block is large: the python helper parses it with `json`, never regex over the whole file.
+
+## Addendum (14oct2026, DECISIONS D16): lowess under cmissing(n) after a saved move
+
+S14 (C6) made lowess, fpfit and fpfitci insert missing points at sample rows with an x and no y, so their lines break under cmissing(n) as twoway's do. On the saved page the JavaScript refit (S16's `dash_lowess`, later S28's fpfit twins) writes no missing points, so after a filter move the line re-bridges across the gap -- the same kind of difference as A23's fill bridging, recorded by S14 in BUGS.md ("reported with this commit for S52's scope") and in the help. It is part of this section's A23 work: the saved page's refit inserts the same missing points the Python mapper inserts (rows with x and no y in the kept sample), pinned by a node test after a move in both modes and a MOVE_CORPUS entry; the help sentence S14 added is removed when it holds. No new id: it closes under this section's H1/A23 commit, and the BUGS.md note S14 left is updated to name the closing commit.
+

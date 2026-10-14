@@ -3903,3 +3903,9 @@
   - Description: GAPS3.md C4, found by WP-31 section 11 (C4 residual): the line fitplot() draws and the band ciplot() draws take the layer's p-style colour; twoway's colours for those views were not measured.
   - Suggested fix: WP-31 section 41 (colour width outline edges): measure the SVG colours twoway draws for fitplot() and ciplot() views and match them in both modes.
   - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: mband and mspline over data with missing y draw fewer vertices than twoway
+  - File Names and Line Numbers: dash_render.py GlyphMapper.map_mband, GlyphMapper.map_mspline; test/fixtures/area_cmissing_truth.json E04, E05
+  - Description: GAPS3.md C6, found by WP-31 section 14 (C6 residual): on data with missing y, twoway mband draws 9 vertices where dash draws 8 (probe E04) and mspline 89 where dash draws 78 (E05); unrelated to cmissing().
+  - Suggested fix: WP-31 section 25 (js mband mspline): measure twoway's band and spline vertices on data with missing y and match them in the Python twins before porting them to JavaScript.
+  - Resolution: Not fixed because WP-31 section 25 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

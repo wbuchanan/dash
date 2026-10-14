@@ -86,7 +86,7 @@
 | 22 | js-lpolyci | F1e | 7 | 19 | -- | red | M | 3 |
 | 23 | contour-interpolation | B4a (TPS/Shepard numpy, grid rule, cap, truth extractor) | 8 | 01 | 26, 29 | red | L | 4 |
 | 24 | minor-ticks-labels | D1 | 8 | 01 | 33 | yellow | M | 4 |
-| 25 | js-mband-mspline | F1f | 8 | 10 | -- | yellow | M | 3 |
+| 25 | js-mband-mspline | F1f + C6b (D16) | 8 | 10 | -- | yellow | M | 3 |
 | 26 | contour-drawing | B4b (type registration, options, colour rules, colour key, both modes) | 9 | 23 | 29, 57 | red | L | 4 |
 | 27 | edge-titles | D2 + A3b (D14) | 9 | 01 | -- | yellow | M | 3 |
 | 28 | js-fpfit-fpfitci | F1g | 9 | 13 | -- | red | M | 3 |
@@ -140,6 +140,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | C4b | fitplot()/ciplot() colours unmeasured against twoway | S11 | S41 (14) | RC |
 | C10d | kdensity range() on a string or all-missing variable draws over the data | S05 | S46 (15) | RC |
 | C18b | a hexadecimal literal coordinate (1.0X+3ff) is refused where twoway takes it | S06 | S47 (16) | FX |
+| C6b | mband and mspline over data with missing y draw fewer vertices than twoway (D16) | S14 | S25 (8) | RC |
 
 ## Batch execution order
 
