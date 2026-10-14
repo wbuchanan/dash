@@ -55,7 +55,8 @@
 *!                qualifier after the plot groups is part of the sample a
 *!                weight is checked over, except on kdensity; WP-27).
 *!   Misc:        51 _lpoly_work is compiled; 52 stdf stdr; 55 the options
-*!                dash names in the note (area() boundary atobs ...).
+*!                dash names in the note (area() boundary ...); 55c the
+*!                fit options dash draws (atobs estopts() ...; WP-31 C4).
 *!
 *! Not in run_all_cscripts.do yet (WP-23 hands the wiring to the
 *! coordinator).  Usage:  cd test, then do "test_help_claims_6.cscript"
@@ -924,18 +925,24 @@ _hc6_tw "fpfit mpg weight, estopts(degree(1))"
 if r(rc) != 0 local bad = 1
 _hc6_tally HC6-30 `bad' "fpfit and fpfitci: twoway refuses bwidth() degree() kernel(); estopts(degree(1)) is its spelling"
 
+// Flipped (WP-31 C4): dash named estopts() in the note, which was wrong
+// because twoway draws Stata's fracpoly fit with it; dash runs it in
+// Stata at registration and draws it, silent.
 _hc6_dash "dash fpfit mpg weight, estopts(degree(1)) name(hc6)"
 local d = r(rc)
-_hc6_said "unsupported option(s): estopts()"
-local bad = (`d' != 0 | r(n) != 1)
-_hc6_tally HC6-31 `bad' "dash names fpfit's estopts() in the note: it does not honour it"
+_hc6_said "unsupported option(s)"
+local bad = (`d' != 0 | r(n) != 0)
+_hc6_tally HC6-31 `bad' "dash honours fpfit's estopts(degree(1)), silent"
 
 // The estimate-changing options dash cannot compute, which the help lists:
 // twoway takes each (rc 0); dash names each in the note, and registers
 // nothing for it.  With them dotextend() and droplines(), which the base()
 // entry says dash does not draw.
 local bad = 0
-local pairs `""kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "lfit mpg weight|atobs|atobs" "lfit mpg weight|estopts(noconstant)|estopts" "lfit mpg weight|predopts(residuals)|predopts" "fpfit mpg weight|estcmd(regress)|estcmd" "dot mpg weight|dotextend(no)|dotextend" "function y = x|range(0 5) droplines(1 2)|droplines""'
+// Flipped (WP-31 C4): atobs, estopts(), predopts() and estcmd() left
+// this list, which was wrong for them because twoway draws each; they are
+// drawn (HC6-55c).
+local pairs `""kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "dot mpg weight|dotextend(no)|dotextend" "function y = x|range(0 5) droplines(1 2)|droplines""'
 foreach p of local pairs {
     local b1 = strpos(`"`p'"', "|")
     local spec = substr(`"`p'"', 1, `b1' - 1)
@@ -956,7 +963,8 @@ foreach p of local pairs {
         local bad = 1
     }
 }
-_hc6_tally HC6-55 `bad' "area() boundary atobs estopts() predopts() estcmd() dotextend() droplines(): twoway takes them; dash names each in the note"
+_hc6_tally HC6-55 `bad' "area() boundary dotextend() droplines(): twoway takes them; dash names each in the note"
+
 
 // HC6-55b (WP-29 P0.9): lpolyci's pwidth() and var() are honoured, as
 // twoway honours them: rc 0 and no note naming either.
@@ -1381,6 +1389,21 @@ local t = r(rc)
 _hc6_said "may not combine stdf stdr"
 local bad = (`t' != 198 | r(n) < 1)
 _hc6_tally HC6-52 `bad' "twoway refuses two band types, may not combine stdf stdr, r(198) (dash: SO-62)"
+
+// HC6-55c (WP-31 C4): atobs, estopts(), predopts() and estcmd() are
+// drawn, as twoway draws them: rc 0 and no note.  Last, as it asks
+// twoway nothing: the answers after it keep their place.
+local bad = 0
+foreach c in "lfit mpg weight, atobs" "lfit mpg weight, estopts(noconstant)" "lfit mpg weight, predopts(residuals)" "fpfit mpg weight, estcmd(regress)" {
+    _hc6_dash `"dash `c' name(hc6)"'
+    local d = r(rc)
+    _hc6_said "unsupported option(s)"
+    if `d' != 0 | r(n) != 0 {
+        display as error `"HC6-55c FAIL: dash `c': rc=`d', notes `r(n)'"'
+        local bad = 1
+    }
+}
+_hc6_tally HC6-55c `bad' "atobs estopts() predopts() estcmd(): drawn, rc 0 and no note"
 
 // ----------------------------------------------------------------
 // Summary

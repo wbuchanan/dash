@@ -436,7 +436,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit c0c5139.
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
-- **C4 Tracked:** Open (WP-31 section 11).
+- **C4 Tracked:** Closed in WP-31, BUGS.md "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn", commit pending.
 - **C5 Tracked:** Open (WP-31 section 12).
 - **C6 Tracked:** Open (WP-31 section 14).
 - **C7 Tracked:** Open (WP-31 section 14).

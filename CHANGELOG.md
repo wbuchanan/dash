@@ -387,7 +387,7 @@ and now matches Stata.
 
 - lfit and qfit on a saved page after a filter move: the build's fit, dimmed and keyed "(unfiltered)", is now the fit on the kept rows, as the served app draws it: dash scatter mpg weight || lfit mpg weight with a foreign dropdown moved to Foreign drew the all-cars line from 29.105 at weight 1800 and now draws regress mpg weight if foreign == 1's, on n() points over the kept rows' range or range(); a move leaving fewer than two rows draws no line. A recast() lfit or qfit keeps the mark. (WP-31, F1a)
 
-<!-- WP-31 C4 -->
+- The fit options are drawn as twoway draws them, in the saved page and the served app: lfit mpg weight, atobs is evaluated at the observed weights (was: a 100-point grid, atobs named in the note); lfitci ..., nofit draws the band alone; fitplot() and ciplot() draw the line and the band as the type named; estopts(), predopts() and estcmd() are run by Stata at registration (fpfit mpg weight, estopts(degree(3)) draws fracpoly's degree-3 fit, was: the default fit with estopts() named) and the layer is drawn as registered after a filter move, marked as computed before the filter; atobs or predopts(residuals) with range() is refused, r(198), "may not combine atobs with range()", as twoway refuses it. (WP-31, C4)
 
 <!-- WP-31 C5 -->
 

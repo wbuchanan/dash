@@ -250,6 +250,14 @@ COVERAGE = {
         # twoway's serset (FX-20).
         "_dash_fn_points": ("test_parser.cscript:FX-01",
                             "test_wp29_truth.cscript:FX-20"),
+        # e2e (WP-31 C4): the fit options on the types twoway takes them
+        # on, their pairs with range() and fitplot()/ciplot() named as
+        # twoway names them; a fit drawn with estopts() stores twoway's
+        # serset (U11-03), malformed text refused (U11-06).
+        "_dash_fit_opts_check": ("test_wp31_truth.cscript:U11-02",
+                                 "test_wp31_truth.cscript:U11-04",
+                                 "test_option_validation.cscript:U11-07"),
+        "_dash_fit_points": ("test_wp31_truth.cscript:U11-03",),
         # e2e: each repeated option registered as the command twoway
         # draws the same (SVG compared in the run); a unique one refused.
         "_dash_opts_repeats": ("test_twoway_option_parity.cscript:TP-14",),
@@ -594,6 +602,11 @@ COVERAGE = {
         # direct: the points object, the spec tail and its character check
         # (FX-10); e2e: a hand-set table skipped with a note (FX-08).
         "_dash_fn_points_json": ("test_parser.cscript:FX-10",),
+        # WP-31 C4: the points object from the serset (U11-03), the text
+        # check (U11-06), the plot-type spellings (U11-04, direct).
+        "_dash_fit_points_json": ("test_wp31_truth.cscript:U11-03",),
+        "_dash_fit_opt_bad": ("test_wp31_truth.cscript:U11-06",),
+        "_dash_recast_canon": ("test_wp31_truth.cscript:U11-04",),
         "_dash_fn_spec_tail": ("test_parser.cscript:FX-10",
                                "test_parser.cscript:FX-08"),
         # e2e: y = strlen("'x") refused r(198) as twoway refuses it.

@@ -544,8 +544,10 @@ class TestTheParsersFoundSomething:
         # 179 -> 183: C1 the Arrowheads entries define mangle(),
         # barbsize() and headlabel, and name mfcolor() in barbsize()'s.
         # 183 -> 184: A4 the Unsupported entry defines mlalign().
-        assert len(found) == 184, (
-            f"{len(found)} options parsed out of dash.sthlp, 184 measured "
+        # 184 -> 192: C4 the Fit options entry defines atobs, nofit,
+        # fitplot(), ciplot(), smoothplot(), estopts(), predopts(), estcmd().
+        assert len(found) == 192, (
+            f"{len(found)} options parsed out of dash.sthlp, 192 measured "
             f"08oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -621,7 +623,9 @@ class TestTheParsersFoundSomething:
         # 209 -> 212: C1 mangle barbsize headlabel declared; 212 -> 213: C2
         # mwidth declared
         # 213 -> 214: A4 mlalign declared
-        assert len(_ado_declarations()) == 214
+        # 214 -> 222: C4 atobs estopts predopts estcmd fitplot ciplot
+        # smoothplot nofit declared
+        assert len(_ado_declarations()) == 222
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -720,9 +724,10 @@ class TestTheParsersFoundSomething:
         # 407 -> 410: C1 the three Arrowheads entries under Plot types.
         # 410 -> 397: A2 the Synonyms table's thirteen entries went (dash
         # takes no plot-type spelling twoway refuses).
-        assert len(defs) == 397, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 397 "
-            f"measured 13oct2026")
+        # 397 -> 398: C4 the Fit options entry.
+        assert len(defs) == 398, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 398 "
+            f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (

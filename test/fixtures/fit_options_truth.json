@@ -1,0 +1,3642 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "e0a9cf13b30b157eae92111e4a90f92b8f8465f3",
+  "extracted": "14 Oct 2026 03:31:24",
+  "source": "scripts/extract_fit_options_truth.do",
+  "stata_version": "19.5"
+ },
+ "applies": {
+  "atobs@area": {
+   "cmd": "twoway area mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@bar": {
+   "cmd": "twoway bar mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@connected": {
+   "cmd": "twoway connected mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@dot": {
+   "cmd": "twoway dot mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@dropline": {
+   "cmd": "twoway dropline mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@fpfit": {
+   "cmd": "twoway fpfit mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, atobs nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "atobs@function": {
+   "cmd": "twoway function y = x, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@histogram": {
+   "cmd": "twoway histogram mpg, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@kdensity": {
+   "cmd": "twoway kdensity mpg, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@lfit": {
+   "cmd": "twoway lfit mpg weight, atobs nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "atobs@lfitci": {
+   "cmd": "twoway lfitci mpg weight, atobs nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "atobs@line": {
+   "cmd": "twoway line mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@lowess": {
+   "cmd": "twoway lowess mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@lpoly": {
+   "cmd": "twoway lpoly mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@mband": {
+   "cmd": "twoway mband mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@mspline": {
+   "cmd": "twoway mspline mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@qfit": {
+   "cmd": "twoway qfit mpg weight, atobs nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "atobs@qfitci": {
+   "cmd": "twoway qfitci mpg weight, atobs nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "atobs@rarea": {
+   "cmd": "twoway rarea yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rbar": {
+   "cmd": "twoway rbar yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rcap": {
+   "cmd": "twoway rcap yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rline": {
+   "cmd": "twoway rline yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@rspike": {
+   "cmd": "twoway rspike yl yh weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@scatter": {
+   "cmd": "twoway scatter mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@scatteri": {
+   "cmd": "twoway scatteri 20 2000, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@spike": {
+   "cmd": "twoway spike mpg weight, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@tsline": {
+   "cmd": "twoway tsline mpg, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs@tsrline": {
+   "cmd": "twoway tsrline yl yh, atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@area": {
+   "cmd": "twoway area mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@bar": {
+   "cmd": "twoway bar mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@connected": {
+   "cmd": "twoway connected mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@dot": {
+   "cmd": "twoway dot mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@dropline": {
+   "cmd": "twoway dropline mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@fpfit": {
+   "cmd": "twoway fpfit mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, ciplot(rarea) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ciplot@function": {
+   "cmd": "twoway function y = x, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@histogram": {
+   "cmd": "twoway histogram mpg, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@kdensity": {
+   "cmd": "twoway kdensity mpg, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@lfit": {
+   "cmd": "twoway lfit mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@lfitci": {
+   "cmd": "twoway lfitci mpg weight, ciplot(rarea) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ciplot@line": {
+   "cmd": "twoway line mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@lowess": {
+   "cmd": "twoway lowess mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@lpoly": {
+   "cmd": "twoway lpoly mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, ciplot(rarea) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ciplot@mband": {
+   "cmd": "twoway mband mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@mspline": {
+   "cmd": "twoway mspline mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@qfit": {
+   "cmd": "twoway qfit mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@qfitci": {
+   "cmd": "twoway qfitci mpg weight, ciplot(rarea) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "ciplot@rarea": {
+   "cmd": "twoway rarea yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rbar": {
+   "cmd": "twoway rbar yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rcap": {
+   "cmd": "twoway rcap yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rline": {
+   "cmd": "twoway rline yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@rspike": {
+   "cmd": "twoway rspike yl yh weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@scatter": {
+   "cmd": "twoway scatter mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@scatteri": {
+   "cmd": "twoway scatteri 20 2000, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@spike": {
+   "cmd": "twoway spike mpg weight, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@tsline": {
+   "cmd": "twoway tsline mpg, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot@tsrline": {
+   "cmd": "twoway tsrline yl yh, ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@area": {
+   "cmd": "twoway area mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@bar": {
+   "cmd": "twoway bar mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@connected": {
+   "cmd": "twoway connected mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@dot": {
+   "cmd": "twoway dot mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@dropline": {
+   "cmd": "twoway dropline mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@fpfit": {
+   "cmd": "twoway fpfit mpg weight, estcmd(regress) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estcmd@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, estcmd(regress) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estcmd@function": {
+   "cmd": "twoway function y = x, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@histogram": {
+   "cmd": "twoway histogram mpg, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@kdensity": {
+   "cmd": "twoway kdensity mpg, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@lfit": {
+   "cmd": "twoway lfit mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@lfitci": {
+   "cmd": "twoway lfitci mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@line": {
+   "cmd": "twoway line mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@lowess": {
+   "cmd": "twoway lowess mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@lpoly": {
+   "cmd": "twoway lpoly mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@mband": {
+   "cmd": "twoway mband mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@mspline": {
+   "cmd": "twoway mspline mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@qfit": {
+   "cmd": "twoway qfit mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@qfitci": {
+   "cmd": "twoway qfitci mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rarea": {
+   "cmd": "twoway rarea yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rbar": {
+   "cmd": "twoway rbar yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rcap": {
+   "cmd": "twoway rcap yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rline": {
+   "cmd": "twoway rline yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@rspike": {
+   "cmd": "twoway rspike yl yh weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@scatter": {
+   "cmd": "twoway scatter mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@scatteri": {
+   "cmd": "twoway scatteri 20 2000, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@spike": {
+   "cmd": "twoway spike mpg weight, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@tsline": {
+   "cmd": "twoway tsline mpg, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd@tsrline": {
+   "cmd": "twoway tsrline yl yh, estcmd(regress) nodraw",
+   "message": "option estcmd() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@area": {
+   "cmd": "twoway area mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@bar": {
+   "cmd": "twoway bar mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@connected": {
+   "cmd": "twoway connected mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@dot": {
+   "cmd": "twoway dot mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@dropline": {
+   "cmd": "twoway dropline mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@fpfit": {
+   "cmd": "twoway fpfit mpg weight, estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estopts@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estopts@function": {
+   "cmd": "twoway function y = x, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@histogram": {
+   "cmd": "twoway histogram mpg, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@kdensity": {
+   "cmd": "twoway kdensity mpg, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@lfit": {
+   "cmd": "twoway lfit mpg weight, estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estopts@lfitci": {
+   "cmd": "twoway lfitci mpg weight, estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estopts@line": {
+   "cmd": "twoway line mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@lowess": {
+   "cmd": "twoway lowess mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@lpoly": {
+   "cmd": "twoway lpoly mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@mband": {
+   "cmd": "twoway mband mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@mspline": {
+   "cmd": "twoway mspline mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@qfit": {
+   "cmd": "twoway qfit mpg weight, estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estopts@qfitci": {
+   "cmd": "twoway qfitci mpg weight, estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "estopts@rarea": {
+   "cmd": "twoway rarea yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rbar": {
+   "cmd": "twoway rbar yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rcap": {
+   "cmd": "twoway rcap yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rline": {
+   "cmd": "twoway rline yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@rspike": {
+   "cmd": "twoway rspike yl yh weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@scatter": {
+   "cmd": "twoway scatter mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@scatteri": {
+   "cmd": "twoway scatteri 20 2000, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@spike": {
+   "cmd": "twoway spike mpg weight, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@tsline": {
+   "cmd": "twoway tsline mpg, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estopts@tsrline": {
+   "cmd": "twoway tsrline yl yh, estopts(noconstant) nodraw",
+   "message": "option estopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@area": {
+   "cmd": "twoway area mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@bar": {
+   "cmd": "twoway bar mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@connected": {
+   "cmd": "twoway connected mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@dot": {
+   "cmd": "twoway dot mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@dropline": {
+   "cmd": "twoway dropline mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@fpfit": {
+   "cmd": "twoway fpfit mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, fitplot(line) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "fitplot@function": {
+   "cmd": "twoway function y = x, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@histogram": {
+   "cmd": "twoway histogram mpg, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@kdensity": {
+   "cmd": "twoway kdensity mpg, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@lfit": {
+   "cmd": "twoway lfit mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@lfitci": {
+   "cmd": "twoway lfitci mpg weight, fitplot(line) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "fitplot@line": {
+   "cmd": "twoway line mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@lowess": {
+   "cmd": "twoway lowess mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@lpoly": {
+   "cmd": "twoway lpoly mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, fitplot(line) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "fitplot@mband": {
+   "cmd": "twoway mband mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@mspline": {
+   "cmd": "twoway mspline mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@qfit": {
+   "cmd": "twoway qfit mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@qfitci": {
+   "cmd": "twoway qfitci mpg weight, fitplot(line) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "fitplot@rarea": {
+   "cmd": "twoway rarea yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rbar": {
+   "cmd": "twoway rbar yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rcap": {
+   "cmd": "twoway rcap yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rline": {
+   "cmd": "twoway rline yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@rspike": {
+   "cmd": "twoway rspike yl yh weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@scatter": {
+   "cmd": "twoway scatter mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@scatteri": {
+   "cmd": "twoway scatteri 20 2000, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@spike": {
+   "cmd": "twoway spike mpg weight, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@tsline": {
+   "cmd": "twoway tsline mpg, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "fitplot@tsrline": {
+   "cmd": "twoway tsrline yl yh, fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@area": {
+   "cmd": "twoway area mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@bar": {
+   "cmd": "twoway bar mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@connected": {
+   "cmd": "twoway connected mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@dot": {
+   "cmd": "twoway dot mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@dropline": {
+   "cmd": "twoway dropline mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@fpfit": {
+   "cmd": "twoway fpfit mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, nofit nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nofit@function": {
+   "cmd": "twoway function y = x, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@histogram": {
+   "cmd": "twoway histogram mpg, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@kdensity": {
+   "cmd": "twoway kdensity mpg, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@lfit": {
+   "cmd": "twoway lfit mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@lfitci": {
+   "cmd": "twoway lfitci mpg weight, nofit nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nofit@line": {
+   "cmd": "twoway line mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@lowess": {
+   "cmd": "twoway lowess mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@lpoly": {
+   "cmd": "twoway lpoly mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, nofit nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nofit@mband": {
+   "cmd": "twoway mband mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@mspline": {
+   "cmd": "twoway mspline mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@qfit": {
+   "cmd": "twoway qfit mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@qfitci": {
+   "cmd": "twoway qfitci mpg weight, nofit nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "nofit@rarea": {
+   "cmd": "twoway rarea yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rbar": {
+   "cmd": "twoway rbar yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rcap": {
+   "cmd": "twoway rcap yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rline": {
+   "cmd": "twoway rline yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@rspike": {
+   "cmd": "twoway rspike yl yh weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@scatter": {
+   "cmd": "twoway scatter mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@scatteri": {
+   "cmd": "twoway scatteri 20 2000, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@spike": {
+   "cmd": "twoway spike mpg weight, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@tsline": {
+   "cmd": "twoway tsline mpg, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit@tsrline": {
+   "cmd": "twoway tsrline yl yh, nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@area": {
+   "cmd": "twoway area mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@bar": {
+   "cmd": "twoway bar mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@connected": {
+   "cmd": "twoway connected mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@dot": {
+   "cmd": "twoway dot mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@dropline": {
+   "cmd": "twoway dropline mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@fpfit": {
+   "cmd": "twoway fpfit mpg weight, predopts(stdp) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "predopts@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, predopts(stdp) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "predopts@function": {
+   "cmd": "twoway function y = x, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@histogram": {
+   "cmd": "twoway histogram mpg, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@kdensity": {
+   "cmd": "twoway kdensity mpg, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@lfit": {
+   "cmd": "twoway lfit mpg weight, predopts(stdp) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "predopts@lfitci": {
+   "cmd": "twoway lfitci mpg weight, predopts(stdp) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "predopts@line": {
+   "cmd": "twoway line mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@lowess": {
+   "cmd": "twoway lowess mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@lpoly": {
+   "cmd": "twoway lpoly mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@mband": {
+   "cmd": "twoway mband mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@mspline": {
+   "cmd": "twoway mspline mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@qfit": {
+   "cmd": "twoway qfit mpg weight, predopts(stdp) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "predopts@qfitci": {
+   "cmd": "twoway qfitci mpg weight, predopts(stdp) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "predopts@rarea": {
+   "cmd": "twoway rarea yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rbar": {
+   "cmd": "twoway rbar yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rcap": {
+   "cmd": "twoway rcap yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rline": {
+   "cmd": "twoway rline yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@rspike": {
+   "cmd": "twoway rspike yl yh weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@scatter": {
+   "cmd": "twoway scatter mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@scatteri": {
+   "cmd": "twoway scatteri 20 2000, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@spike": {
+   "cmd": "twoway spike mpg weight, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@tsline": {
+   "cmd": "twoway tsline mpg, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts@tsrline": {
+   "cmd": "twoway tsrline yl yh, predopts(stdp) nodraw",
+   "message": "option predopts() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@area": {
+   "cmd": "twoway area mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@bar": {
+   "cmd": "twoway bar mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@connected": {
+   "cmd": "twoway connected mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@dot": {
+   "cmd": "twoway dot mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@dropline": {
+   "cmd": "twoway dropline mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@fpfit": {
+   "cmd": "twoway fpfit mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@fpfitci": {
+   "cmd": "twoway fpfitci mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@function": {
+   "cmd": "twoway function y = x, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@histogram": {
+   "cmd": "twoway histogram mpg, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@kdensity": {
+   "cmd": "twoway kdensity mpg, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@lfit": {
+   "cmd": "twoway lfit mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@lfitci": {
+   "cmd": "twoway lfitci mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@line": {
+   "cmd": "twoway line mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@lowess": {
+   "cmd": "twoway lowess mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@lpoly": {
+   "cmd": "twoway lpoly mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@lpolyci": {
+   "cmd": "twoway lpolyci mpg weight, smoothplot(line) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "smoothplot@mband": {
+   "cmd": "twoway mband mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@mspline": {
+   "cmd": "twoway mspline mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pcarrow": {
+   "cmd": "twoway pcarrow mpg weight trunk turn, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pcarrowi": {
+   "cmd": "twoway pcarrowi 20 2000 30 4000, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pcbarrow": {
+   "cmd": "twoway pcbarrow mpg weight trunk turn, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pccapsym": {
+   "cmd": "twoway pccapsym mpg weight trunk turn, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pci": {
+   "cmd": "twoway pci 20 2000 30 4000, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pcscatter": {
+   "cmd": "twoway pcscatter mpg weight trunk turn, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@pcspike": {
+   "cmd": "twoway pcspike mpg weight trunk turn, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@qfit": {
+   "cmd": "twoway qfit mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@qfitci": {
+   "cmd": "twoway qfitci mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rarea": {
+   "cmd": "twoway rarea yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rbar": {
+   "cmd": "twoway rbar yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rcap": {
+   "cmd": "twoway rcap yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rcapsym": {
+   "cmd": "twoway rcapsym yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rconnected": {
+   "cmd": "twoway rconnected yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rline": {
+   "cmd": "twoway rline yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rscatter": {
+   "cmd": "twoway rscatter yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@rspike": {
+   "cmd": "twoway rspike yl yh weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@scatter": {
+   "cmd": "twoway scatter mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@scatteri": {
+   "cmd": "twoway scatteri 20 2000, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@spike": {
+   "cmd": "twoway spike mpg weight, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@tsline": {
+   "cmd": "twoway tsline mpg, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "smoothplot@tsrline": {
+   "cmd": "twoway tsrline yl yh, smoothplot(line) nodraw",
+   "message": "option smoothplot() not allowed",
+   "notes": [],
+   "rc": 198
+  }
+ },
+ "options": [
+  "atobs",
+  "nofit",
+  "fitplot",
+  "ciplot",
+  "smoothplot",
+  "estopts",
+  "predopts",
+  "estcmd"
+ ],
+ "points": {
+  "F01": {
+   "cmd": "lfit mpg weight, atobs",
+   "x": [
+    1760.0,
+    1800.0,
+    1800.0,
+    1830.0,
+    1930.0,
+    1980.0,
+    1990.0,
+    2020.0,
+    2040.0,
+    2050.0,
+    2070.0,
+    2110.0,
+    2120.0,
+    2130.0,
+    2160.0,
+    2200.0,
+    2200.0,
+    2230.0,
+    2240.0,
+    2280.0,
+    2370.0,
+    2410.0,
+    2520.0,
+    2580.0,
+    2640.0,
+    2650.0,
+    2650.0,
+    2670.0,
+    2690.0,
+    2730.0,
+    2750.0,
+    2750.0,
+    2830.0,
+    2830.0,
+    2930.0,
+    3170.0,
+    3180.0,
+    3200.0,
+    3210.0,
+    3220.0,
+    3250.0,
+    3260.0,
+    3280.0,
+    3300.0,
+    3310.0,
+    3330.0,
+    3350.0,
+    3370.0,
+    3370.0,
+    3400.0,
+    3420.0,
+    3420.0,
+    3430.0,
+    3470.0,
+    3600.0,
+    3600.0,
+    3670.0,
+    3690.0,
+    3690.0,
+    3700.0,
+    3720.0,
+    3740.0,
+    3830.0,
+    3880.0,
+    3900.0,
+    4030.0,
+    4060.0,
+    4060.0,
+    4080.0,
+    4130.0,
+    4290.0,
+    4330.0,
+    4720.0,
+    4840.0
+   ],
+   "y": [
+    28.864994049072266,
+    28.62464714050293,
+    28.62464714050293,
+    28.444387435913086,
+    27.843517303466797,
+    27.54308319091797,
+    27.482995986938477,
+    27.302736282348633,
+    27.18256187438965,
+    27.122474670410156,
+    27.002302169799805,
+    26.76195526123047,
+    26.701868057250977,
+    26.641780853271484,
+    26.461519241333008,
+    26.221172332763672,
+    26.221172332763672,
+    26.040912628173828,
+    25.980825424194336,
+    25.740478515625,
+    25.199695587158203,
+    24.959348678588867,
+    24.29839324951172,
+    23.9378719329834,
+    23.577350616455078,
+    23.517263412475586,
+    23.517263412475586,
+    23.3970890045166,
+    23.27691650390625,
+    23.03656768798828,
+    22.91639518737793,
+    22.91639518737793,
+    22.435699462890625,
+    22.435699462890625,
+    21.83483123779297,
+    20.392745971679688,
+    20.332658767700195,
+    20.212486267089844,
+    20.15239906311035,
+    20.09231185913086,
+    19.912052154541016,
+    19.851964950561523,
+    19.73179054260254,
+    19.611616134643555,
+    19.551530838012695,
+    19.43135643005371,
+    19.311182022094727,
+    19.191009521484375,
+    19.191009521484375,
+    19.0107479095459,
+    18.890575408935547,
+    18.890575408935547,
+    18.830488204956055,
+    18.590139389038086,
+    17.809011459350586,
+    17.809011459350586,
+    17.388402938842773,
+    17.26822853088379,
+    17.26822853088379,
+    17.20814323425293,
+    17.087968826293945,
+    16.96779441833496,
+    16.427013397216797,
+    16.12657928466797,
+    16.006404876708984,
+    15.225275993347168,
+    15.045015335083008,
+    15.045015335083008,
+    14.924840927124023,
+    14.624406814575195,
+    13.663017272949219,
+    13.422669410705566,
+    11.0792818069458,
+    10.35823917388916
+   ]
+  },
+  "F02": {
+   "cmd": "lfit mpg weight, estopts(noconstant)",
+   "x": [
+    1760.0,
+    3300.0,
+    4840.0
+   ],
+   "y": [
+    11.003565788269043,
+    20.631685256958008,
+    30.25980567932129
+   ]
+  },
+  "F03": {
+   "cmd": "fpfit mpg weight, estopts(degree(3))",
+   "x": [
+    1760.0,
+    1800.0,
+    1830.0,
+    1930.0,
+    1980.0,
+    1990.0,
+    2020.0,
+    2040.0,
+    2050.0,
+    2070.0,
+    2110.0,
+    2120.0,
+    2130.0,
+    2160.0,
+    2200.0,
+    2230.0,
+    2240.0,
+    2280.0,
+    2370.0,
+    2410.0,
+    2520.0,
+    2580.0,
+    2640.0,
+    2650.0,
+    2670.0,
+    2690.0,
+    2730.0,
+    2750.0,
+    2830.0,
+    2930.0,
+    3170.0,
+    3180.0,
+    3200.0,
+    3210.0,
+    3220.0,
+    3250.0,
+    3260.0,
+    3280.0,
+    3300.0,
+    3310.0,
+    3330.0,
+    3350.0,
+    3370.0,
+    3400.0,
+    3420.0,
+    3430.0,
+    3470.0,
+    3600.0,
+    3670.0,
+    3690.0,
+    3700.0,
+    3720.0,
+    3740.0,
+    3830.0,
+    3880.0,
+    3900.0,
+    4030.0,
+    4060.0,
+    4080.0,
+    4130.0,
+    4290.0,
+    4330.0,
+    4720.0,
+    4840.0
+   ],
+   "y": [
+    30.8033447265625,
+    30.383529663085938,
+    30.07037925720215,
+    29.039501190185547,
+    28.53290557861328,
+    28.432384490966797,
+    28.132522583007812,
+    27.934078216552734,
+    27.835311889648438,
+    27.638713836669922,
+    27.2493896484375,
+    27.15289306640625,
+    27.056737899780273,
+    26.770374298095703,
+    26.39361000061035,
+    26.114965438842773,
+    26.022851943969727,
+    25.658340454101562,
+    24.862119674682617,
+    24.519311904907227,
+    23.613309860229492,
+    23.142498016357422,
+    22.688566207885742,
+    22.614564895629883,
+    22.46799087524414,
+    22.323320388793945,
+    22.039697647094727,
+    21.90074920654297,
+    21.3640079498291,
+    20.735597610473633,
+    19.412281036376953,
+    19.36249351501465,
+    19.26412582397461,
+    19.215538024902344,
+    19.167346954345703,
+    19.025094985961914,
+    18.978443145751953,
+    18.886259078979492,
+    18.795549392700195,
+    18.750734329223633,
+    18.66217041015625,
+    18.574995040893555,
+    18.48917579650879,
+    18.362905502319336,
+    18.280309677124023,
+    18.239473342895508,
+    18.07908821105957,
+    17.586986541748047,
+    17.337244033813477,
+    17.267436981201172,
+    17.232759475708008,
+    17.163818359375,
+    17.095386505126953,
+    16.792190551757812,
+    16.62571144104004,
+    16.559221267700195,
+    16.12307357788086,
+    16.02020263671875,
+    15.950889587402344,
+    15.774496078491211,
+    15.167540550231934,
+    15.00226879119873,
+    12.921075820922852,
+    12.03956127166748
+   ]
+  },
+  "F04": {
+   "cmd": "lfitci mpg weight, estopts(noconstant)",
+   "hi": [
+    12.365762710571289,
+    12.584349632263184,
+    12.802935600280762,
+    13.021523475646973,
+    13.240110397338867,
+    13.458695411682129,
+    13.677282333374023,
+    13.895870208740234,
+    14.114456176757812,
+    14.333043098449707,
+    14.551630020141602,
+    14.77021598815918,
+    14.988802909851074,
+    15.207389831542969,
+    15.42597770690918,
+    15.644564628601074,
+    15.863149642944336,
+    16.081737518310547,
+    16.300323486328125,
+    16.518909454345703,
+    16.737497329711914,
+    16.956083297729492,
+    17.17466926574707,
+    17.39325714111328,
+    17.611845016479492,
+    17.83043098449707,
+    18.04901695251465,
+    18.26760482788086,
+    18.486190795898438,
+    18.70477867126465,
+    18.923362731933594,
+    19.141950607299805,
+    19.360538482666016,
+    19.579126358032227,
+    19.797712326049805,
+    20.01629638671875,
+    20.23488426208496,
+    20.45347023010254,
+    20.67205810546875,
+    20.890644073486328,
+    21.10923194885254,
+    21.327817916870117,
+    21.546405792236328,
+    21.764991760253906,
+    21.983577728271484,
+    22.202165603637695,
+    22.420751571655273,
+    22.63933753967285,
+    22.85792350769043,
+    23.07651138305664,
+    23.29509925842285,
+    23.513687133789062,
+    23.732271194458008,
+    23.95085906982422,
+    24.169445037841797,
+    24.388031005859375,
+    24.606618881225586,
+    24.825204849243164,
+    25.043790817260742,
+    25.262378692626953,
+    25.480966567993164,
+    25.699552536010742,
+    25.918140411376953,
+    26.13672637939453,
+    26.35531234741211,
+    26.573898315429688,
+    26.792484283447266,
+    27.011072158813477,
+    27.22966194152832,
+    27.448246002197266,
+    27.666831970214844,
+    27.885419845581055,
+    28.104005813598633,
+    28.322593688964844,
+    28.541179656982422,
+    28.759765625,
+    28.978351593017578,
+    29.196941375732422,
+    29.415525436401367,
+    29.634113311767578,
+    29.852699279785156,
+    30.071285247802734,
+    30.289875030517578,
+    30.508459091186523,
+    30.727048873901367,
+    30.945632934570312,
+    31.164220809936523,
+    31.38280487060547,
+    31.601394653320312,
+    31.819978713989258,
+    32.03856658935547,
+    32.25715255737305,
+    32.475738525390625,
+    32.69432830810547,
+    32.91291427612305,
+    33.131500244140625,
+    33.3500862121582,
+    33.56867599487305,
+    33.78725814819336,
+    34.0058479309082
+   ],
+   "lo": [
+    9.641368865966797,
+    9.811797142028809,
+    9.982224464416504,
+    10.152653694152832,
+    10.323081970214844,
+    10.493510246276855,
+    10.663938522338867,
+    10.834367752075195,
+    11.00479507446289,
+    11.175223350524902,
+    11.345651626586914,
+    11.51607894897461,
+    11.686507225036621,
+    11.856935501098633,
+    12.027364730834961,
+    12.197793006896973,
+    12.368221282958984,
+    12.538649559020996,
+    12.709077835083008,
+    12.879505157470703,
+    13.049933433532715,
+    13.220361709594727,
+    13.390789985656738,
+    13.561219215393066,
+    13.731647491455078,
+    13.902074813842773,
+    14.072503089904785,
+    14.242932319641113,
+    14.413360595703125,
+    14.583788871765137,
+    14.754215240478516,
+    14.924643516540527,
+    15.095073699951172,
+    15.265501976013184,
+    15.435930252075195,
+    15.606356620788574,
+    15.776784896850586,
+    15.947213172912598,
+    16.11764144897461,
+    16.288070678710938,
+    16.458498001098633,
+    16.62892723083496,
+    16.799354553222656,
+    16.969783782958984,
+    17.140213012695312,
+    17.310640335083008,
+    17.481069564819336,
+    17.6514949798584,
+    17.821924209594727,
+    17.992351531982422,
+    18.162782669067383,
+    18.333209991455078,
+    18.503637313842773,
+    18.67406463623047,
+    18.844493865966797,
+    19.014923095703125,
+    19.18535041809082,
+    19.35577964782715,
+    19.52620506286621,
+    19.696636199951172,
+    19.867063522338867,
+    20.037492752075195,
+    20.20792007446289,
+    20.37834930419922,
+    20.54877471923828,
+    20.71920394897461,
+    20.889633178710938,
+    21.060060501098633,
+    21.23048973083496,
+    21.400917053222656,
+    21.571346282958984,
+    21.74177360534668,
+    21.912202835083008,
+    22.082630157470703,
+    22.25305938720703,
+    22.423484802246094,
+    22.593914031982422,
+    22.76434326171875,
+    22.934770584106445,
+    23.105201721191406,
+    23.27562713623047,
+    23.446056365966797,
+    23.616485595703125,
+    23.78691291809082,
+    23.95734214782715,
+    24.127769470214844,
+    24.29819679260254,
+    24.468624114990234,
+    24.639053344726562,
+    24.809480667114258,
+    24.97991180419922,
+    25.150339126586914,
+    25.32076644897461,
+    25.491195678710938,
+    25.661623001098633,
+    25.83205223083496,
+    26.002479553222656,
+    26.172908782958984,
+    26.34333610534668,
+    26.513765335083008
+   ],
+   "x": [
+    1760.0,
+    1791.111083984375,
+    1822.22216796875,
+    1853.3333740234375,
+    1884.4444580078125,
+    1915.5555419921875,
+    1946.6666259765625,
+    1977.77783203125,
+    2008.888916015625,
+    2040.0,
+    2071.111083984375,
+    2102.22216796875,
+    2133.333251953125,
+    2164.4443359375,
+    2195.5556640625,
+    2226.666748046875,
+    2257.77783203125,
+    2288.888916015625,
+    2320.0,
+    2351.111083984375,
+    2382.22216796875,
+    2413.333251953125,
+    2444.4443359375,
+    2475.5556640625,
+    2506.666748046875,
+    2537.77783203125,
+    2568.888916015625,
+    2600.0,
+    2631.111083984375,
+    2662.22216796875,
+    2693.333251953125,
+    2724.4443359375,
+    2755.5556640625,
+    2786.666748046875,
+    2817.77783203125,
+    2848.888916015625,
+    2880.0,
+    2911.111083984375,
+    2942.22216796875,
+    2973.333251953125,
+    3004.4443359375,
+    3035.5556640625,
+    3066.666748046875,
+    3097.77783203125,
+    3128.888916015625,
+    3160.0,
+    3191.111083984375,
+    3222.22216796875,
+    3253.333251953125,
+    3284.4443359375,
+    3315.5556640625,
+    3346.666748046875,
+    3377.77783203125,
+    3408.888916015625,
+    3440.0,
+    3471.111083984375,
+    3502.22216796875,
+    3533.333251953125,
+    3564.4443359375,
+    3595.5556640625,
+    3626.666748046875,
+    3657.77783203125,
+    3688.888916015625,
+    3720.0,
+    3751.111083984375,
+    3782.22216796875,
+    3813.333251953125,
+    3844.4443359375,
+    3875.5556640625,
+    3906.666748046875,
+    3937.77783203125,
+    3968.888916015625,
+    4000.0,
+    4031.111083984375,
+    4062.22216796875,
+    4093.333251953125,
+    4124.4443359375,
+    4155.5556640625,
+    4186.66650390625,
+    4217.77783203125,
+    4248.888671875,
+    4280.0,
+    4311.111328125,
+    4342.22216796875,
+    4373.33349609375,
+    4404.4443359375,
+    4435.5556640625,
+    4466.66650390625,
+    4497.77783203125,
+    4528.888671875,
+    4560.0,
+    4591.111328125,
+    4622.22216796875,
+    4653.33349609375,
+    4684.4443359375,
+    4715.5556640625,
+    4746.66650390625,
+    4777.77783203125,
+    4808.888671875,
+    4840.0
+   ],
+   "y": [
+    11.003565788269043,
+    11.198073387145996,
+    11.392580032348633,
+    11.587088584899902,
+    11.781596183776855,
+    11.976102828979492,
+    12.170610427856445,
+    12.365118980407715,
+    12.559625625610352,
+    12.754133224487305,
+    12.948640823364258,
+    13.143147468566895,
+    13.337655067443848,
+    13.5321626663208,
+    13.72667121887207,
+    13.921178817749023,
+    14.11568546295166,
+    14.310193061828613,
+    14.504700660705566,
+    14.699207305908203,
+    14.893714904785156,
+    15.08822250366211,
+    15.282730102539062,
+    15.477238655090332,
+    15.671746253967285,
+    15.866252899169922,
+    16.060760498046875,
+    16.255268096923828,
+    16.44977569580078,
+    16.644283294677734,
+    16.838788986206055,
+    17.033296585083008,
+    17.227806091308594,
+    17.422313690185547,
+    17.6168212890625,
+    17.81132698059082,
+    18.005834579467773,
+    18.200342178344727,
+    18.39484977722168,
+    18.589357376098633,
+    18.783864974975586,
+    18.97837257385254,
+    19.172880172729492,
+    19.367387771606445,
+    19.5618953704834,
+    19.75640296936035,
+    19.950910568237305,
+    20.145416259765625,
+    20.339923858642578,
+    20.53443145751953,
+    20.728940963745117,
+    20.92344856262207,
+    21.11795425415039,
+    21.312461853027344,
+    21.506969451904297,
+    21.70147705078125,
+    21.895984649658203,
+    22.090492248535156,
+    22.284997940063477,
+    22.479507446289062,
+    22.674015045166016,
+    22.86852264404297,
+    23.063030242919922,
+    23.257537841796875,
+    23.452043533325195,
+    23.64655113220215,
+    23.8410587310791,
+    24.035566329956055,
+    24.23007583618164,
+    24.42458152770996,
+    24.619089126586914,
+    24.813596725463867,
+    25.00810432434082,
+    25.202611923217773,
+    25.397119522094727,
+    25.591625213623047,
+    25.7861328125,
+    25.980642318725586,
+    26.175148010253906,
+    26.369657516479492,
+    26.564163208007812,
+    26.758670806884766,
+    26.95318031311035,
+    27.147686004638672,
+    27.342195510864258,
+    27.536701202392578,
+    27.73120880126953,
+    27.92571449279785,
+    28.120223999023438,
+    28.314729690551758,
+    28.509239196777344,
+    28.703746795654297,
+    28.898252487182617,
+    29.092761993408203,
+    29.287267684936523,
+    29.48177719116211,
+    29.67628288269043,
+    29.870792388916016,
+    30.065298080444336,
+    30.25980567932129
+   ]
+  },
+  "F05": {
+   "cmd": "lfit mpg weight, predopts(residuals)",
+   "x": [
+    1760.0,
+    1800.0,
+    1800.0,
+    1830.0,
+    1930.0,
+    1980.0,
+    1990.0,
+    2020.0,
+    2040.0,
+    2050.0,
+    2070.0,
+    2110.0,
+    2120.0,
+    2130.0,
+    2160.0,
+    2200.0,
+    2200.0,
+    2230.0,
+    2240.0,
+    2280.0,
+    2370.0,
+    2410.0,
+    2520.0,
+    2580.0,
+    2640.0,
+    2650.0,
+    2650.0,
+    2670.0,
+    2690.0,
+    2730.0,
+    2750.0,
+    2750.0,
+    2830.0,
+    2830.0,
+    2930.0,
+    3170.0,
+    3180.0,
+    3200.0,
+    3210.0,
+    3220.0,
+    3250.0,
+    3260.0,
+    3280.0,
+    3300.0,
+    3310.0,
+    3330.0,
+    3350.0,
+    3370.0,
+    3370.0,
+    3400.0,
+    3420.0,
+    3420.0,
+    3430.0,
+    3470.0,
+    3600.0,
+    3600.0,
+    3670.0,
+    3690.0,
+    3690.0,
+    3700.0,
+    3720.0,
+    3740.0,
+    3830.0,
+    3880.0,
+    3900.0,
+    4030.0,
+    4060.0,
+    4060.0,
+    4080.0,
+    4130.0,
+    4290.0,
+    4330.0,
+    4720.0,
+    4840.0
+   ],
+   "y": [
+    -0.8649947643280029,
+    -0.6246472597122192,
+    5.37535285949707,
+    -2.4443867206573486,
+    -2.843518018722534,
+    2.456916332244873,
+    -2.482996702194214,
+    7.697263717651367,
+    13.817437171936035,
+    7.877524375915527,
+    -4.0023016929626465,
+    2.2380456924438477,
+    3.2981324195861816,
+    -5.641780853271484,
+    -3.461519956588745,
+    -1.221172571182251,
+    4.778827667236328,
+    -0.04091193899512291,
+    -0.9808250665664673,
+    -1.7404775619506836,
+    -2.1996958255767822,
+    -6.959348201751709,
+    1.7016072273254395,
+    -1.9378715753555298,
+    -1.577350378036499,
+    -2.517263412475586,
+    1.4827364683151245,
+    -5.397089958190918,
+    0.7230839729309082,
+    0.9634314775466919,
+    1.083605170249939,
+    -1.916394829750061,
+    -2.435699939727783,
+    -5.435699939727783,
+    0.16516882181167603,
+    -3.3927464485168457,
+    1.6673405170440674,
+    -1.2124857902526855,
+    -1.1523988246917725,
+    1.907688021659851,
+    0.08794860541820526,
+    8.148035049438477,
+    0.26820921897888184,
+    -0.6116170287132263,
+    -0.5515301823616028,
+    -1.431356430053711,
+    -2.311182737350464,
+    -0.19100897014141083,
+    -1.1910089254379272,
+    -0.010748369619250298,
+    0.1094253659248352,
+    -4.8905744552612305,
+    0.16951222717761993,
+    -0.5901402831077576,
+    -1.8090109825134277,
+    0.19098898768424988,
+    0.6115970611572266,
+    -1.2682292461395264,
+    0.7317708134651184,
+    0.7918576598167419,
+    -2.087968587875366,
+    0.03220514580607414,
+    -2.4270131587982178,
+    -0.1265787035226822,
+    -2.0064048767089844,
+    0.7747243046760559,
+    5.95498514175415,
+    -1.0450150966644287,
+    0.07515866309404373,
+    -0.6244069933891296,
+    7.336982727050781,
+    0.5773303508758545,
+    0.9207181930541992,
+    1.6417605876922607
+   ]
+  },
+  "F06": {
+   "cmd": "fpfitci mpg weight, estcmd(glm)",
+   "hi": [
+    33.518062591552734,
+    32.743648529052734,
+    32.201473236083984,
+    30.620222091674805,
+    29.950956344604492,
+    29.825916290283203,
+    29.466955184936523,
+    29.240142822265625,
+    29.130168914794922,
+    28.916526794433594,
+    28.511281967163086,
+    28.413908004760742,
+    28.317893981933594,
+    28.03704261779785,
+    27.676090240478516,
+    27.412975311279297,
+    27.32640838623047,
+    26.984642028808594,
+    26.234174728393555,
+    25.906391143798828,
+    25.019771575927734,
+    24.545663833618164,
+    24.079240798950195,
+    24.002321243286133,
+    23.849227905273438,
+    23.697154998779297,
+    23.396251678466797,
+    23.24749755859375,
+    22.66472053527832,
+    21.966691970825195,
+    20.455183029174805,
+    20.39780044555664,
+    20.28446388244629,
+    20.228515625,
+    20.17304801940918,
+    20.009552001953125,
+    19.95602798461914,
+    19.850444793701172,
+    19.7468204498291,
+    19.69574546813965,
+    19.595060348510742,
+    19.49633026123047,
+    19.399547576904297,
+    19.257993698120117,
+    19.166017532348633,
+    19.120738983154297,
+    18.94428825378418,
+    18.41982650756836,
+    18.16594696044922,
+    18.096750259399414,
+    18.062686920166016,
+    17.995594024658203,
+    17.929855346679688,
+    17.649749755859375,
+    17.504409790039062,
+    17.448171615600586,
+    17.106592178344727,
+    17.033178329467773,
+    16.985271453857422,
+    16.86896324157715,
+    16.5268497467041,
+    16.4477596282959,
+    15.784554481506348,
+    15.612980842590332
+   ],
+   "lo": [
+    27.44281768798828,
+    27.516265869140625,
+    27.520404815673828,
+    27.262392044067383,
+    27.000219345092773,
+    26.938865661621094,
+    26.739187240600586,
+    26.594398498535156,
+    26.5189208984375,
+    26.362510681152344,
+    26.031858444213867,
+    25.946279525756836,
+    25.85979461669922,
+    25.59609031677246,
+    25.238494873046875,
+    24.96890640258789,
+    24.879161834716797,
+    24.522254943847656,
+    23.741655349731445,
+    23.40814208984375,
+    22.539592742919922,
+    22.096067428588867,
+    21.672910690307617,
+    21.604280471801758,
+    21.468582153320312,
+    21.33492660522461,
+    21.07351303100586,
+    20.945640563964844,
+    20.451601028442383,
+    19.868623733520508,
+    18.581083297729492,
+    18.529754638671875,
+    18.42746925354004,
+    18.37649917602539,
+    18.325639724731445,
+    18.173667907714844,
+    18.12319564819336,
+    18.022499084472656,
+    17.922109603881836,
+    17.872018814086914,
+    17.772035598754883,
+    17.67229461669922,
+    17.572772979736328,
+    17.42387580871582,
+    17.32485008239746,
+    17.275405883789062,
+    17.078092575073242,
+    16.4422607421875,
+    16.104129791259766,
+    16.00819206237793,
+    15.960347175598145,
+    15.864911079406738,
+    15.769832611083984,
+    15.34681224822998,
+    15.11556625366211,
+    15.023882865905762,
+    14.440155029296875,
+    14.30860424041748,
+    14.221585273742676,
+    14.006457328796387,
+    13.341760635375977,
+    13.181288719177246,
+    11.734091758728027,
+    11.329787254333496
+   ],
+   "x": [
+    1760.0,
+    1800.0,
+    1830.0,
+    1930.0,
+    1980.0,
+    1990.0,
+    2020.0,
+    2040.0,
+    2050.0,
+    2070.0,
+    2110.0,
+    2120.0,
+    2130.0,
+    2160.0,
+    2200.0,
+    2230.0,
+    2240.0,
+    2280.0,
+    2370.0,
+    2410.0,
+    2520.0,
+    2580.0,
+    2640.0,
+    2650.0,
+    2670.0,
+    2690.0,
+    2730.0,
+    2750.0,
+    2830.0,
+    2930.0,
+    3170.0,
+    3180.0,
+    3200.0,
+    3210.0,
+    3220.0,
+    3250.0,
+    3260.0,
+    3280.0,
+    3300.0,
+    3310.0,
+    3330.0,
+    3350.0,
+    3370.0,
+    3400.0,
+    3420.0,
+    3430.0,
+    3470.0,
+    3600.0,
+    3670.0,
+    3690.0,
+    3700.0,
+    3720.0,
+    3740.0,
+    3830.0,
+    3880.0,
+    3900.0,
+    4030.0,
+    4060.0,
+    4080.0,
+    4130.0,
+    4290.0,
+    4330.0,
+    4720.0,
+    4840.0
+   ],
+   "y": [
+    30.480440139770508,
+    30.12995719909668,
+    29.860939025878906,
+    28.941307067871094,
+    28.475587844848633,
+    28.38239097595215,
+    28.103071212768555,
+    27.91727066040039,
+    27.82454490661621,
+    27.63951873779297,
+    27.271570205688477,
+    27.18009376525879,
+    27.088844299316406,
+    26.816566467285156,
+    26.457292556762695,
+    26.190940856933594,
+    26.102785110473633,
+    25.753448486328125,
+    24.9879150390625,
+    24.65726661682129,
+    23.779682159423828,
+    23.320865631103516,
+    22.876075744628906,
+    22.803300857543945,
+    22.658905029296875,
+    22.516040802001953,
+    22.234882354736328,
+    22.096569061279297,
+    21.55816078186035,
+    20.91765785217285,
+    19.51813316345215,
+    19.463777542114258,
+    19.355966567993164,
+    19.302507400512695,
+    19.249343872070312,
+    19.091609954833984,
+    19.03961181640625,
+    18.936471939086914,
+    18.83446502685547,
+    18.78388214111328,
+    18.683547973632812,
+    18.584312438964844,
+    18.486160278320312,
+    18.34093475341797,
+    18.245433807373047,
+    18.19807243347168,
+    18.01119041442871,
+    17.43104362487793,
+    17.135038375854492,
+    17.052471160888672,
+    17.011516571044922,
+    16.930252075195312,
+    16.849843978881836,
+    16.498281478881836,
+    16.309988021850586,
+    16.236026763916016,
+    15.7733736038208,
+    15.670891761779785,
+    15.603428840637207,
+    15.437710762023926,
+    14.934305191040039,
+    14.81452465057373,
+    13.759323120117188,
+    13.471384048461914
+   ]
+  },
+  "F07": {
+   "cmd": "qfitci mpg weight [aw=trunk], estopts(noconstant) level(90)",
+   "hi": [
+    22.969404220581055,
+    23.147409439086914,
+    23.317541122436523,
+    23.47981071472168,
+    23.63422203063965,
+    23.78078269958496,
+    23.91949462890625,
+    24.05036735534668,
+    24.17340660095215,
+    24.288623809814453,
+    24.396020889282227,
+    24.4956111907959,
+    24.58740234375,
+    24.671403884887695,
+    24.74762725830078,
+    24.816082000732422,
+    24.876781463623047,
+    24.92974090576172,
+    24.9749698638916,
+    25.012487411499023,
+    25.042308807373047,
+    25.064451217651367,
+    25.07893180847168,
+    25.085771560668945,
+    25.084993362426758,
+    25.07662010192871,
+    25.060678482055664,
+    25.037195205688477,
+    25.006200790405273,
+    24.967723846435547,
+    24.92180061340332,
+    24.868473052978516,
+    24.807775497436523,
+    24.739755630493164,
+    24.664457321166992,
+    24.581933975219727,
+    24.49224090576172,
+    24.39543342590332,
+    24.29157829284668,
+    24.180744171142578,
+    24.062997817993164,
+    23.938419342041016,
+    23.807092666625977,
+    23.66910171508789,
+    23.524539947509766,
+    23.373498916625977,
+    23.216081619262695,
+    23.052387237548828,
+    22.882518768310547,
+    22.706586837768555,
+    22.52469253540039,
+    22.336944580078125,
+    22.14344024658203,
+    21.94428253173828,
+    21.73956298828125,
+    21.52936553955078,
+    21.31376838684082,
+    21.092836380004883,
+    20.86663055419922,
+    20.635190963745117,
+    20.398557662963867,
+    20.156747817993164,
+    19.909774780273438,
+    19.657636642456055,
+    19.400325775146484,
+    19.13782501220703,
+    18.87010383605957,
+    18.597131729125977,
+    18.31886863708496,
+    18.035280227661133,
+    17.74631690979004,
+    17.45193099975586,
+    17.15207862854004,
+    16.846710205078125,
+    16.53577423095703,
+    16.21923065185547,
+    15.897028923034668,
+    15.569125175476074,
+    15.235482215881348,
+    14.896050453186035,
+    14.550803184509277,
+    14.199690818786621,
+    13.84268569946289,
+    13.47976016998291,
+    13.110873222351074,
+    12.736005783081055,
+    12.355121612548828,
+    11.968204498291016,
+    11.57522201538086,
+    11.176161766052246,
+    10.770991325378418,
+    10.359698295593262,
+    9.942269325256348,
+    9.518677711486816,
+    9.08891773223877,
+    8.652962684631348,
+    8.210813522338867,
+    7.762441635131836,
+    7.307849884033203,
+    6.847012519836426
+   ],
+   "lo": [
+    20.302114486694336,
+    20.474069595336914,
+    20.63947868347168,
+    20.798337936401367,
+    20.950639724731445,
+    21.09638023376465,
+    21.235549926757812,
+    21.368146896362305,
+    21.49416160583496,
+    21.61358642578125,
+    21.726411819458008,
+    21.832632064819336,
+    21.932235717773438,
+    22.02521324157715,
+    22.111557006835938,
+    22.19124984741211,
+    22.264286041259766,
+    22.330646514892578,
+    22.390321731567383,
+    22.443296432495117,
+    22.489551544189453,
+    22.529069900512695,
+    22.56183433532715,
+    22.587827682495117,
+    22.607019424438477,
+    22.619394302368164,
+    22.624921798706055,
+    22.623579025268555,
+    22.615331649780273,
+    22.600147247314453,
+    22.5779972076416,
+    22.548839569091797,
+    22.512632369995117,
+    22.469335556030273,
+    22.418901443481445,
+    22.361276626586914,
+    22.296409606933594,
+    22.2242374420166,
+    22.14470100402832,
+    22.05773162841797,
+    21.963254928588867,
+    21.861194610595703,
+    21.7514705657959,
+    21.633995056152344,
+    21.508678436279297,
+    21.37542152404785,
+    21.234128952026367,
+    21.084697723388672,
+    20.927024841308594,
+    20.761003494262695,
+    20.586524963378906,
+    20.403488159179688,
+    20.2117919921875,
+    20.011333465576172,
+    19.802024841308594,
+    19.583778381347656,
+    19.356515884399414,
+    19.12017250061035,
+    18.874691009521484,
+    18.620023727416992,
+    18.356138229370117,
+    18.0830135345459,
+    17.800640106201172,
+    17.50901222229004,
+    17.208145141601562,
+    16.898056030273438,
+    16.578767776489258,
+    16.25031852722168,
+    15.912735939025879,
+    15.566072463989258,
+    15.210370063781738,
+    14.845671653747559,
+    14.472029685974121,
+    14.08948802947998,
+    13.698094367980957,
+    13.297897338867188,
+    12.888943672180176,
+    12.471270561218262,
+    12.04493236541748,
+    11.609957695007324,
+    11.166396141052246,
+    10.71427059173584,
+    10.253623962402344,
+    9.78449535369873,
+    9.306900978088379,
+    8.820884704589844,
+    8.326457977294922,
+    7.8236613273620605,
+    7.312503814697266,
+    6.7930216789245605,
+    6.2652201652526855,
+    5.729126930236816,
+    5.184768199920654,
+    4.632144451141357,
+    4.071288108825684,
+    3.5021960735321045,
+    2.9249002933502197,
+    2.339395761489868,
+    1.745712399482727,
+    1.143843173980713
+   ],
+   "x": [
+    1760.0,
+    1791.111083984375,
+    1822.22216796875,
+    1853.3333740234375,
+    1884.4444580078125,
+    1915.5555419921875,
+    1946.6666259765625,
+    1977.77783203125,
+    2008.888916015625,
+    2040.0,
+    2071.111083984375,
+    2102.22216796875,
+    2133.333251953125,
+    2164.4443359375,
+    2195.5556640625,
+    2226.666748046875,
+    2257.77783203125,
+    2288.888916015625,
+    2320.0,
+    2351.111083984375,
+    2382.22216796875,
+    2413.333251953125,
+    2444.4443359375,
+    2475.5556640625,
+    2506.666748046875,
+    2537.77783203125,
+    2568.888916015625,
+    2600.0,
+    2631.111083984375,
+    2662.22216796875,
+    2693.333251953125,
+    2724.4443359375,
+    2755.5556640625,
+    2786.666748046875,
+    2817.77783203125,
+    2848.888916015625,
+    2880.0,
+    2911.111083984375,
+    2942.22216796875,
+    2973.333251953125,
+    3004.4443359375,
+    3035.5556640625,
+    3066.666748046875,
+    3097.77783203125,
+    3128.888916015625,
+    3160.0,
+    3191.111083984375,
+    3222.22216796875,
+    3253.333251953125,
+    3284.4443359375,
+    3315.5556640625,
+    3346.666748046875,
+    3377.77783203125,
+    3408.888916015625,
+    3440.0,
+    3471.111083984375,
+    3502.22216796875,
+    3533.333251953125,
+    3564.4443359375,
+    3595.5556640625,
+    3626.666748046875,
+    3657.77783203125,
+    3688.888916015625,
+    3720.0,
+    3751.111083984375,
+    3782.22216796875,
+    3813.333251953125,
+    3844.4443359375,
+    3875.5556640625,
+    3906.666748046875,
+    3937.77783203125,
+    3968.888916015625,
+    4000.0,
+    4031.111083984375,
+    4062.22216796875,
+    4093.333251953125,
+    4124.4443359375,
+    4155.5556640625,
+    4186.66650390625,
+    4217.77783203125,
+    4248.888671875,
+    4280.0,
+    4311.111328125,
+    4342.22216796875,
+    4373.33349609375,
+    4404.4443359375,
+    4435.5556640625,
+    4466.66650390625,
+    4497.77783203125,
+    4528.888671875,
+    4560.0,
+    4591.111328125,
+    4622.22216796875,
+    4653.33349609375,
+    4684.4443359375,
+    4715.5556640625,
+    4746.66650390625,
+    4777.77783203125,
+    4808.888671875,
+    4840.0
+   ],
+   "y": [
+    21.635759353637695,
+    21.810739517211914,
+    21.9785099029541,
+    22.139074325561523,
+    22.292430877685547,
+    22.438581466674805,
+    22.57752227783203,
+    22.709257125854492,
+    22.833784103393555,
+    22.95110511779785,
+    23.061216354370117,
+    23.164121627807617,
+    23.25981903076172,
+    23.348308563232422,
+    23.42959213256836,
+    23.503665924072266,
+    23.570533752441406,
+    23.63019371032715,
+    23.682645797729492,
+    23.72789192199707,
+    23.76593017578125,
+    23.79676055908203,
+    23.820383071899414,
+    23.83679962158203,
+    23.846006393432617,
+    23.848007202148438,
+    23.84280014038086,
+    23.830387115478516,
+    23.810766220092773,
+    23.783935546875,
+    23.74989891052246,
+    23.708656311035156,
+    23.66020393371582,
+    23.60454559326172,
+    23.54167938232422,
+    23.47160530090332,
+    23.394325256347656,
+    23.30983543395996,
+    23.2181396484375,
+    23.119237899780273,
+    23.013126373291016,
+    22.89980697631836,
+    22.779281616210938,
+    22.651548385620117,
+    22.51660919189453,
+    22.374460220336914,
+    22.22510528564453,
+    22.06854248046875,
+    21.90477180480957,
+    21.733795166015625,
+    21.55560874938965,
+    21.370216369628906,
+    21.177616119384766,
+    20.977807998657227,
+    20.770793914794922,
+    20.55657196044922,
+    20.335142135620117,
+    20.106504440307617,
+    19.87066078186035,
+    19.627607345581055,
+    19.377347946166992,
+    19.11988067626953,
+    18.855207443237305,
+    18.583324432373047,
+    18.304235458374023,
+    18.017940521240234,
+    17.724435806274414,
+    17.423725128173828,
+    17.115802764892578,
+    16.800676345825195,
+    16.478343963623047,
+    16.148801803588867,
+    15.812054634094238,
+    15.468098640441895,
+    15.116934776306152,
+    14.758563995361328,
+    14.392986297607422,
+    14.020197868347168,
+    13.640207290649414,
+    13.25300407409668,
+    12.858599662780762,
+    12.45698070526123,
+    12.048154830932617,
+    11.63212776184082,
+    11.208887100219727,
+    10.77844524383545,
+    10.340789794921875,
+    9.895933151245117,
+    9.443862915039062,
+    8.984591484069824,
+    8.518105506896973,
+    8.044412612915039,
+    7.56351900100708,
+    7.075410842895508,
+    6.580102920532227,
+    6.077579498291016,
+    5.567856788635254,
+    5.0509185791015625,
+    4.52678108215332,
+    3.9954278469085693
+   ]
+  },
+  "F08": {
+   "cmd": "lfit mpg weight if foreign, estopts(noconstant) n(5)",
+   "x": [
+    1760.0,
+    2175.0,
+    2590.0,
+    3005.0,
+    3420.0
+   ],
+   "y": [
+    17.625850677490234,
+    21.78194808959961,
+    25.93804359436035,
+    30.094139099121094,
+    34.2502326965332
+   ]
+  }
+ },
+ "refusals": {
+  "atobs_range": {
+   "cmd": "twoway lfit mpg weight, atobs range(1000 5000) nodraw",
+   "message": "may not combine atobs with range()",
+   "notes": [],
+   "rc": 198
+  },
+  "atobs_twice": {
+   "cmd": "twoway lfit mpg weight, atobs atobs nodraw",
+   "message": "option atobs not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "ciplot_bogus": {
+   "cmd": "twoway lfitci mpg weight, ciplot(bogus) nodraw",
+   "message": "",
+   "notes": [
+    "(note:  named style bogus not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "ciplot_sc": {
+   "cmd": "twoway lfitci mpg weight, ciplot(sc) nodraw",
+   "message": "",
+   "notes": [
+    "(note:  named style sc not found in class y2xtype, default attributes used)",
+    "(note:  y2xtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "ciplot_twice": {
+   "cmd": "twoway lfitci mpg weight, ciplot(rcap) ciplot(rarea) nodraw",
+   "message": "option ciplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "estcmd_bogus": {
+   "cmd": "twoway fpfit mpg weight, estcmd(bogus) nodraw",
+   "message": "",
+   "notes": [
+    "(note:  fracpoly could not fit model)"
+   ],
+   "rc": 0
+  },
+  "estopts_bogus": {
+   "cmd": "twoway lfit mpg weight, estopts(bogus) nodraw",
+   "message": "invalid syntax",
+   "notes": [
+    "(note:  regress could not fit model)"
+   ],
+   "rc": 198
+  },
+  "estopts_twice": {
+   "cmd": "twoway lfit mpg weight, estopts(noconstant) estopts(noconstant) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  },
+  "fitplot_bogus": {
+   "cmd": "twoway lfitci mpg weight, fitplot(bogus) nodraw",
+   "message": "",
+   "notes": [
+    "(note:  named style bogus not found in class yxtype, default attributes used)",
+    "(note:  yxtype not found in scheme, default attributes used)"
+   ],
+   "rc": 0
+  },
+  "fitplot_twice": {
+   "cmd": "twoway lfitci mpg weight, fitplot(scatter) fitplot(line) nodraw",
+   "message": "option fitplot() not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "nofit_twice": {
+   "cmd": "twoway lfitci mpg weight, nofit nofit nodraw",
+   "message": "option nofit not allowed",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts_resid_range": {
+   "cmd": "twoway lfit mpg weight, predopts(residuals) range(1000 5000) nodraw",
+   "message": "may not combine residuals with range()",
+   "notes": [],
+   "rc": 198
+  },
+  "predopts_stdp_range": {
+   "cmd": "twoway lfit mpg weight, predopts(stdp) range(1000 5000) nodraw",
+   "message": "",
+   "notes": [],
+   "rc": 0
+  }
+ },
+ "types": [
+  "scatter",
+  "line",
+  "connected",
+  "area",
+  "bar",
+  "spike",
+  "dropline",
+  "dot",
+  "tsline",
+  "tsrline",
+  "rarea",
+  "rbar",
+  "rspike",
+  "rcap",
+  "rline",
+  "rconnected",
+  "rcapsym",
+  "rscatter",
+  "pcspike",
+  "pccapsym",
+  "pcarrow",
+  "pcbarrow",
+  "pcscatter",
+  "pci",
+  "pcarrowi",
+  "scatteri",
+  "lfit",
+  "qfit",
+  "lfitci",
+  "qfitci",
+  "fpfit",
+  "fpfitci",
+  "lowess",
+  "lpoly",
+  "lpolyci",
+  "mspline",
+  "mband",
+  "kdensity",
+  "histogram",
+  "function"
+ ]
+}

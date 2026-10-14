@@ -731,7 +731,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # twoway's own reading of mlabvposition().
     # 17 -> 18: WP-30 P1.10's _dash_at_opts reads a text() copy's
     # sub-options with twoway's own syntax statements.
-    assert len(with_syntax) == 18, with_syntax
+    # 18 -> 19: C4 WP-31's _dash_fit_points declares the arguments it
+    # hands twoway's fit generators.
+    assert len(with_syntax) == 19, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
@@ -768,7 +770,8 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 134 -> 137: C1 the note on the mangle/barbsize/headlabel sreturn
     # lines (three).
     # 137 -> 139: A4 the note on the mlalign pending line (two).
-    assert comments == {"_dash_parse_plot_opts": 139,
+    # 139 -> 144: C4 the note on the fit options' sreturn lines (five).
+    assert comments == {"_dash_parse_plot_opts": 144,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

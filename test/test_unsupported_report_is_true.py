@@ -192,6 +192,8 @@ def _graph_pending():
 # meaningful comparison is present against absent -- and a flag has no
 # default value to be confused with, so that comparison has no trap.
 FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
+         # WP-31 C4: the fit flags.
+         "atobs", "nofit",
          "frequency", "horizontal", "nodraw", "percent", "sort", "vertical",
          # WP-22: twoway's advanced options, declared XOVERHANGs/YOVERHANGs.
          "xoverhangs", "yoverhangs",
@@ -442,6 +444,10 @@ NOT_IN_FILE = {
               "file is the same with or without it, so it is pinned by "
               "reading the ado (test_nodraw_is_still_read_by_the_launch_"
               "decision) and certified by test_nodraw_honoured.cscript",
+    "smoothplot": "lpolyci's, declared by twoway_lpolyci_parse.class and "
+                  "never read: twoway draws the graph without it "
+                  "(fit_options_truth.json; WP-31 C4), so dash takes it "
+                  "and writes nothing (test_wp31_truth.cscript U11-04)",
     "replace": "lets saving() write over a file that exists (WP-27); the "
                "page is the same with or without it, so it is certified by "
                "test_path_validation.cscript PV-22..27",
@@ -461,7 +467,22 @@ NOT_IN_FILE = {
 #: colorvar, xlabel2 without a layer on the second axis) is probed in it.
 _CV = {"colorvar": "price"}
 _ML = {"mlabel": "foreign"}
+_FP_A = {"x": [2000.0, 3000.0], "y": [20.0, 25.0], "nobs": 10}
+_FP_B = {"x": [2000.0, 3000.0], "y": [18.0, 27.0], "nobs": 10}
 LIVE_VALUES = {
+    # WP-31 C4: the fit options, drawn (test_fit_options.py).  atobs and
+    # nofit are flags; estopts(), predopts() and estcmd() change the page
+    # through the points Stata computed for them, which dash.ado writes.
+    "atobs": ({"atobs": "atobs"}, {}, "lfit", {}),
+    "nofit": ({"nofit": "nofit"}, {}, "lfitci", {}),
+    "fitplot": ({"fitplot": "scatter"}, {"fitplot": "line"}, "lfitci", {}),
+    "ciplot": ({"ciplot": "rcap"}, {"ciplot": "rarea"}, "lfitci", {}),
+    "estopts": ({"estopts": "noconstant", "points": _FP_A},
+                {"estopts": "noconstant", "points": _FP_B}, "lfit", {}),
+    "predopts": ({"predopts": "stdp", "points": _FP_A},
+                 {"predopts": "stdp", "points": _FP_B}, "lfit", {}),
+    "estcmd": ({"estcmd": "glm", "points": _FP_A},
+               {"estcmd": "glm", "points": _FP_B}, "fpfit", {}),
     # WP-31 C1: the arrowhead's half-angle, barb depth and label place,
     # drawn on pcarrow (test_arrowheads.py).
     "mangle": ({"mangle": "45"}, {}, "pcarrow", {}),
@@ -747,7 +768,9 @@ class TestEveryDeclaredOptionIsClassified:
         # 196 -> 199: C1 mangle barbsize headlabel declared; 199 -> 200: C2
         # mwidth declared
         # 200 -> 201: A4 mlalign declared
-        assert len(_declared_plot()) == 201, len(_declared_plot())
+        # 201 -> 209: C4 atobs estopts predopts estcmd fitplot ciplot
+        # smoothplot nofit declared
+        assert len(_declared_plot()) == 209, len(_declared_plot())
         assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

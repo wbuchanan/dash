@@ -40,7 +40,9 @@ _E = float(dr._STATA_EPOCH_UNIX_MS)
 #: The D-10.a keys every fit config carries.
 _KEYS = {"type", "xvar", "yvar", "wvar", "wtype", "wneg", "xdatekind",
          "ydatekind", "wdatekind", "xaxiskind", "yaxiskind", "cols", "n",
-         "range"}
+         "range",
+         # WP-31 C4: atobs, the grid of the kept x (S16 reads it).
+         "atobs"}
 
 _RNG = np.random.default_rng(20261013)
 #: Thirty rows with a spread x, a noisy quadratic y and positive integer

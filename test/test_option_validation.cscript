@@ -343,6 +343,10 @@
 *!   U09-7  yaxis(3) on scatter, line, bar, rarea and histogram: rc 0 as
 *!          twoway
 *!   U09-8  yaxis(1 2) still taken as twoway takes it (WP-31 C10b guard)
+*! The fit options (WP-31 C4; test/fixtures/fit_options_truth.json):
+*!   U11-07 nofit and atobs on scatter, estopts() on lpolyci, atobs on
+*!          fpfit, estcmd() on lfit: twoway's rc and line; atobs on
+*!          fpfitci and smoothplot() on lpolyci taken
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1887,6 +1891,25 @@ if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
     local bad `"`bad' [yaxis(1 2): twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
 }
 _u05_judge U09-8 `"`bad'"' "yaxis(1 2) taken as twoway takes it"
+
+// U11-07: the fit options where twoway refuses them, in its words, and
+// where it takes them (WP-31 C4).
+local bad ""
+foreach c in "scatter mpg weight, nofit|option nofit not allowed" "scatter mpg weight, atobs|option atobs not allowed" "lpolyci mpg weight, estopts(noconstant)|option estopts() not allowed" "fpfit mpg weight, atobs|option atobs not allowed" "lfit mpg weight, estcmd(regress)|option estcmd() not allowed" "lfitci mpg weight, smoothplot(line)|option smoothplot() not allowed" {
+    gettoken cmd msg : c, parse("|")
+    local msg = substr(`"`msg'"', 2, .)
+    _u05_rc `"`cmd'"' `"`msg'"'
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`cmd': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+foreach c in "fpfitci mpg weight, atobs" "lpolyci mpg weight, smoothplot(scatter)" "lfitci mpg weight, nofit" {
+    _u05_rc `"`c'"' ""
+    if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+    }
+}
+_u05_judge U11-07 `"`bad'"' "the fit options refused where twoway refuses them, in its words, and taken in silence where it takes them"
 
 // ----------------------------------------------------------------
 // Summary

@@ -4252,6 +4252,12 @@ def _dash_lone_second_axes(spec):
     return out
 
 
+#: The fit types whose points dash.ado computes in Stata when estopts(),
+#: predopts() or estcmd() is given (WP-31 C4).
+_DASH_FIT_POINT_TYPES = ("lfit", "qfit", "lfitci", "qfitci", "fpfit",
+                         "fpfitci")
+
+
 def _dash_attach_function_points(spec):
     """The spec with each function layer's stored points on its plot.
 
@@ -4265,9 +4271,10 @@ def _dash_attach_function_points(spec):
 
     A graph is named by ``graph_options.name``, else ``name``, else ""
     (the one-line form's graph); only the first graph of a name takes a
-    table.  A key that is not 1-4 ASCII digits, a place past the plots, a
-    plot that is not a function, and a table that is not a dict are
-    ignored.  The points themselves are checked where they are drawn
+    table.  A fit layer drawn with estopts(), predopts() or estcmd()
+    (``_DASH_FIT_POINT_TYPES``) takes its points in its options (WP-31
+    C4).  A key that is not 1-4 ASCII digits, a place past the plots, a
+    plot of another type, and a table that is not a dict are ignored.  The points themselves are checked where they are drawn
     (``_dash_function_points``).  The input is never mutated; the copy has
     no ``"function_points"``.
     """
@@ -4302,9 +4309,20 @@ def _dash_attach_function_points(spec):
             if not 1 <= k <= len(plots):
                 continue
             p = plots[k - 1]
-            if not isinstance(p, dict) or str(p.get("type", "")).lower() != "function":
+            if not isinstance(p, dict):
                 continue
-            plots[k - 1] = dict(p, points=val)
+            pt = str(p.get("type", "")).lower()
+            if pt == "function":
+                plots[k - 1] = dict(p, points=val)
+            elif pt in _DASH_FIT_POINT_TYPES:
+                # A fit drawn with estopts(), predopts() or estcmd(): the
+                # points go to its options, where the mapper reads them
+                # (WP-31 C4, _dash_fit_points_of).
+                po = p.get("options")
+                plots[k - 1] = dict(p, options=dict(
+                    po if isinstance(po, dict) else {}, points=val))
+            else:
+                continue
             changed = True
         if changed:
             graphs[gi] = dict(g, plots=plots)
@@ -12674,6 +12692,7 @@ class GlyphMapper:
         line_width: "float | None" = None,
         band_source: "ColumnDataSource | None" = None,
         alpha_kw: "dict | None" = None,
+        color_idx: int = 0,
     ) -> "tuple[Any, Any]":
         """Render a confidence-interval band, its outline and its fit line.
 
@@ -12702,32 +12721,68 @@ class GlyphMapper:
                      than the line's (lpolyci: a band only where the
                      standard error is defined, WP-29 P0.9); *source*
                      when None.
+            color_idx: The layer's style index, for a band or line drawn
+                     as another type by ciplot() or fitplot() (WP-31 C4).
 
         Returns:
             A ``(line_renderer, band_renderer)`` tuple; the outline is
             ``band_renderer._dash_ci_outline``.
         """
-        band_r, _outline_r = self._ci_band_glyphs(
-            fig, source if band_source is None else band_source, x_col,
-            lo_col, hi_col, options)
-        # The fit line by connect() (WP-30 P1.8a).  A band drawn from the
-        # same source steps with it, as twoway's band does under c(J).
-        line_r = _dash_join_glyph(self, fig, options, dict(
-            x=x_col, y=y_col, source=source,
-            line_color=color,
-            line_width=(self.scheme.default_line_width if line_width is None
-                        else line_width),
-            legend_label=yvar,
-            **(alpha_kw or {}),
-        ), role=False)
-        self._ci_line_restyle(line_r, options)
-        # pstyle() and p() are read by _ci_pstyle alone: never a shadow
-        # (pstyle() is first, and p()'s options were dropped at the spec)
-        # and never noted twice (WP-30 P1.14a, TR-32.11).
-        _nopstyle = {k: v for k, v in (options or {}).items()
-                     if k not in ("pstyle", "p")}
-        self._apply_line_opts(line_r, _nopstyle)
-        _dash_join_hide(line_r, options)
+        opts = options or {}
+        # ciplot() and fitplot() (WP-31 C4): the band and the line drawn as
+        # the type named, which dash.ado has canonicalised (rarea and line,
+        # twoway's defaults, are drawn as before).  nofit: the band alone,
+        # keyed alone (fit_options_truth.json; twoway_lfitci_parse.class
+        # .fit = 0).
+        _ciplot = str(opts.get("ciplot", "") or "").strip()
+        _fitplot = str(opts.get("fitplot", "") or "").strip()
+        _nofit = bool(str(opts.get("nofit", "") or "").strip())
+        _bsrc = source if band_source is None else band_source
+        band_r = None
+        if _ciplot and _ciplot != "rarea":
+            _b_before = len(fig.renderers)
+            band_r = self._dash_draw_range_as(
+                fig, _bsrc, x_col, lo_col, hi_col, _ciplot, opts, color_idx)
+            # Keyed as the band, whatever glyphs the type drew.
+            for _r in fig.renderers[_b_before:]:
+                _r._dash_ci_band = True
+        if band_r is None:
+            band_r, _outline_r = self._ci_band_glyphs(
+                fig, _bsrc, x_col, lo_col, hi_col, options)
+        line_r = None
+        _l_before = len(fig.renderers)
+        if _fitplot and _fitplot != "line":
+            line_r = self._dash_draw_xy_as(
+                fig, source, x_col, y_col, _fitplot,
+                {k: v for k, v in opts.items()
+                 if k not in self._FIT_DRAW_KEYS}, color_idx)
+        if line_r is None:
+            # The fit line by connect() (WP-30 P1.8a).  A band drawn from
+            # the same source steps with it, as twoway's band does under
+            # c(J).
+            _lkw = dict(
+                x=x_col, y=y_col, source=source,
+                line_color=color,
+                line_width=(self.scheme.default_line_width
+                            if line_width is None else line_width),
+                **(alpha_kw or {}))
+            # Keyed even under nofit, so the figure has its legend: the
+            # hidden line takes no key (_dash_legend_keys), the band does.
+            _lkw["legend_label"] = yvar
+            line_r = _dash_join_glyph(self, fig, options, _lkw, role=False)
+            self._ci_line_restyle(line_r, options)
+            # pstyle() and p() are read by _ci_pstyle alone: never a shadow
+            # (pstyle() is first, and p()'s options were dropped at the
+            # spec) and never noted twice (WP-30 P1.14a, TR-32.11).
+            _nopstyle = {k: v for k, v in opts.items()
+                         if k not in ("pstyle", "p")}
+            self._apply_line_opts(line_r, _nopstyle)
+            _dash_join_hide(line_r, options)
+        if _nofit:
+            # After every style edit, so none can show it again.
+            for _r in fig.renderers[_l_before:]:
+                _r.visible = False
+                _r._dash_nofit = True
         return line_r, band_r
 
     #: The pstyle() names a ci layer is drawn in besides p1..p15, spelled
@@ -16502,6 +16557,87 @@ class GlyphMapper:
                      legend_label=yvar), role=None)
         return r
 
+    def _fit_points_draw(self, fig, ptype, xvar, yvar, options, color_idx,
+                         nrows):
+        """Draw a fit layer from the points Stata computed (WP-31 C4), or
+        return None when *options* carries none.
+
+        dash.ado runs estopts(), predopts() and estcmd() through twoway's
+        own estimation at registration (_dash_fit_points) and writes the
+        points (``_dash_fit_points_of``).  They are drawn as the mapper
+        draws its own fit -- the line through ``_dash_join_glyph`` or a
+        recast() target, a ci type's band and line through
+        ``_render_ci_band`` -- and never refitted: no Python estimator
+        runs, and the renderers carry no ``_dash_agg_*`` tag, so the saved
+        page does not refit them either (maintainer decision D3).  Each
+        renderer is marked ``_dash_points_frozen``; the figure builder tags
+        the layer with the stale cue's kind "fit".  When the layer holds
+        fewer rows than Stata's sample (*nrows* against ``nobs``: a filter
+        move in the served app) one note says the layer is drawn as
+        registered.  Points that cannot be read draw the layer empty, with
+        a note.
+        """
+        pts = _dash_fit_points_of(options)
+        if pts is None:
+            return None
+        ci = ptype in ("lfitci", "qfitci", "fpfitci")
+        _name = "estopts()/predopts()/estcmd()"
+        if pts is False:
+            _dash_warn_once(
+                ("fit-points-bad", ptype, str(yvar), str(xvar)),
+                f"dash: {ptype} with {_name}: the points Stata computed "
+                f"cannot be read; the layer is drawn empty.")
+            e = np.asarray([], dtype=float)
+            pts = (e, e, e, e) if ci else (e, e, None, None)
+        px, py, plo, phi = pts
+        if ci and plo is None:
+            plo = phi = np.full(len(px), np.nan)
+        _nobs = (options.get("points") or {}).get("nobs") \
+            if isinstance(options.get("points"), dict) else None
+        if isinstance(_nobs, (int, float)) and not isinstance(_nobs, bool) \
+                and nrows < _nobs:
+            _dash_warn_once(
+                ("fit-points", ptype, str(yvar), str(xvar)),
+                f"dash: {ptype} with {_name} is drawn as registered; a "
+                f"filter move does not refit it.")
+        # Computed in Stata units, drawn where the axes draw them (WP-29
+        # P0.8), as the mappers' own fits are.
+        px, _ox = self._on_axis(fig, px, xvar, "x", options)
+        py, _oy = self._on_axis(fig, py, yvar, "y", options)
+        if ci:
+            plo, _ol = self._on_axis(fig, plo, yvar, "y", options)
+            phi, _ou = self._on_axis(fig, phi, yvar, "y", options)
+            px, py, plo, phi = self._drop_off_dates(
+                ptype, "point(s)", _ox | _oy | _ol | _ou, px, py, plo, phi)
+            src = ColumnDataSource({"x_fit": px, "y_fit": py,
+                                    "y_lower": plo, "y_upper": phi})
+            out = list(self._render_ci_band(
+                fig, src, "x_fit", "y_fit",
+                self.scheme.default_color(color_idx, "line"), yvar, options,
+                line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
+                alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
+                color_idx=color_idx))
+        else:
+            px, py = self._drop_off_dates(ptype, "point(s)", _ox | _oy,
+                                          px, py)
+            src = ColumnDataSource({"x": px, "y": py})
+            if options.get("recast"):
+                out = self._dash_draw_xy_as(fig, src, "x", "y",
+                                            options["recast"], options,
+                                            color_idx)
+            else:
+                out = _dash_join_glyph(self, fig, options, dict(
+                    **self._scheme_alpha_kw(color_idx, "line"), x="x",
+                    y="y", source=src,
+                    line_color=self.scheme.default_color(color_idx, "line"),
+                    line_width=self.scheme.plot_line_width(color_idx,
+                                                           "lineplot"),
+                    legend_label=yvar), role=None)
+        for _r in (out if isinstance(out, list) else [out]):
+            if _r is not None:
+                _r._dash_points_frozen = True
+        return out
+
     def map_lfit(
         self,
         fig: Any,
@@ -16532,6 +16668,12 @@ class GlyphMapper:
         # had excluded, and said nothing.
         x, y, w, _wt = self._layer_units(source, view, options, "lfit",
                                            xvar, yvar)
+        # estopts(), predopts(), estcmd(): the points Stata computed at
+        # registration, drawn as stored and never refitted (WP-31 C4, D3).
+        _pts = self._fit_points_draw(fig, "lfit", xvar, yvar, options,
+                                     color_idx, len(x))
+        if _pts is not None:
+            return _pts
 
         # Need at least 2 points to fit a line.  With none, twoway lfit
         # draws nothing and notes "(note:  regress could not fit model)"
@@ -16551,6 +16693,9 @@ class GlyphMapper:
         _cfg = self._fit_agg_config("lfit", xvar, yvar, _wt, w, fig,
                                     options, ["x", "y"],
                                     *self._fit_grid_spec(_lf_opts))
+        # atobs (WP-31 C4): the page's grid is the kept x (S16's
+        # dash_fit_grid reads it).
+        _cfg["atobs"] = bool(str(options.get("atobs", "") or "").strip())
         if len(x) < 2:
             r = self._mark_unfit(
                 self._empty_fit_line(fig, "x", "y", options, color_idx, yvar),
@@ -16634,6 +16779,12 @@ class GlyphMapper:
         # had excluded, and said nothing.
         x, y, w, _wt = self._layer_units(source, view, options, "qfit",
                                            xvar, yvar)
+        # estopts(), predopts(), estcmd(): the points Stata computed at
+        # registration, drawn as stored and never refitted (WP-31 C4, D3).
+        _pts = self._fit_points_draw(fig, "qfit", xvar, yvar, options,
+                                     color_idx, len(x))
+        if _pts is not None:
+            return _pts
 
         # With none or one, twoway qfit draws nothing and notes that regress
         # could not fit the model, rc 0 (measured 24sep2026).  Two are
@@ -16654,6 +16805,7 @@ class GlyphMapper:
         _cfg = self._fit_agg_config("qfit", xvar, yvar, _wt, w, fig,
                                     options, ["x", "y"],
                                     *self._fit_grid_spec(_qopts))
+        _cfg["atobs"] = bool(str(options.get("atobs", "") or "").strip())
 
         if len(x) < 2:
             r = self._mark_unfit(
@@ -16724,6 +16876,12 @@ class GlyphMapper:
         x, y, w, wtype = self._layer_units(source, view, options, "lfitci",
                                              xvar, yvar)
         n = len(x)
+        # estopts(), predopts(), estcmd(): the points Stata computed at
+        # registration, drawn as stored and never refitted (WP-31 C4, D3).
+        _pts = self._fit_points_draw(fig, "lfitci", xvar, yvar, options,
+                                     color_idx, n)
+        if _pts is not None:
+            return _pts
 
         # Need at least 2 points.  An x with no spread is drawn: regress
         # omits it and fits the constant (_dash_wls drops the zero column),
@@ -16797,6 +16955,7 @@ class GlyphMapper:
             fig, ci_source, "x_fit", "y_fit", _lfitci_color, yvar, options,
             line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
+            color_idx=color_idx,
         )
         return [line_r, band_r]
 
@@ -16854,6 +17013,12 @@ class GlyphMapper:
         # had excluded, and said nothing.
         x, y, w, wtype = self._layer_units(source, view, options, "qfitci",
                                              xvar, yvar)
+        # estopts(), predopts(), estcmd(): the points Stata computed at
+        # registration, drawn as stored and never refitted (WP-31 C4, D3).
+        _pts = self._fit_points_draw(fig, "qfitci", xvar, yvar, options,
+                                     color_idx, len(x))
+        if _pts is not None:
+            return _pts
 
         # Two points are fitted, as qfit fits them (_qfit_design), the band
         # missing (df 0): twoway's serset on x = 1 3, y = 2 5 is 2 2.46875
@@ -16924,6 +17089,7 @@ class GlyphMapper:
             fig, ci_source, "x_fit", "y_fit", _qfitci_color, yvar, options,
             line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
+            color_idx=color_idx,
         )
         return [line_r, band_r]
 
@@ -17565,7 +17731,8 @@ class GlyphMapper:
             return self._render_ci_band(
                 fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
                 options, line_width=_lw_px, band_source=band_src,
-                alpha_kw=self._scheme_alpha_kw(color_idx, "line"))
+                alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
+                color_idx=color_idx)
 
         if len(x) < 2:
             # None or one observation: twoway draws nothing, rc 0, in a
@@ -18010,6 +18177,12 @@ class GlyphMapper:
         # had excluded, and said nothing.
         x, y, w, wtype = self._layer_units(source, view, options, "fpfit",
                                              xvar, yvar)
+        # estopts(), predopts(), estcmd(): the points Stata computed at
+        # registration, drawn as stored and never refitted (WP-31 C4, D3).
+        _pts = self._fit_points_draw(fig, "fpfit", xvar, yvar, options,
+                                     color_idx, len(x))
+        if _pts is not None:
+            return _pts
 
         _fp_report_unsupported(options, "fpfit")
         # Two observations are enough for twoway fpfit (auto in 1/2 draws
@@ -18091,6 +18264,12 @@ class GlyphMapper:
         # had excluded, and said nothing.
         x, y, w, wtype = self._layer_units(source, view, options, "fpfitci",
                                              xvar, yvar)
+        # estopts(), predopts(), estcmd(): the points Stata computed at
+        # registration, drawn as stored and never refitted (WP-31 C4, D3).
+        _pts = self._fit_points_draw(fig, "fpfitci", xvar, yvar, options,
+                                     color_idx, len(x))
+        if _pts is not None:
+            return _pts
 
         _fpfitci_color = self.scheme.default_color(color_idx, "line")
         empty_src = ColumnDataSource({
@@ -18153,6 +18332,7 @@ class GlyphMapper:
             fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
             line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
+            color_idx=color_idx,
         )
         return [line_r, band_r]
 
@@ -21322,6 +21502,53 @@ class GlyphMapper:
         added = list(fig.renderers[before:])
         return added[0] if added else None
 
+    #: The range types ciplot() draws a band as (y2xtype's range names,
+    #: fit_options_truth.json); a yx type is drawn through the lower limit.
+    _CIPLOT_RANGE = ("rarea", "rbar", "rspike", "rcap", "rcapsym",
+                     "rscatter", "rline", "rconnected")
+    #: The option keys a ci layer's band or line drawn as another type
+    #: does not hand to that type's mapper (WP-31 C4): its recast words and
+    #: the fit options themselves.
+    _FIT_DRAW_KEYS = ("recast", "type", "fitplot", "ciplot", "nofit",
+                      "points", "atobs", "estopts", "predopts", "estcmd")
+
+    def _dash_draw_range_as(self, fig, source, xcol, locol, hicol, target,
+                            options, color_idx=0):
+        """Draw a ci layer's band as *target* (WP-31 C4, ``ciplot()``).
+
+        twoway draws the band of lfitci, qfitci, fpfitci and lpolyci as the
+        y2xtype named: a range type over the limits, or one of yxtype's
+        eight through the first, the lower limit (``ciplot(scatter)``
+        draws markers at the lower limit; dash.ado writes ``line`` for a
+        name not in the class, which twoway draws so, with its two notes).
+        The limits (*source*'s *locol* and *hicol* at *xcol*) are drawn by
+        the target's own mapper on a fresh source.  *target* is checked by
+        membership and never reaches ``getattr``; any other name says "no
+        glyph mapper" and returns None, so the caller draws the default
+        band.  Returns the first renderer the target drew.
+        """
+        opts = {k: v for k, v in (options or {}).items()
+                if k not in self._FIT_DRAW_KEYS}
+        if isinstance(target, str) and target in self._RECAST_DRAWN:
+            return self._dash_draw_xy_as(fig, source, xcol, locol, target,
+                                         opts, color_idx)
+        if not isinstance(target, str) or target not in self._CIPLOT_RANGE:
+            warnings.warn(
+                "dash: no glyph mapper for plot type %r; nothing was drawn "
+                "for that layer." % (target,), UserWarning, stacklevel=2)
+            return None
+        data = source.data
+        pts = ColumnDataSource({
+            "x": np.asarray(data[xcol], dtype=float),
+            "y1": np.asarray(data[locol], dtype=float),
+            "y2": np.asarray(data[hicol], dtype=float)})
+        before = len(fig.renderers)
+        _dash_glyph_dispatch(self)[1][target](
+            fig, pts, "y1", "y2", "x", opts, view=None, color_idx=color_idx)
+        added = list(fig.renderers[before:])
+        return added[0] if added else None
+
+
 
 # ---------------------------------------------------------------------------
 # CSS color sanitizer — used to harden KPI color/bgcolor before they are
@@ -21560,6 +21787,49 @@ def _dash_range_pair(options: dict, layer: str, what: str
     return vals
 
 
+def _dash_fit_points_of(options, n_cap=100_000):
+    """The points Stata computed for a fit layer drawn with estopts(),
+    predopts() or estcmd() (WP-31 C4), as ``(x, y, lo, hi)`` float arrays
+    (*lo* and *hi* None when the spec carries no band), None when
+    *options* holds no ``points``, or False when they cannot be read.
+
+    dash.ado runs twoway's own estimation (regress or fracpoly with the
+    options as typed, then predict or fracpred) at registration and writes
+    the points as ``{"x": [..], "y": [..], "lo": [..], "hi": [..],
+    "nobs": n}``; ``_dash_attach_function_points`` puts them in the
+    layer's options.  Each list holds numbers or null (missing), all of
+    one length, at most *n_cap*; anything else is False,
+    and the mapper draws the layer empty with a note.  Only float() reads
+    a value.
+    """
+    if not isinstance(options, dict) or "points" not in options:
+        return None
+    pts = options.get("points")
+    if not isinstance(pts, dict):
+        return False
+    keys = ["x", "y"] + (["lo", "hi"] if ("lo" in pts or "hi" in pts)
+                         else [])
+    cols = []
+    for k in keys:
+        v = pts.get(k)
+        if not isinstance(v, list) or len(v) > n_cap:
+            return False
+        out = []
+        for t in v:
+            if t is None:
+                out.append(float("nan"))
+            elif isinstance(t, (int, float)) and not isinstance(t, bool):
+                out.append(float(t))
+            else:
+                return False
+        cols.append(np.asarray(out, dtype=float))
+    if len({len(c) for c in cols}) != 1:
+        return False
+    if len(cols) == 2:
+        cols += [None, None]
+    return tuple(cols)
+
+
 def _fit_grid(x: "np.ndarray", options: dict,
               layer: str = "fit") -> "np.ndarray":
     """The x values a fitted line is drawn at, as Stata chooses them.
@@ -21583,6 +21853,14 @@ def _fit_grid(x: "np.ndarray", options: dict,
     Returns:
         The evaluation grid.
     """
+    # atobs (WP-31 C4): twoway evaluates the fit at every observation of
+    # the sample (twoway__lfit_serset.ado: no _gs_x_create grid), sorted by
+    # x, duplicates included (fit_options_truth.json F01); each distinct x
+    # once draws the same line.  n() and range() are not read (dash.ado
+    # refuses atobs with range(), as twoway does).
+    if str((options or {}).get("atobs", "") or "").strip():
+        xa = np.asarray(x, dtype=float)
+        return np.unique(xa[np.isfinite(xa)])
     # n(1) is twoway's (WP-31 C10a): one point, at the low end, which a
     # line cannot draw -- twoway's one point is missing and draws nothing.
     n_pts = int(_stat_option_float(options, "n", float(_FIT_GRID), "fit",
@@ -41450,10 +41728,14 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                 # The band is added alongside the line; Stata keys them
                 # separately, and the band's key carries the level.
                 ser = _dash_layer_series(plot, var_labels, default_level)
+                # A band drawn as another type by ciplot() is marked so;
+                # a line hidden by nofit takes no key (WP-31 C4).
                 band = [r for r in rends
-                        if type(getattr(r, "glyph", None)).__name__
+                        if getattr(r, "_dash_ci_band", False)
+                        or type(getattr(r, "glyph", None)).__name__
                         in ("VArea", "Band", "Patch")]
-                line = [r for r in rends if r not in band]
+                line = [r for r in rends if r not in band
+                        and not getattr(r, "_dash_nofit", False)]
                 if band:
                     out.append((n, ser[0][0], band))
                 if line:
@@ -44551,8 +44833,13 @@ class DashRenderer:
         data_dict[_ROW_ID_COLUMN] = self._row_ids_for(frame)
         return ColumnDataSource(data=data_dict)
 
-    def _frozen_layer_tag(self, ptype, options, source, view, varnames):
+    def _frozen_layer_tag(self, ptype, options, source, view, varnames,
+                          kind=None):
         """The stale cue's tag for one frozen layer (WP-29 P0.17), or None.
+
+        *kind* forces the cue's kind: "fit" for a layer drawn from the
+        points Stata computed (WP-31 C4), whatever ``_dash_stale_kind``
+        says of its type (lfit and qfit are refitted otherwise).
 
         ``{"type", "kind", "vars", "wvar", "wrule"}`` plus ``member_ids``
         when the layer is drawn from a strict subset of the rows (render()
@@ -44562,7 +44849,8 @@ class DashRenderer:
         build drew nothing because of a weight state) any finite weight.
         A layer whose columns cannot be read drew nothing to mark: None.
         """
-        kind = _dash_stale_kind(ptype, options)
+        if kind is None:
+            kind = _dash_stale_kind(ptype, options)
         if kind is None:
             return None
         try:
@@ -45565,9 +45853,15 @@ class DashRenderer:
             # weight rule and member rows (WP-29 P0.17).  Private to the
             # Python object; never serialised.
             if _frozen_vars and ptype.lower() in _DASH_COMPUTED_ONLY_TYPES:
+                # A layer drawn from Stata's stored points is frozen with
+                # the kind "fit" whatever its type (WP-31 C4, D3).
+                _fkind = ("fit" if any(getattr(_fr, "_dash_points_frozen",
+                                               False)
+                                       for _fr in _layer_renderers)
+                          else None)
                 _ftag = self._frozen_layer_tag(ptype.lower(), popts,
                                                source_for_plot, _plot_view,
-                                               _frozen_vars)
+                                               _frozen_vars, kind=_fkind)
                 if _ftag is not None:
                     for _fr in _layer_renderers:
                         if not _dash_is_swatch(_fr):
@@ -48744,6 +49038,7 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         "_dash_fit_points_of",
                          # a layer's yaxis()/xaxis() numbers (WP-31 C10b;
                          # the tie is _dash_axis_groups', C10c).
                          "_dash_axis_numbers",

@@ -2043,6 +2043,231 @@ if inlist("`only'", "", "S10") & `: list posof "S10" in w31_run' {
 }
 * ==== end S10 ====
 
+// S11 helpers (WP-31 C4).  _u11_run: one command under capture noisily
+// with its own log; r(rc) and r(has) (1 when the log holds the needle,
+// Stata's wrapped lines re-joined).  _u11_pts: the points dash stored for
+// plot k of a graph (the served spec's function_points) against twoway's
+// serset of the same layer (_u10_ss's JSON): every column within rtol;
+// global u11_ok 1 or 0 and u11_msg.  _u11_layer: the saved page and the
+// served app of a spec, the visibility of the layer's line and band.
+python:
+def _u11_pts(spec, gname, k, tw, rtol):
+    import json
+    import numpy as np
+    from sfi import Macro
+    sp = json.load(open(spec, encoding="utf-8"))
+    p = (sp.get("function_points") or {}).get(gname, {}).get(str(k))
+    t = json.load(open(tw, encoding="utf-8"))
+    cols = [np.asarray([np.nan if v is None else v for v in c], float)
+            for c in t.values()]
+    if not isinstance(p, dict):
+        Macro.setGlobal("u11_ok", "0")
+        Macro.setGlobal("u11_msg", "no points stored for %s plot %s" % (gname, k))
+        return
+    want = [cols[-1], cols[0]] + (cols[1:3] if len(cols) == 4 else [])
+    got = [np.asarray([np.nan if v is None else v for v in p[c]], float)
+           for c in (["x", "y", "lo", "hi"] if "lo" in p else ["x", "y"])]
+    ok = len(want) == len(got) and all(
+        len(a) == len(b) and np.allclose(a, b, rtol=rtol, atol=0,
+                                         equal_nan=True)
+        for a, b in zip(got, want))
+    Macro.setGlobal("u11_ok", "1" if ok else "0")
+    Macro.setGlobal("u11_msg", "%d stored points, %d columns, against twoway's %d rows, %d columns" % (
+        len(got[0]), len(got), len(want[0]), len(want)))
+
+
+def _u11_layer(spec, data, gname):
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import GlyphRenderer, Plot
+    from sfi import Macro
+    out = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(spec, data)
+        r.render()
+        figs = [r.figures[gname]]
+        app = os.path.join(os.path.dirname(spec), "u11_app.py")
+        dr.ServerAppBuilder(spec, data).build(app)
+        import importlib.util
+        su = importlib.util.spec_from_file_location("u11_app", app)
+        mod = importlib.util.module_from_spec(su)
+        su.loader.exec_module(mod)
+        doc = Document()
+        mod.make_document(doc)
+        figs += [m for m in doc.models if isinstance(m, Plot)
+                 and any(isinstance(x, GlyphRenderer) for x in m.renderers)]
+    for f in figs:
+        rs = [x for x in f.renderers if isinstance(x, GlyphRenderer)]
+        lines = [x.visible for x in rs if type(x.glyph).__name__ == "Line"]
+        bands = [x.visible for x in rs if type(x.glyph).__name__ == "VArea"]
+        out.append("%s/%s" % ("".join("1" if v else "0" for v in lines),
+                              "".join("1" if v else "0" for v in bands)))
+    Macro.setGlobal("u11_vis", " ".join(out))
+end
+
+capture program drop _u11_run
+program define _u11_run, rclass
+    // _u11_run <log> <needle> <command ...>
+    version 19
+    gettoken lf 0 : 0
+    gettoken needle 0 : 0
+    capture log close u11l
+    quietly log using "`lf'", text replace name(u11l)
+    capture noisily `0'
+    local rc = _rc
+    // A paragraph-mode message ({p 0 8}) reaches the log when it ends.
+    display as text "{p_end}"
+    quietly log close u11l
+    local has 0
+    if `"`needle'"' != "" {
+        mata: st_local("has", strofreal(strpos(subinstr(invtokens(cat(st_local("lf"))', char(10)), char(10) + "> ", ""), st_local("needle")) > 0))
+    }
+    capture erase "`lf'"
+    return scalar rc = `rc'
+    return scalar has = `has'
+end
+
+* ==== S11 C4: fit options ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S11") & `: list posof "S11" in w31_run' {
+    display as text "S11 start " c(current_date) " " c(current_time)
+    local u11d "`w31_work'/s11"
+    capture mkdir "`u11d'"
+    local lf "`u11d'/run.log"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U11-01: a second copy of atobs, nofit, fitplot() or ciplot() is
+    // refused as twoway refuses it; estopts() twice is the rightmost.
+    // ------------------------------------------------------------
+    foreach c in "lfit mpg weight, atobs atobs|option atobs not allowed" "lfitci mpg weight, nofit nofit|option nofit not allowed" "lfitci mpg weight, fitplot(scatter) fitplot(line)|option fitplot() not allowed" "lfitci mpg weight, ciplot(rcap) ciplot(rarea)|option ciplot() not allowed" "lfit mpg weight, estopts(noconstant) estopts(noconstant)|" {
+        gettoken cmd msg : c, parse("|")
+        local msg = substr(`"`msg'"', 2, .)
+        _u11_run "`lf'" `"`msg'"' twoway `cmd' nodraw
+        local trc = r(rc)
+        local th = r(has)
+        dash clear
+        _u11_run "`lf'" `"`msg'"' dash `cmd' name(zu11)
+        local drc = r(rc)
+        local dh = r(has)
+        local nomsg = (`"`msg'"' == "")
+        _w31_expect U11-01 "(`trc' == `drc') & (`th' == `dh') & (`th' == 1 | `nomsg')" "`cmd': twoway rc `trc' (`th'), dash rc `drc' (`dh')"
+    }
+    _w31_done U11-01 "a repeated fit option is refused, or taken, as twoway takes it"
+
+    // ------------------------------------------------------------
+    // U11-02: atobs and an observation-level predopts() with range()
+    // are refused in twoway's words; predopts(stdp) with range() is taken.
+    // ------------------------------------------------------------
+    foreach c in "lfit mpg weight, atobs range(1000 5000)|may not combine atobs with range()" "qfitci mpg weight, predopts(residuals) range(1000 5000)|may not combine residuals with range()" "lfit mpg weight, predopts(stdp) range(1000 5000)|" {
+        gettoken cmd msg : c, parse("|")
+        local msg = substr(`"`msg'"', 2, .)
+        _u11_run "`lf'" `"`msg'"' twoway `cmd' nodraw
+        local trc = r(rc)
+        local th = r(has)
+        dash clear
+        _u11_run "`lf'" `"`msg'"' dash `cmd' name(zu11)
+        local drc = r(rc)
+        local dh = r(has)
+        local nomsg = (`"`msg'"' == "")
+        _w31_expect U11-02 "(`trc' == `drc') & (`th' == `dh') & (`th' == 1 | `nomsg')" "`cmd': twoway rc `trc' (`th'), dash rc `drc' (`dh')"
+    }
+    _w31_done U11-02 "atobs and predopts() with range() as twoway reads them"
+
+    // ------------------------------------------------------------
+    // U11-03: estopts(), predopts() and estcmd() -- the points dash stores
+    // are twoway's serset of the same layer (floats, so to 1e-7).
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "lfit mpg weight, estopts(noconstant)" "fpfit mpg weight, estopts(degree(3))" "lfitci mpg weight, estopts(noconstant)" "qfitci mpg weight [aw=trunk], estopts(noconstant) level(90)" "fpfitci mpg weight, estcmd(glm)" "lfit mpg weight if foreign, predopts(residuals)" "qfit mpg weight, estopts(noconstant) n(7) range(2000 .)" {
+        local ++k
+        sysuse auto, clear
+        dash clear
+        capture noisily dash `c' name(zu113)
+        _w31_expect U11-03 "(_rc == 0)" "dash `c' rc `=_rc'"
+        _dash_serve_spec, specpath("`u11d'/s`k'.json") datapath("`u11d'/d`k'.json")
+        _u10_ss "`u11d'/t`k'.json" "`u11d'/t`k'.gph" `c'
+        python: _u11_pts("`u11d'/s`k'.json", "zu113", 1, "`u11d'/t`k'.json", 1e-7)
+        _w31_expect U11-03 "(${u11_ok} == 1)" "`c': ${u11_msg}"
+    }
+    _w31_done U11-03 "estopts(), predopts() and estcmd() layers store twoway's own points (${u11_msg})"
+
+    // ------------------------------------------------------------
+    // U11-04: an unknown fitplot() or ciplot() name prints twoway's two
+    // notes, rc 0; smoothplot() is taken in silence; the spellings.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    foreach c in "lfitci mpg weight, fitplot(bogus)|named style bogus not found in class yxtype, default attributes used" "lfitci mpg weight, ciplot(sc)|named style sc not found in class y2xtype, default attributes used" "lfitci mpg weight, fitplot(sc) ciplot(rsc)|named style" "lpolyci mpg weight, smoothplot(bogus)|named style" {
+        gettoken cmd msg : c, parse("|")
+        local msg = substr(`"`msg'"', 2, .)
+        _u11_run "`lf'" `"`msg'"' twoway `cmd' nodraw
+        local trc = r(rc)
+        local th = r(has)
+        dash clear
+        _u11_run "`lf'" `"`msg'"' dash `cmd' name(zu11)
+        local drc = r(rc)
+        local dh = r(has)
+        _w31_expect U11-04 "(`trc' == 0) & (`drc' == 0) & (`th' == `dh')" "`cmd': twoway rc `trc' (`th'), dash rc `drc' (`dh')"
+    }
+    mata: st_local("u11c", _dash_recast_canon("rsc", "rscatter:3 rline:3 rarea:5"))
+    _w31_expect U11-04 `"("`u11c'" == "rscatter")"' "_dash_recast_canon(rsc) is `u11c'"
+    mata: st_local("u11c", _dash_recast_canon("rs", "rscatter:3 rline:3 rarea:5"))
+    _w31_expect U11-04 `"("`u11c'" == "")"' "_dash_recast_canon(rs) is `u11c'"
+    _w31_done U11-04 "fitplot(), ciplot() and smoothplot() names read as twoway reads them"
+
+    // ------------------------------------------------------------
+    // U11-05: nofit draws the band alone, in the saved page and the
+    // served app.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    capture noisily dash lfitci mpg weight, nofit name(zu115)
+    _w31_expect U11-05 "(_rc == 0)" "dash lfitci, nofit rc `=_rc'"
+    _dash_serve_spec, specpath("`u11d'/s5n.json") datapath("`u11d'/d5n.json")
+    python: _u11_layer("`u11d'/s5n.json", "`u11d'/d5n.json", "zu115")
+    _w31_expect U11-05 `"("${u11_vis}" == "0/1 0/1")"' "line/band visible, saved and served: ${u11_vis}"
+    _w31_done U11-05 "lfitci, nofit: the band alone in both renderers (${u11_vis})"
+
+    // ------------------------------------------------------------
+    // U11-06: estopts() text that may not reach a command line is refused
+    // before anything is registered.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    dash clear
+    local nl = char(10)
+    local cr = char(13)
+    foreach v in `"noconstant; display 1"' `"a`nl'b"' `"a`cr'b"' {
+        _u11_run "`lf'" "option estopts() incorrectly specified" dash lfit mpg weight, estopts(`v') name(zu116)
+        _w31_expect U11-06 "(r(rc) == 198) & (r(has) == 1)" "estopts() holding a refused character: rc `r(rc)', said `r(has)'"
+    }
+    // An odd double quote: refused by the command line's own parse first.
+    _u11_run "`lf'" "" dash lfit mpg weight, estopts(x" y) name(zu116)
+    _w31_expect U11-06 "(r(rc) == 198)" "estopts() holding an odd quote: rc `r(rc)'"
+    _w31_expect U11-06 `"(`"${dash_graph_registry}"' == "")"' "the registry holds ${dash_graph_registry}"
+    _w31_done U11-06 "estopts() with ; or a line break or an odd quote refused, nothing registered"
+
+    forvalues k = 1/7 {
+        foreach p in s d t {
+            capture erase "`u11d'/`p'`k'.json"
+        }
+    }
+    foreach f in s5n.json d5n.json u11_app.py {
+        capture erase "`u11d'/`f'"
+    }
+    capture rmdir "`u11d'"
+    macro drop u11_ok u11_msg u11_vis
+    dash clear
+    display as text "S11 end " c(current_date) " " c(current_time)
+}
+* ==== end S11 ====
+
 // S16 helpers (WP-31 F1c).  _u16_move: the saved page's lowess line after
 // one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

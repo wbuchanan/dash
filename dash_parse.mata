@@ -125,6 +125,20 @@
 *!       r(delta), y the first n values of yvar, each %24.17g, a missing
 *!       value null.
 *!
+*!   _dash_fit_points_json(nobs)
+*!       A fit layer's points (WP-31 C4) from the serset in memory:
+*!       {"x":[..],"y":[..],"lo":[..],"hi":[..],"nobs":n}, the limits only
+*!       when the serset has them, each %24.17g, a missing value null.
+*!
+*!   _dash_fit_opt_bad(s)
+*!       1 when estopts()/predopts()/estcmd() text holds a semicolon,
+*!       backtick, dollar sign, line break, odd double quote or stray
+*!       compound close (WP-31 C4).
+*!
+*!   _dash_recast_canon(name, spellings)
+*!       The full plot-type name name spells among "full:minimum ..."
+*!       spellings, or "" (WP-31 C4, fitplot() and ciplot()).
+*!
 *!   _dash_unbound_cands(raw, cap)
 *!       The options of a parser's catch-all whose value -syntax- may not
 *!       have bound, into the caller's locals _ru_n, _ru_tok<i>, _ru_nm<i>
@@ -5209,6 +5223,72 @@ string scalar _dash_fn_points_json(string scalar yvar, real scalar n,
            q + "y" + q + ":[" + invtokens(y', ",") + "]}")
 }
 
+// _dash_fit_points_json(nobs) -- a fit layer's points (WP-31 C4), from
+// the data in memory, which hold twoway's serset for the layer (serset
+// use): the fitted value first, the two limits next when there are four
+// columns, x last.  Written as {"x":[..],"y":[..][,"lo":[..],"hi":[..]],
+// "nobs":nobs}, each value %24.17g, a missing one null (_dash_json_number17);
+// nobs is the count of the layer's sample, for the renderer's note.
+string scalar _dash_fit_points_json(real scalar nobs)
+{
+    string scalar q, out
+    real matrix   D
+    real scalar   k
+
+    q = char(34)
+    D = st_data(., .)
+    k = cols(D)
+    if (rows(D) == 0) D = J(0, max((k, 2)), .)
+    if (k < 2) return("")
+    out = "{" + q + "x" + q + ":[" + invtokens(_dash_json_number17(D[., k])', ",") + "]," +
+          q + "y" + q + ":[" + invtokens(_dash_json_number17(D[., 1])', ",") + "]"
+    if (k >= 4) {
+        out = out + "," + q + "lo" + q + ":[" + invtokens(_dash_json_number17(D[., 2])', ",") + "]," +
+              q + "hi" + q + ":[" + invtokens(_dash_json_number17(D[., 3])', ",") + "]"
+    }
+    return(out + "," + q + "nobs" + q + ":" + _dash_json_number17(nobs) + "}")
+}
+
+// _dash_fit_opt_bad(s) -- 1 when the text of estopts(), predopts() or
+// estcmd() may not reach a command line (WP-31 C4): a semicolon, a
+// backtick, a dollar sign, a line feed or carriage return, an odd number
+// of double quotes, or a compound-quote close with no open before it
+// (_dash_fn_stray_close).  twoway hands the text to regress, predict or
+// fracpoly; dash refuses these before any data are touched.
+real scalar _dash_fit_opt_bad(string scalar s)
+{
+    real scalar i, nq
+
+    if (strpos(s, ";") | strpos(s, char(96)) | strpos(s, char(36)) |
+        strpos(s, char(10)) | strpos(s, char(13))) return(1)
+    nq = 0
+    for (i = 1; i <= strlen(s); i++) nq = nq + (substr(s, i, 1) == char(34))
+    if (mod(nq, 2)) return(1)
+    return(_dash_fn_stray_close(s))
+}
+
+// _dash_recast_canon(name, spellings) -- the full plot-type name that name
+// spells among spellings ("full:minimum ..." -- twoway's names and the
+// shortest spelling of each, case-sensitive), or "" (WP-31 C4: fitplot()
+// and ciplot(); the table is _dash_recast_opt's).
+string scalar _dash_recast_canon(string scalar name, string scalar spellings)
+{
+    string rowvector t
+    string scalar    full
+    real scalar      i, c, m
+
+    t = tokens(spellings)
+    for (i = 1; i <= cols(t); i++) {
+        c = strpos(t[i], ":")
+        if (!c) continue
+        full = substr(t[i], 1, c - 1)
+        m = strtoreal(substr(t[i], c + 1, .))
+        if (strlen(name) >= m & strlen(name) <= strlen(full) &
+            name == substr(full, 1, strlen(name))) return(full)
+    }
+    return("")
+}
+
 // _dash_fn_stray_close(s) -- 1 when s holds a compound-quote close "'
 // with no compound open `" before it (counted as a depth), else 0.  twoway's
 // parse of its own command line refuses such a function expression, r(198)
@@ -5239,8 +5319,10 @@ real scalar _dash_fn_stray_close(string scalar s)
 
 // _dash_fn_points_ok(txt) -- 1 when txt is a points table dash wrote: it
 // begins with {, ends with }, and every byte is one of 0-9 . + - e E n u l
-// x d y " : , { } [ ] (an ascii() lookup).  A global the user set by hand
-// to anything else -- }],"graphs":[ among them -- cannot reach the spec.
+// x d y " : , { } [ ] (an ascii() lookup), or o b s h i, the letters of a
+// fit layer's keys lo, hi and nobs (WP-31 C4).  A global the user set by
+// hand to anything else -- }],"graphs":[ among them -- cannot reach the
+// spec.
 real scalar _dash_fn_points_ok(string scalar txt)
 {
     real rowvector ok, b
@@ -5248,7 +5330,7 @@ real scalar _dash_fn_points_ok(string scalar txt)
 
     if (strlen(txt) < 2) return(0)
     if (substr(txt, 1, 1) != "{" | substr(txt, strlen(txt), 1) != "}") return(0)
-    allowed = "0123456789.+-eEnulxdy" + char(34) + ":,{}[]"
+    allowed = "0123456789.+-eEnulxdyobshi" + char(34) + ":,{}[]"
     ok = J(1, 256, 0)
     b  = ascii(allowed)
     ok[b :+ 1] = J(1, cols(b), 1)
@@ -6459,6 +6541,12 @@ string matrix _dash_rep_und_tab()
     kerns = "lpoly lpolyci kdensity"
     pcs   = "pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi"
     t = J(0, 7, "")
+    // atobs, ciplot(), fitplot(), fit/nofit and smoothplot() are declared
+    // since WP-31 C4; their rows stay, as the text twoway refuses a second
+    // copy of (measured again 14oct2026, fit_options_truth.json
+    // refusals: atobs, nofit, fitplot() and ciplot() given twice are
+    // "option ... not allowed", r(198); fit nofit "option nofit not
+    // allowed"), and the scan reads the typed text, declared or not.
     t = t \ ("atobs",        "atobs",        "ato",       "0", fits,        "0", "")
     t = t \ ("xlog",         "xlog",         "xlog",      "0", fits,        "0", "")
     t = t \ ("baroffset",    "baroffset",    "baroff",    "1", "rbar",      "0", "")

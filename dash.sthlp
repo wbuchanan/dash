@@ -784,10 +784,12 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:ysize()}, {cmd:aspectratio()}, a bare {cmd:sort},
     {cmd:horizontal}, {cmd:yaxis()}, {cmd:bwidth()} on {cmd:kdensity} --
     given twice is refused as {cmd:twoway} refuses it:
-    {cmd:option scheme() not allowed}, {cmd:r(198)}.  So are the options
+    {cmd:option scheme() not allowed}, {cmd:r(198)}.  So are
+    {cmd:atobs} on the fits, {cmd:nofit}, {cmd:fitplot()} and
+    {cmd:ciplot()}, which are drawn, the options
     {cmd:dash} names in its note that {cmd:twoway} takes once, and a
     kernel written as an option of its own ({cmd:gaussian}):
-    {cmd:atobs} on the fits, {cmd:nofit}, {cmd:boundary}, {cmd:nodropbase},
+    {cmd:boundary}, {cmd:nodropbase},
     {cmd:clegend()}, {cmd:plegend()}, {cmd:pcycle()} and the other
     {cmd:colorvar()} and graph-wide options {cmd:twoway} declares:
     {cmd:atobs} given twice on {cmd:lfit} is
@@ -2948,6 +2950,31 @@ honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
 r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
 options -- see below.
 
+{phang}{ul:Fit options.}  {opt atobs} evaluates {cmd:lfit}, {cmd:qfit},
+{cmd:lfitci} and {cmd:qfitci} at the observed x instead of the {cmd:n()}
+grid ({cmd:fpfitci} takes it and draws as without it, as {cmd:twoway}
+does); with {cmd:range()} it is refused, {cmd:may not combine atobs with range()},
+r(198).  {opt nofit} draws the band of {cmd:lfitci}, {cmd:qfitci},
+{cmd:fpfitci} and {cmd:lpolyci} alone, keyed alone.  {opt fitplot(plottype)}
+draws their line as one of {cmd:scatter}, {cmd:line}, {cmd:connected},
+{cmd:area}, {cmd:bar}, {cmd:spike}, {cmd:dropline} or {cmd:dot}, and
+{opt ciplot(plottype)} their band as a range type ({cmd:rarea}, {cmd:rbar},
+{cmd:rspike}, {cmd:rcap}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline},
+{cmd:rconnected}) or as one of those eight through the lower limit; a name
+{cmd:twoway} does not know prints its two notes and draws the default.
+{opt smoothplot(plottype)} is taken on {cmd:lpolyci} and, as in
+{cmd:twoway}, changes nothing.  {opt estopts(string)}, {opt predopts(string)}
+and {opt estcmd(cmd)} are run by Stata when the graph is registered --
+{cmd:regress} (or {cmd:fracpoly} with {cmd:estcmd()}) and {cmd:predict},
+through {cmd:twoway}'s own fit generator -- so the layer is drawn as
+registered and does not refit after a filter move: the saved page marks it
+as computed before the filter, and the served app says so.  A
+{cmd:predopts()} of {cmd:predict}'s observation-level options
+({cmd:residuals}, {cmd:cooksd}, ...) is evaluated at the observations and
+refused with {cmd:range()}, as {cmd:twoway} refuses it.  Their text may not
+hold a semicolon, backtick, dollar sign or line break:
+{cmd:option estopts() incorrectly specified}, r(198).
+
 {phang}{ul:Recast.}  {opt recast(plottype)}, and its synonyms
 {opt recastas(plottype)} and {opt type(plottype)}, are read as
 {cmd:twoway} reads them: {cmd:recast()} and {cmd:recastas()} win over
@@ -3253,7 +3280,7 @@ their range (measured).
 {bf:{cmd:kernel()}.}  Stata refuses all three on {cmd:fpfit} and
 {cmd:fpfitci} with r(198) -- a fractional polynomial has no bandwidth or
 kernel at all, and its degree is spelled {cmd:estopts(degree(#))}, which
-{cmd:dash} does not honour: it names {cmd:estopts()} in the note.
+{cmd:dash} honours (see {ul:Fit options} above).
 {cmd:dash} accepts the three so a pasted command still runs, and reports
 that they were ignored.
 

@@ -2026,10 +2026,15 @@ forvalues k = 1/`n14f' {
 // given once.
 local f33 `"bar mpg weight, baroffset(1) baroffset(2)"'
 local g33 "baroffset()"
+// Flipped (WP-31 C4): rows 34 and 35 expected atobs and nofit named in
+// the note, which was wrong once dash draws them; twoway's answer is the
+// same, and dash now draws both layers in silence (s34, s35).
 local f34 `"(lfit mpg weight, atobs) (lfit price weight, atobs), title(T)"'
 local g34 "atobs"
+local s34 1
 local f35 `"lfitci mpg weight, nofit || lfitci price weight, nofit"'
 local g35 "nofit"
+local s35 1
 local f36 `"scatter mpg weight, clegend(red) plegend(red)"'
 local g36 "clegend() plegend()"
 local f37 `"(scatter mpg weight, colorstart(red)) (scatter price weight, colorstart(red)), title(T)"'
@@ -2078,6 +2083,13 @@ forvalues k = 1/`n14f' {
             local bad = 1
         }
         else display as text `"TP-14f row `k': `f`k'' refused, r(198), "`g`k''""'
+    }
+    else if "`s`k''" == "1" {
+        if `rc' | `note' {
+            display as error `"TP-14f FAIL row `k': `f`k'': dash r(`rc'), note `note' (drawn in silence expected)"'
+            local bad = 1
+        }
+        else display as text `"TP-14f row `k': `f`k'' drawn, "`g`k''" honoured"'
     }
     else {
         _ztp_logged "`logfile'" "ignoring unsupported option(s): `g`k''"

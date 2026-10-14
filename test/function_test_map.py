@@ -631,6 +631,7 @@ FUNCTIONS = {
  '_dash_finish_secondary_axes.<locals>._on': 'test/test_axes_three_to_nine.py::TestRoutedOptions::test_each_family',
  '_dash_ci_t': 'test/test_value_bounds.py::TestLevel::test_band_missing_at_100_and_above',
  '_dash_range_source': 'test/test_scheme_review_fixes.py::TestMarkColourIsForMarkers::test_markers_take_p1markfill_and_segments_take_p1',
+ '_dash_fit_points_of': 'test/test_fit_options.py::TestEstoptsPoints::test_the_helper_reads_and_checks',
  '_dash_reference_lines': 'test/test_axis_options.py::TestReferenceLines::test_suboptions_are_applied',
  '_dash_refline_instances': 'test/test_axis_options.py::TestRepeatedReferenceLines::test_the_instances',
  '_dash_by_tokens_commas': 'test/test_axis_options.py::TestRepeatedReferenceLines::test_the_comma_split_honours_quotes_and_parentheses',
@@ -1063,6 +1064,8 @@ FUNCTIONS = {
  '_dash_ts_kind': 'test/test_date_axis_ticks.py::TestTheRangeOption::test_the_kinds',
  # WP-30 S45 (P1.8b): recast() (P1.8 part b)
  'GlyphMapper._dash_draw_xy_as': 'test/test_recast.py::TestTheDrawAsHelper::test_each_target',
+ 'GlyphMapper._dash_draw_range_as': 'test/test_fit_options.py::TestFitplotCiplot::test_ciplot_rcap_draws_caps',
+ 'GlyphMapper._fit_points_draw': 'test/test_fit_options.py::TestEstoptsPoints::test_points_are_drawn_as_stored',
  # WP-30 S46 (P1.31a): Served session capacity and memory (P1.31 part a)
  'app:make_document.<locals>._dash_idle_check': 'test/test_served_resources.py::TestIdleSessionsAreClosed::test_closed_after_the_lifetime',
  'app:make_document.<locals>._dash_touch': 'test/test_served_resources.py::TestIdleSessionsAreClosed::test_activity_resets_the_clock',

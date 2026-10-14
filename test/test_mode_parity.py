@@ -2426,6 +2426,12 @@ CORPUS = [
     _case("three x axes (WP-31 C10c)",
           [_sc(), plot_for("scatter", {"xaxis": "2"}, xvar="price"),
            plot_for("scatter", {"xaxis": "3"}, xvar="foreign")]),
+    # WP-31 S11 (C4): the fit options, alike in both modes.
+    _case("lfitci nofit (WP-31 C4)",
+          [plot_for("lfitci", {"nofit": "nofit"})]),
+    _case("lfitci fitplot(scatter) ciplot(rcap) (WP-31 C4)",
+          [plot_for("lfitci", {"fitplot": "scatter", "ciplot": "rcap"})]),
+    _case("lfit atobs (WP-31 C4)", [plot_for("lfit", {"atobs": "atobs"})]),
 ]
 
 
@@ -3336,6 +3342,12 @@ MOVE_CORPUS = [
                _MOVES[0], [_sc(),
                            plot_for("scatter", {"yaxis": "2"}, yvar="price"),
                            plot_for("line", {"yaxis": "3"}, yvar="rep")]),
+    # WP-31 S11 (C4): a layer drawn from Stata's points keeps them after a
+    # move in both modes (D3).
+    _move_case("lfit with points after a move (WP-31 C4)", _MOVES[0],
+               [_sc(), plot_for("lfit", {"estopts": "noconstant", "points": {
+                   "x": [2000.0, 3000.0, 4000.0], "y": [11.0, 21.0, 31.0],
+                   "nobs": 10}})]),
 ]
 
 

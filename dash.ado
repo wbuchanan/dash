@@ -451,6 +451,7 @@ program define _dash_require_mata
         _dash_by_scan _dash_by_clamp ///
         _dash_text_args _dash_undrawn_plottype _dash_kernel_full ///
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
+        _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
@@ -1180,6 +1181,8 @@ program define _dash_parse_plot_opts, sclass
         START(string) ///
         DISCrete                  STDP                      STDF ///
         STDR                      MEan                      NOWeight ///
+        ATObs ESTopts(string asis) PREDopts(string asis) ESTCmd(string asis) ///
+        FITPlot(string) CIPlot(string) SMOOTHPlot(string) noFIT ///
         Adjust                    LOgit ///
         PERCENT                   FREQuency                 DENsity ///
         FRACtion                  Kernel(string)            N(string) ///
@@ -1534,6 +1537,19 @@ program define _dash_parse_plot_opts, sclass
     sreturn local noweight         : copy local noweight
     sreturn local adjust           : copy local adjust
     sreturn local logit            : copy local logit
+    // WP-31 C4: twoway's fit options (twoway_lfit_parse.class ATObs
+    // ESTopts() PREDopts(); twoway_fpfit_parse.class ESTCmd();
+    // twoway_lfitci_parse.class FITPlot() CIPlot() noFIT;
+    // twoway_lpolyci_parse.class SMOOTHPlot()), each with twoway's
+    // minimum.  Which type takes each is _dash_fit_opts_check's.
+    sreturn local atobs            : copy local atobs
+    sreturn local estopts          : copy local estopts
+    sreturn local predopts         : copy local predopts
+    sreturn local estcmd           : copy local estcmd
+    sreturn local fitplot          : copy local fitplot
+    sreturn local ciplot           : copy local ciplot
+    sreturn local smoothplot       : copy local smoothplot
+    sreturn local nofit            : copy local fit
     /* ---- graph-level (returned separately so _dash_plot can accumulate them) ---- */
     sreturn local g_title        : copy local title
     sreturn local g_subtitle     : copy local subtitle
@@ -4722,6 +4738,7 @@ program define _dash_plot_opts_to_json, rclass
                    xvarformat yvarformat ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
+                   atobs estopts predopts estcmd fitplot ciplot nofit ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -5876,6 +5893,9 @@ program define _dash_process_segment, rclass
         local _sl_n 1
         if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
         _dash_validate_opts "`_rc_own'" `_sl_n'
+        // The fit options (WP-31 C4): on the types twoway takes them on,
+        // their pairs with range(), fitplot()/ciplot() canonicalised.
+        _dash_fit_opts_check "`_rc_own'"
         // range(varname) read as two numbers over the plot's sample
         // (WP-31 C10a).
         tempname _fr_s
@@ -6237,6 +6257,33 @@ program define _dash_process_segment, rclass
         c_local _seg_fnlo_out `_fn_lo'
         c_local _seg_fnhi_out `_fn_hi'
         c_local _seg_fnn_out `_fn_n'
+    }
+    // estopts(), predopts(), estcmd() (WP-31 C4): the layer's points, made
+    // by twoway's own generator over the plot's sample (_psq) and weight,
+    // into the string scalar _dash_plot names in $dash__ftsc.  Last: the
+    // generator leaves s() empty, and the JSON above reads it.
+    local _ft_types "lfit qfit lfitci qfitci fpfit fpfitci"
+    mata: st_local("_ft_on", strofreal(st_global("dash__ftsc") != "" & (st_global("s(estopts)") + st_global("s(predopts)") + st_global("s(estcmd)")) != ""))
+    if `_ft_on' & `: list ptype in _ft_types' {
+        mata: st_local("_ft_e", st_global("s(estopts)"))
+        mata: st_local("_ft_p", st_global("s(predopts)"))
+        mata: st_local("_ft_c", st_global("s(estcmd)"))
+        mata: st_local("_ft_sc", st_global("dash__ftsc"))
+        mata: st_local("_ft_n", st_global("s(n)"))
+        mata: st_local("_ft_r", st_global("s(range)"))
+        mata: st_local("_ft_l", st_global("s(level)"))
+        mata: st_local("_ft_s", st_global("s(stdp)") + st_global("s(stdf)") + st_global("s(stdr)"))
+        mata: st_local("_ft_a", st_global("s(atobs)"))
+        local _ft_w ""
+        if `"`_seg_weight'"' != "" local _ft_w "[`_seg_weight'=`_wx']"
+        local _ft_o ""
+        if "`_ft_n'" != "" local _ft_o "`_ft_o' n(`_ft_n')"
+        if "`_ft_r'" != "" local _ft_o "`_ft_o' range(`_ft_r')"
+        if "`_ft_l'" != "" local _ft_o "`_ft_o' level(`_ft_l')"
+        if "`_ft_s'" != "" local _ft_o "`_ft_o' std(`_ft_s')"
+        _dash_fit_points `yvar' `xvar' `macval(_psq)' `_ft_w', sc(`_ft_sc') ptype(`ptype') ///
+            estopts(`macval(_ft_e)') predopts(`macval(_ft_p)') estcmd(`macval(_ft_c)') ///
+            `_ft_o' `_ft_a'
     }
 end
 
@@ -7183,6 +7230,12 @@ program define _dash_plot
     local _g_unique "saving scheme aspectratio xsize ysize scale fxsize fysize nodraw play"
     // The function layers, collected for evaluation after the loop.
     local _fn_m 0
+    // The fit layers' points (WP-31 C4): each segment's in _ft_sc
+    // (_dash_process_segment, named in $dash__ftsc), kept as "<k>":{..} in
+    // _ft_acc beside the function layers' points.
+    tempname _ft_sc _ft_acc
+    mata: st_strscalar(st_local("_ft_acc"), "")
+    global dash__ftsc `_ft_sc'
     foreach gk of local _g_unique {
         local _gseen_`gk' = `: length local _gafter_`gk'' > 0
     }
@@ -7218,6 +7271,7 @@ program define _dash_plot
               subtitle2 zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
         }
+        mata: st_strscalar(st_local("_ft_sc"), "")
         _dash_process_segment `"`macval(seg)'"' _pt_k _json_k `n_segs'
         // This segment's axis options, as typed, and its layers' axes, for
         // twoway's axis check after the loop (WP-29 P0.5).
@@ -7254,6 +7308,11 @@ program define _dash_plot
         }
 
         local _dash_nplots = `_dash_nplots' + `_seg_nplots_out'
+        // A fit layer's points, under its place in the plots (WP-31 C4).
+        mata: st_strscalar(st_local("_ft_acc"), st_strscalar(st_local("_ft_acc")) + ///
+            (st_strscalar(st_local("_ft_sc")) == "" ? "" : ///
+            (st_strscalar(st_local("_ft_acc")) == "" ? "" : ",") + char(34) + ///
+            st_local("_dash_nplots") + char(34) + ":" + st_strscalar(st_local("_ft_sc"))))
         // A function layer: its place in the plots array (from 1), its
         // text, range() and n(), for _dash_fn_points below (WP-29 P0.6).
         if "`_pt_k'" == "function" {
@@ -7417,6 +7476,11 @@ program define _dash_plot
         mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
         _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc'
     }
+    // The fit layers' points join the function layers' (WP-31 C4).
+    mata: st_strscalar(st_local("_fp_sc"), st_strscalar(st_local("_fp_sc")) + ///
+        (st_strscalar(st_local("_fp_sc")) == "" | st_strscalar(st_local("_ft_acc")) == "" ? "" : ",") + ///
+        st_strscalar(st_local("_ft_acc")))
+    global dash__ftsc ""
     mata: st_strscalar(st_local("_fp_sc"), (st_strscalar(st_local("_fp_sc")) == "" ? "" : "{" + st_strscalar(st_local("_fp_sc")) + "}"))
     macro drop dash__uv
     foreach _vrule of local _dash_rules_graph {
@@ -8753,6 +8817,187 @@ program define _dash_fn_points
         char(34) + st_local("k") + char(34) + ":" + ///
         _dash_fn_points_json(st_local("fy"), strtoreal(st_local("n")), ///
         st_numscalar("r(min)"), st_numscalar("r(delta)")))
+end
+
+// ================================================================
+// _dash_fit_opts_check ptype  -- twoway's fit options, as twoway reads
+//                                them (WP-31 C4)
+// ================================================================
+// Measured on StataNow 19.5 (test/fixtures/fit_options_truth.json,
+// scripts/extract_fit_options_truth.do), each on the forty types:
+//   * the types each is taken on are the _fo_<option> lists below; on any
+//     other twoway's syntax refuses it, "option atobs not allowed" or
+//     "option estopts() not allowed", r(198) (fpfit refuses atobs; fpfitci
+//     takes it and draws as without it);
+//   * with range(), on lfit, qfit, lfitci and qfitci: "may not combine
+//     atobs with range()", and a predopts() holding one of predict's
+//     observation-level options (residuals, cooksd, ...) "may not combine
+//     residuals with range()", r(198) (twoway_lfit_parse.class, which
+//     reads that predopts() at the observations, as atobs);
+//   * fitplot() names one of yxtype's eight, at twoway's spellings, and
+//     ciplot() a range type at its spellings or a yx type in full; any
+//     other name prints twoway's two notes and draws the default line,
+//     or for ciplot() a line at the lower limit; smoothplot() is declared
+//     by twoway_lpolyci_parse.class and never read (the graph is the one
+//     without it), so it is taken and dropped.
+// Called by _dash_process_segment after _dash_validate_opts, with s() in
+// place; it sets s(fitplot), s(ciplot) and s(smoothplot) and nothing
+// else.  Names are echoed through _dash_note, never as SMCL.
+program define _dash_fit_opts_check, sclass
+    version 19
+    args ptype
+    local _fo_atobs "lfit qfit lfitci qfitci fpfitci"
+    local _fo_nofit "lfitci qfitci fpfitci lpolyci"
+    local _fo_fitplot "lfitci qfitci fpfitci lpolyci"
+    local _fo_ciplot "lfitci qfitci fpfitci lpolyci"
+    local _fo_smoothplot "lpolyci"
+    local _fo_estopts "lfit qfit lfitci qfitci fpfit fpfitci"
+    local _fo_predopts "lfit qfit lfitci qfitci fpfit fpfitci"
+    local _fo_estcmd "fpfit fpfitci"
+    foreach o in atobs nofit fitplot ciplot smoothplot estopts predopts estcmd {
+        mata: st_local("_fo_v", strofreal(st_global("s(" + st_local("o") + ")") != ""))
+        if `_fo_v' & !`: list ptype in _fo_`o'' {
+            if inlist("`o'", "atobs", "nofit") display as error "option `o' not allowed"
+            else display as error "option `o'() not allowed"
+            exit 198
+        }
+    }
+    // The text handed to regress, predict and fracpoly: refused before any
+    // data are touched when it holds what may not reach a command line.
+    foreach o in estopts predopts estcmd {
+        mata: st_local("_fo_bad", strofreal(_dash_fit_opt_bad(st_global("s(" + st_local("o") + ")"))))
+        if `_fo_bad' {
+            display as error "option `o'() incorrectly specified"
+            exit 198
+        }
+    }
+    local _fo_lf "lfit qfit lfitci qfitci"
+    mata: st_local("_fo_rng", strofreal(strtrim(st_global("s(range)")) != ""))
+    if `_fo_rng' & `: list ptype in _fo_lf' {
+        mata: st_local("_fo_pr", st_global("s(predopts)"))
+        local _fo_popts ""
+        if `: length local _fo_pr' {
+            local 0 , `macval(_fo_pr)'
+            capture syntax [, Cooksd Hat Leverage Residuals RSTAndared RSTUdent COVRatio DFBeta(passthru) DFIts Welsch * ]
+            if !_rc local _fo_popts = itrim(strtrim("`cooksd' `hat' `leverage' `residuals' `rstandared' `rstudent' `covratio' `dfbeta' `dfits' `welsch'"))
+        }
+        if `: length local _fo_popts' {
+            mata: _dash_say("err", "may not combine ", st_local("_fo_popts"), " with range()")
+            exit 198
+        }
+        if `"`s(atobs)'"' != "" {
+            display as error "may not combine atobs with range()"
+            exit 198
+        }
+    }
+    mata: st_local("_fo_fp", strtrim(st_global("s(fitplot)")))
+    if `: length local _fo_fp' {
+        mata: st_local("_fo_c", _dash_recast_canon(st_local("_fo_fp"), "scatter:2 line:2 connected:2 bar:1 area:4 spike:5 dropline:8 dot:3"))
+        if "`_fo_c'" == "" {
+            mata: _dash_note("named style ", st_local("_fo_fp"), " not found in class yxtype, default attributes used")
+            mata: _dash_note("yxtype not found in scheme, default attributes used", "", "")
+        }
+        sreturn local fitplot "`_fo_c'"
+    }
+    mata: st_local("_fo_cp", strtrim(st_global("s(ciplot)")))
+    if `: length local _fo_cp' {
+        local _fo_c ""
+        if "`_fo_cp'" == "rbarm" local _fo_c rbar
+        else mata: st_local("_fo_c", _dash_recast_canon(st_local("_fo_cp"), "rscatter:3 rline:3 rconnected:3 rarea:5 rbar:4 rcap:4 rcapsym:7 rspike:6 scatter:7 line:4 connected:9 area:4 bar:3 spike:5 dropline:8 dot:3"))
+        if "`_fo_c'" == "" {
+            mata: _dash_note("named style ", st_local("_fo_cp"), " not found in class y2xtype, default attributes used")
+            mata: _dash_note("y2xtype not found in scheme, default attributes used", "", "")
+            local _fo_c line
+        }
+        sreturn local ciplot "`_fo_c'"
+    }
+    sreturn local smoothplot ""
+end
+
+// ================================================================
+// _dash_fit_points y x [if] [in] [weight], sc() ptype() [options]
+//                  -- a fit layer drawn with estopts(), predopts() or
+//                     estcmd(), run through twoway's own generator
+//                     (WP-31 C4)
+// ================================================================
+// twoway hands estopts() to regress (or to fracpoly, with estcmd(), on
+// fpfit and fpfitci) and predopts() to predict (fracpred): what they
+// compute cannot be reproduced outside Stata.  So the layer's points are
+// made here, at registration, by the generator twoway itself runs --
+// twoway__lfit_serset, twoway__qfit_serset or twoway__fpfit_serset --
+// with the arguments its parser hands it: n() points (lfit 3, the others
+// 100; qfit reads 3 as 100), range() as min() and max(), atobs (forced by
+// a predopts() of predict's observation-level options, as
+// twoway_lfit_parse.class forces it), level() and the band's stdp, stdf
+// or stdr.  The serset it builds is read back (serset use, under
+// preserve) and its columns appended to the string scalar sc() as
+// {"x":..,"y":..[,"lo":..,"hi":..],"nobs":..} (_dash_fit_points_json),
+// the renderer draws them as stored and never refits them (maintainer
+// decision D3).  e() is held and restored by the generator.  The text of
+// the three options was checked by _dash_fit_opts_check
+// (_dash_fit_opt_bad) and reaches the generator only through macval();
+// a failure is the generator's own, with its note and code -- twoway's
+// "(note:  regress could not fit model)" then regress's error.
+program define _dash_fit_points
+    version 19
+    syntax varlist(min=2 max=2 numeric ts) [if] [in] [fw aw pw iw] , ///
+        SC(name) PType(name) [ESTopts(string asis) PREDopts(string asis) ///
+        ESTCmd(string asis) N(string) RAnge(string) ATObs LEVel(string) ///
+        STD(string)]
+    marksample touse
+    gettoken y x : varlist
+    local x = strtrim(`"`x'"')
+    quietly count if `touse'
+    local nobs = r(N)
+    local pts 100
+    if "`ptype'" == "lfit" local pts 3
+    if "`n'" != "" local pts `n'
+    if "`ptype'" == "qfit" & "`pts'" == "3" local pts 100
+    local lo .
+    local hi .
+    if `"`range'"' != "" {
+        local lo : word 1 of `range'
+        local hi : word 2 of `range'
+    }
+    if !inlist("`ptype'", "lfitci", "qfitci", "fpfitci") local std ""
+    else if "`std'" == "" local std stdp
+    if "`level'" == "" local level = c(level)
+    local ao = ("`atobs'" != "")
+    if `"`macval(predopts)'"' != "" {
+        local 0 , `macval(predopts)'
+        capture syntax [, Cooksd Hat Leverage Residuals RSTAndared RSTUdent COVRatio DFBeta(passthru) DFIts Welsch * ]
+        if !_rc & strtrim("`cooksd'`hat'`leverage'`residuals'`rstandared'`rstudent'`covratio'`dfbeta'`dfits'`welsch'") != "" local ao 1
+    }
+    local w ""
+    if "`weight'" != "" local w "`weight'`exp'"
+    capture classutil drop .__dash_fit_ss
+    if inlist("`ptype'", "fpfit", "fpfitci") {
+        if `"`macval(estcmd)'"' == "" local estcmd regress
+        capture noisily twoway__fpfit_serset, sersetname(__dash_fit_ss) ///
+            x(`x') y(`y') touse(`touse') cmd(`macval(estcmd)') ///
+            regopts(`macval(estopts)') predopts(`macval(predopts)') ///
+            weight(`w') level(`level') std(`std')
+    }
+    else {
+        local gen twoway__lfit_serset
+        if inlist("`ptype'", "qfit", "qfitci") local gen twoway__qfit_serset
+        capture noisily `gen', sersetname(__dash_fit_ss) x(`x') y(`y') ///
+            touse(`touse') regopts(`macval(estopts)') ///
+            predopts(`macval(predopts)') atobs(`ao') points(`pts') ///
+            min(`lo') max(`hi') weight(`w') std(`std') level(`level')
+    }
+    local rc = _rc
+    if `rc' {
+        capture classutil drop .__dash_fit_ss
+        exit `rc'
+    }
+    local id = `.__dash_fit_ss.id'
+    preserve
+    quietly serset set `id'
+    quietly serset use, clear
+    mata: st_strscalar(st_local("sc"), _dash_fit_points_json(`nobs'))
+    restore
+    capture classutil drop .__dash_fit_ss
 end
 
 // ================================================================
