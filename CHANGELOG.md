@@ -484,7 +484,7 @@ and now matches Stata.
 
 <!-- WP-31 F2 -->
 
-<!-- WP-31 A5b -->
+- `dash lfit mpg weight [aw=price-price]` (or any weight zero on every row): twoway's "(note:  regress could not fit model)" alone, and on kdensity and histogram nothing (was: also "74 observation(s) with a zero or negative weight are excluded", naming the internal column __dashw1) (WP-31, A5b)
 
 <!-- WP-31 C10d -->
 

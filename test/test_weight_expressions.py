@@ -260,3 +260,76 @@ class TestTheRegistries:
             assert fn in pcm.COVERAGE["dash_parse.mata"], fn
         assert re.search(r"(?m)^program define _dash_wexp_gen$", ado)
         assert "_dash_wexp_gen" in pcm.COVERAGE["dash.ado"]
+
+
+# ---------------------------------------------------------------------------
+# WP-31 A5b: a weight that is zero on every row
+# ---------------------------------------------------------------------------
+#: twoway's words for each type, measured with the console binary
+#: (test/fixtures/weighted_markers_truth.json A5b_<type>_expr / _var): the
+#: fits say the model could not be fitted and draw nothing; kdensity and
+#: histogram draw nothing and say nothing.
+_A5B = {"lfit": "(note:  regress could not fit model)",
+        "qfit": "(note:  regress could not fit model)",
+        "lfitci": "(note:  regress could not fit model)",
+        "qfitci": "(note:  regress could not fit model)",
+        "fpfit": "(note:  fracpoly could not fit model)",
+        "fpfitci": "(note:  fracpoly could not fit model)",
+        "kdensity": None, "histogram": None}
+_WM_FIX = os.path.join(HERE, "fixtures", "weighted_markers_truth.json")
+
+
+def _said_and_drawn(mode, spec):
+    """The notes a render gives and the rows each glyph draws."""
+    df = _frame()
+    df["__dashw1"] = 0.0
+    df["zero"] = 0.0
+    tag = next(_SEQ)
+    sp = os.path.join(_TMP, "spec_%d.json" % tag)
+    dp = os.path.join(_TMP, "data_%d.json" % tag)
+    with open(sp, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+    with open(dp, "w", encoding="utf-8") as fh:
+        json.dump(make_data_json(df), fh)
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        if mode == "saved":
+            r = dr.DashRenderer(sp, dp)
+            render_models(r)
+            figs = list(r.figures.values())
+        else:
+            ap = os.path.join(_TMP, "app_%d.py" % tag)
+            dr.ServerAppBuilder(sp, dp).build(ap)
+            mod = load_app(ap, "_a5b_app_%d" % tag)
+            doc = Document()
+            mod.make_document(doc)
+            figs = [m for root in doc.roots
+                    for m in root.select({"type": Plot})]
+    said = sorted({str(x.message) for x in w})
+    rows = [len(next(iter(r.data_source.data.values()), []))
+            for f in figs for r in f.renderers
+            if getattr(r, "data_source", None) is not None]
+    return said, rows
+
+
+@pytest.mark.parametrize("mode", ["saved", "served"])
+@pytest.mark.parametrize("col", ["__dashw1", "zero"], ids=["expr", "var"])
+@pytest.mark.parametrize("ptype", sorted(_A5B))
+class TestAnAllZeroWeight:
+    def test_twoways_note_only(self, mode, col, ptype):
+        with open(_WM_FIX, encoding="utf-8") as fh:
+            fix = json.load(fh)
+        want = _A5B[ptype]
+        for k in ("expr", "var"):
+            rec = fix["A5b_%s_%s" % (ptype, k)]
+            assert rec["rc"] == 0
+            assert rec["lines"] == ([want] if want else []), rec["lines"]
+        wt = "fweight" if ptype == "histogram" else "aweight"
+        said, rows = _said_and_drawn(mode, _wspec(ptype, wt, col))
+        weighty = [s for s in said if "weight" in s or "__dash" in s]
+        assert not weighty, weighty
+        if want:
+            assert [s for s in said if want in s], said
+        else:
+            assert not [s for s in said if "(note:" in s], said
+        assert not any(rows), rows

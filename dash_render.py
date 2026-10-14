@@ -16589,11 +16589,16 @@ class GlyphMapper:
             return (*nothing[:-1], nothing[-1], wtype)
         pos = w > 0
         if not pos.all():
-            _dash_warn_once(
-                ("weight-nonpositive", layer, wexp),
-                f"dash: {layer} {clause}: {int((~pos).sum())} observation(s) "
-                f"with a zero or negative weight are excluded, as twoway "
-                f"excludes them.")
+            # No weight above zero (WP-31 A5b): twoway says only that the
+            # fit could not be computed (_mark_unfit) or, on kdensity and
+            # histogram, nothing at all (weighted_markers_truth.json
+            # A5b_*), so the count is not named.
+            if pos.any():
+                _dash_warn_once(
+                    ("weight-nonpositive", layer, wexp),
+                    f"dash: {layer} {clause}: {int((~pos).sum())} "
+                    f"observation(s) with a zero or negative weight are "
+                    f"excluded, as twoway excludes them.")
             cols = tuple(c[pos] for c in cols)
             w = cols[-1]
         return (*cols[:-1], w, wtype)

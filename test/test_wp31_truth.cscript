@@ -4107,6 +4107,89 @@ if inlist("`only'", "", "S20") & `: list posof "S20" in w31_run' {
 }
 * ==== end S20 ====
 
+// S20 helper (WP-31 A5b).  _u20_rows: the rows every glyph of a saved
+// render draws, summed (u20_n).
+python:
+def _u20_rows(sp, dp):
+    import warnings
+    import dash_render as dr
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    n = sum(len(next(iter(x.data_source.data.values()), []))
+            for f in r.figures.values() for x in f.renderers
+            if getattr(x, "data_source", None) is not None)
+    Macro.setGlobal("u20_n", str(n))
+end
+
+* ==== S20 A5b: a weight zero on every row ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S20") & `: list posof "S20" in w31_run' {
+    display as text "S20 start " c(current_date) " " c(current_time)
+    local u20d "`w31_work'/s20b"
+    capture mkdir "`u20d'"
+    capture graph drop _all
+    sysuse auto, clear
+    quietly generate double zero = 0
+
+    // ------------------------------------------------------------
+    // U20-07: twoway's rc and words beside dash's, built (the notes are
+    // the render's), for an all-zero expression and variable; dash draws
+    // nothing, as twoway draws nothing.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "lfit mpg weight [aw=price-price]" "lfit mpg weight [aw=zero]" "qfitci mpg weight [aw=price-price]" "fpfit mpg weight [aw=zero]" "fpfitci mpg weight [aw=price-price]" "kdensity mpg [aw=price-price]" "histogram mpg [fw=zero]" "lpoly mpg weight [aw=price-price]" {
+        local ++k
+        capture log close _u20t
+        quietly log using "`u20d'/t`k'.log", text replace name(_u20t)
+        capture noisily twoway `c', nodraw
+        local trc = _rc
+        quietly log close _u20t
+        dash clear
+        capture log close _u20d
+        quietly log using "`u20d'/d`k'.log", text replace name(_u20d)
+        capture noisily dash `c'
+        local drc = _rc
+        quietly log close _u20d
+        _w31_expect U20-07 "(`trc' == `drc')" "`c': twoway rc `trc', dash rc `drc'"
+        foreach nd in "regress could not fit model" "fracpoly could not fit model" "no observations" {
+            cert_log_has "`u20d'/t`k'.log", needle("`nd'")
+            local tn = r(count) > 0
+            cert_log_has "`u20d'/d`k'.log", needle("`nd'")
+            local dn = r(count) > 0
+            _w31_expect U20-07 "(`tn' == `dn')" "`c': twoway says '`nd'' `tn', dash `dn'"
+        }
+        foreach nd in "excluded" "__dashw" "weight=" {
+            cert_log_has "`u20d'/d`k'.log", needle("`nd'")
+            _w31_expect U20-07 "(r(count) == 0)" "`c': dash said '`nd''"
+        }
+        if `drc' == 0 {
+            dash clear
+            quietly dash `c', name(u20b`k')
+            _dash_serve_spec, specpath("`u20d'/s`k'.json") datapath("`u20d'/j`k'.json")
+            python: import __main__ as _u20_m; _u20_m._u20_rows("`u20d'/s`k'.json", "`u20d'/j`k'.json")
+            _w31_expect U20-07 "(${u20_n} == 0)" "`c': dash draws ${u20_n} rows where twoway draws none"
+        }
+        dash clear
+    }
+    _w31_done U20-07 "an all-zero weight: twoway's note and rc, nothing drawn, nothing else said"
+
+    forvalues k = 1/8 {
+        foreach p in t d {
+            capture erase "`u20d'/`p'`k'.log"
+        }
+        capture erase "`u20d'/s`k'.json"
+        capture erase "`u20d'/j`k'.json"
+    }
+    capture rmdir "`u20d'"
+    macro drop u20_*
+    dash clear
+    display as text "S20 end " c(current_date) " " c(current_time)
+}
+* ==== end S20 ====
+
 // S22 helpers (WP-31 F1e).  _u22_move_roles: the saved page's lpolyci
 // line and band after one filter move -- the page rendered, the widget
 // set and its own callback run under node (test/js_runner.py) -- written

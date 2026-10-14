@@ -3856,11 +3856,11 @@
   - Suggested fix: WP-31 section 60 (test harness fixtures): add a CI workflow, a lint target and a secrets test, and track or document the hooks.
   - Resolution: Not fixed because WP-31 section 60 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
-- [ ] Title: A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed
+- [x] Title: A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed
   - File Names and Line Numbers: dash.ado `_dash_wexp_gen`, `_dash_process_segment` (weight gate); test/test_weight_expressions.py
   - Description: GAPS3.md A5, found by WP-31 section 07 (A5 residual): `twoway lfit mpg weight [aw=price-price]` prints "(note: regress could not fit model)"; dash registers the layer without that note.
   - Suggested fix: WP-31 section 20 (weighted markers): measure twoway's drawing and notes for an all-zero weight expression on each weighted type and match them.
-  - Resolution: Not fixed because WP-31 section 20 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+  - Resolution: Fixed 14oct2026 (WP-31, A5b). Measured (scripts/extract_weighted_markers_truth.do A5b_*): with a weight zero on every row, expression or variable, lfit, qfit, lfitci and qfitci print "(note:  regress could not fit model)" and fpfit and fpfitci "(note:  fracpoly could not fit model)", rc 0, drawing nothing; kdensity and histogram draw nothing and say nothing; lpoly and lpolyci are "no observations", r(2000), which dash.ado already gave. dash drew the same and printed twoway's note when the graph is drawn (GlyphMapper._mark_unfit), as for any fit with no rows, but also "74 observation(s) with a zero or negative weight are excluded", naming the expression's internal column __dashw1; GlyphMapper._layer_weights no longer names the count when no weight is above zero, in both renderers. Pinned by test/test_weight_expressions.py::TestAnAllZeroWeight::test_twoways_note_only, test/test_wp31_truth.cscript U20-07; fixture test/fixtures/weighted_markers_truth.json. Closes GAPS3 A5 (WP-31, A5b).
 
 - [ ] Title: The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)
   - File Names and Line Numbers: dash.ado graph `syntax' (B1title..R2title, NAme); test/test_abbreviations.py _SHORTER_THAN_TWOWAY
