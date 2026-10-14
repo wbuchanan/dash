@@ -267,3 +267,16 @@ Acceptance: AC-32.1 every red stub green; AC-32.2 U32-1..U32-9 PASS, no SKIP; AC
 **Tests.** test/test_abbreviations.py and a `U32-<k>` case in test/test_abbreviations.cscript. Fits S32 because S32 rewrites aspectratio() in batch 11.
 
 **Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/32-A3c-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 A3c)`. The closing task flips the BUGS.md entry "aspectratio() takes asp, shorter than twoway's minimum" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 A3 (WP-31, A3c).`, deletes the `"A3c":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **A3c Tracked:**` line to `Closed in WP-31, BUGS.md "aspectratio() takes asp, shorter than twoway's minimum", commit pending.`, and replaces `<!-- WP-31 A3c -->` in place under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, A3c)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U32` prefix; drawing comparisons go to a `* ==== S32 A3c: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.
+
+## Addendum (14oct2026, DECISIONS D18): row C8d added to this section
+
+### C8d: pcycle() refuses a fraction where twoway draws it on a graph of few series
+
+**Gap.** S17's pcycle() rule refuses every non-integer; twoway draws a fraction when the graph has few enough series (P02f in test/fixtures/colorvar_options_truth.json).
+
+**Requirement.** Measure twoway's pcycle() with fractional values on graphs of 1, 2, 3 and 16 series (rc, and the style each series takes); relax dash's pcycle token to twoway's rule and draw the same styles, both modes.
+
+**Fits S32** because S32 is batch 11's `_dash_option_rules` editor (A15).
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 C8d)`; close the BUGS.md entry "pcycle() refuses a fraction where twoway draws it on a graph of few series" (Resolution ending `Closes GAPS3 C8 (WP-31, C8d).`), delete its `"C8d":` WP31_OPEN line, rewrite GAPS3.md's `- **C8d Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C8d -->` under `### Results that change` with a line ending `(WP-31, C8d)`. dash replaces twoway (D13).
+

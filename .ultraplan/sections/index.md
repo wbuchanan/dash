@@ -87,13 +87,13 @@
 | 23 | contour-interpolation | B4a (TPS/Shepard numpy, grid rule, cap, truth extractor) | 8 | 01 | 26, 29 | red | L | 4 |
 | 24 | minor-ticks-labels | D1 | 8 | 01 | 33 | yellow | M | 4 |
 | 25 | js-mband-mspline | F1f + C6b (D16) | 8 | 10 | -- | yellow | M | 3 |
-| 26 | contour-drawing | B4b (type registration, options, colour rules, colour key, both modes) | 9 | 23 | 29, 57 | red | L | 4 |
+| 26 | contour-drawing | B4b (type registration, options, colour rules, colour key, both modes) + C8e (D18) | 9 | 23 | 29, 57 | red | L | 4 |
 | 27 | edge-titles | D2 + A3b (D14) | 9 | 01 | -- | yellow | M | 3 |
 | 28 | js-fpfit-fpfitci | F1g | 9 | 13 | -- | red | M | 3 |
 | 29 | js-contour | B4c (marching squares, isobands, refit within the cap) | 10 | 26, 10 | -- | red | L | 4 |
 | 30 | textbox-placement-added-text | D3, D13 | 10 | 01 | -- | yellow | M | 4 |
 | 31 | legend-geometry | D4, C13 | 10 | 01 | -- | yellow | M | 4 |
-| 32 | sizing-scale-aspect | D5, E11 + A3c (D14) | 11 | 01 | -- | yellow | M | 4 |
+| 32 | sizing-scale-aspect | D5, E11 + A3c (D14) + C8d (D18) | 11 | 01 | -- | yellow | M | 4 |
 | 33 | axis-suboptions-look | D6, D7, E6 | 11 | 24 | -- | yellow | M | 4 |
 | 34 | varlabel-marker-label-options | D8, C17, E3, C14, C15 | 11 | 01 | -- | green | S | 4 |
 | 35 | second-axis-moves | D9 + C10e (D14) | 12 | 09 | -- | yellow | M | 3 |
@@ -105,7 +105,7 @@
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
-| 44 | style-file-resolver | E10 | 15 | 40 | -- | red | L | 4 |
+| 44 | style-file-resolver | E10 + C8c (D18) | 15 | 40 | -- | red | L | 4 |
 | 45 | date-ticks-natscale | D15 | 15 | 01 | -- | red | L | 3 |
 | 46 | estimator-edges | C11, C12, C16, G6, G7, F5 + C10d (D14) | 15 | 01 | -- | yellow | M | 4 |
 | 47 | function-fallback-fixtures | F2, F3 + C18b (D14) | 16 | 01 | -- | yellow | M | 3 |
@@ -142,6 +142,9 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | C18b | a hexadecimal literal coordinate (1.0X+3ff) is refused where twoway takes it | S06 | S47 (16) | FX |
 | C6b | mband and mspline over data with missing y draw fewer vertices than twoway (D16) | S14 | S25 (8) | RC |
 | C11b | the saved page's lpoly default bandwidth on an exactly fitted y draws y = 0 (D17) | S19 | S22 (7) | RC |
+| C8c | A user-supplied scheme's colorvar() default colour rule falls back to s2color's (D18) | S17 | S44 (15) | RC |
+| C8d | pcycle() refuses a fraction where twoway draws it on a graph of few series (D18) | S17 | S32 (11) | RC |
+| C8e | colorkeysreverse on a colorvar() colour bar is named, not drawn (D18) | S17 | S26 (9) | RC |
 
 ## Batch execution order
 

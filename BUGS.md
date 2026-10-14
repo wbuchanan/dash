@@ -3915,3 +3915,21 @@
   - Description: GAPS3.md C11, found by WP-31 section 19 (F1d residual): where lpoly's rule-of-thumb global fit is exact (y an exact polynomial in x, or no more rows than its pe+4 coefficients) Stata's r(bwidth) is the round-off of its float arithmetic; the served app emulates it (_lpoly_rot_float) and the saved page, after a filter move, draws the line at 0. Measured on test/fixtures/lpoly_rot_truth.json: 48 of 785 rows, all subsets of 2 to 5 auto cars.
   - Suggested fix: WP-31 section 22 (js lpolyci): port _lpoly_rot_float's exactly rounded sums and float invsym sweep to JavaScript, if a float emulation that agrees with the Python one across platforms can be shown. If no such emulation can be shown, the saved page marks an exactly fitted lpoly with the stale cue after a move (M8) instead of drawing y = 0.
   - Resolution: Not fixed because WP-31 section 22 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A user-supplied scheme's colorvar() default colour rule falls back to s2color's
+  - File Names and Line Numbers: dash_render.py _DASH_ZYX2_SCHEME_RULES, _dash_colorrule_palette; dash-*.scheme
+  - Description: GAPS3.md C8, found by WP-31 section 17 (C8b): twoway's default colorvar() rule comes from the scheme's zyx2rule and contour_begin/contour_end entries; dash reads them for the 26 schemes it ships (_DASH_ZYX2_SCHEME_RULES) and falls back to s2color's hue rule for any other scheme.
+  - Suggested fix: WP-31 section 44 (style file resolver): read zyx2rule, contour_begin and contour_end from the scheme in use (its file and its class directives) and drive the default rule from them, cscripted against twoway on a user scheme.
+  - Resolution: Not fixed because WP-31 section 44 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: pcycle() refuses a fraction where twoway draws it on a graph of few series
+  - File Names and Line Numbers: dash.ado _dash_option_rules (pcycle token); dash_render.py pcycle reader
+  - Description: GAPS3.md C8, found by WP-31 section 17 (C8b residual): dash takes pcycle() as a positive integer only; twoway draws pcycle(1.5) on a graph of two or fewer series (fixture colorvar_options_truth.json P02f).
+  - Suggested fix: WP-31 section 32 (sizing scale aspect): measure twoway's pcycle() on fractions across series counts and match its acceptance and drawing.
+  - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: colorkeysreverse on a colorvar() colour bar is named, not drawn
+  - File Names and Line Numbers: dash_render.py _apply_colorvar colour bar (ColorBar)
+  - Description: GAPS3.md C8, found by WP-31 section 17 (C8b residual): colorkeysreverse reverses twoway's colour key; on dash's continuous colour bar it is named in the note.
+  - Suggested fix: WP-31 section 26 (contour drawing): draw the reversed colour bar as twoway draws it, both modes.
+  - Resolution: Not fixed because WP-31 section 26 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

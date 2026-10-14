@@ -293,3 +293,16 @@ Acceptance: **AC-26.1** both types draw in both modes with twoway's cuts and col
 - **Shared files (R1-R13).** R1: one S26 block; U26-9 in test_parser.cscript. R2: ten functions after `_dash_contour_surface`, two constants after `_DASH_CONTOUR_INTERPS`. R3: the Not-drawn paragraph (re-owned from S21), the new contour paragraph, the Unsupported contour lines, one Server Mode sentence. R4: two markers. R5: B4b entry; the `B4b Tracked` line in the Closed form with `commit pending` (A11, A21). R6: `clegend` joins the seven key lists together; no new ado program unless the multiple-plot check is factored (then `version 19`, `_needed`, header index, coverage map). R7: the fixture regenerated whole. R8: corpus appended. R9: flips recorded. R10: unsupported counts and the forty-four pin. R12: S26 is batch 9's editor of `_make_figure_body`, `_generate_app_source` and `_dash_option_rules`.
 - **For S29.** `_dash_agg_config` keys: `type xvar yvar zvar cuts interp cap capped horizontal fill_color lo hi`; `_dash_agg_source` is the fill source; the line source is `cr._dash_contour_sources[1]` -- S29 needs both on the page: register the line source as a second agg source entry with `type: "contourline_of"`, or hand both through one entry (`agg_sources[ai]` is the fill source; S29 adds `ac.line_source_index`). Recommendation to S29: in `DashRenderer.render()` step 3b (:46219-46237) register the ContourRenderer twice -- `(fill_src, cfg)` and `(line_src, dict(cfg, part="line"))` -- so the JS branch finds each by `ac.part`.
 - **For S57.** Example `sysuse auto; dash contour mpg weight length, ccuts(15 20 25 30)`.
+
+## Addendum (14oct2026, DECISIONS D18): row C8e added to this section
+
+### C8e: colorkeysreverse on a colorvar() colour bar is named, not drawn
+
+**Gap.** S17 drew colorkeysreverse on discrete keys but names it on the continuous colour bar.
+
+**Requirement.** Measure twoway's colour key with colorkeysreverse on a binned and an unbinned colorvar(); draw the reversed bar (Bokeh ColorBar with a reversed mapper/ticks) in both modes; nothing named once drawn.
+
+**Fits S26** because S26 builds the contour colour key on the same colour-bar code in batch 9.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 C8e)`; close the BUGS.md entry "colorkeysreverse on a colorvar() colour bar is named, not drawn" (Resolution ending `Closes GAPS3 C8 (WP-31, C8e).`), delete its `"C8e":` WP31_OPEN line, rewrite GAPS3.md's `- **C8e Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C8e -->` under `### Results that change` with a line ending `(WP-31, C8e)`. dash replaces twoway (D13).
+

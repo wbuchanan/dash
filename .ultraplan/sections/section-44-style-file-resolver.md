@@ -336,3 +336,16 @@ AC-44.1 every fixture name drawn; AC-44.2 guards hold (including the swapped-fil
 - **python_exec hazard** as S40.
 - **For S33/S61:** D6b (`labstyle tstyle gstyle tlstyle glstyle`; textstyle/tickstyle/gridstyle files) is not closed here (D-44c); S61 files it under M12.
 - **Decisions for ratification:** D-44c (textboxstyle/color files deferred as E10b; textstyle/tickstyle/gridstyle left to S61 with D6b), D-44e's branch, the embedded `_style_rows` of A24 (the spec grows by the resolved rows of the names it uses).
+
+## Addendum (14oct2026, DECISIONS D18): row C8c added to this section
+
+### C8c: A user-supplied scheme's colorvar() default colour rule falls back to s2color's
+
+**Gap.** S17 measured the default colorvar() colours as a rule the scheme names (hue blue-red under s2color/stcolor, intensity of black for the mono schemes, intensity of edkblue for economist) and stores the rule per shipped scheme in `_DASH_ZYX2_SCHEME_RULES`; a user or third-party scheme gets s2color's rule.
+
+**Requirement.** Read the scheme's `zyx2rule`, `contour_begin`/`contour_end` (and whatever the scheme's class directives give them) through this section's resolver, both modes, and drive `_dash_colorrule_palette` from them; shipped schemes keep their measured result. Cscript a user scheme (a test/fixtures scheme file) against twoway's colours.
+
+**Fits S44** because S44 adds the general resolver over style files and the scheme's own class directives.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 C8c)`; close the BUGS.md entry "A user-supplied scheme's colorvar() default colour rule falls back to s2color's" (Resolution ending `Closes GAPS3 C8 (WP-31, C8c).`), delete its `"C8c":` WP31_OPEN line, rewrite GAPS3.md's `- **C8c Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C8c -->` under `### Results that change` with a line ending `(WP-31, C8c)`. dash replaces twoway (D13).
+
