@@ -3433,6 +3433,18 @@ MOVE_CORPUS = [
     _move_case("lpoly gaussian [fw=rep], dropdown", _MOVES[0],
                [plot_for("lpoly", {"kernel": "gaussian", "weight": "fweight",
                                    "wexp": "rep"})]),
+    # WP-31 F1e: lpolyci refits on the saved page
+    _move_case("lpolyci, dropdown", _MOVES[0], [_sc(), plot_for("lpolyci")]),
+    _move_case("lpolyci degree(1) bwidth(400) pwidth(600) level(90), range",
+               _MOVES[1],
+               [plot_for("lpolyci", {"degree": "1", "bwidth": "400",
+                                     "pwidth": "600", "level": "90"})]),
+    _move_case("lpolyci var(4) [aw=weight], slider", _MOVES[2],
+               [plot_for("lpolyci", {"lpvar": "4", "weight": "aweight",
+                                     "wexp": "weight"})]),
+    _move_case("lpolyci cosine [fw=rep], dropdown", _MOVES[0],
+               [plot_for("lpolyci", {"kernel": "cosine", "weight": "fweight",
+                                     "wexp": "rep"})]),
 
     # WP-31 S09 (C10c): three y axes after a move (S35 extends the
     # profile to their ranges).

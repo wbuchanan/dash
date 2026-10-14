@@ -1983,7 +1983,8 @@ it.  The saved page and the served app differ as follows:
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
 {col 5}Fit-line recompute on filter{col 38}lfit, qfit, lowess,{col 59}Yes
-{col 38}lfitci, qfitci, lpoly
+{col 38}lfitci, qfitci, lpoly,
+{col 38}lpolyci
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
@@ -2008,7 +2009,7 @@ filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
 does not refit a fitted or smoothed line ({cmd:fpfit}, {cmd:fpfitci},
-{cmd:lpolyci}, {cmd:mband}, {cmd:mspline}, a {cmd:recast()}
+{cmd:mband}, {cmd:mspline}, a {cmd:recast()}
 fit, or a band or line {cmd:ciplot()} or {cmd:fitplot()} draws as another
 type).  A straight or quadratic fit and its confidence band ({cmd:lfit},
 {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}) are refitted from the rows that
@@ -2018,8 +2019,9 @@ the band at its {cmd:level()} with {cmd:stdp}, {cmd:stdf} or {cmd:stdr}.  A
 smooth would take more than about half a second (over 200 million window
 operations, about 15,000 rows at the default bandwidth) leaves the line
 empty after a move rather than freezing the browser.  An {cmd:lpoly}
-smooth is refitted with its default bandwidth recomputed from the kept
-rows; where that bandwidth is Stata's round-off of an exact global fit (y
+smooth and its confidence band ({cmd:lpolyci}, with {cmd:pwidth()} and
+{cmd:var()}) are refitted with the default bandwidth recomputed from the
+kept rows; where that bandwidth is Stata's round-off of an exact global fit (y
 an exact polynomial in x, or no more rows than the rule of thumb's fit has
 coefficients) the saved page draws the line at 0 where {cmd:dash serve}
 reproduces Stata's value.  When a move

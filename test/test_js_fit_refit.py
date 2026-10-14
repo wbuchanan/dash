@@ -157,9 +157,9 @@ class TestStaleKind:
         # lowess is refitted too (WP-31 F1c): TestStaleKind
         # test_lowess_is_refit.
         # lfitci and qfitci are refitted too (WP-31 F1b): TestCiStaleKind.
-        # lpoly too (WP-31 F1d): TestLpolyStaleKind.
-        for t in ("fpfit", "fpfitci",
-                  "lpolyci", "mband", "mspline"):
+        # lpoly too (WP-31 F1d): TestLpolyStaleKind.  Flipped (WP-31
+        # F1e): listed lpolyci, refitted since (TestLpolyciStaleKind).
+        for t in ("fpfit", "fpfitci", "mband", "mspline"):
             assert dr._dash_stale_kind(t, {}) == "fit", t
 
 
@@ -1216,7 +1216,9 @@ class TestLpolyConfig:
                                                                   100.0)
         assert gm._lpoly_grid_plan({"n": "1"}, "lpoly", 22) == (50, 74, 1.0)
         assert gm._lpoly_grid_plan({"n": "20.7"}, "lpoly", 22)[0] == 20
-        assert gm._lpoly_grid_n({"n": "100"}, "lpoly", 22) == 74
+        # _lpoly_grid_n, the plan's first value, is deleted (WP-31 F1e):
+        # map_lpolyci, its last caller, reads the plan whole.
+        assert gm._lpoly_grid_plan({"n": "100"}, "lpoly", 22)[0] == 74
 
     def test_lpoly_empty_layer_is_tagged(self):
         r = _map("lpoly", _FRAME.iloc[:1])
@@ -1248,8 +1250,9 @@ class TestLpolyStaleKind:
         assert "lpoly" in dr._DASH_JS_REFIT_TYPES
         assert dr._dash_stale_kind("lpoly", {}) is None
         assert dr._dash_stale_kind("lpoly", {"recast": "scatter"}) == "fit"
-        # lpolyci is the S22 section's: still marked.
-        assert dr._dash_stale_kind("lpolyci", {}) == "fit"
+        # Flipped (WP-31 F1e): lpolyci was still marked; it is refitted
+        # since (TestLpolyciStaleKind).
+        assert dr._dash_stale_kind("lpolyci", {}) is None
 
 
 def _spliced(name):
@@ -1536,3 +1539,355 @@ class TestTheSavedLpolyRefits:
         _move(r, ("Slider", 11385.0))
         x, y = _fit_data(r.figures["g1"].renderers)
         assert len(x) == 0 and len(y) == 0
+
+
+# ---- WP-31 F1e: lpolyci ----
+#
+# GAPS3 F1e: an lpolyci on the saved page kept the build's smooth and
+# band after a filter move, dimmed and keyed "(unfiltered)" on both,
+# while the served app refitted both from the kept rows.  The oracles
+# are GlyphMapper.map_lpolyci and _lpoly_se (pinned to Stata's
+# ``lpoly, ci se()`` by test_lpolyci_band.py on lpolyci_truth.json and the
+# U22 truth block) and the served app after the same move.
+
+#: S19's keys plus lpolyci's own (D-22.a, D-22.d): the pilot width, var()
+#: as lpvar, the level and the renderer's role.
+_LPCI_KEYS = _LP_KEYS | {"pwidth", "lpvar", "level", "role"}
+_LPCI_COLS = ["x_lp", "y_lp", "y_lower", "y_upper"]
+_LPCI_TRUTH = os.path.join(_HERE, "fixtures", "lpolyci_truth.json")
+with open(_LPCI_TRUTH, encoding="utf-8") as _fh:
+    _LPCIT = json.load(_fh)
+_LPCI_CASES = {c["id"]: c for c in _LPCIT["cases"]}
+#: Every case with Stata's bandwidths (cx_n5, a constant x, has none).
+_LPCI_IDS = sorted(k for k, c in _LPCI_CASES.items()
+                   if c["bwidth"] is not None and c["pwidth"] is not None)
+_LPCI_D4 = {k: set(v) for dv in _LPCIT["divergences"]
+            for k, v in dv["rows"].items()}
+
+
+def _lpci_map(df, opts=None, dataset=None):
+    """map_lpolyci's [line, band] on *df*, warnings silenced."""
+    gm = _gm()
+    if dataset is not None:
+        gm.dataset = dataset
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return gm.map_lpolyci(figure(), ColumnDataSource(df), "y", "x",
+                              dict(opts or {}))
+
+
+def _lpci_sample(c):
+    """x, y and lpoly's weights of a fixture case (aweights scaled to mean
+    1, fweights raw), as test_lpolyci_band.py reads them."""
+    D = _LPCIT["datasets"][c["ds"]]
+    x = np.array([D[c["x"]][i] for i in c["idx"]], dtype=float)
+    y = np.array([D[c["y"]][i] for i in c["idx"]], dtype=float)
+    w = None
+    if c["w"]:
+        w = dr._dash_lpoly_weights(
+            np.array([D[c["w"]][i] for i in c["idx"]], dtype=float),
+            "fw" if c["wtype"] == "fw" else "aw")
+    return x, y, w
+
+
+class TestLpolyciConfig:
+    def test_both_renderers_are_tagged_with_roles(self):
+        line_r, band_r = _lpci_map(_FRAME, {"bwidth": "400",
+                                            "pwidth": "600"})
+        lc, bc = line_r._dash_agg_config, band_r._dash_agg_config
+        assert lc["role"] == "line" and bc["role"] == "band"
+        assert dict(lc, role=None) == dict(bc, role=None)
+        assert line_r._dash_agg_source is line_r.data_source
+        assert band_r._dash_agg_source is band_r.data_source
+        assert line_r.data_source is not band_r.data_source
+        assert line_r._dash_agg_rows == band_r._dash_agg_rows
+        json.dumps(lc, allow_nan=False)
+
+    def test_lpolyci_config_keys(self):
+        line_r, _b = _lpci_map(_FRAME, {"bwidth": "400", "pwidth": "600",
+                                        "lpvar": "4", "level": "90",
+                                        "degree": "1", "kernel": "cosine",
+                                        "n": "20"})
+        cfg = line_r._dash_agg_config
+        assert set(cfg) == _LPCI_KEYS
+        assert cfg["type"] == "lpolyci" and cfg["cols"] == _LPCI_COLS
+        assert (cfg["bwidth"], cfg["pwidth"], cfg["lpvar"]) == (400.0, 600.0,
+                                                                4.0)
+        assert cfg["level"] == 90.0 and cfg["degree"] == 1
+        assert cfg["kernel"] == "cosine" and cfg["n_user"] == 20.0
+        d = _lpci_map(_FRAME)[0]._dash_agg_config
+        assert (d["bwidth"], d["pwidth"], d["lpvar"]) == (None, None, None)
+        assert d["level"] == 95.0 and d["keepmissing"] is False
+        assert _lpci_map(_FRAME, {"cmissing": "n"}
+                         )[0]._dash_agg_config["keepmissing"] is True
+
+    def test_lpolyci_empty_layer_is_tagged(self):
+        line_r, band_r = _lpci_map(_FRAME.iloc[:1])
+        assert line_r.data_source.data["x_lp"] == []
+        for r, role in ((line_r, "line"), (band_r, "band")):
+            assert r._dash_agg_config["type"] == "lpolyci"
+            assert r._dash_agg_config["role"] == role
+            assert r._dash_agg_source is r.data_source
+
+    @pytest.mark.parametrize("opts", [{"ciplot": "rline"},
+                                      {"fitplot": "scatter"}])
+    def test_a_band_or_line_drawn_as_another_type_is_not_tagged(self, opts):
+        line_r, band_r = _lpci_map(_FRAME, opts)
+        assert not hasattr(line_r, "_dash_agg_config")
+        assert not hasattr(band_r, "_dash_agg_config")
+
+
+class TestLpolyciStaleKind:
+    def test_lpolyci_is_refit(self):
+        assert "lpolyci" in dr._DASH_JS_REFIT_TYPES
+        assert dr._dash_stale_kind("lpolyci", {}) is None
+        assert dr._dash_stale_kind("lpolyci", {"ciplot": "rline"}) == "fit"
+        assert dr._dash_stale_kind("lpolyci", {"fitplot": "scatter"}) == "fit"
+
+
+_INVNORMAL_P = [0.5, 0.75, 0.9, 0.95, 0.975, 0.995, 0.9995, 0.025, 1e-6]
+
+
+@requires_node
+class TestInvnormal:
+    @pytest.mark.parametrize("p", _INVNORMAL_P)
+    def test_matches_python(self, p):
+        got = _js("dash_invnormal(%r)" % p)
+        want = dr._dash_invnormal(p)
+        assert abs(got - want) <= 1e-13 * max(1.0, abs(want)), (got, want)
+
+    def test_statas_975(self):
+        got = _js("dash_invnormal(0.975)")
+        assert abs(got - 1.959963984540054) <= 1e-14
+
+    def test_gammainc(self):
+        # P(1/2, x) = erf(sqrt(x)).
+        for x in (0.5, 2.0, 10.0, 1e-8, 40.0):
+            got = _js("dash_gammainc_p(0.5, %r)" % x)
+            assert abs(got - math.erf(math.sqrt(x))) <= 1e-14, (x, got)
+        assert _js("dash_gammainc_p(0.5, 0)") == 0
+        # P(2, x) = 1 - (1 + x) e^-x.
+        for x in (0.3, 3.0, 12.0):
+            got = _js("dash_gammainc_p(2, %r)" % x)
+            assert abs(got - (1 - (1 + x) * math.exp(-x))) <= 1e-14
+
+    def test_outside_zero_one_is_nan(self):
+        assert _js("[dash_invnormal(0), dash_invnormal(1), "
+                   "dash_invnormal(-1)]") == [None, None, None]
+
+
+_SE_CACHE = {}
+
+
+def _se_pairs():
+    """{case id: (JS se, Python _lpoly_se)} at Stata's own bandwidths,
+    the JS run once."""
+    if not _SE_CACHE:
+        calls, want = [], []
+        for cid in _LPCI_IDS:
+            c = _LPCI_CASES[cid]
+            x, y, w = _lpci_sample(c)
+            gx = np.asarray(c["gx"], dtype=float)
+            var = None if c["var"] is None else float(c["var"])
+            calls.append([x.tolist(), y.tolist(), gx.tolist(),
+                          float(c["bwidth"]), float(c["pwidth"]),
+                          int(c["degree"]), c["kernel"], _lp_list(w), var])
+            want.append(dr._lpoly_se(x, y, gx, c["bwidth"], c["pwidth"],
+                                     int(c["degree"]), c["kernel"], w, var))
+        got = _js_batch("dash_lpoly_se", calls)
+        for cid, g, wv in zip(_LPCI_IDS, got, want):
+            _SE_CACHE[cid] = (_nan(g), wv)
+    return _SE_CACHE
+
+
+@requires_node
+class TestLpolySeTwin:
+    @pytest.mark.parametrize("cid", _LPCI_IDS)
+    def test_fixture_cases(self, cid):
+        js, py = _se_pairs()[cid]
+        np.testing.assert_allclose(js, py, rtol=1e-8, atol=1e-10,
+                                   equal_nan=True)
+        # And Stata's se, where D4 does not name the row.
+        st = _nan(_LPCI_CASES[cid]["gse"])
+        ok = np.isfinite(st) & np.isfinite(js)
+        ok[list(_LPCI_D4.get(cid, ()))] = False
+        np.testing.assert_allclose(js[ok], st[ok], rtol=1e-6, atol=1e-9)
+
+    @pytest.mark.parametrize("cid", sorted(set(_LPCIT["no_df"])
+                                           & set(_LPCI_IDS)))
+    def test_pinch_rows(self, cid):
+        # The rows whose pilot has no residual degrees of freedom: the se
+        # is exactly 0 where Python's is (D4's pinch), NaN where a window
+        # holds fewer than two weighted rows, and var()'s se elsewhere.
+        js, py = _se_pairs()[cid]
+        rows = _LPCIT["no_df"][cid]
+        assert [js[k] == 0.0 for k in rows] == [py[k] == 0.0 for k in rows]
+        assert [np.isnan(js[k]) for k in rows] == [np.isnan(py[k])
+                                                   for k in rows]
+
+    def test_a_pilot_with_no_df_pinches(self):
+        js, py = _se_pairs()["a_d2"]
+        assert all(js[k] == 0.0 for k in range(44, 50)), js[44:]
+
+    def test_overflow_guard(self):
+        # auto at x0 = 2200, bwidth(500): a pwidth() of 1e-151 squares
+        # past DBL_MAX, and Stata's se is missing (_lpoly_se).
+        c = _LPCI_CASES["a_d0"]
+        x, y, _w = _lpci_sample(c)
+        args = [x.tolist(), y.tolist(), [2200.0], 500.0, 1e-151, 0,
+                "epanechnikov", None, None]
+        assert np.isnan(dr._lpoly_se(x, y, [2200.0], 500.0, 1e-151, 0,
+                                     "epanechnikov")[0])
+        assert _js_batch("dash_lpoly_se", [args]) == [[None]]
+
+
+def _lpci_case(df, opts, dataset=None):
+    """The branch's two roles against map_lpolyci's two sources."""
+    line_r, band_r = _lpci_map(df, opts, dataset)
+    x, y, w = _rows(df, opts)
+    got = js_runner.run_fit_js_block_roles(line_r._dash_agg_config, x, y, w)
+    for role, r, cols in (("line", line_r, _LPCI_COLS[:2]),
+                          ("band", band_r, _LPCI_COLS)):
+        data = r.data_source.data
+        assert set(got[role]) == set(data), (role, sorted(got[role]))
+        for c in cols:
+            np.testing.assert_allclose(_nan(got[role][c]),
+                                       np.asarray(data[c], float),
+                                       rtol=1e-8, atol=1e-10, equal_nan=True,
+                                       err_msg="%s %s" % (role, c))
+    return got
+
+
+_LPCI_BRANCH = [
+    ("default", _FRAME, {}, None),
+    ("degree(1) bwidth(400) pwidth(600) level(90)", _FRAME,
+     {"degree": "1", "bwidth": "400", "pwidth": "600", "level": "90"}, None),
+    ("var(4) aw", _FRAME, {"lpvar": "4", "weight": "aweight", "wexp": "w"},
+     None),
+    ("cosine fw", _FRAME, {"kernel": "cosine", "weight": "fweight",
+                           "wexp": "w"}, None),
+    ("degree(2) bwidth(500) n(20) of 60", _LP_FRAME60.iloc[:25],
+     {"degree": "2", "bwidth": "500", "n": "20"}, _LP_FRAME60),
+    ("bwidth(60) pwidth(60) leaves gaps", _FRAME,
+     {"bwidth": "60", "pwidth": "60"}, None),
+    ("bwidth(60) cmissing(n)", _FRAME, {"bwidth": "60", "pwidth": "60",
+                                        "cmissing": "n"}, None),
+    ("stairstep", _FRAME, {"connect": "stairstep"}, None),
+    ("one row", _FRAME.iloc[:1], {}, None),
+    ("x of 0 and 1 only: the line at 0, no band", _FRAME.assign(
+        x=(np.arange(30) % 2).astype(float)), {}, None),
+]
+
+
+@requires_node
+class TestLpolyciBranch:
+    @pytest.mark.parametrize("df,opts,dataset",
+                             [c[1:] for c in _LPCI_BRANCH],
+                             ids=[c[0] for c in _LPCI_BRANCH])
+    def test_matches_python(self, df, opts, dataset):
+        _lpci_case(df, opts, dataset)
+
+    def test_one_row_writes_empty_columns(self):
+        got = _lpci_case(_FRAME.iloc[:1], {})
+        assert got["line"] == {"x_lp": [], "y_lp": []}
+        assert all(v == [] for v in got["band"].values())
+
+    def test_x_of_two_values_draws_zero_and_no_band(self):
+        got = _lpci_case(_FRAME.assign(x=(np.arange(30) % 2).astype(float)),
+                         {})
+        assert got["line"]["y_lp"] == [0.0] * 30
+        assert got["band"]["x_lp"] == []
+
+    def test_the_cache_serves_both_roles(self):
+        line_r, _b = _lpci_map(_FRAME, {"bwidth": "150", "pwidth": "40"})
+        x, y, w = _rows(_FRAME, {})
+        got = js_runner.run_fit_js_block_roles(line_r._dash_agg_config, x,
+                                               y, w)
+        assert got["cache_size"] == 1
+        line, band = got["line"], got["band"]
+        assert len(band["x_lp"]) < len(line["x_lp"])
+        at = {xv: yv for xv, yv in zip(line["x_lp"], line["y_lp"])}
+        assert all(at[xv] == yv for xv, yv in zip(band["x_lp"],
+                                                  band["y_lp"]))
+
+
+def _lpci_data(renderers):
+    """{"line": (x, y), "band": the four columns} of the one lpolyci layer
+    among *renderers*: its line reads x_lp/y_lp alone, its band the four."""
+    lines = [r for r in renderers if isinstance(r, GlyphRenderer)
+             and isinstance(r.glyph, Line) and "x_lp" in r.data_source.data
+             and "y_lower" not in r.data_source.data]
+    bands = [r for r in renderers if isinstance(r, GlyphRenderer)
+             and type(r.glyph).__name__ == "VArea"
+             and "y_lower" in r.data_source.data]
+    assert len(lines) == 1 and len(bands) == 1, (len(lines), len(bands))
+    ld, bd = lines[0].data_source.data, bands[0].data_source.data
+    return {"line": {c: np.asarray(ld[c], dtype=float)
+                     for c in _LPCI_COLS[:2]},
+            "band": {c: np.asarray(bd[c], dtype=float) for c in _LPCI_COLS}}
+
+
+def _served_lpci_after(spec, action):
+    doc, _ = _served(spec)
+    kind, want = action
+    w = [m for m in _widgets_of(doc) if type(m).__name__ == kind][0]
+    if kind == "Select":
+        want = [v for v, lab in w.options if lab == want][0]
+    _fire(w, want)
+    return _lpci_data([m for m in doc.models if isinstance(m, GlyphRenderer)])
+
+
+#: (name, plots, move): a saved lpolyci after a move equals the served
+#: one.  The default bandwidth on the five Foreign rows is an exact global
+#: fit (C11b), so the dropdown move is given a bandwidth here.
+_LPCI_REFIT = [
+    ("lpolyci bwidth(400) pwidth(600)",
+     [plot_for("scatter"), plot_for("lpolyci", {"bwidth": "400",
+                                                "pwidth": "600"})],
+     _MOVES[0]),
+    ("lpolyci", [plot_for("scatter"), plot_for("lpolyci")], _MOVES[1]),
+    ("lpolyci", [plot_for("scatter"), plot_for("lpolyci")], _MOVES[2]),
+    ("lpolyci degree(1) bwidth(400) pwidth(600) level(90)",
+     [plot_for("lpolyci", {"degree": "1", "bwidth": "400", "pwidth": "600",
+                           "level": "90"})], _MOVES[1]),
+    ("lpolyci var(4) [aw=weight]",
+     [plot_for("lpolyci", {"lpvar": "4", "weight": "aweight",
+                           "wexp": "weight"})], _MOVES[2]),
+    ("lpolyci cosine [fw=rep] bwidth(500)",
+     [plot_for("lpolyci", {"kernel": "cosine", "weight": "fweight",
+                           "wexp": "rep", "bwidth": "500"})], _MOVES[0]),
+]
+
+
+@requires_node
+class TestTheSavedLpolyciRefits:
+    @pytest.mark.parametrize("plots,move", [c[1:] for c in _LPCI_REFIT],
+                             ids=["%s-%s" % (c[0], c[2][0])
+                                  for c in _LPCI_REFIT])
+    def test_saved_equals_served(self, plots, move):
+        _, filt, action, _oracle = move
+        spec = _spec(plots, {"filter": filt})
+        r = _render(spec)
+        built = _lpci_data(r.figures["g1"].renderers)
+        _move(r, action)
+        saved = _lpci_data(r.figures["g1"].renderers)
+        served = _served_lpci_after(spec, action)
+        for role, cols in (("line", _LPCI_COLS[:2]), ("band", _LPCI_COLS)):
+            for c in cols:
+                np.testing.assert_allclose(saved[role][c], served[role][c],
+                                           rtol=1e-8, atol=1e-9,
+                                           equal_nan=True,
+                                           err_msg="%s %s" % (role, c))
+        assert (built["line"]["y_lp"].shape != saved["line"]["y_lp"].shape
+                or not np.allclose(built["line"]["y_lp"],
+                                   saved["line"]["y_lp"])), \
+            "the move changed nothing"
+
+    def test_a_move_leaving_one_row_empties_both(self):
+        spec = _spec([plot_for("scatter"), plot_for("lpolyci")],
+                     {"filter": "price, type(slider)"})
+        r = _render(spec)
+        _move(r, ("Slider", 11385.0))
+        got = _lpci_data(r.figures["g1"].renderers)
+        assert all(len(v) == 0 for v in got["line"].values())
+        assert all(len(v) == 0 for v in got["band"].values())

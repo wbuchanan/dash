@@ -584,7 +584,15 @@ def run_fit_js_block(ac, x, y, w=None, *, timed=False):
     ``} else if (ac.type === '<type>') {``, a shared head that names the
     type first (``} else if (ac.type === '<type>' || ...``) and one that
     names it last (``... || ac.type === '<type>') {``; WP-31 F1b).  The
-    rows bypass ``dash_fit_rows`` (``run_fit_rows`` runs that alone)."""
+    rows bypass ``dash_fit_rows`` (``run_fit_rows`` runs that alone).
+    The harness declares ``_dash_lpci_cache`` as the callback does (WP-31
+    F1e)."""
+    return run_js(_fit_harness(ac, x, y, w, timed=timed))
+
+
+def _fit_block(ac):
+    """The source of *ac*'s fit branch in ``_FILTER_JS`` (see
+    ``run_fit_js_block``)."""
     js = dr._FILTER_JS
     t = ac["type"]
     heads = ["} else if (ac.type === '%s') {" % t,
@@ -596,19 +604,50 @@ def run_fit_js_block(ac, x, y, w=None, *, timed=False):
     lo = p + len(h) if h.endswith("{") else js.index("{", p) + 1
     nxt = js.find("} else if (ac.type === '", lo)
     end = js.index("// DASH_FIT_BRANCHES_END", lo)
-    block = js[lo:nxt if (nxt != -1 and nxt < end) else end]
+    return js[lo:nxt if (nxt != -1 and nxt < end) else end]
+
+
+def _fit_harness(ac, x, y, w=None, *, timed=False):
+    block = _fit_block(ac)
+    return (fit_helpers_js()
+            + "const ac = " + json.dumps(ac)
+            + ";\nconst fx = " + _floats(x)
+            + ";\nconst fy = " + _floats(y)
+            + ";\nconst fw = " + (_floats(w) if w is not None else "null")
+            + ";\nconst src = { data: null, change: { emit: () => {} } };"
+            + "\nconst _dash_lpci_cache = new Map();"
+            + "\nconst _t0 = process.hrtime.bigint();"
+            + "\nfor (let _i = 0; _i < 1; _i++) {\n" + block + "\n}"
+            + "\nconst _ms = Number(process.hrtime.bigint() - _t0) / 1e6;"
+            + "\nprocess.stdout.write(JSON.stringify("
+            + ("{data: src.data, ms: _ms}" if timed else "src.data")
+            + "));")
+
+
+def run_fit_js_block_roles(ac, x, y, w=None, *, timed=False):
+    """Run an lpolyci config's branch (WP-31 F1e) twice in one harness,
+    as the callback runs it for the layer's two tagged renderers: with
+    ``role`` "line" and then "band", each writing its own source, sharing
+    one ``_dash_lpci_cache``.  Returns ``{"line": data, "band": data,
+    "cache_size": the cache's entries after both}`` (and ``"ms"``, node's
+    time for both, with *timed*)."""
+    block = _fit_block(ac)
     harness = (fit_helpers_js()
-               + "const ac = " + json.dumps(ac)
-               + ";\nconst fx = " + _floats(x)
+               + "const _acs = [" + json.dumps(dict(ac, role="line")) + ", "
+               + json.dumps(dict(ac, role="band")) + "];"
+               + "\nconst fx = " + _floats(x)
                + ";\nconst fy = " + _floats(y)
                + ";\nconst fw = " + (_floats(w) if w is not None else "null")
-               + ";\nconst src = { data: null, change: { emit: () => {} } };"
+               + ";\nconst _srcs = [{ data: null, change: { emit: () => {} } },"
+               + " { data: null, change: { emit: () => {} } }];"
+               + "\nconst _dash_lpci_cache = new Map();"
                + "\nconst _t0 = process.hrtime.bigint();"
-               + "\nfor (let _i = 0; _i < 1; _i++) {\n" + block + "\n}"
+               + "\nfor (let _i = 0; _i < 2; _i++) {\nconst ac = _acs[_i];"
+               + " const src = _srcs[_i];\n" + block + "\n}"
                + "\nconst _ms = Number(process.hrtime.bigint() - _t0) / 1e6;"
-               + "\nprocess.stdout.write(JSON.stringify("
-               + ("{data: src.data, ms: _ms}" if timed else "src.data")
-               + "));")
+               + "\nprocess.stdout.write(JSON.stringify({line: _srcs[0].data,"
+               + " band: _srcs[1].data, cache_size: _dash_lpci_cache.size"
+               + (", ms: _ms" if timed else "") + "}));")
     return run_js(harness)
 
 

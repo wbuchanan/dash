@@ -410,7 +410,7 @@ and now matches Stata.
 
 <!-- WP-31 C9 -->
 
-<!-- WP-31 F1e -->
+- lpolyci on a saved page after a filter move: the build's smooth and band (marked) -> lpoly's smooth and its analytic band on the kept rows; where the rule of thumb's fit is exact the line is drawn at 0 with no band (WP-31, F1e)
 
 <!-- WP-31 D1 -->
 

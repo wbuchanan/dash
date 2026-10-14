@@ -361,7 +361,7 @@ class TestLpolyciCost:
 class TestTheJsTwinsAreBounded:
     """WP-31 F1a, F1b (M10): the saved page's lfit, qfit, lfitci and
     qfitci refits on 100,000 kept rows finish under 2 s of node's own time
-    each."""
+    each (lpoly since F1d, lpolyci since F1e)."""
 
     @pytest.mark.parametrize("ptype", ["lfit", "qfit"])
     def test_lfit_and_qfit_under_node_on_1e5_rows(self, ptype):
@@ -423,6 +423,27 @@ class TestTheJsTwinsAreBounded:
         got = js_runner.run_fit_js_block(ac, x, y, timed=True)
         assert len(got["data"]["x_lp"]) == 50
         assert all(v is not None for v in got["data"]["y_lp"])
+        assert got["ms"] < 2000.0, got["ms"]
+
+    def test_lpolyci_under_node_on_1e5_rows(self):
+        # WP-31 F1e (M10): the rule of thumb, the smooth and the band's two
+        # local fits per grid point (50 x 2 x 1e5) at degree 0, written to
+        # the line and the band from one computation, on 1e5 rows.
+        rng = np.random.default_rng(22)
+        x = rng.uniform(1000.0, 5000.0, 100_000)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 2.0, x.size)
+        ac = {"type": "lpolyci", "cols": ["x_lp", "y_lp", "y_lower",
+                                          "y_upper"],
+              "n": 50, "range": None, "wtype": None, "xaxiskind": None,
+              "yaxiskind": None, "bwidth": None, "pwidth": None,
+              "lpvar": None, "level": 95.0, "degree": 0,
+              "kernel": "epanechnikov", "n_dataset": 100_000,
+              "n_user": None, "keepmissing": False}
+        got = js_runner.run_fit_js_block_roles(ac, x, y, timed=True)
+        assert len(got["line"]["x_lp"]) == 50
+        assert len(got["band"]["y_lower"]) == 50
+        assert all(v is not None for v in got["band"]["y_upper"])
+        assert got["cache_size"] == 1
         assert got["ms"] < 2000.0, got["ms"]
 
     def test_lowess_is_capped_above_max_ops(self):

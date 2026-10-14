@@ -3820,6 +3820,189 @@ if inlist("`only'", "", "S19") & `: list posof "S19" in w31_run' {
 }
 * ==== end S19 ====
 
+// S22 helpers (WP-31 F1e).  _u22_move_roles: the saved page's lpolyci
+// line and band after one filter move -- the page rendered, the widget
+// set and its own callback run under node (test/js_runner.py) -- written
+// to a JSON file; the line's and the band's point counts in globals
+// u22_nl and u22_nb.  _u22_band_compare: the saved line against Stata's
+// lpoly generate(*gx* *gy*) (the grid rows whose smooth is not missing,
+// in grid order) and the saved band against gy -/+ z se(*gs*) at each of
+// those rows: where Stata's se is missing or below 1e-6 (D4: the pilot
+// has no residual degrees of freedom; Stata's value is round-off) the
+// saved band has no row there or a half-width of 0; elsewhere it has the
+// row, at rtol of max(1, |gy|).  Global u22_ok 1 or 0 and u22_msg.
+python:
+def _u22_move_roles(sp, dp, kind, value, out):
+    import json
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        def _same(lab):
+            try:
+                return float(lab) == float(value)
+            except (TypeError, ValueError):
+                return str(lab) == value
+        w.value = [v for v, lab in w.options if _same(lab)][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    got = {}
+    for f in r.figures.values():
+        for x in f.renderers:
+            c = getattr(x, "_dash_agg_config", None) or {}
+            if c.get("type") == "lpolyci":
+                d = x.data_source.data
+                got[c["role"]] = {k: [float(v) if v is not None else None
+                                      for v in d[k]] for k in d}
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(got, fh)
+    Macro.setGlobal("u22_nl", str(len(got["line"]["x_lp"])))
+    Macro.setGlobal("u22_nb", str(len(got["band"]["x_lp"])))
+
+
+def _u22_band_compare(saved, gx, gy, gs, z, rtol):
+    import json
+    import numpy as np
+    from sfi import Data, Macro
+    g = json.load(open(saved, encoding="utf-8"))
+    f = lambda v: np.array([np.nan if e is None else e for e in v], float)
+    lx, ly = f(g["line"]["x_lp"]), f(g["line"]["y_lp"])
+    bx, blo, bhi = (f(g["band"]["x_lp"]), f(g["band"]["y_lower"]),
+                    f(g["band"]["y_upper"]))
+    miss = lambda v: v is None or v >= 8.98e307
+    rows = []
+    for x, y, s in zip(Data.get(var=gx), Data.get(var=gy), Data.get(var=gs)):
+        if not miss(x) and not miss(y):
+            rows.append((float(x), float(y), None if miss(s) else float(s)))
+    ok, bad = 1, []
+    if len(rows) != len(lx) or not len(rows):
+        ok = 0
+        bad.append("%d saved line points, Stata %d" % (len(lx), len(rows)))
+    else:
+        tx = np.array([r[0] for r in rows])
+        ty = np.array([r[1] for r in rows])
+        dl = float(np.max(np.abs(ly - ty) / np.maximum(np.abs(ty), 1.0)))
+        dx = float(np.max(np.abs(lx - tx) / np.maximum(np.abs(tx), 1.0)))
+        if not (dl <= rtol and dx <= rtol):
+            ok = 0
+            bad.append("line x %.3g y %.3g" % (dx, dl))
+    worst, pinched, banded = 0.0, 0, 0
+    for x, y, s in rows:
+        at = np.nonzero(np.abs(bx - x) <= 1e-9 * max(1.0, abs(x)))[0]
+        tol = rtol * max(1.0, abs(y))
+        if s is None or s < 1e-6:
+            if len(at) and abs(bhi[at[0]] - blo[at[0]]) > 2 * z * 1e-6 + tol:
+                ok = 0
+                bad.append("a band at %g where Stata's se is %s" % (x, s))
+            pinched += 1
+            continue
+        if not len(at):
+            ok = 0
+            bad.append("no band at %g (Stata se %g)" % (x, s))
+            continue
+        banded += 1
+        e = max(abs(blo[at[0]] - (y - z * s)), abs(bhi[at[0]] - (y + z * s)))
+        worst = max(worst, e / max(1.0, abs(y)))
+        if e > tol:
+            ok = 0
+            bad.append("band at %g off by %.3g" % (x, e))
+    msg = ("%d line points, %d banded, %d pinched or missing, largest band "
+           "difference %.3g" % (len(lx), banded, pinched, worst))
+    if bad:
+        msg += "; " + "; ".join(bad[:3])
+    Macro.setGlobal("u22_ok", str(ok))
+    Macro.setGlobal("u22_msg", msg)
+end
+
+* ==== S22 F1e: lpolyci refits on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S22") & `: list posof "S22" in w31_run' {
+    display as text "S22 start " c(current_date) " " c(current_time)
+    local u22d "`w31_work'/s22"
+    capture mkdir "`u22d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U22-01..03, U22-05: after a move the saved smooth and band are
+    // Stata's lpoly, ci on the kept rows: generate() and se() on its grid,
+    // the band gy -/+ invnormal(.5(1 - l/100) + l/100) se.  The default
+    // bandwidths (the rule of thumb from the kept rows, the pilot 1.5
+    // times it) after the dropdown to Foreign; degree(1) bwidth(400)
+    // pwidth(600) level(90) after the range to 4500-11385; [aw] var(4)
+    // after the dropdown to Domestic; bwidth(60) pwidth(60), whose pilot
+    // windows on the 22 Foreign cars have no residual degrees of freedom
+    // at some grid points (D4: the band pinches there, where Stata's se
+    // is missing or round-off).  auto's _N is 74, so n is 50.
+    // ------------------------------------------------------------
+    local k 0
+    foreach c in "U22-01|(scatter mpg weight) (lpolyci mpg weight)|foreign, type(dropdown)|Select|Foreign|lpoly mpg weight if foreign == 1, ci nograph|95" "U22-02|(lpolyci mpg weight, degree(1) bwidth(400) pwidth(600) level(90))|price, type(range)|RangeSlider|4500 11385|lpoly mpg weight if inrange(price, 4500, 11385), degree(1) bwidth(400) pwidth(600) level(90) ci nograph|90" "U22-03|(lpolyci mpg weight [aw=displacement], var(4))|foreign, type(dropdown)|Select|Domestic|lpoly mpg weight if foreign == 0 [aw=displacement], var(4) ci nograph|95" "U22-05|(lpolyci mpg weight, bwidth(60) pwidth(60))|foreign, type(dropdown)|Select|Foreign|lpoly mpg weight if foreign == 1, bwidth(60) pwidth(60) ci nograph|95" {
+        local ++k
+        mata: u22_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u22_t[1]); st_local("cmd", u22_t[2]); st_local("filt", u22_t[3]); st_local("kind", u22_t[4]); st_local("val", u22_t[5]); st_local("lp", u22_t[6]); st_local("lvl", u22_t[7])
+        sysuse auto, clear
+        dash clear
+        capture noisily dash `cmd', name(zu22`k')
+        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u22d'/s`k'.json") datapath("`u22d'/d`k'.json") filter(`filt')
+        python: _u22_move_roles("`u22d'/s`k'.json", "`u22d'/d`k'.json", "`kind'", "`val'", "`u22d'/g`k'.json")
+        quietly `lp' generate(u22x u22y) se(u22s)
+        local z = invnormal(.5 * (1 - `lvl'/100) + `lvl'/100)
+        python: _u22_band_compare("`u22d'/g`k'.json", "u22x", "u22y", "u22s", `z', 1e-6)
+        _w31_expect `id' "(${u22_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u22_msg}"
+        _w31_done `id' "the saved `cmd' after the move to `val' is `lp' (${u22_msg})"
+    }
+
+    // ------------------------------------------------------------
+    // U22-04: a move leaving two rows at one x.  Stata's rule of thumb
+    // is missing there (x does not vary), so twoway draws the smooth at
+    // y = 0 and no band; the saved line is empty or 0 and its band empty.
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 10
+    quietly generate double x = 100 * _n
+    quietly generate double y = _n + mod(_n, 3)
+    quietly generate byte g = _n <= 8
+    quietly replace x = 500 if g == 0
+    dash clear
+    capture noisily dash (scatter y x) (lpolyci y x), name(zu225)
+    _w31_expect U22-04 "(_rc == 0)" "dash lpolyci rc `=_rc'"
+    _dash_serve_spec, specpath("`u22d'/s5.json") datapath("`u22d'/d5.json") filter(g, type(dropdown))
+    python: _u22_move_roles("`u22d'/s5.json", "`u22d'/d5.json", "Select", "0", "`u22d'/g5.json")
+    capture noisily lpoly y x if g == 0, ci nograph generate(u22x u22y) se(u22s)
+    local lrc = _rc
+    local lbw = cond(`lrc' == 0, r(bwidth), .)
+    python: import json; from sfi import Macro; _g = json.load(open("`u22d'/g5.json")); Macro.setGlobal("u22_zero", str(int(all(v == 0 for v in _g["line"]["y_lp"]))))
+    _w31_expect U22-04 "(${u22_nb} == 0)" "the saved band after the move to two rows at one x holds ${u22_nb} points"
+    _w31_expect U22-04 "(${u22_nl} == 0 | ${u22_zero} == 1)" "the saved line holds ${u22_nl} points, all 0: ${u22_zero}"
+    _w31_done U22-04 "two kept rows at one x: the saved line is empty or 0 (${u22_nl} points), no band; Stata's lpoly rc `lrc', r(bwidth) `lbw'"
+
+    forvalues k = 1/5 {
+        foreach p in s d g {
+            capture erase "`u22d'/`p'`k'.json"
+        }
+    }
+    capture rmdir "`u22d'"
+    macro drop u22_nl u22_nb u22_ok u22_msg u22_zero
+    capture mata: mata drop u22_t
+    capture graph drop _all
+    dash clear
+    display as text "S22 end " c(current_date) " " c(current_time)
+}
+* ==== end S22 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

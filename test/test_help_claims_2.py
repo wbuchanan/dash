@@ -730,7 +730,7 @@ class TestWhatASavedPageRecomputes:
     lines in the browser, and keeps its other computed layers, and its
     histogram bins, as they were built." (lfit and qfit since WP-31 F1a,
     lowess since F1c, lfitci and qfitci with their bands since F1b, lpoly
-    since F1d.)
+    since F1d, lpolyci with its band since F1e.)
     The saved filter callback carries the layers it recomputes; the KPI half
     is test_filter_widget_data.py::test_the_filter_recomputes_the_card_in_both_modes,
     and "What histogram recompute means" (fixed edges) is test_export.py's
@@ -742,20 +742,22 @@ class TestWhatASavedPageRecomputes:
         # saved page refitted lfit and qfit.  Flipped (WP-31 F1c): and
         # lowess, re-smoothed since.  Flipped (WP-31 F1b): and lfitci and
         # qfitci, refitted with their bands since.  Flipped (WP-31 F1d): and
-        # lpoly.
+        # lpoly.  Flipped (WP-31 F1e): and lpolyci, its line and its band
+        # (two configs).
         spec = _filtered_spec([plot_for(p) for p in _COMPUTED])
         r, _, _ = _saved(tmp_path, spec)
         cb = r.filter_callbacks[0]
         kinds = sorted(c["type"] for c in json.loads(
             cb.args["agg_configs_json"]))
         assert kinds == ["histogram", "kdensity", "lfit", "lfitci", "lowess",
-                         "lpoly", "qfit", "qfitci"], kinds
+                         "lpoly", "lpolyci", "lpolyci", "qfit", "qfitci"], kinds
 
     @pytest.mark.parametrize("ptype", [p for p in _COMPUTED
                                        if p not in ("histogram", "kdensity",
                                                     "lfit", "qfit",
                                                     "lowess", "lfitci",
-                                                    "qfitci", "lpoly")])
+                                                    "qfitci", "lpoly",
+                                                    "lpolyci")])
     def test_another_computed_layer_is_kept_as_built(self, tmp_path, ptype):
         r, _, _ = _saved(tmp_path, _filtered_spec([plot_for(ptype)]))
         layer = {id(x.data_source) for x in _saved_figure(r).renderers}

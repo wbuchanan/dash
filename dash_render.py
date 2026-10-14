@@ -2027,7 +2027,7 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
 })
 # The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
 _DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci",
-                                  "lpoly"})
+                                  "lpoly", "lpolyci"})
 #: WP-31 F1c (D-16.e): the saved page re-smooths a lowess only when N*(2k+1) is at most this; above it the layer is left empty after a move.
 _DASH_LOWESS_JS_MAX_OPS = 2e8
 
@@ -2079,7 +2079,7 @@ def _dash_stale_kind(ptype, options):
             rng = _dash_range_pair(options or {}, "kdensity", "")
         return None if rng is not None else "grid"
     if t in _DASH_JS_REFIT_TYPES and not (options or {}).get("recast") \
-            and not (t in ("lfitci", "qfitci")
+            and not (t in ("lfitci", "qfitci", "lpolyci")
                      and GlyphMapper._fitci_redrawn(options)):
         # A recast fit is drawn by _dash_draw_xy_as, which the page does
         # not refit (GAPS3 C16): it keeps the cue.  So does a ci layer's
@@ -18005,12 +18005,6 @@ class GlyphMapper:
 
         return x_grid, y_fit
 
-    def _lpoly_grid_n(self, options: "dict[str, str]", layer: str,
-                      n_sample: int) -> int:
-        """The number of grid points twoway lpoly and lpolyci draw at:
-        ``_lpoly_grid_plan``'s first value."""
-        return self._lpoly_grid_plan(options, layer, n_sample)[0]
-
     def _lpoly_grid_plan(self, options: "dict[str, str]", layer: str,
                          n_sample: int) -> "tuple[int, int, float | None]":
         """``(n, N, user)``: the grid count twoway lpoly and lpolyci draw
@@ -18222,29 +18216,6 @@ class GlyphMapper:
         _lpolyci_color = self.scheme.default_color(color_idx, "line")
         _lw_px = self.scheme.plot_line_width(color_idx, "lineplot")
 
-        def _draw(lx, ly, bx, by, blo, bhi):
-            line_src = ColumnDataSource({"x_lp": list(lx), "y_lp": list(ly)})
-            band_src = ColumnDataSource({"x_lp": list(bx), "y_lp": list(by),
-                                         "y_lower": list(blo),
-                                         "y_upper": list(bhi)})
-            # cmissing(n): the band split at its missing points (WP-31 C6;
-            # E02), as an area is.
-            _dash_fill_split(band_src, "x_lp", ("y_lower", "y_upper",
-                                                "y_lp"), "y_lower", options)
-            return self._render_ci_band(
-                fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
-                options, line_width=_lw_px, band_source=band_src,
-                alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
-                color_idx=color_idx)
-
-        if len(x) < 2:
-            # None or one observation: twoway draws nothing, rc 0, in a
-            # by() panel (dash.ado refuses it as twoway does elsewhere).
-            # Three empty sources through the same path, so the line keeps
-            # its lcolor()/lpattern().
-            line_r, band_r = _draw([], [], [], [], [], [])
-            return self._mark_silent([line_r, band_r])
-
         def _positive(key):
             # dash.ado writes only positive numbers here; a hand-edited spec
             # value gets one note (per option and value, so a served filter
@@ -18286,7 +18257,58 @@ class GlyphMapper:
             kernel = "epanechnikov"
         level = _resolve_level(options, self.default_level, "lpolyci")
 
-        n_grid = self._lpoly_grid_n(options, "lpolyci", len(x))
+        n_grid, _n_all, _n_user = self._lpoly_grid_plan(options, "lpolyci",
+                                                        len(x))
+        # The saved page's refit (WP-31 F1e, D-22.a): S19's lpoly config
+        # with lpolyci's pilot width, var() and level; both renderers are
+        # tagged, the line with role "line" and the band with role "band",
+        # and the page computes the smooth and its standard error once for
+        # the two.  A band or line drawn as another type (ciplot(),
+        # fitplot()) is drawn from a source the page does not refit, so
+        # neither is tagged and the layer keeps the stale cue.
+        _cfg = None
+        if not self._fitci_redrawn(options):
+            _cfg = dict(self._fit_agg_config(
+                "lpolyci", xvar, yvar, wtype, w, fig, options,
+                ["x_lp", "y_lp", "y_lower", "y_upper"], n_grid, None),
+                bwidth=bwidth, pwidth=pwidth, lpvar=lpvar,
+                degree=int(degree), kernel=str(kernel), level=float(level),
+                n_dataset=int(_n_all),
+                n_user=(float(_n_user) if _n_user is not None else None),
+                keepmissing=bool(_dash_join_spec(options)[1] == "n"))
+        _rows = self._agg_member_ids(source, view)
+
+        def _draw(lx, ly, bx, by, blo, bhi):
+            line_src = ColumnDataSource({"x_lp": list(lx), "y_lp": list(ly)})
+            band_src = ColumnDataSource({"x_lp": list(bx), "y_lp": list(by),
+                                         "y_lower": list(blo),
+                                         "y_upper": list(bhi)})
+            # cmissing(n): the band split at its missing points (WP-31 C6;
+            # E02), as an area is.
+            _dash_fill_split(band_src, "x_lp", ("y_lower", "y_upper",
+                                                "y_lp"), "y_lower", options)
+            line_r, band_r = self._render_ci_band(
+                fig, line_src, "x_lp", "y_lp", _lpolyci_color, yvar,
+                options, line_width=_lw_px, band_source=band_src,
+                alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
+                color_idx=color_idx)
+            if _cfg is not None:
+                line_r._dash_agg_source = line_src
+                line_r._dash_agg_config = dict(_cfg, role="line")
+                line_r._dash_agg_rows = _rows
+                band_r._dash_agg_source = band_src
+                band_r._dash_agg_config = dict(_cfg, role="band")
+                band_r._dash_agg_rows = _rows
+            return line_r, band_r
+
+        if len(x) < 2:
+            # None or one observation: twoway draws nothing, rc 0, in a
+            # by() panel (dash.ado refuses it as twoway does elsewhere).
+            # Three empty sources through the same path, so the line keeps
+            # its lcolor()/lpattern().
+            line_r, band_r = _draw([], [], [], [], [], [])
+            return self._mark_silent([line_r, band_r])
+
         lw = _dash_lpoly_weights(w, wtype)
         # The rule of thumb at degree p, for the bandwidth and the default
         # pilot alike (r(pwidth) = 1.5 x rot, even with bwidth()).
@@ -28097,10 +28119,170 @@ function dash_lpoly_rot(x, y, w, degree, kernel) {
     const h = C * Math.pow(s2 * (u - l) / (W * I), 1 / (2 * pe + 3));
     return (isFinite(h) && h > 0) ? h : NaN;
 }
+// ---- WP-31 F1e (S22): lpolyci, the normal quantile and [R] lpoly eq. 4's
+// standard error, on S19's local fits.
+// The regularised lower incomplete gamma P(a, x): its series for
+// x < a + 1, its continued fraction otherwise (EPS 3e-16, 300 terms).
+function dash_gammainc_p(a, x) {
+    if (!(x > 0)) return 0;
+    const gln = dash_lgamma(a);
+    if (x < a + 1) {
+        let ap = a, sum = 1 / a, del = sum;
+        for (let n = 0; n < 300; n++) {
+            ap += 1; del *= x / ap; sum += del;
+            if (Math.abs(del) < Math.abs(sum) * 3e-16) break;
+        }
+        return sum * Math.exp(-x + a * Math.log(x) - gln);
+    }
+    let b = x + 1 - a, c = 1 / 1e-300, d = 1 / b, h = d;
+    for (let i = 1; i <= 300; i++) {
+        const an = -i * (i - a);
+        b += 2;
+        d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
+        c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
+        d = 1 / d;
+        const del = d * c;
+        h *= del;
+        if (Math.abs(del - 1) < 3e-16) break;
+    }
+    return 1 - Math.exp(-x + a * Math.log(x) - gln) * h;
+}
+// The standard normal distribution function, 0.5 (1 +/- P(1/2, x^2/2)).
+function dash_norm_cdf(x) {
+    const p = dash_gammainc_p(0.5, x * x / 2);
+    return x >= 0 ? 0.5 * (1 + p) : 0.5 * (1 - p);
+}
+// Stata's invnormal(p): the quantile, by bisection on dash_norm_cdf to
+// 1e-14 relative; NaN outside (0, 1).
+function dash_invnormal(p) {
+    if (!(p > 0 && p < 1)) return NaN;
+    if (p === 0.5) return 0;
+    let lo = -1, hi = 1;
+    while (dash_norm_cdf(lo) > p) { lo *= 2; if (lo < -64) break; }
+    while (dash_norm_cdf(hi) < p) { hi *= 2; if (hi > 64) break; }
+    for (let i = 0; i < 300; i++) {
+        const mid = 0.5 * (lo + hi);
+        if (mid === lo || mid === hi) break;
+        if (dash_norm_cdf(mid) < p) lo = mid; else hi = mid;
+        if (hi - lo < 1e-15 * Math.max(1, Math.abs(mid))) break;
+    }
+    return 0.5 * (lo + hi);
+}
+// _lpoly_se: se^2 = [A^-1 B A^-1]_00 sigma^2(x0), A = Z'K_h w Z,
+// B = Z' diag(K_h^2 w) Z on the local fit's kept columns, sigma^2 from the
+// degree p+2 pilot at hp -- sum K_hp w r^2 / (sum K_hp w - tr[(Z'K_hp w
+// Z)^-1 Z' diag(K_hp^2 w) Z]) -- or varv.  NaN where h or hp is not a
+// positive number, the scaled distance squares past DBL_MAX, fewer than
+// two rows have a positive main or pilot weight, or a local fit fails; 0
+// where the pilot has no residual degrees of freedom (den <= 1e-10 of its
+// weight sum: the band pinches, D4).
+function dash_lpoly_se(x, y, xg, h, hp, degree, kernel, w, varv) {
+    const n = x.length;
+    const ow = w ? w : new Array(n).fill(1);
+    const zlim = Math.sqrt(Number.MAX_VALUE);
+    const ok = (h > 0 && hp > 0 && isFinite(h) && isFinite(hp));
+    return xg.map(x0 => {
+        if (!ok) return NaN;
+        let dmax = 0;
+        for (const v of x) { const d = Math.abs(v - x0); if (d > dmax) dmax = d; }
+        if (!(dmax / h <= zlim && dmax / hp <= zlim)) return NaN;
+        const kh = dash_lpoly_kw(x, x0, h, kernel);
+        const kw = new Array(n);
+        let c1 = 0;
+        for (let i = 0; i < n; i++) { kw[i] = kh[i] * ow[i]; if (kw[i] > 0) c1++; }
+        if (c1 < 2) return NaN;
+        const kph = dash_lpoly_kw(x, x0, hp, kernel);
+        const kpw = new Array(n);
+        let c2 = 0;
+        for (let i = 0; i < n; i++) { kpw[i] = kph[i] * ow[i]; if (kpw[i] > 0) c2++; }
+        if (c2 < 2) return NaN;
+        const m = dash_lpoly_local(x, y, kw, x0, h, degree);
+        if (m === null) return NaN;
+        const q = m.K.length;
+        // V00 = e0' Ainv B Ainv e0 = sum_ab Ainv[0][a] B[a][b] Ainv[b][0].
+        const B = [];
+        for (let a = 0; a < q; a++) B.push(new Array(q).fill(0));
+        for (let r = 0; r < m.pos.length; r++) {
+            const i = m.pos[r], u = kh[i] * kw[i], z = m.Z[r];
+            for (let a = 0; a < q; a++) for (let b = 0; b < q; b++) B[a][b] += u * z[a] * z[b];
+        }
+        let V00 = 0;
+        for (let a = 0; a < q; a++) for (let b = 0; b < q; b++) V00 += m.Ainv[0][a] * B[a][b] * m.Ainv[b][0];
+        let s2;
+        if (varv !== null && varv !== undefined) {
+            s2 = varv;
+        } else {
+            const p = dash_lpoly_local(x, y, kpw, x0, hp, degree + 2);
+            if (p === null) return NaN;
+            const qs = p.K.length;
+            const Bs = [];
+            for (let a = 0; a < qs; a++) Bs.push(new Array(qs).fill(0));
+            let num = 0, tot = 0;
+            for (let r = 0; r < p.pos.length; r++) {
+                const i = p.pos[r], z = p.Z[r];
+                let fit = 0;
+                for (let a = 0; a < qs; a++) fit += z[a] * p.beta[a];
+                const res = y[i] - fit;
+                num += kpw[i] * res * res;
+                tot += kpw[i];
+                const u = kph[i] * kpw[i];
+                for (let a = 0; a < qs; a++) for (let b = 0; b < qs; b++) Bs[a][b] += u * z[a] * z[b];
+            }
+            // tr(As Bs) = sum_ab As[a][b] Bs[b][a].
+            let tr = 0;
+            for (let a = 0; a < qs; a++) for (let b = 0; b < qs; b++) tr += p.Ainv[a][b] * Bs[b][a];
+            const den = tot - tr;
+            if (!(den > 1e-10 * tot)) return 0;
+            s2 = Math.max(num / den, 0);
+        }
+        if (!isFinite(V00 * s2)) return NaN;
+        const se = Math.sqrt(Math.max(V00, 0) * s2);
+        return isFinite(se) ? se : NaN;
+    });
+}
+// cmissing(n) on a band source (_dash_fill_split's twin, connect direct):
+// the rows present in x and both limits, a gap closed by two zero-height
+// vertices -- at the last present row and the next -- whose ycols take
+// the pin column's value; rows before the first or after the last present
+// row dropped.  Unchanged when every row is present.
+function dash_fill_split_n(src, xc, ycols, pin) {
+    const d = src.data, X = d[xc], n = X.length;
+    const ok = new Array(n);
+    let all = true;
+    for (let i = 0; i < n; i++) {
+        ok[i] = isFinite(X[i]) && isFinite(d[ycols[0]][i]) && isFinite(d[ycols[1]][i]);
+        if (!ok[i]) all = false;
+    }
+    if (all) return;
+    const vr = [], vz = [];
+    let gap = false;
+    for (let b = 0; b < n; b++) {
+        if (!ok[b]) { gap = true; continue; }
+        if (gap && vr.length) { vr.push(vr[vr.length - 1], b); vz.push(true, true); }
+        gap = false;
+        vr.push(b); vz.push(false);
+    }
+    const out = {};
+    for (const col of Object.keys(d)) {
+        dash_own_col(out, col);
+        const v = d[col], o = out[col];
+        for (let k = 0; k < vr.length; k++) {
+            const r = vr[k];
+            if (col === xc) o.push(X[r]);
+            else if (ycols.indexOf(col) >= 0) o.push(vz[k] ? d[pin][r] : v[r]);
+            else o.push(vz[k] ? null : v[r]);
+        }
+    }
+    src.data = out;
+    src.change.emit();
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
 const agg_configs = JSON.parse(agg_configs_json);
+// lpolyci's fit, made once per config for its line and its band
+// (WP-31 F1e, D-22.a); one per callback run.
+const _dash_lpci_cache = new Map();
 for (let ai = 0; ai < agg_configs.length; ai++) {
     const ac  = agg_configs[ai];
     const src = agg_sources[ai];
@@ -28477,6 +28659,57 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             if (ac.keepmissing || isFinite(yg[i])) { kx.push(xg[i]); ky.push(yg[i]); }
         }
         dash_fit_write(src, ac, kx, ky, null);
+    } else if (ac.type === 'lpolyci') {
+        // WP-31 F1e: map_lpolyci on the kept rows -- fewer than two draw
+        // nothing; the bandwidth given or the rule of thumb, the pilot
+        // width given or 1.5 times the rule of thumb (even with bwidth());
+        // where h is missing the line is y = 0 and there is no band; else
+        // lpoly's smooth and [R] lpoly eq. 4's band, smooth -/+
+        // invnormal(.5(1 - level/100) + level/100) se.  The line and the
+        // band are two tagged renderers (ac.role); the fit is made once
+        // per config and served to both from _dash_lpci_cache (D-22.a).
+        const key = JSON.stringify(Object.assign({}, ac, {role: null}));
+        let R = _dash_lpci_cache.get(key);
+        if (!R) {
+            R = {lx: [], ly: [], bx: [], by: [], bl: [], bu: []};
+            const n = fx.length;
+            if (n >= 2) {
+                const lw = dash_lpoly_weights(fw, ac.wtype);
+                const ng = dash_lpoly_grid_n(ac.n_dataset, ac.n_user);
+                const given = (v) => v !== null && v !== undefined;
+                const rot = (given(ac.bwidth) && given(ac.pwidth)) ? NaN
+                    : dash_lpoly_rot(fx, fy, lw, ac.degree, ac.kernel);
+                const h = given(ac.bwidth) ? ac.bwidth : rot;
+                const hp = given(ac.pwidth) ? ac.pwidth : 1.5 * rot;
+                let lo = Infinity, hi = -Infinity;
+                for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
+                const xg = dash_linspace(lo, hi, ng);
+                if (!isFinite(h)) {
+                    R.lx = xg; R.ly = xg.map(() => 0);
+                } else {
+                    const yg = dash_lpoly_fit(fx, fy, h, ac.degree, ac.kernel, lw, xg);
+                    const se = dash_lpoly_se(fx, fy, xg, h, hp, ac.degree, ac.kernel, lw, ac.lpvar);
+                    const z = dash_invnormal(0.5 * (1 - ac.level / 100) + ac.level / 100);
+                    for (let i = 0; i < xg.length; i++) {
+                        const l = yg[i] - z * se[i], u = yg[i] + z * se[i];
+                        const valid = isFinite(yg[i]);
+                        const banded = valid && isFinite(se[i]) && isFinite(l) && isFinite(u);
+                        // cmissing(n) keeps every grid point, so both break.
+                        if (ac.keepmissing || valid) { R.lx.push(xg[i]); R.ly.push(yg[i]); }
+                        if (ac.keepmissing || banded) {
+                            R.bx.push(xg[i]); R.by.push(yg[i]); R.bl.push(l); R.bu.push(u);
+                        }
+                    }
+                }
+            }
+            _dash_lpci_cache.set(key, R);
+        }
+        if (ac.role === 'band') {
+            dash_fit_write(src, Object.assign({}, ac, {join: null}), R.bx, R.by, [R.bl, R.bu]);
+            if (ac.keepmissing) dash_fill_split_n(src, ac.cols[0], [ac.cols[2], ac.cols[3], ac.cols[1]], ac.cols[2]);
+        } else {
+            dash_fit_write(src, Object.assign({}, ac, {cols: ac.cols.slice(0, 2)}), R.lx, R.ly, null);
+        }
     // DASH_FIT_BRANCHES_END
     }
 }

@@ -55,11 +55,11 @@ from test_mode_parity import (_DF, _fire, _served, _spec,  # noqa: E402
 from test_saved_filter_layers import _MOVES, _render  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
-#: The seven layers a saved page computes at build and does not refit.
-# lfit and qfit (WP-31 F1a), lowess (F1c), lfitci and qfitci (F1b) and
-# lpoly (F1d) are refitted by the saved page; see _REFIT.
-_FROZEN = ["fpfit", "fpfitci",
-           "lpolyci", "mband", "mspline", "histogram", "kdensity"]
+#: The six layers a saved page computes at build and does not refit.
+# lfit and qfit (WP-31 F1a), lowess (F1c), lfitci and qfitci (F1b),
+# lpoly (F1d) and lpolyci (F1e) are refitted by the saved page; see _REFIT.
+# Flipped (WP-31 F1e): held lpolyci, frozen until the page refitted it.
+_FROZEN = ["fpfit", "fpfitci", "mband", "mspline", "histogram", "kdensity"]
 #: The frozen fit layer the cue's own mechanics are measured on.  It was
 #: lfit until the saved page refitted lfit (WP-31 F1a); fpfit stays frozen
 #: longest (WP-31 F1g refits it last).
@@ -250,6 +250,11 @@ class TestTheCueAppearsOnAMove:
                                                   "slider"])
     def test_every_source_of_an_lpolyci_is_dimmed_and_both_keys_marked(
             self, move):
+        """Flipped (WP-31 F1e): every source of an lpolyci was dimmed and
+        both keys marked "(unfiltered)" after a move, because the saved
+        page kept the build's smooth and band.  It refits both since, so
+        neither the band nor the line is dimmed or marked, and the caption
+        and status stay hidden; the name is kept."""
         _, filt, action, _o = move
         r = _render(_spec([plot_for("scatter"), plot_for("lpolyci")],
                           {"filter": filt}))
@@ -261,30 +266,17 @@ class TestTheCueAppearsOnAMove:
                 and set(srcs[2].data) >= {"x_lp", "y_lp"}
                 and "y_lower" not in srcs[2].data):
             pytest.fail("needs S11 (P0.9 three-source lpolyci)")
-        cue = _one_cue(r)
-        tags = [getattr(x, "_dash_frozen", None) for x in layer]
-        assert tags[0] is not None and all(tg is tags[0] for tg in tags)
+        assert all(getattr(x, "_dash_frozen", None) is None for x in layer)
         built = {id(i): _text(i.label) for i in _items_of(f, layer)}
         _act(r, action)
-        assert all(x.muted for x in layer)
-        for x in layer:
-            for a in ("line_alpha", "fill_alpha", "hatch_alpha"):
-                if a in x.glyph.properties():
-                    g, mg = getattr(x.glyph, a), getattr(x.muted_glyph, a)
-                    if isinstance(g, (int, float)):
-                        assert mg == pytest.approx(g * 0.3)
-        assert cue.visible is True
-        band_items = _items_of(f, [layer[0]])
-        line_items = _items_of(f, [layer[2]])
-        assert band_items and line_items
-        for it in band_items + line_items:
-            assert _text(it.label).endswith(" (unfiltered)")
-        assert [_text(i.label) for i in _items_of(f, [f.renderers[0]])] == [
-            "mpg"]
+        assert not any(x.muted for x in layer)
+        for it in _items_of(f, layer):
+            assert not _text(it.label).endswith(" (unfiltered)")
+        assert {id(i): _text(i.label) for i in _items_of(f, layer)} == built
+        st = r.filter_callbacks[0].args.get("stale_status")
+        assert st is None or st.visible is False
         _back(r, action[0])
         assert not any(x.muted for x in layer)
-        assert cue.visible is False
-        assert {id(i): _text(i.label) for i in _items_of(f, layer)} == built
 
         # An empty lpolyci holds three empty sources and is never marked.
         r = _render(_spec([plot_for("scatter"),
@@ -293,7 +285,7 @@ class TestTheCueAppearsOnAMove:
         layer = list(r.figures["g1"].renderers[1:])
         assert len(layer) == 3
         cb = r.filter_callbacks[0]
-        for c in json.loads(cb.args["stale_configs_json"]):
+        for c in json.loads(cb.args.get("stale_configs_json", "[]")):
             assert c["members"] >= 0
             assert list(cb.args["stale_members"][c["members"]].data["id"]) \
                 == []
@@ -304,7 +296,7 @@ class TestTheCueAppearsOnAMove:
 
 
 #: WP-31 F1: the computed layers the saved page refits after a move.
-_REFIT = ["lfit", "qfit", "lowess", "lfitci", "qfitci", "lpoly"]
+_REFIT = ["lfit", "qfit", "lowess", "lfitci", "qfitci", "lpoly", "lpolyci"]
 
 
 @requires_node
@@ -377,8 +369,9 @@ def _wdf(**changes):
 
 
 _AW = {"weight": "aweight", "wexp": "w"}
-#: lpolyci refuses a pweight (r(101)): the frozen layer with a refused
-#: weight since lowess (WP-31 F1c) and lpoly (F1d) are refitted.
+#: kdensity refuses a pweight (r(101)): the frozen layer with a refused
+#: weight since lowess (WP-31 F1c), lpoly (F1d) and lpolyci (F1e) are
+#: refitted.
 _PW = {"weight": "pweight", "wexp": "w"}
 #: A ci layer drawn from the points Stata computed (estopts(), WP-31 C4):
 #: frozen with the kind "fit" whatever its type.
@@ -492,10 +485,11 @@ class TestTheWeightedSample:
         _assert_clear(r)
 
     def test_a_weight_twoway_refuses_is_not_read(self):
-        # lpolyci [pw], frozen: lowess, which refuses every weight, and
-        # lpoly are refitted by the saved page (WP-31 F1c, F1d).
+        # kdensity [pw], frozen: lowess, which refuses every weight, lpoly
+        # and lpolyci are refitted by the saved page (WP-31 F1c, F1d, F1e).
+        # Flipped (WP-31 F1e): measured on lpolyci [pw].
         df = _wdf()
-        r = self._run(df, plot_for("lpolyci", _PW))
+        r = self._run(df, plot_for("kdensity", _PW))
         _assert_marked(r)
 
 
@@ -670,8 +664,9 @@ class TestTheStaleKind:
     def test_each_type(self):
         fits = [t for t in _FROZEN if t not in ("histogram", "kdensity")]
         # 11 -> 9: F1a refits lfit and qfit; 9 -> 8: F1c refits lowess;
-        # 8 -> 6: F1b refits lfitci and qfitci; 6 -> 5: F1d refits lpoly
-        assert len(fits) == 5
+        # 8 -> 6: F1b refits lfitci and qfitci; 6 -> 5: F1d refits lpoly;
+        # 5 -> 4: F1e refits lpolyci
+        assert len(fits) == 4
         for t in fits:
             assert dr._dash_stale_kind(t, {}) == "fit"
         assert dr._dash_stale_kind("histogram", {}) == "bins"
@@ -788,9 +783,11 @@ class TestTheFrozenTag:
                            # ("positive"); lfitci is refitted since WP-31
                            # F1b.
                            plot_for("fpfitci", _AW),
-                           # A refused weight: lpolyci [pw] (lowess
-                           # and lpoly are refitted since WP-31 F1c, F1d).
-                           plot_for("lpolyci", _PW)],
+                           # A refused weight: kdensity [pw] (lowess,
+                           # lpoly and lpolyci are refitted since WP-31
+                           # F1c, F1d, F1e).  Flipped (WP-31 F1e): it was
+                           # lpolyci [pw].
+                           plot_for("kdensity", _PW)],
                           {"filter": "foreign, type(dropdown)"}), _wdf())
         tags = []
         for x in r.figures["g1"].renderers:
@@ -798,7 +795,7 @@ class TestTheFrozenTag:
             if t is not None and not any(t is u for u in tags):
                 tags.append(t)
         assert [t["type"] for t in tags] == [_STAND_IN, "histogram",
-                                             _STAND_IN, "fpfitci", "lpolyci"]
+                                             _STAND_IN, "fpfitci", "kdensity"]
         lf, hi, empty, wl, lw = tags
         assert lf["vars"] == ["mpg", "weight"] and lf["kind"] == "fit"
         assert hi["vars"] == ["mpg"] and hi["kind"] == "bins"
