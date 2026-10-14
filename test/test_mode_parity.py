@@ -689,10 +689,16 @@ def _script_heads(cb):
         row = tuple(at(c, i) for c in cols)
         if all(isinstance(v, float) and not math.isnan(v) for v in row):
             rows.append(row)
+    def colour(v):
+        # WP-31 C8a: a colorvar() head reads its shaft's colour column
+        # through a mapper; recorded as the field, plain data (the mapper
+        # is a model of its own document).
+        return _spec_of(v) if getattr(v, "transform", None) is not None \
+            else v
     return {"start": str(form) if int(a["ends"]) == 2 else None,
-            "end": str(form), "color": hr.glyph.line_color,
+            "end": str(form), "color": colour(hr.glyph.line_color),
             "width": hr.glyph.line_width,
-            "fill": getattr(hr.glyph, "fill_color", None),
+            "fill": colour(getattr(hr.glyph, "fill_color", None)),
             "head_px": sorted({_num(float(v)) for v in
                                data.get(a["hpx"], [])}),
             "arrows": sorted(rows)}
@@ -1683,6 +1689,20 @@ CORPUS = [
           graphs=[("g1", [_sc(colorvar="price", colorlevels="3")],
                    {"by": "foreign"}),
                   ("g2", [_sc()])]),
+    # WP-31 C8a: colorvar() on every type twoway colours, one key a layer;
+    # jitter() on the range and pc marker types.
+    _case("bar colorvar (WP-31 C8a)", [plot_for("bar", {"colorvar": "rep"})]),
+    _case("rcap colorvar (WP-31 C8a)",
+          [plot_for("rcap", {"colorvar": "rep"})]),
+    _case("line colorvar (WP-31 C8a)",
+          [plot_for("line", {"colorvar": "price"})]),
+    _case("pcarrow colorvar colordiscrete (WP-31 C8a)",
+          [plot_for("pcarrow", {"colorvar": "rep",
+                                "colordiscrete": "colordiscrete"})]),
+    _case("rscatter jitter (WP-31 C8a)",
+          [plot_for("rscatter", {"jitter": "5", "jitterseed": "1"})]),
+    _case("pccapsym jitter (WP-31 C8a)",
+          [plot_for("pccapsym", {"jitter": "5", "jitterseed": "1"})]),
     # WP-28 E14: a served rspike or rconnected in a link group used to
     # draw a private source every time, so a selection on the group never
     # reached it; TestRangeLayersInALinkGroup reads on_link_source here.
@@ -3138,6 +3158,12 @@ MOVE_CORPUS = [
     # WP-31 C1: arrowheads -- the head size column follows the rows.
     _move_case("pcarrow msize(large), dropdown to Foreign (WP-31 C1)",
                _MOVES[0], [plot_for("pcarrow", {"msize": "large"})]),
+    # WP-31 C8a: the colour column follows the rows a move keeps.
+    _move_case("bar colorvar after a move (WP-31 C8a)", _MOVES[0],
+               [plot_for("bar", {"colorvar": "rep"})]),
+    _move_case("pcarrow colorvar after a move (WP-31 C8a)", _MOVES[0],
+               [plot_for("pcarrow", {"colorvar": "rep",
+                                     "colordiscrete": "colordiscrete"})]),
     _move_case("line with marker labels, dropdown", _MOVES[0],
                [plot_for("line", {"mlabel": "rep"})]),
     # twoway draws no marker label on a line (test_marker_label_parity.py),

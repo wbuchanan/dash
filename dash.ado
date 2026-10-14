@@ -2240,66 +2240,79 @@ program define _dash_fold_range, sclass
 end
 
 // ================================================================
+// _dash_cv_drop <own> <drawn>  -- colorvar() dropped where twoway drops it
+//
+// WP-31 C8a.  twoway_yxview_parse.class:206-208 empties colorvar() on
+// area and rarea and on every class that sets .allowcolorvar = 0 before
+// it reads the variable, so on those types colorvar() and its companions
+// draw nothing, are named nowhere and are never checked:
+// `twoway lfit mpg weight, colorvar(nosuchvar)' is rc 0 (measured
+// 14oct2026, test/fixtures/colorvar_types_truth.json, whose cv_silent this
+// list equals; test_colorvar_coverage.py::TestTheAdoText pins it).  Called
+// by _dash_process_segment before _dash_validate_opts with the layer's own
+// type and the type it is drawn as (recast(area) is silent too); empties
+// the options in s(), so the JSON writer writes none of them and the
+// renderer never sees them.  coloruseplegend is section 17's.  sclass: it
+// touches only those s() macros.
+// ================================================================
+program define _dash_cv_drop, sclass
+    version 19
+    args own drawn
+    local cv_silent "area fpfit fpfitci function histogram kdensity lfit lfitci lowess lpoly lpolyci mband mspline pcarrowi pci qfit qfitci rarea scatteri"
+    if !`: list own in cv_silent' & !`: list drawn in cv_silent' exit
+    foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing colorlevels colorvarminmax {
+        sreturn local `o' ""
+    }
+end
+
+// ================================================================
 // _dash_fold_typed  -- options dash draws on some plot types only, named in
 //                      the note on the others.
 //
-// ROADMAP WP-23 (GAPS.md F4).  Measured 23sep2026 in both render modes:
+// ROADMAP WP-23 (GAPS.md F4); WP-31 C8a.
 //
-// colorvar() is drawn on scatter, connected, rconnected and dot -- the
-// types whose markers go through GlyphMapper.map_scatter -- and on no
-// other.  On the other 36 types it and its five companions (colordiscrete,
-// colorcuts(), colpalette(), colornlevels(), colormissing()) were written
-// to the spec, read by nothing and named nowhere, while dash.sthlp said
-// "a plot layer may take its colour from a third variable".  twoway itself
-// accepts colorvar() on every type and colours many of them (line and bar,
-// measured by SVG; not area or lfit), so a pasted command still runs, and
-// the note says what dash did not draw.  A companion written without
-// colorvar() configures nothing and is named the same way.
-//
-// jitter() moves the markers of scatter, connected, rconnected, dot,
-// dropline and scatteri.  twoway also jitters the markers of rscatter,
-// rcapsym, pcscatter and pccapsym (SVG, 23sep2026); dash drew them where
-// the data are, and said nothing.  On those four jitter() -- with the seed
-// that goes with it -- is named.  On the types that draw no marker
-// twoway's picture does not change either, so nothing is named there, as
-// _dash_fold_cl leaves the connecting-line options unnamed where no line
-// is drawn.
+// WP-31 C8a: colorvar() is drawn on every type twoway colours
+// (test/fixtures/colorvar_types_truth.json); on cv_silent twoway drops it
+// without a word (twoway_yxview_parse.class:206-208), and so does dash --
+// _dash_cv_drop empties it and its companions there before validation, as
+// twoway never looks the variable up (colorvar(nosuchvar) rc 0 on lfit).
+// Here, after validation, colorvar() with more than one y variable is
+// refused on the types twoway refuses it on, in its words: "option
+// colorvar() cannot be combined with multiple y variables in a <view>
+// plot", r(198) (:231-236; the view of tsline is a line).  jitter() moves
+// the markers of every type that draws one (rscatter, rcapsym, pcscatter
+// and pccapsym included since C8a), so it is named nowhere.
 //
 // Called by _dash_process_segment AFTER _dash_validate_opts, so a value
 // is refused wherever twoway refuses it (colorvar(nosuchvar) is r(111) on
-// every type) before it is named.  The options stay in the spec, as the
-// options on the pending lists of _dash_parse_plot_opts do -- accepted,
-// written, reported -- and the renderer draws nothing for them there.
+// every coloured type) before it is named.  The options stay in the spec,
+// as the options on the pending lists of _dash_parse_plot_opts do --
+// accepted, written, reported -- and the renderer draws nothing for them
+// there.  args: ptype (the type the segment is judged as), nser (its y
+// variables), vtype (twoway's view type, after recast()).
 // sclass: it appends to s(_pending), which the segment hands to
 // _dash_report_ignored, and touches nothing else in s().
 // ================================================================
 program define _dash_fold_typed, sclass
     version 19
-    args ptype
+    args ptype nser vtype
     local named ""
-    local cv_types "scatter connected rconnected dot"
-    local cv_drawn = 0
-    // Whether each option was given, read by value: tested as
-    // `"`s(colormissing)'"', colormissing("\`x'") was expanded to nothing
-    // and went unnamed (test_json_escaping.cscript JSE-69).
+    if "`nser'" == "" local nser 1
+    if "`vtype'" == "" local vtype "`ptype'"
+    // WP-31 C8a: colorvar() with several y variables, refused as twoway
+    // refuses it (colorvar_types_truth.json multi_y).  Whether it was
+    // given is read by value: tested as `"`s(colorvar)'"', a value holding
+    // a macro reference would be expanded (test_json_escaping.cscript
+    // JSE-69).
+    local cv_multi "scatter line tsline bar connected dot dropline spike"
     mata: st_local("_ft", strofreal(st_global("s(colorvar)") != ""))
-    if `: list ptype in cv_types' & `_ft' local cv_drawn = 1
-    if !`cv_drawn' {
-        foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing colorlevels colorvarminmax {
-            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
-            if `_ft' local named "`named' `o'"
-        }
+    if `_ft' & `nser' > 1 & `: list vtype in cv_multi' {
+        local _cv_view = cond("`vtype'" == "tsline", "line", "`vtype'")
+        display as error "option colorvar() cannot be combined with multiple y variables in a `_cv_view' plot"
+        exit 198
     }
-    local jit_undrawn "rscatter rcapsym pcscatter pccapsym"
     local area_types "area rarea"
     local arrow_types "pcarrow pcbarrow pcarrowi"
-    mata: st_local("_ft", strofreal(st_global("s(jitter)") != ""))
-    if `: list ptype in jit_undrawn' & `_ft' {
-        foreach o in jitter jitterseed jseed {
-            mata: st_local("_ft", strofreal(st_global("s(`o')") != ""))
-            if `_ft' local named "`named' `o'"
-        }
-    }
     // A bare sort: twoway joins a connected type's points in the order of x
     // with it, and dash always joins line, connected, area, tsline and the
     // range line and area types in that order (map_line, map_area,
@@ -5939,6 +5952,8 @@ program define _dash_process_segment, rclass
                 }
             }
         }
+        // WP-31 C8a: colorvar() dropped, unchecked, where twoway drops it.
+        _dash_cv_drop "`_rc_own'" "`_cn_ptype'"
         _dash_validate_opts "`_rc_own'" `_sl_n'
         // The fit options (WP-31 C4): on the types twoway takes them on,
         // their pairs with range(), fitplot()/ciplot() canonicalised.
@@ -5969,11 +5984,11 @@ program define _dash_process_segment, rclass
             mata: st_local("_fn_rnorm", st_global("s(range)"))
             mata: st_local("_fn_nval", st_global("s(n)"))
         }
-        // colorvar() and its companions, and jitter(), on a plot type dash
-        // does not draw them on: named in the note -- after the validation
-        // above, so a bad value is refused first, as twoway refuses it
-        // (WP-23).
-        _dash_fold_typed "`_cn_ptype'"
+        // Options dash draws on some types only, named on the others, and
+        // colorvar() with several y variables refused (WP-31 C8a) -- after
+        // the validation above, so a bad value is refused first, as twoway
+        // refuses it (WP-23).
+        _dash_fold_typed "`_cn_ptype'" `_sl_n' "`ptype'"
         // sort(varlist): checked as twoway checks it, after the repeats
         // are reduced, and honoured on the six joining types (WP-29 P0.1).
         // A time-series source recast joins in time order, as tsline's

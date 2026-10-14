@@ -397,7 +397,8 @@ and now matches Stata.
 
 - histogram mpg, recast(rarea): drawn as an rarea over the bin centres from 0 to each bin's height, as twoway draws it (was: named, bars drawn); every range type is drawn so, rbar with the histogram's own bars and gap() and baroffset(), and an unknown name prints twoway's two notes and draws rspike; pci and pcarrowi with recast(pcarrow), (pcscatter), (pcbarrow), (pccapsym) or (pcspike) draw that type (was: named, drawn as typed). (WP-31, C7)
 
-<!-- WP-31 C8a -->
+- `dash bar mpg weight, colorvar(rep78)`: bars coloured by rep78 with a colour key (was: the series colour, colorvar() named in the note); likewise line, spike, dropline, rbar, rcap, rspike, rline, rscatter, rcapsym, tsline, tsrline and the pc types, and `jitter()` moves the markers of rscatter, rcapsym, pcscatter and pccapsym (was: named); on area, rarea, the fits, kdensity, histogram, function, scatteri, pci and pcarrowi colorvar() is dropped without a word, as twoway drops it (was: named) (WP-31, C8a)
+- `dash scatter y1 y2 x, colorvar(z)`: refused, r(198), "option colorvar() cannot be combined with multiple y variables in a scatter plot", as twoway refuses it (was: each y drawn coloured) (WP-31, C8a)
 
 - lowess on a saved page after a filter move: the build's smooth (marked) -> Stata's lowess on the kept rows; above 200 million window operations the line is left empty (WP-31, F1c)
 

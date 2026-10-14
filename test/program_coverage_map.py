@@ -109,9 +109,14 @@ COVERAGE = {
         # e2e: mlabel() refused or dropped exactly where twoway does.
         "_dash_fold_mlab": ("test_twoway_option_parity.cscript:TP-08",
                             "test_twoway_option_parity.cscript:TP-12"),
-        # e2e: colorvar() and jitter() named in the note per type.
+        # e2e: the per-type note, and colorvar() with several y variables
+        # refused as twoway refuses it (WP-31 C8a).
         "_dash_fold_typed": ("test_help_claims_7.cscript:HC7-02",
-                             "test_help_claims_7.cscript:HC7-03"),
+                             "test_help_claims_7.cscript:HC7-03",
+                             "test_wp31_truth.cscript:U15-04"),
+        # e2e: colorvar() dropped, unchecked, where twoway drops it.
+        "_dash_cv_drop": ("test_help_claims_7.cscript:HC7-02",
+                          "test_wp31_truth.cscript:U15-05"),
         # e2e: sort() refused, named or silent as twoway, on every type
         # (WP-29 P0.1).
         "_dash_sort_opt": ("test_twoway_option_parity.cscript:JO-21",

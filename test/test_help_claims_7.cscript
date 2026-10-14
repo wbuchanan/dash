@@ -21,16 +21,18 @@
 *!           position(), ring(0), order(), cols(), rows() and size(), are
 *!           accepted by both.
 *!   HC7-02  colorvar() on every plot type: twoway accepts it on all of
-*!           them; dash draws it on scatter, connected, rconnected and
-*!           dot, where it is in the spec and not in the note, and on
-*!           every other type names it in the note.  Its companions are
-*!           named with it there, and wherever colorvar() is not given;
-*!           twoway's other colorvar options are named; a variable that
-*!           does not exist is still r(111), as in twoway.
-*!   HC7-03  jitter() (and its seed) named in the note on rscatter,
-*!           rcapsym, pcscatter and pccapsym -- whose markers twoway
-*!           jitters and dash does not -- and kept, unnamed, on the six
-*!           types dash jitters.
+*!           them; dash draws it on every type twoway colours, where it
+*!           is in the spec and not in the note, and drops it without a
+*!           word on the types twoway drops it on (WP-31 C8a: area, rarea,
+*!           the fits and smooths, kdensity, histogram, function,
+*!           scatteri, pci, pcarrowi).  Its companions are kept with it
+*!           and named nowhere; twoway's other colorvar options are named;
+*!           a variable that does not exist is still r(111) where twoway
+*!           reads it, and rc 0 where twoway drops the option.
+*!   HC7-03  jitter() (and its seed) kept, unnamed, on rscatter, rcapsym,
+*!           pcscatter and pccapsym -- whose markers twoway jitters and
+*!           dash jitters since WP-31 C8a -- and on the six types dash
+*!           jittered before.
 *!   HC7-04  plotregion(color("255 0 0")) and graphregion(fcolor("0 0
 *!           255")) reach the spec with their quotes and the saved page
 *!           with the colour, and the render names no unknown colour.
@@ -165,10 +167,11 @@ local faillist ""
 // until 24sep2026 nothing in this file required r(note) == 1: had
 // dash.ado's note stopped saying "ignoring unsupported", every one of
 // those checks would have passed without looking.  The same helper, the
-// same needle, on options the note must name: colorvar() on line, which
-// dash does not draw (HC7-02), and an option no plot type has.
+// same needle, on options the note must name: colorrule(), which dash
+// does not read (HC7-02; colorvar() itself is drawn on line since WP-31
+// C8a), and an option no plot type has.
 local bad = 0
-foreach cmd in "line mpg weight, colorvar(price)" "scatter mpg weight, zq7nosuchopt(1)" {
+foreach cmd in "scatter mpg weight, colorvar(price) colorrule(hue)" "scatter mpg weight, zq7nosuchopt(1)" {
     _zh7_run `"dash `cmd' name(zq7)"' "`logfile'"
     if r(rc) != 0 | r(note) != 1 {
         display as error "HC7-00 FAIL `cmd': rc `r(rc)', the ignoring note seen `r(note)' (want 1)"
@@ -264,7 +267,10 @@ local v_pcarrowi  "20 3000 30 4000"
 // HC7-02 -- colorvar(), per plot type, and its companions.
 // ----------------------------------------------------------------
 local bad = 0
-local cv_drawn "scatter connected rconnected dot"
+// Flipped (WP-31 C8a): colorvar() is drawn on every type twoway colours
+// and dropped in silence where twoway drops it (test/fixtures/
+// colorvar_types_truth.json cv_silent); it was named on 36 types.
+local cv_silent "area fpfit fpfitci function histogram kdensity lfit lfitci lowess lpoly lpolyci mband mspline pcarrowi pci qfit qfitci rarea scatteri"
 foreach tt of local types {
     local v `v_`tt''
     local sep ","
@@ -281,34 +287,33 @@ foreach tt of local types {
         display as error "HC7-02 FAIL `tt': twoway r(`tw'), dash rc `drc'"
         local bad = 1
     }
-    else if `: list tt in cv_drawn' & (`named' | !`kept') {
-        display as error "HC7-02 FAIL `tt': dash draws colorvar() here, but named=`named' kept=`kept'"
+    else if `named' {
+        display as error "HC7-02 FAIL `tt': colorvar() is named in the note"
         local bad = 1
     }
-    else if !`: list tt in cv_drawn' & !`named' {
-        display as error "HC7-02 FAIL `tt': dash does not draw colorvar() here, but it is not named in the note"
+    else if `: list tt in cv_silent' == `kept' {
+        display as error "HC7-02 FAIL `tt': silent `: list tt in cv_silent', yet colorvar kept in the spec `kept'"
         local bad = 1
     }
 }
 quietly tsset, clear
-// The companions, named with colorvar() where it is not drawn ...
+// The companions, kept with colorvar() and named nowhere ...
 _zh7_run `"dash line mpg weight, colorvar(price) colordiscrete colorcuts(5000 10000) colpalette(magma) colornlevels(4) colormissing(red) name(zq7)"' "`logfile'"
-if r(rc) != 0 {
-    display as error "HC7-02 FAIL: the companions on line, rc `r(rc)'"
+if r(rc) != 0 | r(note) {
+    display as error "HC7-02 FAIL: the companions on line, rc `r(rc)', note `r(note)'"
     local bad = 1
 }
 foreach o in colorvar colordiscrete colorcuts colpalette colornlevels colormissing {
-    _zh7_logged "`logfile'" "`o'()"
+    _zh7_has zq7 `o'
     if !r(found) {
-        display as error "HC7-02 FAIL: `o'() on line is not named in the note"
+        display as error "HC7-02 FAIL: `o'() on line is not in the spec"
         local bad = 1
     }
 }
-// ... and wherever colorvar() is not given ...
+// ... and, as twoway, nothing is said where colorvar() is not given ...
 _zh7_run `"dash scatter mpg weight, colpalette(magma) colornlevels(4) name(zq7)"' "`logfile'"
-_zh7_logged "`logfile'" "colpalette() colornlevels()"
-if r(found) != 1 {
-    display as error "HC7-02 FAIL: companions without colorvar() are not named"
+if r(rc) != 0 | r(note) {
+    display as error "HC7-02 FAIL: companions without colorvar(): rc `r(rc)', note `r(note)'"
     local bad = 1
 }
 // ... and kept, unnamed, beside colorvar() where it is drawn.
@@ -347,26 +352,39 @@ if `tw' != 111 | r(rc) != 111 | "${dash_graph_registry}" != "" {
     display as error "HC7-02 FAIL: colorvar(nosuchvar) on line: twoway r(`tw'), dash rc `r(rc)'"
     local bad = 1
 }
+// ... and never looked up where twoway drops the option (WP-31 C8a).
+capture twoway lfit mpg weight, colorvar(nosuchvar) nodraw
+local tw = _rc
+_zh7_run `"dash lfit mpg weight, colorvar(nosuchvar) name(zq7)"' "`logfile'"
+local drc = r(rc)
+local rnote = r(note)
+_zh7_has zq7 colorvar
+if `tw' != 0 | `drc' != 0 | `rnote' | r(found) {
+    display as error "HC7-02 FAIL: colorvar(nosuchvar) on lfit: twoway r(`tw'), dash rc `drc', note `rnote', kept `r(found)'"
+    local bad = 1
+}
 if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' HC7-02"
 }
-else display as text "HC7-02 PASS: colorvar() kept on scatter, connected, rconnected and dot, named everywhere else; companions named with it"
+else display as text "HC7-02 PASS: colorvar() kept on every type twoway colours, dropped in silence on the others; companions kept with it"
 
 // ----------------------------------------------------------------
-// HC7-03 -- jitter() where twoway jitters and dash does not.
+// HC7-03 -- jitter() where twoway jitters.
 // ----------------------------------------------------------------
 local bad = 0
+// Flipped (WP-31 C8a): dash jitters these four now
+// (colorvar_types_truth.json jitter); jitter() was named here.
 foreach tt in rscatter rcapsym pcscatter pccapsym {
     local v `v_`tt''
     capture twoway `tt' `v', jitter(5) jitterseed(3) nodraw
     local tw = _rc
     _zh7_run `"dash `tt' `v', jitter(5) jitterseed(3) name(zq7)"' "`logfile'"
     local drc = r(rc)
-    _zh7_logged "`logfile'" "jitter() jitterseed()"
-    local named = r(found)
-    if `tw' != 0 | `drc' != 0 | !`named' {
-        display as error "HC7-03 FAIL `tt': twoway r(`tw'), dash rc `drc', named `named'"
+    local rnote = r(note)
+    _zh7_has zq7 jitter
+    if `tw' != 0 | `drc' != 0 | `rnote' | r(found) != 1 {
+        display as error "HC7-03 FAIL `tt': twoway r(`tw'), dash rc `drc', note `rnote', kept `r(found)'"
         local bad = 1
     }
 }
@@ -389,7 +407,7 @@ if `bad' {
     local nfail = `nfail' + 1
     local faillist "`faillist' HC7-03"
 }
-else display as text "HC7-03 PASS: jitter() named on rscatter, rcapsym, pcscatter and pccapsym only"
+else display as text "HC7-03 PASS: jitter() kept, unnamed, on every type that draws a marker"
 
 // ----------------------------------------------------------------
 // HC7-04 -- an RGB triplet in quotes inside plotregion()/graphregion().

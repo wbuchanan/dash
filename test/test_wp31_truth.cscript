@@ -3075,6 +3075,209 @@ if inlist("`only'", "", "S16") & `: list posof "S16" in w31_run' {
 }
 * ==== end S16 ====
 
+// S15 helpers (WP-31 C8a).  _u15_draw: what a registered dash graph
+// draws, saved and served (S03's _u03_docs builds both) -- into globals
+// u15_<k>s (saved) and u15_<k>v (served): cv, 1 when a plot of the spec
+// carries colorvar; fld, the glyph types whose fill or line colour reads a
+// field through a colour mapper; keys, the colour keys; mv, 1 when every
+// marker of the layer moved from the data and none further than half of
+// jitter(5)'s 5% of its axis range; seg, 1 when no Segment moved.
+python:
+def _u15_draw(sp, dp, app):
+    import json
+    import numpy as np
+    from sfi import Macro
+    spec = json.load(open(sp, encoding="utf-8"))
+    cv = int(any("colorvar" in (p.get("options") or {})
+                 for g in spec.get("graphs", []) for p in g.get("plots", [])))
+    a, b = _u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        fld, keys, mv, seg = [], 0, 1, 1
+        for f in figs:
+            for side in (f.right, f.left, f.above, f.below, f.center):
+                for m in side:
+                    t = type(m).__name__
+                    if t == "ColorBar" or (t == "Legend"
+                                           and m.name == "_dash_clegend"):
+                        keys += 1
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                t = type(g).__name__
+                if str(getattr(r, "name", "") or "").startswith("_clegend_"):
+                    continue
+                if any(getattr(getattr(g, p, None), "transform", None)
+                       is not None for p in ("fill_color", "line_color")):
+                    fld.append(t)
+                d = r.data_source.data
+                if t == "Scatter" and g.marker != "dash":
+                    x, y = np.asarray(d[g.x], float), np.asarray(d[g.y], float)
+                    x0 = np.asarray(d["x"], float)
+                    y0 = np.asarray(d["y"], float)
+                    rx = 0.025 * (np.nanmax(x0) - np.nanmin(x0)) + 1e-9
+                    ry = 0.025 * (np.nanmax(y0) - np.nanmin(y0)) + 1e-9
+                    if not (np.all((x != x0) | (y != y0))
+                            and np.nanmax(np.abs(x - x0)) <= rx
+                            and np.nanmax(np.abs(y - y0)) <= ry):
+                        mv = 0
+        Macro.setGlobal("u15_cv" + sfx, str(cv))
+        Macro.setGlobal("u15_fld" + sfx, " ".join(sorted(set(fld))) or "none")
+        Macro.setGlobal("u15_keys" + sfx, str(keys))
+        Macro.setGlobal("u15_mv" + sfx, str(mv))
+end
+
+capture program drop _u15_reg
+program define _u15_reg
+    // _u15_reg <dir> <k> <dash command...>: register one graph, write its
+    // spec and data, and read what both modes draw (_u15_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u15_m; _u15_m._u15_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u15_try
+program define _u15_try, rclass
+    // _u15_try <log> <command...>: run it in its own log; r(rc), and
+    // r(note) 1 when the log names colorvar() or jitter() as ignored.
+    version 19
+    gettoken lf 0 : 0
+    capture dash clear
+    capture log close u15l
+    quietly log using "`lf'", text replace name(u15l)
+    capture noisily `0'
+    local rc = _rc
+    quietly log close u15l
+    cert_log_has "`lf'", needle("ignoring unsupported")
+    local n = r(found)
+    local hit = 0
+    foreach o in colorvar jitter {
+        cert_log_has "`lf'", needle("`o'(")
+        if r(found) & `n' local hit = 1
+    }
+    return scalar rc = `rc'
+    return scalar note = `hit'
+end
+
+* ==== S15 C8a: colorvar coverage and jitter ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S15") & `: list posof "S15" in w31_run' {
+    display as text "S15 start " c(current_date) " " c(current_time)
+    local u15d "`w31_work'/s15"
+    capture mkdir "`u15d'"
+    local lf "`u15d'/try.log"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    quietly keep if rep78 < .
+    quietly generate z = rep78
+    quietly generate lo = mpg - 2
+    quietly generate hi = mpg + 2
+    quietly generate y2 = mpg + 5
+    quietly generate x2 = weight + 500
+    sort weight
+    quietly generate t = _n
+    quietly tsset t
+
+    // ------------------------------------------------------------
+    // U15-01: colorvar(z) on every plot type: dash's rc is twoway's, the
+    // note never names it, and the spec carries it where twoway colours
+    // (the view's .cvar is set) and not where twoway drops it.
+    // ------------------------------------------------------------
+    local m6 `"scatter "scatter mpg t" line "line mpg t" connected "connected mpg t" scatteri "scatteri 20 30" area "area mpg t" bar "bar mpg t" spike "spike mpg t" dropline "dropline mpg t" dot "dot mpg t" rarea "rarea lo hi t" rbar "rbar lo hi t" rspike "rspike lo hi t" rcap "rcap lo hi t" rcapsym "rcapsym lo hi t" rscatter "rscatter lo hi t" rline "rline lo hi t" rconnected "rconnected lo hi t" pcspike "pcspike mpg t y2 t" pccapsym "pccapsym mpg t y2 t" pcarrow "pcarrow mpg t y2 t" pcbarrow "pcbarrow mpg t y2 t" pcscatter "pcscatter mpg t y2 t" pci "pci 20 30 25 40" pcarrowi "pcarrowi 20 30 25 40" tsline "tsline mpg" tsrline "tsrline lo hi" mband "mband mpg t" mspline "mspline mpg t" lowess "lowess mpg t" lfit "lfit mpg t" qfit "qfit mpg t" fpfit "fpfit mpg t" lfitci "lfitci mpg t" qfitci "qfitci mpg t" fpfitci "fpfitci mpg t" lpoly "lpoly mpg t" lpolyci "lpolyci mpg t" kdensity "kdensity mpg" histogram "histogram t" function "function y = x, range(0 1)""'
+    local k 0
+    while `"`m6'"' != "" {
+        gettoken ty m6 : m6
+        gettoken cmd m6 : m6
+        local k = `k' + 1
+        local sep = cond(strpos(`"`cmd'"', ","), " ", ", ")
+        capture twoway `cmd' `sep' colorvar(z) name(u15t, replace)
+        local tw = _rc
+        local tcv = 0
+        if `tw' == 0 {
+            local c "`.u15t.plotregion1.plot1.cvar'"
+            if "`c'" != "" & "`c'" != "." local tcv = 1
+        }
+        _u15_try "`lf'" dash `cmd' `sep' colorvar(z) name(zu15)
+        local drc = r(rc)
+        _w31_expect U15-01 "(`drc' == `tw')" "`ty': dash rc `drc', twoway r(`tw')"
+        _w31_expect U15-01 "(r(note) == 0)" "`ty': the note names colorvar()"
+        if `drc' == 0 {
+            _dash_serve_spec, specpath("`u15d'/c`k'.json") datapath("`u15d'/cd`k'.json")
+            python: import json as _u15j; from sfi import Macro as _u15M; _u15M.setGlobal("u15_cvs", str(int(any("colorvar" in (p.get("options") or {}) for g in _u15j.load(open("`u15d'/c`k'.json")).get("graphs", []) for p in g.get("plots", []))))) 
+            _w31_expect U15-01 "(${u15_cvs} == `tcv')" "`ty': colorvar in the spec ${u15_cvs}, twoway's view carries it `tcv'"
+            capture erase "`u15d'/c`k'.json"
+            capture erase "`u15d'/cd`k'.json"
+        }
+    }
+    quietly tsset, clear
+    _w31_done U15-01 "colorvar(z) on 40 types: rc as twoway's, never named, in the spec exactly where twoway's view carries it"
+
+    // ------------------------------------------------------------
+    // U15-02: bar colorvar(z): the bars read a colour field, both modes,
+    // with one key; twoway draws the bars in the five levels.
+    // ------------------------------------------------------------
+    quietly twoway bar mpg weight, colorvar(z) name(u15t, replace)
+    local c "`.u15t.plotregion1.plot1.cvar'"
+    _w31_expect U15-02 `"("`c'" != "." & "`c'" != "")"' "twoway bar's view has no colour variable (`c')"
+    _u15_reg "`u15d'" 2 bar mpg weight, colorvar(z) name(zu2)
+    _w31_expect U15-02 `"("${u15_flds}" == "VBar" & "${u15_fldv}" == "VBar")"' "colour fields on ${u15_flds} / ${u15_fldv}"
+    _w31_expect U15-02 "(${u15_keyss} == 1 & ${u15_keysv} == 1)" "keys ${u15_keyss} / ${u15_keysv}"
+    _w31_done U15-02 "bar colorvar(z): the bars take the colour field and one key, saved and served"
+
+    // ------------------------------------------------------------
+    // U15-03: rscatter jitter(5) jitterseed(1): twoway's view jitters, dash
+    // moves every marker within the band in both modes and names nothing.
+    // ------------------------------------------------------------
+    quietly twoway rscatter lo hi weight, jitter(5) jitterseed(1) name(u15t, replace)
+    local tj "`.u15t.plotregion1.plot1.jitter'"
+    _w31_expect U15-03 "(`tj' == 5)" "twoway rscatter's view jitter `tj'"
+    _u15_try "`lf'" dash rscatter lo hi weight, jitter(5) jitterseed(1) name(zu3)
+    _w31_expect U15-03 "(r(rc) == 0 & r(note) == 0)" "dash rc `r(rc)', note `r(note)'"
+    _u15_reg "`u15d'" 3 rscatter lo hi weight, jitter(5) jitterseed(1) name(zu3)
+    _w31_expect U15-03 "(${u15_mvs} == 1 & ${u15_mvv} == 1)" "markers moved within the band: saved ${u15_mvs}, served ${u15_mvv}"
+    _w31_done U15-03 "rscatter jitter(5): every marker moved within 2.5% of each range, both modes, as twoway's view jitters (`tj')"
+
+    // ------------------------------------------------------------
+    // U15-04: two y variables with colorvar(): twoway's rc and words.
+    // ------------------------------------------------------------
+    foreach ty in scatter line {
+        capture noisily twoway `ty' mpg price weight, colorvar(z) name(u15t, replace)
+        local tw = _rc
+        _u15_try "`lf'" dash `ty' mpg price weight, colorvar(z) name(zu4)
+        local drc = r(rc)
+        cert_log_has "`lf'", needle("option colorvar() cannot be combined with multiple y variables in a `ty' plot")
+        _w31_expect U15-04 "(`tw' == 198 & `drc' == 198 & r(found))" "`ty': twoway r(`tw'), dash rc `drc', words `r(found)'"
+    }
+    _w31_done U15-04 "colorvar() with two y variables: r(198) in twoway's words on scatter and line"
+
+    // ------------------------------------------------------------
+    // U15-05: lfit colorvar(z): rc 0, nothing said, nothing in the spec.
+    // ------------------------------------------------------------
+    capture twoway lfit mpg weight, colorvar(nosuchvar) name(u15t, replace)
+    local tw = _rc
+    _u15_try "`lf'" dash lfit mpg weight, colorvar(nosuchvar) name(zu5)
+    _w31_expect U15-05 "(`tw' == 0 & r(rc) == 0 & r(note) == 0)" "colorvar(nosuchvar): twoway r(`tw'), dash rc `r(rc)', note `r(note)'"
+    _u15_reg "`u15d'" 5 lfit mpg weight, colorvar(z) name(zu5)
+    _w31_expect U15-05 "(${u15_cvs} == 0 & ${u15_keyss} == 0 & ${u15_keysv} == 0)" "spec colorvar ${u15_cvs}, keys ${u15_keyss} / ${u15_keysv}"
+    _w31_done U15-05 "lfit colorvar(): dropped without a word and never looked up, as twoway drops it"
+
+    capture erase "`lf'"
+    foreach k in 2 3 5 {
+        foreach p in s d {
+            capture erase "`u15d'/`p'`k'.json"
+        }
+        capture erase "`u15d'/a`k'.py"
+    }
+    capture rmdir "`u15d'"
+    capture graph drop u15t
+    dash clear
+    display as text "S15 end " c(current_date) " " c(current_time)
+}
+* ==== end S15 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

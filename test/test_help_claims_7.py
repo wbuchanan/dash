@@ -460,11 +460,19 @@ class TestTheSecondAxisFitsTheLayer:
 # 4. colorvar(): where it is drawn
 # ===========================================================================
 
-#: The plot types that colour their observations by colorvar(): the ones
-#: that draw their markers through map_scatter.  dash.sthlp says exactly
-#: this list; on every other type dash.ado names colorvar() and its
-#: companions in the note (test_help_claims_7.cscript HC7-02).
-_CV_TYPES = {"scatter", "connected", "rconnected", "dot"}
+#: The plot types that colour their observations by colorvar().
+#: Flipped (WP-31 C8a): every type twoway colours
+#: (test/fixtures/colorvar_types_truth.json "coloured"); the four that
+#: drew their markers through map_scatter were the old list.  On the types
+#: twoway drops it on, dash.ado drops it too (test_help_claims_7.cscript
+#: HC7-02), so a spec carrying it there draws nothing for it.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "fixtures", "colorvar_types_truth.json"),
+          encoding="utf-8") as _cvt:
+    _CV_TYPES = set(json.load(_cvt)["coloured"])
+#: The coloured types drawn with Bokeh's Line glyph alone: one colour a
+#: line, its first point's level (D-15f), so no glyph reads a field.
+_CV_LINE_TYPES = {"line", "tsline", "rline", "tsrline"}
 
 
 def _colour_mapped(fig):
@@ -492,7 +500,8 @@ class TestWhereColorvarIsDrawn:
         fig, _ = _render(mode, [plot_for(ptype, {"colorvar": "price"})])
         got = _colour_mapped(fig)
         if ptype in _CV_TYPES:
-            assert got == {"field": True, "bar": True, "key": False}, got
+            assert got == {"field": ptype not in _CV_LINE_TYPES, "bar": True,
+                           "key": False}, got
         else:
             assert got == {"field": False, "bar": False, "key": False}, got
 
@@ -502,7 +511,8 @@ class TestWhereColorvarIsDrawn:
                                                  "colordiscrete": "1"})])
         got = _colour_mapped(fig)
         if ptype in _CV_TYPES:
-            assert got == {"field": True, "bar": False, "key": True}, got
+            assert got == {"field": ptype not in _CV_LINE_TYPES,
+                           "bar": False, "key": True}, got
         else:
             assert got == {"field": False, "bar": False, "key": False}, got
 
@@ -655,11 +665,11 @@ class TestLegendReadsItsSuboptionsNotItsLabels:
 
 #: The plot types whose markers jitter() moves in dash -- the markers only;
 #: connected and rconnected keep their lines where the data are, as twoway
-#: does.  rscatter, rcapsym, pcscatter and pccapsym, whose markers twoway
-#: jitters, are not jittered; dash.ado names jitter() there
-#: (test_help_claims_7.cscript HC7-02).
+#: does.  Flipped (WP-31 C8a): rscatter, rcapsym, pcscatter and pccapsym,
+#: whose markers twoway jitters (colorvar_types_truth.json jitter), are
+#: jittered too; dash.ado named jitter() there.
 _JITTER_TYPES = {"scatter", "connected", "rconnected", "dot", "dropline",
-                 "scatteri"}
+                 "scatteri", "rscatter", "rcapsym", "pcscatter", "pccapsym"}
 #: The plot types that draw markers, and so take msangle() and malpha().
 _MARKER_TYPES = {"scatter", "connected", "rconnected", "dot", "dropline",
                  "scatteri", "rscatter", "rcapsym", "pcscatter", "pccapsym"}

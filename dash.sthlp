@@ -4295,14 +4295,20 @@ r(111), as they refuse a dropped plotted variable.
 {pstd}
 {cmd:colorvar(}{it:varname}{cmd:)} colours each observation of a layer by a
 third variable instead of by the scheme's series colour.  {cmd:dash} draws
-it on {cmd:scatter}, {cmd:dot}, {cmd:connected} and {cmd:rconnected} -- on
-their markers; a connecting line keeps the series colour.  {cmd:twoway}
-accepts {cmd:colorvar()} on every plot type, and colours {cmd:line} and
-{cmd:bar}, though not {cmd:area} or {cmd:lfit}.  On any type but
-{cmd:scatter}, {cmd:dot}, {cmd:connected} and {cmd:rconnected}, {cmd:dash}
-names {cmd:colorvar()} and each of its companions in its note and draws the
-layer in the series colour.  A companion written without {cmd:colorvar()}
-is named too.
+it on every plot type twoway colours -- markers, bars, spikes, drop lines,
+range bars and caps, and the shafts and heads of the paired-coordinate
+arrows, are coloured observation by observation, with one colour key a
+layer; a line ({cmd:line}, {cmd:rline}, {cmd:tsline}, {cmd:tsrline}, the
+connecting line of {cmd:connected} and {cmd:rconnected}) takes one colour,
+that of its first observation's level, where {cmd:twoway} colours each
+segment (measured: {cmd:twoway line mpg weight, colorvar(rep78) sort} draws
+5 colours along one line).  On {cmd:area}, {cmd:rarea}, the fits and
+smooths, {cmd:kdensity}, {cmd:histogram}, {cmd:function}, {cmd:scatteri},
+{cmd:pci} and {cmd:pcarrowi}, {cmd:twoway} drops {cmd:colorvar()} without a
+word -- and without looking the variable up -- and so does {cmd:dash}.
+With more than one y variable, {cmd:colorvar()} is refused on
+{cmd:scatter}, {cmd:line}, {cmd:tsline}, {cmd:bar}, {cmd:connected},
+{cmd:dot}, {cmd:dropline} and {cmd:spike}, as {cmd:twoway} refuses it.
 
 {synoptset 38}{...}
 {synopt:{cmdab:colorv:ar(}{it:varname}{cmd:)}}colour each observation by
@@ -4516,8 +4522,10 @@ name them there.
     spanning {it:#}% of the data's range on each axis; {it:#} must be a
     number from 0 to 100, or a list of them, one per y (see
     {help dash##stylelists:Style lists}).  Drawn on the markers of {cmd:scatter},
-    {cmd:connected}, {cmd:rconnected}, {cmd:dot}, {cmd:dropline} and
-    {cmd:scatteri}, never on a connecting line, as in {cmd:twoway}.
+    {cmd:connected}, {cmd:rconnected}, {cmd:dot}, {cmd:dropline},
+    {cmd:scatteri}, {cmd:rscatter}, {cmd:rcapsym}, {cmd:pcscatter} and
+    {cmd:pccapsym} (both ends), never on a connecting line or a spine, as
+    in {cmd:twoway}.
     {cmd:dash} accepts {it:jit} for it, where {cmd:twoway} wants the full
     name{p_end}
 {synopt:{opt jitterseed(#)}}random-number seed for {cmd:jitter()}, spelled as
@@ -4544,9 +4552,7 @@ name them there.
 {synoptline}
 
 {pstd}
-{cmd:twoway} also jitters the markers of {cmd:rscatter}, {cmd:rcapsym},
-{cmd:pcscatter} and {cmd:pccapsym}; {cmd:dash} does not, and names
-{cmd:jitter()} and its seed in the note there.  {cmd:malpha()},
+{cmd:malpha()},
 {cmd:lalpha()} and {cmd:falpha()} are {cmd:dash}'s own and {cmd:twoway}
 refuses them; its way is Stata's {cmd:color%alpha} notation, which works
 too, so {cmd:mcolor(red%50)} and {cmd:mcolor(red) malpha(50)} are the same

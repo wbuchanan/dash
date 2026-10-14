@@ -14217,12 +14217,7 @@ class GlyphMapper:
                                                 palette=pal_colors,
                                                 nan_color=missing_color)
             color_spec = {"field": color_field, "transform": mapper}
-            glyph      = renderer.glyph
-            try:
-                glyph.fill_color = color_spec
-                glyph.line_color = color_spec
-            except (AttributeError, ValueError):
-                pass
+            self._colorvar_paint(renderer.glyph, source, color_spec)
 
             # Discrete mappings always render as a Bokeh Legend with one entry
             # per category — matches Stata 18's default colordiscrete behavior
@@ -14314,12 +14309,7 @@ class GlyphMapper:
                 _cbar.color_mapper = mapper
 
             color_spec = {"field": varname, "transform": mapper}
-            glyph      = renderer.glyph
-            try:
-                glyph.fill_color = color_spec
-                glyph.line_color = color_spec
-            except (AttributeError, ValueError):
-                pass
+            self._colorvar_paint(renderer.glyph, source, color_spec)
 
             if _cbar is not None and add_key:
                 fig.add_layout(_cbar, "right")
@@ -14349,6 +14339,119 @@ class GlyphMapper:
                             _slot.remove(_lay)
                         except ValueError:
                             pass
+
+    def _colorvar_paint(self, glyph, source, color_spec) -> None:
+        """Set *glyph*'s colour properties to colorvar()'s *color_spec*
+        (WP-31 C8a, D-15c): ``fill_color`` and ``line_color`` wherever the
+        glyph class has them -- a Segment or MultiLine its line, a Scatter,
+        VBar, Rect or Quad both, as twoway colours a marker's or a bar's
+        fill and outline alike.  A glyph that takes one colour for the
+        whole of it (Bokeh's Line, which refuses a field) takes the colour
+        of its first drawn point's level (D-15f, ``_colorvar_scalar``);
+        twoway colours each segment by the level of its start."""
+        for _p in ("fill_color", "line_color"):
+            if not hasattr(glyph, _p):
+                continue
+            try:
+                setattr(glyph, _p, color_spec)
+            except ValueError:
+                _sc = self._colorvar_scalar(source, glyph, color_spec)
+                if _sc is not None:
+                    setattr(glyph, _p, _sc)
+
+    @staticmethod
+    def _colorvar_scalar(source, glyph, color_spec):
+        """The one colour of a glyph that cannot vary along its length:
+        *color_spec*'s colour for the first row of *source* whose x and y
+        are finite (D-15f), as BokehJS's mapper gives it -- a categorical
+        mapper's palette entry for the row's level, a linear (or log)
+        mapper's bin of the row's value, ``nan_color`` for a row that is
+        missing or no level.  None when the source has no such row or the
+        mapper is of another kind."""
+        try:
+            field = color_spec["field"]
+            mapper = color_spec["transform"]
+            data = source.data
+            col = list(data[field])
+        except (KeyError, TypeError, AttributeError):
+            return None
+        idx = None
+        xf, yf = getattr(glyph, "x", None), getattr(glyph, "y", None)
+        if isinstance(xf, str) and isinstance(yf, str) \
+                and xf in data and yf in data:
+            try:
+                xs = _dash_float_values(data[xf])
+                ys = _dash_float_values(data[yf])
+                fin = np.flatnonzero(np.isfinite(xs) & np.isfinite(ys))
+                idx = int(fin[0]) if fin.size else None
+            except (TypeError, ValueError):
+                idx = None
+        elif col:
+            idx = 0
+        if idx is None or idx >= len(col):
+            return None
+        v = col[idx]
+        kind = type(mapper).__name__
+        pal = list(getattr(mapper, "palette", None) or [])
+        nan_c = getattr(mapper, "nan_color", None)
+        if kind == "CategoricalColorMapper":
+            facs = list(mapper.factors or [])
+            if v is None or v not in facs:
+                return nan_c
+            k = facs.index(v)
+            return pal[k] if k < len(pal) else nan_c
+        if kind not in ("LinearColorMapper", "LogColorMapper") or not pal:
+            return None
+        try:
+            v = float(v)
+            lo, hi = float(mapper.low), float(mapper.high)
+        except (TypeError, ValueError):
+            return nan_c
+        if not math.isfinite(v):
+            return nan_c
+        if v < lo:
+            return pal[0]
+        if v > hi:
+            return pal[-1]
+        if kind == "LogColorMapper":
+            if lo <= 0 or v <= 0:
+                return nan_c
+            v, lo, hi = math.log(v), math.log(lo), math.log(hi)
+        if v == hi or hi <= lo:
+            return pal[-1]
+        k = int(math.floor((v - lo) / (hi - lo) * len(pal)))
+        return pal[min(len(pal) - 1, max(0, k))]
+
+    def _colorvar_layer(self, fig, parts, options, add_key=True) -> None:
+        """colorvar() over every glyph a layer draws (WP-31 C8a, D-15b):
+        *parts* is ``[(renderer, source), ...]`` in drawing order.  The
+        first is coloured through ``_apply_colorvar`` with the key
+        (*add_key*), each later one without it -- twoway draws one key a
+        layer -- so a figure carries one key whatever the number of
+        glyphs.  A later glyph over a source already coloured takes the
+        first's colour spec, so one colour column serves them all; a Line
+        is always coloured from its own source (its first point)."""
+        if not str((options or {}).get("colorvar", "") or "").strip():
+            return
+        done = []
+        for k, (r, src) in enumerate(parts):
+            if r is None or src is None:
+                continue
+            g = r.glyph
+            prev = next((d for d in done if d[1] is src), None)
+            if prev is not None and type(g).__name__ != "Line":
+                spec = next((getattr(prev[0].glyph, p) for p in
+                             ("line_color", "fill_color")
+                             if hasattr(prev[0].glyph, p)
+                             and getattr(getattr(prev[0].glyph, p),
+                                         "transform", None) is not None),
+                            None)
+                if spec is not None:
+                    self._colorvar_paint(g, src, spec)
+                    continue
+            self._apply_colorvar(fig, r, src, options,
+                                 add_key=add_key and k == 0)
+            done.append((r, src))
 
     def _apply_mlabel_opts(
         self,
@@ -15262,6 +15365,7 @@ class GlyphMapper:
         order=None,
         by_x: bool = False,
         role: "str | None" = "line",
+        colorvar_key: bool = True,
     ) -> "GlyphRenderer":
         """Add a line glyph to *fig*.
 
@@ -15285,6 +15389,9 @@ class GlyphMapper:
                        for rconnected, whose colour is a line's.
             order:     One join key per row of *source*, or None.
             by_x:      Join in the order of x whatever else is given.
+            colorvar_key: Add colorvar()'s key (False for a line coloured
+                       from a key its layer draws elsewhere: connected's and
+                       rconnected's markers carry it).
 
         Args:
             fig:     Bokeh Figure object.
@@ -15367,6 +15474,10 @@ class GlyphMapper:
         # and rconnected label their MARKERS, through map_scatter.
         r = _dash_join_glyph(self, fig, options, _line_kwargs, role=role,
                              hover=(yvar, xvar))
+        # colorvar() (WP-31 C8a): the line in its first point's level
+        # (D-15f), the key unless the layer's markers carry it.
+        self._colorvar_layer(fig, [(r, sorted_source)], options,
+                             add_key=colorvar_key)
         return r
 
     def map_connected(
@@ -15405,7 +15516,8 @@ class GlyphMapper:
         opts_no_label = {k: v for k, v in options.items() if k != "mlabel"}
         renderers = [
             self.map_line(fig, source, yvar, xvar, opts_no_label, view=view,
-                          color_idx=color_idx, connected=True, order=order),
+                          color_idx=color_idx, connected=True, order=order,
+                          colorvar_key=False),
             self.map_scatter(fig, source, yvar, xvar, options,
                              view=view if marker_view is None else marker_view,
                              color_idx=color_idx),
@@ -15758,6 +15870,8 @@ class GlyphMapper:
         # VBar supports line_width/line_dash/line_color natively; lcolor/lwidth/lpattern
         # are applied after bfcolor/blcolor so blcolor retains priority for line color.
         self._apply_line_opts(r, options, role="aline")
+        # colorvar() (WP-31 C8a): each bar's fill and outline.
+        self._colorvar_layer(fig, [(r, clean_source)], options)
         # The labels of the bars drawn -- the layer's own rows -- from the
         # source the bars are drawn from.
         self._apply_mlabel_opts(fig, clean_source, options, xvar, yvar,
@@ -15933,6 +16047,8 @@ class GlyphMapper:
         r = fig.segment(**_seg_kwargs)
         self._tag_base(r, "y0", _base is None, _zero)
         self._apply_line_opts(r, options, role="aline")
+        # colorvar() (WP-31 C8a): each spike.
+        self._colorvar_layer(fig, [(r, seg_source)], options)
         # No marker labels: twoway draws none on a spike (measured).
         return r
 
@@ -19372,6 +19488,8 @@ class GlyphMapper:
             _rbar_kwargs["view"] = view
         r = fig.vbar(**_rbar_kwargs)
         self._rbar_finish(r, options, _fill_base, _f)
+        # colorvar() (WP-31 C8a): each bar.
+        self._colorvar_layer(fig, [(r, source)], options)
         # No marker labels: twoway draws none on rbar (measured).
         return [r]
 
@@ -19520,6 +19638,8 @@ class GlyphMapper:
         r.tags = ["dash_rbar_mwidth"]
         r._dash_hull_fields = {"y": (y1var, y2var)}
         self._rbar_finish(r, options, _fill_base, _f)
+        # colorvar() (WP-31 C8a): each bar.
+        self._colorvar_layer(fig, [(r, source)], options)
         return [r]
 
     def map_rspike(
@@ -19562,6 +19682,8 @@ class GlyphMapper:
             _rseg_kwargs["view"] = view
         r = fig.segment(**_rseg_kwargs)
         self._apply_line_opts(r, options, role="aline")
+        # colorvar() (WP-31 C8a): each spike.
+        self._colorvar_layer(fig, [(r, source)], options)
         # No marker labels: twoway draws none on rspike (measured).
         return [r]
 
@@ -19640,6 +19762,9 @@ class GlyphMapper:
             top_cap.glyph.size = bot_cap.glyph.size
         for seg in (spine, bot_cap, top_cap):
             self._apply_line_opts(seg, options, role="aline")
+        # colorvar() (WP-31 C8a): the spine and both caps, one key.
+        self._colorvar_layer(fig, [(spine, cap_source), (bot_cap, cap_source),
+                                   (top_cap, cap_source)], options)
         # No marker labels: twoway draws none on rcap (measured).
         return [spine, bot_cap, top_cap]
 
@@ -19724,6 +19849,10 @@ class GlyphMapper:
         # Each bound by connect() and cmissing() (WP-30 P1.8a).
         r1 = _dash_join_glyph(self, fig, options, _rl1_kwargs, role="aline")
         r2 = _dash_join_glyph(self, fig, options, _rl2_kwargs, role="aline")
+        # colorvar() (WP-31 C8a): each bound in its first point's level
+        # (D-15f), one key.
+        self._colorvar_layer(fig, [(r1, _bound_src[y1var]),
+                                   (r2, _bound_src[y2var])], options)
         # No marker labels: twoway draws none on rline or tsrline, which is
         # drawn here (measured).
         return [r1, r2]
@@ -19771,11 +19900,11 @@ class GlyphMapper:
             # (measured: `linewidth plineplot' leaves them at p1's).
             self.map_line(fig, source, y1var, xvar, options, view=view,
                           color_idx=color_idx, line_kind="", order=order,
-                          role="aline"),
+                          role="aline", colorvar_key=False),
             self.map_scatter(fig, source, y1var, xvar, options, view=view, color_idx=color_idx),
             self.map_line(fig, source, y2var, xvar, options, view=view,
                           color_idx=color_idx, line_kind="", order=order,
-                          role="aline"),
+                          role="aline", colorvar_key=False),
             # twoway draws ONE colorvar() key for rconnected (measured:
             # "Price" once, E-16.2); the second end is coloured from it.
             self.map_scatter(fig, source, y2var, xvar, options, view=view,
@@ -19973,6 +20102,10 @@ class GlyphMapper:
         # nowhere else, and the dot was never passed through -- so a dropline
         # drew a default circle whatever was asked for.
         self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f))
+        # colorvar() (WP-31 C8a): the dot (which carries the series key)
+        # and its drop, one key.
+        self._colorvar_layer(fig, [(dot, dl_source), (seg, dl_source)],
+                             options)
         self._apply_mlabel_opts(fig, dl_source, options, xvar, yvar,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx,
                                 vpos_col=_dl_vpos)
@@ -20023,9 +20156,24 @@ class GlyphMapper:
 
         # The layer's rows, and with them the caller's other columns -- the
         # row identity and the variables hover() names.
-        cap_source = ColumnDataSource(self._carry_cols(source, {
-            "x": x_arr, "y1": y1_arr, "y2": y2_arr,
-        }, _cap_sel))
+        _rcs_cols = {"x": x_arr, "y1": y1_arr, "y2": y2_arr}
+        # jitter() (WP-31 C8a): both markers of each observation, the low
+        # ends then the high from one seeded generator (D-15d), in columns
+        # of their own; the spine keeps the data.
+        _rcs_pts = {"x": np.concatenate([x_arr, x_arr]),
+                    "y": np.concatenate([y1_arr, y2_arr])}
+        _rcs_xy = (("x", "y1"), ("x", "y2"))
+        if self._jitter_points(_rcs_pts, "x", "y", options, "rcapsym"):
+            _n = len(x_arr)
+            _jx = np.asarray(_rcs_pts[_DASH_JITTER_X], dtype=float)
+            _jy = np.asarray(_rcs_pts[_DASH_JITTER_Y], dtype=float)
+            _rcs_cols.update({
+                _DASH_JITTER_X + "_lo": _jx[:_n], _DASH_JITTER_Y + "_lo": _jy[:_n],
+                _DASH_JITTER_X + "_hi": _jx[_n:], _DASH_JITTER_Y + "_hi": _jy[_n:]})
+            _rcs_xy = ((_DASH_JITTER_X + "_lo", _DASH_JITTER_Y + "_lo"),
+                       (_DASH_JITTER_X + "_hi", _DASH_JITTER_Y + "_hi"))
+        cap_source = ColumnDataSource(self._carry_cols(source, _rcs_cols,
+                                                       _cap_sel))
 
         # Two defaults: the spine and caps are an rcap and take `color
         # p#'; the symbols are markers and take `color p#mark'.
@@ -20058,13 +20206,15 @@ class GlyphMapper:
                                     legend_label=y1var,
                                     **self._scheme_alpha_kw(color_idx, "rcap"))
         _rcs_mlw = self.scheme.plot_line_width(color_idx, "mark")
-        _rcs_bdot_kw: dict  = dict(x="x", y="y1", source=cap_source,
+        _rcs_bdot_kw: dict  = dict(x=_rcs_xy[0][0], y=_rcs_xy[0][1],
+                                    source=cap_source,
                                     marker=_rcs_marker,
                                     fill_color=mark_color, line_color=mark_line,
                                     size=self.scheme.default_marker_size(color_idx),
                                     line_width=_rcs_mlw,
                                     **self._marker_alpha_kw(color_idx))
-        _rcs_tdot_kw: dict  = dict(x="x", y="y2", source=cap_source,
+        _rcs_tdot_kw: dict  = dict(x=_rcs_xy[1][0], y=_rcs_xy[1][1],
+                                    source=cap_source,
                                     marker=_rcs_marker,
                                     fill_color=mark_color, line_color=mark_line,
                                     size=self.scheme.default_marker_size(color_idx),
@@ -20087,6 +20237,9 @@ class GlyphMapper:
         self._apply_line_opts(spine, options, role="aline")
         for dot in (bot_dot, top_dot):
             self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f))
+        # colorvar() (WP-31 C8a): the spine and both markers, one key.
+        self._colorvar_layer(fig, [(spine, cap_source), (bot_dot, cap_source),
+                                   (top_dot, cap_source)], options)
         # Both ends are labelled, as twoway labels them ("the same marker
         # label would be used to label both ends of the spike",
         # twoway_rcapsym.sthlp; measured, twenty labels for ten
@@ -20302,6 +20455,8 @@ class GlyphMapper:
         # No view here: source_clean already holds only the selected rows.
         r = fig.segment(**_pcseg_kwargs)
         self._apply_line_opts(r, options, role="aline")
+        # colorvar() (WP-31 C8a): each spike.
+        self._colorvar_layer(fig, [(r, source_clean)], options)
         return [r]
 
     # map_pci stood here: pci read from four VARIABLES, a delegate of
@@ -20485,6 +20640,11 @@ class GlyphMapper:
         # Both markers of an observation carry its other columns -- the
         # variables hover() names; clean's index is the row in *source*.
         _pc_rows = clean.index.to_numpy()
+        # jitter() (WP-31 C8a): both markers of each observation, the
+        # first points then the second (D-15d).
+        _pc_xy = ("x", "y")
+        if self._jitter_points(_pc_cols, "x", "y", options, "pcscatter"):
+            _pc_xy = (_DASH_JITTER_X, _DASH_JITTER_Y)
         self._carry_cols(source, _pc_cols,
                          np.concatenate([_pc_rows, _pc_rows]))
         pc_source = ColumnDataSource(_pc_cols)
@@ -20502,8 +20662,10 @@ class GlyphMapper:
                                    legend_label=y1var,
                                    **self._marker_alpha_kw(color_idx))
         # No view here: pc_source already holds only the selected rows.
-        r = fig.scatter("x", "y", **_pcsc_kwargs)
+        r = fig.scatter(*_pc_xy, **_pcsc_kwargs)
         self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f))
+        # colorvar() (WP-31 C8a): both markers of each observation.
+        self._colorvar_layer(fig, [(r, pc_source)], options)
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
                                 _DASH_MLABEL_Y, label_col=_DASH_MLABEL_VALUES,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx,
@@ -20707,8 +20869,30 @@ class GlyphMapper:
                 deg = got
         return math.radians(deg)
 
+    @staticmethod
+    def _jitter_points(cols, xcol, ycol, options, layer):
+        """jitter() on a mapper's stacked marker points (WP-31 C8a): when
+        the layer asks for it, *cols* gains ``_DASH_JITTER_X`` and
+        ``_DASH_JITTER_Y`` -- *xcol* and *ycol* moved by ``_apply_jitter``
+        within jitter()% of each axis's range, seeded by ``_jitter_seed``
+        -- and True is returned; otherwise *cols* is left as it is.  The
+        value is read as dropline reads it (a bad one is named, 0 to 100)."""
+        if not str((options or {}).get("jitter", "") or "").strip():
+            return False
+        jit = _stat_option_float(options, "jitter", 0.0, layer, lo=0.0,
+                                 hi=100.0)
+        if not jit:
+            return False
+        xs = np.asarray(_dash_float_values(cols[xcol]), dtype=float)
+        ys = np.asarray(_dash_float_values(cols[ycol]), dtype=float)
+        jx, jy = _apply_jitter(xs, ys, min(100.0, jit), _jitter_seed(options))
+        cols[_DASH_JITTER_X] = jx.tolist()
+        cols[_DASH_JITTER_Y] = jy.tolist()
+        return True
+
     def _add_custom_heads(self, fig, pc_source, y1var, x1var, y2var, x2var,
-                          ends, barb_px, angle, line, fill, line_alpha=1.0):
+                          ends, barb_px, angle, line, fill, line_alpha=1.0,
+                          colour=None):
         """Draw twoway's arrowheads over the rows of *pc_source* (WP-31 C1,
         DECISIONS D1): one head source (``xs``, ``ys``, ``row``), empty
         here, filled in the browser by _DASH_ARROW_HEAD_JS, and one glyph
@@ -20718,14 +20902,24 @@ class GlyphMapper:
         by ``_dash_arrow_head_hooks``), on every range change and on the
         shaft source's data change (the range triggers are wired at
         assembly, on the finished figure's ranges).  Bokeh's ArrowHead is not used: its
-        half-angle is a fixed 26.57 degrees with no depth.
+        half-angle is a fixed 26.57 degrees with no depth.  *colour* is
+        the shaft's colorvar() spec (WP-31 C8a: twoway colours each head
+        as its shaft): the heads take it, and the script copies each
+        head's row of its column (``cc``) into the head source.
 
         Returns:
             (head renderer, head source).
         """
         from bokeh.models import CustomJS as _CJS
-        heads = ColumnDataSource(data={"xs": [], "ys": [], "row": []})
-        kw = dict(xs="xs", ys="ys", source=heads, line_color=line[0],
+        _cc = getattr(colour, "field", None) \
+            if getattr(colour, "transform", None) is not None else None
+        _cc = _cc if isinstance(_cc, str) and _cc in pc_source.data else None
+        _hd = {"xs": [], "ys": [], "row": []}
+        if _cc:
+            _hd[_cc] = []
+        heads = ColumnDataSource(data=_hd)
+        kw = dict(xs="xs", ys="ys", source=heads,
+                  line_color=colour if _cc else line[0],
                   line_width=line[1])
         if line_alpha != 1.0:
             kw["line_alpha"] = line_alpha
@@ -20734,13 +20928,16 @@ class GlyphMapper:
         else:
             if line_alpha != 1.0:
                 kw["fill_alpha"] = line_alpha
-            r = fig.patches(fill_color=fill, **kw)
+            r = fig.patches(fill_color=colour if _cc else fill, **kw)
         r.tags = ["dash-arrowhead"]
-        cb = _CJS(args=dict(src=pc_source, heads=heads, hr=r,
-                            x1=x1var, y1=y1var, x2=x2var, y2=y2var,
-                            hpx=self._HEAD_PX, ends=int(ends),
-                            barb=float(barb_px), ang=float(angle)),
-                  code=_DASH_ARROW_HEAD_JS, name="dash_arrow_head")
+        _args = dict(src=pc_source, heads=heads, hr=r,
+                     x1=x1var, y1=y1var, x2=x2var, y2=y2var,
+                     hpx=self._HEAD_PX, ends=int(ends),
+                     barb=float(barb_px), ang=float(angle))
+        if _cc:
+            _args["cc"] = _cc
+        cb = _CJS(args=_args, code=_DASH_ARROW_HEAD_JS,
+                  name="dash_arrow_head")
         pc_source.js_on_change("data", cb)
         # The range triggers are wired by _dash_arrow_head_hooks when the
         # page is assembled, on the ranges the finished figure holds.
@@ -20814,6 +21011,8 @@ class GlyphMapper:
         # head keeps its colour (P2.8).
         self._style_restyle(seg, options, ("aline",))
         self._apply_line_opts(seg, options, role="aline")
+        # colorvar() (WP-31 C8a): each shaft, and its head below.
+        self._colorvar_layer(fig, [(seg, pc_source)], options)
 
         # The shaft's width, after its options (the head's stroke falls
         # back on it when the scheme sets no arrow width).
@@ -20839,7 +21038,8 @@ class GlyphMapper:
             fill=self._arrow_head_fill(
                 options, self.scheme.default_color(color_idx, "scatter")),
             line_alpha=self._scheme_alpha_kw(color_idx, "pcarrow").get(
-                "line_alpha", 1.0))
+                "line_alpha", 1.0),
+            colour=seg.glyph.line_color)
 
         # Labels at the tail, (x1, y1), where twoway puts them without
         # headlabel (twoway_pcarrow.sthlp; measured, ten labels, all at the
@@ -20922,6 +21122,8 @@ class GlyphMapper:
         # head keeps its colour (P2.8).
         self._style_restyle(seg, options, ("aline",))
         self._apply_line_opts(seg, options, role="aline")
+        # colorvar() (WP-31 C8a): each shaft, and its head below.
+        self._colorvar_layer(fig, [(seg, pc_source)], options)
 
         # The shaft's width, after its options (the head's stroke falls
         # back on it when the scheme sets no arrow width).
@@ -20940,7 +21142,8 @@ class GlyphMapper:
             fill=self._arrow_head_fill(
                 options, self.scheme.default_color(color_idx, "scatter")),
             line_alpha=self._scheme_alpha_kw(color_idx, "pcbarrow").get(
-                "line_alpha", 1.0))
+                "line_alpha", 1.0),
+            colour=seg.glyph.line_color)
 
         # Labels at the first point, (x1, y1), as twoway labels pcbarrow
         # without headlabel (measured, ten labels, all at the first point).
@@ -21043,14 +21246,20 @@ class GlyphMapper:
         # One marker at each end, from the same rows: the starts, then the
         # ends.  A marker takes `color p#mark', as pcscatter's does.
         mark_color = self.scheme.default_color(color_idx, "pcscatter")
-        dot_src = ColumnDataSource(self._carry_cols(source, {
+        _pcc_dots = {
             "x": np.concatenate([clean[x1var].to_numpy(),
                                  clean[x2var].to_numpy()]),
             "y": np.concatenate([clean[y1var].to_numpy(),
                                  clean[y2var].to_numpy()]),
-        }, np.concatenate([_pcc_rows, _pcc_rows])))
+        }
+        # jitter() (WP-31 C8a): the markers, never the spike (D-15d).
+        _pcc_xy = ("x", "y")
+        if self._jitter_points(_pcc_dots, "x", "y", options, "pccapsym"):
+            _pcc_xy = (_DASH_JITTER_X, _DASH_JITTER_Y)
+        dot_src = ColumnDataSource(self._carry_cols(
+            source, _pcc_dots, np.concatenate([_pcc_rows, _pcc_rows])))
         _pcc_marker, _pcc_h, _pcc_f = self._marker_traits(color_idx, options)
-        dots = fig.scatter(x="x", y="y", source=dot_src,
+        dots = fig.scatter(x=_pcc_xy[0], y=_pcc_xy[1], source=dot_src,
                            marker=_pcc_marker,
                            size=self.scheme.default_marker_size(color_idx),
                            fill_color=mark_color,
@@ -21064,6 +21273,8 @@ class GlyphMapper:
         # (this mapper used to filter lcolor()/lwidth()/lalpha() out itself,
         # the only one that did).
         self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f))
+        # colorvar() (WP-31 C8a): the spike and both markers, one key.
+        self._colorvar_layer(fig, [(seg, seg_src), (dots, dot_src)], options)
 
         self._apply_mlabel_opts(fig, seg_src, options, x1var, y1var,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
@@ -21414,6 +21625,12 @@ class GlyphMapper:
                 # refuses, and the page failed (measured 24sep2026).
                 _rs_cols[_DASH_MLABEL_VALUES] = np.array(
                     _rs_cols[_DASH_MLABEL_VALUES], dtype="datetime64[ms]")
+        # jitter() (WP-31 C8a): every marker, both ends, moved from one
+        # seeded generator in drawing order -- the low ends, then the high
+        # (D-15d); the labels stay at the data, as a scatter's do.
+        _rs_xy = ("x", "y")
+        if self._jitter_points(_rs_cols, "x", "y", options, "rscatter"):
+            _rs_xy = (_DASH_JITTER_X, _DASH_JITTER_Y)
         self._carry_cols(source, _rs_cols,
                          np.concatenate([_rs_rows, _rs_rows])[mask])
         rs_source = ColumnDataSource(_rs_cols)
@@ -21429,8 +21646,10 @@ class GlyphMapper:
                                  legend_label=y1var,
                                  **self._marker_alpha_kw(color_idx))
         # No view here: rs_source already holds only the selected rows.
-        r = fig.scatter("x", "y", **_rs_kwargs)
+        r = fig.scatter(*_rs_xy, **_rs_kwargs)
         self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f))
+        # colorvar() (WP-31 C8a): both ends of each observation.
+        self._colorvar_layer(fig, [(r, rs_source)], options)
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
                                 label_col=_DASH_MLABEL_VALUES,
                                 radius_px=self._mlabel_radius_px(options, self.scheme.default_marker_size(color_idx)), color_idx=color_idx)
@@ -33396,6 +33615,9 @@ const dash_heads = () => {
     const n = d[x1] ? d[x1].length : 0;
     const a = Number(ang), b = Number(barb);
     const xs = [], ys = [], row = [];
+    // colorvar() (WP-31 C8a): each head's row of the shaft's colour column.
+    const ccol = (typeof cc !== "undefined" && cc && d[cc]) ? cc : null;
+    const cv = [];
     const head = (TX, TY, phi, msz, i) => {
         const ax = TX + msz * Math.cos(phi + Math.PI + a);
         const ay = TY + msz * Math.sin(phi + Math.PI + a);
@@ -33412,6 +33634,7 @@ const dash_heads = () => {
         xs.push(px.map((v) => xs_.invert(v)));
         ys.push(py.map((v) => ys_.invert(v)));
         row.push(i);
+        if (ccol) cv.push(d[ccol][i]);
     };
     for (let i = 0; i < n; i++) {
         const X1 = xs_.compute(Number(d[x1][i])), Y1 = ys_.compute(Number(d[y1][i]));
@@ -33426,7 +33649,9 @@ const dash_heads = () => {
     const old = heads.data;
     if (old && JSON.stringify(old.xs) === JSON.stringify(xs)
         && JSON.stringify(old.ys) === JSON.stringify(ys)) return;
-    heads.data = {xs: xs, ys: ys, row: row};
+    const nd = {xs: xs, ys: ys, row: row};
+    if (ccol) nd[ccol] = cv;
+    heads.data = nd;
 };
 dash_heads();
 """

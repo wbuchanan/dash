@@ -142,6 +142,10 @@ FUNCTIONS = {
  'GlyphMapper._apply_colorvar': 'test/test_glyphs.py::TestApplyColorvarOptions::test_colormissing_sets_nan_color_for_continuous',
  'GlyphMapper._apply_colorvar.<locals>._strs': 'test/test_help_claims_7.py::TestAStringColorvar::test_a_repeated_value_is_one_level',
  'GlyphMapper._apply_colorvar.<locals>._vlookup': 'test/test_glyphs.py::TestApplyColorvarOptions::test_colordiscrete_default_renders_legend_not_colorbar',
+ 'GlyphMapper._colorvar_paint': 'test/test_colorvar_coverage.py::TestTheHelpers::test_paint_sets_what_the_glyph_has',
+ 'GlyphMapper._colorvar_scalar': 'test/test_colorvar_coverage.py::TestTheHelpers::test_scalar_reads_each_mapper_as_bokehjs_does',
+ 'GlyphMapper._colorvar_layer': 'test/test_colorvar_coverage.py::TestTheHelpers::test_layer_draws_one_key_and_shares_the_column',
+ 'GlyphMapper._jitter_points': 'test/test_colorvar_coverage.py::TestTheHelpers::test_jitter_points',
  'GlyphMapper._apply_fill_opts': 'test/test_glyphs.py::TestFillOptions::test_map_area_fcolor',
  'GlyphMapper._add_arrow_heads': 'test/test_saved_filter_layers.py::TestTheArrowHeadHelper::test_one_annotation_reading_the_columns',
     # WP-31 S02 (C1): arrowheads

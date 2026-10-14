@@ -1,0 +1,1409 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "05736f275ad80776b5a77205b528a9edac07e133",
+  "extracted": "14 Oct 2026 08:31:33",
+  "source": "scripts/extract_colorvar_types_truth.do",
+  "stata_version": "19.5"
+ },
+ "coloured": [
+  "bar",
+  "connected",
+  "dot",
+  "dropline",
+  "line",
+  "pcarrow",
+  "pcbarrow",
+  "pccapsym",
+  "pcscatter",
+  "pcspike",
+  "rbar",
+  "rcap",
+  "rcapsym",
+  "rconnected",
+  "rline",
+  "rscatter",
+  "rspike",
+  "scatter",
+  "spike",
+  "tsline",
+  "tsrline"
+ ],
+ "cv_silent": [
+  "area",
+  "fpfit",
+  "fpfitci",
+  "function",
+  "histogram",
+  "kdensity",
+  "lfit",
+  "lfitci",
+  "lowess",
+  "lpoly",
+  "lpolyci",
+  "mband",
+  "mspline",
+  "pcarrowi",
+  "pci",
+  "qfit",
+  "qfitci",
+  "rarea",
+  "scatteri"
+ ],
+ "jitter": {
+  "pccapsym": {
+   "lines": 69,
+   "lines_unmoved": true,
+   "markers_with": 276,
+   "markers_without": 276,
+   "max_dx_frac": 0.0255,
+   "max_dy_frac": 0.0347,
+   "moved": 276
+  },
+  "pcscatter": {
+   "lines": 0,
+   "lines_unmoved": true,
+   "markers_with": 276,
+   "markers_without": 276,
+   "max_dx_frac": 0.0255,
+   "max_dy_frac": 0.0347,
+   "moved": 276
+  },
+  "rcapsym": {
+   "lines": 69,
+   "lines_unmoved": true,
+   "markers_with": 276,
+   "markers_without": 276,
+   "max_dx_frac": 0.0226,
+   "max_dy_frac": 0.0357,
+   "moved": 276
+  },
+  "rscatter": {
+   "lines": 0,
+   "lines_unmoved": true,
+   "markers_with": 276,
+   "markers_without": 276,
+   "max_dx_frac": 0.0226,
+   "max_dy_frac": 0.0357,
+   "moved": 276
+  }
+ },
+ "line_L01": {
+  "command": "twoway line mpg weight, colorvar(z) sort",
+  "distinct_strokes": 5,
+  "segments": 5,
+  "strokes": [
+   "#0000ff",
+   "#00cbff",
+   "#00ff65",
+   "#65ff00",
+   "#ffcc00"
+  ]
+ },
+ "multi_y": {
+  "area": {
+   "lines": [],
+   "rc": 0
+  },
+  "bar": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a bar plot"
+   ],
+   "rc": 198
+  },
+  "connected": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a connected plot"
+   ],
+   "rc": 198
+  },
+  "dot": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a dot plot"
+   ],
+   "rc": 198
+  },
+  "dropline": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a dropline plot"
+   ],
+   "rc": 198
+  },
+  "line": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a line plot"
+   ],
+   "rc": 198
+  },
+  "scatter": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a scatter plot"
+   ],
+   "rc": 198
+  },
+  "scatter_one": {
+   "lines": [],
+   "rc": 0
+  },
+  "spike": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a spike plot"
+   ],
+   "rc": 198
+  },
+  "tsline": {
+   "lines": [
+    "option colorvar() cannot be combined with multiple y variables in a line plot"
+   ],
+   "rc": 198
+  }
+ },
+ "types": {
+  "area": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f",
+    "#486c8c"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#486c8c"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#486c8c"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "bar": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#486c8c"
+   ],
+   "head_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "connected": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "dot": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "dropline": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "fpfit": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "fpfitci": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#c0c0c0"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    },
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "function": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "histogram": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#cac27e",
+    "#d7d29e"
+   ],
+   "colours_without": [
+    "#cac27e",
+    "#d7d29e"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "kdensity": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "lfit": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "lfitci": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#c0c0c0"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    },
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "line": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "lowess": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "lpoly": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "lpolyci": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#c0c0c0"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    },
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "mband": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "mspline": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "pcarrow": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 5.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "pcarrowi": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "pcbarrow": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 5.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "pccapsym": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 5.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "pci": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "pcscatter": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 5.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "pcspike": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 5.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "qfit": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "qfitci": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#c0c0c0"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#1a476f"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#c0c0c0"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    },
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "rarea": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f",
+    "#486c8c"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#486c8c"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#486c8c"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "rbar": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f",
+    "#486c8c"
+   ],
+   "head_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "rcap": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "rcapsym": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "rconnected": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "rline": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "rscatter": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "rspike": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "scatter": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "scatteri": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#1a476f"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#1a476f"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "spike": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [
+    "#1a476f"
+   ],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "tsline": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 3.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  },
+  "tsrline": {
+   "bad_var_rc": 111,
+   "coloured": true,
+   "colours_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "colours_without": [
+    "#1a476f"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [
+    "#0000ff",
+    "#00cbff",
+    "#00ff65",
+    "#65ff00",
+    "#ffcc00"
+   ],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": 4.0,
+     "hascolorvar": 1.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 7
+  }
+ }
+}
