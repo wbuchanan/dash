@@ -425,13 +425,13 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A3d Tracked:** Closed in WP-31, BUGS.md "jitter() takes jit, shorter than twoway's minimum", commit 9665bca.
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
-- **A5b Tracked:** Closed in WP-31, BUGS.md "A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed", commit pending.
+- **A5b Tracked:** Closed in WP-31, BUGS.md "A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed", commit 4dc41d1.
 - **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit 79c9f79.
 - **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit ec00ad8.
 - **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit e07f97e.
-- **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit pending.
-- **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit pending.
-- **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit pending.
+- **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit 6aea1e5.
+- **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit eae52c8.
+- **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit ff82353.
 - **B4a Tracked:** Open (WP-31 section 23).
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).
@@ -452,14 +452,14 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C8c Tracked:** Open (WP-31 section 44).
 - **C8d Tracked:** Open (WP-31 section 32).
 - **C8e Tracked:** Open (WP-31 section 26).
-- **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit pending.
+- **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit 5895120.
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
 - **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.
 - **C10d Tracked:** Open (WP-31 section 46).
 - **C10e Tracked:** Open (WP-31 section 35).
 - **C11 Tracked:** Open (WP-31 section 46).
-- **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit pending.
+- **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Open (WP-31 section 31).
 - **C14 Tracked:** Open (WP-31 section 34).
@@ -501,7 +501,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1b Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)", commit 55ee2e5.
 - **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
 - **F1d Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpoly after a filter move (the lpoly twin)", commit bbc640a.
-- **F1e Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpolyci after a filter move (the lpolyci twin)", commit pending.
+- **F1e Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lpolyci after a filter move (the lpolyci twin)", commit 2b9ce0a.
 - **F1f Tracked:** Open (WP-31 section 25).
 - **F1g Tracked:** Open (WP-31 section 28).
 - **F2 Tracked:** Open (WP-31 section 47).
