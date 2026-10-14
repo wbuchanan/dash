@@ -3858,6 +3858,48 @@
 
 - [ ] Title: A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed
   - File Names and Line Numbers: dash.ado `_dash_wexp_gen`, `_dash_process_segment` (weight gate); test/test_weight_expressions.py
-  - Description: Found by WP-31 section 07 (A5): `twoway lfit mpg weight [aw=price-price]` prints "(note: regress could not fit model)"; dash registers the layer without that note.
-  - Suggested fix: Measure twoway's drawing and notes for all-zero weights on each weighted type and match the note, or draw nothing with dash's empty-layer note.
-  - Resolution: Not fixed because it was found after A5 closed and is left for a later section (WP-31 M12 residual). Graded S3 (WP-31): a note twoway gives that dash does not; nothing is drawn wrong.
+  - Description: GAPS3.md A5, found by WP-31 section 07 (A5 residual): `twoway lfit mpg weight [aw=price-price]` prints "(note: regress could not fit model)"; dash registers the layer without that note.
+  - Suggested fix: WP-31 section 20 (weighted markers): measure twoway's drawing and notes for an all-zero weight expression on each weighted type and match them.
+  - Resolution: Not fixed because WP-31 section 20 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)
+  - File Names and Line Numbers: dash.ado graph `syntax' (B1title..R2title, NAme); test/test_abbreviations.py _SHORTER_THAN_TWOWAY
+  - Description: GAPS3.md A3, found by WP-31 section 08 (A3 residual): dash's graph syntax takes b(), l(), r() and t() for the *2title options and nam() for name(), shorter than twoway's minimums, which twoway refuses as unknown options.
+  - Suggested fix: WP-31 section 27 (edge titles): measure twoway's minimum for each and raise dash's declaration to it, with a Changed-behaviour line naming the refused spellings.
+  - Resolution: Not fixed because WP-31 section 27 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: aspectratio() takes asp, shorter than twoway's minimum
+  - File Names and Line Numbers: dash.ado graph `syntax' (ASPectratio); test/test_abbreviations.py _SHORTER_THAN_TWOWAY
+  - Description: GAPS3.md A3, found by WP-31 section 08 (A3 residual): dash takes asp() for aspectratio(), shorter than twoway's minimum.
+  - Suggested fix: WP-31 section 32 (sizing scale aspect): raise the declaration to twoway's measured minimum and refuse asp() as twoway does.
+  - Resolution: Not fixed because WP-31 section 32 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: jitter() takes jit, shorter than twoway's minimum
+  - File Names and Line Numbers: dash.ado plot `syntax' (JITter); test/test_abbreviations.py _SHORTER_THAN_TWOWAY
+  - Description: GAPS3.md A3, found by WP-31 section 08 (A3 residual): dash takes jit() for jitter(), shorter than twoway's minimum.
+  - Suggested fix: WP-31 section 15 (colorvar coverage): raise the declaration to twoway's measured minimum and refuse jit() as twoway does.
+  - Resolution: Not fixed because WP-31 section 15 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve
+  - File Names and Line Numbers: dash.ado _dash_fold_range; dash_render.py GlyphMapper.map_kdensity
+  - Description: GAPS3.md C10, found by WP-31 section 05 (C10a residual): with range(v) on a string or all-missing variable twoway kdensity draws an empty curve; dash draws over the data's own span with a note.
+  - Suggested fix: WP-31 section 46 (estimator edges): measure twoway for each case and draw the empty curve, silently where twoway is silent.
+  - Resolution: Not fixed because WP-31 section 46 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed
+  - File Names and Line Numbers: dash_render.py axis date kinds (axes 1 and 2 only); dash_parse.mata _dash_route_axis2 (x and y only)
+  - Description: GAPS3.md C10, found by WP-31 section 09 (C10c residual): an axis 3-9 on a %t variable is labelled with its numbers, and tlabel(), tscale() and the other t options with axis(3)-(9) are not routed.
+  - Suggested fix: WP-31 section 35 (second axis moves): decide date kinds per axis number and route the t options for axes 3-9, in both modes, cscripted against twoway.
+  - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it
+  - File Names and Line Numbers: dash_parse.mata _dash_imm_number
+  - Description: GAPS3.md C18, found by WP-31 section 06 (C18 residual): scatteri and pci refuse a hexadecimal literal coordinate at the top of a double's range, which twoway's numlist reading takes.
+  - Suggested fix: WP-31 section 47 (function fallback fixtures): measure twoway's numlist reading of hexadecimal literals and accept what it accepts.
+  - Resolution: Not fixed because WP-31 section 47 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured
+  - File Names and Line Numbers: dash_render.py _render_ci_band, _dash_draw_range_as
+  - Description: GAPS3.md C4, found by WP-31 section 11 (C4 residual): the line fitplot() draws and the band ciplot() draws take the layer's p-style colour; twoway's colours for those views were not measured.
+  - Suggested fix: WP-31 section 41 (colour width outline edges): measure the SVG colours twoway draws for fitplot() and ciplot() views and match them in both modes.
+  - Resolution: Not fixed because WP-31 section 41 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

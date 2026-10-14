@@ -231,3 +231,15 @@ Acceptance: **AC-47.1** every rc-0 probe agrees at 1e-12; every refused probe ra
 - **Shared files (R1-R13).** R1: two S47 blocks (F2 and F3, consecutive). R2: no new module function unless `_FN_TABLE` is factored out (then one constant after S26's `_DASH_CONTOUR_CAP_NOTE`). R3: the `{ul:Functions.}` paragraph. R4: two markers. R5: two entries (plus a residual if filed). R7: three fixtures regenerated whole, `git add -f`. R8: one parity case. R9: the two function_expr flips, test_kernel_flags' oracle flip. R10: fixture count pins. R12: none of the hot functions edited.
 - **Commit-body line forms** are BRIEF's; `failed at` is the batch-16 base sha. Tracked lines are written with `commit pending` (DECISIONS A11); no amend.
 - **A14.** 47-01 appends only the F2 block; 47-03 appends the F3 block when it closes F3 (one truth block per row, appended by the row's closing task).
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### C18b: An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it
+
+**Gap.** `_dash_imm_number` refuses a hexadecimal literal coordinate (`scatteri 1.0X+3ff 1`), which twoway's numlist reading takes (found by S06).
+
+**Requirement.** Measure which hexadecimal literal forms twoway's scatteri/pci take (`1.0X+3ff`, `-1.0X+0`, malformed ones) and their values; accept exactly those in `_dash_imm_number`, refuse the rest in twoway's words.
+
+**Tests.** A `U47-<k>` case in test/test_parser.cscript against twoway, and the Mata function's unit cases there. Fits S47 because S47 extends number and expression reading (the function fallback's literals and missing codes) in batch 16.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/47-C18b-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 C18b)`. The closing task flips the BUGS.md entry "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 C18 (WP-31, C18b).`, deletes the `"C18b":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **C18b Tracked:**` line to `Closed in WP-31, BUGS.md "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it", commit pending.`, and replaces `<!-- WP-31 C18b -->` in place under `### Fixed in WP-31` with a line ending `(WP-31, C18b)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U47` prefix; drawing comparisons go to a `* ==== S47 C18b: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.

@@ -483,6 +483,14 @@ and now matches Stata.
 
 <!-- WP-31 F2 -->
 
+<!-- WP-31 A5b -->
+
+<!-- WP-31 C10d -->
+
+<!-- WP-31 C10e -->
+
+<!-- WP-31 C4b -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
@@ -883,6 +891,12 @@ and now matches Stata.
 
 <!-- WP-31 H4 -->
 
+<!-- WP-31 A3b -->
+
+<!-- WP-31 A3c -->
+
+<!-- WP-31 A3d -->
+
 ### Removed
 
 - `dash_setup` no longer installs or checks scipy or statsmodels. No
@@ -1052,6 +1066,8 @@ Changed behaviour.
 <!-- WP-31 H6 -->
 
 <!-- WP-31 I6 -->
+
+<!-- WP-31 C18b -->
 
 ### Fixed in WP-30
 

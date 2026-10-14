@@ -321,3 +321,15 @@ AC-41.1..AC-41.6 one per BR.
 - **python_exec hazard** as in S40.
 - **For S44:** `p_other_band_styles[i]`'s outline keys `line`, `line_alpha`, `line_width`, `line_dash` are what rarea's and rbar's outlines read (A34); S44's resolver must keep that list's shape.
 - **Decisions for maintainer ratification.** D-41b (up to eleven comma-colour forms inside structured options become refusals where twoway refuses them; M5 Changed-behaviour lines), D-41c (`navy*52` and the `color foreground bg` cycle left UNCLEAR by decision, documented), D-41f (rarea's outline as two Lines on the layer's source from the scheme's `p_other_band_styles` entry; the closing end edges documented under M17).
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### C4b: fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured
+
+**Gap.** S11 draws fitplot() (the fit drawn as another type) and ciplot() (the band drawn as another range type) in the layer's p-style colour; twoway's colours for those views were not measured (found by S11).
+
+**Requirement.** Measure, from twoway's SVG, the stroke and fill colours of `lfitci ..., fitplot(scatter)`, `..., ciplot(rline)`, `..., ciplot(rcap)` and `..., ciplot(rarea)` under s2color and stcolor; match them in `_render_ci_band`/`_dash_draw_range_as` in both modes, or document a measured difference.
+
+**Tests.** pytest on the renderer colours (both modes) and a `* ==== S41 C4b: ... ====` truth block reading twoway's SVG with cert_svg.do. Fits S41 because S41 reads colours and outlines from the scheme's band styles in batch 14.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/41-C4b-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 C4b)`. The closing task flips the BUGS.md entry "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 C4 (WP-31, C4b).`, deletes the `"C4b":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **C4b Tracked:**` line to `Closed in WP-31, BUGS.md "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured", commit pending.`, and replaces `<!-- WP-31 C4b -->` in place under `### Results that change` with a line ending `(WP-31, C4b)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U41` prefix; drawing comparisons go to a `* ==== S41 C4b: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.

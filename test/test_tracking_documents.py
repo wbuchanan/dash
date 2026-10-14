@@ -2062,6 +2062,15 @@ WP31_OPEN = {
     "K4": "The server fixture leaks a process when __enter__ fails, no AST count of the app's dispatch, hand-written scheme-key enumeration, no CSS-guard served arm, two strict xfails",
     "H6": "The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS",
     "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
+    # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
+    "A3b": "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)",
+    "A3c": "aspectratio() takes asp, shorter than twoway's minimum",
+    "A3d": "jitter() takes jit, shorter than twoway's minimum",
+    "A5b": "A weight expression that is zero on every row registers without the note twoway prints that its fit could not be computed",
+    "C10d": "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve",
+    "C10e": "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed",
+    "C18b": "An immediate coordinate written as a hexadecimal literal such as 1.0X+3ff is refused where twoway takes it",
+    "C4b": "fitplot() and ciplot() lines and bands are drawn in the layer's own colour with twoway's colours for those views unmeasured",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2177,6 +2186,15 @@ WP31_LISTS = {
     "K4": ("Fixed in WP-31",),
     "H6": ("Fixed in WP-31",),
     "I6": ("Fixed in WP-31",),
+    # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
+    "A3b": ("Changed behaviour",),
+    "A3c": ("Changed behaviour",),
+    "A3d": ("Changed behaviour",),
+    "A5b": ("Results that change",),
+    "C10d": ("Results that change",),
+    "C10e": ("Results that change",),
+    "C18b": ("Fixed in WP-31",),
+    "C4b": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2291,6 +2309,15 @@ WP31_SECTION = {
     "K4": 60,
     "H6": 60,
     "I6": 60,
+    # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
+    "A3b": 27,
+    "A3c": 32,
+    "A3d": 15,
+    "A5b": 20,
+    "C10d": 46,
+    "C10e": 35,
+    "C18b": 47,
+    "C4b": 41,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2494,7 +2521,8 @@ class TestWp31Tracking:
         assert not bad, "\n".join(bad)
 
     def test_each_entry_sits_in_its_changelog_lists(self):
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 110
+        # 110 -> 118: DECISIONS D14 adds the eight batch 1-4 gaps.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 118
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

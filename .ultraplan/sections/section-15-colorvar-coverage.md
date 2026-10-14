@@ -215,3 +215,15 @@ AC-15.1 stubs green; AC-15.2 U15-01..05 PASS; AC-15.3 dash.sthlp:4140-4152 rewri
 - **Merge rules cited:** R1, R3 (S15 owns dash.sthlp:4140-4152), R7, R8, R9, R12 (S15 is batch 5's `_apply_colorvar`/`_dash_fold_typed` owner).
 - **Commit body lines:** `Regression: test/test_colorvar_coverage.py::TestEveryColouredType::test_coloured[saved-bar] -- failed at 6370ca4 with <text>`; `Flipped: test/test_jitter.py::<node> -- "named on the four types" was wrong because twoway jitters them (colorvar_types_truth.json J01-J04)`; `Fixture: test/fixtures/colorvar_types_truth.json (scripts/extract_colorvar_types_truth.do)`; `BUGS.md: "<title>" (closed)`; `GAPS3: C8a Tracked`.
 - **Decisions for maintainer ratification:** D-15a (measured silent list, dropped in dash.ado), D-15f (one colour per Line glyph, documented as an M17 difference).
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### A3d: jitter() takes jit, shorter than twoway's minimum
+
+**Gap.** dash's plot `syntax` declares `JITter`, so `jit()` is taken; twoway's minimum for jitter() is longer and `twoway scatter mpg weight, jit(5)` is refused as an unknown option (found by S08; pinned today in test/test_abbreviations.py `_SHORTER_THAN_TWOWAY`).
+
+**Requirement.** Measure twoway's minimum for jitter() (each prefix `j`..`jitter` on scatter, rc and first error line); raise dash's declaration to it so every spelling twoway refuses is refused with twoway's rc and line, and every spelling it takes is taken. Remove `jitter` from `_SHORTER_THAN_TWOWAY` (flip, with a `Flipped:` line); regenerate test/fixtures/abbrev_truth.json only through scripts/extract_abbrev_truth.do if its counts change. Add a Changed-behaviour line naming the refused spelling.
+
+**Tests.** test/test_abbreviations.py (the live pin) and a `U15-<k>` case in test/test_abbreviations.cscript comparing `dash scatter mpg weight, jit(5)` with twoway's. Fits S15 because S15 already edits jitter() (the four range types) in batch 5.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/15-A3d-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 A3d)`. The closing task flips the BUGS.md entry "jitter() takes jit, shorter than twoway's minimum" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 A3 (WP-31, A3d).`, deletes the `"A3d":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **A3d Tracked:**` line to `Closed in WP-31, BUGS.md "jitter() takes jit, shorter than twoway's minimum", commit pending.`, and replaces `<!-- WP-31 A3d -->` in place under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, A3d)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U15` prefix; drawing comparisons go to a `* ==== S15 A3d: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.

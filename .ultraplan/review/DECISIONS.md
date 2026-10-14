@@ -14,6 +14,12 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D6 | **A by() graph gets one data table under the grid** holding every panel's drawn rows with a panel column (the by() variable values). D-48d is reversed; no residual. | S48 |
 | D7 | **BUGS.md "Not fixed because ..." preambles on closed entries are rewritten in place**; an entry whose closing commit cannot be found is reopened as S3. D-58.b confirmed. | S58 |
 | D8 | **CHANGELOG.md:3 drops "(release candidate)"** at closeout; 0.1.0 dated at S61 is the release. D-61.a resolved. | S61 |
+| D9 | **mlalign() follows twoway's parser, not D2** (14oct2026): `ml()`, `mla()`, `mlab()` and `mlabe()` are mlabel(); mlalign() starts at `mlal` (measured by S08). D2's mlab minimum is withdrawn. | S08 (landed 3380e3d), S34 |
+| D10 | **lpoly/lpolyci degree 6-7's default bandwidth may differ from Stata's r(bwidth) by about 1%** (Stata's round-off on its degree 9-10 pilot fit); accepted and documented. | S06 (landed), S19, S22 |
+| D11 | **The saved-page lowess timing test runs at 10,000 rows** (M10's 100,000 is waived for lowess, whose JS twin is O(n^2)); the 2e8-operation cap (D-16.e) and adjust's build-time mean (D-16.a) stay as built. | S16 (landed) |
+| D12 | **range(varname) is resolved once over the sample** and does not follow a filter move (D-05.a ratified). | S05 (landed) |
+| D13 | **dash replaces twoway**: `dash twoway`, `dash tw`, `dash graph twoway` ... are refused as `twoway twoway` is, r(198); bare `dash`, `dash, title(T)`, `dash if ...` and `dash ||` draw twoway's empty graph. No section may document or test a twoway prefix as accepted. | A1 (4b1be95, ac4357f); S56, S57, S59 |
+| D14 | **Gaps found in batches 1-4 that no section owned are added to the sections aligned with them** (index.md "Batch 1-4 gap additions"): A5b S20, C10d S46, C18b S47, A3b S27, A3c S32, A3d S15, C10e S35, C4b S41. | those sections |
 
 ## Architect rulings (process and feasibility; from the reviews)
 

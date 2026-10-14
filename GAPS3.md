@@ -420,8 +420,12 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit 4b1be95.
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.
 - **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
+- **A3b Tracked:** Open (WP-31 section 27).
+- **A3c Tracked:** Open (WP-31 section 32).
+- **A3d Tracked:** Open (WP-31 section 15).
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
+- **A5b Tracked:** Open (WP-31 section 20).
 - **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit 79c9f79.
 - **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit ec00ad8.
 - **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit e07f97e.
@@ -437,6 +441,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
 - **C3 Tracked:** Closed in WP-31, BUGS.md "Options twoway refuses on a type (kernel() n() level() bwidth() bands() range() base()) are written to every spec and dropped in silence", commit 8cd5310.
 - **C4 Tracked:** Closed in WP-31, BUGS.md "Fit options atobs, estcmd(), estopts(), predopts(), ciplot(), fitplot() and nofit are named and not drawn", commit 660be06.
+- **C4b Tracked:** Open (WP-31 section 41).
 - **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Open (WP-31 section 14).
 - **C7 Tracked:** Open (WP-31 section 14).
@@ -446,6 +451,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
 - **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.
+- **C10d Tracked:** Open (WP-31 section 46).
+- **C10e Tracked:** Open (WP-31 section 35).
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Open (WP-31 section 31).
@@ -454,6 +461,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C16 Tracked:** Open (WP-31 section 46).
 - **C17 Tracked:** Open (WP-31 section 34).
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
+- **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Open (WP-31 section 24).
 - **D2 Tracked:** Open (WP-31 section 27).
 - **D3 Tracked:** Open (WP-31 section 30).

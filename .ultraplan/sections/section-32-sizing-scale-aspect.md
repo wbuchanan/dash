@@ -255,3 +255,15 @@ Acceptance: AC-32.1 every red stub green; AC-32.2 U32-1..U32-9 PASS, no SKIP; AC
 - **Security (M11):** no page JavaScript is added; `placement()` reaches the renderer as a canonical compass word from `_dash_at_place` and becomes integers in `min_border_*`; test_csp.py stays a guard.
 - **python_exec hazard** as in every section.
 - **Decisions for the maintainer:** D-32.c is settled by DECISIONS A16 (Python frame sizes with xsize/ysize; the figure ratio without, documented under M17; no callback). D-32.b (CSS `flex-grow` for `fxsize`, kept with its Chrome check; fallback `max_width`, A16) is this file's ruling within M17/M11; ratify before batch 11.
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### A3c: aspectratio() takes asp, shorter than twoway's minimum
+
+**Gap.** dash takes `asp()` for aspectratio(); twoway's minimum is longer (found by S08; pinned in `_SHORTER_THAN_TWOWAY`).
+
+**Requirement.** Measure twoway's minimum for aspectratio(); raise dash's declaration to it; flip the pin; a Changed-behaviour line.
+
+**Tests.** test/test_abbreviations.py and a `U32-<k>` case in test/test_abbreviations.cscript. Fits S32 because S32 rewrites aspectratio() in batch 11.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/32-A3c-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 A3c)`. The closing task flips the BUGS.md entry "aspectratio() takes asp, shorter than twoway's minimum" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 A3 (WP-31, A3c).`, deletes the `"A3c":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **A3c Tracked:**` line to `Closed in WP-31, BUGS.md "aspectratio() takes asp, shorter than twoway's minimum", commit pending.`, and replaces `<!-- WP-31 A3c -->` in place under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, A3c)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U32` prefix; drawing comparisons go to a `* ==== S32 A3c: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.

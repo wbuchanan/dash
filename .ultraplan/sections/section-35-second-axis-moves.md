@@ -318,3 +318,15 @@ TR-35.6's three MOVE_CORPUS entries and the extended `_own` move comparison.
 - **For S09 (landed before batch 12):** S09's text names `_dash_lone_axis_rewrite`, `_dash_axis_no` and `_dash_assign_range_names` (":33578"); at HEAD the function is `_dash_lone_second_axes` (:4000) and the other two do not exist -- S35 uses the names S09's hand-back records.
 - **For S45 (date ticks after a move):** the extra axes are planned axes now; a `%t` second axis re-ticks through the same `hold` placeholder rule (WP-30 P1.3b) once S45 generalises it.
 - **For S60 (test harness, H6):** the saved-JS move oracle S60 adds should compare extra ranges too; the profile extension here is the Python oracle's.
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### C10e: Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed
+
+**Gap.** S09 drew axes 3-9, but date kinds (`_dash_axis_date_kind`, the DatetimeAxis loop, the date `_convert`) are decided for axes 1 and 2 only, so an axis 3-9 on a %t variable shows Stata numbers; and `_dash_route_axis2` routes x and y options only, so tlabel()/tscale()/ttitle()/ttick() with axis(3)-(9) are left as typed (found by S09).
+
+**Requirement.** Measure twoway with a %td/%tm variable on yaxis(3) and xaxis(3), and t options with axis(3); decide the date kind per axis number in both renderers (the saved page's axis plan and the served template), and route the t options for axes 3-9 as S09 routes x/y. Uses S09's `_dash_axis_groups`/`axis_side(which, n, used)`.
+
+**Tests.** pytest (both modes) in test/test_axes_three_to_nine.py and a `* ==== S35 C10e: ... ====` truth block. Fits S35 because S35 owns the secondary/extra axes and their re-finish in batch 12.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/35-C10e-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 C10e)`. The closing task flips the BUGS.md entry "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 C10 (WP-31, C10e).`, deletes the `"C10e":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **C10e Tracked:**` line to `Closed in WP-31, BUGS.md "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed", commit pending.`, and replaces `<!-- WP-31 C10e -->` in place under `### Results that change` with a line ending `(WP-31, C10e)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U35` prefix; drawing comparisons go to a `* ==== S35 C10e: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.

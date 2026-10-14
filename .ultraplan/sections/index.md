@@ -5,7 +5,7 @@
 ## Overview
 
 - **Total sections:** 61: S01 tracking foundation, S02-S60 (59 fix sections), S61 closeout. "Sn" means section n.
-- **GAPS3 rows in scope:** every row of GAPS3 4.A-4.G, 4.J, 4.K (less K5), 4.H (H1-H7 as narrowed below), 4.I (I2-I7; I1 the platform package is out), section 5's half-finished code, section 6's register corrections, plus one new requirement, the per-graph data table (DISCOVERY Q35, Q38-Q40). The manifest yields 110 entries (rows, with a split row counted once per part; A3 counted per DECISIONS A12), tracked as 110 BUGS.md entries that S01 opens; S01's Appendix A is the binding list.
+- **GAPS3 rows in scope:** every row of GAPS3 4.A-4.G, 4.J, 4.K (less K5), 4.H (H1-H7 as narrowed below), 4.I (I2-I7; I1 the platform package is out), section 5's half-finished code, section 6's register corrections, plus one new requirement, the per-graph data table (DISCOVERY Q35, Q38-Q40). The manifest yields 110 entries (118 since DECISIONS D14 added eight batch 1-4 gaps: see "Batch 1-4 gap additions") (rows, with a split row counted once per part; A3 counted per DECISIONS A12), tracked as 110 BUGS.md entries that S01 opens; S01's Appendix A is the binding list.
 - **Out of scope (PRD §7):** I1 the platform package; K5 the module split; a LICENSE; sunflower/matamatrix drawing (refused by name instead); contour exact beyond the cap; legend text-before-symbol; scheme-file colour spaces beyond RGB/RGBA.
 - **Parallel batches:** 22, numbered 0-21. Batch 0 is S01 alone; batches 1-20 hold two or three sections; batch 21 is the closeout alone. Every dependency lies in an earlier batch. At most one JavaScript (`_FILTER_JS`) editor, one `_generate_app_source` editor, one `_make_figure_body` editor and one `_dash_option_rules` editor per batch (R12).
 - **Order (DISCOVERY Q6):** silent drops (S1) first, then values twoway accepts, then named-not-drawn options, then fidelity, then the dashboard extensions, then documents and tests. The JavaScript estimator ports run one per batch from batch 3 so the offline page gains refits steadily without two sections editing the saved filter script at once.
@@ -76,39 +76,39 @@
 | 12 | distribution-area-odds | C5 | 4 | 04 | -- | yellow | M | 4 |
 | 13 | js-lfitci-qfitci | F1b | 5 | 10 | 28 | yellow | M | 3 |
 | 14 | cmissing-connect-recast | C6, C7 | 5 | 01 | -- | yellow | M | 3 |
-| 15 | colorvar-coverage | C8a (every type; jitter on the four range types) | 5 | 01 | 17 | yellow | M | 4 |
+| 15 | colorvar-coverage | C8a (every type; jitter on the four range types) + A3d (D14) | 5 | 01 | 17 | yellow | M | 4 |
 | 16 | js-lowess | F1c | 4 | 10 | -- | yellow | M | 3 |
 | 17 | colorvar-options | C8b (colorformissing alias, colorlist, coloruseplegend, colorstart/end/rule/fillonly/keysrange, clegend/plegend/pcycle) | 6 | 15 | -- | yellow | M | 4 |
 | 18 | dot-rows | B5b (dot rows, d-options) | 6 | 03 | -- | yellow | M | 4 |
 | 19 | js-lpoly | F1d | 6 | 10 | 22 | red | M | 3 |
-| 20 | weighted-markers | C9 | 7 | 01 | -- | yellow | S | 3 |
+| 20 | weighted-markers | C9 + A5b (D14) | 7 | 01 | -- | yellow | S | 3 |
 | 21 | rpcap-rpspike-refusals | B1, B2, B3 | 7 | 01 | 57 | yellow | M | 4 |
 | 22 | js-lpolyci | F1e | 7 | 19 | -- | red | M | 3 |
 | 23 | contour-interpolation | B4a (TPS/Shepard numpy, grid rule, cap, truth extractor) | 8 | 01 | 26, 29 | red | L | 4 |
 | 24 | minor-ticks-labels | D1 | 8 | 01 | 33 | yellow | M | 4 |
 | 25 | js-mband-mspline | F1f | 8 | 10 | -- | yellow | M | 3 |
 | 26 | contour-drawing | B4b (type registration, options, colour rules, colour key, both modes) | 9 | 23 | 29, 57 | red | L | 4 |
-| 27 | edge-titles | D2 | 9 | 01 | -- | yellow | M | 3 |
+| 27 | edge-titles | D2 + A3b (D14) | 9 | 01 | -- | yellow | M | 3 |
 | 28 | js-fpfit-fpfitci | F1g | 9 | 13 | -- | red | M | 3 |
 | 29 | js-contour | B4c (marching squares, isobands, refit within the cap) | 10 | 26, 10 | -- | red | L | 4 |
 | 30 | textbox-placement-added-text | D3, D13 | 10 | 01 | -- | yellow | M | 4 |
 | 31 | legend-geometry | D4, C13 | 10 | 01 | -- | yellow | M | 4 |
-| 32 | sizing-scale-aspect | D5, E11 | 11 | 01 | -- | yellow | M | 4 |
+| 32 | sizing-scale-aspect | D5, E11 + A3c (D14) | 11 | 01 | -- | yellow | M | 4 |
 | 33 | axis-suboptions-look | D6, D7, E6 | 11 | 24 | -- | yellow | M | 4 |
 | 34 | varlabel-marker-label-options | D8, C17, E3, C14, C15 | 11 | 01 | -- | green | S | 4 |
-| 35 | second-axis-moves | D9 | 12 | 09 | -- | yellow | M | 3 |
+| 35 | second-axis-moves | D9 + C10e (D14) | 12 | 09 | -- | yellow | M | 3 |
 | 36 | by-remainder | D10 | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
 | 39 | tabs-layout-legend-edges | D14, D16 | 13 | 31 | -- | green | S | 3 |
 | 40 | symbols-line-patterns | E1, E2, E12 | 13 | 01 | 44 | yellow | M | 4 |
-| 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 | 14 | 01 | -- | green | S | 4 |
+| 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) | 14 | 01 | -- | green | S | 4 |
 | 42 | smcl-inline-runs | E9 | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
 | 44 | style-file-resolver | E10 | 15 | 40 | -- | red | L | 4 |
 | 45 | date-ticks-natscale | D15 | 15 | 01 | -- | red | L | 3 |
-| 46 | estimator-edges | C11, C12, C16, G6, G7, F5 | 15 | 01 | -- | yellow | M | 4 |
-| 47 | function-fallback-fixtures | F2, F3 | 16 | 01 | -- | yellow | M | 3 |
+| 46 | estimator-edges | C11, C12, C16, G6, G7, F5 + C10d (D14) | 15 | 01 | -- | yellow | M | 4 |
+| 47 | function-fallback-fixtures | F2, F3 + C18b (D14) | 16 | 01 | -- | yellow | M | 3 |
 | 48 | data-table | H2t (new) | 16 | 01 | 53, 54 | yellow | L | 4 |
 | 49 | filter-widgets | H2f (E13; multi-select, "(missing)", slider direction, reset) | 16 | 01 | 54 | yellow | M | 4 |
 | 50 | kpi-weights-stats | H2k (E7) | 17 | 01 | -- | green | M | 3 |
@@ -125,6 +125,21 @@
 | 61 | closeout | -- | 21 | all | -- | green | M | 7 |
 
 Row coverage check: A1-A8 (S08: A1 A2 A3 A4; S07: A5 A6 A7 A8), B1-B5 (S21, S23/26/29, S18, S03), C1-C18 (S02, S03, S04, S11, S12, S14, S14, S15/17, S20, S05/06/09, S46, S46, S31, S34, S34, S46, S34, S06), D1-D16 (S24, S27, S30, S31, S32, S33, S33, S34, S35, S36, S37, S38, S30, S39, S45, S39), E1-E13 (S40, S40, S34, S41, S41, S33, S41, S41, S42, S44, S32, S40-? E12 is a NEW item; E13 S41/S55), F1-F5 (S10..S28, S47, S47, S06, S46), G1-G7 (S43, S43, S43, S43, S43, S46, S46), H1-H7 (S52, S48-S53, S55, S55, design residuals noted in S55, S60, S55), I2-I7 (S59, S59, S59, S59, S60, S59), J1-J6 (S56, S56, S57, S58, S58, S58), K1-K6 (flips inside each fix section; S60; S60; S60; out; S54). E12 (case folding of symbol/pattern names, `_INTENSITY` max) joins S40; E13 (dead `_SIZE_MAP`, duplicate constants, histogram opacity test) joins S41. H5 (served-key and private-file design residuals) stays documented, no section (GAPS3 says design residuals).
+
+## Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
+
+Differences the batch 1-4 sections measured but no section owned, each added as a row of its own (an id, a BUGS.md entry, a GAPS3 section 9 Tracked line, CHANGELOG markers, WP31_OPEN/LISTS/SECTION keys) to the section whose code it touches, so no new editor is added to any batch. Each receiving section file carries an "Addendum (14oct2026, DECISIONS D14)" with the requirement, tests and closing rules; one commit per id, subject ending `(WP-31 <id>)`.
+
+| Id | Gap | From | Section (batch) | Lists |
+|---|---|---|---|---|
+| A3d | jitter() takes jit, shorter than twoway's minimum | S08 | S15 (5) | CB |
+| A5b | an all-zero weight expression registers without twoway's "could not fit" note | S07 | S20 (7) | RC |
+| A3b | the *2title options and name() take b, l, r, t and nam | S08 | S27 (9) | CB |
+| A3c | aspectratio() takes asp | S08 | S32 (11) | CB |
+| C10e | axes 3-9 on a date variable labelled in numbers; t-options with axis(3)-(9) not routed | S09 | S35 (12) | RC |
+| C4b | fitplot()/ciplot() colours unmeasured against twoway | S11 | S41 (14) | RC |
+| C10d | kdensity range() on a string or all-missing variable draws over the data | S05 | S46 (15) | RC |
+| C18b | a hexadecimal literal coordinate (1.0X+3ff) is refused where twoway takes it | S06 | S47 (16) | FX |
 
 ## Batch execution order
 

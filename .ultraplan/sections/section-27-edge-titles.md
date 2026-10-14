@@ -232,3 +232,15 @@ Acceptance: AC-27.1 every red stub green in both modes; AC-27.2 U27-1..U27-9 PAS
 - **For S31 (batch 10):** keep D-27.b's skip when editing `_dash_move_legend`.
 - **python_exec hazard:** check `~/.stata19/console/stata19.rc` after each slot run; exit 222 is not a pass.
 - **Commit-body line forms** are BRIEF's with `failed at 6370ca4`.
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### A3b: The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)
+
+**Gap.** dash's graph `syntax` takes `b()`, `l()`, `r()`, `t()` for the *2title options and `nam()` for name(); twoway refuses them as unknown options (found by S08; pinned in test/test_abbreviations.py `_SHORTER_THAN_TWOWAY`).
+
+**Requirement.** Measure twoway's minimum for b1title..t2title (and title2/subtitle2, which this section refuses anyway) and name(); raise dash's graph-syntax declarations to those minimums so every spelling twoway refuses is refused with its rc and line. Flip `_SHORTER_THAN_TWOWAY`'s entries (`Flipped:` lines); a Changed-behaviour line names the refused spellings.
+
+**Tests.** test/test_abbreviations.py live pin and `U27-<k>` cases in test/test_abbreviations.cscript. Fits S27 because S27 draws the eight edge titles and edits their declarations in batch 9.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/27-A3b-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 A3b)`. The closing task flips the BUGS.md entry "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 A3 (WP-31, A3b).`, deletes the `"A3b":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **A3b Tracked:**` line to `Closed in WP-31, BUGS.md "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)", commit pending.`, and replaces `<!-- WP-31 A3b -->` in place under `### Changed behaviour (may need your do-files changed)` with a line ending `(WP-31, A3b)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U27` prefix; drawing comparisons go to a `* ==== S27 A3b: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.

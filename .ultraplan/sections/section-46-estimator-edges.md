@@ -312,3 +312,15 @@ AC-46.1..AC-46.6 one per BR; AC-46.7 six green commits, each staging its own row
 - **python_exec hazard** as S40.
 - **For S47 (function fallback, batch 16):** the points object may carry `panels`; the fallback reads the flat form or the panel entry the same way.
 - **Decisions for ratification:** D-46b (D1-D3/D5 documented, not matched), D-46d (per-panel only when the x range differs).
+
+## Addendum (14oct2026, DECISIONS D14): batch 1-4 gaps added to this section
+
+### C10d: kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve
+
+**Gap.** S05's `range(varname)`: on kdensity, a string or all-missing variable makes twoway draw an empty curve; dash draws over the data's own span with a note (found by S05; `_dash_fold_range`, `map_kdensity`).
+
+**Requirement.** Measure twoway (`kdensity mpg, range(make)`, an all-missing variable) for rc, notes and drawing; match: an empty curve, silent where twoway is silent, both modes.
+
+**Tests.** pytest in test/test_value_bounds.py and a `* ==== S46 C10d: ... ====` truth block. Fits S46 because S46 handles the estimators' edge cases ("measure twoway, then match") in batch 15.
+
+**Process (binding, as for every row).** Task 1 of this row writes the failing tests and saves `<scratch>/46-C10d-failure.txt`; then the fix; then ONE commit with subject ending `(WP-31 C10d)`. The closing task flips the BUGS.md entry "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve" to `- [x]` with a Resolution in the BRIEF's closed form ending `Closes GAPS3 C10 (WP-31, C10d).`, deletes the `"C10d":` line from `WP31_OPEN` in test/test_tracking_documents.py, rewrites GAPS3.md's `- **C10d Tracked:**` line to `Closed in WP-31, BUGS.md "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve", commit pending.`, and replaces `<!-- WP-31 C10d -->` in place under `### Results that change` with a line ending `(WP-31, C10d)`. Measure twoway first (an extract script or a live probe in the cscript); where the measurement contradicts this addendum, the measurement wins and the deviation is recorded. Refusal/message cases go to the area cscript under the `U46` prefix; drawing comparisons go to a `* ==== S46 C10d: ... ====` block in test/test_wp31_truth.cscript. dash replaces twoway (DECISIONS D13): never use `dash twoway` in a probe.
