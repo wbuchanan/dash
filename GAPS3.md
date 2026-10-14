@@ -436,7 +436,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
-- **B5b Tracked:** Closed in WP-31, BUGS.md "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)", commit pending.
+- **B5b Tracked:** Closed in WP-31, BUGS.md "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)", commit 5e0a387.
 - **B5c Tracked:** Open (WP-31 section 35).
 - **C1 Tracked:** Closed in WP-31, BUGS.md "pcarrow, pcbarrow and pcarrowi heads ignore msize(), mcolor(), mfcolor(), mlcolor() and mlwidth() in silence, pcbarrow heads fill black, mangle(), barbsize() and headlabel are undeclared, and a row missing its second point is dropped", commit c0c5139.
 - **C2 Tracked:** Closed in WP-31, BUGS.md "rbar msize() is written and silently unread where twoway uses it as the bar width with mwidth", commit 7fe438e.
@@ -448,7 +448,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C6b Tracked:** Open (WP-31 section 25).
 - **C7 Tracked:** Closed in WP-31, BUGS.md "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them", commit 44761fa.
 - **C8a Tracked:** Closed in WP-31, BUGS.md "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)", commit 46698dd.
-- **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit pending.
+- **C8b Tracked:** Closed in WP-31, BUGS.md "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)", commit 17d85ec.
 - **C8c Tracked:** Open (WP-31 section 44).
 - **C8d Tracked:** Open (WP-31 section 32).
 - **C8e Tracked:** Open (WP-31 section 26).
@@ -500,7 +500,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)", commit 55ee2e5.
 - **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit 3e5823c.
-- **F1d Tracked:** Partly closed in WP-31 (section 19, commit pending): the saved page refits lpoly with its rule-of-thumb bandwidth after a filter move; open: an exactly fitted global fit draws the line at 0 where the served app reproduces Stata's round-off (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app").
+- **F1d Tracked:** Partly closed in WP-31 (section 19, commit bbc640a): the saved page refits lpoly with its rule-of-thumb bandwidth after a filter move; open: an exactly fitted global fit draws the line at 0 where the served app reproduces Stata's round-off (BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app").
 - **F1e Tracked:** Open (WP-31 section 22).
 - **F1f Tracked:** Open (WP-31 section 25).
 - **F1g Tracked:** Open (WP-31 section 28).
