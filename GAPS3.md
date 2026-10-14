@@ -419,7 +419,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 
 - **A1 Tracked:** Open (WP-31 section 08).
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit pending.
-- **A3 Tracked:** Open (WP-31 section 08).
+- **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit pending.
 - **A4 Tracked:** Open (WP-31 section 08).
 - **A5 Tracked:** Closed in WP-31, BUGS.md "Weight expressions such as [aw=price+1] and [aw=L.x] are refused where twoway takes an expression", commit 59f0f24.
 - **A6 Tracked:** Closed in WP-31, BUGS.md "Option varlists with time-series operators (mlabel(L.make), colorvar(L.mpg), by(L.foreign)) are refused r(198) where twoway draws or refuses with another code", commit 79c9f79.

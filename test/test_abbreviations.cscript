@@ -26,7 +26,9 @@
 *!   A2  every prefix from the minimum to the full name behaves identically
 *!       (this is what "abbreviation" means; dash's table accepts exactly one
 *!       short form per option, so mlab(), xlab(), scat() all fail today).
-*!   A3  the seven mis-mappings, called out by name and by value.
+*!   A3  the mis-mappings the fixture records, called out by name and by
+*!       value: none since WP-31 A3 regenerated it (the seven of 18 Sep 2026
+*!       were fixed in 896d117).
 *!   A4  every abbreviation dash.sthlp documents is accepted by dash (A4b:
 *!       the ones that belong to dash build, on dash build).
 *!   A5  every plot type's minimum abbreviation is accepted and yields that
@@ -911,7 +913,10 @@ capture quietly dash clear
 // ----------------------------------------------------------------
 foreach g in A1 A2 A3 A4 A5 A6 A7 R1 R2 R3 R4 {
     capture {
-        assert `n_`g'' > 0
+        // Flipped (WP-31 A3): the regenerated fixture records no
+        // mis-mapping (_meta.counts.dash_mismaps 0), so A3 has no case;
+        // it must still match that count.
+        assert `n_`g'' > 0 | ("`g'" == "A3" & ${ZQA_EXPN_A3} == 0)
         assert `n_`g'' == ${ZQA_BUILT_`g'}
         assert `n_`g'' == ${ZQA_EXPN_`g'}
     }

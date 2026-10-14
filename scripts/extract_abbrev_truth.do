@@ -445,12 +445,21 @@ forvalues i = 1/`NOPT' {
     }
 
     * ---- what dash does with each prefix (and with the full name) ----
+    * On the plot type twoway took the full name on (WP-31 A3): an option
+    * twoway refuses on scatter -- base(), bin(), level() and the others of
+    * WP-31 C3 -- dash refuses there too, r(198), so a probe on scatter
+    * recorded a refusal of the option, not of the spelling.  recast() is
+    * probed on lfit, where it reaches the spec as options.recast; on
+    * scatter it rewrites the plot's type (WP-30 P1.8b), as
+    * test_abbreviations.cscript probes it.
+    local dctx "`ctxcmd'"
+    if "`nm'" == "recast" local dctx "lfit mpg weight"
     forvalues k = 1/`L' {
         local pre = substr("`nm'", 1, `k')
         if `"`vl'"' == "" local ostr "`pre'"
         else              local ostr `"`pre'(`vl')"'
         capture dash clear
-        capture dash scatter mpg weight, `ostr' name(zqdash)
+        capture dash `dctx', `ostr' name(zqdash)
         file write `rec' `"DASH|`nm'|`k'|`pre'|`=_rc'|${dash_json_zqdash}"' _n
         capture dash clear
     }
@@ -505,7 +514,88 @@ from sfi import Macro
 REC  = Macro.getGlobal("ZQ_REC")
 OUT  = Macro.getGlobal("ZQ_OUT")
 
-# dash's hard-coded abbreviation table (dash_parse.mata, _expand_optkey).
+
+def _syntax_decls(src, prog):
+    """[(minimum, full), ...] of the first syntax statement of prog in
+    dash.ado, by Stata's rule: the leading run of capital letters is the
+    minimum (a digit ends it); a name with no lower-case tail, or none
+    capitalised, admits no abbreviation (test/test_abbreviations.py,
+    _syntax_options, reads them the same way)."""
+    m = re.search(r"^program define %s\b.*?$" % re.escape(prog), src, re.M)
+    if not m:
+        return []
+    lines = src[m.end():].split("\n")
+    start = next((i for i, ln in enumerate(lines)
+                  if re.match(r"^\s*syntax\b", ln)), None)
+    if start is None:
+        return []
+    chunk, i = [], start
+    while i < len(lines):
+        # The continuation mark, spelled so that the do-file reader does
+        # not take it for one.
+        chunk.append(re.sub(r"/{3}.*$", " ", lines[i]))
+        if not lines[i].rstrip().endswith("/" * 3):
+            break
+        i += 1
+    decl = re.sub(r"^\s*syntax\b", " ", " ".join(chunk))
+    out, depth, tok = [], 0, ""
+    for ch in decl:
+        if ch == "(":
+            depth += 1
+            if depth == 1 and tok:
+                out.append(tok)
+            if depth == 1:
+                tok = ""
+            continue
+        if ch == ")":
+            depth -= 1
+            continue
+        if depth > 0:
+            continue
+        if ch.isalnum() or ch == "_":
+            tok += ch
+        else:
+            if tok:
+                out.append(tok)
+            tok = ""
+    if tok:
+        out.append(tok)
+    skip = {"syntax", "anything", "if", "in", "using", "weight", "fweight",
+            "aweight", "pweight", "iweight", "varlist", "varname", "namelist"}
+    res, seen = [], set()
+    for t in out:
+        if t in skip or t in seen:
+            continue
+        seen.add(t)
+        head = re.match(r"^[A-Z]*", t).group(0)
+        full = t.lower()
+        res.append((head.lower() if head and head.lower() != full else full,
+                    full))
+    return res
+
+
+with open(os.path.join(Macro.getGlobal("ZQ_REPO"), "dash.ado"),
+          encoding="utf-8", errors="replace") as _fh:
+    _ADO = _fh.read()
+DASH_DECLS = []
+for _prog in ("_dash_parse_plot_opts", "_dash_parse_graph_opts"):
+    for _d in _syntax_decls(_ADO, _prog):
+        if _d[1] not in [f for _m, f in DASH_DECLS]:
+            DASH_DECLS.append(_d)
+
+
+def declared_binding(ab):
+    """The option dash's syntax statement binds ab to on its first use: the first
+    declaration whose minimum it reaches."""
+    for mn, full in DASH_DECLS:
+        if full.startswith(ab) and len(ab) >= len(mn):
+            return full
+    return None
+
+# The spellings of dash's former hard-coded abbreviation table
+# (dash_parse.mata, _expand_optkey, removed in 896d117), with the option
+# that table sent each to.  Each spelling's binding is measured below, in
+# twoway and in dash; the targets here are history, not dash's answer.
 DASH_TABLE = {
     "mc": "mcolor", "ms": "msymbol", "msi": "msize", "msa": "msangle",
     "mla": "mlabel", "mlc": "mlabcolor", "mls": "mlabsize",
@@ -621,7 +711,9 @@ for r in ptdash_rows:
     ptdash_by[r["name"]][r["k"]] = r
 
 def dash_keys(raw):
-    """Full option keys dash recorded in its serialized spec."""
+    """Full option keys dash recorded in its serialized spec, each once:
+    a type dash draws as two layers (lfitci's band and line) records an
+    option on both."""
     try:
         spec = json.loads(raw)
     except Exception:
@@ -630,7 +722,11 @@ def dash_keys(raw):
     for p in spec.get("plots", []):
         keys += [k for k in p.get("options", {}).keys()]
     keys += [k for k in spec.get("graph_options", {}).keys() if k != "name"]
-    return keys
+    # text() is written as added_text records, counted under added_text_n
+    # (WP-30 P1.10): both are the text option's landing.
+    keys = ["text" if k in ("added_text", "added_text_n") else k
+            for k in keys]
+    return list(dict.fromkeys(keys))
 
 def dash_entry(name, k, abbrev):
     r = dash_by.get(name, {}).get(k)
@@ -638,8 +734,9 @@ def dash_entry(name, k, abbrev):
         return {"accepts": None, "rc": None, "key": None,
                 "note": "no dash probe recorded"}
     if r["rc"] != 0:
+        ctxcmd = opt_rows.get(name, {}).get("ctxcmd", "scatter mpg weight")
         return {"accepts": False, "rc": r["rc"], "key": None,
-                "probe_cmd": "dash scatter mpg weight, " + abbrev + "(...) name(zqdash)"}
+                "probe_cmd": "dash " + ctxcmd + ", " + abbrev + "(...) name(zqdash)"}
     keys = dash_keys(r["json"])
     if keys is None:
         return {"accepts": True, "rc": 0, "key": None,
@@ -804,6 +901,19 @@ for ab, dash_target in sorted(DASH_TABLE.items()):
                 hits.append(cand)
     exact = [c for c in opt_rows if c == ab]
     stata_target = (exact[0] if exact else (hits[0] if len(hits) == 1 else None))
+    # What dash binds the spelling to today (WP-31 A3): the key dash
+    # recorded when the spelling was probed with the value of the option
+    # twoway binds it to; without such a probe, dash's declarations read
+    # by the syntax rule.  The table's own target was the 18 Sep 2026
+    # dash's, which the hard-coded table this dictionary copies no longer
+    # decides.
+    dash_target = None
+    probe = dash_by.get(stata_target, {}).get(len(ab)) if stata_target else None
+    if probe is not None and probe["rc"] == 0:
+        keys = dash_keys(probe["json"]) or []
+        dash_target = keys[0] if len(keys) == 1 else None
+    if dash_target is None:
+        dash_target = declared_binding(ab) or "(none)"
     resolution[ab] = {
         "dash_maps_to": dash_target,
         "stata_resolves_to": stata_target,
@@ -837,16 +947,9 @@ for ab, dash_target in sorted(DASH_TABLE.items()):
 # Every option name declared in dash.ado's _dash_parse_graph_opts and
 # _dash_parse_plot_opts, so that "dash rejects the minimum abbreviation of an
 # option it supports" can be told apart from "dash has no such option".
-DASH_DECLARED = set("""
-title subtitle note caption name saving xtitle ytitle xlabel ylabel xline yline
-legend by xscale yscale aspectratio scheme plotregion graphregion bgcolor
-plotbgcolor link filter ytitle2 xtitle2 ylabel2 xlabel2 yscale2 xscale2
-mcolor msymbol msize msangle mfcolor mlcolor mlabel mlabcolor mlabsize
-mlabposition mlabgap mlabwidth malpha marker lcolor lwidth lpattern lalpha
-fcolor fintensity falpha barwidth base blcolor bfcolor jitter jseed yaxis xaxis
-colorvar colpalette colordiscrete coloruseplegend colornlevels colorcuts
-colormissing bwidth degree pstyle cmissing recast connect
-""".split())
+# Read from dash.ado itself (WP-31 A3): the list written here on 18 Sep
+# 2026 named 75 options and dash declares more.
+DASH_DECLARED = set(full for _mn, full in DASH_DECLS)
 
 dash_rejects = sorted([n for n, e in options_out.items()
                        if e["dash"].get("accepts") is False])
@@ -888,9 +991,13 @@ doc = {
         ),
         "dash_probe": (
             "Every prefix is also fed to dash as "
-            "`dash scatter mpg weight, <prefix>(<value>) name(zqdash)`; the entry "
-            "for the measured minimum abbreviation is reported under \"dash\", "
-            "with the landing key read back out of ${dash_json_zqdash}."
+            "dash <context>, <prefix>(<value>) name(zqdash), on the plot "
+            "type twoway took the full name on; the entry for the measured "
+            "minimum abbreviation is reported under \"dash\", with the "
+            "landing key read back out of the registered spec.  "
+            "abbrev_resolution's dash_maps_to is the key dash recorded for "
+            "the spelling with the value of the option twoway binds it to, "
+            "else the option dash's declarations bind it to."
         ),
         "counts": {
             "options": len(options_out),

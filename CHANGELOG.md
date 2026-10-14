@@ -969,7 +969,7 @@ Changed behaviour.
 
 <!-- WP-31 A1 -->
 
-<!-- WP-31 A3 -->
+- The option-abbreviation truth was an 18 Sep 2026 pre-fix record; it is regenerated live and every option minimum is pinned both ways. (WP-31, A3)
 
 <!-- WP-31 C10c -->
 
