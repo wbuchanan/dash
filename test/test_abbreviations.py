@@ -925,3 +925,11 @@ class TestJitterMinimum:
         seg = ado[ado.index("_dash_refuse_unbound _dash_parse_plot_opts"):]
         assert seg.index("_dash_refuse_jit") < seg.index("_dash_refuse_foreign")
 
+    def test_the_options_after_the_comma_are_checked_too(self):
+        """(scatter mpg weight), jit(5) is "option jit() not allowed",
+        r(198), in twoway (U15-06); dash named it in its note."""
+        ado = open(ADO_PATH, encoding="utf-8").read()
+        g = ado[ado.index("_dash_refuse_foreign _dash_parse_graph_opts - "):]
+        g = g[:g.index("_dash_opts_repeats _dash_parse_graph_opts")]
+        assert "_dash_refuse_jit" in g
+

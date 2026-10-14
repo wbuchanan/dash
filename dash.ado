@@ -7236,6 +7236,9 @@ program define _dash_plot
         // an option in upper case: refused as twoway refuses it, even once,
         // naming the first word it does not take (_dash_refuse_foreign).
         _dash_refuse_foreign _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+        // jitter() spelled shorter than twoway's minimum after the comma
+        // (WP-31 A3d): refused there too, as twoway refuses it.
+        _dash_refuse_jit
         // An option given twice after the comma, read as twoway reads it.
         _dash_opts_repeats _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
         local _gund_acc : copy local _rp_gund_out
@@ -9190,8 +9193,11 @@ end
 // took them; it declares JITTER now, so -syntax- leaves them to the
 // catch-all, where the note would name them.  Called by
 // _dash_process_segment right after _dash_refuse_unbound, with the plot
-// parser's s() in place: the first such word of s(_unknown), read by
-// value, is refused in twoway's words.  It touches nothing in s().
+// parser's s() in place, and after the paren-mode comma right after
+// _dash_refuse_foreign, with the graph parser's: the first such word of
+// s(_unknown), read by value, is refused in twoway's words
+// ("(scatter mpg weight), jit(5)" is "option jit() not allowed", r(198)).
+// It touches nothing in s().
 // ================================================================
 program define _dash_refuse_jit
     version 19
