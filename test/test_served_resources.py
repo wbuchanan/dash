@@ -490,7 +490,7 @@ class TestTheSavedPageIsUnchanged:
 
 
 _SAVED_DIGEST = (
-    "47f0972ade54c73f81a2581d804528f00e1e196c4cb62205339a0baeeff591f6")
+    "9b5f0818ae981a3d0e92a30074deadca09d4f9aa1e1669dd08cac39fb68e4fbf")
 
 
 # ===========================================================================

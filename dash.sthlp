@@ -1233,8 +1233,9 @@ from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
 curves, its histogram bar heights, its {cmd:lfit}, {cmd:qfit},
-{cmd:lowess} and {cmd:lpoly} lines and its {cmd:lfitci} and {cmd:qfitci}
-lines and bands in the browser, and keeps its other computed layers, and its histogram bins, as
+{cmd:lowess}, {cmd:lpoly}, {cmd:mband} and {cmd:mspline} lines and its
+{cmd:lfitci}, {cmd:qfitci} and {cmd:lpolyci} lines and bands in the
+browser, and keeps its other computed layers, and its histogram bins, as
 they were built; see
 {help dash##server_mode:Server Mode}.  The dashboard opens only through a
 link holding a key made for each launch; see

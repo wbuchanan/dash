@@ -323,11 +323,12 @@ class TestTheHelpSaysWhatWasMeasured:
         # Flipped (WP-31 F1c): "its {cmd:lfit} and {cmd:qfit} lines".
         # Flipped (WP-31 F1b): and lfitci and qfitci with their bands.
         # Flipped (WP-31 F1d): and lpoly.
+        # Flipped (WP-31 F1e, F1f): and lpolyci, mband and mspline.
         assert ("A saved dashboard recomputes those cards, its kernel density "
                 "curves, its histogram bar heights, its {cmd:lfit}, "
-                "{cmd:qfit}, {cmd:lowess} and {cmd:lpoly} lines and its "
-                "{cmd:lfitci} and {cmd:qfitci} lines and bands in the "
-                "browser") in s
+                "{cmd:qfit}, {cmd:lowess}, {cmd:lpoly}, {cmd:mband} and "
+                "{cmd:mspline} lines and its {cmd:lfitci}, {cmd:qfitci} and "
+                "{cmd:lpolyci} lines and bands in the browser") in s
 
     def test_dash_serve_names_the_build_only_options(self):
         """HC2-25c."""
