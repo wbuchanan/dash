@@ -25,8 +25,9 @@ import dash_render as dr
 #: twoway plot types dash does not draw: a surface interpolated over a grid
 #: (contour, contourline) and a point on a range (rpcap, rpspike) -- the
 #: last two new in StataNow 19.5.
-# Flipped (WP-31 B1): rpcap and rpspike are drawn.
-_REFUSED = ("contour", "contourline")
+# Flipped (WP-31 B1): rpcap and rpspike are drawn.  WP-31 B2: sunflower is
+# refused by name.
+_REFUSED = ("contour", "contourline", "sunflower")
 
 
 def _help():

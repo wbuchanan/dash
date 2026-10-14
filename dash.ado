@@ -5301,6 +5301,12 @@ program define _dash_process_segment, rclass
             if "`_pt_nodraw'" == "contour" | "`_pt_nodraw'" == "contourline" {
                 local _pt_why "it needs a surface interpolated over a grid. Use Stata's own twoway `_pt_nodraw', or dash scatter y x, colorvar(z) to colour each point by z."
             }
+            // WP-31 B2: twoway draws sunflower, and its manual recommends
+            // the sunflower command over it (twoway_sunflower.sthlp;
+            // test/fixtures/rangept_truth.json advice.sunflower).
+            else if "`_pt_nodraw'" == "sunflower" {
+                local _pt_why "it bins points into density petals. Use Stata's own sunflower command, which Stata recommends over twoway sunflower, or dash scatter y x with jitter() or colorvar()."
+            }
             mata: _dash_say("err", "dash: '", st_local("plottype"), "' is a twoway plot type dash does not draw: " + st_local("_pt_why"))
             exit(198)
         }

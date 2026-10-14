@@ -609,13 +609,15 @@ and is refused without them, as {cmd:twoway} refuses it:
 {cmd:varlist required}, {cmd:r(100)}.
 
 {pstd}
-{ul:Not drawn.}  Two {cmd:twoway} plot types are not drawn by {cmd:dash}:
+{ul:Not drawn.}  Three {cmd:twoway} plot types are not drawn by {cmd:dash}:
 {cmd:contour} and {cmd:contourline}, which interpolate a surface over a
-grid from their three variables.  Each is refused with {cmd:r(198)} and a
-message naming what to use instead: {cmd:twoway} itself, or
-{cmd:dash scatter} {it:y x}{cmd:,} {cmd:colorvar(}{it:z}{cmd:)}.  Any
-other word
-that is not a plot type is refused too, and the message lists the plot
+grid from their three variables; and {cmd:sunflower}, which bins points
+into density petals.  Each is refused with {cmd:r(198)} and a message
+naming what to use instead: {cmd:twoway} itself or {cmd:dash scatter}
+{it:y x}{cmd:,} {cmd:colorvar(}{it:z}{cmd:)} for the first two, and
+Stata's {cmd:sunflower} command, which Stata recommends over
+{cmd:twoway sunflower}, for the third.  Any other word that is not a plot
+type is refused too, and the message lists the plot
 types above.  A plot type cannot be handled as an unknown option is --
 named in a note and drawn around -- because it is what would be drawn.
 
@@ -841,7 +843,7 @@ there, is an invalid point.  The literal is read as data and never run.
     does {cmd:dash} (see {it:Where a graph-level option may be written}
     under 3. above) -- so a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
-    names the two {cmd:twoway} plot types it refuses -- and can draw the
+    names the three {cmd:twoway} plot types it refuses -- and can draw the
     values it is given: a few values {cmd:twoway} accepts, such as
     {cmd:bin(2000)}, are more than {cmd:dash} draws and are refused (see
     {help dash##validation:Option values} below).  Anything {cmd:dash}

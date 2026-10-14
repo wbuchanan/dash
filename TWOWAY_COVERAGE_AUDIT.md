@@ -12,7 +12,7 @@ Scope: current working tree, especially `dash.ado`, `dash_parse.mata`, `dash_ren
 - The current parser and renderer implement **40 canonical `twoway` plot types** in eight families.
 - The documented `twoway` universe in this project contains **45 types**, so type-level coverage is **40/45, or about 89%**.
 - Four plot types are recognized and explicitly refused: `contour`, `contourline`, `rpcap`, and `rpspike`. [WP-31 B1: corrected -- `rpcap` and `rpspike` drawn; 42 plot types]
-- Stata's specialty `sunflower` surface is also absent from the parser and renderer. It is not one of the four types that the project's help file describes as explicitly refused, so it should be treated as an additional unrecognized surface if it is in the intended compatibility scope.
+- Stata's specialty `sunflower` surface is also absent from the parser and renderer. It is not one of the four types that the project's help file describes as explicitly refused, so it should be treated as an additional unrecognized surface if it is in the intended compatibility scope. [WP-31 B2: corrected -- `sunflower` is refused by name, r(198), with the manual's advice, and the help names it as not drawn]
 - The command accepts the familiar layered `twoway` syntax, `||`, multiple y variables, `if`/`in`, plot abbreviations, graph-level options, per-layer options, `by()` facets, weights on supported statistical layers, immediate-coordinate plots, and no-data `function` plots.
 - The live parser currently declares **176 option names**. Tests track **48 known accepted-but-not-generally-honored names**, although some of those are conditionally honored on particular graph types and some are not genuine `twoway` options in the position where `dash` accepts them. The test that pins the older total at 171 is stale relative to the current parser.
 - Unknown option names are normally accepted and reported as ignored. Therefore, “the command runs” is not evidence that an option has been implemented.
@@ -102,6 +102,7 @@ The “supported options” column lists the material, graph-specific options ra
 | Unsupported surface/grid | `contourline` | None | None | Explicitly refused; no surface interpolation or contour labels/legend |
 | Range-point | `rpcap` | Spike y1..y2 at x, caps as wide as the marker, marker at y3; `msize()`, `horizontal`, `colorvar()`, `jitter()`, `mlabel()`; a weight is named, not drawn (twoway sizes the marker by it) | **FS, HC, E** | Explicitly refused [WP-31 B1: corrected -- drawn in both modes and after a filter move] |
 | Range-point | `rpspike` | Spike y1..y2 at x, marker at y3; as `rpcap` without caps | **FS, HC, E** | Explicitly refused [WP-31 B1: corrected -- drawn in both modes and after a filter move] |
+| Unsupported specialty | `sunflower` | None | None | Explicitly refused (WP-31 B2): r(198) by name, advising Stata's `sunflower` command |
 
 ## Common supported plot options
 

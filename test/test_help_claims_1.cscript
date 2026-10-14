@@ -1018,8 +1018,10 @@ local miss19 "`miss19' `extra19'"
 local miss19 = strtrim("`miss19'")
 local bad19 ""
 // Flipped (WP-31 B1): rpcap and rpspike are drawn, no longer refused.
-foreach t in contour contourline {
+// WP-31 B2: sunflower (two variables) is refused by name.
+foreach t in contour contourline sunflower {
     local a "mpg weight turn"
+    if "`t'" == "sunflower" local a "mpg weight"
     graph drop _all
     capture twoway `t' `a', nodraw
     local twrc = _rc

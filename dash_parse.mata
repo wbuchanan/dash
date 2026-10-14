@@ -117,7 +117,7 @@
 *!
 *!   _dash_undrawn_plottype(name)
 *!       name, lower case, when it is a twoway plot type dash refuses by
-*!       name -- contour, contourline -- else "".
+*!       name -- contour, contourline, sunflower -- else "".
 *!
 *!   _dash_kernel_full(word)
 *!       The full kernel name, lower case, for a word twoway's kernel()
@@ -1874,13 +1874,17 @@ void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
 // abbreviation of either -- measured 23sep2026: cont .. contou and
 // contourl .. contourlin are "not a twoway plot type", and con is
 // connected -- so only the full names match.  rpcap and rpspike were
-// refused here too until WP-31 B1 drew them.
+// refused here too until WP-31 B1 drew them.  sunflower (WP-31 B2) is a
+// twoway plot type too (twoway sunflower mpg weight: rc 0), which dash
+// does not draw (PRD section 7): it was answered "not a twoway plot
+// type"; twoway takes no shorter name (sunflow is "not a twoway plot
+// type", test/fixtures/rangept_truth.json abbrev.sunflow).
 // Returns the name, lower case, or "".
 string scalar _dash_undrawn_plottype(string scalar name) {
     string scalar s
 
     s = strlower(strtrim(name))
-    if (anyof(("contour", "contourline"), s)) {
+    if (anyof(("contour", "contourline", "sunflower"), s)) {
         return(s)
     }
     return("")

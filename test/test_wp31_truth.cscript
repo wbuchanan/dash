@@ -4469,6 +4469,57 @@ if inlist("`only'", "", "S21") & `: list posof "S21" in w31_run' {
 }
 * ==== end S21 ====
 
+* ==== S21 B2: sunflower refused ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S21") & `: list posof "S21" in w31_run' {
+    display as text "S21 start " c(current_date) " " c(current_time)
+    local u21d "`w31_work'/s21b2"
+    capture mkdir "`u21d'"
+    capture graph drop _all
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U21-9: twoway draws sunflower (rc 0); dash refuses it by name,
+    // r(198), with the manual's advice; twoway takes no shorter name,
+    // and neither does dash: sunflow is "not a twoway plot type".
+    // ------------------------------------------------------------
+    capture twoway sunflower mpg weight, nodraw
+    local trc = _rc
+    capture graph drop _all
+    _w31_expect U21-9 "(`trc' == 0)" "twoway sunflower rc `trc'"
+    local lf "`u21d'/n9.log"
+    dash clear
+    local ls = c(linesize)
+    set linesize 255
+    quietly log using "`lf'", text replace name(u219)
+    capture noisily dash sunflower mpg weight
+    local drc = _rc
+    quietly log close u219
+    set linesize `ls'
+    _w31_expect U21-9 "(`drc' == 198)" "dash sunflower rc `drc'"
+    cert_log_has "`lf'", needle("dash: 'sunflower' is a twoway plot type dash does not draw: it bins points into density petals.")
+    _w31_expect U21-9 "(r(count) == 1)" "the refusal's sentence found `r(count)' times"
+    capture twoway sunflow mpg weight, nodraw
+    local trc2 = _rc
+    local lf2 "`u21d'/n9b.log"
+    quietly log using "`lf2'", text replace name(u219b)
+    capture noisily dash sunflow mpg weight
+    local drc2 = _rc
+    quietly log close u219b
+    cert_log_has "`lf2'", needle("sunflow is not a twoway plot type")
+    _w31_expect U21-9 "(`trc2' == 198 & `drc2' == 198 & r(count) == 1)" "sunflow: twoway rc `trc2', dash rc `drc2', twoway's line `r(count)' times"
+    _w31_expect U21-9 `"("${dash_graph_registry}" == "")"' "registry ${dash_graph_registry}"
+    _w31_done U21-9 "sunflower: twoway draws it; dash refuses it by name, r(198), with the manual's advice; sunflow is no plot type in either"
+
+    capture erase "`lf'"
+    capture erase "`lf2'"
+    capture rmdir "`u21d'"
+    capture graph drop _all
+    dash clear
+    display as text "S21 end " c(current_date) " " c(current_time)
+}
+* ==== end S21 ====
+
 // S22 helpers (WP-31 F1e).  _u22_move_roles: the saved page's lpolyci
 // line and band after one filter move -- the page rendered, the widget
 // set and its own callback run under node (test/js_runner.py) -- written

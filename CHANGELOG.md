@@ -1003,7 +1003,7 @@ Changed behaviour.
 
 - rpcap and rpspike are drawn: dash rpcap lo hi turn weight was refused, r(198), "a twoway plot type dash does not draw", and now draws a spike from y1 to y2 at x, caps as wide as the marker (rpcap) and the marker at y3, in the saved page and the served app, after a filter move too, with the y axis over all three; any other number of variables is refused in twoway's words, "you must specify four variables with twoway rpcap", r(102) or r(103). (WP-31, B1)
 
-<!-- WP-31 B2 -->
+- sunflower is refused by name, r(198): "dash: 'sunflower' is a twoway plot type dash does not draw: it bins points into density petals. Use Stata's own sunflower command, which Stata recommends over twoway sunflower, or dash scatter y x with jitter() or colorvar()."; it was answered "sunflower is not a twoway plot type", although twoway draws it. (WP-31, B2)
 
 <!-- WP-31 B3 -->
 

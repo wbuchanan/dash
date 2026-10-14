@@ -430,7 +430,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A7 Tracked:** Closed in WP-31, BUGS.md "hover() written inside a layer's parentheses and again after the comma keeps only the rightmost list", commit ec00ad8.
 - **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit e07f97e.
 - **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit pending.
-- **B2 Tracked:** Open (WP-31 section 21).
+- **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit pending.
 - **B3 Tracked:** Open (WP-31 section 21).
 - **B4a Tracked:** Open (WP-31 section 23).
 - **B4b Tracked:** Open (WP-31 section 26).
