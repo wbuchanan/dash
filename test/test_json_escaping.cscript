@@ -3879,8 +3879,11 @@ cert_log_has "`jg_l69'", needle("jgnone')")
 local jg_w3 = r(count)
 cert_log_has "`jg_l69'", needle("jgnone' not found")
 local jg_w3 = `jg_w3' + r(count)
+// Flipped (WP-31 C8a): colormissing() without colorvar() is taken in
+// silence, as twoway takes it, so it is no longer named in the note; the
+// macro text is still never expanded (jg_ok, jg_ran below).
 cert_log_has "`jg_l69'", needle("ignoring unsupported option(s): colormissing()")
-local jg_w4 = r(count)
+local jg_w4 = (r(count) == 0)
 cert_log_has "`jg_l69'", needle("J6_W invalid name")
 local jg_w5 = r(count)
 // Flipped (WP-31 A5): "cannot be evaluated", as above.
