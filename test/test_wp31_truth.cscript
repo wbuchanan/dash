@@ -1454,6 +1454,184 @@ if inlist("`only'", "", "S07") & `: list posof "S07" in w31_run' {
 }
 * ==== end S07 ====
 
+// S09 helpers (WP-31 C10c).  _u09_draw: for a registered graph, saved
+// (sfx s) and served (sfx v), every continuous axis of letter L as
+// "<n>:<side>:<order from the plot region outward>" in axis order
+// (u09_ax<sfx>) and each layer's range name (u09_rn<sfx>); the axis-3
+// facts as "<axis type>|<title>|<label ticks>|<extra ticks>|<spans on
+// y3>" (u09_a3<sfx>); the spec's axisn object (u09_axn).  _u09_fix: the
+// fixture's sides.<key> in the same form (u09_f).
+python:
+def _u09_axes(fig, letter):
+    from bokeh.models.axes import ContinuousAxis
+    sides = ("left", "right") if letter == "y" else ("below", "above")
+    out = {}
+    for side in sides:
+        on = [a for a in getattr(fig, side) if isinstance(a, ContinuousAxis)]
+        for i, a in enumerate(on, 1):
+            nm = getattr(a, letter + "_range_name")
+            out[1 if nm == "default" else int(nm[1:])] = "%s:%d" % (side, i)
+    return " ".join("%d:%s" % (n, out[n]) for n in sorted(out))
+
+
+def _u09_num(v):
+    return "%g" % float(v)
+
+
+def _u09_draw(sp, dp, app, letter):
+    import json
+    from sfi import Macro
+    import __main__ as m
+    a, b = m._u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        Macro.setGlobal("u09_ax" + sfx, _u09_axes(f, letter))
+        Macro.setGlobal("u09_rn" + sfx, " ".join(
+            getattr(r, letter + "_range_name") for r in f.renderers
+            if type(r).__name__ == "GlyphRenderer"))
+        a3 = ""
+        for ax in f.left + f.right:
+            if getattr(ax, "y_range_name", "") != "y3":
+                continue
+            t = ax.ticker
+            args = dict(getattr(t, "args", None) or {})
+            base = args.get("base", getattr(t, "ticks", None)) or []
+            base = getattr(base, "ticks", base)
+            extra = args.get("extra") or []
+            spans = [_u09_num(c.location) for c in f.center
+                     if type(c).__name__ == "Span"
+                     and getattr(c, "y_range_name", "") == "y3"]
+            a3 = "|".join([type(ax).__name__, str(ax.axis_label or ""),
+                           " ".join(_u09_num(v) for v in base),
+                           " ".join(_u09_num(v) for v in extra),
+                           " ".join(spans)])
+        Macro.setGlobal("u09_a3" + sfx, a3)
+    with open(sp, encoding="utf-8") as fh:
+        go = json.load(fh)["graphs"][0]["graph_options"]
+    Macro.setGlobal("u09_axn", json.dumps(go.get("axisn", {}),
+                                          sort_keys=True))
+
+
+def _u09_fix(key):
+    import json, os
+    from sfi import Macro
+    with open(os.path.join("fixtures", "axes_n_truth.json"),
+              encoding="utf-8") as fh:
+        fx = json.load(fh)
+    axes = sorted(fx["sides"][key]["axes"], key=lambda a: a["axis"])
+    Macro.setGlobal("u09_f", " ".join("%d:%s:%d" % (a["axis"], a["side"],
+                                                    a["order"])
+                                      for a in axes))
+end
+
+capture program drop _u09_reg
+program define _u09_reg
+    // _u09_reg <dir> <k> <letter> <dash command...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken letter 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u09_m; _u09_m._u09_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`letter'")
+end
+
+* ==== S09 C10c: Axes three to nine ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S09") & `: list posof "S09" in w31_run' {
+    display as text "S09 start " c(current_date) " " c(current_time)
+    local u9d "`w31_work'/s09"
+    capture mkdir "`u9d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    local three (scatter mpg weight, yaxis(1)) (scatter price weight, yaxis(2)) (scatter length weight, yaxis(3))
+
+    // ------------------------------------------------------------
+    // U09-1: three y axes -- twoway draws them (rc 0, three axes in the
+    // .Graph); dash draws ranges y2 and y3, each layer on its own, and
+    // the three axes on the fixture's sides (sides.y3: all on the left,
+    // 1 innermost), the saved page and the served app alike.
+    // ------------------------------------------------------------
+    capture graph drop u9tw
+    capture noisily twoway `three', nodraw name(u9tw, replace)
+    _w31_expect U09-1 "(_rc == 0)" "twoway three axes rc `=_rc'"
+    _w31_expect U09-1 `"("`.u9tw.yaxis3.isa'" != "")"' "twoway has no yaxis3"
+    capture graph drop u9tw
+    _u09_reg "`u9d'" 1 y `three', name(zu91)
+    python: import __main__ as _u09_m; _u09_m._u09_fix("y3")
+    foreach m in s v {
+        _w31_expect U09-1 `"("${u09_ax`m'}" == "${u09_f}")"' "`m': axes ${u09_ax`m'}, twoway ${u09_f}"
+        _w31_expect U09-1 `"("${u09_rn`m'}" == "default y2 y3")"' "`m': layers on ${u09_rn`m'}"
+    }
+    _w31_done U09-1 "three y axes drawn on twoway's sides, each layer on its own axis, saved and served"
+
+    // ------------------------------------------------------------
+    // U09-2: four y axes and three x axes on the fixture's sides
+    // (sides.y4, sides.x3), and axes 1 and 3 alone (sides.y13: 3 on the
+    // right), both modes.
+    // ------------------------------------------------------------
+    _u09_reg "`u9d'" 2 y `three' (scatter gear_ratio weight, yaxis(4)), name(zu92)
+    python: import __main__ as _u09_m; _u09_m._u09_fix("y4")
+    foreach m in s v {
+        _w31_expect U09-2 `"("${u09_ax`m'}" == "${u09_f}")"' "y4 `m': axes ${u09_ax`m'}, twoway ${u09_f}"
+    }
+    _u09_reg "`u9d'" 3 x (scatter mpg weight, xaxis(1)) (scatter mpg price, xaxis(2)) (scatter mpg length, xaxis(3)), name(zu93)
+    python: import __main__ as _u09_m; _u09_m._u09_fix("x3")
+    foreach m in s v {
+        _w31_expect U09-2 `"("${u09_ax`m'}" == "${u09_f}")"' "x3 `m': axes ${u09_ax`m'}, twoway ${u09_f}"
+        _w31_expect U09-2 `"("${u09_rn`m'}" == "default x2 x3")"' "x3 `m': layers on ${u09_rn`m'}"
+    }
+    _u09_reg "`u9d'" 4 y (scatter mpg weight) (scatter length weight, yaxis(3)), name(zu94)
+    python: import __main__ as _u09_m; _u09_m._u09_fix("y13")
+    foreach m in s v {
+        _w31_expect U09-2 `"("${u09_ax`m'}" == "${u09_f}")"' "y13 `m': axes ${u09_ax`m'}, twoway ${u09_f}"
+    }
+    _w31_done U09-2 "four y axes, three x axes and axes 1 and 3 on twoway's sides, saved and served"
+
+    // ------------------------------------------------------------
+    // U09-3: ylabel(), ytitle(), yscale(log), yline() and ytick() with
+    // axis(3) reach the third axis, as twoway's do (routed.*: labels
+    // 150-230, the title Len, unevenly spaced log labels, a line at 200,
+    // ticks at 165 and 215), in the spec's axisn object and both modes.
+    // ------------------------------------------------------------
+    local rt ylabel(150(20)230, axis(3)) ytitle("Len", axis(3)) yscale(log axis(3)) yline(200, axis(3)) ytick(165 215, axis(3))
+    capture graph drop u9tw
+    capture noisily twoway `three', `rt' nodraw name(u9tw, replace)
+    _w31_expect U09-3 "(_rc == 0)" "twoway routed rc `=_rc'"
+    capture graph drop u9tw
+    _u09_reg "`u9d'" 5 y `three', `rt' name(zu95)
+    mata: st_local("hasl", strofreal(strpos(st_global("u09_axn"), char(34) + "label" + char(34) + ": " + char(34) + "150(20)230" + char(34)) > 0))
+    _w31_expect U09-3 "(`hasl' == 1)" "the spec's axisn holds no ylabel(150(20)230, axis(3))"
+    foreach m in s v {
+        _w31_expect U09-3 `"("${u09_a3`m'}" == "LogAxis|Len|150 170 190 210 230|165 215|200")"' "`m': axis 3 ${u09_a3`m'}"
+    }
+    _w31_done U09-3 "axis(3) labels, title, log scale, line and ticks reach the third axis, saved and served"
+
+    // ------------------------------------------------------------
+    // U09-6: every layer on axis 3 -- twoway draws one left axis
+    // (sides.y3_lone); dash draws one axis, the first, titled by
+    // ytitle(, axis(3)).
+    // ------------------------------------------------------------
+    _u09_reg "`u9d'" 6 y scatter mpg weight, yaxis(3) ytitle("Only", axis(3)) name(zu96)
+    foreach m in s v {
+        _w31_expect U09-6 `"("${u09_ax`m'}" == "1:left:1" & "${u09_rn`m'}" == "default")"' "`m': axes ${u09_ax`m'}, layers ${u09_rn`m'}"
+    }
+    _w31_done U09-6 "a lone yaxis(3) is drawn as one left axis, saved and served"
+
+    forvalues k = 1/6 {
+        foreach p in s d {
+            capture erase "`u9d'/`p'`k'.json"
+        }
+        capture erase "`u9d'/a`k'.py"
+    }
+    capture rmdir "`u9d'"
+    dash clear
+    display as text "S09 end " c(current_date) " " c(current_time)
+}
+* ==== end S09 ====
+
 // S08 helpers (WP-31 A2, A1, A4).  _u08_fixture: test/fixtures/
 // bare_prefix_truth.json's extras.* and twoways.* as dash commands, into
 // globals u08_xn/u08_xw<k>/u08_xc<k>/u08_xr<k>/u08_xt<k> (word, command,

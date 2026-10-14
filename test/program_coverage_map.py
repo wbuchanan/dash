@@ -650,6 +650,11 @@ COVERAGE = {
         "_dash_axreq_clear": ("test_twoway_option_parity.cscript:AX-03",
                               "test_twoway_option_parity.cscript:AX-04",
                               "test_twoway_option_parity.cscript:AX-08"),
+        # WP-31 S09 (C10c): axes three to nine -- e2e, axis(3) options
+        # reach the spec's axisn object and the third axis.
+        "_dash_axisn_add": ("test_wp31_truth.cscript:U09-3",),
+        "_dash_axisn_clear": ("test_wp31_truth.cscript:U09-3",),
+        "_dash_axisn_json": ("test_wp31_truth.cscript:U09-3",),
         # direct and e2e: TP-15 calls each on its own, and holds dash's
         # answer to log, an upper-case option, a plot option after the
         # comma and two kernels to twoway's, asked in the run.

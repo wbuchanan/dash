@@ -126,7 +126,9 @@ class TestTokens:
             with open(ap, encoding="utf-8") as fh:
                 src = fh.read()
         assert "def _dash_axis_numbers(" in src
-        assert "def _dash_axes_tied(" in src
+        # Flipped (WP-31 C10c): the tie is _dash_axis_groups', which
+        # generalises _dash_axes_tied to axes 1-9.
+        assert "def _dash_axis_groups(" in src
 
 
 @pytest.mark.parametrize("mode", MODES)

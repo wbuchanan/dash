@@ -122,7 +122,9 @@ class TestTheShapeOfTheExamples:
         # example names play() alone; it was play(x) text(20 3000 "hi").
         assert shown_out == {
             'dash scatter mpg weight, play(x)': 1,
-            'dash (scatter mpg weight, yaxis(3))': 1,
+            # Flipped (WP-31 C10c): yaxis(3) is drawn; the help's
+            # refusal example is degree(8), dash's own bound.
+            'dash (lpoly mpg weight, degree(8))': 1,
             'dash (scatter mpg weight, discrete)': 1,
             # Flipped (WP-31 A5): dash lfit mpg weight [aw=price+1] is
             # drawn, so the help shows no refusal for it.

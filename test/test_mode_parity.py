@@ -2415,6 +2415,17 @@ CORPUS = [
     # WP-31 C18: scatteri 2/2 1, as dash.ado writes it.
     _case("scatteri 2/2 1 (WP-31 C18)",
           [plot_for("scatteri", values=[[1.0, 1.0]])]),
+    # WP-31 S09 (C10c): axes three to nine, alike in both modes.
+    _case("three y axes (WP-31 C10c)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price"),
+           plot_for("line", {"yaxis": "3"}, yvar="foreign")]),
+    _case("three y axes with axisn label and title (WP-31 C10c)",
+          [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price"),
+           plot_for("line", {"yaxis": "3"}, yvar="foreign")],
+          go={"axisn": {"y3": {"label": "0 0.5 1", "title": '"Len"'}}}),
+    _case("three x axes (WP-31 C10c)",
+          [_sc(), plot_for("scatter", {"xaxis": "2"}, xvar="price"),
+           plot_for("scatter", {"xaxis": "3"}, xvar="foreign")]),
 ]
 
 
@@ -3308,6 +3319,13 @@ MOVE_CORPUS = [
                [plot_for("lfit", yvar="mpg", xvar="when")]),
     _move_case("qfit with range(1500 5500) n(7), dropdown", _MOVES[0],
                [plot_for("qfit", {"range": "1500 5500", "n": "7"})]),
+
+    # WP-31 S09 (C10c): three y axes after a move (S35 extends the
+    # profile to their ranges).
+    _move_case("three y axes, dropdown to Foreign (WP-31 C10c)",
+               _MOVES[0], [_sc(),
+                           plot_for("scatter", {"yaxis": "2"}, yvar="price"),
+                           plot_for("line", {"yaxis": "3"}, yvar="rep")]),
 ]
 
 

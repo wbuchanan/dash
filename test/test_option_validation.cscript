@@ -58,9 +58,9 @@
 *!   OV-29  jseed(7)                  rc 0
 *!   OV-30  jseed(abc)                rc 198 naming jseed()
 *!   OV-31  yaxis(2)                  rc 0
-*!   OV-32  yaxis(3)                  rc 198 naming yaxis()   (dash's own limit)
+*!   OV-32  yaxis(3)                  rc 0 (WP-31 C10c: axes 3-9 drawn)
 *!   OV-33  xaxis(1)                  rc 0
-*!   OV-34  xaxis(3)                  rc 198 naming xaxis()   (dash's own limit; WP-31 C10b)
+*!   OV-34  xaxis(3)                  rc 0 (WP-31 C10c: axes 3-9 drawn)
 *!   OV-35  malpha(60)                rc 0
 *!   OV-36  malpha(150)               rc 198 naming malpha()
 *!   OV-37  lalpha(50)                rc 0
@@ -325,8 +325,7 @@
 *! Parsed values (WP-31 C10b; test/fixtures/parsed_values_truth.json):
 *!   U06-04  yaxis(1 1), (2 1), (1 2), xaxis(1 2) taken as twoway takes them;
 *!           yaxis(0), (10), (1.5), (abc) refused with twoway's rc and line;
-*!           yaxis(1 2 3), which twoway draws, refused with dash's own
-*!           sentence (axes 3-9 are section 09's)
+*!           yaxis(1 2 3) drawn, as twoway draws it (flipped, WP-31 C10c)
 *! Weight expressions (WP-31 A5; test/fixtures/weight_operator_truth.json):
 *!   U07-7  lfit [aw=price+1] rc 0, no note; [aw=nosuch+1], [aw=price+]
 *!          and kdensity [aw=nosuch*2] refused with twoway's rc and line
@@ -336,6 +335,14 @@
 *!          no __dash column left, the data kept
 *!   U07-9  mlabel(L.make) on histogram, function, mspline and mband:
 *!          twoway's code (WP-31 A6 guard)
+*! Axes three to nine (WP-31 C10c; test/fixtures/axes_n_truth.json):
+*!   U09-4  yaxis(0), (10), (2.5) and xaxis(10): twoway's rc and line; no
+*!          "two axes" sentence; yaxis(9) drawn
+*!   U09-5  ylabel(1 2, axis(3)) with no layer on axis 3: twoway's rc and
+*!          line; with a layer on axis 3: rc 0
+*!   U09-7  yaxis(3) on scatter, line, bar, rarea and histogram: rc 0 as
+*!          twoway
+*!   U09-8  yaxis(1 2) still taken as twoway takes it (WP-31 C10b guard)
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -667,11 +674,13 @@ _ov_case OV-28 `"dash scatter mpg weight, jitter(5) jitterseed(2.5) name(ov28)"'
 _ov_case OV-29 `"dash scatter mpg weight, jitter(5) jseed(7) name(ov29)"' 0 ""
 _ov_case OV-30 `"dash scatter mpg weight, jitter(5) jseed(abc) name(ov30)"' 198 jseed
 _ov_case OV-31 `"dash scatter mpg weight, yaxis(2) name(ov31)"' 0 ""
-_ov_case OV-32 `"dash scatter mpg weight, yaxis(3) name(ov32)"' 198 yaxis
+// Flipped (WP-31 C10c): twoway's rc -- dash draws axes 3-9.
+_ov_case OV-32 `"dash scatter mpg weight, yaxis(3) name(ov32)"' 0 ""
 _ov_case OV-33 `"dash scatter mpg weight, xaxis(1) name(ov33)"' 0 ""
 // Flipped (WP-31 C10b): xaxis(abc) is twoway's r(121) "xaxis() invalid --
 // invalid numlist", asked of twoway in U06-04; the case probes axis 3.
-_ov_case OV-34 `"dash scatter mpg weight, xaxis(3) name(ov34)"' 198 xaxis
+// Flipped (WP-31 C10c): twoway's rc -- dash draws axes 3-9.
+_ov_case OV-34 `"dash scatter mpg weight, xaxis(3) name(ov34)"' 0 ""
 _ov_case OV-35 `"dash scatter mpg weight, malpha(60) name(ov35)"' 0 ""
 _ov_case OV-36 `"dash scatter mpg weight, malpha(150) name(ov36)"' 198 malpha
 _ov_case OV-37 `"dash line mpg weight, sort lalpha(50) name(ov37)"' 0 ""
@@ -1666,11 +1675,12 @@ foreach c in "line mpg weight, yaxis(0)|yaxis() invalid -- invalid numlist has e
         local bad `"`bad' [`cmd': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
     }
 }
-_u05_rc "line mpg weight, yaxis(1 2 3)" "dash draws two axes."
-if r(trc) != 0 | r(drc) != 198 | r(dn) < 1 {
-    local bad `"`bad' [yaxis(1 2 3): twoway `r(trc)', dash `r(drc)' (`r(dn)')]"'
+// Flipped (WP-31 C10c): yaxis(1 2 3) is drawn, as twoway draws it.
+_u05_rc "line mpg weight, yaxis(1 2 3)" ""
+if r(trc) != 0 | r(drc) != 0 {
+    local bad `"`bad' [yaxis(1 2 3): twoway `r(trc)', dash `r(drc)']"'
 }
-_u05_judge U06-04 `"`bad'"' "yaxis()/xaxis() lists taken and refused as twoway does; yaxis(1 2 3) dash's own bound"
+_u05_judge U06-04 `"`bad'"' "yaxis()/xaxis() lists taken and refused as twoway does"
 
 // ----------------------------------------------------------------
 // WP-31 S07 (A5-A8).  _u07_rc <cmd> [needle]: twoway's and dash's rc for
@@ -1815,6 +1825,68 @@ if `"`bad'"' != "" {
     global ov_faillist "${ov_faillist} U07-9"
 }
 else display as text "U07-9 PASS: mlabel(L.make) on histogram, function, mspline and mband answers with twoway's code"
+
+// ----------------------------------------------------------------
+// WP-31 S09 (C10c): axes three to nine.  Lines are the fixture's
+// (test/fixtures/axes_n_truth.json bounds.*, refusals.axis3_unused), and
+// twoway is asked again in the same run.
+// ----------------------------------------------------------------
+// U09-4: the bounds, in twoway's rc and words; no sentence of dash's.
+local bad ""
+foreach c in "scatter mpg weight, yaxis(0)|125|yaxis() invalid -- invalid numlist has elements outside of allowed range" ///
+             "scatter mpg weight, yaxis(10)|125|yaxis() invalid -- invalid numlist has elements outside of allowed range" ///
+             "scatter mpg weight, yaxis(2.5)|126|yaxis() invalid -- invalid numlist has noninteger elements" ///
+             "scatter mpg weight, xaxis(10)|125|xaxis() invalid -- invalid numlist has elements outside of allowed range" {
+    local at = strpos(`"`c'"', "|")
+    local cmd = substr(`"`c'"', 1, `at' - 1)
+    local rest = substr(`"`c'"', `at' + 1, .)
+    local at = strpos(`"`rest'"', "|")
+    local want = substr(`"`rest'"', 1, `at' - 1)
+    local nd = substr(`"`rest'"', `at' + 1, .)
+    _u05_rc `"`cmd'"' `"`nd'"'
+    if r(trc) != `want' | r(drc) != `want' | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`cmd': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+    _u05_rc `"`cmd'"' "two axes"
+    if r(dn) != 0 {
+        local bad `"`bad' [`cmd': dash says two axes]"'
+    }
+}
+_u05_rc "scatter mpg weight, yaxis(9)" ""
+if r(trc) != 0 | r(drc) != 0 {
+    local bad `"`bad' [yaxis(9): twoway `r(trc)', dash `r(drc)']"'
+}
+_u05_judge U09-4 `"`bad'"' "yaxis()/xaxis() bounds refused with twoway's rc and line, no dash sentence; yaxis(9) drawn"
+
+// U09-5: an axis(3) option needs a layer on axis 3, as twoway says.
+local bad ""
+_u05_rc "scatter mpg weight, ylabel(1 2, axis(3))" "ylabels(1 2, axis(3)) not allowed, yaxis3 does not exist"
+if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [unused: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+_u05_rc "(scatter mpg weight) (scatter length weight, yaxis(3)), ylabel(150(20)230, axis(3))" ""
+if r(trc) != 0 | r(drc) != 0 {
+    local bad `"`bad' [used: twoway `r(trc)', dash `r(drc)']"'
+}
+_u05_judge U09-5 `"`bad'"' "axis(3) options refused without a layer on axis 3 and taken with one, as twoway does"
+
+// U09-7: yaxis(3) on every kind of layer, rc 0 as twoway.
+local bad ""
+foreach c in "scatter mpg weight, yaxis(3)" "line mpg weight, sort yaxis(3)" "bar mpg weight, yaxis(3)" "rarea mpg price weight, sort yaxis(3)" "histogram mpg, yaxis(3)" {
+    _u05_rc `"`c'"' ""
+    if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+    }
+}
+_u05_judge U09-7 `"`bad'"' "yaxis(3) taken on scatter, line, bar, rarea and histogram, as twoway takes it"
+
+// U09-8: yaxis(1 2), WP-31 C10b's, still taken (guard).
+local bad ""
+_u05_rc "line mpg weight, yaxis(1 2)" ""
+if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+    local bad `"`bad' [yaxis(1 2): twoway `r(trc)', dash `r(drc)', notes `r(dnote)']"'
+}
+_u05_judge U09-8 `"`bad'"' "yaxis(1 2) taken as twoway takes it"
 
 // ----------------------------------------------------------------
 // Summary

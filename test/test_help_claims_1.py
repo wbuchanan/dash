@@ -25,7 +25,7 @@ pins:
   the help saying so.
 * "the two twoway plot types it refuses": there are four.
 * "a command copy-pasted from a do-file runs whenever dash draws its plot
-  type": yaxis(3), degree(4) and bin(2000) run in twoway and are refused.
+  type": degree(8) and bin(2000) run in twoway and are refused.
 * "scheme() is fully supported", beside a scheme section that says the
   range, fit and immediate layers do "not yet" take a scheme's opacity.
 * "The registry holds at most 100 items": $dash_max_graphs moves it.
@@ -485,11 +485,13 @@ _RANGE_AND_PC = ("rarea", "rbar", "rspike", "rcap", "rline", "rconnected",
 class TestTheDifferencesSection:
 
     def test_item_5_names_the_values_dash_refuses(self):
-        """HC1-16: yaxis(3), degree(8), bin(2000) run in twoway and are
-        refused by dash.  Flipped (WP-31 C10b): degree(4) is drawn."""
+        """HC1-16: degree(8), bin(2000) run in twoway and are refused by
+        dash.  Flipped (WP-31 C10b): degree(4) is drawn.  Flipped (WP-31
+        C10c): yaxis(3) is drawn, so the help names bin(2000)."""
         diff = _prose(_differences())
         assert ("runs whenever dash draws its plot type (see" not in diff)
-        assert "yaxis(3)" in diff and "Option values" in diff
+        assert "bin(2000)" in diff and "Option values" in diff
+        assert "yaxis(3)" not in diff
 
     def test_scheme_is_not_claimed_fully_supported(self):
         """The scheme section says where a scheme's opacity stops: at the

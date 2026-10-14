@@ -124,7 +124,8 @@
 *!          on the six joining types and tsline/tsrline, named elsewhere.
 *!   AX-01  _dash_route_axis2 rewrites each family's axis(2) form to dash's
 *!          second-axis key, drops axis(1), renames twoway's plurals and
-*!          leaves every refused form, and hostile text, as typed (P0.5).
+*!          leaves every refused form, and hostile text, as typed (P0.5);
+*!          takes an axis(3) form out for the axisn record (WP-31 C10c).
 *!   AX-02  _dash_axis_num: twoway's axis number (a whole number within
 *!          its integer bounds, else 1).
 *!   AX-03  every axis(#) form twoway refuses dash refuses, r(198), with
@@ -2879,12 +2880,18 @@ local out`n' `"ytick2(5000)"'
 local ++n
 local in`n'  `"yticks(1, axis(1))"'
 local out`n' `"ytick(1)"'
+// Flipped (WP-31 C10c): an axis(3) option leaves the text for the graph's
+// "axisn" record (asked of _dash_axisn_json below).
+local ++n
+local in`n'  `"ylabel(1, axis(3))"'
+local out`n' `""'
 // byte for byte
-foreach w in `"ymlabel(1, axis(2))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' `"ylabel(1, axis(3))"' {
+foreach w in `"ymlabel(1, axis(2))"' `"ylabel(5000, AXIS(2))"' `"ylabel(5000, axis(2) axis(1))"' `"ylabel(5000, angle(0), axis(2))"' {
     local ++n
     local in`n'  `"`w'"'
     local out`n' `"`w'"'
 }
+mata: _dash_axisn_clear()
 forvalues i = 1/`n' {
     capture mata: st_local("got", _dash_route_axis2(st_local("in`i'")))
     if _rc {
@@ -2898,6 +2905,13 @@ forvalues i = 1/`n' {
         local bad01 = 1
     }
 }
+mata: st_local("axn", _dash_axisn_json())
+mata: st_local("eq", strofreal(st_local("axn") == char(123) + char(34) + "y3" + char(34) + ":" + char(123) + char(34) + "label" + char(34) + ":" + char(34) + "1" + char(34) + char(125) + char(125)))
+if !`eq' {
+    mata: _dash_say("err", "AX-01 FAIL axisn ", st_local("axn"), "")
+    local bad01 = 1
+}
+mata: _dash_axisn_clear()
 // hostile text: a $, a backtick and a quoted "axis(2)" come back as typed;
 // a routed body is kept byte for byte.
 mata: st_local("h1", "ylabel(1 " + char(34) + char(36) + "x" + char(96) + "y'" + char(34) + ")")

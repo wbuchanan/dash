@@ -539,7 +539,9 @@ foreach f in dash dash_setup {
 _hx_pin special serve `"dash serve, port(5006)"'
 
 // expect -- the help shows each of these refused, and prints the refusal.
-_hx_pin expect 198 `"dash (scatter mpg weight, yaxis(3))"'
+// Flipped (WP-31 C10c): yaxis(3) is drawn; the help's refusal example
+// is degree(8).
+_hx_pin expect 198 `"dash (lpoly mpg weight, degree(8))"'
 _hx_pin expect 198 `"dash (scatter mpg weight, discrete)"'
 // Flipped (WP-31 A5): `dash lfit mpg weight [aw=price+1]' is no longer
 // refused (twoway evaluates the weight, and so does dash), so the help

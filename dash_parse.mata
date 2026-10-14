@@ -479,6 +479,17 @@
 *!   _dash_axreq_accept_line(row)
 *!       Marks row's line positions as read by numlist (WP-30 P1.21a).
 *!
+*!   _dash_axisn_clear()
+*!       Empties the external _dash_axisn, the axis options for axes 3-9
+*!       that _dash_route_axis2 took out of the option text (WP-31 C10c).
+*!
+*!   _dash_axisn_json()
+*!       The graph's "axisn" object, {"y3":{"label":"...",...},...}: one
+*!       entry per letter and axis, one key per family (title label tick
+*!       line scale), copies merged as the axis-2 key merges them; "" when
+*!       none.  _dash_axisn_add(d, n, family, value), which the route calls,
+*!       is its internal helper.
+*!
 *!   _dash_taxis_unit(fmt, family)
 *!       The date unit ("d" "w" "m" "q" "h" "y", "" or "c") twoway reads a
 *!       t-option's literal in on an axis of label format fmt: family 1
@@ -7242,6 +7253,9 @@ real scalar _dash_ax_parse(string scalar tok, string matrix fam,
 //   axis(2): written as dash's second-axis option -- ytitle2(), ylabel2(),
 //       ytick2(), yline2(), yscale2() -- the axis word dropped and the
 //       other words kept, each body byte for byte;
+//   axis(3) to axis(9) (WP-31 C10c): taken out of the list and recorded
+//       by _dash_axisn_add, value formed as for axis 2, for the graph's
+//       "axisn" object (a t option on those axes is left as typed);
 //   any other axis, an mlabel or mtick on axis 2, a second axis word, an
 //       axis word in capitals and a second comma: left as typed, for
 //       _dash_axreq_check to refuse in twoway's words (or, for ymlabel()
@@ -7284,6 +7298,16 @@ string scalar _dash_route_axis2(string scalar opts)
             }
         }
         else if (n == 2 & fam[r, 6] != "") dn = d + fam[r, 6]
+        else if (n >= 3 & n <= 9 & fam[r, 6] != "" & d != "t") {
+            // Axes three to nine (WP-31 C10c): the option leaves the text
+            // and is recorded for the graph's "axisn" object
+            // (_dash_axisn_json), its value formed as an axis-2 copy's.
+            _dash_axisn_add(d, n, fam[r, 1], (scale ? rest :
+                            body + (rest == "" ? "" : ", " + rest)))
+            toks[i] = ""
+            any = 1
+            continue
+        }
         else continue
         toks[i] = dn + "(" + (scale ? rest :
                   body + (rest == "" ? "" : ", " + rest)) + ")"
@@ -7292,7 +7316,10 @@ string scalar _dash_route_axis2(string scalar opts)
     // Nothing routed: the list exactly as typed, spacing and all (and no
     // join, which the 10,000-copy exhaustion case TP-14e times).
     if (!any) return(opts)
-    for (i = 1; i <= cols(toks); i++) out = out + (i > 1 ? " " : "") + toks[i]
+    for (i = 1; i <= cols(toks); i++) {
+        if (toks[i] == "") continue
+        out = out + (out == "" ? "" : " ") + toks[i]
+    }
     return(out)
 }
 
@@ -7469,6 +7496,65 @@ real scalar _dash_axreq_check(string scalar ys, string scalar xs)
     }
     _dash_axreq = J(0, 12, "")
     return(0)
+}
+
+// ==== axes three to nine (WP-31 C10c) ======================================
+// _dash_axisn_clear(), _dash_axisn_add(d, n, family, value) and
+// _dash_axisn_json(): the axis options written for axes 3-9 travel in the
+// graph's "axisn" object, {"y3":{"label":"...","title":"..."},...}, one
+// entry per (letter, axis, family); copies merge, in the order they were
+// typed, as the axis-2 key's category merges them (_dash_rep_merge).
+// Values are the user's text, escaped by _json_escape; nothing here is run.
+void _dash_axisn_clear()
+{
+    external string matrix _dash_axisn
+    _dash_axisn = J(0, 4, "")
+}
+
+void _dash_axisn_add(string scalar d, real scalar n, string scalar family,
+                     string scalar value)
+{
+    external string matrix _dash_axisn
+    if (rows(_dash_axisn) == 0 | cols(_dash_axisn) != 4) _dash_axisn = J(0, 4, "")
+    _dash_axisn = _dash_axisn \ (d, strofreal(n), family, value)
+}
+
+string scalar _dash_axisn_json()
+{
+    external string matrix _dash_axisn
+    string scalar    out, name, fams, v
+    string rowvector names, families
+    real scalar      i, j, k, seen
+
+    if (rows(_dash_axisn) == 0 | cols(_dash_axisn) != 4) return("")
+    families = ("title", "label", "tick", "line", "scale")
+    names = J(1, 0, "")
+    for (i = 1; i <= rows(_dash_axisn); i++) {
+        name = _dash_axisn[i, 1] + _dash_axisn[i, 2]
+        if (!anyof(names, name)) names = names, name
+    }
+    names = sort(names', 1)'
+    out = "{"
+    for (i = 1; i <= cols(names); i++) {
+        fams = ""
+        for (j = 1; j <= cols(families); j++) {
+            v = ""
+            seen = 0
+            for (k = 1; k <= rows(_dash_axisn); k++) {
+                if (_dash_axisn[k, 1] + _dash_axisn[k, 2] != names[i] |
+                    _dash_axisn[k, 3] != families[j]) continue
+                v = (seen ? _dash_rep_merge(_dash_axisn[k, 1] + families[j] + "2",
+                                            v, _dash_axisn[k, 4]) : _dash_axisn[k, 4])
+                seen = 1
+            }
+            if (!seen) continue
+            fams = fams + (fams == "" ? "" : ",") + char(34) + families[j] +
+                   char(34) + ":" + char(34) + _json_escape(v) + char(34)
+        }
+        out = out + (i > 1 ? "," : "") + char(34) + names[i] + char(34) +
+              ":{" + fams + "}"
+    }
+    return(out + "}")
 }
 
 // _dash_axreq_accept_line(row) -- marks row of _dash_axreq as a line

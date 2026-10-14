@@ -78,12 +78,13 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
 #: asserts the table in dash.ado carries every one of these; it may carry
 #: more, and the structural checks below apply to all of it.
 # WP-30 P1.12b: the line-width rules read Stata units (,u)
+# Flipped (WP-31 C10c): yaxis()/xaxis() take twoway's 1-9 (axes,1,9).
 CONTRACT_PLOT_RULES = """
 msize=style  mlabsize=style  mlabgap=style
 lwidth=style,0,10000,u  mlwidth=style,0,10000,u
 msangle=style,-360,360  mlabposition=style  fintensity=style
 jitter=num,0,100  jitterseed=int,0  jseed=int,0
-yaxis=axes,1,2  xaxis=axes,1,2
+yaxis=axes,1,9  xaxis=axes,1,9
 malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100
 base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci
 degree=int,0,7  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos

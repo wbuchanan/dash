@@ -476,6 +476,7 @@ program define _dash_require_mata
         _dash_computed_cells _dash_graph_touched _dash_qual_cols_in ///
         _dash_axis_pieces _dash_axis_fmts _dash_imm_echo ///
         _dash_axreq_clear _dash_axreq_add _dash_axreq_check ///
+        _dash_axisn_clear _dash_axisn_json ///
         _dash_axreq_accept_line _dash_reflines_positions ///
         _dash_axbound_list ///
         _dash_taxis_unit _dash_taxis_fmt _dash_tdate_ticks _dash_tdate_lines ///
@@ -3037,9 +3038,9 @@ end
 // scheme where a STYLE NAME (symbol, size, line width, pattern, angle,
 // clock position, intensity) is unknown; an unknown colour is drawn black
 // with the note, as twoway draws it (WP-30 P1.13a).  Every bound below was
-// measured against twoway (22sep2026, StataNow 19.5).  Five bounds are
+// measured against twoway (22sep2026, StataNow 19.5).  Four bounds are
 // dash's own rather than twoway's AND say so in a second sentence of the
-// refusal: yaxis/xaxis 1..2, degree 0..7, bin 1..1000, n 2..10000 (mspline's
+// refusal (yaxis/xaxis take twoway's 1..9 since WP-31 C10c): degree 0..7, bin 1..1000, n 2..10000 (mspline's
 // n 1..300 and bands 1..200 are twoway's) and the lowess bwidth (0,1].  The other dash-own bounds -- colornlevels 2..256,
 // jitter 0..100, level strictly inside 0..100, barwidth > 0, aspectratio
 // >= 0, jitterseed()/jseed() >= 0, kdensity bwidth > 0 -- are refused with
@@ -3097,7 +3098,7 @@ program define _dash_option_rules
         lwidth=style,0,10000,u  mlwidth=style,0,10000,u ///
         msangle=style,-360,360  mlabposition=style  fintensity=style ///
         jitter=num,0,100  jitterseed=int,0  jseed=int,0 ///
-        yaxis=axes,1,2  xaxis=axes,1,2 ///
+        yaxis=axes,1,9  xaxis=axes,1,9 ///
         malpha=num,0,100  lalpha=num,0,100  falpha=num,0,100 ///
         base=num  barwidth=pos  level=num@lfitci|qfitci|fpfitci ///
         degree=int,0,7  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
@@ -3271,10 +3272,8 @@ program define _dash_validate_value, rclass
 
     // Where the bound is dash's own and not twoway's, the message says so.
     local extra ""
-    if inlist("`opt'", "yaxis", "xaxis") {
-        local extra ". dash draws two axes."
-    }
-    else if "`opt'" == "degree" {
+    // yaxis()/xaxis() take twoway's 1 to 9 (WP-31 C10c): no sentence.
+    if "`opt'" == "degree" {
         // twoway takes any degree (degree(8) measured, WP-31 C10b); Stata's
         // rule-of-thumb constants, _LPOLY_ROT_CONSTANTS, stop at 7.
         local extra ". dash fits local polynomials up to degree 7."
@@ -7083,6 +7082,9 @@ program define _dash_plot
     // emptied for this command, filled per segment, checked and emptied
     // again after the options after the comma are merged.
     mata: _dash_axreq_clear()
+    // The axis options for axes 3-9, taken out of the option text by
+    // _dash_route_axis2, for the graph's "axisn" object (WP-31 C10c).
+    mata: _dash_axisn_clear()
     local _g_ys ""
     local _g_xs ""
     local _tx_list ""
@@ -7795,6 +7797,13 @@ program define _dash_plot
         local _at_cnt = `_at_cnt' * min(`_at_panels', r(value))
         _dash_added_text_cap `_at_cnt' `"`macval(g_name)'"'
         mata: st_local("gopts_json", st_local("gopts_json") + (`gfirst' ? "" : ",") + char(34) + "added_text_n" + char(34) + ":" + char(34) + "`_at_cnt'" + char(34) + "," + char(34) + "added_text" + char(34) + ":[" + st_local("_at_all") + "]")
+        local gfirst = 0
+    }
+    // Axes 3-9 (WP-31 C10c): their title, label, tick, line and scale
+    // options, as one "axisn" object; appended in Mata, never expanded.
+    mata: st_local("_axn", _dash_axisn_json())
+    if `: length local _axn' {
+        mata: st_local("gopts_json", st_local("gopts_json") + (`gfirst' ? "" : ",") + char(34) + "axisn" + char(34) + ":" + st_local("_axn"))
         local gfirst = 0
     }
     local gopts_json `"`gopts_json'}"'

@@ -1265,24 +1265,118 @@ def _dash_axis_numbers(options, key):
     return sorted(set(toks), key=lambda t: (len(t), t)) or ["1"]
 
 
-def _dash_axes_tied(plots, key):
-    """Whether a layer of *plots* names both axes of *key* (``"yaxis"`` or
-    ``"xaxis"``), as in ``line mpg weight, yaxis(1 2)`` (WP-31 C10b).
+def _dash_axis_nos(opts, letter):
+    """The axis numbers a layer's ``yaxis()``/``xaxis()`` (*letter* ``"y"``
+    or ``"x"``) names, as sorted distinct ints 1-9 (WP-31 C10c, over
+    :func:`_dash_axis_numbers`); a token that is no whole number 1-9 counts
+    as axis 1, and *opts* that is not a dict as no option: ``[1]``."""
+    if not isinstance(opts, dict):
+        return [1]
+    out = set()
+    for tok in _dash_axis_numbers(opts, letter + "axis"):
+        try:
+            n = int(str(tok))
+        except ValueError:
+            n = 1
+        out.add(n if 1 <= n <= 9 else 1)
+    return sorted(out) or [1]
 
-    twoway then ties axes 1 and 2 into ONE scale: the layer is drawn once,
-    in one plot region both axes read, and every other layer on either
-    axis joins that region (measured, test/fixtures/parsed_values_truth.json
-    ``yaxis.both``: one plot, scales 10-41 on both axes; ``yaxis.tied``:
-    with ``(line price weight, yaxis(2))`` beside it one region and one
-    scale 0-15906).  ``_dash_add_secondary_axes`` then puts the second axis
-    on the first axis's own range."""
+
+def _dash_axis_no(opts, letter):
+    """The one axis a layer's *letter* option puts it on, for a reader that
+    wants one: the lowest of :func:`_dash_axis_nos` -- a layer on several
+    axes draws once, on the scale they share (WP-31 C10b/C10c), which
+    axis 1 carries when it is among them."""
+    return min(_dash_axis_nos(opts, letter))
+
+
+def _dash_axis_groups(plots, letter):
+    """``{axis number: lowest number of its group}`` for every axis of
+    *letter* a layer of *plots* names, axis 1 always included (WP-31
+    C10c).  A layer naming several axes joins them into ONE scale, and every
+    layer on any of them joins it too (measured,
+    test/fixtures/axes_n_truth.json ``ties``: ``yaxis(1 3)`` beside
+    ``yaxis(3)`` and ``yaxis(2)`` draws axes 1 and 3 on one scale, 0-15906,
+    and axis 2 on its own; ``yaxis(2 3)`` ties 2 and 3 alone).  The groups
+    are the connected sets of that relation."""
+    parent = {1: 1}
+
+    def _find(n):
+        while parent[n] != n:
+            parent[n] = parent[parent[n]]
+            n = parent[n]
+        return n
+
     for p in plots or ():
         if not isinstance(p, dict):
             continue
-        nums = _dash_axis_numbers(p.get("options"), key)
-        if "1" in nums and "2" in nums:
-            return True
-    return False
+        nos = _dash_axis_nos(p.get("options"), letter)
+        for n in nos:
+            parent.setdefault(n, n)
+        for n in nos[1:]:
+            a, b = _find(nos[0]), _find(n)
+            if a != b:
+                parent[max(a, b)] = min(a, b)
+    return {n: _find(n) for n in sorted(parent)}
+
+
+def _dash_axisn_value(graph_opts, letter, n, family):
+    """The text of ``<letter><family>(..., axis(n))`` for axis *n* of
+    *letter* (*family* title, label, tick, line or scale): dash's
+    ``ylabel2``-style key for n == 2, the graph's ``axisn`` object for 3-9
+    (WP-31 C10c; dash.ado writes ``{"y3": {"label": ...}, ...}``); ``""``
+    when absent or of the wrong shape."""
+    go = graph_opts if isinstance(graph_opts, dict) else {}
+    if n == 2:
+        v = go.get(f"{letter}{family}2", "")
+        return v if isinstance(v, str) else ""
+    axisn = go.get("axisn")
+    if not isinstance(axisn, dict):
+        return ""
+    entry = axisn.get(f"{letter}{n}")
+    if not isinstance(entry, dict):
+        return ""
+    v = entry.get(family, "")
+    return v if isinstance(v, str) else ""
+
+
+def _dash_axis_side_default(letter, number, used=None, alt=False):
+    """The side axis *number* of *letter* sits on among the axis numbers
+    *used* of that letter (default ``(1, 2)``), as twoway places them
+    (WP-31 C10c, measured in test/fixtures/axes_n_truth.json ``sides``):
+    with three or more every axis is on the first side (left; below for
+    x), stacked outward in number order; with two the lower-numbered is on
+    the first side and the other opposite (axes 1 and 3: 3 on the right;
+    2 and 3: 2 on the left); with one, the first side.  *alt* swaps the
+    first side (``alt_yaxes``/``alt_xaxes``, WP-30 P1.2a)."""
+    if letter == "y":
+        first, other = ("right", "left") if alt else ("left", "right")
+    else:
+        first, other = ("above", "below") if alt else ("below", "above")
+    nos = sorted({int(u) for u in (used if used is not None else (1, 2))}
+                 | {int(number)})
+    if len(nos) != 2:
+        return first
+    return other if int(number) == nos[1] else first
+
+
+def _dash_range_canonical(fig, letter, name):
+    """The name the layers of the range *name* of *fig* are drawn under:
+    ``"default"`` when it is the figure's own range (an axis tied to axis 1),
+    else the lowest-numbered extra range holding the same object (axes
+    tied to each other, WP-31 C10c), else *name*."""
+    if name == "default":
+        return name
+    extra = getattr(fig, "extra_%s_ranges" % letter, None) or {}
+    rng = extra.get(name)
+    if rng is None:
+        return name
+    if rng is getattr(fig, letter + "_range", None):
+        return "default"
+    for other in sorted(extra, key=lambda k: (len(k), k)):
+        if extra[other] is rng:
+            return other
+    return name
 
 
 def _dash_layer_axis_names(plot, key):
@@ -1304,10 +1398,10 @@ def _dash_layer_axis_names(plot, key):
     opts = plot.get("options") or {}
     if not isinstance(opts, dict):
         opts = {}
-    # A layer on both axes (yaxis(1 2)) is on axis 1's scale, which the
-    # second axis reads then (WP-31 C10b).
-    axis_no = (2 if _dash_axis_numbers(opts, phys + "axis") == ["2"]
-               else 1)
+    # A layer on several axes (yaxis(1 2)) is on axis 1's scale when 1 is
+    # among them, which the others read then (WP-31 C10b); else on its
+    # lowest (WP-31 C10c).
+    axis_no = _dash_axis_no(opts, phys)
     letter = _dash_role_letter(plot, phys)
     key = letter + "var"
     if ptype in _DASH_UNIVARIATE_TYPES:
@@ -1343,8 +1437,7 @@ def _dash_axis_vars(plots, axis_no=1):
             opts = p.get("options") or {}
             if not isinstance(opts, dict):
                 opts = {}
-            if str(axis_no) not in _dash_axis_numbers(opts,
-                                                      letter + "axis"):
+            if int(axis_no) not in _dash_axis_nos(opts, letter):
                 continue
             role = _dash_role_letter(p, letter)
             if ptype in _DASH_UNIVARIATE_TYPES:
@@ -1450,7 +1543,8 @@ def _dash_layer_tick_format(plot, dim, numeric_formats, date_vars):
 
 def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
     """``{"x": (fmt, by_option), "y": ..., "x2": ..., "y2": ...}``: the
-    display format each axis is labelled in (WP-30 P1.5, TR-18.5).
+    display format each axis is labelled in (WP-30 P1.5, TR-18.5), and
+    ``"y3"``..``"x9"`` for an axis 3-9 a layer names (WP-31 C10c).
 
     twoway's several-layer rule, measured 03oct2026: of the layers on an
     axis, grouped by the axis they use in the other dimension, the axis
@@ -1473,8 +1567,12 @@ def _dash_axis_tick_formats(plots, numeric_formats, date_vars=None):
         ya = _dash_axis_numbers(opts, "yaxis")
         layers.append((i, p, xa, ya))
     out = {}
+    # Axes 1 and 2 always have an entry; 3-9 when a layer names them
+    # (WP-31 C10c).
+    used = {t for _i, _p, xa, ya in layers for t in xa + ya}
+    nums = ["1", "2"] + [str(k) for k in range(3, 10) if str(k) in used]
     for dim, other in (("x", "y"), ("y", "x")):
-        for n in ("1", "2"):
+        for n in nums:
             on = [(i, p, n, (ya if dim == "x" else xa)[0])
                   for i, p, xa, ya in layers
                   if n in (xa if dim == "x" else ya)]
@@ -1664,7 +1762,7 @@ def _dash_layer_in_axis_units(fig, renderers, annotations, plot, date_vars,
 
     def _convert(model, props, letter, range_name):
         nonlocal count
-        axis = letter if range_name == "default" else letter + "2"
+        axis = letter if range_name == "default" else range_name
         if _dash_axis_date_kind(fig, axis):
             return
         for prop in props:
@@ -4031,18 +4129,30 @@ def _dash_unused_second_axis_notes(graph):
     name = str(go.get("name", "") or "")
     out = []
     for d in ("y", "x"):
-        if any(isinstance(p, dict) and isinstance(p.get("options"), dict)
-               and str(p["options"].get(d + "axis", "1")).strip() == "2"
-               for p in plots):
-            continue
-        for key in _DASH_AXIS2_KEYS[d]:
-            v = go.get(key)
-            if isinstance(v, str) and v.strip():
-                out.append((
-                    ("axis2-unused", name, key),
-                    "dash: graph '%s': %s() (%s(..., axis(2))) is not drawn: "
-                    "no layer is on %saxis(2)."
-                    % (_dash_display(name), key, key[:-1], d)))
+        on = {n for p in plots if isinstance(p, dict)
+              for n in _dash_axis_nos(p.get("options"), d)}
+        if 2 not in on:
+            for key in _DASH_AXIS2_KEYS[d]:
+                v = go.get(key)
+                if isinstance(v, str) and v.strip():
+                    out.append((
+                        ("axis2-unused", name, key),
+                        "dash: graph '%s': %s() (%s(..., axis(2))) is not "
+                        "drawn: no layer is on %saxis(2)."
+                        % (_dash_display(name), key, key[:-1], d)))
+        # Axes 3-9 (WP-31 C10c): dash.ado refuses these as twoway does;
+        # a spec written another way is named here.
+        for n in range(3, 10):
+            if n in on:
+                continue
+            for fam in ("title", "label", "scale", "tick", "line"):
+                if _dash_axisn_value(go, d, n, fam).strip():
+                    key = f"{d}{fam}"
+                    out.append((
+                        ("axis2-unused", name, f"{key}{n}"),
+                        "dash: graph '%s': %s(..., axis(%d)) is not drawn: "
+                        "no layer is on %saxis(%d)."
+                        % (_dash_display(name), key, n, d, n)))
     return out
 
 
@@ -4060,8 +4170,10 @@ def _dash_lone_second_axes(spec):
     a side, its layers lose the yaxis(2)/xaxis(2) option and ytitle2(),
     ylabel2() and yscale2() (xtitle2() ...) become ytitle(), ylabel() and
     yscale() -- where one is given, it wins -- and both modes draw the one
-    axis as they draw any first axis.  Both loaders call this, before the
-    spec is drawn or embedded.  Returns a new dict and never modifies the
+    axis as they draw any first axis.  A lone axis 3-9 is drawn the same
+    way, its options moved from the graph's ``axisn`` object (WP-31 C10c,
+    measured: ``scatter mpg weight, yaxis(3)`` has one left axis).  Both
+    loaders call this, before the spec is drawn or embedded.  Returns a new dict and never modifies the
     caller's; a spec of the wrong shape is returned as it came.
     """
     if not isinstance(spec, dict) or not isinstance(spec.get("graphs"), list):
@@ -4074,13 +4186,18 @@ def _dash_lone_second_axes(spec):
                 or not all(isinstance(p, dict) for p in plots)):
             graphs.append(g)
             continue
+        # The one axis k >= 2 every layer of a side is on alone (WP-31
+        # C10c: any k, as twoway draws a lone yaxis(3) as one left axis).
         lone = []
+        lone_no = {}
         for side in ("y", "x"):
-            key = side + "axis"
-            if all(isinstance(p.get("options"), dict)
-                   and str(p["options"].get(key, "1")).strip() == "2"
-                   for p in plots):
-                lone.append(side)
+            nos = {tuple(_dash_axis_nos(p.get("options"), side))
+                   for p in plots}
+            if len(nos) == 1:
+                only = next(iter(nos))
+                if len(only) == 1 and only[0] >= 2:
+                    lone.append(side)
+                    lone_no[side] = only[0]
         if not lone:
             graphs.append(g)
             continue
@@ -4097,9 +4214,18 @@ def _dash_lone_second_axes(spec):
         go = g.get("graph_options")
         if isinstance(go, dict):
             go = dict(go)
+            axisn = go.get("axisn")
+            axisn = dict(axisn) if isinstance(axisn, dict) else None
             for side in lone:
+                k = lone_no[side]
+                entry = ((axisn or {}).pop(f"{side}{k}", None)
+                         if k >= 3 else None)
+                entry = entry if isinstance(entry, dict) else {}
                 for first in _DASH_LONE_AXIS_OPTIONS[side]:
-                    second = go.pop(first + "2", None)
+                    if k == 2:
+                        second = go.pop(first + "2", None)
+                    else:
+                        second = entry.get(first[1:])
                     # A raw "" is deliberately moved (it is not blank):
                     # ytitle2("") on a lone graph removes the one title.
                     if not (isinstance(second, str) and second.strip()):
@@ -4112,6 +4238,8 @@ def _dash_lone_second_axes(spec):
                         go[first] = had + ", " + second
                     else:
                         go[first] = second
+            if axisn is not None:
+                go["axisn"] = axisn
             g["graph_options"] = go
         graphs.append(g)
         changed = True
@@ -10846,17 +10974,16 @@ class SchemeParser:
         name = self.axis_styles.get((which, 2 if number == 2 else 1))
         return self._AXISSTYLE_FLAGS.get(name, (True, True))
 
-    def axis_side(self, which: str, number: int = 1) -> str:
-        """The panel axis *number* of *which* sits in: y1 on the left (the
-        right under `yesno alt_yaxes yes', economist), y2 opposite it; x1
-        below (above under alt_xaxes), x2 opposite (WP-30 P1.2a)."""
-        if which == "y":
-            alt = self.alt_yaxes
-            first, other = ("right", "left") if alt else ("left", "right")
-        else:
-            alt = self.alt_xaxes
-            first, other = ("above", "below") if alt else ("below", "above")
-        return other if number == 2 else first
+    def axis_side(self, which: str, number: int = 1, used=None) -> str:
+        """The panel axis *number* of *which* sits in among the axis
+        numbers *used* of that letter (default ``(1, 2)``): y1 on the left
+        (the right under `yesno alt_yaxes yes', economist), y2 opposite it;
+        x1 below (above under alt_xaxes), x2 opposite (WP-30 P1.2a).  With
+        three or more axes every one is on the first side, and with two the
+        higher-numbered is opposite (WP-31 C10c, measured;
+        :func:`_dash_axis_side_default`)."""
+        alt = self.alt_yaxes if which == "y" else self.alt_xaxes
+        return _dash_axis_side_default(which, number, used, bool(alt))
 
     def _cycle_for(self, plot_type: str) -> str:
         """Which p# colour cycle *plot_type* reads: ``"lineplot"``,
@@ -16034,8 +16161,8 @@ class GlyphMapper:
         opts = options if isinstance(options, dict) else {}
         axis = _dash_role_letter(
             {"type": _DASH_HORIZONTAL_TYPES[0], "options": opts}, axis)
-        two = str(opts.get(axis + "axis", "1")).strip() == "2"
-        return _dash_axis_date_kind(fig, axis + "2" if two else axis)
+        n = _dash_axis_no(opts, axis)
+        return _dash_axis_date_kind(fig, axis + str(n) if n > 1 else axis)
 
     def _unit_kind(self, fig, var, axis, options=None):
         """The date kind *var*'s values are drawn in on letter *axis*, or
@@ -31193,7 +31320,7 @@ def _dash_finish_off_date_axes(fig):
             letter = "x" if side in ("below", "above") else "y"
             name = (ax.x_range_name if letter == "x" else ax.y_range_name)
             kind = _dash_axis_date_kind(
-                fig, letter if name == "default" else letter + "2")
+                fig, letter if name == "default" else name)
             if kind is None:
                 continue
             _cols, vals = _dash_secondary_values(
@@ -32749,7 +32876,8 @@ def _dash_apply_axis_options(fig, graph_opts, xvar, yvar, frame,
 def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
                              key="", var_labels=None, scheme=None,
                              date_axes=None, fmt_cache=None):
-    """Build ``extra_y_ranges['y2']`` / ``extra_x_ranges['x2']`` and their axes.
+    """Build ``extra_y_ranges['y2']`` .. ``['y9']`` / ``extra_x_ranges`` alike
+    and their axes.
 
     A layer with yaxis(2) or xaxis(2) asks for a second axis whose range is
     computed from the rows the graph draws.  The generated app had no
@@ -32785,79 +32913,118 @@ def _dash_add_secondary_axes(fig, plots, graph_opts, frame, seen=None,
     marked with a date kind: it is a DatetimeAxis labelled in *fmt*, and a
     ``log`` asked of it is named once and not drawn (WP-30 P1.23a).
 
+    Axes 3-9 (WP-31 C10c) are built the same way, as ``y3``..``y9`` and
+    ``x3``..``x9``: their title and scale are read from the graph's
+    ``axisn`` object (:func:`_dash_axisn_value`), and each axis is placed
+    as twoway places it among the axes of its letter
+    (:func:`_dash_axis_side_default`; three or more stacked on the first
+    side, 1 innermost).  Axes a layer ties (``yaxis(2 3)``) share one
+    range object, the lowest's, and an axis tied to axis 1 reads the
+    figure's own range (:func:`_dash_axis_groups`).  The names made are
+    kept as ``fig._dash_extra_axes``.
+
     Returns ``(has_y2, has_x2)``.
     """
     from bokeh.models import DatetimeAxis, LinearAxis, LogAxis, Range1d
     has = {}
-    for axis_key, var_key, rng_attr, name, side, kw in (
-            ("yaxis", "yvar", "extra_y_ranges", "y2", "right", "y_range_name"),
-            ("xaxis", "xvar", "extra_x_ranges", "x2", "above", "x_range_name")):
-        wanted = any("2" in _dash_axis_numbers(p.get("options"), axis_key)
-                     for p in plots)
-        has[name] = wanted
-        if not wanted:
-            continue
-        if _dash_axes_tied(plots, axis_key):
-            # A layer on both axes ties them into one scale (WP-31 C10b,
-            # measured): the second axis reads the first axis's own range,
-            # the same object, so every re-finish, zoom and filter move of
-            # it is the second axis's too, in both modes.
-            getattr(fig, rng_attr)[name] = getattr(
-                fig, "y_range" if name == "y2" else "x_range")
-        else:
-            lo, hi = _compute_secondary_range(frame, plots, axis_key,
-                                              var_key, 2)
-            getattr(fig, rng_attr)[name] = Range1d(lo, hi)
-        n = name[0]
-        toks = _dash_by_tokens(str(graph_opts.get(f"{n}scale2", "") or ""))
-        is_log = "log" in [_dash_subopt_name(t) for t in toks]
-        if str(graph_opts.get("by", "") or "").strip():
-            dflt = ""
-        else:
-            dflt = _dash_axis_default_titles(
-                plots, var_labels, yaxis=2 if n == "y" else 1,
-                xaxis=2 if n == "x" else 1)[0 if n == "x" else 1]
-        text, opts = _dash_textbox_or_default(
-            graph_opts.get(f"{n}title2", ""), f"{n}title2", dflt, seen, key)
-        dated = (date_axes or {}).get(name)
-        if dated and is_log:
-            _dash_warn_once(
-                ("date-log2", name),
-                f"dash: {n}scale2(log) is meaningless for the date variable "
-                f"'{_dash_display(dated[0], 32)}'; drawing a date axis "
-                f"instead.")
-            is_log = False
-        if dated:
-            ax = DatetimeAxis(**{kw: name}, axis_label=text)
-        else:
-            ax = (LogAxis if is_log else LinearAxis)(
-                **{kw: name}, axis_label=text)
-        if scheme is not None:
-            # The second axis's own style (axisstyle *_nogrid) and side:
-            # under economist axis 1 of y is on the right, so axis 2 is on
-            # the left with its line and ticks (WP-30 P1.2a, measured in
-            # twoway: y2 labels left of the plot, ticks 1.388 units).
-            scheme.apply_to_axis(ax, n, 2)
-            side = scheme.axis_side(n, 2)
-        if dated:
-            ax.formatter = _dash_date_axis_formatter(
-                dated[1] or _dash_date_fmt("", _dash_axis_date_kind(fig, name)),
-                "", fmt_cache)
-        px = _textbox_size(
-            opts, ax.axis_label_text_font_size,
-            (getattr(scheme, "size_ref_in", 4.0) if scheme is not None
-             else OptionTranslator.size_ref_of(fig)), f"{n}title2(size)")
-        if px is not None:
-            ax.axis_label_text_font_size = px
-        colour, alpha = _textbox_color(
-            opts, None, base=ax.axis_label_text_color,
-            colours=getattr(fig, "_dash_scheme_colours", None),
-            with_alpha=True)
-        if colour is not None:
-            ax.axis_label_text_color = colour
-        if alpha is not None:
-            ax.axis_label_text_alpha = alpha
-        fig.add_layout(ax, side)
+    made = []
+    for axis_key, var_key, rng_attr, n, kw, main_attr in (
+            ("yaxis", "yvar", "extra_y_ranges", "y", "y_range_name",
+             "y_range"),
+            ("xaxis", "xvar", "extra_x_ranges", "x", "x_range_name",
+             "x_range")):
+        # Every axis 2-9 a layer names, each on the range of its group
+        # (WP-31 C10c): a layer naming several axes ties them into one
+        # scale, axis 1's own range when 1 is among them (WP-31 C10b).
+        groups = _dash_axis_groups(plots, n)
+        used = [k for k in groups if k >= 2]
+        has[n + "2"] = 2 in used
+        used_all = sorted(set(groups) | {1})
+        for num in used:
+            name = f"{n}{num}"
+            rep = groups[num]
+            if rep == 1:
+                # Tied to axis 1: the same object, so every re-finish,
+                # zoom and filter move of it is this axis's too, in both
+                # modes.
+                getattr(fig, rng_attr)[name] = getattr(fig, main_attr)
+            elif rep != num:
+                getattr(fig, rng_attr)[name] = getattr(fig, rng_attr)[
+                    f"{n}{rep}"]
+            else:
+                members = [k for k in used if groups[k] == rep]
+                spans = [_compute_secondary_range(frame, plots, axis_key,
+                                                  var_key, k)
+                         for k in members]
+                lo = min(sp[0] for sp in spans)
+                hi = max(sp[1] for sp in spans)
+                getattr(fig, rng_attr)[name] = Range1d(lo, hi)
+            made.append(name)
+            opt2 = f"{n}title2" if num == 2 else f"{n}title(axis({num}))"
+            toks = _dash_by_tokens(
+                _dash_axisn_value(graph_opts, n, num, "scale"))
+            is_log = "log" in [_dash_subopt_name(t) for t in toks]
+            if str(graph_opts.get("by", "") or "").strip():
+                dflt = ""
+            else:
+                dflt = _dash_axis_default_titles(
+                    plots, var_labels, yaxis=num if n == "y" else 1,
+                    xaxis=num if n == "x" else 1)[0 if n == "x" else 1]
+            raw_title = (graph_opts.get(f"{n}title2", "") if num == 2
+                         else _dash_axisn_value(graph_opts, n, num, "title"))
+            text, opts = _dash_textbox_or_default(raw_title, opt2, dflt,
+                                                  seen, key)
+            dated = (date_axes or {}).get(name)
+            if dated and is_log:
+                _dash_warn_once(
+                    ("date-log2", name),
+                    f"dash: {n}scale(log, axis({num})) is meaningless for "
+                    f"the date variable '{_dash_display(dated[0], 32)}'; "
+                    f"drawing a date axis instead." if num != 2 else
+                    f"dash: {n}scale2(log) is meaningless for the date "
+                    f"variable '{_dash_display(dated[0], 32)}'; drawing a "
+                    f"date axis instead.")
+                is_log = False
+            if dated:
+                ax = DatetimeAxis(**{kw: name}, axis_label=text)
+            else:
+                ax = (LogAxis if is_log else LinearAxis)(
+                    **{kw: name}, axis_label=text)
+            if scheme is not None:
+                # The axis's own style (axisstyle *_nogrid) and side:
+                # under economist axis 1 of y is on the right, so axis 2
+                # is on the left with its line and ticks (WP-30 P1.2a,
+                # measured in twoway: y2 labels left of the plot, ticks
+                # 1.388 units); three or more are stacked on the first
+                # side (WP-31 C10c).
+                scheme.apply_to_axis(ax, n, 2)
+                side = scheme.axis_side(n, num, used_all)
+            else:
+                side = _dash_axis_side_default(n, num, used_all)
+            if dated:
+                ax.formatter = _dash_date_axis_formatter(
+                    dated[1] or _dash_date_fmt(
+                        "", _dash_axis_date_kind(fig, name)),
+                    "", fmt_cache)
+            px = _textbox_size(
+                opts, ax.axis_label_text_font_size,
+                (getattr(scheme, "size_ref_in", 4.0) if scheme is not None
+                 else OptionTranslator.size_ref_of(fig)), f"{opt2}(size)"
+                if num == 2 else f"{n}title(size)")
+            if px is not None:
+                ax.axis_label_text_font_size = px
+            colour, alpha = _textbox_color(
+                opts, None, base=ax.axis_label_text_color,
+                colours=getattr(fig, "_dash_scheme_colours", None),
+                with_alpha=True)
+            if colour is not None:
+                ax.axis_label_text_color = colour
+            if alpha is not None:
+                ax.axis_label_text_alpha = alpha
+            fig.add_layout(ax, side)
+    # Every extra axis made, for a caller that needs more than the two
+    # flags (WP-31 C10c; a Python attribute, never serialised).
+    fig._dash_extra_axes = made
     return has["y2"], has["x2"]
 
 
@@ -33744,11 +33911,23 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
     fmts2 = (None if numeric_formats is None else
              _dash_axis_tick_formats(plots, numeric_formats,
                                      date_vars or {}))
-    for rng_attr, name, sides, kw, dim, axis_key in (
-            ("extra_y_ranges", "y2", ("left", "right"), "y_range_name", 1,
-             "yaxis"),
-            ("extra_x_ranges", "x2", ("below", "above"), "x_range_name", 0,
-             "xaxis")):
+    # Axes 2-9 (WP-31 C10c): every extra range named y2..y9 / x2..x9, in
+    # number order; axis n >= 3 reads its options from the graph's axisn
+    # object (_dash_axisn_value).  Axes tied into one range gather their
+    # values into it together (group_vals), so the last of them sets it
+    # over every one's layers, labels and range() values.
+    todo = []
+    for rng_attr, sides, kw, dim, axis_key, letter in (
+            ("extra_y_ranges", ("left", "right"), "y_range_name", 1,
+             "yaxis", "y"),
+            ("extra_x_ranges", ("below", "above"), "x_range_name", 0,
+             "xaxis", "x")):
+        for num in range(2, 10):
+            if f"{letter}{num}" in getattr(fig, rng_attr):
+                todo.append((rng_attr, f"{letter}{num}", sides, kw, dim,
+                             axis_key, num))
+    group_vals = {}
+    for rng_attr, name, sides, kw, dim, axis_key, num in todo:
         rng = getattr(fig, rng_attr).get(name)
         if rng is None:
             continue
@@ -33760,13 +33939,18 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         ax = axes[0] if axes else None
         n = name[0]
 
-        scale_raw = str(graph_opts.get(f"{n}scale2", "") or "").strip()
+        def _on(fam, _n=n, _num=num):
+            # The option's name in a note: dash's *2 key for axis 2, the
+            # axis(#) form for 3-9 (WP-31 C10c).
+            return f"{_n}{fam}2" if _num == 2 else f"{_n}{fam}(axis({_num}))"
+
+        scale_raw = _dash_axisn_value(graph_opts, n, num, "scale").strip()
         toks = _dash_by_tokens(scale_raw)
         names = [_dash_scale_name(t) for t in toks]
         _dash_report_suboptions(
-            f"{n}scale2", [t for t, nm in zip(toks, names)
+            _on("scale"), [t for t, nm in zip(toks, names)
                            if nm not in _DASH_SCALE2_SUBOPTS], seen, key)
-        want = _parse_scale_range(scale_raw, f"{n}scale2")
+        want = _parse_scale_range(scale_raw, _on("scale"))
         if n in (getattr(fig, "_dash_rescaled", None) or ()):
             # A by() panel on its own scale: range() is not applied, as in
             # twoway (WP-29 P0.2).
@@ -33776,35 +33960,40 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         if kind and want:
             # range() of a date axis in the variable's units (WP-30 P1.23a).
             _pos = _dash_axis_positions(want, kind)
-            _dash_note_not_dates(f"{n}scale2", [
+            _dash_note_not_dates(_on("scale"), [
                 _fmt_num(v) for v, p in zip(want, _pos) if p is None], kind)
             want = [p for p in _pos if p is not None]
 
         # The label positions are read before the range is set: unless
         # norescale, they widen the axis (WP-28 B2).
-        raw = str(graph_opts.get(f"{n}label2", "") or "")
+        raw = _dash_axisn_value(graph_opts, n, num, "label")
         spec = (_dash_parse_axis_spec(raw)
                 if raw.strip() and ax is not None else None)
         if spec is not None and kind:
-            spec = _dash_date_axis_spec(spec, kind, f"{n}label2")
+            spec = _dash_date_axis_spec(spec, kind, _on("label"))
         # ytick(..., axis(2)) -- dash's ytick2() (WP-29 P0.5): its positions
         # widen the axis as a label's do, unless norescale (twoway measured:
         # ytick(20000, axis(2)) runs yaxis2 to 20000); the first axis is
         # never touched by them.
-        tick_raw = str(graph_opts.get(f"{n}tick2", "") or "")
+        tick_raw = _dash_axisn_value(graph_opts, n, num, "tick")
         tspec = (_dash_parse_axis_spec(tick_raw)
                  if tick_raw.strip() and ax is not None else None)
         if tspec is not None and kind:
             with warnings.catch_warnings():
                 # _dash_apply_tick_option names the non-dates itself.
                 warnings.simplefilter("ignore")
-                tspec = _dash_date_axis_spec(tspec, kind, f"{n}tick2")
+                tspec = _dash_date_axis_spec(tspec, kind, _on("tick"))
 
         # WP-28 B2: the hull of what the layers drew, every range() value
         # and the label positions -- range() widens only, as yscale()'s
         # does; this set the range's ends to range()'s two values, so
         # yscale2(range(5000 6000)) cut the prices outside them off.
-        col_vals, all_vals = _dash_secondary_values(fig, kw, name)
+        # The layers are drawn under the lowest name of a tied group
+        # (_dash_assign_axis_ranges); an axis tied to axis 1 keeps its
+        # own name here, as WP-31 C10b had it.
+        cname = _dash_range_canonical(fig, n, name)
+        col_vals, all_vals = _dash_secondary_values(
+            fig, kw, name if cname == "default" else cname)
         vals = list(all_vals) + list(want)
         if spec is not None and not spec.get("norescale") \
                 and spec.get("mode") in ("explicit", "count"):
@@ -33815,6 +34004,10 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
         vals = [v for v in vals if math.isfinite(v)]
         if is_log:
             vals = [v for v in vals if v > 0]
+        if cname != "default" and cname != name:
+            # A later axis of a tied group: the group's values so far too.
+            vals = group_vals.get(id(rng), []) + vals
+        group_vals[id(rng)] = list(vals)
         # WP-30 P1.3a: the range() values and reverse, for the extent
         # _dash_hull_ranges gives this range once every axis is ticked.
         _sv2 = getattr(fig, "_dash_scale_values2", None) or {}
@@ -33846,7 +34039,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             rng.start, rng.end = rng.end, rng.start
 
         if spec is not None:
-            _dash_report_suboptions(f"{n}label2", spec.get("unsupported", []),
+            _dash_report_suboptions(_on("label"), spec.get("unsupported", []),
                                     seen, key)
             grids = []
             if spec.get("grid"):
@@ -33860,8 +34053,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             # for x2, as the primary axis maps through xvar/yvar.
             var2 = ""
             for _p in plots:
-                if "2" not in _dash_axis_numbers(_p.get("options"),
-                                                 axis_key):
+                if num not in _dash_axis_nos(_p.get("options"), n):
                     continue
                 if axis_key == "yaxis":
                     var2 = _p.get("yvar") or _p.get("yvar1") or ""
@@ -33872,7 +34064,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                               value_label_names)
             fb2 = ""
             if fmts2 is not None:
-                fb2, _by2 = fmts2[name]
+                fb2, _by2 = fmts2.get(name, ("", False))
                 if kind and not _by2:
                     fb2 = ""
                 elif not kind and not fb2 and not _by2 \
@@ -33890,11 +34082,11 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
             _dash_apply_axis_spec(ax, grids, spec, col_vals or None, fb2,
                                   grid_color, vlabels2, fmt_cache=fmt_cache,
                                   ref_in=ref_in, date_kind=kind,
-                                  option=f"{n}label2", by_graph=by_graph,
+                                  option=_on("label"), by_graph=by_graph,
                                   colours=colours,
                                   numticks=_nt2.get(name, _nt2.get(n, 5)))
         elif fmts2 is not None and ax is not None:
-            fb2, _by2 = fmts2[name]
+            fb2, _by2 = fmts2.get(name, ("", False))
             if kind and not _by2:
                 fb2 = ""
             elif not kind and not fb2 and not _by2 and formats is not None:
@@ -33911,7 +34103,7 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                                       None, fb2, grid_color, None,
                                       fmt_cache=fmt_cache,
                                       ref_in=OptionTranslator.size_ref_of(fig),
-                                      option=f"{n}label2")
+                                      option=_on("label"))
         if tspec is not None:
             # After the labels, so its CustomJSTicker keeps their ticks as
             # its labelled ones; whether or not ylabel2() is given.
@@ -33921,14 +34113,14 @@ def _dash_finish_secondary_axes(fig, graph_opts, seen=None, key="",
                          **{kw: name})
                 fig.add_layout(g, "center")
                 tgrids.append(g)
-            _dash_apply_tick_option([ax], tgrids, tick_raw, f"{n}tick2",
+            _dash_apply_tick_option([ax], tgrids, tick_raw, _on("tick"),
                                     col_vals or None, seen, key, grid_color,
                                     date_kind=kind, by_graph=by_graph,
                                     ref_in=ref_in)
         if ax is not None and scale_raw:
             # WP-30 P1.18a: the second axis's own look.
             _dash_apply_scale_look(fig, ax, _dash_scale_look(scale_raw),
-                                   f"{n}scale2", 2, by_graph, ref_in,
+                                   _on("scale"), 2, by_graph, ref_in,
                                    colours)
 
 
@@ -34017,16 +34209,16 @@ def _dash_count_axes(fig, every_axis=False, refinish=False):
                        else getattr(fig, extra_attr).get(name))
                 if rng is None:
                     continue
-                if rng is getattr(fig, main_attr):
-                    # A second axis tied to the first (yaxis(1 2), WP-31
-                    # C10b) reads the first's range and layers: one hull.
-                    name = "default"
+                # An axis tied to the first (yaxis(1 2), WP-31 C10b) reads
+                # the first's range and layers, axes tied to each other
+                # (yaxis(2 3), WP-31 C10c) the lowest one's: one hull.
+                name = _dash_range_canonical(fig, letter, name)
                 kind = None
                 if isinstance(ax, LogAxis):
                     kind = "log"
                 elif isinstance(ax, DatetimeAxis):
                     kind = _dash_axis_date_kind(
-                        fig, letter if name == "default" else letter + "2")
+                        fig, letter if name == "default" else name)
                     if kind is None:
                         continue        # a date axis of no known unit
                 ext = _dash_layer_extent(pool, range_attr, name, kind)
@@ -34450,8 +34642,11 @@ def _dash_hull_ranges(fig, entries, common=None, made=None):
                 if tied:
                     setattr(fig, extra, {**getattr(fig, extra), **tied})
         elif cur is not obj:
+            # Every axis tied to this range (WP-31 C10c) follows it.
             extra = "extra_%s_ranges" % letter
-            setattr(fig, extra, {**getattr(fig, extra), name: obj})
+            tied = {k: obj for k, v in getattr(fig, extra).items()
+                    if v is cur}
+            setattr(fig, extra, {**getattr(fig, extra), **tied, name: obj})
         for e in es:
             e["rng"] = obj
         done.append({"key": hkey, "letter": letter, "name": name,
@@ -34698,15 +34893,21 @@ def _dash_assign_axis_ranges(fig, renderers, options, annotations=()):
     put every label where the left axis reads the price, off its point.
     """
     from bokeh.models import ColorBar, Legend
-    # Only a layer on axis 2 alone moves (WP-31 C10b): a layer on both axes
-    # is on the one scale they share, and when the axes are tied the second
-    # range IS the first (_dash_add_secondary_axes), so nothing moves.
-    use_y2 = (_dash_axis_numbers(options, "yaxis") == ["2"]
-              and "y2" in fig.extra_y_ranges
-              and fig.extra_y_ranges["y2"] is not fig.y_range)
-    use_x2 = (_dash_axis_numbers(options, "xaxis") == ["2"]
-              and "x2" in fig.extra_x_ranges
-              and fig.extra_x_ranges["x2"] is not fig.x_range)
+    # A layer moves to the range of its lowest axis when that is 2-9 and
+    # the figure has it (WP-31 C10c); a layer on axis 1 among others is on
+    # the one scale they share, and an axis tied to axis 1 IS the first
+    # range (_dash_add_secondary_axes), so nothing moves (WP-31 C10b).
+    # Axes tied to each other share the lowest one's name.
+    names = {}
+    for letter in ("y", "x"):
+        n = _dash_axis_no(options, letter)
+        nm = f"{letter}{n}"
+        if n < 2 or nm not in getattr(fig, f"extra_{letter}_ranges"):
+            continue
+        nm = _dash_range_canonical(fig, letter, nm)
+        if nm != "default":
+            names[letter] = nm
+    use_y2, use_x2 = names.get("y"), names.get("x")
     if not (use_y2 or use_x2):
         return
     # A legend or a colour bar is placed on the screen, not at data
@@ -34717,9 +34918,9 @@ def _dash_assign_axis_ranges(fig, renderers, options, annotations=()):
     for r in list(renderers) + placed:
         try:
             if use_y2:
-                r.y_range_name = "y2"
+                r.y_range_name = use_y2
             if use_x2:
-                r.x_range_name = "x2"
+                r.x_range_name = use_x2
         except AttributeError:
             pass
 
@@ -40039,13 +40240,16 @@ def _dash_reference_lines(fig, graph_opts, seen=None, key="", scheme=None):
         # range (WP-29 P0.5), only where the figure has one: an unused
         # second-axis option is named at build time
         # (_dash_unused_second_axis_notes).  A line never widens an axis.
-        raw2 = (graph_opts or {}).get(opt + "2", "")
-        rname = "y2" if opt == "yline" else "x2"
+        # Axes 3-9 alike, from the graph's axisn object (WP-31 C10c).
+        letter = "y" if opt == "yline" else "x"
         extra = fig.extra_y_ranges if opt == "yline" else fig.extra_x_ranges
-        if isinstance(raw2, str) and raw2.strip() and rname in extra:
-            for values, style in _dash_refline_instances(raw2, bad):
-                _dash_refline_draw(fig, opt, dim, values, style, scheme,
-                                   Span, range_name=rname)
+        for num in range(2, 10):
+            raw2 = _dash_axisn_value(graph_opts, letter, num, "line")
+            rname = f"{letter}{num}"
+            if raw2.strip() and rname in extra:
+                for values, style in _dash_refline_instances(raw2, bad):
+                    _dash_refline_draw(fig, opt, dim, values, style, scheme,
+                                       Span, range_name=rname)
         if not raw:
             # The legacy list form, xline_values/yline_values: positions
             # only, no sub-options.  dash.ado never writes it; the saved
@@ -48406,9 +48610,14 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
-                         # a layer's yaxis()/xaxis() numbers, axes tied by
-                         # yaxis(1 2) (WP-31 C10b).
-                         "_dash_axis_numbers", "_dash_axes_tied",
+                         # a layer's yaxis()/xaxis() numbers (WP-31 C10b;
+                         # the tie is _dash_axis_groups', C10c).
+                         "_dash_axis_numbers",
+                         # axes 3-9: numbers, tied groups, the axisn
+                         # options, sides, tied range names (WP-31 C10c).
+                         "_dash_axis_nos", "_dash_axis_no",
+                         "_dash_axis_groups", "_dash_axisn_value",
+                         "_dash_axis_side_default", "_dash_range_canonical",
                          "_dash_refline_instances", "_dash_by_tokens_commas",
                          "_dash_refline_draw",
                          # xline/yline extent (WP-30 P1.21b).

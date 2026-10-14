@@ -13,8 +13,8 @@
 *!
 *! Option values (dash.sthlp, {marker validation}):
 *!   HC2-01  the refusal the help shows, word for word, as ONE line; twoway
-*!           accepts yaxis(3) and yaxis(9), refuses yaxis(10) ("twoway
-*!           allows nine")
+*!           and dash accept yaxis(3) and yaxis(9) and refuse yaxis(10)
+*!           (WP-31 C10c: dash draws axes 3-9)
 *!   HC2-02  a refusal comes before any Python: the one-line form refused
 *!           writes no file
 *!   HC2-03  yaxis(02), yaxis(+2), yaxis(2.0) and n(1E3) reach the spec as
@@ -352,19 +352,25 @@ end
 // ================================================================
 
 // HC2-01 -- the example the help prints, and twoway's nine axes.
-_hc2_dash "HC2-01a" 198 `"dash (scatter mpg weight, yaxis(3))"'
-_hc2_line_is "HC2-01b" "dash: yaxis() must be an integer between 1 and 2 (got: 3). dash draws two axes."
-_hc2_said "yaxis()"
+// Flipped (WP-31 C10c): dash draws yaxis(3), so the help's example is
+// degree(8), dash's own bound; yaxis(3), (9) and (10) are answered as
+// twoway answers them.
+_hc2_dash "HC2-01a" 198 `"dash (lpoly mpg weight, degree(8))"'
+_hc2_line_is "HC2-01b" "dash: degree() must be an integer between 0 and 7 (got: 8). dash fits local polynomials up to degree 7."
+_hc2_said "degree()"
 _hc2_ok "HC2-01c" `=r(n) == 1' "the refusal is one line"
 _hc2_expect "HC2-01d" 0   `"twoway scatter mpg weight, yaxis(3)"'
 _hc2_expect "HC2-01e" 0   `"twoway scatter mpg weight, yaxis(9)"'
 _hc2_expect "HC2-01f" 125 `"twoway scatter mpg weight, yaxis(10)"'
+_hc2_dash "HC2-01g" 0   `"dash (scatter mpg weight, yaxis(3)) (scatter price weight, yaxis(9)), name(hc)"'
+_hc2_dash "HC2-01h" 125 `"dash scatter mpg weight, yaxis(10) name(hc)"'
 
 // HC2-02 -- refused before any Python: nothing is written.
 tempfile hc2f
 local hc2out "`hc2f'_02.html"
 capture erase "`hc2out'"
-_hc2_dash "HC2-02a" 198 `"dash scatter mpg weight, yaxis(3) saving("`hc2out'")"'
+// Flipped (WP-31 C10c): yaxis(3) is drawn; degree(8) is refused.
+_hc2_dash "HC2-02a" 198 `"dash lpoly mpg weight, degree(8) saving("`hc2out'")"'
 capture confirm file "`hc2out'"
 _hc2_ok "HC2-02b" `=_rc != 0' "the refused one-line form wrote no file"
 
@@ -500,8 +506,10 @@ _hc2_tail "HC2-12f" n ". dash evaluates up to 10000 points."
 // Flipped (WP-31 C10a): twoway's rc (test/fixtures/value_bounds_truth.json).
 _hc2_dash "HC2-12g" 0 `"dash lowess mpg weight, bwidth(5) name(hc)"'
 _hc2_dash "HC2-12h" 0 `"dash lowess mpg weight, bwidth(-1) name(hc)"'
-_hc2_dash "HC2-12i" 198 `"dash scatter mpg weight, xaxis(3) name(hc)"'
-_hc2_tail "HC2-12j" xaxis ". dash draws two axes."
+// Flipped (WP-31 C10c): xaxis(3) is drawn, and xaxis(10) is twoway's
+// r(125), with no sentence of dash's.
+_hc2_dash "HC2-12i" 0 `"dash scatter mpg weight, xaxis(3) name(hc)"'
+_hc2_dash "HC2-12j" 125 `"dash scatter mpg weight, xaxis(10) name(hc)"' "xaxis() invalid -- invalid numlist has elements outside of allowed range"
 // Flipped (WP-31 C10a): n(1) is twoway's; n(0) is refused with no
 // second sentence, its lower bound being twoway's.
 _hc2_dash "HC2-12k" 198 `"dash lfit mpg weight, n(0) name(hc)"'

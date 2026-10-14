@@ -823,7 +823,7 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
     names the four {cmd:twoway} plot types it refuses -- and can draw the
     values it is given: a few values {cmd:twoway} accepts, such as
-    {cmd:yaxis(3)}, are more than {cmd:dash} draws and are refused (see
+    {cmd:bin(2000)}, are more than {cmd:dash} draws and are refused (see
     {help dash##validation:Option values} below).  Anything {cmd:dash}
     cannot honour is named once per command, in a single note:
 
@@ -953,8 +953,8 @@ there, is an invalid point.  The literal is read as data and never run.
     exist:
 
 {phang3}{cmd:. sysuse auto, clear}{p_end}
-{phang3}{cmd:. dash (scatter mpg weight, yaxis(3))}{p_end}
-{phang3}{cmd:dash: yaxis() must be an integer between 1 and 2 (got: 3). dash draws two axes.}{p_end}
+{phang3}{cmd:. dash (lpoly mpg weight, degree(8))}{p_end}
+{phang3}{cmd:dash: degree() must be an integer between 0 and 7 (got: 8). dash fits local polynomials up to degree 7.}{p_end}
 
 {phang2}    The bounds checked in Stata.  Numbers: {cmd:jitter()} 0 to 100;
     {cmd:malpha()}, {cmd:lalpha()} and {cmd:falpha()} 0 to 100;
@@ -1026,9 +1026,7 @@ there, is an invalid point.  The literal is read as data and never run.
 
 {phang2}    Some of those bounds are {cmd:dash}'s own: {cmd:twoway} accepts
     the value, and {cmd:dash} refuses it because it could not draw it.
-    Four say so in a second sentence of the message: {cmd:yaxis()} and
-    {cmd:xaxis()} 1, 2 or both ({cmd:dash} draws two axes; {cmd:twoway} allows
-    nine), {cmd:degree()} 0 to 7 (Stata's rule-of-thumb constants stop
+    Three say so in a second sentence of the message: {cmd:degree()} 0 to 7 (Stata's rule-of-thumb constants stop
     there), {cmd:bin()} up to 1000, and {cmd:n()} up
     to 10000 (on {cmd:mspline}, 1 to 300 is {cmd:twoway}'s own bound).
     The others carry no second sentence: {cmd:jitter()} 0 to 100,
@@ -3890,14 +3888,26 @@ Both are plot-level options, given inside the layer's parentheses.  Either
 takes 1, 2 or both: a layer on {opt yaxis(1 2)} is drawn once and ties the
 two axes into one scale, as {cmd:twoway} ties them -- the right-hand axis
 reads the left's scale, and every layer on either axis is drawn on it,
-through every filter move.  {cmd:dash} draws two axes where {cmd:twoway}
-allows nine, and any other number is refused.
+through every filter move.  As in {cmd:twoway}, {opt yaxis()} and
+{opt xaxis()} take any of 1 to 9 ({cmd:yaxis(10)} is refused with
+{cmd:twoway}'s r(125) and line).  With three or more y axes every one is
+drawn on the left, axis 1 nearest the plot and the others outward in number
+order; with two, the lower-numbered is on the left and the other on the
+right ({cmd:yaxis(1)} and {cmd:yaxis(3)}: axis 3 on the right); x axes
+alike, below and above -- as {cmd:twoway} places them under {cmd:s2color}.
+A layer naming several axes ({cmd:yaxis(2 3)}) ties them into one scale
+with every layer on any of them, as {cmd:twoway} does, and every layer on
+one axis 3 to 9 alone is drawn on one left (bottom) axis.  {it:Difference}
+{it:from twoway:} an axis 3 to 9 of a date variable is labelled with its
+numbers.
 
 {pstd}
 As in {cmd:twoway}, the sub-option {cmd:axis(2)} puts {cmd:ytitle()},
 {cmd:ylabel()}, {cmd:ytick()}, {cmd:yline()} and {cmd:yscale()} -- and the
 x forms -- on the second axis, and {cmd:axis(1)}, or no {cmd:axis()}, on the
-first: {cmd:ylabel(5000 10000, axis(2))} labels the right-hand axis,
+first, and {cmd:axis(3)} to {cmd:axis(9)} on that axis (the {it:t}
+forms, {cmd:tlabel()} and the rest, reach axes 1 and 2 only):
+{cmd:ylabel(5000 10000, axis(2))} labels the right-hand axis,
 {cmd:yscale(log axis(2))} makes it a log axis, {cmd:yline(5000, axis(2))}
 is drawn on its scale and {cmd:ytick(7500, axis(2))} ticks it, in the saved
 page and the served app, before and after any filter move.  Each axis keeps

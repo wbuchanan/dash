@@ -971,7 +971,7 @@ Changed behaviour.
 
 - The option-abbreviation truth was an 18 Sep 2026 pre-fix record; it is regenerated live and every option minimum is pinned both ways. (WP-31, A3)
 
-<!-- WP-31 C10c -->
+- yaxis(3) to yaxis(9) and xaxis(3) to xaxis(9) are drawn: dash scatter mpg weight, yaxis(3) was refused, r(198), "dash draws two axes", and is now drawn as twoway draws it, in the saved page and the served app -- with three or more y axes all on the left, axis 1 nearest the plot and the others outward in number order, with two the higher-numbered on the right (x axes alike, below and above), a layer naming several axes tying them into one scale; ylabel(), ytitle(), ytick(), yline() and yscale() with axis(3) to axis(9) reach that axis; yaxis(10) is refused with twoway's r(125) "yaxis() invalid -- invalid numlist has elements outside of allowed range". (WP-31, C10c)
 
 <!-- WP-31 B1 -->
 
