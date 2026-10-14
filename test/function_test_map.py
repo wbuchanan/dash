@@ -158,6 +158,7 @@ FUNCTIONS = {
  'GlyphMapper._apply_mlabel_opts': 'test/test_glyphs.py::TestMlabwidth::test_mlabwidth_label_still_created',
  'GlyphMapper._bootstrap_ci': 'test/test_statistical_defaults.py::TestBootstrapConfiguration::test_confidence_level_widens_the_band',
  'GlyphMapper._build_jitter_source': 'test/test_jitter.py::TestStatasOwnSeedSpelling::test_the_jittered_columns_are_not_the_originals',
+ 'GlyphMapper._pc_recast': 'test/test_recast_range_pc.py::TestPciRecast::test_each_target',
  'GlyphMapper._cmiss_gap_x': 'test/test_area_cmissing.py::TestTheHelper::test_gap_x',
  'GlyphMapper._masked_rows': 'test/test_area_cmissing.py::TestTheHelper::test_gap_x',
  'GlyphMapper._layer_units': 'test/test_date_units.py::TestTheUnitHelpers::test_layer_units_drops_unconvertible_rows_jointly',

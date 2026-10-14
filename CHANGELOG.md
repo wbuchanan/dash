@@ -395,7 +395,7 @@ and now matches Stata.
 
 - area mpg weight, cmissing(n): the fill breaks at a missing row, one filled region per run of present rows, as twoway draws it (was: bridged, cmissing() named in the note); rarea draws connect() on both bounds (rarea lo hi x, connect(stairstep) is stepped, was: direct and named); lowess, lpoly, lpolyci, fpfit and fpfitci break their line, and the ci types their band, where their own result is missing (was: bridged, named). (WP-31, C6)
 
-<!-- WP-31 C7 -->
+- histogram mpg, recast(rarea): drawn as an rarea over the bin centres from 0 to each bin's height, as twoway draws it (was: named, bars drawn); every range type is drawn so, rbar with the histogram's own bars and gap() and baroffset(), and an unknown name prints twoway's two notes and draws rspike; pci and pcarrowi with recast(pcarrow), (pcscatter), (pcbarrow), (pccapsym) or (pcspike) draw that type (was: named, drawn as typed). (WP-31, C7)
 
 <!-- WP-31 C8a -->
 

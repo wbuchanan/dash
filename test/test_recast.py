@@ -281,5 +281,11 @@ class TestTheHelp:
             text = fh.read()
         assert "{phang}{ul:Recast.}  {opt recast(plottype)}" in text
         flat = re.sub(r"\s+", " ", text)
-        assert "{cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}" in flat
+        # Flipped (WP-31 C7): "recast() on pci and pcarrowi" in the Not
+        # drawn entry was wrong because twoway draws them as the pc type
+        # named (area_cmissing_truth.json P01, P02) and dash now does; the
+        # Recast paragraph says so, with histogram's range types.
+        assert "{cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}" not in flat
+        assert "{cmd:pci} and {cmd:pcarrowi} take the {cmd:pc} types" in flat
+        assert "{cmd:histogram} also takes the range types" in flat
         assert "name the plot type you want directly" not in flat

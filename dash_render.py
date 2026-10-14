@@ -18702,6 +18702,28 @@ class GlyphMapper:
             "left":  _hl,
             "right": _hr,
         })
+        # recast() to a range type (WP-31 C7): the bins drawn as the
+        # range over (centre, 0, height), as twoway draws histogram's
+        # y2xview (area_cmissing_truth.json H01); rbar's bars are the
+        # histogram's own, gap() and baroffset() honoured (H04, H09), the
+        # other range types stand at the centres (H05, H12).
+        _tgt = options.get("recast")
+        if isinstance(_tgt, str) and _tgt in self._CIPLOT_RANGE:
+            _hopts = {k: v for k, v in options.items()
+                      if k not in self._HIST_RECAST_KEYS}
+            _hc = (np.asarray(axis_edges[i0:i1], dtype=float)
+                   + np.asarray(axis_edges[i0 + 1:i1 + 1], dtype=float)) \
+                / 2.0
+            if _tgt == "rbar":
+                _hc = (np.asarray(_hl, dtype=float)
+                       + np.asarray(_hr, dtype=float)) / 2.0
+                if len(_hl):
+                    _hopts["barwidth"] = "%.17g" % float(_hr[0] - _hl[0])
+            _rng = ColumnDataSource({
+                "x": _hc, "lo": np.zeros(len(_hc)),
+                "hi": np.asarray(tops[i0:i1], dtype=float)})
+            return self._dash_draw_range_as(fig, _rng, "x", "lo", "hi", _tgt,
+                                            _hopts, color_idx)
         # recast(): the bars' midpoints and heights drawn as the target,
         # as twoway draws histogram's serset (WP-30 P1.8b).
         if options.get("recast"):
@@ -20337,8 +20359,24 @@ class GlyphMapper:
         # source read by name reads what it read when this method drew the
         # segments itself.
         src = ColumnDataSource({"y0": y1, "x0": x1, "y1": y2, "x1": x2})
-        return self.map_pcspike(fig, src, "y0", "x0", "y1", "x1", options,
-                                color_idx=color_idx)
+        # recast() (WP-31 C7): the segments drawn as the pc type named,
+        # checked by membership (area_cmissing_truth.json P01, P05).
+        _draw, _opts = self._pc_recast(options, self.map_pcspike)
+        return _draw(fig, src, "y0", "x0", "y1", "x1", _opts,
+                     color_idx=color_idx)
+
+    def _pc_recast(self, options, default):
+        """``(mapper, options)`` a pci or pcarrowi layer is drawn by: the pc
+        type its recast() names (dash.ado writes yxyxtype's canonical name,
+        an unknown one as pcspike after twoway's notes; WP-31 C7) or
+        *default*, with the recast words taken out of the options.  A name
+        that is not a pc type keeps *default*."""
+        tgt = (options or {}).get("recast")
+        table = _dash_pc_dispatch(self)
+        if not isinstance(tgt, str) or tgt not in table:
+            return default, options
+        return table[tgt], {k: v for k, v in options.items()
+                            if k not in ("recast", "type")}
 
     def map_pcscatter(
         self,
@@ -21208,7 +21246,9 @@ class GlyphMapper:
         labels = [labels[i] for i in keep] if len(labels) else labels
         clocks = [clocks[i] for i in keep] if len(clocks) else clocks
         src = ColumnDataSource({"y1": y1, "x1": x1, "y2": y2, "x2": x2})
-        out = self.map_pcarrow(fig, src, "y1", "x1", "y2", "x2", options,
+        # recast() (WP-31 C7): the arrows drawn as the pc type named (P02).
+        _draw, _popts = self._pc_recast(options, self.map_pcarrow)
+        out = _draw(fig, src, "y1", "x1", "y2", "x2", _popts,
                                color_idx=color_idx)
         if any(labels):
             # A label sits at its arrow's tail, and only on an arrow drawn.
@@ -21843,6 +21883,13 @@ class GlyphMapper:
             fig, pts, "y", "x", opts, view=None, color_idx=color_idx, **kw)
         added = list(fig.renderers[before:])
         return added[0] if added else None
+
+    #: A histogram's own option keys, not handed to the range type its
+    #: bins are recast to (WP-31 C7): the binning, the y scale and the
+    #: bar geometry, which the recast reads itself.
+    _HIST_RECAST_KEYS = ("recast", "type", "bin", "width", "start",
+                         "discrete", "density", "fraction", "frequency",
+                         "percent", "gap", "baroffset", "barwidth")
 
     #: The range types ciplot() draws a band as (y2xtype's range names,
     #: fit_options_truth.json); a yx type is drawn through the lower limit.

@@ -2631,8 +2631,9 @@ if inlist("`only'", "", "S13") & `: list posof "S13" in w31_run' {
 // globals u14_tpoly, u14_tnv and u14_truns.  _u14_draw: what a registered
 // dash graph draws, saved and served (_u03_docs): the first VArea's
 // filled runs (its vertex list split at each zero-height pair) as x
-// extents, its vertex count, and the first visible Line's runs, into
-// u14_poly<s|v>, u14_nv<s|v> and u14_runs<s|v>.
+// extents, its vertex count, the first visible Line's runs and every
+// glyph's type, into u14_poly<s|v>, u14_nv<s|v>, u14_runs<s|v> and
+// u14_k<s|v>.
 python:
 def _u14_fit(path, axis):
     from svg_truth import svg_axis_reading
@@ -2683,11 +2684,12 @@ def _u14_draw(sp, dp, app):
             return float("nan")
 
     for figs, sfx in ((a, "s"), (b, "v")):
-        poly, nv, runs = [], "0", []
+        poly, nv, runs, kinds = [], "0", [], []
         for f in figs:
             for r in f.renderers:
                 g = getattr(r, "glyph", None)
                 t = type(g).__name__
+                kinds.append(t)
                 d = r.data_source.data
                 if t == "VArea" and not poly:
                     xs = [num(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
@@ -2725,6 +2727,7 @@ def _u14_draw(sp, dp, app):
         Macro.setGlobal("u14_poly" + sfx, " ".join(poly))
         Macro.setGlobal("u14_nv" + sfx, nv)
         Macro.setGlobal("u14_runs" + sfx, " ".join(runs))
+        Macro.setGlobal("u14_k" + sfx, " ".join(kinds))
 end
 
 capture program drop _u14_reg
@@ -2845,6 +2848,76 @@ if inlist("`only'", "", "S14") & `: list posof "S14" in w31_run' {
         capture erase "`u14d'/a`k'.py"
         capture erase "`u14d'/n`k'.log"
         capture erase "`u14d'/t`k'.svg"
+    }
+    capture rmdir "`u14d'"
+    capture graph drop _all
+    dash clear
+    display as text "S14 end " c(current_date) " " c(current_time)
+}
+* ==== end S14 ====
+
+* ==== S14 C7: recast to range and pc types ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S14") & `: list posof "S14" in w31_run' {
+    display as text "S14 start " c(current_date) " " c(current_time)
+    local u14d "`w31_work'/s14c7"
+    capture mkdir "`u14d'"
+    capture graph drop _all
+    set scheme stcolor
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U14-04: histogram recast(rarea) is twoway's rarea and dash's
+    // VArea, both modes, no note; recast(bogus): twoway's two notes in
+    // dash's log and rspike's Segment drawn, rc 0 both.
+    // ------------------------------------------------------------
+    quietly twoway histogram mpg, recast(rarea) name(u14t, replace)
+    local tty "`.u14t.plotregion1.plot1.type.setting'"
+    _u14_reg "`u14d'" 4 histogram mpg, recast(rarea) name(zu4)
+    cert_log_has "`u14d'/n4.log", needle("recast")
+    local nn = r(count)
+    _w31_expect U14-04 `"("`tty'" == "rarea") & strpos("${u14_ks}", "VArea") & strpos("${u14_kv}", "VArea") & !strpos("${u14_ks}", "Quad") & (`nn' == 0)"' "twoway type `tty'; dash saved ${u14_ks} served ${u14_kv}; note names recast `nn' times"
+    capture noisily twoway histogram mpg, recast(bogus) name(u14t, replace)
+    local tw = _rc
+    local tty "`.u14t.plotregion1.plot1.type.setting'"
+    capture noisily _u14_reg "`u14d'" 5 histogram mpg, recast(bogus) name(zu5)
+    local dr = _rc
+    cert_log_has "`u14d'/n5.log", needle("named style bogus not found in class y2xtype")
+    local n1 = r(count)
+    cert_log_has "`u14d'/n5.log", needle("y2xtype not found in scheme")
+    local n2 = r(count)
+    _w31_expect U14-04 `"(`tw' == 0) & (`dr' == 0) & ("`tty'" == "rspike") & (`n1' == 1) & (`n2' == 1) & strpos("${u14_ks}", "Segment") & strpos("${u14_kv}", "Segment")"' "recast(bogus): twoway r(`tw') `tty', dash r(`dr') ${u14_ks} / ${u14_kv}, notes `n1' `n2'"
+    _w31_done U14-04 "histogram recast(rarea) draws twoway's rarea, recast(bogus) twoway's notes and rspike, saved and served"
+
+    // ------------------------------------------------------------
+    // U14-05: pci recast(pcarrow) and pcarrowi recast(pcscatter): the
+    // spec carries the target, dash draws its glyphs, twoway's type is
+    // the target; no note.
+    // ------------------------------------------------------------
+    local k 6
+    foreach c in "pci 20 2000 30 4000, recast(pcarrow)|pcarrow|MultiLine" "pcarrowi 20 2000 30 4000, recast(pcscatter)|pcscatter|Scatter" {
+        gettoken cmd rest : c, parse("|")
+        local rest = substr("`rest'", 2, .)
+        gettoken tg gl : rest, parse("|")
+        local gl = substr("`gl'", 2, .)
+        quietly twoway `cmd' name(u14t, replace)
+        local tty "`.u14t.plotregion1.plot1.type.setting'"
+        _u14_reg "`u14d'" `k' `cmd' name(zu`k')
+        cert_log_has "`u14d'/n`k'.log", needle("recast")
+        local nn = r(count)
+        cert_file_has "`u14d'/s`k'.json", needle(`""recast":"`tg'""')
+        local sp = r(found)
+        _w31_expect U14-05 `"("`tty'" == "`tg'") & strpos("${u14_ks}", "`gl'") & strpos("${u14_kv}", "`gl'") & (`nn' == 0) & (`sp')"' "`cmd': twoway `tty'; dash ${u14_ks} / ${u14_kv}; spec recast `sp'; note `nn'"
+        local ++k
+    }
+    _w31_done U14-05 "pci and pcarrowi recast() draw the pc type named, as twoway does, saved and served"
+
+    forvalues k = 4/7 {
+        foreach p in s d {
+            capture erase "`u14d'/`p'`k'.json"
+        }
+        capture erase "`u14d'/a`k'.py"
+        capture erase "`u14d'/n`k'.log"
     }
     capture rmdir "`u14d'"
     capture graph drop _all

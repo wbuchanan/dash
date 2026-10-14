@@ -444,7 +444,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C4b Tracked:** Open (WP-31 section 41).
 - **C5 Tracked:** Closed in WP-31, BUGS.md "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn", commit c44d542.
 - **C6 Tracked:** Closed in WP-31, BUGS.md "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn", commit pending.
-- **C7 Tracked:** Open (WP-31 section 14).
+- **C7 Tracked:** Closed in WP-31, BUGS.md "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them", commit pending.
 - **C8a Tracked:** Open (WP-31 section 15).
 - **C8b Tracked:** Open (WP-31 section 17).
 - **C9 Tracked:** Open (WP-31 section 20).

@@ -3004,7 +3004,16 @@ time order.  The fits and smooths, {cmd:kdensity}, {cmd:function},
 them as {cmd:scatter}, {cmd:line}, {cmd:connected}, {cmd:area},
 {cmd:bar} (one x unit wide), {cmd:spike}, {cmd:dropline} or {cmd:dot},
 keyed as the layer is keyed without it; on the saved page a recast fit
-or density is marked after a filter move, as the fits are.  The
+or density is marked after a filter move, as the fits are.  A
+{cmd:histogram} also takes the range types ({cmd:rarea}, {cmd:rbar},
+{cmd:rspike}, {cmd:rcap}, {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline},
+{cmd:rconnected}), its bins drawn as the range from 0 to each bin's
+height at the bin's centre; {cmd:rbar}'s bars are the histogram's own,
+{cmd:gap()} and {cmd:baroffset()} honoured, and the other range types
+stand at the centres, as {cmd:twoway} draws them.  {cmd:pci} and
+{cmd:pcarrowi} take the {cmd:pc} types ({cmd:pcspike}, {cmd:pcarrow},
+{cmd:pcbarrow}, {cmd:pcscatter}, {cmd:pccapsym}) and draw their
+segments as the type named.  The
 spellings are {cmd:twoway}'s, case and all; a name outside the source's
 class prints {cmd:twoway}'s two notes and falls back -- a yx type to
 {cmd:scatter}, a range type to {cmd:rspike}, a {cmd:pc} type to
@@ -5227,9 +5236,6 @@ disagree in either direction.
     {cmd:nobrowser}.
 
 {phang2}{ul:Not drawn.}
-    {cmd:recast()} on {cmd:pci} and {cmd:pcarrowi}, and a range type or
-    an unknown name on {cmd:histogram} -- see {ul:Recast} under
-    Statistical Layer Options.
     {cmd:msize()} on {cmd:rbar} without {cmd:mwidth}, where {cmd:twoway}
     draws nothing of it either, and {cmd:mwidth} on {cmd:histogram},
     where {cmd:twoway} draws each bar a marker wide.

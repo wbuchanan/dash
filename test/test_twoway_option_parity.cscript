@@ -4170,16 +4170,24 @@ _ztp_logged "`logfile'" "recast()"
 if !r(found) local bad "`bad' dot/named"
 _zrc_spec `"{`q'type`q':`q'dot`q'"'
 if !r(found) local bad "`bad' dot/type"
-foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)" "histogram mpg, recast(rline)" {
+// Flipped (WP-31 C7): pci's and histogram's range targets named was
+// wrong because twoway draws them as the type named
+// (area_cmissing_truth.json P01, H07); dash now draws them, writes the
+// target as options.recast and names nothing.
+foreach cmd in "pci 20 3000 30 4000, recast(pcarrow)|pcarrow" "histogram mpg, recast(rline)|rline" {
+    gettoken cmd tg : cmd, parse("|")
+    local tg = substr("`tg'", 2, .)
     _ztp_run `"dash `cmd' name(zqtp)"' "`logfile'"
-    if r(rc) | !r(note) local bad "`bad' `cmd'"
+    if r(rc) local bad "`bad' `cmd'"
     _ztp_logged "`logfile'" "recast()"
-    if !r(found) local bad "`bad' `cmd'/named"
+    if r(found) local bad "`bad' `cmd'/named"
+    _zrc_spec `"`q'recast`q':`q'`tg'`q'"'
+    if !r(found) local bad "`bad' `cmd'/spec"
 }
 if "`bad'" != "" local faillist "`faillist' RC-07"
 if "`bad'" != "" local nfail = `nfail' + 1
 if "`bad'" != "" display as error "RC-07 FAIL:`bad'"
-else display as text "RC-07 PASS: recast() on dot, pci and histogram's range targets is named"
+else display as text "RC-07 PASS: recast() on dot is named; pci's and histogram's range targets are drawn and not named"
 
 // RC-08: one value for every y; a two-name value is an unknown name.
 local bad ""

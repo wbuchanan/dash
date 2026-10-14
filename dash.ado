@@ -2652,10 +2652,10 @@ end
 // pc or time-series source, the typed type for a derived one),
 // s(_recast_target) (the canonical target, empty when there is none) and
 // s(_recast_kind): base, range2yx (a range source drawn as a yx type: its
-// first bound), ts, derived or empty.  pci and pcarrowi, and a range
-// target or the fallback on histogram, are named (s(_pending)) and drawn
-// as typed.  The value is read by value; echoes go through _dash_say and
-// _dash_note.
+// first bound), ts, derived, literal (pci and pcarrowi drawn as the pc
+// type named, WP-31 C7) or empty; a range target or the fallback on
+// histogram is derived.  The value is read by value; echoes go through
+// _dash_say and _dash_note.
 // ================================================================
 program define _dash_recast_opt, sclass
     version 19
@@ -2693,18 +2693,17 @@ program define _dash_recast_opt, sclass
         _dash_recast_named `_rc_word'
         exit
     }
-    local _rc_lit "pci pcarrowi"
-    if `: list ptype in _rc_lit' {
-        _dash_recast_named `_rc_word'
-        exit
-    }
     // One value for every y: one distinct word, else an unknown name.
     mata: st_local("_rc_v", length(uniqrows(tokens(st_local("_rc_r"))')) == 1 ? tokens(st_local("_rc_r"))[1] : st_local("_rc_r"))
     local _yx      "scatter line connected area bar spike dropline dot"
     local _rng     "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     local _pc      "pcspike pccapsym pcarrow pcbarrow pcscatter"
     local _derived "lfit qfit lowess lpoly fpfit mspline mband kdensity function histogram scatteri"
+    // pci and pcarrowi are yxyxview sources (twoway_pci_parse.class): the
+    // pc names, drawn by the literal mapper (WP-31 C7).
+    local _rc_lit "pci pcarrowi"
     if `: list ptype in _pc' local _rc_class yxyxtype
+    else if `: list ptype in _rc_lit' local _rc_class yxyxtype
     else if "`ptype'" == "function" local _rc_class functiontype
     else if `: list ptype in _rng' | "`ptype'" == "histogram" local _rc_class y2xtype
     else local _rc_class yxtype
@@ -2732,10 +2731,6 @@ program define _dash_recast_opt, sclass
         local _rc_name ""
     }
     if "`_rc_name'" == "" {
-        if "`ptype'" == "histogram" {
-            _dash_recast_named `_rc_word'
-            exit
-        }
         mata: _dash_note("named style ", st_local("_rc_v"), " not found in class `_rc_class', default attributes used")
         mata: _dash_note("`_rc_class' not found in scheme, default attributes used", "", "")
         if "`_rc_class'" == "yxtype" local _rc_name scatter
@@ -2743,13 +2738,18 @@ program define _dash_recast_opt, sclass
         else if "`_rc_class'" == "yxyxtype" local _rc_name pcspike
         else exit
     }
+    // pci and pcarrowi keep their type; the literal mapper draws the
+    // target (area_cmissing_truth.json P01-P05).
+    if `: list ptype in _rc_lit' {
+        if "`_rc_name'" == "pcspike" & "`ptype'" == "pci" exit
+        sreturn local _recast_target "`_rc_name'"
+        sreturn local _recast_kind literal
+        exit
+    }
     if `: list ptype in _derived' {
         if "`_rc_name'" == "function" exit
-        if !`: list _rc_name in _yx' {
-            // histogram drawn as a range type (P2.44).
-            _dash_recast_named `_rc_word'
-            exit
-        }
+        // histogram drawn as a range type is drawn, its bins as the range
+        // (WP-31 C7; area_cmissing_truth.json H01-H12).
         sreturn local _recast_target "`_rc_name'"
         sreturn local _recast_kind derived
         exit
@@ -2778,8 +2778,8 @@ program define _dash_recast_s, sclass
 end
 
 // _dash_recast_named <word>: recast() (or type()) named as an option dash
-// does not draw on this plot (WP-30 P1.8b): pci, pcarrowi, and histogram
-// drawn as a range type.
+// does not draw on this plot (WP-30 P1.8b): dot, which twoway draws
+// unchanged (WP-31 B5a).
 program define _dash_recast_named, sclass
     version 19
     args word
@@ -5865,6 +5865,8 @@ program define _dash_process_segment, rclass
             local _cn_types ""
             _dash_recast_s recast "`_cn_ptype'"
         }
+        // pci and pcarrowi drawn as the pc type named (WP-31 C7).
+        if "`_rc_kind'" == "literal" _dash_recast_s recast "`_rc_target'"
         // function's range() as typed, before validation normalises it
         // through numlist, which keeps 13 digits (WP-29 P0.6, S4-D5).
         if "`ptype'" == "function" mata: st_local("_fn_rtyped", st_global("s(range)"))

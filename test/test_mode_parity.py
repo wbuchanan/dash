@@ -2405,6 +2405,12 @@ CORPUS = [
     _case("rarea connect(stairstep) cmissing(n)",
           [plot_for("rarea", {"connect": "stairstep", "cmissing": "n",
                               "sort": "sort"})]),
+    # WP-31 C7: recast() to a range type and to a pc type, drawn alike.
+    _case("histogram recast(rarea)",
+          [plot_for("histogram", {"recast": "rarea"})]),
+    _case("histogram recast(rbar) gap(50)",
+          [plot_for("histogram", {"recast": "rbar", "gap": "50"})]),
+    _case("pci recast(pcarrow)", [plot_for("pci", {"recast": "pcarrow"})]),
     # WP-31 C10a: the values twoway accepts, drawn alike in both modes.
     _case("lfit range(. 4000) (WP-31 C10a)",
           [plot_for("lfit", {"range": ". 4000"})]),
