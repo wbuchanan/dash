@@ -1007,7 +1007,7 @@ Changed behaviour.
 
 - matamatrix() is refused by name, r(198), with advice to getmata the columns into variables: dash scatter matamatrix(M) was read as a variable list and refused, r(111), although twoway plots the matrix. (WP-31, B3)
 
-<!-- WP-31 B4a -->
+- The contour surface twoway computes (the thin-plate spline with kernel r^2 log r and a linear trend, Shepard's 1/d^2 mean, the unique(x) x unique(y) grid, smallest-z duplicates, interp() read as twoway reads it) is available to the renderers, exact up to 1,000 distinct points and on a flagged 100x100 grid above; no plot type uses it until B4b. (WP-31, B4a)
 
 <!-- WP-31 B4b -->
 

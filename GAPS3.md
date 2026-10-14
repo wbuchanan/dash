@@ -432,7 +432,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit 6aea1e5.
 - **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit eae52c8.
 - **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit ff82353.
-- **B4a Tracked:** Open (WP-31 section 23).
+- **B4a Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)", commit pending.
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.

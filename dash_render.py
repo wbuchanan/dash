@@ -11973,6 +11973,14 @@ _MIN_BAR_WIDTH = 1e-9
 # bands(1000000000) allocated 8 GB for the bin edges alone.
 _MAX_MBANDS = 1000
 
+# The largest number of distinct (x, y) points a contour surface is fitted
+# to exactly on twoway's own grid (unique(x) x unique(y)); above it the
+# surface is fitted to a fixed subsample and evaluated on a 100x100 grid,
+# and the layer is flagged (WP-31 B4a, decision D4).
+_DASH_CONTOUR_EXACT_MAX = 1000
+_DASH_CONTOUR_FALLBACK_N = 100
+_DASH_CONTOUR_INTERPS = ("thinplatespline", "shepard", "none")
+
 
 def _with_color_alias(options: dict, specific: str) -> dict:
     """Let Stata's generic ``color()`` stand in for a specific colour option.
@@ -24874,6 +24882,214 @@ def _natural_cubic_spline(kx: "np.ndarray", ky: "np.ndarray",
     u = xg - x0
     return (m0 * t ** 3 / (6.0 * hh) + m1 * u ** 3 / (6.0 * hh)
             + (y0 / hh - m0 * hh / 6.0) * t + (y1 / hh - m1 * hh / 6.0) * u)
+
+
+# ---- twoway contour's surface (WP-31 B4a) ----------------------------------
+#
+# The numerical half of contour and contourline, measured against twoway's
+# own generator (_contour_heatmap, _contour_filled, _contour_line, which
+# twoway__contour_gen calls; test/fixtures/contour_truth.json).  numpy only.
+# Every surface is a dict of D-23d's keys; see _dash_contour_surface.
+
+def _dash_contour_points(x, y, z):
+    """De-duplicated finite (x, y, z): one row per distinct (y, x) pair.
+
+    The smallest z of a repeated pair is kept, as twoway's help documents
+    and as its interp(none) does (measured; its thin-plate and Shepard
+    paths keep one of them in an order that follows the sort seed).  Rows
+    come back sorted by (y, x).
+
+    Args:
+        x, y, z: The data, any array-likes of one length.
+
+    Returns:
+        ``(x, y, z)`` float arrays of the distinct points.
+    """
+    x, y, z = (np.asarray(a, dtype=float).ravel() for a in (x, y, z))
+    keep = np.isfinite(x) & np.isfinite(y) & np.isfinite(z)
+    x, y, z = x[keep], y[keep], z[keep]
+    if x.size == 0:
+        return x, y, z
+    order = np.lexsort((z, x, y))          # by y, then x, then z ascending
+    x, y, z = x[order], y[order], z[order]
+    first = np.ones(x.size, dtype=bool)
+    first[1:] = (x[1:] != x[:-1]) | (y[1:] != y[:-1])
+    return x[first], y[first], z[first]
+
+
+def _dash_tps_kernel(d2):
+    """Stata's thin-plate kernel r^2 log r, from squared distances *d2*.
+
+    Measured: twoway's spline is the thin-plate one, zero at r = 0; the
+    kernel r gives other values off the data (0.57 at a node of the
+    fixture's five-point case).
+    """
+    d2 = np.asarray(d2, dtype=float)
+    pos = d2 > 0
+    return np.where(pos, 0.5 * d2 * np.log(np.where(pos, d2, 1.0)), 0.0)
+
+
+def _dash_tps_fit(x, y, z):
+    """Weights of Stata's thin-plate spline through (x, y, z).
+
+    Kernel r^2 log r with the trend 1 + x + y: the (n+3)-square system
+    ``[[K, P], [P', 0]] [w; a] = [z; 0]``, solved as twoway solves it --
+    rank-revealing, a direction whose singular value is below 1e-13 of
+    the largest left out (minimum norm).  Measured on auto (mpg on weight
+    and length, condition 2.5e17): twoway's nodes match this solve and
+    Mata's qrsolve()/svsolve() to 1e-7, and differ from an LU solve
+    (lusolve(), numpy.linalg.solve) by 0.08.  On a well-conditioned
+    system the two are the same.
+
+    Returns:
+        ``(w, note)``: the n + 3 weights (the trend's three last) and
+        ``""``, or ``"singular"`` when a direction was left out
+        (collinear points; twoway still draws the surface).
+    """
+    x, y, z = (np.asarray(a, dtype=float).ravel() for a in (x, y, z))
+    n = x.size
+    K = _dash_tps_kernel((x[:, None] - x[None, :]) ** 2
+                         + (y[:, None] - y[None, :]) ** 2)
+    P = np.column_stack([np.ones(n), x, y])
+    A = np.zeros((n + 3, n + 3))
+    A[:n, :n] = K
+    A[:n, n:] = P
+    A[n:, :n] = P.T
+    rhs = np.concatenate([z, np.zeros(3)])
+    w, _res, rank, _sv = np.linalg.lstsq(A, rhs, rcond=1e-13)
+    return w, ("" if rank == n + 3 else "singular")
+
+
+def _dash_tps_eval(w, x, y, gx, gy):
+    """The spline of weights *w* on the points (x, y), at (gx, gy).
+
+    Evaluated in 4096-node chunks (memory chunk x n).  *gx*, *gy* may be
+    of any shape; the result is flat.
+    """
+    x, y = np.asarray(x, dtype=float).ravel(), np.asarray(y, dtype=float).ravel()
+    w = np.asarray(w, dtype=float)
+    n = x.size
+    gx = np.asarray(gx, dtype=float).ravel()
+    gy = np.asarray(gy, dtype=float).ravel()
+    out = np.empty(gx.size)
+    for s in range(0, gx.size, 4096):
+        cx, cy = gx[s:s + 4096], gy[s:s + 4096]
+        K = _dash_tps_kernel((cx[:, None] - x[None, :]) ** 2
+                             + (cy[:, None] - y[None, :]) ** 2)
+        out[s:s + 4096] = K @ w[:n] + w[n] + w[n + 1] * cx + w[n + 2] * cy
+    return out
+
+
+def _dash_shepard(x, y, z, gx, gy):
+    """Stata's Shepard interpolation at (gx, gy): the 1/d^2-weighted mean.
+
+    Every point weighs in; a node on a data point takes that point's z.
+    Chunked as _dash_tps_eval; the result is flat.
+    """
+    x, y, z = (np.asarray(a, dtype=float).ravel() for a in (x, y, z))
+    gx = np.asarray(gx, dtype=float).ravel()
+    gy = np.asarray(gy, dtype=float).ravel()
+    out = np.empty(gx.size)
+    for s in range(0, gx.size, 4096):
+        d2 = ((gx[s:s + 4096, None] - x[None, :]) ** 2
+              + (gy[s:s + 4096, None] - y[None, :]) ** 2)
+        hit = d2 == 0
+        wgt = np.where(hit, 0.0, 1.0 / np.where(hit, 1.0, d2))
+        anyhit = hit.any(axis=1)
+        tot = wgt.sum(axis=1)
+        val = (wgt @ z) / np.where(anyhit, 1.0, tot)
+        val[anyhit] = z[hit.argmax(axis=1)[anyhit]]
+        out[s:s + 4096] = val
+    return out
+
+
+def _dash_contour_grid(x, y):
+    """twoway's grid: the sorted distinct x and the sorted distinct y."""
+    return (np.unique(np.asarray(x, dtype=float)),
+            np.unique(np.asarray(y, dtype=float)))
+
+
+def _dash_contour_fallback_grid(x, y, n=_DASH_CONTOUR_FALLBACK_N):
+    """A bounded *n* x *n* grid over the data's range (decision D4), for a
+    layer over _DASH_CONTOUR_EXACT_MAX distinct points."""
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    return (np.linspace(x.min(), x.max(), n), np.linspace(y.min(), y.max(), n))
+
+
+def _dash_contour_interp(word):
+    """The method twoway applies for ``interp(word)``.
+
+    Measured: twoway passes the word to its generator unchanged, which
+    reads an abbreviation of ``thinplatespline`` or ``shepard`` of four
+    letters or more (case-sensitive) and treats any other word, the empty
+    one included, as ``none``; twoway never refuses it.  *word* None is
+    the option left out: twoway's default, ``thinplatespline``.
+    """
+    if word is None:
+        return "thinplatespline"
+    word = str(word)
+    for full in ("thinplatespline", "shepard"):
+        if len(word) >= 4 and full.startswith(word):
+            return full
+    return "none"
+
+
+def _dash_contour_surface(x, y, z, interp="thinplatespline",
+                          exact_max=_DASH_CONTOUR_EXACT_MAX):
+    """The surface twoway contour draws from (x, y, z).
+
+    Args:
+        x, y, z: The data; rows with a missing x, y or z are left out and
+            a repeated (y, x) keeps its smallest z.
+        interp: The interp() word, read as _dash_contour_interp reads it.
+        exact_max: The most distinct points fitted exactly on twoway's
+            grid; above it a seeded subsample of *exact_max* points is
+            fitted and evaluated on the bounded fallback grid.
+
+    Returns:
+        A dict: ``gx`` (nx,), ``gy`` (ny,), ``gz`` (ny, nx) with NaN where
+        nothing is drawn, ``n_unique``, ``capped``, ``interp`` (the
+        canonical word), ``zmin``/``zmax`` over the observed z and
+        ``note`` -- ``""``, ``"singular"`` (collinear points, least
+        squares) or ``"degenerate"`` (fewer than three points: twoway
+        draws nothing).  Observed nodes keep their own z.
+    """
+    interp = _dash_contour_interp(interp)
+    px, py, pz = _dash_contour_points(x, y, z)
+    n = int(px.size)
+    out = {"n_unique": n, "capped": False, "interp": interp, "note": "",
+           "zmin": float(pz.min()) if n else float("nan"),
+           "zmax": float(pz.max()) if n else float("nan")}
+    if n < 3:
+        gx, gy = _dash_contour_grid(px, py)
+        out.update(gx=gx, gy=gy, gz=np.full((gy.size, gx.size), np.nan),
+                   note="degenerate")
+        return out
+    if n > exact_max:
+        rng = np.random.default_rng(20261010)
+        pick = np.sort(rng.choice(n, int(exact_max), replace=False))
+        fx, fy, fz = px[pick], py[pick], pz[pick]
+        gx, gy = _dash_contour_fallback_grid(px, py)
+        out["capped"] = True
+    else:
+        fx, fy, fz = px, py, pz
+        gx, gy = _dash_contour_grid(px, py)
+    GX, GY = np.meshgrid(gx, gy)                 # shape (ny, nx)
+    if interp == "none":
+        gz = np.full(GX.shape, np.nan)
+    elif interp == "shepard":
+        gz = _dash_shepard(fx, fy, fz, GX, GY).reshape(GX.shape)
+    else:
+        w, note = _dash_tps_fit(fx, fy, fz)
+        out["note"] = note
+        gz = _dash_tps_eval(w, fx, fy, GX, GY).reshape(GX.shape)
+    if not out["capped"]:
+        # Observed nodes keep their own z: exact under every method, and
+        # the only values interp(none) draws.  The fallback grid's nodes
+        # are not the data's.
+        gz[np.searchsorted(gy, py), np.searchsorted(gx, px)] = pz
+    out.update(gx=gx, gy=gy, gz=gz)
+    return out
 
 
 _LITERAL_MARK = "\x01"
@@ -52203,7 +52419,13 @@ class ServerAppBuilder:
                 "# The style notes already raised this document, keyed",
                 "# (option, value, what); _dash_reset_notes clears it at the",
                 "# top of make_document, as DashRenderer.render() does.",
-                "_DASH_NOTED = set()", "", ""]
+                "_DASH_NOTED = set()", "",
+                # The contour surface's bounds (WP-31 B4a): before the
+                # helpers whose defaults read them.
+                "_DASH_CONTOUR_EXACT_MAX = %d" % _DASH_CONTOUR_EXACT_MAX,
+                "_DASH_CONTOUR_FALLBACK_N = %d" % _DASH_CONTOUR_FALLBACK_N,
+                "_DASH_CONTOUR_INTERPS = %r" % (_DASH_CONTOUR_INTERPS,),
+                "", ""]
 
         for _fn in (_stat_option_float,
                     # The style note: GlyphMapper and OptionTranslator are
@@ -52248,6 +52470,13 @@ class ServerAppBuilder:
                     _dash_invnormal,
                     _dash_wls, _dash_fitci_std,
                     _dash_fitci_se, _natural_cubic_spline,
+                    # WP-31 B4a: twoway contour's surface (grid, duplicate
+                    # rule, thin-plate spline, Shepard, the cap); S26's
+                    # mappers call it in both renderers.
+                    _dash_contour_points, _dash_tps_kernel, _dash_tps_fit,
+                    _dash_tps_eval, _dash_shepard, _dash_contour_grid,
+                    _dash_contour_fallback_grid, _dash_contour_interp,
+                    _dash_contour_surface,
                     # qfit's and qfitci's shared design (the WP-18 review).
                     _qfit_design,
                     # Stata's `if' grammar and its arithmetic operators.  The

@@ -4893,6 +4893,184 @@ if inlist("`only'", "", "S22") & `: list posof "S22" in w31_run' {
 }
 * ==== end S22 ====
 
+// S23 B4a helper.  _u23_check(case, arg): one comparison of dash's
+// contour surface helpers with twoway's generator, read from
+// fixtures/contour_truth.json (scripts/extract_contour_truth.do) or from
+// a heatmap matrix measured live (u23_M, Mata); globals u23_ok (1 when
+// it holds) and u23_msg (what was compared).
+python:
+def _u23_check(case, arg=""):
+    import json
+    import os
+    import sys
+    import numpy as np
+    for p in (os.path.abspath(".."), os.path.abspath(".")):
+        if p not in sys.path:
+            sys.path.insert(0, p)
+    import dash_render as dr
+    from sfi import Macro, Mata
+    with open(os.path.join("fixtures", "contour_truth.json"), encoding="utf-8") as fh:
+        t = json.load(fh)
+    ok, msg = True, ""
+
+    def node_index(hm, gx, gy):
+        return (np.searchsorted(gy, np.asarray(hm["y0"]), side="left"),
+                np.searchsorted(gx, np.asarray(hm["x0"]), side="left"))
+
+    if case == 1:
+        for ds in ("auto", "synthetic", "manual5"):
+            inp = t["cases"][ds]["thinplatespline"]["input"]
+            g = dr._dash_contour_grid(inp["x"], inp["y"])
+            for axis, a in zip(("x", "y"), g):
+                e = np.concatenate([[a[0]], (a[1:] + a[:-1]) / 2, [a[-1]]])
+                want = np.asarray(t["grid"][ds][axis])
+                ok &= e.shape == want.shape and bool(np.allclose(e, want, rtol=1e-6))
+            msg += "%s %dx%d; " % (ds, g[0].size, g[1].size)
+    elif case == 2:
+        m = Mata.get("u23_M")
+        node = [r[2] for r in m if r[0] == 2 and r[1] == 2]
+        px, py, pz = dr._dash_contour_points([1, 2, 1, 2, 2], [1, 1, 2, 2, 2],
+                                             [1, 2, 3, 4, 5])
+        ok = pz.size == 4 and pz[-1] == 4 and node == [4.0]
+        hm = t["cases"]["manual5"]["none"]["heatmap"]
+        lev = [lv for x0, x1, y0, y1, lv in zip(hm["x0"], hm["x1"], hm["y0"],
+                                               hm["y1"], hm["lev"])
+               if x0 <= 2 <= x1 and y0 <= 2 <= y1][0]
+        ok &= int(np.searchsorted(t["cases"]["manual5"]["none"]["cuts"], 4.0,
+                                  side="right")) + 1 == lev
+        msg = "dash keeps z %g of 4 rows; twoway's interp(none) node %s, level %d" % (
+            pz[-1], node, lev)
+    elif case == 3:
+        for ds in ("auto", "synthetic", "manual5"):
+            for it in ("thinplatespline", "shepard"):
+                c = t["cases"][ds][it]
+                inp, hm, cuts = c["input"], c["heatmap"], np.asarray(c["cuts"])
+                x, y = np.asarray(inp["x"]), np.asarray(inp["y"])
+                gx, gy = dr._dash_contour_grid(x, y)
+                iy, ix = node_index(hm, gx, gy)
+                at = dict(zip(zip(iy, ix), hm["z"]))
+                # twoway's own pick at a duplicate (y, x) under these two
+                # methods follows the sort seed: fit to the z it shows.
+                z = np.array([at[(np.searchsorted(gy, b), np.searchsorted(gx, a))]
+                              for a, b in zip(x, y)])
+                s = dr._dash_contour_surface(x, y, z, it)
+                got, want = s["gz"][iy, ix], np.asarray(hm["z"])
+                span = s["zmax"] - s["zmin"]
+                tol = 1e-6 if s["note"] == "singular" else 1e-9
+                far = (np.min(np.abs(got[:, None] - cuts[None, :]), axis=1)
+                       > 1e-6 * span) | (got == want)
+                lev = np.searchsorted(cuts, got[far], side="right") + 1
+                same = bool(np.array_equal(lev, np.asarray(hm["lev"])[far]))
+                close = bool(np.allclose(got, want, rtol=tol, atol=tol * span))
+                ok &= same and close and want.size == gx.size * gy.size
+                msg += "%s/%s %d nodes z %d level %d; " % (
+                    ds, it[:4], want.size, close, same)
+    elif case == 4:
+        for ds in ("auto", "synthetic", "manual5"):
+            c = t["cases"][ds]["none"]
+            inp = c["input"]
+            s = dr._dash_contour_surface(inp["x"], inp["y"], inp["z"], "none")
+            n = int(np.isfinite(s["gz"]).sum())
+            ok &= n == inp["n_unique"] == c["heatmap"]["n_rects"]
+            msg += "%s %d/%d; " % (ds, n, c["heatmap"]["n_rects"])
+    elif case == 5:
+        rng = np.random.default_rng(5)
+        a = rng.uniform(0, 10, 1001)
+        b = rng.uniform(0, 5, 1001)
+        c = rng.normal(size=1001)
+        hi = dr._dash_contour_surface(a, b, c)
+        lo = dr._dash_contour_surface(a[:1000], b[:1000], c[:1000], "none")
+        ok = (hi["capped"] is True and hi["gz"].shape == (100, 100)
+              and lo["capped"] is False and lo["gz"].shape == (1000, 1000))
+        msg = "1001 points capped %s %s; 1000 capped %s %s" % (
+            hi["capped"], hi["gz"].shape, lo["capped"], lo["gz"].shape)
+    elif case == 6:
+        word = "" if arg == "EMPTY" else arg
+        got = dr._dash_contour_interp(word)
+        want = t["interp_abbrev"][arg]["method"]
+        ok = got == want
+        msg = "interp(%s): dash %s, twoway %s" % (word, got, want)
+    Macro.setGlobal("u23_ok", str(int(bool(ok))))
+    Macro.setGlobal("u23_msg", msg[:240])
+end
+
+* ==== S23 B4a: contour interpolation ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S23") & `: list posof "S23" in w31_run' {
+    display as text "S23 start " c(current_date) " " c(current_time)
+
+    // ------------------------------------------------------------
+    // U23-1: dash's grid is twoway's -- the heatmap's rectangle edges are
+    // the midpoints of consecutive distinct x (and y) and the min and max.
+    // ------------------------------------------------------------
+    python: _u23_check(1)
+    _w31_expect U23-1 "(${u23_ok} == 1)" "grid edges: ${u23_msg}"
+    _w31_done U23-1 "the grid is the distinct x by the distinct y: ${u23_msg}"
+
+    // ------------------------------------------------------------
+    // U23-2: a duplicate (y, x) keeps its smallest z, as twoway's help
+    // says and its interp(none) does, measured live.
+    // ------------------------------------------------------------
+    clear
+    mata: u23_D = (1,1,1 \ 1,2,2 \ 2,1,3 \ 2,2,4 \ 2,2,5)
+    quietly set obs 5
+    foreach v in y x z {
+        quietly generate double `v' = .
+    }
+    mata: st_store(., ("y", "x", "z"), u23_D)
+    mata: u23_M = _contour_heatmap("z", "y", "x", (2 \ 3 \ 4), "none")
+    python: _u23_check(2)
+    _w31_expect U23-2 "(${u23_ok} == 1)" "${u23_msg}"
+    _w31_done U23-2 "the duplicate rule: ${u23_msg}"
+
+    // ------------------------------------------------------------
+    // U23-3: every node's z and level under thinplatespline and shepard
+    // equal twoway's heatmap on auto, the synthetic set and manual5.
+    // ------------------------------------------------------------
+    python: _u23_check(3)
+    _w31_expect U23-3 "(${u23_ok} == 1)" "${u23_msg}"
+    _w31_done U23-3 "node values and levels match twoway's: ${u23_msg}"
+
+    // ------------------------------------------------------------
+    // U23-4: interp(none) draws the observed nodes only, as many as
+    // twoway's heatmap rectangles.
+    // ------------------------------------------------------------
+    python: _u23_check(4)
+    _w31_expect U23-4 "(${u23_ok} == 1)" "${u23_msg}"
+    _w31_done U23-4 "interp(none) draws the observed nodes: ${u23_msg}"
+
+    // ------------------------------------------------------------
+    // U23-5: above _DASH_CONTOUR_EXACT_MAX distinct points the surface is
+    // a flagged 100x100 grid; at the cap it is exact (DECISIONS D4).
+    // ------------------------------------------------------------
+    python: _u23_check(5)
+    _w31_expect U23-5 "(${u23_ok} == 1)" "${u23_msg}"
+    _w31_done U23-5 "the cap: ${u23_msg}"
+
+    // ------------------------------------------------------------
+    // U23-6: twoway never refuses an interp() word: its generator reads
+    // a 4-letter-or-longer abbreviation of thinplatespline or shepard and
+    // draws any other word as none.  Measured live on bogus: rc 0 and the
+    // heatmap of interp(none).
+    // ------------------------------------------------------------
+    capture twoway contour z y x, interp(bogus) nodraw
+    local u23rc = _rc
+    mata: st_local("u23same", strofreal(_contour_heatmap("z", "y", "x", (2 \ 3 \ 4), "bogus") == _contour_heatmap("z", "y", "x", (2 \ 3 \ 4), "none")))
+    _w31_expect U23-6 "(`u23rc' == 0 & `u23same' == 1)" "twoway contour, interp(bogus): rc `u23rc', drawn as none `u23same'"
+    foreach w in thinplatespline thin shepard shep th sh none bogus EMPTY {
+        python: _u23_check(6, "`w'")
+        _w31_expect U23-6 "(${u23_ok} == 1)" "${u23_msg}"
+    }
+    _w31_done U23-6 "interp() words read as twoway's generator reads them; bogus draws as none, r(0)"
+
+    capture mata: mata drop u23_D u23_M
+    macro drop u23_ok u23_msg
+    clear
+    capture graph drop _all
+    display as text "S23 end " c(current_date) " " c(current_time)
+}
+* ==== end S23 ====
+
 // S25 C6b helpers.  _u25_tw <twoway plot>: plot 1's serset of the drawn
 // twoway graph written to <dir>/t.csv (y, then x); _u25_cmp: the first
 // visible Line a registered dash graph draws, saved and served, against
