@@ -24,6 +24,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D16 | **Batch 5 additions** (14oct2026): S14's measured mband/mspline vertex difference on data with missing y is row C6b, added to S25 (which re-derives both twins); the saved page re-bridging a lowess line under cmissing(n) after a filter move joins S52's A23 work (fill and line bridging after a move). | S25, S52 |
 | D17 | **Batch 6 addition** (14oct2026): S19's measured residual -- the saved page draws y = 0 where lpoly's rule-of-thumb global fit is exact (48 fixture rows) -- is row C11b, added to S22, which ports lpolyci on the same rule-of-thumb code: port Stata's float route, or mark such a layer with the stale cue (M8). | S22 |
 | D18 | **Batch 6 additions** (14oct2026): S17's residuals and its unfiled gap go to the sections whose code they touch: pcycle() fractions (C8d) to S32, batch 11's rules-table editor; colorkeysreverse on a colour bar (C8e) to S26, which builds the contour colour key on the same code; a user scheme's colorvar default rule (C8c) to S44, which reads style files and scheme directives. | S44, S32, S26 |
+| D19 | **Batch 6 addition** (14oct2026): S18's saved-page residual -- dot rows keep the build's axis after a filter move (pinned xfail strict) -- is row B5c, added to S35, which recomputes the extra ranges and the axis finish in the saved page's move callback. | S35 |
 
 ## Architect rulings (process and feasibility; from the reviews)
 

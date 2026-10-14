@@ -2069,6 +2069,7 @@ WP31_OPEN = {
     "C8c": "A user-supplied scheme's colorvar() default colour rule falls back to s2color's",
     "C8d": "pcycle() refuses a fraction where twoway draws it on a graph of few series",
     "C8e": "colorkeysreverse on a colorvar() colour bar is named, not drawn",
+    "B5c": "dot rows on the saved page keep the build's axis span after a filter move",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2198,6 +2199,7 @@ WP31_LISTS = {
     "C8c": ("Results that change",),
     "C8d": ("Results that change",),
     "C8e": ("Results that change",),
+    "B5c": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2326,6 +2328,7 @@ WP31_SECTION = {
     "C8c": 44,
     "C8d": 32,
     "C8e": 26,
+    "B5c": 35,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2532,7 +2535,8 @@ class TestWp31Tracking:
         # 110 -> 118: DECISIONS D14 adds the eight batch 1-4 gaps; 118 -> 119:
         # D16 adds C6b; 119 -> 120: D17 adds C11b.
         # 120 -> 123: D18 adds C8c, C8d, C8e.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 123
+        # 123 -> 124: D19 adds B5c.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 124
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

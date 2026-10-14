@@ -96,7 +96,7 @@
 | 32 | sizing-scale-aspect | D5, E11 + A3c (D14) + C8d (D18) | 11 | 01 | -- | yellow | M | 4 |
 | 33 | axis-suboptions-look | D6, D7, E6 | 11 | 24 | -- | yellow | M | 4 |
 | 34 | varlabel-marker-label-options | D8, C17, E3, C14, C15 | 11 | 01 | -- | green | S | 4 |
-| 35 | second-axis-moves | D9 + C10e (D14) | 12 | 09 | -- | yellow | M | 3 |
+| 35 | second-axis-moves | D9 + C10e (D14) + B5c (D19) | 12 | 09 | -- | yellow | M | 3 |
 | 36 | by-remainder | D10 | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
@@ -145,6 +145,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | C8c | A user-supplied scheme's colorvar() default colour rule falls back to s2color's (D18) | S17 | S44 (15) | RC |
 | C8d | pcycle() refuses a fraction where twoway draws it on a graph of few series (D18) | S17 | S32 (11) | RC |
 | C8e | colorkeysreverse on a colorvar() colour bar is named, not drawn (D18) | S17 | S26 (9) | RC |
+| B5c | dot rows on the saved page keep the build's axis span after a filter move (D19) | S18 | S35 (12) | RC |
 
 ## Batch execution order
 
