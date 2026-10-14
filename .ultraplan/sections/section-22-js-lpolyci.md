@@ -262,3 +262,16 @@ function dash_lpoly_se(x, y, xg, h, hp, degree, kernel, w, varv) {
 - **Decisions for maintainer ratification.** D-22.a (two tagged renderers with `role`, a per-run cache), D-22.b (the computed normal quantile).
 - **R12.** S22 is batch 7's only `_FILTER_JS`/js_runner editor.
 - **Cscript**: `lpoly, ci se(s)` writes the se at the grid rows; `invnormal(.975)` for level 95; compare the band only where `s != .`.
+
+## Addendum (14oct2026, DECISIONS D17): row C11b added to this section
+
+### C11b: lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app
+
+**Gap.** S19's `dash_lpoly_rot` matches the Python twin on the "exact" route (737 fixture rows, 1.8e-10) but not on Python's "float" route (`_lpoly_rot_float`: exactly rounded sums and a float invsym sweep, which reproduce Stata's r(bwidth) where the rule-of-thumb global fit is exact -- y an exact polynomial in x, or no more rows than pe+4). On those 48 fixture rows the JS returns NaN and the saved page draws y = 0 after a move. Pinned by test/test_js_fit_refit.py `_ROT_DIVERGENT_COUNT = 48` (TestRotTwin::test_divergence_count_is_recorded).
+
+**Requirement.** Port `_lpoly_rot_float` to JavaScript so the saved page's default bandwidth equals the served app's on every fixture row (the divergence count goes to 0 and the pin flips), for lpoly and for lpolyci, which this section builds on the same helpers. If a float emulation that agrees across platforms cannot be shown, the saved page instead marks a layer whose rule-of-thumb route is "float" with the existing stale cue after a move (M8: never y = 0 in silence), and the BUGS.md entry closes with that measured limit stated.
+
+**Tests.** test/test_js_fit_refit.py (TestRotTwin, the divergence pin flipped) and a saved-equals-served move case for an exactly fitted y (the 5-row Foreign case S19 pinned at y = 0). One commit, subject ending `(WP-31 C11b)`, after F1e.
+
+**Process (binding).** As every row: failing tests first with saved failure text; close the BUGS.md entry "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app" (Resolution ending `Closes GAPS3 C11 (WP-31, C11b).`), delete its `"C11b":` WP31_OPEN line, rewrite GAPS3.md's `- **C11b Tracked:**` line to the Closed form with `commit pending`; S19's F1d line is "Partly closed ... (BUGS.md "<this title>")" -- when C11b closes, rewrite F1d's line to the Closed form (BUGS.md F1d entry's title, F1d's landed commit). Replace `<!-- WP-31 C11b -->` under `### Results that change` with a line ending `(WP-31, C11b)`. dash replaces twoway (D13).
+

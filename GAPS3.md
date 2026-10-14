@@ -455,6 +455,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C10d Tracked:** Open (WP-31 section 46).
 - **C10e Tracked:** Open (WP-31 section 35).
 - **C11 Tracked:** Open (WP-31 section 46).
+- **C11b Tracked:** Open (WP-31 section 22).
 - **C12 Tracked:** Open (WP-31 section 46).
 - **C13 Tracked:** Open (WP-31 section 31).
 - **C14 Tracked:** Open (WP-31 section 34).

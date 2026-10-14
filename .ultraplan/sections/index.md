@@ -83,7 +83,7 @@
 | 19 | js-lpoly | F1d | 6 | 10 | 22 | red | M | 3 |
 | 20 | weighted-markers | C9 + A5b (D14) | 7 | 01 | -- | yellow | S | 3 |
 | 21 | rpcap-rpspike-refusals | B1, B2, B3 | 7 | 01 | 57 | yellow | M | 4 |
-| 22 | js-lpolyci | F1e | 7 | 19 | -- | red | M | 3 |
+| 22 | js-lpolyci | F1e + C11b (D17) | 7 | 19 | -- | red | M | 3 |
 | 23 | contour-interpolation | B4a (TPS/Shepard numpy, grid rule, cap, truth extractor) | 8 | 01 | 26, 29 | red | L | 4 |
 | 24 | minor-ticks-labels | D1 | 8 | 01 | 33 | yellow | M | 4 |
 | 25 | js-mband-mspline | F1f + C6b (D16) | 8 | 10 | -- | yellow | M | 3 |
@@ -141,6 +141,7 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | C10d | kdensity range() on a string or all-missing variable draws over the data | S05 | S46 (15) | RC |
 | C18b | a hexadecimal literal coordinate (1.0X+3ff) is refused where twoway takes it | S06 | S47 (16) | FX |
 | C6b | mband and mspline over data with missing y draw fewer vertices than twoway (D16) | S14 | S25 (8) | RC |
+| C11b | the saved page's lpoly default bandwidth on an exactly fitted y draws y = 0 (D17) | S19 | S22 (7) | RC |
 
 ## Batch execution order
 
