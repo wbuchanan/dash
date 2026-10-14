@@ -26,7 +26,8 @@
 *!             jitterseed(1) against the same command without: marker
 *!             count, how many moved, the largest move as a fraction of the
 *!             unjittered markers' x and y spans, and whether the spines
-*!             (lines) moved.
+*!             (lines) moved; then the same with mlabel(lb): how many of
+*!             the marker labels moved (twoway leaves them at the data).
 *!   PC_<type> pcspike, pcarrow, pcbarrow, pccapsym, rcap, rcapsym,
 *!             dropline with colorvar(z): distinct stroke colours of the
 *!             plot's lines (shafts, spines, caps, arrowhead strokes) and
@@ -170,6 +171,7 @@ generate lo = mpg - 2
 generate hi = mpg + 2
 generate y2 = mpg + 5
 generate x2 = weight + 500
+generate str5 lb = "L" + string(_n)
 local jkeys ""
 foreach c in "rscatter|rscatter lo hi weight" "rcapsym|rcapsym lo hi weight" ///
     "pcscatter|pcscatter mpg weight y2 x2" "pccapsym|pccapsym mpg weight y2 x2" {
@@ -180,6 +182,12 @@ foreach c in "rscatter|rscatter lo hi weight" "rcapsym|rcapsym lo hi weight" ///
     graph drop c1
     quietly twoway `cmd', jitter(5) jitterseed(1) name(c1, replace)
     quietly graph export "${ZC_WORK}/j1_`key'.svg", replace
+    graph drop c1
+    quietly twoway `cmd', mlabel(lb) name(c1, replace)
+    quietly graph export "${ZC_WORK}/j2_`key'.svg", replace
+    graph drop c1
+    quietly twoway `cmd', mlabel(lb) jitter(5) jitterseed(1) name(c1, replace)
+    quietly graph export "${ZC_WORK}/j3_`key'.svg", replace
     graph drop c1
     local jkeys "`jkeys' `key'"
 }
@@ -248,6 +256,13 @@ def markers(txt):
         out.append((float(a["cx"]), float(a["cy"]), st.get("fill"),
                     st.get("stroke")))
     return out
+
+
+_LABEL = re.compile(r'<text x="([\d.]+)" y="([\d.]+)"[^>]*>(L\d+)</text>')
+
+
+def labels(txt):
+    return [(float(x), float(y), s) for x, y, s in _LABEL.findall(txt)]
 
 
 def plot_fills(txt):
@@ -330,7 +345,14 @@ for t in G("ZC_JKEYS").split():
         abs(a["x1"] - b["x1"]) < 0.01 and abs(a["y1"] - b["y1"]) < 0.01
         and abs(a["x2"] - b["x2"]) < 0.01 and abs(a["y2"] - b["y2"]) < 0.01
         for a, b in zip(l0, l1)))
+    l2 = labels(read(os.path.join(work, "j2_%s.svg" % t)))
+    l3 = labels(read(os.path.join(work, "j3_%s.svg" % t)))
+    lab_moved = sum(1 for a, b in zip(l2, l3)
+                    if a[2] != b[2] or abs(a[0] - b[0]) > 0.01
+                    or abs(a[1] - b[1]) > 0.01)
     jitter[t] = {"markers_without": len(m0), "markers_with": len(m1),
+                 "labels": len(l2), "labels_with": len(l3),
+                 "labels_moved": lab_moved,
                  "moved": moved,
                  "max_dx_frac": round(max(dx) / xspan, 4) if xspan else None,
                  "max_dy_frac": round(max(dy) / yspan, 4) if yspan else None,

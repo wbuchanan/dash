@@ -457,6 +457,22 @@ def _segments(fig):
 _JIT = {"jitter": "5", "jitterseed": "1"}
 
 
+def _labels_xy(fig):
+    """[(x, y, text)] of every marker label the figure draws."""
+    from bokeh.models import LabelSet
+    out = []
+    for side in (fig.center, fig.above, fig.below, fig.left, fig.right):
+        for m in side:
+            if not isinstance(m, LabelSet):
+                continue
+            d = m.source.data
+            for x, y, t in zip(d[m.x], d[m.y], d[m.text]):
+                # A NaN position draws no label (pcscatter's second point).
+                if math.isfinite(float(x)) and math.isfinite(float(y)):
+                    out.append((float(x), float(y), str(t)))
+    return sorted(out, key=str)
+
+
 class TestJitterFourTypes:
 
     @pytest.mark.parametrize("mode", MODES)
@@ -484,6 +500,20 @@ class TestJitterFourTypes:
         assert len(a) == len(b)
         for (xa, ya), (xb, yb) in zip(a, b):
             assert np.allclose(xa, xb) and np.allclose(ya, yb)
+
+    @pytest.mark.parametrize("mode", MODES)
+    @pytest.mark.parametrize("ptype", JIT_TYPES)
+    def test_labels_stay_at_the_data(self, tmp, mode, ptype):
+        """twoway moves the markers and leaves their mlabel() labels where
+        the data are (fixture jitter[<type>].labels_moved == 0); so does
+        dash, in both modes."""
+        j = TRUTH["jitter"][ptype]
+        assert j["labels"] == j["labels_with"] > 0
+        assert j["labels_moved"] == 0
+        plain = _labels_xy(_fig(tmp, mode, ptype, {"mlabel": "rep78"}))
+        moved = _labels_xy(_fig(tmp, mode, ptype,
+                                dict(_JIT, mlabel="rep78")))
+        assert plain and plain == moved
 
     @pytest.mark.parametrize("mode", MODES)
     @pytest.mark.parametrize("ptype", ["rcapsym", "pccapsym"])

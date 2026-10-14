@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "05736f275ad80776b5a77205b528a9edac07e133",
-  "extracted": "14 Oct 2026 08:31:33",
+  "dash_commit": "8201ac83e5fe91aefaba8386c691095c33cea7f1",
+  "extracted": "14 Oct 2026 09:20:20",
   "source": "scripts/extract_colorvar_types_truth.do",
   "stata_version": "19.5"
  },
@@ -52,6 +52,9 @@
  ],
  "jitter": {
   "pccapsym": {
+   "labels": 69,
+   "labels_moved": 0,
+   "labels_with": 69,
    "lines": 69,
    "lines_unmoved": true,
    "markers_with": 276,
@@ -61,6 +64,9 @@
    "moved": 276
   },
   "pcscatter": {
+   "labels": 69,
+   "labels_moved": 0,
+   "labels_with": 69,
    "lines": 0,
    "lines_unmoved": true,
    "markers_with": 276,
@@ -70,6 +76,9 @@
    "moved": 276
   },
   "rcapsym": {
+   "labels": 138,
+   "labels_moved": 0,
+   "labels_with": 138,
    "lines": 69,
    "lines_unmoved": true,
    "markers_with": 276,
@@ -79,6 +88,9 @@
    "moved": 276
   },
   "rscatter": {
+   "labels": 138,
+   "labels_moved": 0,
+   "labels_with": 138,
    "lines": 0,
    "lines_unmoved": true,
    "markers_with": 276,
