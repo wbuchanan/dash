@@ -152,7 +152,9 @@ class TestStaleKind:
         assert dr._dash_stale_kind("qfit", {}) is None
         # A recast fit is not refitted (GAPS3 C16) and keeps the cue.
         assert dr._dash_stale_kind("lfit", {"recast": "scatter"}) == "fit"
-        for t in ("lfitci", "qfitci", "fpfit", "fpfitci", "lowess", "lpoly",
+        # lowess is refitted too (WP-31 F1c): TestStaleKind
+        # test_lowess_is_refit.
+        for t in ("lfitci", "qfitci", "fpfit", "fpfitci", "lpoly",
                   "lpolyci", "mband", "mspline"):
             assert dr._dash_stale_kind(t, {}) == "fit", t
 
@@ -433,7 +435,9 @@ def _fit_data(renderers, ptype=None):
              and isinstance(r.glyph, Line)]
     assert len(lines) == 1, f"{len(lines)} lines"
     d = lines[0].data_source.data
-    return (np.asarray(d["x"], dtype=float), np.asarray(d["y"], dtype=float))
+    # A lowess line's columns are x_lw and y_lw (WP-31 F1c).
+    cx, cy = ("x_lw", "y_lw") if "x_lw" in d else ("x", "y")
+    return (np.asarray(d[cx], dtype=float), np.asarray(d[cy], dtype=float))
 
 
 def _served_fit_after(spec, action):
@@ -453,6 +457,12 @@ _REFIT_SPECS = [
     ("lfit aw", [plot_for("lfit", {"weight": "aweight", "wexp": "rep"})]),
     ("qfit range(. 3000) n(7)",
      [plot_for("qfit", {"range": ". 3000", "n": "7"})]),
+    # WP-31 F1c: lowess re-smooths the kept rows.
+    ("lowess", [plot_for("scatter"), plot_for("lowess")]),
+    ("lowess bwidth(.4) mean",
+     [plot_for("lowess", {"bwidth": ".4", "mean": "mean"})]),
+    ("lowess noweight adjust",
+     [plot_for("lowess", {"noweight": "noweight", "adjust": "adjust"})]),
 ]
 
 
@@ -471,7 +481,8 @@ class TestTheSavedPageRefits:
         vx, vy = _served_fit_after(spec, action)
         np.testing.assert_allclose(sx, vx, rtol=1e-9, atol=1e-9)
         np.testing.assert_allclose(sy, vy, rtol=1e-9, atol=1e-9)
-        assert not np.allclose(built[1], sy), "the move changed nothing"
+        assert (built[1].shape != sy.shape
+                or not np.allclose(built[1], sy)), "the move changed nothing"
 
     def test_a_move_back_redraws_the_build(self):
         spec = _spec([plot_for("scatter"), plot_for("lfit")],
@@ -522,3 +533,255 @@ class TestThePageSize:
                      "range": "1000 6000", "connect": "stairstep"})]))
         cfgs = [c for _s, c in r.agg_source_registry["g1"]]
         assert cfgs and all(len(json.dumps(c)) < 600 for c in cfgs)
+
+
+# ---- WP-31 F1c: lowess ----
+#
+# GAPS3 F1c: a lowess on the saved page kept the build's smooth after a
+# filter move, dimmed and keyed "(unfiltered)", while the served app
+# re-smoothed the kept rows.  The oracle is GlyphMapper._stata_lowess (and
+# map_lowess around it), pinned to Stata by stat_truth.json's lowess curves
+# and the U16 truth block.
+
+_LW_KEYS = _KEYS | {"bwidth", "mean", "noweight", "adjust", "logit",
+                    "y_all_mean", "max_ops"}
+_LW_FRAME = _FRAME.assign(y01=(_FRAME["y"] > _FRAME["y"].median())
+                          .astype(float))
+
+
+class TestLowessConfig:
+    def test_lowess_config_keys(self):
+        r = _map("lowess", _FRAME, {"bwidth": ".4", "mean": "mean"})
+        cfg = r._dash_agg_config
+        assert set(cfg) == _LW_KEYS
+        assert r._dash_agg_source is r.data_source
+        assert hasattr(r, "_dash_agg_rows")
+        assert cfg["type"] == "lowess" and cfg["cols"] == ["x_lw", "y_lw"]
+        assert cfg["bwidth"] == 0.4 and cfg["mean"] is True
+        assert cfg["noweight"] is False and cfg["adjust"] is False
+        assert cfg["logit"] is False and cfg["y_all_mean"] is None
+        assert cfg["max_ops"] == dr._DASH_LOWESS_JS_MAX_OPS == 2e8
+        json.dumps(cfg, allow_nan=False)
+
+    def test_an_out_of_range_bwidth_is_point_eight(self):
+        # lowess.ado:75-78 (WP-31 C10a): outside (0, 1) is .8, silently.
+        for bw in ("1.5", "-1", "0", "1"):
+            assert _map("lowess", _FRAME, {"bwidth": bw}
+                        )._dash_agg_config["bwidth"] == 0.8
+
+    def test_lowess_adjust_mean_is_the_datasets(self):
+        gm = _gm()
+        gm.dataset = _FRAME.copy()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            r = gm.map_lowess(figure(), ColumnDataSource(_FRAME.iloc[:12]),
+                              "y", "x", {"adjust": "adjust"})
+        cfg = r._dash_agg_config
+        assert cfg["adjust"] is True
+        assert cfg["y_all_mean"] == pytest.approx(float(_FRAME["y"].mean()),
+                                                  rel=1e-15)
+        assert cfg["y_all_mean"] != pytest.approx(
+            float(_FRAME["y"].iloc[:12].mean()))
+
+    def test_lowess_empty_layer_is_tagged(self):
+        for df in (_FRAME.iloc[:2], _FRAME.assign(x=2500.0)):
+            r = _map("lowess", df)
+            assert len(r.data_source.data["x_lw"]) == 0
+            assert r._dash_agg_config["type"] == "lowess"
+            assert r._dash_agg_source is r.data_source
+
+    def test_a_recast_lowess_is_not_tagged(self):
+        r = _map("lowess", _FRAME, {"recast": "scatter"})
+        assert not hasattr(r, "_dash_agg_config")
+
+
+class TestLowessStaleKind:
+    def test_lowess_is_refit(self):
+        assert "lowess" in dr._DASH_JS_REFIT_TYPES
+        assert dr._dash_stale_kind("lowess", {}) is None
+        assert dr._dash_stale_kind("lowess", {"recast": "scatter"}) == "fit"
+
+
+_TRUTH = os.path.join(_HERE, "fixtures", "stat_truth.json")
+_DATA = os.path.join(_HERE, "fixtures", "data")
+_LW_VARIANTS = {"default": {}, "mean": {"mean": True},
+                "noweight": {"noweight": True}}
+
+
+def _lowess_js(x, y, bw, mean=False, noweight=False):
+    got = _js("dash_lowess(%s, %s, %r, %s, %s)" % (
+        json.dumps([float(v) for v in x]), json.dumps([float(v) for v in y]),
+        float(bw), json.dumps(bool(mean)), json.dumps(bool(noweight))))
+    return np.asarray(got["xs"], float), _nan(got["ys"])
+
+
+@requires_node
+class TestLowessTwin:
+    @pytest.mark.parametrize("variant", list(_LW_VARIANTS))
+    @pytest.mark.parametrize("ds", ["auto", "census", "nlsw88", "sp500"])
+    def test_fixture_curves(self, ds, variant):
+        with open(_TRUTH) as fh:
+            truth = json.load(fh)
+        meta = truth["datasets"][ds]
+        df = pd.read_csv(os.path.join(_DATA, ds + ".csv")).dropna()
+        x = df[meta["x"]].to_numpy(float)
+        y = df[meta["y"]].to_numpy(float)
+        opts = _LW_VARIANTS[variant]
+        gx, gy = _lowess_js(x, y, 0.8, **opts)
+        wx, wy = dr.GlyphMapper._stata_lowess(x, y, 0.8, **opts)
+        np.testing.assert_array_equal(gx, wx)
+        np.testing.assert_allclose(gy, wy, rtol=1e-9, atol=1e-10,
+                                   equal_nan=True)
+        # And Stata's own curve, stored whole.
+        key = f"{ds}:{variant}_full"
+        assert truth["lowess_full_resolution_check"][key] is True
+        rec = truth["lowess_more"][key]
+        want = np.array([np.nan if v is None else v
+                         for v in rec["lowess_y"]], float)
+        span = float(np.nanmax(want) - np.nanmin(want))
+        np.testing.assert_allclose(gy, want, rtol=0, atol=1e-8 * span,
+                                   equal_nan=True)
+
+    def test_ties_are_missing(self):
+        x = np.array([1.0] * 10 + list(range(2, 12)), float)
+        y = np.round(_RNG.normal(20.0, 3.0, 20), 2)
+        gx, gy = _lowess_js(x, y, 0.2)
+        wx, wy = dr.GlyphMapper._stata_lowess(x, y, 0.2)
+        np.testing.assert_allclose(gy, wy, rtol=1e-9, atol=1e-10,
+                                   equal_nan=True)
+        assert np.isnan(gy[:9]).all() and np.isfinite(gy[9:]).all()
+
+    def test_ties_keep_dataset_order(self):
+        x = np.array([3.0, 1.0, 3.0, 2.0, 3.0, 1.0, 5.0, 4.0])
+        y = np.array([9.0, 1.0, 7.0, 2.0, 8.0, 3.0, 4.0, 6.0])
+        gx, gy = _lowess_js(x, y, 0.5, mean=True)
+        wx, wy = dr.GlyphMapper._stata_lowess(x, y, 0.5, mean=True)
+        np.testing.assert_allclose(gy, wy, rtol=1e-12)
+
+
+def _lowess_case(df, opts, yvar="y", dataset=None):
+    gm = _gm()
+    if dataset is not None:
+        gm.dataset = dataset
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = gm.map_lowess(figure(), ColumnDataSource(df), yvar, "x",
+                          dict(opts))
+    x, y, _w = _rows(df, opts, yvar=yvar)
+    got = js_runner.run_fit_js_block(r._dash_agg_config, x, y)
+    data = r.data_source.data
+    for g, c in (("x_lw", "x_lw"), ("y_lw", "y_lw")):
+        np.testing.assert_allclose(_nan(got[g]), np.asarray(data[c], float),
+                                   rtol=1e-9, atol=1e-10, equal_nan=True)
+    return got
+
+
+_LOWESS_CASES = [
+    ("default", _LW_FRAME, {}, "y", None),
+    ("bwidth(.4) mean", _LW_FRAME, {"bwidth": ".4", "mean": "mean"}, "y",
+     None),
+    ("noweight", _LW_FRAME, {"noweight": "noweight"}, "y", None),
+    ("adjust, the dataset's mean", _LW_FRAME.iloc[:15],
+     {"adjust": "adjust"}, "y", _LW_FRAME),
+    ("adjust, no dataset", _LW_FRAME.iloc[:15], {"adjust": "adjust"}, "y",
+     None),
+    ("logit on 0/1 y", _LW_FRAME, {"logit": "logit"}, "y01", None),
+    ("logit adjust on 0/1 y", _LW_FRAME.iloc[:20],
+     {"logit": "logit", "adjust": "adjust"}, "y01", _LW_FRAME),
+    ("bwidth(5) is .8", _LW_FRAME, {"bwidth": "5"}, "y", None),
+    ("stairstep", _LW_FRAME, {"connect": "stairstep"}, "y", None),
+    ("two rows", _LW_FRAME.iloc[:2], {}, "y", None),
+    ("constant x", _LW_FRAME.assign(x=2500.0), {}, "y", None),
+]
+
+
+@requires_node
+class TestLowessBranch:
+    @pytest.mark.parametrize("df,opts,yvar,dataset",
+                             [c[1:] for c in _LOWESS_CASES],
+                             ids=[c[0] for c in _LOWESS_CASES])
+    def test_matches_python(self, df, opts, yvar, dataset):
+        _lowess_case(df, opts, yvar, dataset)
+
+    def test_two_rows_and_no_spread_write_empty_columns(self):
+        assert _lowess_case(_LW_FRAME.iloc[:2], {}) == {"x_lw": [],
+                                                        "y_lw": []}
+        assert _lowess_case(_LW_FRAME.assign(x=2500.0), {}) == {
+            "x_lw": [], "y_lw": []}
+
+    def test_capped(self):
+        cfg = dict(_map("lowess", _FRAME)._dash_agg_config, max_ops=1e6)
+        rng = np.random.default_rng(16)
+        x = rng.uniform(0.0, 1.0, 20_000)
+        got = js_runner.run_fit_js_block(cfg, x, 2.0 * x, timed=True)
+        assert got["data"] == {"x_lw": [], "y_lw": []}
+        assert got["ms"] < 200.0, got["ms"]
+
+
+def _hist_ac(**extra):
+    return dict({"type": "histogram", "varname": "v",
+                 "bin_edges": [0.0, 1.0, 2.0, 3.0, 4.0], "start": 0.0,
+                 "width": 1.0, "bin": 4, "ymode": "density"}, **extra)
+
+
+def _kde_ac(**extra):
+    return dict({"type": "kdensity", "varname": "v",
+                 "x_grid": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+                 "kernel": "epanechnikov", "bw_fixed": None}, **extra)
+
+
+_VALS = [0.5, 1.5, 1.7, 2.2, 3.2, 1.1]
+
+
+@requires_node
+class TestPartnerKeys:
+    """S16 reads the config keys its batch-4 partners write (DECISIONS
+    A22): S12's histogram gap/baroffset and kdensity area, S11's atobs.
+    Hand-written configs: the mappers that write the keys land after."""
+
+    @pytest.mark.parametrize("vals", [_VALS, []], ids=["rows", "no rows"])
+    def test_histogram_gap_and_offset(self, vals):
+        got = js_runner.run_filter_js_block(
+            "histogram", _hist_ac(gap=20, baroffset=0.5), vals)
+        left, right = np.asarray(got["left"]), np.asarray(got["right"])
+        np.testing.assert_allclose(right - left, [0.8] * 4, rtol=1e-12)
+        mid = np.array([0.5, 1.5, 2.5, 3.5])
+        np.testing.assert_allclose((left + right) / 2, mid + 0.5 * 0.8,
+                                   rtol=1e-12)
+
+    @pytest.mark.parametrize("vals", [_VALS, []], ids=["rows", "no rows"])
+    def test_histogram_without_keys_unchanged(self, vals):
+        for ac in (_hist_ac(), _hist_ac(gap=0, baroffset=0)):
+            got = js_runner.run_filter_js_block("histogram", ac, vals)
+            assert got["left"] == [0.0, 1.0, 2.0, 3.0]
+            assert got["right"] == [1.0, 2.0, 3.0, 4.0]
+
+    def test_kdensity_area(self):
+        one = js_runner.run_filter_js_block("kdensity", _kde_ac(), _VALS)
+        two = js_runner.run_filter_js_block("kdensity", _kde_ac(area=2),
+                                            _VALS)
+        assert two["x"] == one["x"]
+        np.testing.assert_allclose(two["y"], 2.0 * np.asarray(one["y"]),
+                                   rtol=1e-15)
+        assert max(one["y"]) > 0
+
+    def test_kdensity_without_key_unchanged(self):
+        one = js_runner.run_filter_js_block("kdensity", _kde_ac(), _VALS)
+        for ac in (_kde_ac(area=None), _kde_ac(area=1)):
+            assert js_runner.run_filter_js_block("kdensity", ac,
+                                                 _VALS) == one
+
+    def test_atobs_grid(self):
+        assert _js("dash_fit_grid([3, 1, 2, 1, 3], 100, null, true)") == [
+            1.0, 2.0, 3.0]
+        assert _js("dash_fit_grid([3, 1, 2], 3, null, false)") == [
+            1.0, 2.0, 3.0]
+        cfg = dict(_map("lfit", _FRAME)._dash_agg_config, atobs=True)
+        x, y, _w = _rows(_FRAME, {})
+        got = js_runner.run_fit_js_block(cfg, x, y)
+        xu = np.unique(x)
+        np.testing.assert_array_equal(got["x"], xu)
+        np.testing.assert_allclose(got["y"], np.polyval(np.polyfit(x, y, 1),
+                                                        xu), rtol=1e-9)
+        cfg = dict(_map("qfit", _FRAME)._dash_agg_config, atobs=True)
+        assert js_runner.run_fit_js_block(cfg, x, y)["x"] == xu.tolist()

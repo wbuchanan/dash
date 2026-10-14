@@ -372,3 +372,29 @@ class TestTheJsTwinsAreBounded:
         got = js_runner.run_fit_js_block(ac, x, y, timed=True)
         assert len(got["data"]["x"]) == 100
         assert got["ms"] < 2000.0, got["ms"]
+
+    #: A lowess config as map_lowess writes it (WP-31 F1c).
+    _LW = {"type": "lowess", "cols": ["x_lw", "y_lw"], "n": 100,
+           "range": None, "wtype": None, "xaxiskind": None,
+           "yaxiskind": None, "bwidth": 0.8, "mean": False,
+           "noweight": False, "adjust": False, "logit": False,
+           "y_all_mean": None, "max_ops": 2e8}
+
+    def test_lowess_under_node_on_1e4_rows(self):
+        # WP-31 F1c: twoway's lowess is O(N x window); at 1e4 rows and bw
+        # .8 it is 8e7 window operations, under the cap (D-16.e).  M10's
+        # 1e5-row bound cannot hold for it (section-16 risk).
+        rng = np.random.default_rng(16)
+        x = rng.uniform(1000.0, 5000.0, 10_000)
+        y = 40.0 - 0.006 * x + rng.normal(0.0, 2.0, x.size)
+        got = js_runner.run_fit_js_block(self._LW, x, y, timed=True)
+        assert len(got["data"]["x_lw"]) == 10_000
+        assert got["ms"] < 2000.0, got["ms"]
+
+    def test_lowess_is_capped_above_max_ops(self):
+        # 20000 * (2 * 7999 + 1) = 3.2e8 > 2e8: the line is left empty.
+        rng = np.random.default_rng(17)
+        x = rng.uniform(1000.0, 5000.0, 20_000)
+        got = js_runner.run_fit_js_block(self._LW, x, 0.5 * x, timed=True)
+        assert got["data"] == {"x_lw": [], "y_lw": []}
+        assert got["ms"] < 200.0, got["ms"]

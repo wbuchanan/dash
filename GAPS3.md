@@ -485,7 +485,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **E13 Tracked:** Open (WP-31 section 41).
 - **F1a Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lfit and qfit after a filter move (the JS prelude and the lfit and qfit twins)", commit 76547f8.
 - **F1b Tracked:** Open (WP-31 section 13).
-- **F1c Tracked:** Open (WP-31 section 16).
+- **F1c Tracked:** Closed in WP-31, BUGS.md "The saved page does not refit lowess after a filter move (the lowess twin)", commit pending.
 - **F1d Tracked:** Open (WP-31 section 19).
 - **F1e Tracked:** Open (WP-31 section 22).
 - **F1f Tracked:** Open (WP-31 section 25).

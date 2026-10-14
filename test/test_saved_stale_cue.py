@@ -2,8 +2,8 @@
 
 A saved page's filter callback (``dash_render._FILTER_JS``) redraws every
 row layer from the kept rows, but a fitted or smoothed line keeps the fit
-it had at build (lfitci, qfitci, fpfit, fpfitci, lowess, lpoly, lpolyci,
-mband, mspline; lfit and qfit are refitted since WP-31 F1a), a histogram
+it had at build (lfitci, qfitci, fpfit, fpfitci, lpoly, lpolyci, mband,
+mspline; lfit and qfit are refitted since WP-31 F1a, lowess since F1c), a histogram
 keeps its bins and a density its grid.  Measured on ``test_mode_parity._DF`` with the dropdown moved to
 Foreign: the lfit still starts at 29.1052, Stata's all-rows ``regress mpg
 weight`` value at weight 1800 (29.105207), where ``regress mpg weight if
@@ -54,9 +54,10 @@ from test_mode_parity import (_DF, _fire, _served, _spec,  # noqa: E402
 from test_saved_filter_layers import _MOVES, _render  # noqa: E402
 from test_server_layer_defects import plot_for  # noqa: E402
 
-#: The eleven layers a saved page computes at build and does not refit.
-# lfit and qfit are refitted by the saved page (WP-31 F1a); see _REFIT.
-_FROZEN = ["lfitci", "qfitci", "fpfit", "fpfitci", "lowess",
+#: The ten layers a saved page computes at build and does not refit.
+# lfit and qfit (WP-31 F1a) and lowess (F1c) are refitted by the saved
+# page; see _REFIT.
+_FROZEN = ["lfitci", "qfitci", "fpfit", "fpfitci",
            "lpoly", "lpolyci", "mband", "mspline", "histogram", "kdensity"]
 #: The frozen fit layer the cue's own mechanics are measured on.  It was
 #: lfit until the saved page refitted lfit (WP-31 F1a); fpfit stays frozen
@@ -300,7 +301,7 @@ class TestTheCueAppearsOnAMove:
 
 
 #: WP-31 F1: the computed layers the saved page refits after a move.
-_REFIT = ["lfit", "qfit"]
+_REFIT = ["lfit", "qfit", "lowess"]
 
 
 @requires_node
@@ -373,6 +374,9 @@ def _wdf(**changes):
 
 
 _AW = {"weight": "aweight", "wexp": "w"}
+#: lpoly refuses a pweight (r(101)): the frozen layer with a refused weight
+#: since lowess is re-smoothed (WP-31 F1c).
+_PW = {"weight": "pweight", "wexp": "w"}
 
 
 @requires_node
@@ -478,8 +482,10 @@ class TestTheWeightedSample:
         _assert_clear(r)
 
     def test_a_weight_twoway_refuses_is_not_read(self):
+        # lpoly [pw], frozen: lowess, which refuses every weight, is
+        # re-smoothed by the saved page (WP-31 F1c).
         df = _wdf()
-        r = self._run(df, plot_for("lowess", _AW))
+        r = self._run(df, plot_for("lpoly", _PW))
         _assert_marked(r)
 
 
@@ -653,7 +659,8 @@ class TestTheStaleKind:
 
     def test_each_type(self):
         fits = [t for t in _FROZEN if t not in ("histogram", "kdensity")]
-        assert len(fits) == 9  # 11 -> 9: F1a refits lfit and qfit
+        # 11 -> 9: F1a refits lfit and qfit; 9 -> 8: F1c refits lowess
+        assert len(fits) == 8
         for t in fits:
             assert dr._dash_stale_kind(t, {}) == "fit"
         assert dr._dash_stale_kind("histogram", {}) == "bins"
@@ -769,7 +776,9 @@ class TestTheFrozenTag:
                            # lfitci: a layer that drops a negative weight
                            # ("positive"), as lfit did (WP-31 F1a).
                            plot_for("lfitci", _AW),
-                           plot_for("lowess", _AW)],
+                           # A refused weight: lpoly [pw] (lowess is
+                           # re-smoothed since WP-31 F1c).
+                           plot_for("lpoly", _PW)],
                           {"filter": "foreign, type(dropdown)"}), _wdf())
         tags = []
         for x in r.figures["g1"].renderers:
@@ -777,7 +786,7 @@ class TestTheFrozenTag:
             if t is not None and not any(t is u for u in tags):
                 tags.append(t)
         assert [t["type"] for t in tags] == [_STAND_IN, "histogram",
-                                             _STAND_IN, "lfitci", "lowess"]
+                                             _STAND_IN, "lfitci", "lpoly"]
         lf, hi, empty, wl, lw = tags
         assert lf["vars"] == ["mpg", "weight"] and lf["kind"] == "fit"
         assert hi["vars"] == ["mpg"] and hi["kind"] == "bins"

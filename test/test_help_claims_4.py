@@ -1488,7 +1488,7 @@ class TestTheSavedPageNeedsNoNetwork:
 
 class TestAFitLineOnAFilterMove:
     """Fit-line recompute on filter: lfit and qfit on the saved page (WP-31
-    F1a; it was No), Yes served."""
+    F1a; it was No), lowess too (F1c), Yes served."""
 
     _FIT = [{"type": "lfit", "yvar": "price", "xvar": "weight",
              "options": {}}]

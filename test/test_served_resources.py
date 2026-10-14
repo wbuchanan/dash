@@ -472,12 +472,16 @@ class TestTheSavedPageIsUnchanged:
         # re-derived at 3d28881, whose %tw week-start tick port changes only
         # the page's two date-tick CustomJS code strings; and at 76547f8
         # (WP-31 F1a), whose fit prelude changes only the filter callback's
-        # code string (every other model property is the same).
+        # code string (every other model property is the same); and at
+        # WP-31 F1c, which re-smooths the lowess layer: its source moves into
+        # the filter callback's agg_sources with its config, its stale-cue
+        # args, caption and 0.3 muted alpha go, and the code string grows
+        # (diffed with every code string masked; nothing else differs).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "c9727fd64ed771b8c97388f005cc166f6e160116f8e91767936791b183230bbd")
+    "569ce64d97a16a3945e49dc734d470c0d2576f68c2173df46164ce8b28dd14d0")
 
 
 # ===========================================================================

@@ -228,6 +228,7 @@ FUNCTIONS = {
  'GlyphMapper.map_lfitci': 'test/test_glyphs.py::TestEdgeCasesEmptyData::test_lfitci_constant_xvar_returns_two_renderers',
  'GlyphMapper.map_line': 'test/test_glyphs.py::TestMapLine::test_line_lpattern_applied',
  'GlyphMapper.map_lowess': 'test/test_glyphs.py::TestLowessConstantX::test_constant_x_produces_empty_line',
+ 'GlyphMapper.map_lowess.<locals>._lowess_y_all_mean': 'test/test_js_fit_refit.py::TestLowessConfig::test_lowess_adjust_mean_is_the_datasets',
  'GlyphMapper.map_lpoly': 'test/test_glyphs.py::TestLpolyFpfit::test_map_lpoly_empty_data',
  'GlyphMapper.map_lpolyci': 'test/test_glyphs.py::TestLpolyFpfit::test_map_lpolyci_empty_data',
  'GlyphMapper.map_lpolyci.<locals>._draw': 'test/test_lpolyci_band.py::TestSources::test_three_sources_drawn_or_empty',

@@ -1979,7 +1979,6 @@ WP31_OPEN = {
     "C6": "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn",
     "C7": "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them",
     "C8a": "colorvar() is drawn on four plot types only and jitter() is named on rscatter, rcapsym, pcscatter and pccapsym (the coverage and jitter parts)",
-    "F1c": "The saved page does not refit lowess after a filter move (the lowess twin)",
     "C8b": "colorlist() and coloruseplegend are pending, colorstart(), colorend(), colorformissing(), colorfillonly, colorkeysrange, colorrule(), clegend(), plegend() and pcycle() are undeclared, and dash's colormissing() is not Stata's colorformissing() spelling (the option remainder)",
     "B5b": "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)",
     "F1d": "The saved page does not refit lpoly after a filter move (the lpoly twin)",

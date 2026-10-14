@@ -2026,7 +2026,9 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
 # The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
-_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit"})
+_DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess"})
+#: WP-31 F1c (D-16.e): the saved page re-smooths a lowess only when N*(2k+1) is at most this; above it the layer is left empty after a move.
+_DASH_LOWESS_JS_MAX_OPS = 2e8
 
 # ---- The saved page's stale cue (WP-29 P0.17, decision M3) ----
 # A saved page does not refit a computed layer after a filter move; while
@@ -16967,6 +16969,38 @@ class GlyphMapper:
         # type); _layer_weights names one and draws the layer without it.
         x, y, _w, _wt = self._layer_units(source, view, options, "lowess",
                                             xvar, yvar)
+        mean = bool(str(options.get("mean", "") or "").strip())
+        noweight = bool(str(options.get("noweight", "") or "").strip())
+        _adj = bool(str(options.get("adjust", "") or "").strip())
+        _lgt = bool(str(options.get("logit", "") or "").strip())
+
+        def _lowess_y_all_mean():
+            """adjust's numerator: mean(y) over EVERY observation in memory
+            with a y (``summ y, mean`` with no if), in y's Stata units when
+            y is a date (WP-29 P0.8); None when the dataset holds none."""
+            if self.dataset is None or yvar not in getattr(
+                    self.dataset, "columns", ()):
+                return None
+            _yk = (self.date_vars or {}).get(yvar)
+            y_all = (_dash_date_units(self.dataset[yvar], _yk)
+                     if _yk in _STATA_DATE_KINDS
+                     else _dash_float_values(self.dataset[yvar]))
+            y_all = np.asarray(y_all, dtype=float)
+            if not np.isfinite(y_all).any():
+                return None
+            return float(np.nanmean(y_all))
+
+        _my = _lowess_y_all_mean() if _adj else None
+        # The saved page's re-smooth (WP-31 F1c): S10's fit config with
+        # lowess's own options.  The adjust mean is fixed at build (D-16.a):
+        # it is every observation's, whatever the filter keeps; None makes
+        # the page use the kept rows' y, as the sample's y stands in here.
+        _cfg = dict(self._fit_agg_config("lowess", xvar, yvar, None, None,
+                                         fig, options, ["x_lw", "y_lw"],
+                                         _FIT_GRID, None),
+                    bwidth=float(bw), mean=mean, noweight=noweight,
+                    adjust=_adj, logit=_lgt, y_all_mean=_my,
+                    max_ops=float(_DASH_LOWESS_JS_MAX_OPS))
 
         # lowess.ado:89 smooths only when r(N) >= 3 and the range of x is at
         # least 1e-30.  dash used len < 2 or a zero std: two rows drew a
@@ -16983,6 +17017,8 @@ class GlyphMapper:
             # dash's "drew nothing" (EC-04).
             if len(x) < 3:
                 self._mark_silent(_r_empty)
+            if not options.get("recast"):
+                self._tag_fit(_r_empty, source, view, _cfg)
             return _r_empty
 
         # Stata's smoother, not statsmodels'.  statsmodels' lowess is a
@@ -16991,8 +17027,6 @@ class GlyphMapper:
         # tie group -- and measured against Stata's own curves it was off by
         # 3.7% to 44% of the y range on every dataset; the rule below
         # reproduces all twenty fixture probes to 1.5e-10.
-        mean = bool(str(options.get("mean", "") or "").strip())
-        noweight = bool(str(options.get("noweight", "") or "").strip())
         x_lw, y_lw = self._stata_lowess(x, y, bw, mean=mean, noweight=noweight)
 
         # lowess.ado ADJ_LOGIT (:203-221), adjust before logit.
@@ -17004,21 +17038,13 @@ class GlyphMapper:
         # cars' own 24.77); mean(smooth) over the smooth's non-missing
         # values.  A zero mean(smooth) divides by zero and every value is
         # missing, so nothing is drawn.
-        if str(options.get("adjust", "") or "").strip():
-            y_all = None
-            if self.dataset is not None and yvar in getattr(self.dataset, "columns", ()):
-                # In y's Stata units when y is a date, as the smooth is
-                # (WP-29 P0.8).
-                _yk = (self.date_vars or {}).get(yvar)
-                y_all = (_dash_date_units(self.dataset[yvar], _yk)
-                         if _yk in _STATA_DATE_KINDS
-                         else _dash_float_values(self.dataset[yvar]))
-            if y_all is None or not np.isfinite(y_all).any():
-                y_all = y
+        if _adj:
+            # _lowess_y_all_mean, or the sample's own y when the dataset
+            # has none.
+            _num = _my if _my is not None else float(np.nanmean(y))
             _ms = float(np.nanmean(y_lw)) if np.isfinite(y_lw).any() else np.nan
-            _my = float(np.nanmean(y_all))
             if np.isfinite(_ms) and _ms != 0.0:
-                y_lw = y_lw * (_my / _ms)
+                y_lw = y_lw * (_num / _ms)
             else:
                 y_lw = np.full_like(y_lw, np.nan)
         # logit clamps the smooth below .0001 to 1/N and above 1 - .0001 to
@@ -17027,11 +17053,11 @@ class GlyphMapper:
         # becomes 1 - 1/N and is drawn at ln(N-1) (measured: ln 19 at the
         # nine missing tied rows of a 20-row sample; ln 73 everywhere for
         # adjust logit on a y that is 0 throughout).
-        if str(options.get("logit", "") or "").strip():
-            _adj = 1.0 / len(y_lw)
-            y_lw = np.where(np.isnan(y_lw), 1.0 - _adj, y_lw)
-            y_lw = np.where(y_lw < 0.0001, _adj, y_lw)
-            y_lw = np.where(y_lw > 1.0 - 0.0001, 1.0 - _adj, y_lw)
+        if _lgt:
+            _inv = 1.0 / len(y_lw)
+            y_lw = np.where(np.isnan(y_lw), 1.0 - _inv, y_lw)
+            y_lw = np.where(y_lw < 0.0001, _inv, y_lw)
+            y_lw = np.where(y_lw > 1.0 - 0.0001, 1.0 - _inv, y_lw)
             y_lw = np.log(y_lw / (1.0 - y_lw))
         # What is still missing is not drawn, and the line joins the points
         # on either side, as twoway's cmissing(y) default does.
@@ -17063,7 +17089,7 @@ class GlyphMapper:
         # 24sep2026: x = 1 3 4 plots three missing values, rc 0).
         if not len(x_lw):
             self._mark_silent(r)
-        return r
+        return self._tag_fit(r, source, view, _cfg)
 
     @staticmethod
     def _stata_lowess(x: "np.ndarray", y: "np.ndarray", bw: float = 0.8,
@@ -25827,8 +25853,10 @@ function dash_weight_norm(w, wtype, n) {
 // rows' min to max, or over range() -- [lo, hi] as written, null for a
 // "." (the data's own bound), read in either order -- as numpy's
 // linspace places them (i * step + lo, the last point exactly hi); one
-// point, at the low end, for n(1).
-function dash_fit_grid(x, n, range) {
+// point, at the low end, for n(1).  atobs (WP-31 C9, S11's key): the kept
+// rows' distinct x, sorted, as np.unique gives them.
+function dash_fit_grid(x, n, range, atobs) {
+    if (atobs) return Array.from(new Set(x)).sort((a, b) => a - b);
     let lo = Infinity, hi = -Infinity;
     for (const v of x) { if (v < lo) lo = v; if (v > hi) hi = v; }
     if (!(lo <= hi)) { lo = 0; hi = 0; }
@@ -26176,6 +26204,52 @@ function dash_fit_write(src, ac, xs, ys, more) {
         : out;
     src.change.emit();
 }
+// Stata's lowess ([R] lowess, Methods and formulas) as GlyphMapper.
+// _stata_lowess reproduces it (WP-31 F1c): a stable sort by x (ties keep
+// the kept rows' order), k = trunc((N bw - .5)/2), the window
+// max(0,i-k)..min(N-1,i+k), Delta = 1.0001 max|x_j - x_i| at the window's
+// ends, tricube weights (unit under noweight), the weighted line at x_i
+// (the weighted mean under mean), NaN where the window's x do not vary.
+// A bandwidth outside (0, 1) is .8 (lowess.ado:75-78).  Returns {xs, ys}
+// of length N.
+function dash_lowess(x, y, bw, mean, noweight) {
+    if (!(bw > 0 && bw < 1)) bw = 0.8;
+    const n = x.length;
+    const order = x.map((v, i) => i).sort((a, b) => (x[a] - x[b]) || (a - b));
+    const xs = order.map(i => x[i]), ys = order.map(i => y[i]);
+    const k = Math.trunc((n * bw - 0.5) / 2);
+    const out = new Array(n);
+    const w = new Array(Math.min(n, 2 * k + 1));
+    for (let i = 0; i < n; i++) {
+        const lo = Math.max(0, i - k), hi = Math.min(n - 1, i + k);
+        const c = xs[i];
+        const delta = 1.0001 * Math.max(c - xs[lo], xs[hi] - c);
+        const unit = noweight || delta === 0;
+        let sw = 0, sy = 0, sx = 0;
+        for (let j = lo; j <= hi; j++) {
+            let wj = 1;
+            if (!unit) {
+                const t = Math.abs(xs[j] - c) / delta;
+                const u = 1 - t * t * t;
+                wj = u * u * u;
+            }
+            w[j - lo] = wj; sw += wj; sy += wj * ys[j]; sx += wj * xs[j];
+        }
+        const ym = sy / sw;
+        if (mean) { out[i] = ym; continue; }
+        if (delta === 0) { out[i] = NaN; continue; }
+        const xm = sx / sw;
+        let sxx = 0, sxy = 0;
+        for (let j = lo; j <= hi; j++) {
+            const dx = xs[j] - xm;
+            sxx += w[j - lo] * dx * dx;
+            sxy += w[j - lo] * (ys[j] - ym) * dx;
+        }
+        if (!(sxx > 0)) { out[i] = NaN; continue; }
+        out[i] = ym + (sxy / sxx) * (c - xm);
+    }
+    return {xs: xs, ys: out};
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -26254,6 +26328,19 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
     if (ac.type === 'histogram') {
         const edges = ac.bin_edges;
         const n_bins = edges.length - 1;
+        // gap() and baroffset() (WP-31 C5, S12's keys): each bar is
+        // width * (100 - gap)/100 wide, centred on its bin moved by
+        // baroffset bar widths.  Without them the bars are the edges.
+        const _gap = ac.gap || 0, _off = ac.baroffset || 0;
+        let _hl = edges.slice(0, n_bins), _hr = edges.slice(1);
+        if (_gap || _off) {
+            _hl = []; _hr = [];
+            for (let k = 0; k < n_bins; k++) {
+                const w = edges[k + 1] - edges[k], bw = w * (100 - _gap) / 100;
+                const c = (edges[k] + edges[k + 1]) / 2 + _off * bw;
+                _hl.push(c - bw / 2); _hr.push(c + bw / 2);
+            }
+        }
         // WP-29 P0.8: a date is counted on the full unit grid (ac.bin bars
         // from ac.start) and the kept run of bars from ac.bin_first is
         // drawn; densities divide by the bar's width in units.  A config
@@ -26285,8 +26372,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             // leaving stale bars from the previous data visible.
             src.data = {
                 top:   new Array(n_bins).fill(0),
-                left:  edges.slice(0, n_bins),
-                right: edges.slice(1),
+                left:  _hl,
+                right: _hr,
             };
             src.change.emit();
             continue;
@@ -26318,8 +26405,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // width; leave every count at zero rather than derive one.
         src.data = {
             top:   dash_scale(counts),
-            left:  edges.slice(0, n_bins),
-            right: edges.slice(1),
+            left:  _hl,
+            right: _hr,
         };
         src.change.emit();
 
@@ -26401,6 +26488,9 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             for (const xi of vals) s += kfn((x - xi) / h);
             return s / (n * h);
         });
+        // area() (WP-31 C5, S12's key) scales the density; 1 without it.
+        const _area = (ac.area === undefined || ac.area === null) ? 1 : ac.area;
+        if (_area !== 1) for (let i = 0; i < ys.length; i++) ys[i] *= _area;
         src.data = { x: xs, y: ys };
         // A stepped curve stays stepped (WP-30 P1.8a).
         if (ac.join) {
@@ -26414,7 +26504,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // least squares on [1, x - mean], on _fit_grid's points.
         const n = fx.length;
         if (n < 2) { dash_fit_write(src, ac, [], [], null); continue; }
-        const xg = dash_fit_grid(fx, ac.n, ac.range);
+        const xg = dash_fit_grid(fx, ac.n, ac.range, ac.atobs);
         let lo = Infinity, hi = -Infinity;
         for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
         let yg;
@@ -26432,7 +26522,7 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // WP-31 F1a: map_qfit on the kept rows (_qfit_design, _dash_wls).
         const n = fx.length;
         if (n < 2) { dash_fit_write(src, ac, [], [], null); continue; }
-        const xg = dash_fit_grid(fx, ac.n, ac.range);
+        const xg = dash_fit_grid(fx, ac.n, ac.range, ac.atobs);
         const d = dash_qfit_design(fx, xg);
         const fit = dash_wls(d.X, fy, fw, ac.wtype);
         if (fit === null) { dash_fit_write(src, ac, [], [], null); continue; }
@@ -26442,6 +26532,47 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
             return s;
         });
         dash_fit_write(src, ac, xg, yg, null);
+    } else if (ac.type === 'lowess') {
+        // WP-31 F1c: map_lowess on the kept rows -- fewer than three, or
+        // an x range under 1e-30, draw nothing; above ac.max_ops window
+        // operations the line is left empty (D-16.e); else dash_lowess,
+        // then adjust and logit as lowess.ado's ADJ_LOGIT, the finite
+        // values drawn.
+        const n = fx.length;
+        let lo = Infinity, hi = -Infinity;
+        for (const v of fx) { if (v < lo) lo = v; if (v > hi) hi = v; }
+        if (n < 3 || !(hi - lo >= 1e-30)) { dash_fit_write(src, ac, [], [], null); continue; }
+        const bw = (ac.bwidth > 0 && ac.bwidth < 1) ? ac.bwidth : 0.8;
+        const k = Math.trunc((n * bw - 0.5) / 2);
+        if (n * (2 * k + 1) > ac.max_ops) {
+            dash_fit_write(src, ac, [], [], null);
+            src._dash_capped = true;
+            continue;
+        }
+        const sm = dash_lowess(fx, fy, bw, !!ac.mean, !!ac.noweight);
+        let ys = sm.ys;
+        if (ac.adjust) {
+            // mean(y) over every observation is fixed at build
+            // (ac.y_all_mean); with none, the kept rows' y, as Python
+            // falls back to the sample's.
+            const mean = (v) => { let s = 0, c = 0; for (const e of v) if (isFinite(e)) { s += e; c++; } return c ? s / c : NaN; };
+            const ms = mean(ys);
+            const my = (ac.y_all_mean === null || ac.y_all_mean === undefined)
+                ? mean(fy) : ac.y_all_mean;
+            ys = (isFinite(ms) && ms !== 0) ? ys.map(v => v * (my / ms)) : ys.map(() => NaN);
+        }
+        if (ac.logit) {
+            const inv = 1 / ys.length;
+            ys = ys.map(v => {
+                let s = isNaN(v) ? 1 - inv : v;
+                if (s < 0.0001) s = inv;
+                if (s > 1 - 0.0001) s = 1 - inv;
+                return Math.log(s / (1 - s));
+            });
+        }
+        const kx = [], ky = [];
+        for (let i = 0; i < ys.length; i++) if (isFinite(ys[i])) { kx.push(sm.xs[i]); ky.push(ys[i]); }
+        dash_fit_write(src, ac, kx, ky, null);
     // DASH_FIT_BRANCHES_END
     }
 }
@@ -48008,6 +48139,9 @@ class ServerAppBuilder:
                       "_DASH_WEIGHT_ACCEPTS", "_DASH_WEIGHT_INERT",
                       "_DASH_WEIGHT_NAMES", "_DASH_WEIGHT_NEG_EXCLUDED",
                       "_DASH_FW_NONINT_NOTHING",
+                      # map_lowess writes the saved page's lowess cap into
+                      # its refit config (WP-31 F1c).
+                      "_DASH_LOWESS_JS_MAX_OPS",
                       # _stata_date_kind's own pattern, for an axis format().
                       "_MS_PER_DAY", "_DATE_FMT_RE",
                       # _dash_anglestyle_degrees' table of Stata's

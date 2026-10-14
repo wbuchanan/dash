@@ -3319,6 +3319,16 @@ MOVE_CORPUS = [
                [plot_for("lfit", yvar="mpg", xvar="when")]),
     _move_case("qfit with range(1500 5500) n(7), dropdown", _MOVES[0],
                [plot_for("qfit", {"range": "1500 5500", "n": "7"})]),
+    # WP-31 F1c: lowess re-smooths on the saved page
+    _move_case("lowess, dropdown", _MOVES[0], [_sc(), plot_for("lowess")]),
+    _move_case("lowess bwidth(.4) mean, range", _MOVES[1],
+               [plot_for("lowess", {"bwidth": ".4", "mean": "mean"})]),
+    _move_case("lowess noweight adjust, slider", _MOVES[2],
+               [plot_for("lowess", {"noweight": "noweight",
+                                    "adjust": "adjust"})]),
+    _move_case("lowess logit on a 0/1 y, dropdown", _MOVES[0],
+               [plot_for("lowess", {"logit": "logit"}, yvar="foreign",
+                         xvar="weight")]),
 
     # WP-31 S09 (C10c): three y axes after a move (S35 extends the
     # profile to their ranges).

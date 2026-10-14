@@ -399,7 +399,7 @@ and now matches Stata.
 
 <!-- WP-31 C8a -->
 
-<!-- WP-31 F1c -->
+- lowess on a saved page after a filter move: the build's smooth (marked) -> Stata's lowess on the kept rows; above 200 million window operations the line is left empty (WP-31, F1c)
 
 <!-- WP-31 C8b -->
 
