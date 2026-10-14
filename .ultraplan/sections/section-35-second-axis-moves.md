@@ -343,3 +343,15 @@ TR-35.6's three MOVE_CORPUS entries and the extended `_own` move comparison.
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 B5c)`; close the BUGS.md entry "dot rows on the saved page keep the build's axis span after a filter move" (Resolution ending `Closes GAPS3 B5 (WP-31, B5c).`), delete its `"B5c":` WP31_OPEN line, rewrite GAPS3.md's `- **B5c Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 B5c -->` under `### Results that change` with a line ending `(WP-31, B5c)`. dash replaces twoway (D13).
 
+## Addendum (14oct2026, DECISIONS D20): row D1b added to this section
+
+### D1b: Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn
+
+**Gap.** S24 drew minor ticks/labels (`_dash_apply_minor_ticks`, `_dash_finish_minor_ticks`, the `minor` entry of `_dash_axis_plan`, `_DASH_MTICK_JS`) on axes 1 and 2, but its axis-2 `##N` labels are not re-placed after a move, and `_dash_axfam` leaves axes 3-9 and the t options' axis(2) copy as typed.
+
+**Requirement.** Re-place far-side minor labels after a move in the saved page's axis finish (R11, this section's batch) and the served refinish; route xmlabel()/xmtick() (and t forms) with axis(2)-(9) through S09's axisn records and draw them as S24 draws axes 1-2. Measure twoway for axes 3-9 first.
+
+**Fits S35** because S35 owns the extra axes and their re-finish after a move (it also has C10e: date kinds and t options on axes 3-9).
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D1b)`; close the BUGS.md entry "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn" (Resolution ending `Closes GAPS3 D1 (WP-31, D1b).`), delete its `"D1b":` WP31_OPEN line, rewrite GAPS3.md's `- **D1b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D1b -->` under `### Results that change` with a line ending `(WP-31, D1b)`. dash replaces twoway (D13).
+

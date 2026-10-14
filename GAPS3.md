@@ -469,6 +469,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C18 Tracked:** Closed in WP-31, BUGS.md "scatteri refuses a 2/2 numlist element where twoway divides", commit 034fc0b.
 - **C18b Tracked:** Open (WP-31 section 47).
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit pending.
+- **D1b Tracked:** Open (WP-31 section 35).
+- **D1c Tracked:** Open (WP-31 section 33).
 - **D2 Tracked:** Open (WP-31 section 27).
 - **D3 Tracked:** Open (WP-31 section 30).
 - **D4 Tracked:** Open (WP-31 section 31).

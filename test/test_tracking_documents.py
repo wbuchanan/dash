@@ -2058,6 +2058,8 @@ WP31_OPEN = {
     "C8d": "pcycle() refuses a fraction where twoway draws it on a graph of few series",
     "C8e": "colorkeysreverse on a colorvar() colour bar is named, not drawn",
     "B5c": "dot rows on the saved page keep the build's axis span after a filter move",
+    "D1b": "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn",
+    "D1c": "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2188,6 +2190,8 @@ WP31_LISTS = {
     "C8d": ("Results that change",),
     "C8e": ("Results that change",),
     "B5c": ("Results that change",),
+    "D1b": ("Results that change",),
+    "D1c": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2317,6 +2321,8 @@ WP31_SECTION = {
     "C8d": 32,
     "C8e": 26,
     "B5c": 35,
+    "D1b": 35,
+    "D1c": 33,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2524,7 +2530,8 @@ class TestWp31Tracking:
         # D16 adds C6b; 119 -> 120: D17 adds C11b.
         # 120 -> 123: D18 adds C8c, C8d, C8e.
         # 123 -> 124: D19 adds B5c.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 124
+        # 124 -> 126: D20 adds D1b, D1c.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 126
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

@@ -488,3 +488,16 @@ TR-33.12's `CORPUS` and `MOVE_CORPUS` entries; `ALLOWED` and `_MUST_WARN` untouc
 - **For S35 (batch 12).** `ylabel2()/xlabel2()` take the same `_dash_parse_axis_spec` keys; S35 applies them to the second axis through `_dash_apply_axis_spec` unchanged. The twin axis of `alternate` on axis 2 is S35's.
 - **For S44 (batch 15).** The five style names are the recorded D6 residual: once `textstyle-*.style`, `tickstyle-*.style`, `gridstyle-*.style` and `linestyle-*.style` are read, `labstyle tstyle gstyle tlstyle glstyle` join `_DASH_AXLABEL_HONOURED` and the D6 Tracked line becomes Closed.
 - **Decisions for maintainer ratification.** D-33.a (two axes for `alternate`), D-33.b (end grid lines by a CustomJSTicker), D-33.g (style names deferred to S44 through the open residual D6b -- S44's D-44c must gain textstyle/tickstyle/gridstyle or S61 files D6b under M12), D-33.i (`extend`/`fextend` coincide in Bokeh; documented difference under M17), the ordering of three commits from one 33-01 (three test files so no commit is red).
+
+## Addendum (14oct2026, DECISIONS D20): row D1c added to this section
+
+### D1c: A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule
+
+**Gap.** Three S24 minor-label differences: (1) a `format()` on `xmlabel(##N)` is lost after a move on the saved page; (2) `_dash_axbound_list` lacks `mlabel2`/`mtick2` rows, so axis-2 minor `angle()` is not bounded as twoway bounds it; (3) dash.ado expands `a(b)c` to a list before the renderer sees it, so an evenly spaced typed list (which twoway draws as typed: one tick at 0 over uneven majors) is drawn as its rule.
+
+**Requirement.** Fix each in both modes against twoway's measured answers: pass the minor format to the after-move text; add the bounds rows; carry the typed form (rule vs list) of an axis list to the renderer.
+
+**Fits S33** because S33 owns axis label/tick style sub-options, the `##N` rule and the axis label grammar in batch 11.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D1c)`; close the BUGS.md entry "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule" (Resolution ending `Closes GAPS3 D1 (WP-31, D1c).`), delete its `"D1c":` WP31_OPEN line, rewrite GAPS3.md's `- **D1c Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D1c -->` under `### Results that change` with a line ending `(WP-31, D1c)`. dash replaces twoway (D13).
+

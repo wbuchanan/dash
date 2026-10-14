@@ -3939,3 +3939,15 @@
   - Description: GAPS3.md B5, found by WP-31 section 18 (B5b residual): twoway draws each dot row across the plot region's x span; after a filter move the served app refills the rows from the finished scale (_dash_finish_auto_bases), but the saved page keeps each kept observation's row at the build's axis span.
   - Suggested fix: WP-31 section 35 (second axis moves): refill the dots from the saved page's finished axis in the move callback, as the served app does.
   - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn
+  - File Names and Line Numbers: dash_render.py _dash_apply_minor_ticks, _dash_finish_minor_ticks, _DASH_MTICK_JS; dash_parse.mata _dash_axfam
+  - Description: GAPS3.md D1, found by WP-31 section 24 (D1 residuals): ##N minor labels on axis 2 are placed at build and do not move after a filter move; minor ticks and labels on axes 3-9, and a t option's axis(2) mlabel/mtick copy, are named in the note and not drawn.
+  - Suggested fix: WP-31 section 35 (second axis moves): re-place axis-2 minor labels in the move-time axis finish and route and draw minor ticks/labels on axes 3-9 and the t options' axis(2) copy, both modes.
+  - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule
+  - File Names and Line Numbers: dash_render.py _dash_minor_text, _DASH_MTICK_JS; dash.ado _dash_axbound_list; the axis-rule expansion of a(b)c in dash.ado
+  - Description: GAPS3.md D1, found by WP-31 section 24 (D1): format() on xmlabel(##N) is not followed by the saved page's after-move text (it uses the axis formatter); _dash_axbound_list has no mlabel2/mtick2 rows for axis-2 angle() bounds; an evenly spaced list typed as a list is drawn as its rule where twoway draws only the tick at 0 (dash.ado expands a(b)c into a list before the renderer can tell them apart).
+  - Suggested fix: WP-31 section 33 (axis suboptions look): keep the minor-label format() through the after-move text, add the axis-2 bounds rows, and carry whether an axis list was typed as a rule or a list to the renderer, cscripted against twoway.
+  - Resolution: Not fixed because WP-31 section 33 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

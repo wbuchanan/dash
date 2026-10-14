@@ -306,3 +306,7 @@ Acceptance: **AC-26.1** both types draw in both modes with twoway's cuts and col
 
 **Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 C8e)`; close the BUGS.md entry "colorkeysreverse on a colorvar() colour bar is named, not drawn" (Resolution ending `Closes GAPS3 C8 (WP-31, C8e).`), delete its `"C8e":` WP31_OPEN line, rewrite GAPS3.md's `- **C8e Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 C8e -->` under `### Results that change` with a line ending `(WP-31, C8e)`. dash replaces twoway (D13).
 
+## Addendum (14oct2026, DECISIONS D20): document S23's duplicate-z rule
+
+S23 measured that under interp(thinplatespline) and interp(shepard) twoway keeps one of several z values at a duplicated (x, y) in an order that follows `set sortseed` (fixture contour_truth.json key `dupseed`: seeds 1-5 give 4 or 5); dash keeps the smallest z for every method, as twoway does under interp(none). twoway itself is not deterministic there, so there is no row: when this section registers contour and writes its help paragraph, state this difference in the help with the measured example, and pin the smallest-z rule with a test.
+

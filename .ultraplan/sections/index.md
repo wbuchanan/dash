@@ -94,9 +94,9 @@
 | 30 | textbox-placement-added-text | D3, D13 | 10 | 01 | -- | yellow | M | 4 |
 | 31 | legend-geometry | D4, C13 | 10 | 01 | -- | yellow | M | 4 |
 | 32 | sizing-scale-aspect | D5, E11 + A3c (D14) + C8d (D18) | 11 | 01 | -- | yellow | M | 4 |
-| 33 | axis-suboptions-look | D6, D7, E6 | 11 | 24 | -- | yellow | M | 4 |
+| 33 | axis-suboptions-look | D6, D7, E6 + D1c (D20) | 11 | 24 | -- | yellow | M | 4 |
 | 34 | varlabel-marker-label-options | D8, C17, E3, C14, C15 | 11 | 01 | -- | green | S | 4 |
-| 35 | second-axis-moves | D9 + C10e (D14) + B5c (D19) | 12 | 09 | -- | yellow | M | 3 |
+| 35 | second-axis-moves | D9 + C10e (D14) + B5c (D19) + D1b (D20) | 12 | 09 | -- | yellow | M | 3 |
 | 36 | by-remainder | D10 | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
@@ -146,6 +146,8 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | C8d | pcycle() refuses a fraction where twoway draws it on a graph of few series (D18) | S17 | S32 (11) | RC |
 | C8e | colorkeysreverse on a colorvar() colour bar is named, not drawn (D18) | S17 | S26 (9) | RC |
 | B5c | dot rows on the saved page keep the build's axis span after a filter move (D19) | S18 | S35 (12) | RC |
+| D1b | Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn (D20) | S24 | S35 (12) | RC |
+| D1c | A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule (D20) | S24 | S33 (11) | RC |
 
 ## Batch execution order
 
