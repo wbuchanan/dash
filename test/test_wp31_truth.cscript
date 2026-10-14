@@ -529,6 +529,10 @@ def _u03_draw(sp, dp, app):
                     out["b"].append("%.12g" % float(getattr(g.width, "value",
                                                             g.width)))
                 elif t == "Scatter":
+                    # Since B5b, dot's rows of dots (tagged dash_dots) are a
+                    # Scatter too; B5a's check is about the markers.
+                    if "dash_dots" in (getattr(r, "tags", None) or []):
+                        continue
                     out["m"].append("%.12g" % float(g.size))
                     # The dots' y values, as count and sum (B5a).
                     yf = g.y if isinstance(g.y, str) else g.y.field

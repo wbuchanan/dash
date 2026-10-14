@@ -4422,13 +4422,13 @@ o'clock, as in {cmd:twoway}), {cmd:ring(0)} (inside the plot),
 other sub-options are named in the note.  {cmd:plegend()} does the same for
 the keys {cmd:coloruseplegend} puts in the plot legend, where
 {cmd:clegend()} has no key to place and is named.  {cmd:pcycle(}{it:#}{cmd:)}
-is the number of plot styles before {cmd:p1} recurs: {cmd:scatter mpg trunk
-turn weight, pcycle(2)} draws its third series in {cmd:p1}.  It takes a
+is the number of plot styles before {cmd:p1} recurs:
+{cmd:scatter mpg trunk turn weight, pcycle(2)} draws its third series in {cmd:p1}.  It takes a
 positive integer, refused otherwise with {cmd:twoway}'s words ("option
 seriesid() not allowed"); {cmd:twoway} draws a fraction on a graph with too
 few series to reach a fractional style.
-{cmd:colorvar(i.}{it:varname}{cmd:)} is {cmd:colorvar(}{it:varname}{cmd:)
-colordiscrete coloruseplegend}, as in {cmd:twoway}.
+{cmd:colorvar(i.}{it:varname}{cmd:)} is
+{cmd:colorvar(}{it:varname}{cmd:) colordiscrete coloruseplegend}, as in {cmd:twoway}.
 
 {pstd}
 {cmd:colorvar()}, {cmd:colordiscrete}, {cmd:colorcuts()},
