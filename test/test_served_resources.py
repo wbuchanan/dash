@@ -470,12 +470,14 @@ class TestTheSavedPageIsUnchanged:
             render_models(r)
         # Taken at af9676f (ids stripped, gzipped buffers decompressed);
         # re-derived at 3d28881, whose %tw week-start tick port changes only
-        # the page's two date-tick CustomJS code strings.
+        # the page's two date-tick CustomJS code strings; and at 76547f8
+        # (WP-31 F1a), whose fit prelude changes only the filter callback's
+        # code string (every other model property is the same).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "7e7425124a2a782ca8ff4bdd9084db1dd1305c34ee5da360b0bc9a2ce27a81c5")
+    "c9727fd64ed771b8c97388f005cc166f6e160116f8e91767936791b183230bbd")
 
 
 # ===========================================================================
