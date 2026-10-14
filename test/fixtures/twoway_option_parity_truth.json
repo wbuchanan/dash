@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "answers": 1554,
+  "answers": 1558,
   "born_date": "12 Aug 2026",
-  "dash_commit": "8dde8eec306efb3e2ce4fe3c8238738b9514aafc",
+  "dash_commit": "3ac288be5d09333110597bcd71df0c2e7ae77028",
   "extracted": "14 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_twoway_option_parity.cscript",
@@ -2962,6 +2962,22 @@
    "rc": 0
   },
   "log|TA|twoway (rline y y2 t) (tsline y), tline(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (rpcap y y2 y t) (tsline y), tlabel(2001m1 2003m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (rpcap y y2 y t) (tsline y), tline(2002m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (rpspike y y2 y t) (tsline y), tlabel(2001m1 2003m1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
+  "log|TA|twoway (rpspike y y2 y t) (tsline y), tline(2002m1) nodraw": {
    "log": "",
    "rc": 0
   },

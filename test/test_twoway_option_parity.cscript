@@ -4655,9 +4655,10 @@ if `"`bad'"' != "" {
 else display as text "TA-05 PASS: every t-option refusal is twoway's rc and words"
 
 // TA-06: the first plot decides: a date literal is refused after the
-// eleven numeric-x types and read after every other (40 types).
+// eleven numeric-x types and read after every other (42 types; rpcap
+// and rpspike since WP-31 B1, measured here beside dash).
 local bad ""
-local m6 `"scatter "scatter y t" line "line y t" connected "connected y t" scatteri "scatteri 100 480" area "area y t" bar "bar y t" spike "spike y t" dropline "dropline y t" dot "dot y t" rarea "rarea y y2 t" rbar "rbar y y2 t" rspike "rspike y y2 t" rcap "rcap y y2 t" rcapsym "rcapsym y y2 t" rscatter "rscatter y y2 t" rline "rline y y2 t" rconnected "rconnected y y2 t" pcspike "pcspike y t y2 t" pccapsym "pccapsym y t y2 t" pcarrow "pcarrow y t y2 t" pcbarrow "pcbarrow y t y2 t" pcscatter "pcscatter y t y2 t" pci "pci 100 480 110 490" pcarrowi "pcarrowi 100 480 110 490" tsline "tsline y" tsrline "tsrline y y2" mband "mband y t" mspline "mspline y t" lowess "lowess y t" lfit "lfit y t" qfit "qfit y t" fpfit "fpfit y t" lfitci "lfitci y t" qfitci "qfitci y t" fpfitci "fpfitci y t" lpoly "lpoly y t" lpolyci "lpolyci y t" kdensity "kdensity y" histogram "histogram t" function "function y = x, range(480 539)""'
+local m6 `"rpcap "rpcap y y2 y t" rpspike "rpspike y y2 y t" scatter "scatter y t" line "line y t" connected "connected y t" scatteri "scatteri 100 480" area "area y t" bar "bar y t" spike "spike y t" dropline "dropline y t" dot "dot y t" rarea "rarea y y2 t" rbar "rbar y y2 t" rspike "rspike y y2 t" rcap "rcap y y2 t" rcapsym "rcapsym y y2 t" rscatter "rscatter y y2 t" rline "rline y y2 t" rconnected "rconnected y y2 t" pcspike "pcspike y t y2 t" pccapsym "pccapsym y t y2 t" pcarrow "pcarrow y t y2 t" pcbarrow "pcbarrow y t y2 t" pcscatter "pcscatter y t y2 t" pci "pci 100 480 110 490" pcarrowi "pcarrowi 100 480 110 490" tsline "tsline y" tsrline "tsrline y y2" mband "mband y t" mspline "mspline y t" lowess "lowess y t" lfit "lfit y t" qfit "qfit y t" fpfit "fpfit y t" lfitci "lfitci y t" qfitci "qfitci y t" fpfitci "fpfitci y t" lpoly "lpoly y t" lpolyci "lpolyci y t" kdensity "kdensity y" histogram "histogram t" function "function y = x, range(480 539)""'
 local i 0
 foreach w of local m6 {
     local ++i
@@ -4672,7 +4673,7 @@ if `"`bad'"' != "" {
     local faillist "`faillist' TA-06"
     display as error `"TA-06 FAIL:`bad'"'
 }
-else display as text "TA-06 PASS: over 40 first plots, tline() and tlabel() literals are refused or read as twoway's"
+else display as text "TA-06 PASS: over 42 first plots, tline() and tlabel() literals are refused or read as twoway's"
 
 // TA-07: on any twoway graph, not only tsline (sysuse auto).
 local bad ""
