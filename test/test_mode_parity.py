@@ -2389,6 +2389,17 @@ CORPUS = [
     _case("rbar mwidth msize(large)",
           [plot_for("rbar", {"mwidth": "mwidth", "msize": "large"})]),
     _case("dot base(50)", [plot_for("dot", {"base": "50"})]),
+    # WP-31 C5
+    _case("histogram gap(20) baroffset(.5)",
+          [plot_for("histogram", {"gap": "20", "baroffset": ".5"})]),
+    _case("kdensity area(74) boundary",
+          [plot_for("kdensity", {"area": "74", "boundary": "boundary"})]),
+    _case("function droplines",
+          [plot_for("function", {"range": "-2 2", "droplines": "-1 1",
+                                  "base": "1"})]),
+    _case("area nodropbase",
+          [plot_for("area", {"nodropbase": "nodropbase"})]),
+    _case("bar baroffset(.5)", [plot_for("bar", {"baroffset": ".5"})]),
     # WP-31 C10a: the values twoway accepts, drawn alike in both modes.
     _case("lfit range(. 4000) (WP-31 C10a)",
           [plot_for("lfit", {"range": ". 4000"})]),
@@ -3312,6 +3323,9 @@ MOVE_CORPUS = [
     # WP-31 C2/B5a
     _move_case("rbar mwidth, dropdown to Foreign", _MOVES[0],
                [plot_for("rbar", {"mwidth": "mwidth"})]),
+    # WP-31 C5
+    _move_case("bar baroffset after a move", _MOVES[0],
+               [plot_for("bar", {"baroffset": ".5"})]),
     # WP-31 C10b: the tied axes follow the move together.
     _move_case("line yaxis(1 2), dropdown to Foreign (WP-31 C10b)",
                _MOVES[0], [plot_for("line", {"yaxis": "1 2"}),

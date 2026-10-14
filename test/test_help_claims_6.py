@@ -1219,11 +1219,13 @@ class TestTheCorrectedClaims:
     def test_the_history_sentence_is_gone(self):
         assert "Earlier versions of this help" not in self._flat()
 
-    def test_estopts_is_said_to_be_ignored(self):
+    # Flipped (WP-31 C5): estopts() was said to be named as ignored, which
+    # was wrong once WP-31 C4 drew it; C5 rewrote the estimate sentence to
+    # name only a bare kernel, and the Fit options paragraph describes it.
+    def test_estopts_is_said_to_be_drawn(self):
         flat = self._flat()
-        assert "{cmd:estopts()}" in flat
-        assert re.search(r"estopts\(\)\}[^.]*named in the note", flat) or \
-            "named in the note as ignored" in flat
+        assert "{ul:Fit options.}" in flat and "estopts(" in flat
+        assert not re.search(r"estopts\(\)\}[^.]*named in the note", flat)
 
     def test_the_weight_is_exported_only_where_it_is_used(self):
         flat = self._flat("weights", "region_options")

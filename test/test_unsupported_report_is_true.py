@@ -201,7 +201,9 @@ FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
          # histogram; stdp/stdf/stdr on lfitci and qfitci; mean, noweight,
          # adjust and logit on lowess.
          "discrete", "stdp", "stdf", "stdr", "mean", "noweight", "adjust",
-         "logit"}
+         "logit",
+         # WP-31 C5: kdensity's boundary, the area's nodropbase.
+         "boundary", "nodropbase"}
 
 
 # The CSP lists a sha256 of every inline script, and those scripts carry
@@ -224,6 +226,9 @@ def _render(tmp_path, ptype, popts, gopts, tag):
     plot = ({"type": ptype, **_PC_PLOT, "options": popts}
             if ptype in ("pcarrow", "pcbarrow", "pcspike", "pccapsym",
                          "pcscatter")
+            # WP-31 C5: a function layer is its expression (droplines()).
+            else {"type": ptype, "expr": "x^2", "options": popts}
+            if ptype == "function"
             else {"type": ptype, "yvar": "mpg", "xvar": "weight",
                   "options": popts})
     spec = {"graphs": [{"name": "g1",
@@ -505,6 +510,14 @@ LIVE_VALUES = {
     "mwidth": ({"mwidth": "mwidth", "msize": "large"},
                {"mwidth": "mwidth", "msize": "tiny"}, "rbar", {}),
     "barwidth": ({"barwidth": "50"}, {"barwidth": "150"}, "bar", {}),
+    # WP-31 C5: drawn (test_distribution_odds.py).
+    "gap": ({"gap": "10"}, {"gap": "60"}, "histogram", {}),
+    "baroffset": ({"baroffset": ".5"}, {"baroffset": "-.5"}, "bar", {}),
+    "area": ({"area": "2"}, {"area": "5"}, "kdensity", {}),
+    "boundary": ({"boundary": "boundary"}, {}, "kdensity", {}),
+    "droplines": ({"droplines": ".5", "range": "0 1"},
+                  {"droplines": ".25", "range": "0 1"}, "function", {}),
+    "nodropbase": ({"nodropbase": "nodropbase"}, {}, "area", {}),
     "base": ({"base": "10"}, {"base": "15"}, "bar", {}),
     "bfcolor": ({"bfcolor": "red"}, {"bfcolor": "blue"}, "bar", {}),
     "bin": ({"bin": "4"}, {"bin": "8"}, "histogram", {}),
@@ -769,8 +782,9 @@ class TestEveryDeclaredOptionIsClassified:
         # mwidth declared
         # 200 -> 201: A4 mlalign declared
         # 201 -> 209: C4 atobs estopts predopts estcmd fitplot ciplot
-        # smoothplot nofit declared
-        assert len(_declared_plot()) == 209, len(_declared_plot())
+        # smoothplot nofit declared; 209 -> 215: C5 gap baroffset area
+        # boundary droplines nodropbase declared
+        assert len(_declared_plot()) == 215, len(_declared_plot())
         assert len(_declared_graph()) == 85, len(_declared_graph())
 
     def test_every_declared_option_is_classified(self):

@@ -1384,7 +1384,14 @@ _PROBED_LIVE = {"zlabel",
                 # twoway again by test_colour_grammar.py::TestStataTruth.
                 "mcolor", "mfcolor", "mlcolor", "mlabcolor", "lcolor",
                 "fcolor", "color", "acolor", "alcolor", "bfcolor",
-                "blcolor", "clcolor"}
+                "blcolor", "clcolor",
+                # WP-31 C5: gap(), baroffset(), area() and droplines(): a
+                # number (a numlist) as twoway's real/numlist syntax reads
+                # it; twoway's bounds and refusals are measured in
+                # fixtures/kde_hist_fn_truth.json and asked of twoway again
+                # in test_wp31_truth.cscript U12-02 and
+                # test_option_validation.cscript U12-08.
+                "gap", "baroffset", "area", "droplines"}
 
 
 def _fixture():

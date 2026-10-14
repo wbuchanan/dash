@@ -2268,6 +2268,233 @@ if inlist("`only'", "", "S11") & `: list posof "S11" in w31_run' {
 }
 * ==== end S11 ====
 
+// S12 helpers (WP-31 C5).  _u12_draw: what a registered dash graph draws,
+// saved and served -- each Quad's width and centre, the first Line's x
+// ends and y maximum, each Segment's y0 and y1, the VBar centres and the
+// glyph types -- into globals u12_<k>s (saved) and u12_<k>v (served), and
+// the spec's stored droplines pairs into u12_drops.  Built on _u03_docs.
+python:
+def _u12_draw(sp, dp, app):
+    import json
+    from sfi import Macro
+    a, b = _u03_docs(sp, dp, app)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        out = {"k": [], "qw": [], "qc": [], "lx0": [], "lx1": [], "ly": [],
+               "sy0": [], "sy1": [], "bx": []}
+        for f in figs:
+            for r in f.renderers:
+                g = getattr(r, "glyph", None)
+                t = type(g).__name__
+                d = getattr(r.data_source, "data", {})
+                if t not in ("Quad", "Line", "Segment", "VBar", "Patch",
+                             "VArea"):
+                    continue
+                out["k"].append(t)
+                if t == "Quad":
+                    for lo, hi in zip(d["left"], d["right"]):
+                        out["qw"].append("%.15g" % (float(hi) - float(lo)))
+                        out["qc"].append("%.15g" % ((float(hi) + float(lo)) / 2))
+                elif t == "Line" and not out["lx0"]:
+                    xs = [float(v) for v in d[g.x if isinstance(g.x, str) else g.x.field]]
+                    ys = [float(v) for v in d[g.y if isinstance(g.y, str) else g.y.field]]
+                    if xs:
+                        out["lx0"].append("%.17g" % xs[0])
+                        out["lx1"].append("%.17g" % xs[-1])
+                        out["ly"].append("%.17g" % max(ys))
+                elif t == "Segment":
+                    out["sy0"] += ["%.15g" % float(v) for v in d["y0"]]
+                    out["sy1"] += ["%.15g" % float(v) for v in d["y1"]]
+                elif t == "VBar":
+                    xf = g.x if isinstance(g.x, str) else g.x.field
+                    out["bx"] += ["%.15g" % float(v) for v in d[xf]]
+        for k, v in out.items():
+            Macro.setGlobal("u12_%s%s" % (k, sfx), " ".join(v))
+    with open(sp, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    drops = []
+    for g in (spec.get("function_points") or {}).values():
+        for pts in g.values():
+            for x, y in pts.get("drops", []):
+                drops.append("%.15g %.15g" % (x, y))
+    Macro.setGlobal("u12_drops", " ".join(drops))
+end
+
+capture program drop _u12_reg
+program define _u12_reg
+    // _u12_reg <dir> <k> <dash command...>: register one graph, write its
+    // spec and data, and read what both modes draw (_u12_draw).
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    quietly dash `0'
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u12_m; _u12_m._u12_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u12_ser
+program define _u12_ser, rclass
+    // _u12_ser <graph>: plot 1's serset of a drawn twoway graph -- the
+    // min and max of its first and second variables (r(min1) .. r(max2)).
+    version 19
+    args g
+    local id "`.`g'.plotregion1.plot1.serset.id'"
+    preserve
+    quietly serset set `id'
+    quietly serset use, clear
+    unab vs : _all
+    local i 0
+    foreach v of local vs {
+        local ++i
+        quietly summarize `v'
+        return scalar min`i' = r(min)
+        return scalar max`i' = r(max)
+    }
+    restore
+end
+
+capture program drop _u12_refuse
+program define _u12_refuse
+    // _u12_refuse <id> <log> <message> | <command...>: twoway's and
+    // dash's return codes for the command, and dash's log holds the
+    // message twoway printed.
+    version 19
+    gettoken id 0 : 0
+    gettoken lf 0 : 0
+    gettoken msg 0 : 0
+    capture graph drop _all
+    capture noisily twoway `0' nodraw
+    local tw = _rc
+    dash clear
+    quietly log using "`lf'", text replace name(u12r)
+    capture noisily dash `0'
+    local dr = _rc
+    quietly log close u12r
+    cert_log_has "`lf'", needle(`"`msg'"')
+    _w31_expect `id' "(`tw' == `dr') & (`tw' != 0) & (r(found))" `"`0': twoway r(`tw'), dash r(`dr'), dash said "`msg'" `r(count)' times"'
+end
+
+* ==== S12 C5: distribution, area and bar odds ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S12") & `: list posof "S12" in w31_run' {
+    display as text "S12 start " c(current_date) " " c(current_time)
+    local u12d "`w31_work'/s12"
+    capture mkdir "`u12d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U12-01: histogram gap(20): dash's bars are twoway's bar_size wide,
+    // both modes; gap(20) gap(30) is taken twice, the rightmost standing.
+    // ------------------------------------------------------------
+    quietly twoway histogram mpg, gap(20) name(u12t, replace)
+    local bs = `.u12t.plotregion1.plot1.bar_size'
+    _u12_reg "`u12d'" 1 histogram mpg, gap(20) name(zu1)
+    _u03_all `bs' ${u12_qws} ${u12_qwv}
+    _w31_expect U12-01 "(r(ok))" "gap(20) widths saved ${u12_qws} served ${u12_qwv}, twoway bar_size `bs'"
+    capture noisily twoway histogram mpg, gap(20) gap(30) name(u12t, replace)
+    local tw = _rc
+    local bs = `.u12t.plotregion1.plot1.bar_size'
+    _u12_reg "`u12d'" 2 histogram mpg, gap(20) gap(30) name(zu2)
+    _u03_all `bs' ${u12_qws} ${u12_qwv}
+    _w31_expect U12-01 "(`tw' == 0) & (r(ok))" "gap(20) gap(30): twoway r(`tw') bar_size `bs', dash ${u12_qws}"
+    _w31_done U12-01 "histogram gap(20) draws bars twoway's bar_size wide (saved and served); a second gap() stands"
+
+    // ------------------------------------------------------------
+    // U12-02: the refusals, in twoway's code and words.
+    // ------------------------------------------------------------
+    local lf "`u12d'/r.log"
+    _u12_refuse U12-02 "`lf'" "option gap() must be between 0 and 100" histogram mpg, gap(100)
+    _u12_refuse U12-02 "`lf'" "option gap() must be between 0 and 100" histogram mpg, gap(-1)
+    _u12_refuse U12-02 "`lf'" "option area() expects a positive number" kdensity mpg, area(0)
+    _u12_refuse U12-02 "`lf'" "only one of options range() or boundary is allowed" kdensity mpg, boundary range(10 30)
+    _u12_refuse U12-02 "`lf'" "some droplines not within range() option" function y = x, range(0 1) droplines(2)
+    _u12_refuse U12-02 "`lf'" "option boundary not allowed" kdensity mpg, boundary boundary
+    _u12_refuse U12-02 "`lf'" "option nodropbase not allowed" area mpg weight, nodropbase nodropbase
+    _u12_refuse U12-02 "`lf'" "option area() not allowed" histogram mpg, area(2)
+    _w31_done U12-02 "gap(100), gap(-1), area(0), boundary with range(), a dropline outside range(), boundary twice, nodropbase twice and area() on histogram are refused as twoway refuses them"
+
+    // ------------------------------------------------------------
+    // U12-03: kdensity area(74) is 74 times the density and twoway's
+    // curve; boundary's grid runs over twoway's x span.
+    // ------------------------------------------------------------
+    _u12_reg "`u12d'" 3 kdensity mpg, name(zu3)
+    local y0s "${u12_lys}"
+    _u12_reg "`u12d'" 4 kdensity mpg, area(74) name(zu4)
+    _w31_expect U12-03 "(abs(${u12_lys} / `y0s' - 74) < 1e-9) & (abs(${u12_lyv} / `y0s' - 74) < 1e-9)" "area(74) max saved ${u12_lys} served ${u12_lyv}, plain `y0s'"
+    quietly twoway kdensity mpg, area(74) name(u12t, replace)
+    _u12_ser u12t
+    local ty = r(max1)
+    _w31_expect U12-03 "(abs(${u12_lys} / `ty' - 1) < 1e-6)" "area(74) max dash ${u12_lys}, twoway `ty'"
+    foreach o in "boundary" "boundary bwidth(2)" {
+        quietly twoway kdensity mpg, `o' name(u12t, replace)
+        _u12_ser u12t
+        local tx0 = r(min2)
+        local tx1 = r(max2)
+        _u12_reg "`u12d'" 5 kdensity mpg, `o' name(zu5)
+        _w31_expect U12-03 "(abs(${u12_lx0s} - `tx0') < 1e-9) & (abs(${u12_lx1s} - `tx1') < 1e-9) & (abs(${u12_lx0v} - `tx0') < 1e-9) & (abs(${u12_lx1v} - `tx1') < 1e-9)" "`o': dash x ${u12_lx0s}..${u12_lx1s} (served ${u12_lx0v}..${u12_lx1v}), twoway `tx0'..`tx1'"
+    }
+    _w31_done U12-03 "kdensity area(74) scales the density 74 times as twoway does; boundary spans twoway's x range, saved and served"
+
+    // ------------------------------------------------------------
+    // U12-04: function droplines(-1 1) base(1): the stored pairs are
+    // twoway's .droplines; both modes draw the Segments from y = 1.
+    // ------------------------------------------------------------
+    quietly twoway function y = x^2, range(-2 2) droplines(-1 1) base(1) name(u12t, replace)
+    local tdl `"`.u12t.plotregion1.plot1.droplines'"'
+    local tdl : subinstr local tdl `"""' "", all
+    local tdl : list retok tdl
+    _u12_reg "`u12d'" 6 function y = x^2, range(-2 2) droplines(-1 1) base(1) name(zu6)
+    _w31_expect U12-04 `"("${u12_drops}" == "`tdl'")"' "stored drops ${u12_drops}, twoway `tdl'"
+    _w31_expect U12-04 `"("${u12_sy0s}" == "1 1") & ("${u12_sy0v}" == "1 1") & ("${u12_sy1s}" == "1 1")"' "Segment y0 ${u12_sy0s} / ${u12_sy0v}, y1 ${u12_sy1s}"
+    _w31_done U12-04 "function droplines(-1 1) base(1) stores twoway's pairs and draws the drops from y = 1, saved and served"
+
+    // ------------------------------------------------------------
+    // U12-05: function base(abc): twoway's code and sentence.
+    // ------------------------------------------------------------
+    _u12_refuse U12-05 "`lf'" "option base() incorrectly specified, abc is not a number" function y = x^2, base(abc)
+    _w31_done U12-05 "function base(abc) is refused with twoway's code and sentence"
+
+    // ------------------------------------------------------------
+    // U12-06: area nodropbase is a Patch in both modes; twoway's
+    // drop_base is no.
+    // ------------------------------------------------------------
+    quietly twoway area mpg weight, nodropbase name(u12t, replace)
+    local tdb "`.u12t.plotregion1.plot1.drop_base.stylename'"
+    _u12_reg "`u12d'" 7 area mpg weight, nodropbase name(zu7)
+    _w31_expect U12-06 `"("`tdb'" == "no") & ("${u12_ks}" == "Patch") & ("${u12_kv}" == "Patch")"' "twoway drop_base `tdb', dash ${u12_ks} / ${u12_kv}"
+    _w31_done U12-06 "area nodropbase draws one Patch closed on its chord, saved and served"
+
+    // ------------------------------------------------------------
+    // U12-07: bar baroffset(.5): each centre x + .5 * bar_size.
+    // ------------------------------------------------------------
+    quietly twoway bar mpg weight in 1/5, baroffset(.5) name(u12t, replace)
+    local tbs = `.u12t.plotregion1.plot1.bar_size'
+    local tbo = `.u12t.plotregion1.plot1.bar_offset'
+    local want ""
+    forvalues i = 1/5 {
+        local want "`want' `=strofreal(weight[`i'] + `tbo' * `tbs', "%15.0g")'"
+    }
+    local want : list retok want
+    _u12_reg "`u12d'" 8 bar mpg weight in 1/5, baroffset(.5) name(zu8)
+    _w31_expect U12-07 `"("${u12_bxs}" == "`want'") & ("${u12_bxv}" == "`want'")"' "centres saved ${u12_bxs} served ${u12_bxv}, twoway `want'"
+    _w31_done U12-07 "bar baroffset(.5) moves each bar half a bar, as twoway's bar_offset * bar_size"
+
+    capture erase "`lf'"
+    forvalues k = 1/8 {
+        foreach p in s d {
+            capture erase "`u12d'/`p'`k'.json"
+        }
+        capture erase "`u12d'/a`k'.py"
+    }
+    capture rmdir "`u12d'"
+    capture graph drop u12t
+    dash clear
+    display as text "S12 end " c(current_date) " " c(current_time)
+}
+* ==== end S12 ====
+
 // S16 helpers (WP-31 F1c).  _u16_move: the saved page's lowess line after
 // one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- written to a JSON file,

@@ -119,7 +119,7 @@
 *!       takes (gau is gaussian, ep and epan epanechnikov); any other
 *!       word as given, for the kernel rule to refuse.
 *!
-*!   _dash_fn_points_json(yvar, n, x0, dx)
+*!   _dash_fn_points_json(yvar, n, x0, dx[, dropxy])
 *!       A function layer's points as the JSON object
 *!       {"x0":..,"dx":..,"y":[..]}: x0 and dx the generator's r(min) and
 *!       r(delta), y the first n values of yvar, each %24.17g, a missing
@@ -5201,7 +5201,7 @@ string scalar _dash_seg_by(string scalar seg)
     return(out)
 }
 
-// _dash_fn_points_json(yvar, n, x0, dx) -- a function layer's points, as
+// _dash_fn_points_json(yvar, n, x0, dx[, dropxy]) -- a function layer's points, as
 // twoway__function_gen made them, as one JSON object (WP-29 P0.6):
 // {"x0":<x0>,"dx":<dx>,"y":[<y1>,...,<yn>]}.  x0 and dx are the
 // generator's r(min) and r(delta), so x is x0 + dx*(i-1) exactly as the
@@ -5211,16 +5211,31 @@ string scalar _dash_seg_by(string scalar seg)
 // character but digits, . + - e E, the letters of null, x0, dx and y, and
 // " : , { } [ ] -- _dash_fn_spec_tail checks exactly that.
 string scalar _dash_fn_points_json(string scalar yvar, real scalar n,
-                                   real scalar x0, real scalar dx)
+                                   real scalar x0, real scalar dx,
+                                   | string scalar dropxy)
 {
-    string scalar q
+    string scalar q, dr
     string colvector y
+    string rowvector w
+    real scalar i
 
     q = char(34)
     y = _dash_json_number17(st_data((1, n), yvar))
+    // WP-31 C5: the generator's r(dropxy), "x y" pairs in double quotes,
+    // as "drops":[[x,y],..] -- numbers only, each _dash_json_number17's.
+    dr = ""
+    if (args() >= 5) {
+        w = tokens(subinstr(dropxy, q, " "))
+        for (i = 1; i + 1 <= cols(w); i = i + 2) {
+            dr = dr + (dr == "" ? "" : ",") + "[" +
+                 _dash_json_number17(strtoreal(w[i])) + "," +
+                 _dash_json_number17(strtoreal(w[i + 1])) + "]"
+        }
+    }
     return("{" + q + "x0" + q + ":" + _dash_json_number17(x0) + "," +
            q + "dx" + q + ":" + _dash_json_number17(dx) + "," +
-           q + "y" + q + ":[" + invtokens(y', ",") + "]}")
+           q + "y" + q + ":[" + invtokens(y', ",") + "]" +
+           (dr == "" ? "" : "," + q + "drops" + q + ":[" + dr + "]") + "}")
 }
 
 // _dash_fit_points_json(nobs) -- a fit layer's points (WP-31 C4), from
@@ -5320,9 +5335,9 @@ real scalar _dash_fn_stray_close(string scalar s)
 // _dash_fn_points_ok(txt) -- 1 when txt is a points table dash wrote: it
 // begins with {, ends with }, and every byte is one of 0-9 . + - e E n u l
 // x d y " : , { } [ ] (an ascii() lookup), or o b s h i, the letters of a
-// fit layer's keys lo, hi and nobs (WP-31 C4).  A global the user set by
-// hand to anything else -- }],"graphs":[ among them -- cannot reach the
-// spec.
+// fit layer's keys lo, hi and nobs (WP-31 C4), or r o p s, which with d
+// spell drops (WP-31 C5).  A global the user set by hand to anything
+// else -- }],"graphs":[ among them -- cannot reach the spec.
 real scalar _dash_fn_points_ok(string scalar txt)
 {
     real rowvector ok, b
@@ -5330,7 +5345,7 @@ real scalar _dash_fn_points_ok(string scalar txt)
 
     if (strlen(txt) < 2) return(0)
     if (substr(txt, 1, 1) != "{" | substr(txt, strlen(txt), 1) != "}") return(0)
-    allowed = "0123456789.+-eEnulxdyobshi" + char(34) + ":,{}[]"
+    allowed = "0123456789.+-eEnulxdyobshirps" + char(34) + ":,{}[]"
     ok = J(1, 256, 0)
     b  = ascii(allowed)
     ok[b :+ 1] = J(1, cols(b), 1)
@@ -6495,7 +6510,16 @@ real scalar _dash_rep_unique(string scalar key, string scalar typed,
                "colorvarminmax",
                // WP-31 C2: mwidth, now declared, is taken once on rbar
                // and histogram (measured 13oct2026).
-               "mwidth"), k)) return(1)
+               "mwidth",
+               // WP-31 C5: boundary on kdensity and nodropbase (or its
+               // dropbase half) on every type, now declared, are taken
+               // once: "option boundary not allowed", "option nodropbase
+               // not allowed" (kde_hist_fn_truth K08, A02).
+               "boundary", "dropbase"), k)) return(1)
+    // WP-31 C5: baroffset(), now declared, is taken once on rbar (the row
+    // it left in _dash_rep_und_tab, measured 24sep2026) and again on bar
+    // and histogram, the rightmost standing (B02, H06).
+    if (ptype == "rbar" & k == "baroffset") return(1)
     if (ptype == "histogram" & (typed == "bins" |
         anyof(("discrete", "fraction", "percent", "frequency", "density"), k)))
         return(1)
@@ -6549,7 +6573,6 @@ string matrix _dash_rep_und_tab()
     // allowed"), and the scan reads the typed text, declared or not.
     t = t \ ("atobs",        "atobs",        "ato",       "0", fits,        "0", "")
     t = t \ ("xlog",         "xlog",         "xlog",      "0", fits,        "0", "")
-    t = t \ ("baroffset",    "baroffset",    "baroff",    "1", "rbar",      "0", "")
     t = t \ ("biweight",     "biweight",     "bi",        "0", kerns,       "0", "")
     t = t \ ("cosine",       "cosine",       "cos",       "0", kerns,       "0", "")
     t = t \ ("epan2",        "epan2",        "epan2",     "0", kerns,       "0", "")
@@ -6558,7 +6581,6 @@ string matrix _dash_rep_und_tab()
     t = t \ ("parzen",       "parzen",       "par",       "0", kerns,       "0", "")
     t = t \ ("rectangle",    "rectangle",    "rec",       "0", kerns,       "0", "")
     t = t \ ("triangle",     "triangle",     "tri",       "0", kerns,       "0", "")
-    t = t \ ("boundary",     "boundary",     "boundary",  "0", "kdensity",  "0", "")
     t = t \ ("ciplot",       "ciplot",       "cip",       "1", cis,         "0", "")
     t = t \ ("fitplot",      "fitplot",      "fitp",      "1", cis,         "0", "")
     t = t \ ("fit",          "fit",          "fit",       "0", cis,         "0", "")
@@ -6581,6 +6603,9 @@ string matrix _dash_rep_und_tab()
     t = t \ ("colorstart",   "colorstart",   "colorst",   "1", "*",         "0", "")
     // colorvarminmax left this table (GAPS2 X2): dash now declares it, so
     // a second copy is refused by _dash_rep_unique instead.
+    // nodropbase is declared since WP-31 C5 (noDROPBase); these rows stay
+    // because -syntax- takes its dropbase half without a trace, so
+    // dropbase nodropbase, one option given twice, is caught only here.
     t = t \ ("dropbase",     "dropbase",     "dropb",     "0", "*",         "0", "")
     t = t \ ("dropbase",     "nodropbase",   "nodropb",   "0", "*",         "0", "no")
     t = t \ ("below",        "below",        "below",     "0", "*",         "1", "")

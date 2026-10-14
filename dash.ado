@@ -1179,6 +1179,8 @@ program define _dash_parse_plot_opts, sclass
         CMISSINGS(string asis)    RECASTAs(string)          TYpe(string) ///
         BIN(string)               BINS(string)              Width(string) ///
         START(string) ///
+        GAP(string)               BAROFFset(string)         AREA(string) ///
+        BOUNDARY                  DROPlines(string)         noDROPBase ///
         DISCrete                  STDP                      STDF ///
         STDR                      MEan                      NOWeight ///
         ATObs ESTopts(string asis) PREDopts(string asis) ESTCmd(string asis) ///
@@ -1469,6 +1471,15 @@ program define _dash_parse_plot_opts, sclass
     sreturn local bin              : copy local bin
     sreturn local width            : copy local width
     sreturn local start            : copy local start
+    // WP-31 C5: histogram gap() and baroffset(), bar baroffset(),
+    // kdensity area() and boundary, function droplines(), area
+    // nodropbase (syntax's noDROPBase: local dropbase holds "nodropbase").
+    sreturn local gap              : copy local gap
+    sreturn local baroffset        : copy local baroffset
+    sreturn local area             : copy local area
+    sreturn local boundary         : copy local boundary
+    sreturn local droplines        : copy local droplines
+    sreturn local nodropbase       : copy local dropbase
     sreturn local percent          : copy local percent
     sreturn local frequency        : copy local frequency
     sreturn local density          : copy local density
@@ -2363,6 +2374,14 @@ program define _dash_fold_typed, sclass
         exit 198
     }
     if "`ptype'" == "histogram" & `_ft' local named "`named' mwidth"
+    // WP-31 C5: baroffset() moves rbar's bars and dot's rows in twoway
+    // (yxview__barlike_draw draw_fixed; section 18 reads dot's), which
+    // map_rbar and map_dot do not draw yet: named there.  On bar and
+    // histogram it is drawn; on area, spike and dropline twoway draws
+    // nothing different, so it is silent.
+    local bo_named "rbar dot"
+    mata: st_local("_ft", strofreal(st_global("s(baroffset)") != ""))
+    if `_ft' & `: list ptype in bo_named' local named "`named' baroffset"
     mata: st_local("_ft", strofreal(st_global("s(msize)") != "" & st_global("s(mwidth)") == ""))
     if "`ptype'" == "rbar" & `_ft' local named "`named' msize"
     if "`named'" != "" sreturn local _pending `"`s(_pending)'`named'"'
@@ -3105,6 +3124,7 @@ program define _dash_option_rules
         degree=int,0,7  bwidth=num@lowess  bwidth=num,0@kdensity  bwidth=pos ///
         kernel=enum,epanechnikov|epan2|biweight|cosine|gaussian|parzen|rectangle|triangle ///
         n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
+        gap=num  baroffset=num  area=num  droplines=numlist,1 ///
         level=num,10,99.99@lpolyci ///
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
@@ -4739,6 +4759,7 @@ program define _dash_plot_opts_to_json, rclass
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
                    atobs estopts predopts estcmd fitplot ciplot nofit ///
+                   gap baroffset area boundary droplines nodropbase ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -5892,10 +5913,62 @@ program define _dash_process_segment, rclass
         }
         local _sl_n 1
         if `"`yvarlist'"' != "" local _sl_n : word count `yvarlist'
+        // WP-31 C5: the types twoway takes gap(), baroffset(), area(),
+        // boundary and droplines() on; on any other "option gap() not
+        // allowed", r(198), before any value is read (measured 14oct2026,
+        // test/fixtures/kde_hist_fn_truth.json applies; nodropbase is
+        // taken on every type).  Then, as twoway's parsers check them
+        // before a value: boundary beside range() on kdensity, and
+        // function's base() that is not a number -- twoway prints its
+        // sentence and stops at the class's assignment, r(4026) (F04).
+        local _c5_types_gap "histogram"
+        local _c5_types_baroffset "area bar spike dropline dot rbar histogram"
+        local _c5_types_area "kdensity"
+        local _c5_types_boundary "kdensity"
+        local _c5_types_droplines "function"
+        foreach _c5o in gap baroffset area boundary droplines {
+            mata: st_local("_c5v", strofreal(st_global("s(`_c5o')") != ""))
+            if `_c5v' & !`: list _rc_own in _c5_types_`_c5o'' {
+                local _c5p = cond("`_c5o'" == "boundary", "", "()")
+                display as error "option `_c5o'`_c5p' not allowed"
+                exit 198
+            }
+        }
+        mata: st_local("_c5v", strofreal(st_global("s(boundary)") != "" & st_global("s(range)") != ""))
+        if `_c5v' & "`_rc_own'" == "kdensity" {
+            display as error "only one of options range() or boundary is allowed"
+            exit 198
+        }
+        if "`_rc_own'" == "function" {
+            mata: st_local("_c5b", st_global("s(base)"))
+            if `: length local _c5b' {
+                capture confirm number `_c5b'
+                if _rc {
+                    mata: _dash_say("err", "option base() incorrectly specified, ", st_local("_c5b"), " is not a number")
+                    exit 4026
+                }
+            }
+        }
         _dash_validate_opts "`_rc_own'" `_sl_n'
         // The fit options (WP-31 C4): on the types twoway takes them on,
         // their pairs with range(), fitplot()/ciplot() canonicalised.
         _dash_fit_opts_check "`_rc_own'"
+        // WP-31 C5: twoway's bounds on gap() (0 <= # < 100) and area()
+        // (# > 0), in its words (kde_hist_fn_truth H02 H03 K02 K06).
+        mata: st_local("_c5v", st_global("s(gap)"))
+        if `: length local _c5v' {
+            if real("`_c5v'") < 0 | real("`_c5v'") >= 100 {
+                display as error "option gap() must be between 0 and 100"
+                exit 198
+            }
+        }
+        mata: st_local("_c5v", st_global("s(area)"))
+        if `: length local _c5v' {
+            if !(real("`_c5v'") > 0) {
+                display as error "option area() expects a positive number"
+                exit 198
+            }
+        }
         // range(varname) read as two numbers over the plot's sample
         // (WP-31 C10a).
         tempname _fr_s
@@ -6257,6 +6330,10 @@ program define _dash_process_segment, rclass
         c_local _seg_fnlo_out `_fn_lo'
         c_local _seg_fnhi_out `_fn_hi'
         c_local _seg_fnn_out `_fn_n'
+        // droplines() as validated (an expanded numlist), for the
+        // generator (WP-31 C5).
+        mata: st_local("_fn_drops", st_global("s(droplines)"))
+        c_local _seg_fndrops_out `_fn_drops'
     }
     // estopts(), predopts(), estcmd() (WP-31 C4): the layer's points, made
     // by twoway's own generator over the plot's sample (_psq) and weight,
@@ -7322,6 +7399,7 @@ program define _dash_plot
             local _fn_lo_`_fn_m' : copy local _seg_fnlo_out
             local _fn_hi_`_fn_m' : copy local _seg_fnhi_out
             local _fn_n_`_fn_m' : copy local _seg_fnn_out
+            local _fn_d_`_fn_m' : copy local _seg_fndrops_out
         }
         if `_dash_nplots' > `_dash_plot_lim' {
             // The graph's total is known only once its last segment is in.
@@ -7474,7 +7552,7 @@ program define _dash_plot
     mata: st_strscalar(st_local("_fp_sc"), "")
     forvalues _m = 1/`_fn_m' {
         mata: st_strscalar(st_local("_fx_raw"), st_local("_fn_raw_`_m'"))
-        _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc'
+        _dash_fn_points `_fx_raw' `_fn_lo_`_m'' `_fn_hi_`_m'' `_fn_n_`_m'' `_fn_k_`_m'' `_fp_sc' "`_fn_d_`_m''"
     }
     // The fit layers' points join the function layers' (WP-31 C4).
     mata: st_strscalar(st_local("_fp_sc"), st_strscalar(st_local("_fp_sc")) + ///
@@ -8750,7 +8828,10 @@ end
 // all); lo, hi and n are the generator's range() and n(); k is the layer's
 // place in the graph's plots (from 1); obj_sc is a string scalar the
 // points are appended to, as "<k>":{"x0":..,"dx":..,"y":[..]}, comma
-// separated (_dash_fn_points_json).
+// separated (_dash_fn_points_json).  drops is the layer's droplines()
+// (WP-31 C5), an expanded numlist or empty: checked against range() as
+// the generator checks it, passed to it, and its r(dropxy) pairs stored
+// as "drops":[[x,y],..].
 //
 //   * A top-level comma in the text would reach the generator's own option
 //     list -- y = x, generate(mpg weight, replace) -- so it is refused
@@ -8773,7 +8854,7 @@ end
 //     generator's code.  Break (r(1)) ends the command at once, unechoed.
 program define _dash_fn_points
     version 19
-    args raw_sc lo hi n k obj_sc
+    args raw_sc lo hi n k obj_sc drops
     mata: st_local("_fx_raw", st_strscalar(st_local("raw_sc")))
     mata: st_local("_fx_echo", (ustrregexm(st_local("_fx_raw"), ///
         "^([A-Za-z_][A-Za-z0-9_]*)?[ \t]*=") ? ///
@@ -8804,19 +8885,41 @@ program define _dash_fn_points
     if _N < `n' & c(k) > 0 {
         preserve
     }
+    // droplines() (WP-31 C5): each x held as a float, as the generator
+    // holds it, must lie within range(): "some droplines not within
+    // range() option", r(198), as twoway__function_gen refuses it
+    // (kde_hist_fn_truth F02, F08).  Then the generator evaluates the
+    // expression there too, and its r(dropxy) pairs are stored.
+    local _fx_dopt ""
+    if `: length local drops' {
+        local _fx_dlo .
+        local _fx_dhi .
+        foreach _fx_d of local drops {
+            local _fx_f = float(`_fx_d')
+            if `_fx_dlo' == . | `_fx_f' < `_fx_dlo' local _fx_dlo `_fx_f'
+            if `_fx_dhi' == . | `_fx_f' > `_fx_dhi' local _fx_dhi `_fx_f'
+        }
+        if `_fx_dlo' < `lo' | `hi' < `_fx_dhi' {
+            display as error "some droplines not within range() option"
+            exit 198
+        }
+        local _fx_dopt "droplines(`drops')"
+    }
     tempvar fy fx
-    capture twoway__function_gen `macval(_fx_raw)', range(`lo' `hi') x(x) n(`n') generate(`fy' `fx')
+    capture twoway__function_gen `macval(_fx_raw)', range(`lo' `hi') x(x) n(`n') generate(`fy' `fx') `_fx_dopt'
     local rc = _rc
     if `rc' == 1 exit 1
     if `rc' {
         mata: _dash_say("err", "error in expression: ", st_local("_fx_echo"), "")
         exit `rc'
     }
+    local _fx_dxy ""
+    if `: length local drops' local _fx_dxy `"`r(dropxy)'"'
     mata: st_strscalar(st_local("obj_sc"), st_strscalar(st_local("obj_sc")) + ///
         (st_strscalar(st_local("obj_sc")) == "" ? "" : ",") + ///
         char(34) + st_local("k") + char(34) + ":" + ///
         _dash_fn_points_json(st_local("fy"), strtoreal(st_local("n")), ///
-        st_numscalar("r(min)"), st_numscalar("r(delta)")))
+        st_numscalar("r(min)"), st_numscalar("r(delta)"), st_local("_fx_dxy")))
 end
 
 // ================================================================

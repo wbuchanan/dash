@@ -312,6 +312,9 @@
 *!   U04-04  the type is refused before the value: scatter kernel(nosuch)
 *!           says option kernel() not allowed; lpoly kernel(nosuch) still
 *!           gets the kernel's own message
+*!   U12-08  gap() area() boundary droplines() baroffset() refused on a type
+*!           twoway's parser does not declare them for, taken where it does
+*!           (WP-31 C5; test/fixtures/kde_hist_fn_truth.json applies)
 *! Value bounds (WP-31 C10a), each dash rc and line against twoway's own in
 *! the same run (test/fixtures/value_bounds_truth.json):
 *!   U05-04  level(): lpolyci level(5), (9.99), (100) refused in twoway's
@@ -1535,6 +1538,25 @@ if `"`bad'"' != "" {
     global ov_faillist "${ov_faillist} U03-05"
 }
 else display as text "U03-05 PASS: recast() on dot taken as twoway takes it and named once; dot drawn"
+
+// U12-08 (WP-31 C5): gap(), area(), boundary, droplines() and baroffset()
+// on a type twoway's parser does not declare them for are refused as
+// twoway refuses them (rc and line; kde_hist_fn_truth.json applies), and
+// taken on the types it does.
+sysuse auto, clear
+local bad ""
+foreach c in "scatter mpg weight, gap(5)" "scatter mpg weight, area(2)" "scatter mpg weight, boundary" "line mpg weight, droplines(1)" "scatter mpg weight, baroffset(.5)" "histogram mpg, gap(20)" "kdensity mpg, area(2)" "spike mpg weight, baroffset(.5)" "scatter mpg weight, nodropbase" {
+    _u03_rc `"`c'"'
+    if r(trc) != r(drc) | strtrim(`"`r(tline)'"') != strtrim(`"`r(dline)'"') {
+        local bad `"`bad' [`c': twoway `r(trc)' `r(tline)', dash `r(drc)' `r(dline)']"'
+    }
+}
+if `"`bad'"' != "" {
+    display as error `"U12-08 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U12-08"
+}
+else display as text "U12-08 PASS: gap(), area(), boundary, droplines() and baroffset() refused where twoway refuses them, taken where it takes them"
 
 // U05 (WP-31 C10a): _u05_rc <twoway command> -- twoway's rc and the
 // count of `needle' in its log, then dash's rc and the count in its, and

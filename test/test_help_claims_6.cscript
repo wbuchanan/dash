@@ -55,8 +55,9 @@
 *!                qualifier after the plot groups is part of the sample a
 *!                weight is checked over, except on kdensity; WP-27).
 *!   Misc:        51 _lpoly_work is compiled; 52 stdf stdr; 55 the options
-*!                dash names in the note (area() boundary ...); 55c the
-*!                fit options dash draws (atobs estopts() ...; WP-31 C4).
+*!                dash names in the note (dotextend()); 55c the
+*!                fit options dash draws (atobs estopts() ...; WP-31 C4);
+*!                area() boundary droplines(), drawn (WP-31 C5).
 *!
 *! Not in run_all_cscripts.do yet (WP-23 hands the wiring to the
 *! coordinator).  Usage:  cd test, then do "test_help_claims_6.cscript"
@@ -942,7 +943,11 @@ local bad = 0
 // Flipped (WP-31 C4): atobs, estopts(), predopts() and estcmd() left
 // this list, which was wrong for them because twoway draws each; they are
 // drawn (HC6-55c).
-local pairs `""kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "dot mpg weight|dotextend(no)|dotextend" "function y = x|range(0 5) droplines(1 2)|droplines""'
+// Flipped (WP-31 C5): area() and boundary on kdensity and droplines() on
+// function left this list too, which was wrong once they are drawn
+// (test_wp31_truth.cscript U12-03, U12-04): they are asked below, with
+// no note.
+local pairs `""dot mpg weight|dotextend(no)|dotextend""'
 foreach p of local pairs {
     local b1 = strpos(`"`p'"', "|")
     local spec = substr(`"`p'"', 1, `b1' - 1)
@@ -963,7 +968,22 @@ foreach p of local pairs {
         local bad = 1
     }
 }
-_hc6_tally HC6-55 `bad' "area() boundary dotextend() droplines(): twoway takes them; dash names each in the note"
+foreach p in "kdensity mpg|area(2)|area" "kdensity mpg|boundary|boundary" "function y = x|range(0 5) droplines(1 2)|droplines" {
+    local b1 = strpos(`"`p'"', "|")
+    local spec = substr(`"`p'"', 1, `b1' - 1)
+    local rest = substr(`"`p'"', `b1' + 1, .)
+    local b2 = strpos(`"`rest'"', "|")
+    local opt   = substr(`"`rest'"', 1, `b2' - 1)
+    local oname = substr(`"`rest'"', `b2' + 1, .)
+    _hc6_dash `"dash `spec', `opt' name(hc6)"'
+    local d = r(rc)
+    _hc6_said "unsupported option"
+    if `d' != 0 | r(n) != 0 {
+        display as error `"HC6-55 FAIL: dash `spec', `opt': rc=`d', a note names an unsupported option `r(n)' time(s)"'
+        local bad = 1
+    }
+}
+_hc6_tally HC6-55 `bad' "dotextend(): twoway takes it; dash names it in the note; area(), boundary and droplines() are drawn, unnamed"
 
 
 // HC6-55b (WP-29 P0.9): lpolyci's pwidth() and var() are honoured, as

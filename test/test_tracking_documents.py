@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "C5": "kdensity area() and boundary, histogram gap(), function droplines() and base(), area nodropbase and bar baroffset() are named and not drawn",
     "F1b": "The saved page does not refit lfitci and qfitci after a filter move (the lfitci and qfitci twins)",
     "C6": "cmissing(n) on area, rarea and estimator-generated missing points and connect() other than direct on rarea are named and not drawn",
     "C7": "recast() of a histogram to a range type or an unknown name and recast() on pci and pcarrowi are named where twoway draws them",

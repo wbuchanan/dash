@@ -15484,13 +15484,28 @@ class GlyphMapper:
                 _oa["color"], "color", base=_fill_base)
             if _c:
                 _fill_base = _c
-        r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
-                      fill_color=self._blend_intensity(
-                          _fill_base, _f, self.scheme.naturally_white),
-                      fill_alpha=self._scheme_alpha(color_idx, "area"),
-                      legend_label=yvar)
+        # nodropbase: twoway closes the polygon along the chord from the
+        # first point to the last instead of dropping to the base
+        # (twoway_area.sthlp; yxview_parse .drop_base = 0, measured
+        # 14oct2026 drop_base "no"; WP-31 C5).  A Patch, whose closing edge
+        # is that chord, over the same rows; it has no base to tag.
+        _nodrop = bool(str(options.get("nodropbase", "") or "").strip())
+        if _nodrop:
+            r = fig.patch(x=xvar, y=yvar, source=area_source,
+                          fill_color=self._blend_intensity(
+                              _fill_base, _f, self.scheme.naturally_white),
+                          fill_alpha=self._scheme_alpha(color_idx, "area"),
+                          line_alpha=0.0,
+                          legend_label=yvar)
+        else:
+            r = fig.varea(x=xvar, y1=_y1_col, y2=yvar, source=area_source,
+                          fill_color=self._blend_intensity(
+                              _fill_base, _f, self.scheme.naturally_white),
+                          fill_alpha=self._scheme_alpha(color_idx, "area"),
+                          legend_label=yvar)
         self._style_restyle(r, options, ("area",))
-        self._tag_base(r, "y1", _base is None, _zero)
+        if not _nodrop:
+            self._tag_base(r, "y1", _base is None, _zero)
         if _fill_a is not None:
             r.glyph.fill_alpha = _fill_a
 
@@ -15599,8 +15614,15 @@ class GlyphMapper:
                 break
         # In the variable's units on a date axis; per-row columns on a
         # period axis (D-14c), on every path, the empty one included.
+        # baroffset(#): each bar moved # bar widths, negative left
+        # (twoway_bar.sthlp; yxview__barlike_draw.ado:68-69, off =
+        # bar_offset*bar_size; WP-31 C5).  An offset bar is drawn from the
+        # reserved centre column, so the hull reads where it stands.
+        _bar_off = _stat_option_float(options, "baroffset", 0.0, "bar") \
+            if "baroffset" in options else 0.0
         x_field, width_spec, _bar_ext = self._bar_extent(
-            xvar, df[xvar], bar_width, fig=fig, options=options)
+            xvar, df[xvar], bar_width, fig=fig, options=options,
+            offset=_bar_off or 0.0)
         if _bar_ext:
             df = df.assign(**_bar_ext)
         # base() sets the bar bottom; with none, a tagged column that
@@ -15752,7 +15774,8 @@ class GlyphMapper:
         r.tags = [t for t in (r.tags or [])
                   if not str(t).startswith("dash_base:")] + [tag]
 
-    def _bar_extent(self, xvar, xs, width, fig=None, options=None):
+    def _bar_extent(self, xvar, xs, width, fig=None, options=None,
+                    offset=0.0):
         """The x field, width spec and extra columns of a bar *width* x
         units wide, in *xvar*'s own units (WP-30 P1.17a).
 
@@ -15764,6 +15787,9 @@ class GlyphMapper:
         Every width is finite; NaN where the date is missing (no bar).
         The kind is that of the axis the layer is drawn on (``_unit_kind``;
         WP-30 P1.23a), so a bar on a mixed axis is one Stata unit wide.
+        *offset* is baroffset()'s number of bar widths (WP-31 C5): a
+        non-zero one moves every centre by ``offset * width`` units, drawn
+        from ``_BAR_XC`` on every axis kind.
         Never raises.
         """
         kind = self._unit_kind(fig, xvar, "x", options)
@@ -15774,10 +15800,27 @@ class GlyphMapper:
             w = 1.0
         if not math.isfinite(w) or w <= 0:
             w = 1.0
+        try:
+            off = float(offset)
+        except (TypeError, ValueError):
+            off = 0.0
+        if not math.isfinite(off):
+            off = 0.0
+
+        def _moved(wa):
+            # The centres moved off * wa axis units, as the reserved column.
+            try:
+                xc = _dash_float_values(xs) + off * wa
+            except Exception:  # noqa: BLE001 -- never raises
+                xc = np.full(len(xs), np.nan)
+            return self._BAR_XC, wa, {self._BAR_XC: np.asarray(xc, dtype=float)}
+
         if kind == "td":
-            return xvar, min(w * 86_400_000.0, span), {}
+            wa = min(w * 86_400_000.0, span)
+            return _moved(wa) if off else (xvar, wa, {})
         if kind in ("tc", "tC"):
-            return xvar, min(w, span), {}
+            wa = min(w, span)
+            return _moved(wa) if off else (xvar, wa, {})
         if kind in ("tw", "tm", "tq", "th", "ty"):
             try:
                 u = _dash_date_units(xs, kind)
@@ -15791,6 +15834,7 @@ class GlyphMapper:
             ulo, uhi = _dash_date_units(
                 np.array([_STATA_MS_MIN, _STATA_MS_MAX], dtype=float)
                 + _STATA_EPOCH_UNIX_MS, kind)
+            u = u + off * w
             with np.errstate(all="ignore"):
                 L = _dash_units_to_axis(np.clip(u - w / 2.0, ulo, uhi), kind)
                 R = _dash_units_to_axis(np.clip(u + w / 2.0, ulo, uhi), kind)
@@ -15798,7 +15842,7 @@ class GlyphMapper:
                 bw = np.asarray(R - L, dtype=float)
             return self._BAR_XC, self._BAR_W, {self._BAR_XC: xc,
                                                self._BAR_W: bw}
-        return xvar, w, {}
+        return _moved(w) if off else (xvar, w, {})
 
     def map_spike(
         self,
@@ -18336,6 +18380,22 @@ class GlyphMapper:
         )
         return [line_r, band_r]
 
+    @staticmethod
+    def _hist_bar_edges(left, right, gap=0.0, offset=0.0):
+        """``(left, right)`` of the bars drawn over bins *left*..*right*
+        (axis units): each bar ``w * (100 - gap) / 100`` wide, ``w`` its
+        bin's width, centred on the bin moved ``offset`` bar widths
+        (WP-31 C5; twoway_histogram_parse.class .bar_size, yxview
+        bar_offset).  gap 0 and offset 0 give the bins back unchanged."""
+        L = np.asarray(left, dtype=float)
+        R = np.asarray(right, dtype=float)
+        if not gap and not offset:
+            return L, R
+        with np.errstate(all="ignore"):
+            bw = (R - L) * (100.0 - float(gap)) / 100.0
+            c = (L + R) / 2.0 + float(offset) * bw
+            return c - bw / 2.0, c + bw / 2.0
+
     def _histogram_quads(self, fig, source, options, color_idx, yvar):
         """A histogram's bars over *source* (``top``/``left``/``right``) in
         the scheme's histogram style -- `color histogram' at `intensity
@@ -18461,10 +18521,27 @@ class GlyphMapper:
         _kept = np.flatnonzero(~bar_off)
         i0 = int(_kept[0]) if _kept.size else 0
         i1 = int(_kept[-1]) + 1 if _kept.size else 0
+        # gap(#) and baroffset(#) (WP-31 C5): each bar is (100 - gap)%
+        # of its bin and moved baroffset() bar widths, as twoway draws it
+        # (twoway_histogram_parse.class .bar_size =
+        # barwidth*(100-hist_gap)/100; yxview__barlike_draw off =
+        # bar_offset*bar_size; measured 14oct2026, kde_hist_fn_truth H01
+        # bar_size 2.9 = 3.625 * .8).  The saved page's recount reads the
+        # same two numbers from the config below.
+        _hgap = _stat_option_float(options, "gap", 0.0, "histogram",
+                                   lo=0.0, hi=100.0) \
+            if "gap" in options else 0.0
+        _hoff = _stat_option_float(options, "baroffset", 0.0, "histogram") \
+            if "baroffset" in options else 0.0
+        _hgap = float(_hgap or 0.0)
+        _hoff = float(_hoff or 0.0)
+        _hl, _hr = self._hist_bar_edges(axis_edges[i0:i1],
+                                        axis_edges[i0 + 1:i1 + 1],
+                                        _hgap, _hoff)
         hist_source = ColumnDataSource({
             "top":   tops[i0:i1],
-            "left":  axis_edges[i0:i1],
-            "right": axis_edges[i0 + 1:i1 + 1],
+            "left":  _hl,
+            "right": _hr,
         })
         # recast(): the bars' midpoints and heights drawn as the target,
         # as twoway draws histogram's serset (WP-30 P1.8b).
@@ -18510,6 +18587,11 @@ class GlyphMapper:
             "start":     start,
             "width":     h,
             "bin":       nb,
+            # WP-31 C5: each bar (100 - gap)% of its bin, moved baroffset
+            # bar widths (_hist_bar_edges); the page's recount draws its
+            # bars by the same rule.
+            "gap":       _hgap,
+            "baroffset": _hoff,
         }
         # WP-29 P0.8: a date variable (and a date weight) is recounted in
         # its Stata units: the page converts each value with
@@ -18831,9 +18913,23 @@ class GlyphMapper:
                                 "estimating over the default span")
         if _rng is not None:
             _lo, _hi = _rng
+        # boundary (WP-31 C5): the grid runs one bandwidth past the data
+        # at each end, [min - h, max + h], h the bandwidth used
+        # (twoway__kdensity_gen.ado; measured 14oct2026, kde_hist_fn_truth
+        # K03 10.0253858 .. 42.9746142 on mpg, K05 10 .. 43 with
+        # bwidth(2)).  dash.ado refuses it beside range(), as twoway does.
+        _kboundary = bool(str(options.get("boundary", "") or "").strip())
+        if _kboundary:
+            _lo, _hi = float(arr.min()) - bw, float(arr.max()) + bw
+        # area(#) (WP-31 C5): every density multiplied by # (K01: the
+        # curve of area(74) is 74 times kdensity mpg's).
+        _karea = _stat_option_float(options, "area", 1.0, "kdensity",
+                                    lo=0.0) if "area" in options else 1.0
+        if _karea is None or not _karea > 0.0:
+            _karea = 1.0
         x_range = np.linspace(_lo, _hi,
                               int(n_pts))
-        density = _kde_curve(arr, x_range, bw, kernel, w)
+        density = _kde_curve(arr, x_range, bw, kernel, w) * float(_karea)
 
         # WP-29 P0.8: the grid, range() and the bandwidth are in the
         # variable's Stata units; the curve is drawn where the figure's x
@@ -18875,6 +18971,11 @@ class GlyphMapper:
             "wvar":      (str(options.get("wexp", "")).strip()
                           if wtype is not None else None),
             "wtype":     wtype,
+            # WP-31 C5: the multiplier area() gives (1 without it), and
+            # whether boundary widened the grid one bandwidth each side;
+            # the page's re-estimate reads both.
+            "area":      float(_karea),
+            "boundary":  _kboundary,
         }
         # WP-29 P0.8: a date variable is re-estimated in its Stata units at
         # x_eval, the unit grid of the points drawn at x_grid; see
@@ -21403,12 +21504,24 @@ class GlyphMapper:
                              line_color=self.scheme.default_color(color_idx, "line"),
                              line_width=self.scheme.plot_line_width(color_idx, "lineplot"))]
 
+        # droplines() (WP-31 C5): twoway's (x, f(x)) pairs as stored, else
+        # the option's x's evaluated below.
+        drops = None
+        drop_x = _dash_numlist_floats(options.get("droplines")) \
+            if options.get("droplines") is not None else []
         if points is not None:
             got = _dash_function_points(points)
             if got is None:
                 return self._mark_needs_points(_empty(),
                                                self._needs_points_why())
             x_arr, y_arr = got
+            drops = _dash_function_drops(points)
+            if drops is None and drop_x:
+                # A spec stored before droplines() was: the curve's own
+                # points, interpolated.
+                with np.errstate(all="ignore"):
+                    _dx = np.asarray(drop_x, dtype=float)
+                    drops = (_dx, np.interp(_dx, x_arr, y_arr))
         else:
             if len(text) > _MAX_EXPR_CHARS:
                 warnings.warn(
@@ -21434,6 +21547,17 @@ class GlyphMapper:
             # Broadcast a scalar result to the grid.
             if y_arr.ndim == 0:
                 y_arr = np.full(len(x_arr), float(y_arr))
+            if drop_x:
+                # twoway holds each drop's x as a float (twoway__function_gen
+                # gen xdrop = .) and evaluates the expression there.
+                _dx = np.asarray(drop_x, dtype=np.float32).astype(float)
+                try:
+                    _dy = np.asarray(_stata_fn_eval(tree, _dx), dtype=float)
+                    if _dy.ndim == 0:
+                        _dy = np.full(len(_dx), float(_dy))
+                    drops = (_dx, _dy)
+                except (ValueError, MemoryError, FloatingPointError):
+                    drops = None
 
         # In date units on a date axis, past Stata's dates included; only
         # a point past the browser's dates is left out (WP-30 P1.23a).
@@ -21451,11 +21575,46 @@ class GlyphMapper:
             return [self._dash_draw_xy_as(fig, fn_source, "x_fn", "y_fn",
                                           options["recast"], options,
                                           color_idx)]
+        # The droplines first, as twoway draws them before the curve
+        # (_fr_droplines_draw.ado): a line from (x, base) to (x, f(x)) at
+        # each x, in the curve's line style.  base() is their base; with
+        # none, twoway's default -- 0 when the y scale spans it, else the
+        # scale's end nearer 0 -- filled by _dash_finish_auto_bases, as a
+        # spike's (WP-30 P1.17b; measured 14oct2026, kde_hist_fn_truth F03
+        # base 0 on a 0..10 scale).
+        out = []
+        if drops is not None and len(drops[0]):
+            _dxs, _ok1 = self._literal_on_axis(fig, drops[0], "x", options)
+            _dys, _ok2 = self._literal_on_axis(fig, drops[1], "y", options)
+            _keep = ~(_ok1 | _ok2) & np.isfinite(_dxs)
+            _dxs, _dys = _dxs[_keep], _dys[_keep]
+            _dbase = self._base_value(options, "function")
+            if _dbase is not None:
+                _dbase = float(self._literal_on_axis(
+                    fig, np.array([_dbase]), "y", options)[0][0])
+                if not math.isfinite(_dbase):
+                    _dbase = None
+            _dzero = self._base_zero("y_fn", fig, options)
+            drop_src = ColumnDataSource({
+                "x0": _dxs,
+                "y0": np.full(len(_dxs),
+                              _dzero if _dbase is None else _dbase),
+                "x1": _dxs, "y1": _dys})
+            dr = fig.segment(x0="x0", y0="y0", x1="x1", y1="y1",
+                             source=drop_src,
+                             line_color=self.scheme.default_color(
+                                 color_idx, "line"),
+                             line_width=self.scheme.plot_line_width(
+                                 color_idx, "lineplot"),
+                             **self._scheme_alpha_kw(color_idx, "line"))
+            self._apply_line_opts(dr, options, role=None)
+            self._tag_base(dr, "y0", _dbase is None, _dzero)
+            out.append(dr)
         r = _dash_join_glyph(self, fig, options, dict(**self._scheme_alpha_kw(color_idx, "line"), x="x_fn", y="y_fn", source=fn_source,
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=text[:40]), role=None)
-        return [r]
+        return out + [r]
 
     #: The types twoway draws a derived layer as under recast(): yxtype's
     #: eight (Stata's style/yxtype-*.style; test/fixtures/
@@ -43868,6 +44027,67 @@ def _dash_function_points(points, n_cap=10000):
     return x, np.array(vals, dtype=float)
 
 
+def _dash_numlist_floats(text, cap=10000):
+    """The numbers of a numlist option's text, as a sorted float list.
+
+    *text* is what dash.ado wrote for ``droplines()`` (the expanded,
+    blank-separated numlist) or a hand-written spec's value: split on
+    blanks and commas, each word read with ``float()``; a word that is not
+    a finite number is left out.  At most *cap* words are read.  Returns
+    ``[]`` for no text or anything that is not text.  Never raises
+    (WP-31 C5)."""
+    if not isinstance(text, (str, int, float)) or isinstance(text, bool):
+        return []
+    out = []
+    for word in str(text).replace(",", " ").split()[:cap]:
+        try:
+            v = float(word)
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if math.isfinite(v):
+            out.append(v)
+    return sorted(out)
+
+
+def _dash_function_drops(points, n_cap=10000):
+    """``(x, y)`` arrays of a stored function points object's droplines,
+    or None (WP-31 C5).
+
+    dash.ado passes ``droplines()`` to twoway__function_gen and stores its
+    ``r(dropxy)`` pairs as ``points["drops"] = [[x, y], ...]``: x the drop
+    as twoway holds it (a float), y the expression there, null when
+    missing.  Checked before anything is converted, as
+    ``_dash_function_points`` checks the curve: a list of 1..*n_cap*
+    two-element lists of real numbers (y may be None), x finite.  None
+    when *points* has no such member."""
+    if not isinstance(points, dict):
+        return None
+    drops = points.get("drops")
+    if not isinstance(drops, list) or not 1 <= len(drops) <= n_cap:
+        return None
+
+    def _real(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+    xs, ys = [], []
+    for pair in drops:
+        if not isinstance(pair, list) or len(pair) != 2:
+            return None
+        x, y = pair
+        if not _real(x) or not (y is None or _real(y)):
+            return None
+        try:
+            fx = float(x)
+            fy = np.nan if y is None else float(y)
+        except (OverflowError, TypeError, ValueError):
+            return None
+        if not math.isfinite(fx) or (y is not None and not math.isfinite(fy)):
+            return None
+        xs.append(fx)
+        ys.append(fy)
+    return np.array(xs, dtype=float), np.array(ys, dtype=float)
+
+
 def _stata_fn_parse(text):
     """Parse a twoway function expression by Stata's grammar, for a spec
     without stored points (WP-29 P0.6).
@@ -48694,6 +48914,9 @@ class ServerAppBuilder:
                          # (WP-29 P0.6).
                          "_dash_function_points",
                          "_stata_fn_parse", "_stata_fn_eval",
+                         # function droplines(): the stored pairs and the
+                         # option's numbers (WP-31 C5).
+                         "_dash_function_drops", "_dash_numlist_floats",
                          # The p# each layer draws in (a ci fit is two).
                          "_dash_plot_style_indices",
                          "_dash_glyph_dispatch",

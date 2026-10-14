@@ -770,8 +770,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 134 -> 137: C1 the note on the mangle/barbsize/headlabel sreturn
     # lines (three).
     # 137 -> 139: A4 the note on the mlalign pending line (two).
-    # 139 -> 144: C4 the note on the fit options' sreturn lines (five).
-    assert comments == {"_dash_parse_plot_opts": 144,
+    # 139 -> 144: C4 the note on the fit options' sreturn lines (five);
+    # 144 -> 147: C5 the note on the gap ... nodropbase sreturn lines
+    # (three).
+    assert comments == {"_dash_parse_plot_opts": 147,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

@@ -389,7 +389,7 @@ and now matches Stata.
 
 - The fit options are drawn as twoway draws them, in the saved page and the served app: lfit mpg weight, atobs is evaluated at the observed weights (was: a 100-point grid, atobs named in the note); lfitci ..., nofit draws the band alone; fitplot() and ciplot() draw the line and the band as the type named; estopts(), predopts() and estcmd() are run by Stata at registration (fpfit mpg weight, estopts(degree(3)) draws fracpoly's degree-3 fit, was: the default fit with estopts() named) and the layer is drawn as registered after a filter move, marked as computed before the filter; atobs or predopts(residuals) with range() is refused, r(198), "may not combine atobs with range()", as twoway refuses it. (WP-31, C4)
 
-<!-- WP-31 C5 -->
+- histogram mpg, gap(20) draws bars 0.8 of a bin wide (was: the full bin), and baroffset() moves histogram and bar bars by bar widths; kdensity mpg, area(74) draws the density 74 times higher and boundary runs it one bandwidth past the data (both were named and ignored); function droplines() draws its drop lines from base() or twoway's default base, and area ..., nodropbase closes the area on the line from its first point to its last, saved and served. gap() outside 0-100, area() not positive, boundary with range(), function base() not a number and a dropline outside range() are refused in twoway's words. (WP-31, C5)
 
 <!-- WP-31 F1b -->
 

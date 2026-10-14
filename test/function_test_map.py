@@ -861,6 +861,12 @@ FUNCTIONS = {
  'OptionTranslator.line_px': 'test/test_line_width_units.py::TestTheUnitFunctions::test_line_px_floors_and_converts',
  # WP-30 S14 (P1.17a): Bar widths and range caps (P1.17 part a)
  'GlyphMapper._bar_extent': 'test/test_bar_range_geometry.py::TestTheBarExtent::test_each_kind',
+ # WP-31 C5: baroffset()'s moved centres.
+ 'GlyphMapper._bar_extent.<locals>._moved': 'test/test_distribution_odds.py::TestBaroffset::test_numeric',
+ 'GlyphMapper._hist_bar_edges': 'test/test_distribution_odds.py::TestHistogramConfig::test_helper',
+ '_dash_numlist_floats': 'test/test_distribution_odds.py::TestDroplineHelpers::test_helper',
+ '_dash_function_drops': 'test/test_distribution_odds.py::TestDroplineHelpers::test_function_drops',
+ '_dash_function_drops.<locals>._real': 'test/test_distribution_odds.py::TestDroplineHelpers::test_function_drops',
  # WP-30 S15 (P1.2a): Scheme chrome: titles, ticks, grid, economist axes (P1.2 part a, M1)
  'SchemeParser._angle': 'test/test_scheme_chrome.py::TestHostileChromeKeys::test_an_unknown_name_falls_back_once',
  'SchemeParser._choice': 'test/test_scheme_chrome.py::TestHostileChromeKeys::test_an_unknown_name_falls_back_once',

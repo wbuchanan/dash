@@ -2021,10 +2021,14 @@ forvalues k = 1/`n14f' {
     local x`k' 198
 }
 // Taken more than once by twoway, so named in the note as before: the
-// same word on a type that takes it again (baroffset() on bar), a plot
+// same word on a type that takes it again (baroffset() on dot), a plot
 // option in two plot groups or two || segments, and two options each
 // given once.
-local f33 `"bar mpg weight, baroffset(1) baroffset(2)"'
+// Flipped (WP-31 C5): rows 33 and 38 were bar's baroffset() and
+// scatter's nodropbase, which was wrong once dash draws the one and takes
+// the other in silence where twoway draws nothing different; dot's
+// baroffset(), which dash does not draw yet, and rbar's stand in.
+local f33 `"dot mpg weight, baroffset(1) baroffset(2)"'
 local g33 "baroffset()"
 // Flipped (WP-31 C4): rows 34 and 35 expected atobs and nofit named in
 // the note, which was wrong once dash draws them; twoway's answer is the
@@ -2039,8 +2043,8 @@ local f36 `"scatter mpg weight, clegend(red) plegend(red)"'
 local g36 "clegend() plegend()"
 local f37 `"(scatter mpg weight, colorstart(red)) (scatter price weight, colorstart(red)), title(T)"'
 local g37 "colorstart()"
-local f38 `"scatter mpg weight, nodropbase"'
-local g38 "nodropbase"
+local f38 `"rbar mpg price weight, baroffset(1)"'
+local g38 "baroffset()"
 forvalues k = 33/38 {
     local x`k' 0
 }

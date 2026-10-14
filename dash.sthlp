@@ -782,14 +782,14 @@ there, is an invalid point.  The literal is read as data and never run.
     legend).  An option {cmd:twoway} takes once --
     {cmd:name()}, {cmd:saving()}, {cmd:scheme()}, {cmd:xsize()},
     {cmd:ysize()}, {cmd:aspectratio()}, a bare {cmd:sort},
-    {cmd:horizontal}, {cmd:yaxis()}, {cmd:bwidth()} on {cmd:kdensity} --
+    {cmd:horizontal}, {cmd:yaxis()}, {cmd:bwidth()} on {cmd:kdensity},
+    {cmd:boundary}, {cmd:nodropbase}, {cmd:baroffset()} on {cmd:rbar} --
     given twice is refused as {cmd:twoway} refuses it:
     {cmd:option scheme() not allowed}, {cmd:r(198)}.  So are
     {cmd:atobs} on the fits, {cmd:nofit}, {cmd:fitplot()} and
     {cmd:ciplot()}, which are drawn, the options
     {cmd:dash} names in its note that {cmd:twoway} takes once, and a
     kernel written as an option of its own ({cmd:gaussian}):
-    {cmd:boundary}, {cmd:nodropbase},
     {cmd:clegend()}, {cmd:plegend()}, {cmd:pcycle()} and the other
     {cmd:colorvar()} and graph-wide options {cmd:twoway} declares:
     {cmd:atobs} given twice on {cmd:lfit} is
@@ -2940,11 +2940,9 @@ The following plot-level options belong to the statistical layers, and
 {cmd:base()} to the bar plots.  Each entry names the plot types that take
 it, its default and its bounds -- {cmd:twoway}'s, measured against
 {cmd:twoway} itself, and {cmd:dash}'s where they differ.  An option that
-changes an estimate is honoured or refused; the few {cmd:dash} cannot
-compute -- {cmd:area()} and {cmd:boundary} on {cmd:kdensity}, a kernel
-written as an option of its own (a bare {cmd:gaussian}), {cmd:atobs},
-{cmd:estcmd()}, {cmd:estopts()} and {cmd:predopts()} on the fits --
-are named in the note as ignored.  {cmd:pwidth()} and {cmd:var()} are
+changes an estimate is honoured or refused; the one {cmd:dash} cannot
+compute -- a kernel written as an option of its own (a bare
+{cmd:gaussian}) -- is named in the note as ignored.  {cmd:pwidth()} and {cmd:var()} are
 honoured on {cmd:lpolyci}; on {cmd:lpoly}, {cmd:scatter}, {cmd:lfitci},
 {cmd:kdensity} and the other types, where {cmd:twoway} refuses them with
 r(198), {cmd:dash} names them in the note and draws the layer.  {cmd:fpfit} and {cmd:fpfitci} take none of the smoothing
@@ -3140,11 +3138,36 @@ a graph of histograms alone are still drawn by {cmd:dash}.
     that axis.  The base follows the axis when a filter moves.
     On {cmd:dot}, {cmd:base()} widens the y axis to reach it, as in
     {cmd:twoway}, with no tick placed for it, and does not move the dots.
-    {cmd:twoway} also takes {cmd:base()} on {cmd:function}, as the base of
-    {cmd:droplines()}, which {cmd:dash} does not draw, and refuses
-    it on {cmd:histogram}, {cmd:kdensity}, {cmd:rbar}, {cmd:rspike},
+    On {cmd:function}, {cmd:base()} is the base of {cmd:droplines()},
+    which {cmd:dash} draws (with no {cmd:base()}, the rule above); a value
+    that is not a number is refused in {cmd:twoway}'s words,
+    {cmd:option base() incorrectly specified, abc is not a number},
+    r(4026).  {cmd:twoway} refuses {cmd:base()}
+    on {cmd:histogram}, {cmd:kdensity}, {cmd:rbar}, {cmd:rspike},
     {cmd:rarea}, {cmd:scatter}, {cmd:line}, {cmd:connected} and
     {cmd:lfit}{p_end}
+{synopt:{opt gap(#)}}{cmd:histogram} only: each bar is {it:#} percent
+    narrower than its bin, about the bin's centre; 0 to 100, 100
+    excluded ({cmd:option gap() must be between 0 and 100}, r(198)){p_end}
+{synopt:{opt baroffset(#)}}{cmd:bar} and {cmd:histogram}: each bar moved
+    {it:#} bar widths, negative to the left.  {cmd:twoway} also takes it on
+    {cmd:area}, {cmd:spike} and {cmd:dropline}, where it draws nothing
+    different, and on {cmd:rbar} and {cmd:dot}, where {cmd:dash} names it
+    in the note{p_end}
+{synopt:{opt area(#)}}{cmd:kdensity}: every density multiplied by {it:#};
+    positive ({cmd:option area() expects a positive number}, r(198)){p_end}
+{synopt:{opt boundary}}{cmd:kdensity}: the curve evaluated one bandwidth
+    past the data at each end; not with {cmd:range()} ({cmd:only one of
+    options range() or boundary is allowed}, r(198)).  After a filter move
+    the saved page keeps the curve's grid and marks it (see the stale
+    cue){p_end}
+{synopt:{opt droplines(numlist)}}{cmd:function}: a line from the base to
+    the curve at each {it:x}, drawn before the curve in its line style;
+    every {it:x} within {cmd:range()} ({cmd:some droplines not within
+    range() option}, r(198)){p_end}
+{synopt:{opt nodropbase}}{cmd:area}: the area closes along the line from
+    its first point to its last instead of dropping to the base; taken on
+    every type, drawing nothing different on the others{p_end}
 {synopt:{opt discrete}}{cmd:histogram} only: one bar per distinct value;
     see below.  Refused together with {cmd:bin()}, r(198){p_end}
 {synopt:{opt stdp}}{cmd:lfitci}, {cmd:qfitci} and {cmd:fpfitci}: the band

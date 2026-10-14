@@ -2,8 +2,8 @@
  "_meta": {
   "answers": 1554,
   "born_date": "12 Aug 2026",
-  "dash_commit": "9a72553ece6ffddfcd9311375b1f30990b187089",
-  "extracted": " 8 Oct 2026",
+  "dash_commit": "660be062bc26ecd502405457258d43dc1f18c4ec",
+  "extracted": "14 Oct 2026",
   "method": "each answer asked of twoway in a run of the script with DASH_CERT_REMEASURE=record, by scripts/extract_twoway_oracle_truth.do (test/cert_truth.py)",
   "script": "test_twoway_option_parity.cscript",
   "stata_version": "19.5"
@@ -3461,7 +3461,7 @@
    "log": "option plegend() not allowed\n",
    "rc": 198
   },
-  "log|TP-14f|twoway bar mpg weight, baroffset(1) baroffset(2) nodraw": {
+  "log|TP-14f|twoway dot mpg weight, baroffset(1) baroffset(2) nodraw": {
    "log": "",
    "rc": 0
   },
@@ -3549,6 +3549,10 @@
    "log": "option baroffset() not allowed\n",
    "rc": 198
   },
+  "log|TP-14f|twoway rbar mpg price weight, baroffset(1) nodraw": {
+   "log": "",
+   "rc": 0
+  },
   "log|TP-14f|twoway scatter mpg weight, clegend(red) clegend(blue) nodraw": {
    "log": "option clegend() not allowed\n",
    "rc": 198
@@ -3572,10 +3576,6 @@
   "log|TP-14f|twoway scatter mpg weight, nodropb dropb nodraw": {
    "log": "option nodropb not allowed\n",
    "rc": 198
-  },
-  "log|TP-14f|twoway scatter mpg weight, nodropbase nodraw": {
-   "log": "",
-   "rc": 0
   },
   "log|TP-14f|twoway scatter mpg weight, nodropbase nodropbase nodraw": {
    "log": "option nodropbase not allowed\n",
