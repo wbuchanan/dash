@@ -3935,7 +3935,7 @@
   - Resolution: Not fixed because WP-31 section 26 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
 
 - [ ] Title: dot rows on the saved page keep the build's axis span after a filter move
-  - File Names and Line Numbers: dash_render.py GlyphMapper._dot_fill, _dash_finish_auto_bases; _DASH_AXIS_FINISH_JS; test/test_dot_rows.py::TestAfterASavedMove::test_measured (xfail strict)
+  - File Names and Line Numbers: dash_render.py GlyphMapper._dot_fill, _dash_finish_auto_bases; _DASH_AXIS_FINISH_JS; section 18's saved-move xfail (TestAfterASavedMove)
   - Description: GAPS3.md B5, found by WP-31 section 18 (B5b residual): twoway draws each dot row across the plot region's x span; after a filter move the served app refills the rows from the finished scale (_dash_finish_auto_bases), but the saved page keeps each kept observation's row at the build's axis span.
   - Suggested fix: WP-31 section 35 (second axis moves): refill the dots from the saved page's finished axis in the move callback, as the served app does.
   - Resolution: Not fixed because WP-31 section 35 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
