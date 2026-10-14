@@ -18095,8 +18095,9 @@ class GlyphMapper:
         pwidth = _positive("pwidth")
         lpvar = _positive("lpvar")
 
+        # 0-7 since WP-31 C10b, as map_lpoly reads it.
         degree = int(_stat_option_float(options, "degree", 0.0, "lpoly",
-                                        lo=0.0, hi=3.0) or 0.0)
+                                        lo=0.0, hi=7.0) or 0.0)
         kernel = str(options.get("kernel", "") or "epanechnikov").strip().lower()
         if kernel not in _KERNELS:
             warnings.warn(

@@ -99,9 +99,9 @@ class TestDegree:
             assert abs(h / want - 1) <= _TOL[d], (d, k, h, want)
 
 
-def _curve(mode, opts):
+def _curve(mode, opts, ptype="lpoly"):
     from bokeh.models import GlyphRenderer, Line
-    spec = tp._spec([plot_for("lpoly", opts)])
+    spec = tp._spec([plot_for(ptype, opts)])
     if mode == "saved":
         r, _w = tp._standalone(spec)
         models = list(r._last_layout_root.references())
@@ -126,6 +126,17 @@ class TestBothModes:
         assert len(got) == 1 and len(got[0]) > 1
         assert np.isfinite(got[0]).all()
         assert got == _curve("saved" if mode == "served" else "served", opts)
+
+
+    @pytest.mark.parametrize("mode", ("saved", "served"))
+    def test_lpolyci_degree_five_is_lpolys(self, mode):
+        """map_lpolyci read degree() within 0-3 after C10b accepted 4-7,
+        so lpolyci degree(5) was drawn at degree 0 with a warning (found
+        by WP-31 section 19); its line is lpoly's at the same degree."""
+        opts = {"degree": "5", "bwidth": "800"}
+        ci = _curve(mode, opts, "lpolyci")
+        assert ci and ci[0] == _curve(mode, opts)[0]
+        assert ci[0] != _curve(mode, {"degree": "0", "bwidth": "800"})[0]
 
 
 class TestTheRule:
