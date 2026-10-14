@@ -103,6 +103,7 @@ The “supported options” column lists the material, graph-specific options ra
 | Range-point | `rpcap` | Spike y1..y2 at x, caps as wide as the marker, marker at y3; `msize()`, `horizontal`, `colorvar()`, `jitter()`, `mlabel()`; a weight is named, not drawn (twoway sizes the marker by it) | **FS, HC, E** | Explicitly refused [WP-31 B1: corrected -- drawn in both modes and after a filter move] |
 | Range-point | `rpspike` | Spike y1..y2 at x, marker at y3; as `rpcap` without caps | **FS, HC, E** | Explicitly refused [WP-31 B1: corrected -- drawn in both modes and after a filter move] |
 | Unsupported specialty | `sunflower` | None | None | Explicitly refused (WP-31 B2): r(198) by name, advising Stata's `sunflower` command |
+| Unsupported specialty | `matamatrix()` | None | None | Explicitly refused (WP-31 B3): r(198) by name on every plot type, advising `getmata` into variables |
 
 ## Common supported plot options
 
@@ -210,7 +211,7 @@ The most important current sources are:
 
 ## Scope caveat
 
-This is an exhaustive audit of the compatibility surface that the current repository declares, implements, tests, or explicitly refuses. The repository does not vendor a complete, versioned copy of every current Stata manual and undocumented graph-class option. Consequently, release-specific or undocumented Stata surfaces that never appear in the parser, help, tests, or fixtures cannot be proven exhaustive from the repository alone. `sunflower` and `matamatrix()` are examples worth deciding explicitly for the project's intended compatibility contract.
+This is an exhaustive audit of the compatibility surface that the current repository declares, implements, tests, or explicitly refuses. The repository does not vendor a complete, versioned copy of every current Stata manual and undocumented graph-class option. Consequently, release-specific or undocumented Stata surfaces that never appear in the parser, help, tests, or fixtures cannot be proven exhaustive from the repository alone. `sunflower` and `matamatrix()` are examples worth deciding explicitly for the project's intended compatibility contract. [WP-31 B2, B3: decided -- both refused by name with advice]
 
 ## Verification result
 

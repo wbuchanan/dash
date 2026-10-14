@@ -1005,7 +1005,7 @@ Changed behaviour.
 
 - sunflower is refused by name, r(198): "dash: 'sunflower' is a twoway plot type dash does not draw: it bins points into density petals. Use Stata's own sunflower command, which Stata recommends over twoway sunflower, or dash scatter y x with jitter() or colorvar()."; it was answered "sunflower is not a twoway plot type", although twoway draws it. (WP-31, B2)
 
-<!-- WP-31 B3 -->
+- matamatrix() is refused by name, r(198), with advice to getmata the columns into variables: dash scatter matamatrix(M) was read as a variable list and refused, r(111), although twoway plots the matrix. (WP-31, B3)
 
 <!-- WP-31 B4a -->
 

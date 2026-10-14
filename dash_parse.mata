@@ -115,6 +115,10 @@
 *!       The plot type abbrev names, abbreviated as twoway allows, into
 *!       out_macro; "" when it names no type dash draws.
 *!
+*!   _dash_matamatrix_typed(varpart)
+*!       The matamatrix(...) a plot's varlist begins with, as typed (at most
+*!       80 characters), else "" (WP-31 B3).
+*!
 *!   _dash_undrawn_plottype(name)
 *!       name, lower case, when it is a twoway plot type dash refuses by
 *!       name -- contour, contourline, sunflower -- else "".
@@ -1888,6 +1892,33 @@ string scalar _dash_undrawn_plottype(string scalar name) {
         return(s)
     }
     return("")
+}
+
+
+// twoway plots the columns of a Mata matrix when a plot's varlist begins
+// matamatrix( -- lower case, after leading blanks, as
+// twoway_yxview_parse.class tests it: bsubstr(anything, 1, 11) ==
+// "matamatrix(" (MATAMATRIX(M) is a varlist there, "variable M not
+// found", r(111); test/fixtures/rangept_truth.json matamatrix.*).  dash
+// does not draw it (PRD section 7); dash.ado refuses it by name (WP-31
+// B3).  Returns the token up to its first ")" as typed, cut to 80
+// characters for the message, or "".
+string scalar _dash_matamatrix_typed(string scalar varpart) {
+    string scalar s
+    real scalar e
+
+    s = strtrim(varpart)
+    if (substr(s, 1, 11) != "matamatrix(") {
+        return("")
+    }
+    e = strpos(s, ")")
+    if (e > 0) {
+        s = substr(s, 1, e)
+    }
+    if (ustrlen(s) > 80) {
+        s = usubstr(s, 1, 77) + "..."
+    }
+    return(s)
 }
 
 

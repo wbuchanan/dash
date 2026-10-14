@@ -3382,11 +3382,11 @@
   - Suggested fix: WP-31 section 21 (rpcap rpspike refusals): refuse sunflower by name with advice and list it in the help.
   - Resolution: Fixed 14oct2026 (WP-31, B2). Measured first (test/fixtures/rangept_truth.json): twoway sunflower mpg weight draws (rc 0), sunflow is "not a twoway plot type", and twoway_sunflower.sthlp recommends the sunflower command over twoway sunflower. dash_parse.mata's _dash_undrawn_plottype names sunflower, its full name only, and dash.ado refuses it by name, r(198): "dash: 'sunflower' is a twoway plot type dash does not draw: it bins points into density petals. Use Stata's own sunflower command, which Stata recommends over twoway sunflower, or dash scatter y x with jitter() or colorvar()."; dash.sthlp's Not-drawn paragraph names it. Pinned by test/test_sunflower_refusal.py::TestSunflowerRefused::test_sentence, test/test_wp31_truth.cscript U21-9. Closes GAPS3 B2 (WP-31, B2).
 
-- [ ] Title: matamatrix() is read as a varlist and refused r(101) or r(111)
+- [x] Title: matamatrix() is read as a varlist and refused r(101) or r(111)
   - File Names and Line Numbers: grep 0
   - Description: GAPS3.md B3, re-verified at 6370ca4: `matamatrix()` is read as a varlist and refused r(101)/r(111).
   - Suggested fix: WP-31 section 21 (rpcap rpspike refusals): refuse matamatrix() by name with advice and list it in the help.
-  - Resolution: Not fixed because WP-31 section 21 has not landed. Graded S2 (WP-31): a twoway form is refused, named and not drawn, or fails visibly.
+  - Resolution: Fixed 14oct2026 (WP-31, B3). Measured first (test/fixtures/rangept_truth.json): twoway plots a Mata matrix when a plot's varlist begins matamatrix( in lower case (twoway_yxview_parse.class; matamatrix.defined rc 0, matamatrix(nosuch) "nosuch is not a mata matrix", r(198)); MATAMATRIX(M) is read as a varlist, "variable M not found", r(111). dash read matamatrix(M) as a varlist and refused it r(111). dash_parse.mata's _dash_matamatrix_typed reads the token as twoway detects it, and dash.ado refuses it by name before any varlist parser, on every plot type, r(198): "dash: matamatrix(M) is a twoway mata matrix plot, which dash does not draw. Use Stata's own twoway scatter matamatrix(), or getmata the columns into variables and draw them: dash scatter y x."; dash.sthlp's Not-drawn paragraph names it. Pinned by test/test_matamatrix_refusal.py::TestMatamatrixRefused::test_sentence, test/test_wp31_truth.cscript U21-10. Closes GAPS3 B3 (WP-31, B3).
 
 - [x] Title: The saved page does not refit lpolyci after a filter move (the lpolyci twin)
   - File Names and Line Numbers: dash_render.py:1884-1932, :46229; `_dash_agg_config` set only at :18012, :18381

@@ -431,7 +431,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A8 Tracked:** Closed in WP-31, BUGS.md "Date literals in y options such as ylabel(2000m1) are accepted where twoway refuses r(198)", commit e07f97e.
 - **B1 Tracked:** Closed in WP-31, BUGS.md "rpcap and rpspike are refused by name", commit pending.
 - **B2 Tracked:** Closed in WP-31, BUGS.md "sunflower falls to the generic unrecognised-plot-type message and is absent from the help's Not-drawn list", commit pending.
-- **B3 Tracked:** Open (WP-31 section 21).
+- **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit pending.
 - **B4a Tracked:** Open (WP-31 section 23).
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).

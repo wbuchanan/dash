@@ -25,9 +25,9 @@ import dash_render as dr
 #: twoway plot types dash does not draw: a surface interpolated over a grid
 #: (contour, contourline) and a point on a range (rpcap, rpspike) -- the
 #: last two new in StataNow 19.5.
-# Flipped (WP-31 B1): rpcap and rpspike are drawn.  WP-31 B2: sunflower is
-# refused by name.
-_REFUSED = ("contour", "contourline", "sunflower")
+# Flipped (WP-31 B1): rpcap and rpspike are drawn.  WP-31 B2 and B3:
+# sunflower and matamatrix() are refused by name.
+_REFUSED = ("contour", "contourline", "sunflower", "matamatrix")
 
 
 def _help():
@@ -68,7 +68,9 @@ class TestThePlotTypesSection:
         section = _section()
         tail = section.split("{synoptline}")[-1]
         for name in _REFUSED:
-            assert f"{{cmd:{name}}}" in tail, (
+            # matamatrix() is written as the option it is (WP-31 B3).
+            assert (f"{{cmd:{name}}}" in tail
+                    or f"{{cmd:{name}(}}" in tail), (
                 f"{name} is not named after the table as a type dash does "
                 f"not draw")
             assert name not in dr._dash_plot_type_names()
@@ -83,10 +85,18 @@ class TestThePlotTypesSection:
         start = mata.index("string scalar _dash_undrawn_plottype(")
         body = mata[start:mata.index("\n}\n", start)]
         for name in _REFUSED:
+            if name == "matamatrix":
+                continue
             assert f'"{name}"' in body, (
                 f"_dash_undrawn_plottype does not refuse {name}")
+        # matamatrix() is a varlist's head, not a type: its own helper
+        # (WP-31 B3).
+        start = mata.index("string scalar _dash_matamatrix_typed(")
+        assert '"matamatrix("' in mata[start:mata.index("\n}\n", start)]
         with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
-            assert "_dash_undrawn_plottype(" in fh.read()
+            ado = fh.read()
+        assert "_dash_undrawn_plottype(" in ado
+        assert "_dash_matamatrix_typed(" in ado
 
     def test_the_syntax_and_the_differences_point_to_it(self):
         text = _help()

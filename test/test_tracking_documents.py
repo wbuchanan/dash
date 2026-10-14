@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "B3": "matamatrix() is read as a varlist and refused r(101) or r(111)",
     "B4a": "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)",
     "D1": "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read",
     "F1f": "The saved page does not refit mband and mspline after a filter move (the mband and mspline twins)",

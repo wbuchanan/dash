@@ -4520,6 +4520,58 @@ if inlist("`only'", "", "S21") & `: list posof "S21" in w31_run' {
 }
 * ==== end S21 ====
 
+* ==== S21 B3: matamatrix refused ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S21") & `: list posof "S21" in w31_run' {
+    display as text "S21 start " c(current_date) " " c(current_time)
+    local u21d "`w31_work'/s21b3"
+    capture mkdir "`u21d'"
+    capture graph drop _all
+    sysuse auto, clear
+    mata: u21_M = (1, 2 \ 3, 4)
+
+    // ------------------------------------------------------------
+    // U21-10: twoway plots a Mata matrix, matamatrix() lower case at the
+    // head of the varlist (rc 0); dash refuses it by name, r(198), with
+    // advice, on scatter and line.  MATAMATRIX(u21_M) is a varlist to
+    // both, refused r(111); a quoted matamatrix() in an option is text.
+    // ------------------------------------------------------------
+    local ls = c(linesize)
+    set linesize 255
+    foreach t in scatter line {
+        capture twoway `t' matamatrix(u21_M), nodraw
+        local trc = _rc
+        capture graph drop _all
+        local lf "`u21d'/n10`t'.log"
+        dash clear
+        quietly log using "`lf'", text replace name(u2110)
+        capture noisily dash `t' matamatrix(u21_M)
+        local drc = _rc
+        quietly log close u2110
+        cert_log_has "`lf'", needle("dash: matamatrix(u21_M) is a twoway mata matrix plot, which dash does not draw")
+        _w31_expect U21-10 "(`trc' == 0 & `drc' == 198 & r(count) == 1)" "`t': twoway rc `trc', dash rc `drc', the sentence `r(count)' times"
+        capture erase "`lf'"
+    }
+    capture twoway scatter MATAMATRIX(u21_M), nodraw
+    local trc = _rc
+    dash clear
+    capture dash scatter MATAMATRIX(u21_M)
+    local drc = _rc
+    _w31_expect U21-10 "(`trc' == 111 & `drc' == 111)" "MATAMATRIX(): twoway rc `trc', dash rc `drc'"
+    dash clear
+    capture dash scatter mpg weight, legend(label(1 "matamatrix(u21_M)")) name(zu2110)
+    _w31_expect U21-10 "(_rc == 0)" "a quoted matamatrix() in legend(): rc `=_rc'"
+    set linesize `ls'
+    _w31_done U21-10 "matamatrix(): twoway plots it; dash refuses it by name, r(198), with advice; MATAMATRIX() is a varlist to both"
+
+    capture mata: mata drop u21_M
+    capture rmdir "`u21d'"
+    capture graph drop _all
+    dash clear
+    display as text "S21 end " c(current_date) " " c(current_time)
+}
+* ==== end S21 ====
+
 // S22 helpers (WP-31 F1e).  _u22_move_roles: the saved page's lpolyci
 // line and band after one filter move -- the page rendered, the widget
 // set and its own callback run under node (test/js_runner.py) -- written
