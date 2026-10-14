@@ -494,8 +494,8 @@ if `drcb' == 0 {
     local wt `"`r(value)'"'
 }
 // an expression on a layer that honours it is evaluated, as twoway
-// evaluates it (Flipped, WP-31 A5: it was refused, r(198)); on a glyph
-// layer, which draws no weight, the weight is named in the note by type
+// evaluates it (Flipped, WP-31 A5: it was refused, r(198)); on a marker
+// layer it sizes the markers (WP-31 C9), evaluated the same way
 graph drop _all
 capture twoway lfit mpg weight [aw=displacement/2], nodraw
 local twrcx = _rc

@@ -80,13 +80,11 @@
 *!                     nothing (dash build writes a named graph).
 *!   O2-10             the immediate render still honours saving() and is
 *!                     not told otherwise.
-*!   AC-13.1           a weight expression on a GLYPH layer is accepted and
-*!                     reported by TYPE, [aweight], never naming the weight
-*!                     variable; once per distinct type per command
-*!                     (AC-13.1b/c).  Since WP-18 the statistical layers
-*!                     (lfit, kdensity ...) honour a weight and name nothing
-*!                     -- test_statistical_options.cscript -- so AC-13.1b/c
-*!                     put the named weight on scatter and line.
+*!   AC-13.1           a weight on a GLYPH layer is accepted and named
+*!                     nowhere: the marker types size their markers by it
+*!                     and the markerless types draw nothing different, as
+*!                     twoway does (WP-31 C9; flipped from the WP-13 note
+*!                     that named it by type).
 *!
 *! ---------------------------------------------------------------------------
 *! MEASURED STATUS WHEN THIS FILE WAS WRITTEN (pre-fix, branch
@@ -957,129 +955,34 @@ if `"`c(python_exec)'"' != "" {
 else display as text "O2-10 SKIP: the immediate render needs Python"
 
 // ================================================================
-// AC-13.1 -- a weight expression is accepted and reported, by type.
+// AC-13.1 -- a weight on a glyph layer is accepted and never named.
 //
-// ROADMAP WP-13 TR-13.2 / GAPS.md A3.  The varpart parsers stored the
-// weight type in s(_weight) and `sreturn clear' destroyed it before the
-// report; the comment beside them said it was reported.  Measured
-// 22sep2026: `dash scatter mpg weight [aw=price], name(w1)' -> rc 0,
-// registered, no note.  The note names the TYPE, in brackets, never the
-// weight variable, and once per distinct type per command.
+// ROADMAP WP-13 TR-13.2 / GAPS.md A3 made the note name the TYPE, never
+// the variable.  Flipped (WP-31 C9): twoway sizes markers by the weight and
+// says nothing (weighted_markers_truth.json W01); on markerless types
+// twoway is silent too (W07) -- so dash draws the weight on the marker
+// types and names it nowhere.
 // ================================================================
 display as text ""
-_dsp_probe "weight" "scatter mpg weight [aw=price]" ""
-local prc    = r(rc)
-local pnotes = r(nnotes)
-local pnote  `"`r(note)'"'
-local pcmd   `"`r(cmd)'"'
-local bad = 0
-if `prc' != 0 {
-    display as error `"AC-13.1 FAIL: rc=`prc' from  `macval(pcmd)'"'
-    local bad = 1
-}
-else if `pnotes' != 1 {
-    display as error `"AC-13.1 FAIL: expected exactly 1 note for [aw=price], got `pnotes'"'
-    local bad = 1
-}
-else {
-    _dsp_names `"`macval(pnote)'"' "aweight"
-    if r(found) != 1 {
-        display as error `"AC-13.1 FAIL: the note does not name the weight type: `macval(pnote)'"'
-        local bad = 1
-    }
-    // In brackets, as the PASS line says: a whole word is also satisfied by
-    // aweight(), the form of an option, which a weight is not.
-    if strpos(`"`macval(pnote)'"', "[aweight]") == 0 {
-        display as error `"AC-13.1 FAIL: the note does not name the type as [aweight]: `macval(pnote)'"'
-        local bad = 1
-    }
-    _dsp_names `"`macval(pnote)'"' "price"
-    if r(found) != 0 {
-        display as error `"AC-13.1 FAIL: the note names the weight variable: `macval(pnote)'"'
-        local bad = 1
-    }
-}
-if `bad' == 1 {
-    local nfail = `nfail' + 1
-    local faillist `"`faillist' AC-13.1"'
-}
-else display as text "AC-13.1 PASS: [aw=price] is reported as [aweight], never naming price"
-
-// AC-13.1b -- a weight on ONE layer of a two-layer command, and the same
-// type on two layers, are each one note naming the type once.  Both layers
-// are glyph layers: lfit honours [aw=price] since WP-18 and names nothing,
-// so the case that used to put the weight on lfit would now expect a note
-// for an option dash applies.
-foreach case in "(scatter mpg weight [aw=price]) (line mpg weight)" ///
-                "(scatter mpg weight [aw=price]) (line mpg weight [aw=price])" {
-    _dsp_probe "weight2" `"`case'"' ""
+foreach case in "scatter mpg weight [aw=price]" ///
+                "(scatter mpg weight [aw=price]) (line mpg weight)" ///
+                "(scatter mpg weight [aw=price]) (line mpg weight [aw=price])" ///
+                "(lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78])" {
+    _dsp_probe "weight" `"`case'"' ""
     local prc    = r(rc)
     local pnotes = r(nnotes)
     local pnote  `"`r(note)'"'
     local bad = 0
-    if `prc' != 0 | `pnotes' != 1 {
-        display as error `"AC-13.1b FAIL: rc=`prc' notes=`pnotes' for  `case'"'
+    if `prc' != 0 | `pnotes' != 0 {
+        display as error `"AC-13.1 FAIL: rc=`prc' notes=`pnotes' (`macval(pnote)') for  `case'"'
         local bad = 1
-    }
-    else {
-        _dsp_names `"`macval(pnote)'"' "aweight"
-        if r(found) != 1 {
-            display as error `"AC-13.1b FAIL: the note does not name aweight: `macval(pnote)'"'
-            local bad = 1
-        }
-        // Once: present, and not again after the first is removed.  The
-        // removal alone passed a note with no [aweight] at all -- one that
-        // said aweight() -- since the whole-word check above accepts that.
-        if strpos(`"`macval(pnote)'"', "[aweight]") == 0 {
-            display as error `"AC-13.1b FAIL: the note does not name the type as [aweight]: `macval(pnote)'"'
-            local bad = 1
-        }
-        local once = subinstr(`"`macval(pnote)'"', "[aweight]", "", 1)
-        if strpos(`"`macval(once)'"', "[aweight]") > 0 {
-            display as error `"AC-13.1b FAIL: [aweight] is named more than once: `macval(pnote)'"'
-            local bad = 1
-        }
     }
     if `bad' == 1 {
         local nfail = `nfail' + 1
-        local faillist `"`faillist' AC-13.1b"'
+        local faillist `"`faillist' AC-13.1"'
     }
-    else display as text `"AC-13.1b PASS: one note, [aweight] once, for  `case'"'
+    else display as text `"AC-13.1 PASS: rc 0 and no note for  `case'"'
 }
-
-// AC-13.1c -- two weight types on two layers: the one on the glyph layer
-// (scatter [fw=rep78]) is named; the one lfit honours (WP-18, [aw=price])
-// is applied and NOT named.  Before WP-18 both were named.
-_dsp_probe "weight3" "(lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78])" ""
-local prc    = r(rc)
-local pnotes = r(nnotes)
-local pnote  `"`r(note)'"'
-local bad = 0
-if `prc' != 0 | `pnotes' != 1 {
-    display as error `"AC-13.1c FAIL: rc=`prc' notes=`pnotes'"'
-    local bad = 1
-}
-else {
-    _dsp_names `"`macval(pnote)'"' "fweight"
-    if r(found) != 1 {
-        display as error `"AC-13.1c FAIL: the note does not name fweight: `macval(pnote)'"'
-        local bad = 1
-    }
-    if strpos(`"`macval(pnote)'"', "[fweight]") == 0 {
-        display as error `"AC-13.1c FAIL: the note does not name the type as [fweight]: `macval(pnote)'"'
-        local bad = 1
-    }
-    _dsp_names `"`macval(pnote)'"' "aweight"
-    if r(found) != 0 {
-        display as error `"AC-13.1c FAIL: the note names the aweight lfit honours: `macval(pnote)'"'
-        local bad = 1
-    }
-}
-if `bad' == 1 {
-    local nfail = `nfail' + 1
-    local faillist `"`faillist' AC-13.1c"'
-}
-else display as text "AC-13.1c PASS: [fweight] on scatter is named, [aweight] on lfit is honoured and not named"
 
 // ----------------------------------------------------------------
 // Summary

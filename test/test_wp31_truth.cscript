@@ -3820,6 +3820,293 @@ if inlist("`only'", "", "S19") & `: list posof "S19" in w31_run' {
 }
 * ==== end S19 ====
 
+// S20 helpers (WP-31 C9).  _u20_draw: the marker sizes a registered dash
+// graph draws, saved (DashRenderer) and served (the generated app's
+// make_document), in data order, every marker renderer's (Scatter, not a
+// dot row, not a colorvar swatch) one after another: u20_s, u20_v ("."
+// for a marker not drawn); u20_f 1 when every one reads a size column;
+// u20_d the dot rows' size kind ("field", "scalar" or "").  _u20_svg:
+// the outlined marker radii of a twoway SVG, in drawing order (u20_r).
+// _u20_match: u20_ok 1 when the sizes in global <s>, over <sb>, equal the
+// radii in global <r>, over <rb>, within 2% (a radius of 0.25 is a marker
+// of size zero), and every marker twoway drew is one dash draws.
+python:
+import os as _u20_os, re as _u20_re, sys as _u20_sys
+for _u20_p in (_u20_os.path.abspath(".."),):
+    if _u20_p not in _u20_sys.path:
+        _u20_sys.path.insert(0, _u20_p)
+
+
+def _u20_sizes(figs):
+    import numpy as np
+    import dash_render as dr
+    out, field, dots = [], True, ""
+    for f in figs:
+        for r in f.renderers:
+            g = getattr(r, "glyph", None)
+            if type(g).__name__ != "Scatter":
+                continue
+            if "dash_dots" in (r.tags or []):
+                dots = "field" if isinstance(g.size, str) else "scalar"
+                continue
+            if dr._dash_is_swatch(r):
+                continue
+            d = r.data_source.data
+            if isinstance(g.size, str):
+                vals = [float(v) for v in d[g.size]]
+            else:
+                field = False
+                n = len(next(iter(d.values()), []))
+                vals = [float(g.size)] * n
+            out.extend("." if not np.isfinite(v) else "%.9g" % v
+                       for v in vals)
+    return " ".join(out), field, dots
+
+
+def _u20_draw(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    from bokeh.models import Plot
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+    with open(app, encoding="utf-8") as fh:
+        src = fh.read()
+    attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+    ns = dict(__name__="dash_u20_app")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(src.replace(attach, "pass"), "dash_u20_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    s, fs, ds = _u20_sizes(list(r.figures.values()))
+    v, fv, dv = _u20_sizes([m for root in doc.roots
+                            for m in root.select({"type": Plot})])
+    Macro.setGlobal("u20_s", s)
+    Macro.setGlobal("u20_v", v)
+    Macro.setGlobal("u20_f", "1" if (fs and fv and s) else "0")
+    Macro.setGlobal("u20_d", ds if ds == dv else "differ")
+
+
+def _u20_svg(fn):
+    from sfi import Macro
+    with open(fn, encoding="utf-8") as fh:
+        txt = fh.read()
+    rr = [m.group(1) for m in _u20_re.finditer(
+        r'<circle cx="[-\d.]+" cy="[-\d.]+" r="([\d.]+)" style="[^"]*fill:none',
+        txt)]
+    Macro.setGlobal("u20_r", " ".join(rr))
+
+
+def _u20_match(skey, rkey, sb, rb):
+    from sfi import Macro
+    s = [None if t == "." else float(t)
+         for t in (Macro.getGlobal(skey) or "").split()]
+    r = [float(t) for t in (Macro.getGlobal(rkey) or "").split()]
+    drawn = [x for x in s if x is not None]
+    ok = bool(r) and len(drawn) == len(r)
+    for a, b in zip(drawn, r):
+        if b == 0.25:
+            ok = ok and a == 0.0
+        else:
+            want = b / float(rb)
+            ok = ok and abs(a / float(sb) - want) <= 0.02 * want
+    Macro.setGlobal("u20_ok", "1" if ok else "0")
+end
+
+capture program drop _u20_reg
+program define _u20_reg
+    // _u20_reg <dir> <k> <dash command...>: register one graph under a
+    // log (u20_log), write its spec and data, and read both modes.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    foreach g in s v f d {
+        global u20_`g' ""
+    }
+    dash clear
+    capture log close _u20log
+    quietly log using "`dir'/l`k'.log", text replace name(_u20log)
+    capture noisily dash `0'
+    global u20_rc = _rc
+    quietly log close _u20log
+    global u20_log "`dir'/l`k'.log"
+    if ${u20_rc} exit
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u20_m; _u20_m._u20_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u20_tw
+program define _u20_tw
+    // _u20_tw <file> <twoway command...>: twoway's rc (u20_trc) and, when
+    // it drew, its SVG's marker radii (u20_r).
+    version 19
+    gettoken fn 0 : 0
+    global u20_r ""
+    capture graph drop u20g
+    capture noisily twoway `0' name(u20g, replace)
+    global u20_trc = _rc
+    if ${u20_trc} exit
+    cert_svg_export, name(u20g) file("`fn'")
+    python: import __main__ as _u20_m; _u20_m._u20_svg("`fn'")
+    capture graph drop u20g
+end
+
+* ==== S20 C9: weighted markers ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S20") & `: list posof "S20" in w31_run' {
+    display as text "S20 start " c(current_date) " " c(current_time)
+    local u20d "`w31_work'/s20"
+    capture mkdir "`u20d'"
+    capture graph drop _all
+    sysuse auto, clear
+    quietly keep in 1/8
+    quietly generate double lo = mpg - 2
+    quietly generate double hi = mpg + 2
+    quietly generate double wneg = cond(_n == 1, -1, price)
+    quietly generate double wz = cond(_n == 1, 0, price)
+    quietly generate double wmis = cond(_n == 1, ., price)
+    quietly generate double zero = 0
+
+    // ------------------------------------------------------------
+    // U20-01: scatter [aw=price]: no note, the weight in the spec, and
+    // each marker at twoway's size relative to the unweighted marker
+    // (twoway's SVG in this session), saved and served.
+    // ------------------------------------------------------------
+    _u20_tw "`u20d'/t0.svg" scatter mpg weight,
+    local r0 : word 1 of ${u20_r}
+    _u20_tw "`u20d'/t1.svg" scatter mpg weight [aw=price],
+    global u20_tr "${u20_r}"
+    _u20_reg "`u20d'" 0 scatter mpg weight, name(u200)
+    local s0 : word 1 of ${u20_s}
+    _u20_reg "`u20d'" 1 scatter mpg weight [aw=price], name(u201)
+    _w31_expect U20-01 "(${u20_rc} == 0)" "dash scatter [aw=price] rc ${u20_rc}"
+    cert_log_has "${u20_log}", needle("weight]")
+    _w31_expect U20-01 "(r(count) == 0)" "the weight was named"
+    mata: st_local("js", st_global("dash_json_u201"))
+    _w31_expect U20-01 `"(strpos(`"`macval(js)'"', `""weight":"aweight""') > 0 & strpos(`"`macval(js)'"', `""wexp":"price""') > 0)"' "the spec carries no weight"
+    _w31_expect U20-01 "(${u20_f} == 1)" "a marker size is one number"
+    python: import __main__ as _u20_m; _u20_m._u20_match("u20_s", "u20_tr", "`s0'", "`r0'")
+    _w31_expect U20-01 "(${u20_ok} == 1)" "saved sizes ${u20_s} (unweighted `s0') against twoway's radii ${u20_tr} (`r0')"
+    python: _u20_m._u20_match("u20_v", "u20_tr", "`s0'", "`r0'")
+    _w31_expect U20-01 "(${u20_ok} == 1)" "served sizes ${u20_v} against twoway's radii ${u20_tr}"
+    _w31_done U20-01 "scatter [aw=price] sizes each marker as twoway does, in both modes, naming nothing"
+
+    // ------------------------------------------------------------
+    // U20-02: msize(huge) is the size the weight multiplies (W03).
+    // ------------------------------------------------------------
+    _u20_tw "`u20d'/t2.svg" scatter mpg weight, msize(huge)
+    local r0 : word 1 of ${u20_r}
+    _u20_tw "`u20d'/t3.svg" scatter mpg weight [aw=price], msize(huge)
+    global u20_tr "${u20_r}"
+    _u20_reg "`u20d'" 2 scatter mpg weight, msize(huge) name(u202)
+    local s0 : word 1 of ${u20_s}
+    _u20_reg "`u20d'" 3 scatter mpg weight [aw=price], msize(huge) name(u203)
+    _w31_expect U20-02 "(${u20_rc} == 0)" "rc ${u20_rc}"
+    python: _u20_m._u20_match("u20_s", "u20_tr", "`s0'", "`r0'")
+    _w31_expect U20-02 "(${u20_ok} == 1)" "saved sizes ${u20_s} (`s0') against ${u20_tr} (`r0')"
+    python: _u20_m._u20_match("u20_v", "u20_tr", "`s0'", "`r0'")
+    _w31_expect U20-02 "(${u20_ok} == 1)" "served sizes ${u20_v} against ${u20_tr}"
+    _w31_done U20-02 "msize(huge) under [aw=price]: the weight multiplies it, as in twoway"
+
+    // ------------------------------------------------------------
+    // U20-03: a negative, a zero and a missing weight; no weight above
+    // zero (W05, W06): twoway's rc and silence, its marker sizes.
+    // ------------------------------------------------------------
+    _u20_tw "`u20d'/t4.svg" scatter mpg weight,
+    local r0 : word 1 of ${u20_r}
+    _u20_reg "`u20d'" 4 scatter mpg weight, name(u204)
+    local s0 : word 1 of ${u20_s}
+    local k 5
+    foreach w in wneg wz wmis {
+        _u20_tw "`u20d'/t`k'.svg" scatter mpg weight [aw=`w'],
+        _w31_expect U20-03 "(${u20_trc} == 0)" "twoway [aw=`w'] rc ${u20_trc}"
+        global u20_tr "${u20_r}"
+        _u20_reg "`u20d'" `k' scatter mpg weight [aw=`w'], name(u20`k')
+        _w31_expect U20-03 "(${u20_rc} == 0)" "dash [aw=`w'] rc ${u20_rc}"
+        cert_log_has "${u20_log}", needle("weight")
+        _w31_expect U20-03 "(r(count) == 0)" "[aw=`w']: dash said something of the weight"
+        python: _u20_m._u20_match("u20_s", "u20_tr", "`s0'", "`r0'")
+        _w31_expect U20-03 "(${u20_ok} == 1)" "[aw=`w'] saved ${u20_s} against ${u20_tr}"
+        local ++k
+    }
+    capture noisily twoway scatter mpg weight [aw=zero], name(u20g, replace)
+    local trc = _rc
+    capture graph drop u20g
+    _u20_reg "`u20d'" 8 scatter mpg weight [aw=zero], name(u208)
+    _w31_expect U20-03 "(`trc' == 198 & ${u20_rc} == `trc')" "no weight above zero: twoway rc `trc', dash ${u20_rc}"
+    _w31_expect U20-03 `"("${dash_graph_registry}" == "")"' "the refused graph was registered"
+    _u20_reg "`u20d'" 9 scatter mpg weight [aw=zero], mlabel(make) name(u209)
+    _w31_expect U20-03 "(${u20_rc} == 0)" "[aw=zero] with mlabel(): rc ${u20_rc} (twoway draws it, W06_mlab)"
+    _w31_done U20-03 "negative, zero and missing weights size the markers as twoway does; none above zero is twoway's r(198)"
+
+    // ------------------------------------------------------------
+    // U20-04: on markerless types the weight is taken and nothing is
+    // said (W07; it was named in the note).
+    // ------------------------------------------------------------
+    local k 10
+    foreach c in "line mpg weight [aw=price]" "bar mpg weight [fw=rep78]" "rspike lo hi weight [aw=price]" {
+        _u20_reg "`u20d'" `k' `c', name(u20`k')
+        _w31_expect U20-04 "(${u20_rc} == 0)" "`c': rc ${u20_rc}"
+        cert_log_has "${u20_log}", needle("weight")
+        _w31_expect U20-04 "(r(count) == 0)" "`c': the weight was named"
+        local ++k
+    }
+    _w31_done U20-04 "line, bar and rspike take a weight and say nothing, as twoway"
+
+    // ------------------------------------------------------------
+    // U20-05: rscatter's two ends and dot's marker are sized; dot's rows
+    // of dots are not (W08, W09).
+    // ------------------------------------------------------------
+    _u20_tw "`u20d'/t13.svg" rscatter lo hi weight,
+    local r0 : word 1 of ${u20_r}
+    _u20_tw "`u20d'/t14.svg" rscatter lo hi weight [aw=price],
+    global u20_tr "${u20_r}"
+    _u20_reg "`u20d'" 13 rscatter lo hi weight, name(u2013)
+    local s0 : word 1 of ${u20_s}
+    _u20_reg "`u20d'" 14 rscatter lo hi weight [aw=price], name(u2014)
+    _w31_expect U20-05 "(${u20_rc} == 0 & ${u20_f} == 1)" "rscatter rc ${u20_rc}, field ${u20_f}"
+    python: _u20_m._u20_match("u20_s", "u20_tr", "`s0'", "`r0'")
+    _w31_expect U20-05 "(${u20_ok} == 1)" "rscatter saved ${u20_s} against ${u20_tr}"
+    _u20_reg "`u20d'" 15 dot mpg weight [aw=price], name(u2015)
+    _w31_expect U20-05 `"(${u20_rc} == 0 & ${u20_f} == 1 & "${u20_d}" == "scalar")"' "dot rc ${u20_rc}, marker field ${u20_f}, dot rows ${u20_d}"
+    _w31_done U20-05 "rscatter's ends and dot's marker are sized by the weight; dot's rows are not"
+
+    // ------------------------------------------------------------
+    // U20-06: the refusals stay twoway's.
+    // ------------------------------------------------------------
+    dash clear
+    foreach c in "scatteri 1 2 [aw=price]" "lowess mpg weight [aw=price]" "scatter mpg weight [iw=price]" {
+        capture noisily twoway `c', nodraw
+        local trc = _rc
+        capture noisily dash `c', name(u20r)
+        local drc = _rc
+        _w31_expect U20-06 "(`trc' != 0 & `drc' == `trc')" "`c': twoway rc `trc', dash rc `drc'"
+    }
+    _w31_expect U20-06 `"("${dash_graph_registry}" == "")"' "a refused graph was registered"
+    _w31_done U20-06 "scatteri, lowess and an iweight are refused with twoway's codes"
+
+    forvalues k = 0/15 {
+        foreach p in s d l {
+            capture erase "`u20d'/`p'`k'.json"
+        }
+        capture erase "`u20d'/l`k'.log"
+        capture erase "`u20d'/a`k'.py"
+        capture erase "`u20d'/t`k'.svg"
+    }
+    capture rmdir "`u20d'"
+    macro drop u20_*
+    capture graph drop _all
+    dash clear
+    display as text "S20 end " c(current_date) " " c(current_time)
+}
+* ==== end S20 ====
+
 // S22 helpers (WP-31 F1e).  _u22_move_roles: the saved page's lpolyci
 // line and band after one filter move -- the page rendered, the widget
 // set and its own callback run under node (test/js_runner.py) -- written

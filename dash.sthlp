@@ -939,8 +939,9 @@ there, is an invalid point.  The literal is read as data and never run.
     A weight, {cmd:[aweight=}{it:varname}{cmd:]}, {cmd:[fweight=]} or
     {cmd:[pweight=]}, is honoured on the statistical layers that take it
     in {cmd:twoway} and refused, as {cmd:twoway} refuses it, where they do
-    not; on {cmd:scatter} and the other glyph layers it is named in the
-    same note by type and never by variable, as {cmd:[aweight]}.  See
+    not; on {cmd:scatter} and the other marker layers it sizes the
+    markers, and on the other glyph layers it is taken and draws nothing
+    different, as in {cmd:twoway}; it is never named in the note.  See
     {help dash##weights:Weights}.
     {cmd:scheme()} is not among the options named: {cmd:dash} translates
     Stata's own schemes; {help dash##scheme:Stata scheme support} below says
@@ -3565,13 +3566,27 @@ weight syntax refuses most of them as {cmd:twoway} does, and {cmd:dash}
 refuses the rest, r(198).
 
 {pstd}
-On {cmd:scatter} and the other glyph layers, and on {cmd:function}, a
-weight is accepted so a pasted command still runs, but it is not drawn
-({cmd:twoway scatter} sizes its markers by an {cmd:aweight}; {cmd:dash}
-does not), and it is named in the note by type, never by variable, as
-{cmd:[aweight]}.  On a statistical layer that takes it the weight is
-exported with the data; on a glyph layer the weight variable is not
-exported.
+On {cmd:scatter}, {cmd:connected}, {cmd:dot}, {cmd:dropline},
+{cmd:rscatter}, {cmd:rcapsym}, {cmd:rconnected}, {cmd:pcscatter} and
+{cmd:pccapsym} an {cmd:aweight}, {cmd:fweight} or {cmd:pweight} sizes the
+markers as {cmd:twoway} does: the smallest weight draws its marker at 1.5
+times the marker's size -- {cmd:msize()} included -- and every other at
+1.5*sqrt({it:w}/{it:wmin}) times it, all scaled down together so the
+largest is at most the scheme's {cmd:max_wted_symsize} (10) times the
+size.  As in {cmd:twoway}, a weight at or below zero anywhere in the plot
+scales every marker by 10*sqrt({it:w}/{it:wmax}) instead; a negative
+weight's marker is not drawn, a zero or missing weight's is drawn at size
+zero; a plot with no weight above zero stops the graph, r(198), without a
+word, as {cmd:twoway} stops it; and markers labelled by {cmd:mlabel()},
+and the point symbol, keep their size.  On {cmd:line}, {cmd:area},
+{cmd:bar}, {cmd:spike}, the range lines, areas, bars and caps, the pc
+lines and arrows, and {cmd:function}, {cmd:twoway} accepts a weight and
+draws nothing different, and so does {cmd:dash}, saying nothing.  The
+served app rescales the markers to the rows a filter keeps; a saved page
+keeps the sizes it was drawn with and marks the layer
+{cmd:(unfiltered)} while a filter has removed one of its rows.  On a layer
+that uses it the weight is exported with the data; on any other layer the
+weight variable is not exported.
 
 {pstd}
 {it:Example:}

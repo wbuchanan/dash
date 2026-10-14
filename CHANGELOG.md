@@ -408,7 +408,7 @@ and now matches Stata.
 
 - lpoly on a saved page after a filter move: the build's smooth (marked) -> Stata's local polynomial on the kept rows with its rule-of-thumb bandwidth recomputed; where that fit is exact the line is drawn at 0 (WP-31, F1d)
 
-<!-- WP-31 C9 -->
+- `dash scatter mpg weight [aw=price]`: each marker sized by price as twoway sizes it, 1.5*sqrt(w/wmin) times the marker's size up to the scheme's max_wted_symsize, on scatter, connected, dot, dropline, rscatter, rcapsym, rconnected, pcscatter and pccapsym (was: one size, the weight named); on line, bar, area and the other markerless types the weight is taken and named nowhere (was: named); a marker plot with no weight above zero is r(198), as twoway stops it (WP-31, C9)
 
 - lpolyci on a saved page after a filter move: the build's smooth and band (marked) -> lpoly's smooth and its analytic band on the kept rows; where the rule of thumb's fit is exact the line is drawn at 0 with no band (WP-31, F1e)
 

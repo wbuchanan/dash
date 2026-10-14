@@ -394,7 +394,14 @@ _FP_GRID_MAX = 20000
 # A weight outside a layer's set is refused in dash.ado with twoway's r(101);
 # the renderer, which a hand-written spec can reach directly, names it and
 # draws the layer unweighted.
+# WP-31 C9: the marker types take all three and size their markers by them
+# (yxview.class _draw_weighted_points; weighted_markers_truth.json).
 _DASH_WEIGHT_ACCEPTS = {
+    "scatter": ("aw", "fw", "pw"), "connected": ("aw", "fw", "pw"),
+    "dot": ("aw", "fw", "pw"), "dropline": ("aw", "fw", "pw"),
+    "rscatter": ("aw", "fw", "pw"), "rcapsym": ("aw", "fw", "pw"),
+    "rconnected": ("aw", "fw", "pw"), "pcscatter": ("aw", "fw", "pw"),
+    "pccapsym": ("aw", "fw", "pw"),
     "lfit": ("aw", "fw", "pw"), "qfit": ("aw", "fw", "pw"),
     "lfitci": ("aw", "fw", "pw"), "qfitci": ("aw", "fw", "pw"),
     "fpfit": ("aw", "fw", "pw"), "fpfitci": ("aw", "fw", "pw"),
@@ -10889,6 +10896,17 @@ class SchemeParser:
         self.legend_rows: int = self._bounded_int(
             "numstyle legend_rows", 0, 0, self._LEGEND_GRID_MAX,
             "legend row count") or 0
+        # `numstyle max_wted_symsize' (WP-31 C9): the most a weighted
+        # marker is multiplied by.  yxview.class reads it as
+        # cond(max, max, 10): absent, zero or unreadable is 10, the value
+        # scheme-s2color.scheme declares and every shipped scheme inherits.
+        _mws = self._props.get("numstyle max_wted_symsize", "").strip()
+        try:
+            _mwv = float(_mws) if _mws else 10.0
+        except ValueError:
+            _mwv = 10.0
+        self.max_wted_symsize: float = (
+            _mwv if math.isfinite(_mwv) and _mwv > 0 else 10.0)
 
         # A ci fit's band (BUGS.md, S3: "A ci band is filled in its line's
         # colour, where Stata fills it in pstyle ci").  twoway draws it in
@@ -15497,6 +15515,9 @@ class GlyphMapper:
             _scatter_kwargs["line_alpha"] = _ml_alpha
         r = fig.scatter(**_scatter_kwargs)
         self._apply_marker_opts(r, options, traits=(_hollow, _factor))
+        # WP-31 C9: each marker at its weight's size.  connected,
+        # rconnected and dot draw their markers here.
+        self._weight_markers(r, options, "scatter")
         # colorvar: map a variable's values to fill/line color via a color mapper
         self._apply_colorvar(fig, r, plot_source, options,
                              add_key=colorvar_key)
@@ -16351,6 +16372,80 @@ class GlyphMapper:
         for c in cols[1:]:
             finite &= ~np.isnan(c)
         return tuple(c[finite] for c in cols)
+
+    #: WP-31 C9: the types whose markers twoway sizes by the weight
+    #: (yxview.class _draw_weighted_points; weighted_markers_truth.json
+    #: W01-W10).
+    _WEIGHTED_MARKER_TYPES = frozenset({
+        "scatter", "connected", "dot", "dropline", "rscatter", "rcapsym",
+        "rconnected", "pcscatter", "pccapsym"})
+
+    def _weight_markers(self, renderer, options, layer: str) -> None:
+        """Size *renderer*'s markers by the layer's weight, as twoway does
+        (WP-31 C9).
+
+        After ``_apply_marker_opts``: the glyph's size -- the scheme's,
+        msize()'s and the symbol's factor -- is the size twoway's
+        ``scale * sqrt(w)`` multiplies (``_dash_weighted_sizes``), over
+        the rows the renderer draws (finite x and y, inside its view), so
+        a served move, which redraws the layer from the kept rows, rescales
+        it as twoway would.  The sizes go into a column of the renderer's
+        own source and the glyph reads it as a field.  Nothing changes
+        without a weight, on a type with no markers, under mlabel() (twoway
+        draws labelled markers at their own size, W11_mlabel), for a point
+        (W11_point), or when the source carries no weight column.
+        """
+        if layer not in self._WEIGHTED_MARKER_TYPES:
+            return
+        wtype, wexp = _dash_weight_spec(options)
+        if wtype is None or wtype not in _DASH_WEIGHT_ACCEPTS.get(layer, ()):
+            return
+        if _dash_mlabel_names(options)[0]:
+            return
+        sym = str(options.get("msymbol", options.get("marker", "")) or "")
+        if sym.strip().lower() in ("p", "point"):
+            return
+        glyph = getattr(renderer, "glyph", None)
+        src = getattr(renderer, "data_source", None)
+        base = getattr(glyph, "size", None)
+        if (src is None or wexp not in src.data
+                or not isinstance(base, (int, float))
+                or isinstance(base, bool)):
+            return
+        try:
+            w = _dash_float_values(src.data[wexp])
+        except (TypeError, ValueError):
+            return
+        n = len(w)
+        drawn = np.ones(n, dtype=bool)
+        for k in ("x", "y"):
+            f = getattr(glyph, k, None)
+            if isinstance(f, str) and f in src.data:
+                try:
+                    drawn &= np.isfinite(_dash_float_values(src.data[f]))
+                except (TypeError, ValueError):
+                    pass
+        sel = self._view_mask(getattr(renderer, "view", None), n)
+        if sel is not None and len(sel) == n:
+            drawn &= sel
+        sizes = np.full(n, np.nan)
+        sizes[drawn] = _dash_weighted_sizes(
+            w[drawn], float(base),
+            getattr(self.scheme, "max_wted_symsize", 10.0))
+        col, k = "__dash_wsize", 1
+        while col in src.data:
+            k += 1
+            col = f"__dash_wsize{k}"
+        src.data[col] = sizes
+        glyph.size = col
+        renderer._dash_wsized = True
+        # A served move writes the kept rows into this source
+        # (_dash_refresh_linked/_unlinked), and the sizes are rescaled from
+        # them there (_dash_rescale_wsizes), as twoway would draw them.
+        specs = list(getattr(src, "_dash_wsize_specs", None) or [])
+        specs.append((renderer, col, wexp, float(base),
+                      float(getattr(self.scheme, "max_wted_symsize", 10.0))))
+        src._dash_wsize_specs = specs
 
     @staticmethod
     def _layer_weight_column(source: ColumnDataSource, options,
@@ -20692,6 +20787,7 @@ class GlyphMapper:
         # nowhere else, and the dot was never passed through -- so a dropline
         # drew a default circle whatever was asked for.
         self._apply_marker_opts(dot, options, traits=(_dl_h, _dl_f))
+        self._weight_markers(dot, options, "dropline")  # WP-31 C9
         # colorvar() (WP-31 C8a): the dot (which carries the series key)
         # and its drop, one key.
         self._colorvar_layer(fig, [(dot, dl_source), (seg, dl_source)],
@@ -20827,6 +20923,7 @@ class GlyphMapper:
         self._apply_line_opts(spine, options, role="aline")
         for dot in (bot_dot, top_dot):
             self._apply_marker_opts(dot, options, traits=(_rcs_h, _rcs_f))
+            self._weight_markers(dot, options, "rcapsym")  # WP-31 C9
         # colorvar() (WP-31 C8a): the spine and both markers, one key.
         self._colorvar_layer(fig, [(spine, cap_source), (bot_dot, cap_source),
                                    (top_dot, cap_source)], options)
@@ -21254,6 +21351,7 @@ class GlyphMapper:
         # No view here: pc_source already holds only the selected rows.
         r = fig.scatter(*_pc_xy, **_pcsc_kwargs)
         self._apply_marker_opts(r, options, traits=(_pcsc_h, _pcsc_f))
+        self._weight_markers(r, options, "pcscatter")  # WP-31 C9
         # colorvar() (WP-31 C8a): both markers of each observation.
         self._colorvar_layer(fig, [(r, pc_source)], options)
         self._apply_mlabel_opts(fig, pc_source, options, _DASH_MLABEL_X,
@@ -21863,6 +21961,7 @@ class GlyphMapper:
         # (this mapper used to filter lcolor()/lwidth()/lalpha() out itself,
         # the only one that did).
         self._apply_marker_opts(dots, options, traits=(_pcc_h, _pcc_f))
+        self._weight_markers(dots, options, "pccapsym")  # WP-31 C9
         # colorvar() (WP-31 C8a): the spike and both markers, one key.
         self._colorvar_layer(fig, [(seg, seg_src), (dots, dot_src)], options)
 
@@ -22238,6 +22337,7 @@ class GlyphMapper:
         # No view here: rs_source already holds only the selected rows.
         r = fig.scatter(*_rs_xy, **_rs_kwargs)
         self._apply_marker_opts(r, options, traits=(_rs_h, _rs_f))
+        self._weight_markers(r, options, "rscatter")  # WP-31 C9
         # colorvar() (WP-31 C8a): both ends of each observation.
         self._colorvar_layer(fig, [(r, rs_source)], options)
         self._apply_mlabel_opts(fig, rs_source, options, "x", "y",
@@ -24144,6 +24244,74 @@ def _dash_weight_spec(options) -> "tuple[str | None, str]":
     if wtype not in _DASH_WEIGHT_NAMES:
         return None, ""
     return wtype, wexp
+
+
+def _dash_rescale_wsizes(source) -> None:
+    """Rescale the weighted marker sizes of *source* from the rows it now
+    holds (WP-31 C9): after a served filter move has written the kept rows
+    into it, each size column ``GlyphMapper._weight_markers`` made is
+    recomputed by ``_dash_weighted_sizes`` over the rows its renderer draws
+    -- finite x and y, inside its view -- so the smallest and largest kept
+    weights set the scale, as twoway's would.  A source without such a
+    column is left alone; nothing raises."""
+    for renderer, col, wexp, base, cap in list(
+            getattr(source, "_dash_wsize_specs", None) or []):
+        data = source.data
+        if col not in data or wexp not in data:
+            continue
+        try:
+            w = _dash_float_values(data[wexp])
+        except (TypeError, ValueError):
+            continue
+        n = len(w)
+        drawn = np.ones(n, dtype=bool)
+        glyph = getattr(renderer, "glyph", None)
+        for k in ("x", "y"):
+            f = getattr(glyph, k, None)
+            if isinstance(f, str) and f in data:
+                try:
+                    drawn &= np.isfinite(_dash_float_values(data[f]))
+                except (TypeError, ValueError):
+                    pass
+        sel = GlyphMapper._view_mask(getattr(renderer, "view", None), n)
+        if sel is not None and len(sel) == n:
+            drawn &= sel
+        sizes = np.full(n, np.nan)
+        sizes[drawn] = _dash_weighted_sizes(w[drawn], base, cap)
+        source.data[col] = sizes
+
+
+def _dash_weighted_sizes(w, base, max_mult=10.0) -> "np.ndarray":
+    """The marker sizes twoway draws for weights *w* (WP-31 C9).
+
+    yxview.class ``_draw_weighted_points``, measured from twoway's SVG
+    (test/fixtures/weighted_markers_truth.json): marker i is drawn at
+    ``scale * sqrt(w_i)`` times the marker's own size *base* (msize()
+    included), where ``scale = 1.5 / sqrt(w_min)``, cut to ``max_mult /
+    sqrt(w_max)`` when ``scale * sqrt(w_max)`` would pass *max_mult* (the
+    scheme's ``max_wted_symsize``, 10).  A weight at or below zero anywhere
+    leaves ``1.5 / sqrt(w_min)`` missing in Stata, so the cut's scale is the
+    one used.  A missing weight's marker is drawn at size 0, a negative
+    one's is not drawn (NaN, which BokehJS skips); with no weight above
+    zero twoway draws nothing (it stops, r(198)) and every entry is NaN.
+
+    Returns:
+        A float array as long as *w*.
+    """
+    w = np.asarray(w, dtype=float).reshape(-1)
+    out = np.full(len(w), np.nan)
+    fin = w[np.isfinite(w)]
+    if fin.size == 0 or not fin.max() > 0:
+        return out
+    wmin, wmax = float(fin.min()), float(fin.max())
+    scale = 1.5 / math.sqrt(wmin) if wmin > 0 else math.inf
+    if scale * math.sqrt(wmax) > max_mult:
+        scale = max_mult / math.sqrt(wmax)
+    with np.errstate(invalid="ignore"):
+        ok = np.isfinite(w) & (w >= 0)
+    out[ok] = float(base) * scale * np.sqrt(w[ok])
+    out[~np.isfinite(w)] = 0.0
+    return out
 
 
 def _dash_weight_norm(w: "np.ndarray | None", wtype: "str | None",
@@ -39417,6 +39585,8 @@ def _dash_refresh_linked(source, frame, views, snapshot=None, pos_of=None,
     else:
         source.data = new_data
         _point()
+    # WP-31 C9: weighted markers rescaled to the kept rows.
+    _dash_rescale_wsizes(source)
 
 
 def _dash_own_redrawn_views(figures, redrawn_ids):
@@ -39522,6 +39692,8 @@ def _dash_refresh_unlinked(source, frame, snapshot):
             at = pos if pos is not None else labels
             new_data[col] = [orig[i] if 0 <= i < n else None for i in at]
     source.data = new_data
+    # WP-31 C9: weighted markers rescaled to the kept rows.
+    _dash_rescale_wsizes(source)
     return new_data
 
 
@@ -48263,6 +48435,30 @@ class DashRenderer:
                     for _fr in _layer_renderers:
                         if not _dash_is_swatch(_fr):
                             _fr._dash_frozen = _ftag
+            # WP-31 C9 (DECISIONS A23, M8): weighted markers are sized from
+            # the drawn rows' smallest and largest weights, which a saved
+            # page does not recompute after a move (S52 will); until then a
+            # move that removes a row of the layer marks it with the stale
+            # cue -- any finite weight counts, a zero one too, as it sets
+            # the scale.
+            elif any(getattr(_fr, "_dash_wsized", False)
+                     for _fr in _layer_renderers):
+                if ptype.lower() in _PC_TYPES:
+                    _wvars = [plot.get(k, "") for k in
+                              ("y1var", "x1var", "y2var", "x2var")]
+                elif ptype.lower() in _RANGE_TYPES:
+                    _wvars = [plot.get("yvar1", ""), plot.get("yvar2", ""),
+                              pxvar]
+                else:
+                    _wvars = [plot.get("yvar", yvar), pxvar]
+                _ftag = self._frozen_layer_tag(ptype.lower(), popts,
+                                               source_for_plot, _plot_view,
+                                               _wvars, kind="fit")
+                if _ftag is not None:
+                    _ftag["wrule"] = "any"
+                    for _fr in _layer_renderers:
+                        if not _dash_is_swatch(_fr):
+                            _fr._dash_frozen = _ftag
 
             # A layer that drew nothing used to say nothing: `pci' and
             # `pcscatter' each produced a titled, axed, empty plot region
@@ -51453,6 +51649,8 @@ class ServerAppBuilder:
                          "_dash_axis_number", "_dash_axis_word",
                          "_dash_axis_words",
                          "_dash_reference_lines",
+                         # weighted marker sizes (WP-31 C9).
+                         "_dash_weighted_sizes", "_dash_rescale_wsizes",
                          # colorvar()'s colour rule, clegend() and
                          # pcycle() (WP-31 C8b).
                          "_dash_colorrule_parse", "_dash_colour_intensity",

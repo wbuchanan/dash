@@ -68,9 +68,10 @@
 *!     SO-11 mspline [aw=price]     SO-12 mband [pw=price]
 *!   The unweighted spec is byte-identical to what it was:
 *!     SO-13 lfit mpg weight        "options":{} and no "weight" key
-*!   Glyph layers keep the WP-13 note (the weight is named by type):
-*!     SO-14 scatter [aw=price]     rc 0, one note naming [aweight], no key
-*!     SO-15 line [fw=mpg]          rc 0, one note naming [fweight], no key
+*!   Glyph layers (Flipped, WP-31 C9: twoway sizes markers by the weight
+*!   and says nothing; on markerless types it is silent too):
+*!     SO-14 scatter [aw=price]     rc 0, no note, "weight" and "wexp"
+*!     SO-15 line [fw=mpg]          rc 0, no note, no key
 *!   twoway's refusals, r(101), twoway's wording, nothing registered:
 *!     SO-16 lfit [iw=price]        "iweights not allowed"
 *!     SO-17 scatter [iw=price]     "iweights not allowed"
@@ -93,8 +94,9 @@
 *!                                  as typed); SO-29w qfit [aw=price*2] and
 *!                                  SO-29h kdensity [aw=price/1000] alike
 *!     SO-30 lfit [aw=pri]          rc 0, "wexp":"price" (expanded)
-*!     SO-31 scatter [aw=price+1]   rc 0, note [aweight] (a glyph layer
-*!                                  never evaluates the weight: unchanged)
+*!     SO-31 scatter [aw=price+1]   rc 0, no note, "wexp":"price+1"
+*!                                  (Flipped, WP-31 C9: a marker layer
+*!                                  evaluates the weight it is sized by)
 *!     SO-32 lfit [aw=nosuchvar]    r(111) -- syntax's own refusal
 *!     SO-33 lfit [aw=mpg-price]    rc 0, "wexp":"mpg-price": a varlist
 *!                                  range is an expression, as twoway reads it
@@ -154,8 +156,8 @@
 *!                                      fweight: stdf with an aweight is
 *!                                      r(135), SO-75)
 *!     SO-72 (lfit [aw=price]) (scatter [fw=rep78])
-*!                                      rc 0, ONE note naming [fweight]
-*!                                      and NOT [aweight]
+*!                                      rc 0, no note (Flipped, WP-31 C9:
+*!                                      the scatter's fweight sizes it)
 *!   Found by the WP-18 review (measured 23sep2026):
 *!     SO-75 lfitci [aw=price], stdf    r(135) "not possible with weighted
 *!     SO-76 qfitci [aw=price], stdr           data" (regres_p.ado)
@@ -465,9 +467,12 @@ _so_case SO-12 `"dash mband mpg weight [pw=price], name(so12)"' 0 "" `""weight":
 // The unweighted spec is what it always was, byte for byte around options.
 _so_case SO-13 `"dash lfit mpg weight, name(so13)"' 0 "" `""options":{},"if_expr":"","in_expr":"""' `"!"weight":"' `"!"wexp":"'
 
-// Glyph layers: the WP-13 note stays, and no key is written.
-_so_case SO-14 `"dash scatter mpg weight [aw=price], name(so14)"' 0 "[aweight]" `"!"weight":"' `"!"wexp":"'
-_so_case SO-15 `"dash line mpg weight [fw=mpg], name(so15)"' 0 "[fweight]" `"!"weight":"' `"!"wexp":"'
+// Glyph layers.  Flipped (WP-31 C9): twoway sizes markers by the weight
+// and says nothing (weighted_markers_truth.json W01); on markerless types
+// twoway is silent too (W07).  scatter's weight is in the spec; line's is
+// not, and neither is named.
+_so_case SO-14 `"dash scatter mpg weight [aw=price], name(so14)"' 0 "" `""weight":"aweight""' `""wexp":"price""'
+_so_case SO-15 `"dash line mpg weight [fw=mpg], name(so15)"' 0 "" `"!"weight":"' `"!"wexp":"'
 
 // ================================================================
 // twoway's refusals, r(101), twoway's wording.
@@ -632,7 +637,8 @@ else {
     display as text "UN-03 SKIP: no Python is linked to this Stata"
 }
 
-_so_case SO-31 `"dash scatter mpg weight [aw=price+1], name(so31)"' 0 "[aweight]" `"!"wexp":"'
+// Flipped (WP-31 C9): the expression sizes the markers, as in twoway.
+_so_case SO-31 `"dash scatter mpg weight [aw=price+1], name(so31)"' 0 "" `""wexp":"price+1""'
 _so_case SO-32 `"dash lfit mpg weight [aw=nosuchvar], name(so32)"' 111
 // SO-32w: "nosuchvar not found" (measured 24sep2026) -- the positive
 // control for the "not found" _so_probe requires absent from every
@@ -745,7 +751,8 @@ _so_case SO-70 `"dash mspline mpg weight, bands(5) n(4) name(so70)"' 0 "" `""ban
 // Together.  stdf with an aweight is r(135) in twoway (below), so the
 // combination case uses an fweight, which twoway accepts with stdf.
 _so_case SO-71 `"dash lfitci mpg weight [fw=mpg], stdf level(90) name(so71)"' 0 "" `""weight":"fweight""' `""stdf":"stdf""' `""level":"90""'
-_so_case SO-72 `"dash (lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78]), name(so72)"' 0 "[fweight]" `""wexp":"price""'
+// Flipped (WP-31 C9): the scatter's fweight sizes its markers, unnamed.
+_so_case SO-72 `"dash (lfit mpg weight [aw=price]) (scatter mpg weight [fw=rep78]), name(so72)"' 0 "" `""wexp":"price""' `""wexp":"rep78""'
 _so_count "`c(tmpdir)'dash_so.log" "[aweight]"
 local bad = (r(n) > 0)
 if `bad' display as error "SO-72n FAIL: the honoured aweight on lfit was named in the note"

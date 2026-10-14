@@ -1240,8 +1240,14 @@ class TestTheCorrectedClaims:
                 "({cmd:iweights not allowed})") in flat
         assert ("any weight on {cmd:scatteri}, {cmd:pci} or {cmd:pcarrowi}, "
                 "r(198) ({cmd:weights not allowed})") in flat
-        assert ("On {cmd:scatter} and the other glyph layers, and on "
-                "{cmd:function}, a weight is accepted") in flat
+        # Flipped (WP-31 C9): "a weight is accepted" on scatter and the
+        # glyph layers was wrong because twoway sizes markers by the
+        # weight and says nothing (weighted_markers_truth.json W01); on
+        # markerless types twoway is silent too (W07).
+        assert ("sizes the markers as {cmd:twoway} does") in flat
+        assert ("and {cmd:function}, {cmd:twoway} accepts a weight and "
+                "draws nothing different, and so does {cmd:dash}, saying "
+                "nothing") in flat
 
     def test_no_optional_library_is_credited(self):
         """WP-18 moved every statistical layer to numpy: the section credits

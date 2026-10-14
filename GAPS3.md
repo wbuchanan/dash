@@ -452,7 +452,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C8c Tracked:** Open (WP-31 section 44).
 - **C8d Tracked:** Open (WP-31 section 32).
 - **C8e Tracked:** Open (WP-31 section 26).
-- **C9 Tracked:** Open (WP-31 section 20).
+- **C9 Tracked:** Closed in WP-31, BUGS.md "Weighted scatter markers are not sized by [aw]", commit pending.
 - **C10a Tracked:** Closed in WP-31, BUGS.md "range(varname), range(# .), bwidth(0), lowess bwidth() above 1, n(1) and per-type level() bounds are refused where twoway accepts them (the bounds that are a rules-table edit)", commit c7c1b2b.
 - **C10b Tracked:** Closed in WP-31, BUGS.md "degree() above 3, several variables in one mlabel() element, scatteri 2/2 and yaxis(1 2) are refused where twoway accepts them (the values needing new parsing)", commit a8b39ef.
 - **C10c Tracked:** Closed in WP-31, BUGS.md "Axes 3 to 9 are refused where twoway draws them (the axes part)", commit 85c8cef.

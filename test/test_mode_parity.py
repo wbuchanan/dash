@@ -340,7 +340,9 @@ _COORDS = ("x", "y", "left", "right", "top", "bottom", "x0", "x1", "y0",
            "y1", "xs", "ys", "base", "upper", "lower", "width", "height",
            # WP-30 P1.9a: an area's second edge, upright (VArea) or turned
            # (HArea).
-           "x2", "y2")
+           "x2", "y2",
+           # WP-31 C9: a weighted marker's size column, compared by value.
+           "size")
 
 
 def _glyph_profile(fig):
@@ -2497,6 +2499,13 @@ CORPUS = [
     _case("lfitci fitplot(scatter) ciplot(rcap) (WP-31 C4)",
           [plot_for("lfitci", {"fitplot": "scatter", "ciplot": "rcap"})]),
     _case("lfit atobs (WP-31 C4)", [plot_for("lfit", {"atobs": "atobs"})]),
+    # WP-31 C9: weighted markers
+    _case("scatter aweight (WP-31 C9)",
+          [plot_for("scatter", {"weight": "aweight", "wexp": "price"})]),
+    _case("rscatter aweight (WP-31 C9)",
+          [plot_for("rscatter", {"weight": "aweight", "wexp": "price"})]),
+    _case("dot aweight (WP-31 C9)",
+          [plot_for("dot", {"weight": "aweight", "wexp": "price"})]),
 ]
 
 
@@ -3461,6 +3470,11 @@ MOVE_CORPUS = [
     # WP-31 B5b: the served rows follow the re-finished axis.
     _move_case("dot rows after a move (WP-31 B5b)", _MOVES[0],
                [plot_for("dot")]),
+    # WP-31 C9: weighted markers
+    _move_case("scatter aweight after a move (WP-31 C9)", _MOVES[0],
+               [plot_for("scatter", {"weight": "aweight", "wexp": "price"})]),
+    _move_case("rscatter aweight after a move (WP-31 C9)", _MOVES[1],
+               [plot_for("rscatter", {"weight": "aweight", "wexp": "price"})]),
 ]
 
 

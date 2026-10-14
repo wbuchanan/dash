@@ -5766,10 +5766,13 @@ program define _dash_process_segment, rclass
     // iweight is refused on every type; lowess refuses every weight;
     // histogram takes fweight only; kdensity, lpoly and lpolyci refuse
     // pweight; the fit, smoother and band types take aw, fw and pw.  Each
-    // refusal is twoway's, r(101), in twoway's words.  On the glyph types
-    // (scatter, line, bar ...) a weight is accepted and named in the note
-    // by type, as WP-13 left it: dash draws every observation.
-    local _wt_honoured "lfit qfit lfitci qfitci lpoly lpolyci fpfit fpfitci histogram kdensity mspline mband"
+    // refusal is twoway's, r(101), in twoway's words.
+    // WP-31 C9: the marker types size their markers by the weight
+    // (yxview.class _draw_weighted_points); the markerless glyph types take
+    // a weight and draw nothing different, as twoway does, and say nothing
+    // (test/fixtures/weighted_markers_truth.json W01-W10).
+    local _wt_markers "scatter connected dot dropline rscatter rcapsym rconnected pcscatter pccapsym"
+    local _wt_honoured "lfit qfit lfitci qfitci lpoly lpolyci fpfit fpfitci histogram kdensity mspline mband `_wt_markers'"
     // The types that refuse a pweight: a list, like every plot-type family,
     // rather than a string inlist() (TR-22.4).
     local _wt_nopw "kdensity lpoly lpolyci"
@@ -6219,16 +6222,36 @@ program define _dash_process_segment, rclass
         }
     }
 
+    // ---- A weighted marker layer with no weight above zero (WP-31 C9) ----
+    // twoway's _draw_weighted_points scales by 1.5/sqrt(min) or 10/sqrt(max)
+    // of the plot's weights; with none above zero both are missing and the
+    // graph stops, r(198), without a word -- unless the markers are not
+    // drawn (msymbol(none)) or are labelled (mlabel() takes the labelled
+    // path, which ignores the weight): weighted_markers_truth.json W06.
+    // Under by() twoway answers panel by panel; that is not judged here.
+    if `"`_seg_weight'"' != "" & `: list ptype in _wt_markers' & !`: length local _ss_by' {
+        mata: st_local("_wm_lab", st_global("s(mlabel)"))
+        mata: st_local("_wm_sym", strlower(strtrim(st_global("s(msymbol)") + st_global("s(marker)"))))
+        if `"`macval(_wm_lab)'"' == "" & !inlist(`"`_wm_sym'"', "none", "i") {
+            local _wm_c "!missing((`_seg_wexp')) & (`_seg_wexp') > 0"
+            if `: length local _ps_if' {
+                local _wm_c `"`_wm_c' & `macval(_ps_if)'"'
+            }
+            local _wm_in ""
+            if `: length local _ps_in' local _wm_in `"in `macval(_ps_in)'"'
+            quietly count if `macval(_wm_c)' `macval(_wm_in)'
+            if r(N) == 0 exit 198
+        }
+    }
+
     // Accumulate this segment's unsupported options so _dash_plot can report
     // them once for the whole command rather than once per plot segment.
     // c_local cannot read the caller's local, so hand back only THIS
     // segment's list and let _dash_plot append it.
-    // A weight on a type that does not honour it is named by TYPE, in
-    // brackets, never by variable: [aweight].  On a type that honours it
-    // (`_wt_honoured') it is written to the spec and nothing is named.
-    local _seg_wtok ""
-    if `"`_seg_weight'"' != "" & !`: list ptype in _wt_honoured' local _seg_wtok `" [`_seg_weight']"'
-    mata: st_local("_seg_ign", st_global("s(_pending)") + " " + st_global("s(_unknown)") + st_local("_seg_wtok"))
+    // A weight is never named (WP-31 C9): a type that honours it
+    // (`_wt_honoured') has it in the spec, and on any other twoway accepts
+    // it, draws nothing different and says nothing.
+    mata: st_local("_seg_ign", st_global("s(_pending)") + " " + st_global("s(_unknown)"))
     c_local _seg_ignored_out : copy local _seg_ign
     // The graph-wide options dash does not declare that this segment gave
     // (clegend(), pcycle(), notitling, ...): twoway takes each once from
@@ -6407,7 +6430,8 @@ program define _dash_process_segment, rclass
     c_local _seg_vars_out `yvar' `xvar'
     local _seg_wv ""
     // An expression in parentheses (WP-31 A5): the by() sample reads it.
-    if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' local _seg_wv (`_seg_wexp')
+    // The marker types' weights size markers and leave the sample alone.
+    if `"`_seg_weight'"' != "" & `: list ptype in _wt_honoured' & !`: list ptype in _wt_markers' local _seg_wv (`_seg_wexp')
     c_local _seg_wvar_out `_seg_wv'
     // A function layer's text and the generator's range() and n(): the
     // typed range when it is two plain numbers (numlist keeps 13 digits,
