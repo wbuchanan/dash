@@ -545,8 +545,10 @@ class TestThePageSize:
 # map_lowess around it), pinned to Stata by stat_truth.json's lowess curves
 # and the U16 truth block.
 
-_LW_KEYS = _KEYS | {"bwidth", "mean", "noweight", "adjust", "logit",
-                    "y_all_mean", "max_ops"}
+# lowess takes no atobs (it is drawn at the observations): C4 added atobs
+# to the lfit/qfit keys only.
+_LW_KEYS = (_KEYS - {"atobs"}) | {"bwidth", "mean", "noweight", "adjust",
+                                  "logit", "y_all_mean", "max_ops"}
 _LW_FRAME = _FRAME.assign(y01=(_FRAME["y"] > _FRAME["y"].median())
                           .astype(float))
 
