@@ -2041,9 +2041,11 @@ _DASH_COMPUTED_ONLY_TYPES = frozenset({
     "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci",
     "mspline", "mband", "lowess", "lpoly", "lpolyci",
 })
-# The computed types the saved page refits in JavaScript (WP-31 F1); each JS section adds its own.
+# The computed types the saved page refits in JavaScript (WP-31 F1).
+# The eleven estimators twoway draws (M16 complete); contour/contourline join in WP-31 B4c.
 _DASH_JS_REFIT_TYPES = frozenset({"lfit", "qfit", "lowess", "lfitci", "qfitci",
-                                  "lpoly", "lpolyci", "mband", "mspline"})
+                                  "lpoly", "lpolyci", "mband", "mspline",
+                                  "fpfit", "fpfitci"})
 #: WP-31 F1c (D-16.e): the saved page re-smooths a lowess only when N*(2k+1) is at most this; above it the layer is left empty after a move.
 _DASH_LOWESS_JS_MAX_OPS = 2e8
 
@@ -2095,7 +2097,7 @@ def _dash_stale_kind(ptype, options):
             rng = _dash_range_pair(options or {}, "kdensity", "")
         return None if rng is not None else "grid"
     if t in _DASH_JS_REFIT_TYPES and not (options or {}).get("recast") \
-            and not (t in ("lfitci", "qfitci", "lpolyci")
+            and not (t in ("lfitci", "qfitci", "lpolyci", "fpfitci")
                      and GlyphMapper._fitci_redrawn(options)):
         # A recast fit is drawn by _dash_draw_xy_as, which the page does
         # not refit (GAPS3 C16): it keeps the cue.  So does a ci layer's
@@ -16849,6 +16851,43 @@ class GlyphMapper:
         cfg["std"] = str(self._fitci_std_for(options, wtype, ptype))
         return self._tag_fit(line_r, source, view, cfg)
 
+    def _fp_agg_config(self, ptype, xvar, yvar, wtype, w, fig, options):
+        """The saved page's refit config for an fpfit or fpfitci layer
+        (WP-31 F1g), or None for a layer it does not refit -- a recast()
+        layer, or an fpfitci whose band or line ciplot()/fitplot() draws as
+        another type (``_fitci_redrawn``), which keep the stale cue.  S10's
+        config with the columns ``x_fp y_fp`` (fpfitci: ``y_lower
+        y_upper`` too), the search's powers (``_FP_POWERS``), the grid cap
+        (``_FP_GRID_MAX``) and whether cmissing(n) keeps the missing points
+        (``keepmissing``); fpfitci adds the level ``_resolve_level``
+        returns and its standard error, stdp."""
+        if options.get("recast") or (ptype == "fpfitci"
+                                     and self._fitci_redrawn(options)):
+            return None
+        cols = ["x_fp", "y_fp"] + (["y_lower", "y_upper"]
+                                   if ptype == "fpfitci" else [])
+        cfg = dict(self._fit_agg_config(ptype, xvar, yvar, wtype, w, fig,
+                                        options, cols, _FIT_GRID, None),
+                   powers=[float(p) for p in self._FP_POWERS],
+                   max_grid=int(_FP_GRID_MAX),
+                   keepmissing=bool(_dash_join_spec(options)[1] == "n"))
+        if ptype == "fpfitci":
+            cfg["level"] = float(_resolve_level(options, self.default_level))
+            cfg["std"] = "stdp"
+        return cfg
+
+    def _fp_tag(self, line_r, band_r, source, view, cfg):
+        """Hand an fpfit or fpfitci layer to the saved page's refit (WP-31
+        F1g): the line with *cfg*; a band that draws from its own source
+        (cmissing(n), split at its missing points) with *cfg* and
+        ``split``.  A band reading the line's source follows it.  Nothing
+        when *cfg* is None."""
+        if cfg is None:
+            return
+        self._tag_fit(line_r, source, view, cfg)
+        if band_r is not None and band_r.data_source is not line_r.data_source:
+            self._tag_fit(band_r, source, view, dict(cfg, split=True))
+
     @staticmethod
     def _axis_kind(fig, axis, options=None):
         """The date kind of the axis a layer with *options* is drawn on for
@@ -18914,6 +18953,9 @@ class GlyphMapper:
             return _pts
 
         _fp_report_unsupported(options, "fpfit")
+        # The saved page's refit (WP-31 F1g); None for a recast() layer.
+        _cfg = self._fp_agg_config("fpfit", xvar, yvar, wtype, w, fig,
+                                   options)
         # Two observations are enough for twoway fpfit (auto in 1/2 draws
         # 22 and 17; three collapsed rows with fweights, df 15, draw a
         # fit).  dash wanted four.  _fp_prepare refuses one distinct x.
@@ -18928,6 +18970,7 @@ class GlyphMapper:
             # model)", rc 0 (measured 24sep2026).
             if len(x) < 2:
                 self._mark_unfit(r, "fracpoly")
+            self._fp_tag(r, None, source, view, _cfg)
             return r
 
         x_grid = _fp_grid(x)
@@ -18965,6 +19008,7 @@ class GlyphMapper:
                      line_color=self.scheme.default_color(color_idx, "line"),
                      line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                      legend_label=yvar), role=None)
+        self._fp_tag(r, None, source, view, _cfg)
         return r
 
     def map_fpfitci(
@@ -19011,18 +19055,30 @@ class GlyphMapper:
             "x_fp": [], "y_fp": [], "y_lower": [], "y_upper": []
         })
         _fp_report_unsupported(options, "fpfitci")
+        # The saved page's refit (WP-31 F1g): None when the layer is not
+        # refitted (ciplot()/fitplot() draw a part as another type).
+        _cfg = self._fp_agg_config("fpfitci", xvar, yvar, wtype, w, fig,
+                                   options)
+        # cmissing(n): the band draws from its own source, split at its
+        # missing points, so the saved page can split it after a move.
+        _own_band = (_cfg is not None
+                     and _dash_join_spec(options)[1] == "n")
         fit = self._fp_fit(x, y, w, wtype) if len(x) >= 2 else None
         if fit is None:
             # The ci style, as a band with rows draws it: an empty
             # layer's legend key is the band twoway keys.
             band_r, _ = self._ci_band_glyphs(
-                fig, empty_src, "x_fp", "y_lower", "y_upper", options)
+                fig, (ColumnDataSource(
+                    {"x_fp": [], "y_fp": [], "y_lower": [], "y_upper": []})
+                      if _own_band else empty_src),
+                "x_fp", "y_lower", "y_upper", options)
             line_r = fig.line(**self._scheme_alpha_kw(color_idx, "line"), x="x_fp", y="y_fp", source=empty_src,
                               line_color=_fpfitci_color, line_width=self.scheme.plot_line_width(color_idx, "lineplot"),
                               legend_label=yvar)
             self._ci_line_restyle(line_r, options)
             if len(x) < 2:
                 self._mark_unfit([line_r, band_r], "fracpoly")
+            self._fp_tag(line_r, band_r, source, view, _cfg)
             return [line_r, band_r]
 
         x_grid = _fp_grid(x)
@@ -19074,7 +19130,7 @@ class GlyphMapper:
         _band_src = ColumnDataSource(dict(ci_src.data))
         if not _dash_fill_split(_band_src, "x_fp",
                                 ("y_lower", "y_upper", "y_fp"), "y_lower",
-                                options):
+                                options) and not _own_band:
             _band_src = None
         line_r, band_r = self._render_ci_band(
             fig, ci_src, "x_fp", "y_fp", _fpfitci_color, yvar, options,
@@ -19083,6 +19139,7 @@ class GlyphMapper:
             alpha_kw=self._scheme_alpha_kw(color_idx, "line"),
             color_idx=color_idx,
         )
+        self._fp_tag(line_r, band_r, source, view, _cfg)
         return [line_r, band_r]
 
     @staticmethod
@@ -28981,6 +29038,217 @@ function dash_natural_cubic_spline(kx, ky, xg) {
             + (y0 / hh - m0 * hh / 6) * t + (y1 / hh - m1 * hh / 6) * u;
     });
 }
+// ---- fpfit / fpfitci (WP-31 F1g): fracpoly regress y x, degree 2, as
+// GlyphMapper._fp_prepare, _fp_design, _fp_fit, _fp_grid and
+// _fp_plot_grid compute it.  The search fits all 36 pairs in full: Python's
+// _fp_screen only skips pairs that provably lose (D-28.a).
+// _fp_prepare: {shift, scale}; x_used = (x + shift) / scale.  When
+// min(x) <= 0 the shift is the smallest positive spacing minus min(x);
+// the scale is 10^(sign(log10 s) int(|log10 s|)), s the shifted range;
+// scale 0 when x does not vary.
+function dash_fp_prepare(x) {
+    let mn = Infinity, mx = -Infinity;
+    for (const v of x) { if (v < mn) mn = v; if (v > mx) mx = v; }
+    let shift = 0;
+    if (mn <= 0) {
+        const srt = Float64Array.from(x).sort();
+        let d = Infinity;
+        for (let i = 1; i < srt.length; i++) {
+            const g = srt[i] - srt[i - 1];
+            if (g > 0 && g < d) d = g;
+        }
+        if (!isFinite(d)) return {shift: 0, scale: 0};
+        shift = d - mn;
+    }
+    const range = (mx + shift) - (mn + shift);
+    if (!(range > 0)) return {shift: shift, scale: 0};
+    const l10 = Math.log10(range);
+    return {shift: shift, scale: Math.pow(10, Math.sign(l10) * Math.trunc(Math.abs(l10)))};
+}
+// _fp_design on prepared x: rows [1, h1, h2], h = xx^p (ln xx at p 0),
+// h2 = h1 ln xx for a repeated power.
+function dash_fp_design(xx, p1, p2) {
+    return xx.map(v => {
+        const l = Math.log(v);
+        const h1 = p1 === 0 ? l : Math.pow(v, p1);
+        const h2 = (p1 === p2) ? h1 * l : (p2 === 0 ? l : Math.pow(v, p2));
+        return [1, h1, h2];
+    });
+}
+// The weighted residual sum of squares of y on [1, h1, h2] (WP-31 F1g),
+// by twice-orthogonalised Gram-Schmidt on typed arrays with dash_wls's
+// omission rule (a column whose residual on the earlier kept ones is below
+// 1e-12 of its own norm is left out); y enters centred on its weighted
+// mean (sw: the square roots of dash_weight_norm's weights), which the
+// constant column makes exact and which keeps the sum accurate to the
+// centred total.  NaN when no column is kept.
+function dash_fp_rss(h1, h2, sw, yc) {
+    const n = yc.length;
+    const Q = [];
+    const cols = [sw, h1, h2];
+    for (let j = 0; j < 3; j++) {
+        const c = cols[j], v = new Float64Array(n);
+        let nv0 = 0;
+        for (let i = 0; i < n; i++) { const e = (j === 0 ? c[i] : c[i] * sw[i]); v[i] = e; nv0 += e * e; }
+        nv0 = Math.sqrt(nv0);
+        if (!(nv0 > 0) || !isFinite(nv0)) continue;
+        for (let pass = 0; pass < 2; pass++) {
+            for (const q of Q) {
+                let d = 0;
+                for (let i = 0; i < n; i++) d += q[i] * v[i];
+                for (let i = 0; i < n; i++) v[i] -= d * q[i];
+            }
+        }
+        let nv = 0;
+        for (let i = 0; i < n; i++) nv += v[i] * v[i];
+        nv = Math.sqrt(nv);
+        if (nv > 1e-12 * nv0) { for (let i = 0; i < n; i++) v[i] /= nv; Q.push(v); }
+    }
+    if (!Q.length) return NaN;
+    const r = Float64Array.from(yc);
+    for (let pass = 0; pass < 2; pass++) {
+        for (const q of Q) {
+            let d = 0;
+            for (let i = 0; i < n; i++) d += q[i] * r[i];
+            for (let i = 0; i < n; i++) r[i] -= d * q[i];
+        }
+    }
+    let rss = 0;
+    for (let i = 0; i < n; i++) rss += r[i] * r[i];
+    return rss;
+}
+// _fp_fit: every pair p1 <= p2 of powers, the smallest weighted rss of
+// dash_wls kept (the first pair in search order on a tie, D-28.b); a
+// design with a value that is not finite, or a pair dash_wls cannot fit,
+// is skipped.  null when y is constant, x does not vary or no pair fits.
+// Each power's column (and ln x) is built once.  dash_wls is run on the
+// pairs whose exact rss (dash_fp_rss) is within 1e-9 of the centred total
+// sum of squares of the smallest -- _fp_screen's margin, on the exact rss
+// rather than its 2x2 approximation -- and on the rest only if none of
+// those fits: the full search's winner, at a tenth of its cost (D-28.a's
+// follow-up: the full search took 1.7 s of M10's 2 s at 1e5 rows).
+function dash_fp_fit(x, y, w, wtype, powers) {
+    const n = x.length;
+    if (n < 2) return null;
+    let ymin = Infinity, ymax = -Infinity;
+    for (const v of y) { if (v < ymin) ymin = v; if (v > ymax) ymax = v; }
+    if (!(ymax - ymin > 0)) return null;
+    const pr = dash_fp_prepare(x);
+    if (!(pr.scale > 0)) return null;
+    const xx = x.map(v => (v + pr.shift) / pr.scale);
+    const lnx = xx.map(Math.log);
+    const col = new Map();
+    for (const p of powers) col.set(p, (p === 0) ? lnx : xx.map(v => Math.pow(v, p)));
+    const ww = dash_weight_norm(w, wtype, n);
+    const sw = new Float64Array(n);
+    let W = 0, my = 0;
+    for (let i = 0; i < n; i++) { sw[i] = Math.sqrt(ww[i]); W += ww[i]; my += ww[i] * y[i]; }
+    my /= W;
+    const yc = new Float64Array(n);
+    let tss = 0;
+    for (let i = 0; i < n; i++) { yc[i] = (y[i] - my) * sw[i]; tss += yc[i] * yc[i]; }
+    const pairs = [];
+    for (let i = 0; i < powers.length; i++) {
+        for (let j = i; j < powers.length; j++) {
+            const p1 = powers[i], p2 = powers[j];
+            const h1 = col.get(p1);
+            const h2 = (p1 === p2) ? h1.map((v, k) => v * lnx[k]) : col.get(p2);
+            let ok = true;
+            for (let k = 0; k < n && ok; k++) if (!isFinite(h1[k]) || !isFinite(h2[k])) ok = false;
+            if (!ok) continue;
+            pairs.push({p1: p1, p2: p2, h1: h1, h2: h2, rss: dash_fp_rss(h1, h2, sw, yc)});
+        }
+    }
+    let min = Infinity;
+    for (const q of pairs) if (q.rss < min) min = q.rss;
+    const cut = min + 1e-9 * tss;
+    const full = (q) => {
+        const X = new Array(n);
+        for (let k = 0; k < n; k++) X[k] = [1, q.h1[k], q.h2[k]];
+        return dash_wls(X, y, w, wtype);
+    };
+    let best = null;
+    for (const near of [true, false]) {
+        for (const q of pairs) {
+            if (near !== (isFinite(cut) && q.rss <= cut)) continue;
+            const fit = full(q);
+            if (fit === null || !isFinite(fit.rss)) continue;
+            if (best === null || fit.rss < best.rss) {
+                best = Object.assign(fit, {p1: q.p1, p2: q.p2, shift: pr.shift, scale: pr.scale});
+            }
+        }
+        if (best !== null) break;
+    }
+    return best;
+}
+// _fp_grid: the sorted distinct x; an even grid of maxGrid points above
+// that many.
+function dash_fp_grid(x, maxGrid) {
+    const u = Float64Array.from(new Set(x)).sort();
+    if (u.length === 0) return [1e-6, 1];
+    if (u.length === 1) return [u[0]];
+    if (u.length > maxGrid) return dash_linspace(u[0], u[u.length - 1], maxGrid);
+    return Array.from(u);
+}
+// _fp_plot_grid (a weighted fit, D-28.c): the distinct x of ALL plot rows
+// (x and y present, whatever the weight) whose first row in (x, y) order
+// is in the estimation sample -- fracpred predicts only there.
+function dash_fp_plot_grid(xAll, yAll, xEst, yEst, maxGrid) {
+    if (xAll.length === xEst.length) return dash_fp_grid(xEst, maxGrid);
+    const firstY = (xs, ys) => {
+        const m = new Map();
+        for (let i = 0; i < xs.length; i++) {
+            const v = m.get(xs[i]);
+            if (v === undefined || ys[i] < v) m.set(xs[i], ys[i]);
+        }
+        return m;
+    };
+    const all = firstY(xAll, yAll), est = firstY(xEst, yEst);
+    const grid = [];
+    for (const [xv, yv] of all) if (est.has(xv) && est.get(xv) === yv) grid.push(xv);
+    grid.sort((a, b) => a - b);
+    if (grid.length > maxGrid) return dash_linspace(grid[0], grid[grid.length - 1], maxGrid);
+    return grid;
+}
+// cmissing(n) (WP-31 C6, GlyphMapper._cmiss_gap_x with distinct): the
+// sorted distinct x of the layer's rows with an x and no y at which no
+// row has a y -- fracpred leaves them missing and twoway's line breaks.
+function dash_fp_gap_x(ac, data, pick) {
+    const xc = pick(data[ac.xvar]), yc = pick(data[ac.yvar]);
+    if (!xc || !yc) return [];
+    const fin = (v) => typeof v === "number" && isFinite(v);
+    const have = new Set(), gap = new Set();
+    for (let i = 0; i < xc.length; i++) {
+        let xv = xc[i], yv = yc[i];
+        if (!fin(xv)) continue;
+        if (ac.xdatekind) { xv = dash_stata_value_of(xv, ac.xdatekind); if (xv === null) continue; }
+        if (fin(yv) && ac.ydatekind) { yv = dash_stata_value_of(yv, ac.ydatekind); if (yv === null) yv = NaN; }
+        if (fin(yv)) have.add(xv); else gap.add(xv);
+    }
+    const out = [];
+    for (const g of gap) if (!have.has(g)) out.push(g);
+    return out.sort((a, b) => a - b);
+}
+// _dash_insert_breaks: xs (ascending) and its parallel cols with a
+// missing point at each gap x, after the points at or below it.
+function dash_insert_breaks(xs, cols, gaps) {
+    if (!gaps.length) return {xs: xs, cols: cols};
+    const ox = [], oc = cols.map(() => []);
+    let g = 0;
+    for (let i = 0; i < xs.length; i++) {
+        while (g < gaps.length && gaps[g] < xs[i]) {
+            ox.push(gaps[g++]);
+            for (const c of oc) c.push(NaN);
+        }
+        ox.push(xs[i]);
+        for (let k = 0; k < cols.length; k++) oc[k].push(cols[k][i]);
+    }
+    while (g < gaps.length) {
+        ox.push(gaps[g++]);
+        for (const c of oc) c.push(NaN);
+    }
+    return {xs: ox, cols: oc};
+}
 // DASH_FIT_HELPERS_END
 // agg_sources is a Bokeh model list (plain JS object references).
 // agg_configs is parsed from the JSON string arg.
@@ -29466,6 +29734,51 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         xg.push(cm.kx[cm.kx.length - 1]);
         dash_fit_write(src, ac, xg, dash_natural_cubic_spline(cm.kx, cm.ky, xg), null);
+    } else if (ac.type === 'fpfit' || ac.type === 'fpfitci') {
+        // WP-31 F1g: map_fpfit and map_fpfitci on the kept rows -- fewer
+        // than two rows, a constant y or one distinct x draw nothing; else
+        // fracpoly's degree-2 search (dash_fp_fit) predicted at the
+        // distinct kept x (dash_fp_grid) or, weighted, at the plot grid of
+        // every kept row with x and y (dash_fp_plot_grid, D-28.c); fpfitci
+        // adds the stdp band at invttail(df, (1 - level/100)/2), missing
+        // with df < 1.  A point whose prediction is missing is left out;
+        // cmissing(n) (ac.keepmissing) puts a missing point at each x with
+        // no y (WP-31 C6), and the band's own source (ac.split) is split
+        // there as _dash_fill_split splits it.
+        const isci = ac.type === 'fpfitci';
+        const none = isci ? [[], []] : null;
+        const fit = (fx.length >= 2) ? dash_fp_fit(fx, fy, fw, ac.wtype, ac.powers) : null;
+        if (fit === null) { dash_fit_write(src, ac, [], [], none); continue; }
+        let xg;
+        if (ac.wvar) {
+            const all = dash_fit_rows(Object.assign({}, ac, {wvar: null}), _ac_data, _pick);
+            xg = all ? dash_fp_plot_grid(all.x, all.y, fx, fy, ac.max_grid)
+                     : dash_fp_grid(fx, ac.max_grid);
+        } else {
+            xg = dash_fp_grid(fx, ac.max_grid);
+        }
+        const Xg = dash_fp_design(xg.map(v => (v + fit.shift) / fit.scale), fit.p1, fit.p2);
+        const yg = Xg.map(r => r[0] * fit.beta[0] + r[1] * fit.beta[1] + r[2] * fit.beta[2]);
+        let lo = null, hi = null;
+        if (isci) {
+            const se = dash_fitci_se(Xg, fit, "stdp");
+            const t = (fit.df >= 1) ? dash_t_ppf(0.5 + ac.level / 200, fit.df) : NaN;
+            lo = yg.map((v, i) => v - t * se[i]);
+            hi = yg.map((v, i) => v + t * se[i]);
+        }
+        const kx = [], kc = isci ? [[], [], []] : [[]];
+        for (let i = 0; i < xg.length; i++) {
+            if (isNaN(yg[i])) continue;
+            kx.push(xg[i]); kc[0].push(yg[i]);
+            if (isci) { kc[1].push(lo[i]); kc[2].push(hi[i]); }
+        }
+        const B = dash_insert_breaks(kx, kc, ac.keepmissing ? dash_fp_gap_x(ac, _ac_data, _pick) : []);
+        if (ac.split) {
+            dash_fit_write(src, Object.assign({}, ac, {join: null}), B.xs, B.cols[0], B.cols.slice(1));
+            dash_fill_split_n(src, ac.cols[0], [ac.cols[2], ac.cols[3], ac.cols[1]], ac.cols[2]);
+        } else {
+            dash_fit_write(src, ac, B.xs, B.cols[0], isci ? B.cols.slice(1) : null);
+        }
     // DASH_FIT_BRANCHES_END
     }
 }

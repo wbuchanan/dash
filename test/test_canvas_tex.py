@@ -312,8 +312,11 @@ class TestTheDocumentPass:
 # ---------------------------------------------------------------------------
 
 def _lfit_spec(go=None):
-    # fpfit: a fit the saved page still marks; lfit is refitted (WP-31 F1a).
-    return _spec([plot_for("scatter"), plot_for("fpfit")],
+    # fpfit recast(line): a fit the saved page still marks; lfit is
+    # refitted (WP-31 F1a), fpfit too (F1g), a recast fit is not (GAPS3
+    # C16).
+    return _spec([plot_for("scatter"),
+                   plot_for("fpfit", {"recast": "line"})],
                  {"filter": "foreign, type(dropdown)"}, go)
 
 

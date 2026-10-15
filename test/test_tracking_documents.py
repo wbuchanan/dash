@@ -1975,7 +1975,6 @@ class TestWp30Tracking:
 WP31_OPEN = {
     "B4b": "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)",
     "D2": "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them",
-    "F1g": "The saved page does not refit fpfit and fpfitci after a filter move (the fpfit and fpfitci twins)",
     "B4c": "contour and contourline are refused by name (the JavaScript twin)",
     "D3": "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only",
     "D13": "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label",

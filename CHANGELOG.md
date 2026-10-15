@@ -418,7 +418,7 @@ and now matches Stata.
 
 <!-- WP-31 D2 -->
 
-<!-- WP-31 F1g -->
+- fpfit and fpfitci on a saved page after a filter move: the build's fit (marked) -> fracpoly's degree-2 fit on the kept rows and its stdp band (WP-31, F1g)
 
 <!-- WP-31 D3 -->
 

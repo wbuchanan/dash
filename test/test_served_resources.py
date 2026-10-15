@@ -485,12 +485,14 @@ class TestTheSavedPageIsUnchanged:
         # only that code string (likewise measured); and at WP-31 C11b,
         # whose exact-fit mark changes only that code string (likewise
         # measured); and at WP-31 F1f, whose mband and mspline helpers and
-        # branch change only that code string (likewise measured).
+        # branch change only that code string (likewise measured); and at
+        # WP-31 F1g, whose fpfit and fpfitci helpers and branch change only
+        # that code string (likewise measured).
         assert _digest(r._last_layout_root) == _SAVED_DIGEST
 
 
 _SAVED_DIGEST = (
-    "9b5f0818ae981a3d0e92a30074deadca09d4f9aa1e1669dd08cac39fb68e4fbf")
+    "e2ee2c5616532494798fa84b11ed69e9cd4504289083987a2f99d551e7f9668e")
 
 
 # ===========================================================================

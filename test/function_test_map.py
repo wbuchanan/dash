@@ -36,6 +36,8 @@ FUNCTIONS = {
  'GlyphMapper._fit_grid_spec': 'test/test_js_fit_refit.py::TestFitGrid::test_matches_python',
  'GlyphMapper._tag_fit': 'test/test_js_fit_refit.py::TestTheConfig::test_an_empty_layer_is_tagged',
  'GlyphMapper._tag_fitci': 'test/test_js_fit_refit.py::TestCiConfig::test_lfitci_config_keys',
+ 'GlyphMapper._fp_agg_config': 'test/test_js_fit_refit.py::TestFpConfig::test_fpfit_config_keys',
+ 'GlyphMapper._fp_tag': 'test/test_js_fit_refit.py::TestFpConfig::test_cmissing_n_gives_the_band_its_own_tagged_source',
  'GlyphMapper._fp_screen': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._column': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',
  'GlyphMapper._fp_screen.<locals>._wsum': 'test/test_estimator_cost.py::TestFpfitFitsWhatItFitted::test_the_screen_keeps_the_winner',

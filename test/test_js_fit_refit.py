@@ -160,9 +160,8 @@ class TestStaleKind:
         # lpoly too (WP-31 F1d): TestLpolyStaleKind.  Flipped (WP-31
         # F1e): listed lpolyci, refitted since (TestLpolyciStaleKind).
         # Flipped (WP-31 F1f): listed mband and mspline, refitted since
-        # (TestMbandStaleKind).
-        for t in ("fpfit", "fpfitci"):
-            assert dr._dash_stale_kind(t, {}) == "fit", t
+        # (TestMbandStaleKind).  Flipped (WP-31 F1g): listed fpfit and
+        # fpfitci, refitted since (TestFpStaleKind).
 
 
 # ---------------------------------------------------------------------------
@@ -2346,3 +2345,419 @@ class TestTheSavedMbandRefits:
         _move(r, ("Slider", 11385.0))
         x, y = _fit_data(r.figures["g1"].renderers)
         assert (list(x), list(y)) == ([2650.0], [23.0])
+
+
+# ---- WP-31 F1g: fpfit and fpfitci ----
+#
+# GAPS3 F1g: an fpfit or fpfitci on the saved page kept the build's
+# fractional-polynomial fit (and band) after a filter move, dimmed and keyed
+# "(unfiltered)", while the served app refitted both from the kept rows.
+# The oracle is map_fpfit and map_fpfitci (fracpoly's degree-2 search,
+# fracpred stdp, invttail at level()), pinned to twoway by
+# test_statistical_truth.py's fpfit, fpfit_repeated and fpfit_shift records
+# and the U28 truth block, run on the same rows; and the served app after
+# the same move.
+
+_FP_COLS = ["x_fp", "y_fp"]
+_FPCI_COLS = ["x_fp", "y_fp", "y_lower", "y_upper"]
+#: S10's keys (no atobs: fpfit has none) plus the search's powers, the
+#: grid cap and cmissing(n)'s missing points.
+_FP_KEYS = (_KEYS - {"atobs"}) | {"powers", "max_grid", "keepmissing"}
+_FPCI_KEYS = _FP_KEYS | {"level", "std"}
+_FP_POWERS = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0]
+_CMN = {"cmissing": "n"}
+
+
+def _fp_rows(ptype, df, opts, xvar="x", yvar="y"):
+    """x, y, w in Stata units as map_fpfit fits them."""
+    gm = _gm()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        x, y, w, _wt = gm._layer_units(ColumnDataSource(df), None, opts,
+                                       ptype, xvar, yvar)
+    return x, y, w
+
+
+def _fp_tagged(rends):
+    rends = rends if isinstance(rends, list) else [rends]
+    return [r for r in rends if hasattr(r, "_dash_agg_config")]
+
+
+class TestFpConfig:
+    def test_fpfit_config_keys(self):
+        r = _map("fpfit", _FRAME, {"weight": "aweight", "wexp": "w"})
+        cfg = r._dash_agg_config
+        assert set(cfg) == _FP_KEYS
+        assert cfg["type"] == "fpfit" and cfg["cols"] == _FP_COLS
+        assert cfg["powers"] == _FP_POWERS
+        assert cfg["max_grid"] == dr._FP_GRID_MAX == 20000
+        assert (cfg["wvar"], cfg["wtype"]) == ("w", "aw")
+        assert cfg["keepmissing"] is False
+        assert r._dash_agg_source is r.data_source
+        assert hasattr(r, "_dash_agg_rows")
+        json.dumps(cfg, allow_nan=False)
+
+    def test_fpfitci_config_keys(self):
+        line, band = _map("fpfitci", _FRAME, {"level": "90"})
+        cfg = line._dash_agg_config
+        assert set(cfg) == _FPCI_KEYS
+        assert cfg["type"] == "fpfitci" and cfg["cols"] == _FPCI_COLS
+        assert (cfg["level"], cfg["std"]) == (90.0, "stdp")
+        assert isinstance(cfg["level"], float)
+        assert line._dash_agg_source is line.data_source
+        # The band reads the line's source and follows it.
+        assert band.data_source is line.data_source
+        assert not hasattr(band, "_dash_agg_config")
+        json.dumps(cfg, allow_nan=False)
+
+    def test_fp_empty_layer_is_tagged(self):
+        r = _map("fpfit", _FRAME.iloc[:1])
+        assert len(r.data_source.data["x_fp"]) == 0
+        assert r._dash_agg_config["type"] == "fpfit"
+        line, band = _map("fpfitci", _FRAME.assign(y=3.0), {"level": "90"})
+        assert len(line.data_source.data["x_fp"]) == 0
+        assert line._dash_agg_config["level"] == 90.0
+        assert band.data_source is line.data_source
+
+    def test_cmissing_n_gives_the_band_its_own_tagged_source(self):
+        line, band = _map("fpfitci", _FRAME, _CMN)
+        assert line._dash_agg_config["keepmissing"] is True
+        assert band.data_source is not line.data_source
+        assert band._dash_agg_source is band.data_source
+        assert band._dash_agg_config == dict(line._dash_agg_config,
+                                             split=True)
+
+    def test_a_layer_the_page_does_not_refit_is_not_tagged(self):
+        pts = {"x": [2000.0, 3000.0], "y": [11.0, 21.0],
+               "lo": [9.0, 20.0], "hi": [13.0, 22.0], "nobs": 30}
+        for t, opts in (("fpfit", {"recast": "scatter"}),
+                        ("fpfit", {"estopts": "noconstant",
+                                   "points": dict(pts)}),
+                        ("fpfitci", {"estopts": "noconstant",
+                                     "points": dict(pts)}),
+                        ("fpfitci", {"ciplot": "rline"}),
+                        ("fpfitci", {"fitplot": "scatter"})):
+            gm = _gm()
+            fig = figure()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                getattr(gm, "map_" + t)(fig, ColumnDataSource(_FRAME), "y",
+                                        "x", dict(opts))
+            assert not _fp_tagged(list(fig.renderers)), (t, opts)
+
+
+class TestFpStaleKind:
+    def test_fpfit_and_fpfitci_are_refit(self):
+        for t in ("fpfit", "fpfitci"):
+            assert dr._dash_stale_kind(t, {}) is None
+        assert dr._dash_stale_kind("fpfit", {"recast": "scatter"}) == "fit"
+        # A band or line drawn as another type keeps the cue (WP-31 F1b's
+        # rule).
+        assert dr._dash_stale_kind("fpfitci", {"ciplot": "rline"}) == "fit"
+        assert dr._dash_stale_kind("fpfitci", {"ciplot": "rarea",
+                                               "fitplot": "line"}) is None
+
+    def test_every_fit_type_is_refit(self):
+        # M16 complete (DECISIONS A20): the explicit eleven, not a set
+        # difference (contour and contourline join in WP-31 B4c).
+        assert dr._DASH_JS_REFIT_TYPES == frozenset({
+            "lfit", "qfit", "lfitci", "qfitci", "fpfit", "fpfitci",
+            "lowess", "lpoly", "lpolyci", "mband", "mspline"})
+
+
+def _fp_xy(name):
+    """x, y of a fixture dataset as stat_truth.json's fpfit records fit
+    them: the four sysuse datasets, fpfit_repeated_data's synthetic one,
+    and auto's weight - 3000 (fpfit_shift)."""
+    with open(_TRUTH) as fh:
+        truth = json.load(fh)
+    if name == "synthetic":
+        d = truth["fpfit_repeated_data"]["synthetic"]
+        return np.asarray(d["x"], float), np.asarray(d["y"], float)
+    if name == "auto-shift":
+        x, y = _fp_xy("auto")
+        return x - 3000.0, y
+    ds = truth["datasets"][name]
+    df = pd.read_csv(os.path.join(_DATA, name + ".csv"))
+    return (df[ds["x"]].to_numpy(float), df[ds["y"]].to_numpy(float))
+
+
+def _fp_pairs():
+    """``{case: (p1, p2)}``: Stata's chosen powers per fixture case."""
+    with open(_TRUTH) as fh:
+        truth = json.load(fh)
+    out = {k: tuple(v["selected_powers"])
+           for k, v in truth["fp_powers"].items()}
+    out["synthetic"] = tuple(
+        truth["fpfit_repeated_pairs_found"]["synthetic:y_on_x"])
+    out["auto-shift"] = tuple(
+        truth["fpfit_shift"]["auto:xs_is_weight-3000"]["fp_p2_best_degree2"])
+    return out
+
+
+_FP_PAIRS = _fp_pairs()
+
+
+@requires_node
+class TestFpTwin:
+    @pytest.mark.parametrize("case", ["auto", "census", "auto-shift",
+                                      "constant", "mpg-12", "tiny"])
+    def test_prepare(self, case):
+        if case == "constant":
+            x = np.full(5, -2.0)
+        elif case == "mpg-12":
+            x = pd.read_csv(os.path.join(_DATA, "auto.csv"))["mpg"].to_numpy(
+                float) - 12.0
+        elif case == "tiny":
+            x = np.array([0.001, 0.004, 0.0025, 0.009])
+        else:
+            x = _fp_xy(case)[0]
+        got = _js("dash_fp_prepare(" + js_runner._floats(x) + ")")
+        shift, scale = dr.GlyphMapper._fp_prepare(x)
+        assert got["shift"] == pytest.approx(shift, rel=1e-15, abs=0)
+        assert got["scale"] == scale
+
+    @pytest.mark.parametrize("p1,p2", [(0.0, 0.0), (-2.0, -2.0), (1.0, 3.0),
+                                       (0.0, 0.5), (-0.5, 0.0)])
+    def test_repeated_pair_design(self, p1, p2):
+        xx = np.array([0.3, 1.0, 1.7, 2.9, 4.4])
+        got = np.asarray(_js("dash_fp_design(" + js_runner._floats(xx)
+                             + ", %r, %r)" % (p1, p2)), float)
+        np.testing.assert_allclose(got, dr.GlyphMapper._fp_design(xx, p1, p2),
+                                   rtol=1e-15)
+
+    @pytest.mark.parametrize("case", sorted(_FP_PAIRS))
+    def test_fixture_pairs(self, case):
+        x, y = _fp_xy(case)
+        got = _js("(() => { const f = dash_fp_fit(" + js_runner._floats(x)
+                  + ", " + js_runner._floats(y) + ", null, null, "
+                  + json.dumps(_FP_POWERS) + "); return {p1: f.p1, p2: f.p2,"
+                  " beta: f.beta, df: f.df, rss: f.rss}; })()")
+        py = dr.GlyphMapper._fp_fit(x, y)
+        assert (got["p1"], got["p2"]) == _FP_PAIRS[case]
+        assert (got["p1"], got["p2"]) == (py["p1"], py["p2"])
+        np.testing.assert_allclose(got["beta"], py["beta"], rtol=1e-9)
+        assert got["df"] == py["df"]
+        assert got["rss"] == pytest.approx(py["rss"], rel=1e-9)
+
+    def test_no_fit(self):
+        # A constant y, one row, one distinct x: null (twoway: "fracpoly
+        # could not fit model").
+        for x, y in (([1, 2, 3], [4, 4, 4]), ([1], [2]), ([2, 2, 2], [1, 2, 3])):
+            assert _js("dash_fp_fit(%s, %s, null, null, %s)" % (
+                x, y, json.dumps(_FP_POWERS))) is None
+            assert dr.GlyphMapper._fp_fit(np.asarray(x, float),
+                                          np.asarray(y, float)) is None
+
+    def test_grid(self):
+        x = [3.0, 1.0, 2.0, 3.0, 1.0]
+        assert _js("dash_fp_grid(%s, 20000)" % x) == list(
+            dr._fp_grid(np.asarray(x)))
+        assert _js("dash_fp_grid([5], 20000)") == [5.0]
+        got = _js("dash_fp_grid([1, 2, 3, 4, 5], 3)")
+        assert got == [1.0, 3.0, 5.0]
+
+    @pytest.mark.parametrize("wtype", [None, "aw", "fw"])
+    def test_exact_rss(self, wtype):
+        # dash_fp_rss: the weighted rss of y on [1, h1, h2], y centred on
+        # its weighted mean, against numpy's least squares.
+        rng = np.random.default_rng(7)
+        x = rng.uniform(1.0, 9.0, 40)
+        y = 3.0 + np.log(x) + rng.normal(0.0, 0.3, 40)
+        w = None if wtype is None else rng.integers(1, 5, 40).astype(float)
+        h1, h2 = np.sqrt(x), np.sqrt(x) * np.log(x)
+        ww = (np.ones(40) if w is None else w if wtype == "fw"
+              else w * 40 / w.sum())
+        sw = np.sqrt(ww)
+        yc = (y - np.average(y, weights=ww)) * sw
+        got = _js("dash_fp_rss(%s, %s, Float64Array.from(%s), "
+                  "Float64Array.from(%s))" % tuple(
+                      js_runner._floats(v) for v in (h1, h2, sw, yc)))
+        X = np.column_stack([np.ones(40), h1, h2]) * sw[:, None]
+        beta = np.linalg.lstsq(X, y * sw, rcond=None)[0]
+        assert got == pytest.approx(float(((y * sw - X @ beta) ** 2).sum()),
+                                    rel=1e-10)
+
+    def test_insert_breaks_and_gap_x(self):
+        xs, ys = [1.0, 2.0, 4.0], [10.0, 20.0, 40.0]
+        got = _js("dash_insert_breaks(%s, [%s], [0.5, 2, 3, 9])" % (xs, ys))
+        wx, (wy,) = dr._dash_insert_breaks(xs, [ys], [0.5, 2.0, 3.0, 9.0])
+        assert got["xs"] == list(wx)
+        np.testing.assert_array_equal(_nan(got["cols"][0]), wy)
+        ac = {"xvar": "x", "yvar": "y", "xdatekind": None,
+              "ydatekind": None}
+        got = _js("dash_fp_gap_x(%s, {x: [3, 1, 2, 2, 5, NaN], "
+                  "y: [NaN, 1, NaN, 4, NaN, 1]}, (c) => c)" % json.dumps(ac))
+        # x 2 has a row with a y; 3 and 5 have none.
+        assert got == [3.0, 5.0]
+
+    def test_weighted_plot_grid(self):
+        # nlsw88 [aw=hours]: the distinct x of every plot row whose first
+        # row in (x, y) order has a usable weight (twoway__fpfit_serset).
+        with open(_TRUTH) as fh:
+            wd = json.load(fh)["weighted_data"]["nlsw88:aw_hours"]
+        x, y = _fp_xy("nlsw88")
+        w = np.asarray([np.nan if v is None else v for v in wd["weight"]],
+                       float)
+        est = np.isfinite(w) & (w > 0)
+        got = _js("dash_fp_plot_grid(%s, %s, %s, %s, 20000)" % (
+            js_runner._floats(x), js_runner._floats(y),
+            js_runner._floats(x[est]), js_runner._floats(y[est])))
+        want = dr.GlyphMapper._fp_plot_grid(x, y, x[est], y[est])
+        np.testing.assert_array_equal(np.asarray(got, float), want)
+        assert len(want) == 1543 == len(np.unique(x[est])) - 1
+
+
+#: Rows with repeated x (whole hundreds) for the weighted plot grid's rule:
+#: the lowest-y row of x = 2000 has a zero weight, so that x has no point.
+_FP_DUP = _FRAME.assign(x=np.round(_FRAME["x"], -2))
+_FP_DUP_GRID = _FP_DUP.copy()
+_FP_DUP_GRID.loc[_FP_DUP_GRID[_FP_DUP_GRID["x"] == _FP_DUP_GRID["x"].mode()[0]]
+                 ["y"].idxmin(), "w"] = 0.0
+#: cmissing(n): two rows with an x and no y, one at an x no other row has.
+_FP_GAP = _FRAME.copy()
+_FP_GAP.loc[[3, 11], "y"] = np.nan
+_FP_GAP.loc[11, "x"] = 9999.0
+
+
+def _fp_case(ptype, df, opts, role=None):
+    """The fp branch on *df*'s kept rows against the mapper's columns; with
+    *role* "band", the band renderer (cmissing(n) only)."""
+    rends = _map(ptype, df, opts)
+    rends = rends if isinstance(rends, list) else [rends]
+    r = rends[1] if role == "band" else rends[0]
+    x, y, w = _fp_rows(ptype, df, opts)
+    data = {c: df[c].to_numpy(float) for c in ("x", "y", "w")}
+    got = js_runner.run_fit_js_block(r._dash_agg_config, x, y, w, data=data)
+    want = r.data_source.data
+    cols = r._dash_agg_config["cols"]
+    assert sorted(got) == sorted(c for c in want if c in cols) == sorted(cols)
+    for c in cols:
+        np.testing.assert_allclose(_nan(got[c]), np.asarray(want[c], float),
+                                   rtol=1e-8, atol=1e-10, equal_nan=True,
+                                   err_msg=c)
+    return {c: _nan(got[c]) for c in cols}
+
+
+_FP_CASES = [
+    ("default", _FRAME, {}),
+    ("aw", _FRAME, _AW),
+    ("aw plot grid", _FP_DUP_GRID, _AW),
+    ("fw", _FRAME, _FW),
+    ("pw", _FRAME, _PWT),
+    ("repeated x", _FP_DUP, {}),
+    ("shifted x", _FRAME.assign(x=_FRAME["x"] - 3000.0), {}),
+    ("constant y", _FRAME.assign(y=3.0), {}),
+    ("one row", _FRAME.iloc[:1], {}),
+    ("two rows", _FRAME.iloc[:2], {}),
+    ("three rows", _FRAME.iloc[:3], {}),
+    ("constant x", _FRAME.assign(x=2500.0), {}),
+    ("cmissing(n)", _FP_GAP, _CMN),
+    ("stairstep", _FRAME, {"connect": "stairstep"}),
+]
+
+
+@requires_node
+class TestFpBranch:
+    @pytest.mark.parametrize("df,opts", [c[1:] for c in _FP_CASES],
+                             ids=[c[0] for c in _FP_CASES])
+    def test_fpfit_matches_python(self, df, opts):
+        _fp_case("fpfit", df, opts)
+
+    @pytest.mark.parametrize("df,opts", [c[1:] for c in _FP_CASES]
+                             + [(_FRAME, {"level": "90"}),
+                                (_FRAME, {"level": "100"})],
+                             ids=[c[0] for c in _FP_CASES]
+                             + ["level(90)", "level(100)"])
+    def test_fpfitci_matches_python(self, df, opts):
+        _fp_case("fpfitci", df, opts)
+
+    def test_the_band_under_cmissing_n_is_split(self):
+        got = _fp_case("fpfitci", _FP_GAP, _CMN, role="band")
+        assert np.isfinite(got["y_lower"]).all()
+
+    def test_shifted_x(self):
+        got = _fp_case("fpfit", _FRAME.assign(x=_FRAME["x"] - 3000.0), {})
+        assert got["x_fp"].min() < 0
+
+    def test_empty_and_three_rows(self):
+        got = _fp_case("fpfitci", _FRAME.assign(y=3.0), {})
+        assert all(len(v) == 0 for v in got.values())
+        got = _fp_case("fpfitci", _FRAME.iloc[:3], {})
+        assert np.isfinite(got["y_fp"]).sum() == 3
+        assert np.isnan(got["y_lower"]).all()
+
+    def test_a_missing_point_breaks_the_line(self):
+        got = _fp_case("fpfit", _FP_GAP, _CMN)
+        # Rows 3 and 11 have an x no other row with a y has.
+        assert np.isnan(got["y_fp"]).sum() == 2
+        assert 9999.0 in got["x_fp"][np.isnan(got["y_fp"])]
+
+    @pytest.mark.parametrize("ptype", ["fpfit", "fpfitci"])
+    def test_the_curve_is_statas_on_auto(self, ptype):
+        # stat_truth.json fpfit: twoway's serset (float) on auto.
+        with open(_TRUTH) as fh:
+            truth = json.load(fh)["fpfit"]["auto:" + ptype]
+        x, y = _fp_xy("auto")
+        df = pd.DataFrame({"x": x, "y": y, "w": 1.0})
+        rends = _map(ptype, df)
+        line = rends[0] if isinstance(rends, list) else rends
+        got = js_runner.run_fit_js_block(line._dash_agg_config, x, y)
+        at = [i - 1 for i in truth["sample_index"]]
+        pairs = [("x_fp", "fit_x"), ("y_fp", "fit")]
+        if ptype == "fpfitci":
+            pairs += [("y_lower", "lower"), ("y_upper", "upper")]
+        for col, key in pairs:
+            np.testing.assert_allclose(np.asarray(got[col])[at], truth[key],
+                                       rtol=1e-6, err_msg=col)
+
+
+def _fp_data(renderers):
+    """The columns of the one fp layer's line source."""
+    lines = [r for r in renderers if isinstance(r, GlyphRenderer)
+             and isinstance(r.glyph, Line) and "x_fp" in r.data_source.data]
+    assert len(lines) == 1, f"{len(lines)} fp lines"
+    d = lines[0].data_source.data
+    return {c: np.asarray(d[c], dtype=float) for c in _FPCI_COLS if c in d}
+
+
+def _served_fp_after(spec, action):
+    doc, _ = _served(spec)
+    kind, want = action
+    w = [m for m in _widgets_of(doc) if type(m).__name__ == kind][0]
+    if kind == "Select":
+        want = [v for v, lab in w.options if lab == want][0]
+    _fire(w, want)
+    return _fp_data([m for m in doc.models if isinstance(m, GlyphRenderer)])
+
+
+_FP_SPECS = [
+    ("fpfit", [plot_for("scatter"), plot_for("fpfit")]),
+    ("fpfitci", [plot_for("scatter"), plot_for("fpfitci")]),
+    ("fpfit [aw=price]", [plot_for("fpfit", {"weight": "aweight",
+                                             "wexp": "price"})]),
+    ("fpfitci level(90) [fw=rep]", [plot_for("fpfitci", {
+        "level": "90", "weight": "fweight", "wexp": "rep"})]),
+]
+
+
+@requires_node
+class TestTheSavedFpRefits:
+    @pytest.mark.parametrize("move", _MOVES, ids=[m[0] for m in _MOVES])
+    @pytest.mark.parametrize("plots", [s[1] for s in _FP_SPECS],
+                             ids=[s[0] for s in _FP_SPECS])
+    def test_saved_equals_served(self, plots, move):
+        _, filt, action, _oracle = move
+        spec = _spec(plots, {"filter": filt})
+        r = _render(spec)
+        built = _fp_data(r.figures["g1"].renderers)
+        _move(r, action)
+        saved = _fp_data(r.figures["g1"].renderers)
+        served = _served_fp_after(spec, action)
+        assert sorted(saved) == sorted(served)
+        for c in saved:
+            np.testing.assert_allclose(saved[c], served[c], rtol=1e-8,
+                                       atol=1e-9, equal_nan=True, err_msg=c)
+        assert (built["y_fp"].shape != saved["y_fp"].shape
+                or not np.allclose(built["y_fp"], saved["y_fp"])), \
+            "the move changed nothing"

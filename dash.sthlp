@@ -1233,9 +1233,9 @@ from the data -- a histogram's bins as well as its bars, a fitted or
 smoothed line, a kernel density curve -- and every KPI card that follows
 the filters.  A saved dashboard recomputes those cards, its kernel density
 curves, its histogram bar heights, its {cmd:lfit}, {cmd:qfit},
-{cmd:lowess}, {cmd:lpoly}, {cmd:mband} and {cmd:mspline} lines and its
-{cmd:lfitci}, {cmd:qfitci} and {cmd:lpolyci} lines and bands in the
-browser, and keeps its other computed layers, and its histogram bins, as
+{cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, {cmd:mband} and {cmd:mspline} lines
+and its {cmd:lfitci}, {cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines
+and bands in the browser, and keeps its other computed layers, and its histogram bins, as
 they were built; see
 {help dash##server_mode:Server Mode}.  The dashboard opens only through a
 link holding a key made for each launch; see
@@ -1999,8 +1999,7 @@ it.  The saved page and the served app differ as follows:
 {col 5}Brush/lasso KPI update{col 38}Yes{col 59}Yes
 {col 5}Histogram recompute on filter{col 38}heights; bins marked{col 59}heights and bins
 {col 5}Kernel density on filter{col 38}same grid, marked{col 59}grid recomputed
-{col 5}Fit-line recompute on filter{col 38}all but fpfit,{col 59}Yes
-{col 38}fpfitci (marked)
+{col 5}Fit-line recompute on filter{col 38}Yes{col 59}Yes
 {col 5}A slider recomputes{col 38}at every step{col 59}when released
 {col 5}Dates{col 38}Yes{col 59}Yes
 {col 5}Toolbar, save as PNG{col 38}Yes{col 59}Yes
@@ -2024,10 +2023,17 @@ bars, and re-estimates a density on its grid, from the rows that pass the
 filter -- for a {cmd:by()} panel, or a graph or plot with its own {cmd:if}
 or {cmd:in}, from its own rows among them -- and keeps the bin edges and the
 grid chosen when the dashboard was built, so neither moves as you filter; it
-does not refit a fractional-polynomial fit ({cmd:fpfit}, {cmd:fpfitci}),
-a {cmd:recast()}
-fit, or a band or line {cmd:ciplot()} or {cmd:fitplot()} draws as another
-type.  The median bands and median spline ({cmd:mband}, {cmd:mspline})
+refits every fitted or smoothed line ({cmd:lfit}, {cmd:qfit},
+{cmd:lfitci}, {cmd:qfitci}, {cmd:fpfit}, {cmd:fpfitci}, {cmd:lowess},
+{cmd:lpoly}, {cmd:lpolyci}, {cmd:mband}, {cmd:mspline}) from the rows that
+pass the filter, with the notes below on lowess's operation cap and lpoly's
+exact-fit bandwidth.  It does not refit a {cmd:recast()} fit, a band or
+line {cmd:ciplot()} or {cmd:fitplot()} draws as another type, or a fit
+computed by {opt estopts()}, {opt predopts()} or {opt estcmd()}, which is
+Stata's and is marked "(unfiltered)" after a move.  A fractional-polynomial
+fit and its band ({cmd:fpfit}, {cmd:fpfitci}) are refitted with
+{cmd:fracpoly}'s degree-2 search over the kept rows, drawn at their distinct
+x, the band at its {cmd:level()} with {cmd:stdp}.  The median bands and median spline ({cmd:mband}, {cmd:mspline})
 are recomputed from the kept rows, the default number of bands following
 their count as {cmd:twoway}'s does.  A straight or quadratic fit and its confidence band ({cmd:lfit},
 {cmd:qfit}, {cmd:lfitci}, {cmd:qfitci}) are refitted from the rows that
@@ -2044,8 +2050,9 @@ an exact polynomial in x, or no more rows than the rule of thumb's fit has
 coefficients), which {cmd:dash serve} reproduces and the saved page cannot
 reproduce on every machine, the saved page keeps the smooth and band it was
 built with and marks the layer, as below.  When a move
-removes observations such a line, a histogram's bins or a density's grid was
-computed from, the page marks the layer: it is dimmed, its legend key reads
+removes observations such a line, a line the page does not refit, a
+histogram's bins or a density's grid was computed from, the page marks the
+layer: it is dimmed, its legend key reads
 "(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows
 "Marked layers were computed before the filter", and a note under the
 filters says the same in text a screen reader reads.  A density drawn over

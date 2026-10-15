@@ -362,7 +362,7 @@ class TestTheJsTwinsAreBounded:
     """WP-31 F1a, F1b (M10): the saved page's lfit, qfit, lfitci and
     qfitci refits on 100,000 kept rows finish under 2 s of node's own time
     each (lpoly since F1d, lpolyci since F1e, mband and mspline since
-    F1f)."""
+    F1f, fpfit and fpfitci since F1g)."""
 
     @pytest.mark.parametrize("ptype", ["lfit", "qfit"])
     def test_lfit_and_qfit_under_node_on_1e5_rows(self, ptype):
@@ -388,6 +388,25 @@ class TestTheJsTwinsAreBounded:
         got = js_runner.run_fit_js_block(ac, x, y, w, timed=True)
         assert len(got["data"]["y_lower"]) == 100
         assert all(v is not None for v in got["data"]["y_lower"])
+        assert got["ms"] < 2000.0, got["ms"]
+
+    @pytest.mark.parametrize("ptype", ["fpfit", "fpfitci"])
+    def test_fpfit_and_fpfitci_under_node_on_1e5_rows(self, ptype):
+        # WP-31 F1g (D-28.a): the full 36-pair search, no screen, and the
+        # stdp band, on 1e5 rows (x uniform 1-100, y = ln x + noise).
+        rng = np.random.default_rng(28)
+        x = rng.uniform(1.0, 100.0, 100_000)
+        y = np.log(x) + rng.normal(0.0, 0.5, x.size)
+        cols = ["x_fp", "y_fp"] + (["y_lower", "y_upper"]
+                                   if ptype == "fpfitci" else [])
+        ac = {"type": ptype, "cols": cols, "n": 100, "range": None,
+              "wtype": None, "wvar": None, "xaxiskind": None,
+              "yaxiskind": None, "powers": [-2.0, -1.0, -0.5, 0.0, 0.5,
+                                            1.0, 2.0, 3.0],
+              "max_grid": 20000, "keepmissing": False, "level": 95.0,
+              "std": "stdp"}
+        got = js_runner.run_fit_js_block(ac, x, y, timed=True)
+        assert len(got["data"]["x_fp"]) == 20000
         assert got["ms"] < 2000.0, got["ms"]
 
     #: A lowess config as map_lowess writes it (WP-31 F1c).

@@ -324,11 +324,13 @@ class TestTheHelpSaysWhatWasMeasured:
         # Flipped (WP-31 F1b): and lfitci and qfitci with their bands.
         # Flipped (WP-31 F1d): and lpoly.
         # Flipped (WP-31 F1e, F1f): and lpolyci, mband and mspline.
+        # Flipped (WP-31 F1g): and fpfit and fpfitci.
         assert ("A saved dashboard recomputes those cards, its kernel density "
                 "curves, its histogram bar heights, its {cmd:lfit}, "
-                "{cmd:qfit}, {cmd:lowess}, {cmd:lpoly}, {cmd:mband} and "
-                "{cmd:mspline} lines and its {cmd:lfitci}, {cmd:qfitci} and "
-                "{cmd:lpolyci} lines and bands in the browser") in s
+                "{cmd:qfit}, {cmd:fpfit}, {cmd:lowess}, {cmd:lpoly}, "
+                "{cmd:mband} and {cmd:mspline} lines and its {cmd:lfitci}, "
+                "{cmd:qfitci}, {cmd:fpfitci} and {cmd:lpolyci} lines and "
+                "bands in the browser") in " ".join(s.split())
 
     def test_dash_serve_names_the_build_only_options(self):
         """HC2-25c."""
@@ -732,7 +734,7 @@ class TestWhatASavedPageRecomputes:
     histogram bins, as they were built." (lfit and qfit since WP-31 F1a,
     lowess since F1c, lfitci and qfitci with their bands since F1b, lpoly
     since F1d, lpolyci with its band since F1e, mband and mspline since
-    F1f.)
+    F1f, fpfit and fpfitci since F1g.)
     The saved filter callback carries the layers it recomputes; the KPI half
     is test_filter_widget_data.py::test_the_filter_recomputes_the_card_in_both_modes,
     and "What histogram recompute means" (fixed edges) is test_export.py's
@@ -746,24 +748,27 @@ class TestWhatASavedPageRecomputes:
         # qfitci, refitted with their bands since.  Flipped (WP-31 F1d): and
         # lpoly.  Flipped (WP-31 F1e): and lpolyci, its line and its band
         # (two configs).  Flipped (WP-31 F1f): and mband and mspline.
+        # Flipped (WP-31 F1g): and fpfit and fpfitci -- every computed type.
         spec = _filtered_spec([plot_for(p) for p in _COMPUTED])
         r, _, _ = _saved(tmp_path, spec)
         cb = r.filter_callbacks[0]
         kinds = sorted(c["type"] for c in json.loads(
             cb.args["agg_configs_json"]))
-        assert kinds == ["histogram", "kdensity", "lfit", "lfitci", "lowess",
-                         "lpoly", "lpolyci", "lpolyci", "mband", "mspline",
-                         "qfit", "qfitci"], kinds
+        assert kinds == ["fpfit", "fpfitci", "histogram", "kdensity", "lfit",
+                         "lfitci", "lowess", "lpoly", "lpolyci", "lpolyci",
+                         "mband", "mspline", "qfit", "qfitci"], kinds
 
-    @pytest.mark.parametrize("ptype", [p for p in _COMPUTED
-                                       if p not in ("histogram", "kdensity",
-                                                    "lfit", "qfit",
-                                                    "lowess", "lfitci",
-                                                    "qfitci", "lpoly",
-                                                    "lpolyci", "mband",
-                                                    "mspline")])
-    def test_another_computed_layer_is_kept_as_built(self, tmp_path, ptype):
-        r, _, _ = _saved(tmp_path, _filtered_spec([plot_for(ptype)]))
+    @pytest.mark.parametrize("ptype,opts", [("fpfit", {"recast": "line"}),
+                                            ("fpfitci", {"ciplot": "rline"})],
+                             ids=["fpfit recast(line)",
+                                  "fpfitci ciplot(rline)"])
+    def test_another_computed_layer_is_kept_as_built(self, tmp_path, ptype,
+                                                     opts):
+        """Flipped (WP-31 F1g): fpfit and fpfitci were the computed layers
+        a saved page kept as built; it refits them since, so the layers it
+        keeps are a recast() fit and a part ciplot() or fitplot() draws as
+        another type (and Stata's estopts() points, test_fit_options.py)."""
+        r, _, _ = _saved(tmp_path, _filtered_spec([plot_for(ptype, opts)]))
         layer = {id(x.data_source) for x in _saved_figure(r).renderers}
         cb = r.filter_callbacks[0]
         rewritten = {id(s) for s in list(cb.args["all_graph_sources"])

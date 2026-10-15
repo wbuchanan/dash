@@ -5528,6 +5528,153 @@ if inlist("`only'", "", "S25") & `: list posof "S25" in w31_run' {
 }
 * ==== end S25 ====
 
+// S28 helpers (WP-31 F1g).  _u28_move: the saved page's fpfit or fpfitci
+// after one filter move -- the page rendered, the widget set and its own
+// callback run under node (test/js_runner.py) -- the line's columns (x_fp,
+// y_fp and, for fpfitci, y_lower and y_upper; a missing value as null)
+// written to a JSON file; globals u28_n (the point count), u28_band (the
+// finite lower limits) and u28_cue (1 when a layer is dimmed or a stale
+// caption shows).  _u28_close: each saved column against a column of
+// twoway's serset (_u10_ss's JSON), a missing value equal to a missing
+// value; globals u28_ok 1 or 0 and u28_msg.
+python:
+def _u28_move(sp, dp, kind, value, out):
+    import json
+    import math
+    import os
+    import sys
+    import warnings
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+    import dash_render as dr
+    import js_runner
+    from sfi import Macro
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+    w = [m for m in r.filter_widgets if type(m).__name__ == kind][0]
+    if kind == "Select":
+        w.value = [v for v, lab in w.options if lab == value][0]
+    elif kind == "RangeSlider":
+        w.value = tuple(float(v) for v in value.split())
+    else:
+        w.value = float(value)
+    cb = r.filter_callbacks[r.filter_widgets.index(w)]
+    js_runner.JsSession(r.filter_callbacks).run(cb)
+    fits = [x for f in r.figures.values() for x in f.renderers
+            if (getattr(x, "_dash_agg_config", None) or {}).get("type")
+            in ("fpfit", "fpfitci")
+            and not x._dash_agg_config.get("split")]
+    d = fits[0].data_source.data
+
+    def col(c):
+        o = []
+        for v in d[c]:
+            v = float("nan") if v is None else float(v)
+            o.append(v if math.isfinite(v) else None)
+        return o
+
+    cols = {c: col(c) for c in fits[0]._dash_agg_config["cols"]}
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(cols, fh)
+    lay = [x for f in r.figures.values() for x in f.renderers]
+    cue = [t for f in r.figures.values() for t in f.above
+           if "dash_stale_cue" in (getattr(t, "tags", None) or [])]
+    Macro.setGlobal("u28_n", str(len(cols["x_fp"])))
+    Macro.setGlobal("u28_band", str(sum(v is not None
+                                        for v in cols.get("y_lower", []))))
+    Macro.setGlobal("u28_cue", str(int(any(x.muted for x in lay) or any(
+        bool(t.visible) for t in cue))))
+
+
+def _u28_close(tw, saved, rtol):
+    import json
+    import numpy as np
+    from sfi import Macro
+    t = json.load(open(tw, encoding="utf-8"))
+    g = json.load(open(saved, encoding="utf-8"))
+    arr = lambda c: np.asarray([np.nan if v is None else v for v in c],
+                               float)
+    tcols = {k: arr(c) for k, c in t.items()}
+    ok, said = 1, []
+    for c in g:
+        gv = arr(g[c])
+        hit = [k for k, tv in tcols.items() if len(tv) == len(gv)
+               and len(gv) and np.allclose(gv, tv, rtol=rtol, atol=1e-9,
+                                           equal_nan=True)]
+        if hit:
+            said.append("%s=%s" % (c, hit[0]))
+        else:
+            ok = 0
+            said.append("%s matches no serset column (%s; %d saved rows, "
+                        "twoway %s)" % (c, " ".join(tcols), len(gv),
+                                        sorted({len(v) for v in
+                                                tcols.values()})))
+    Macro.setGlobal("u28_ok", str(ok))
+    Macro.setGlobal("u28_msg", ", ".join(said))
+end
+
+* ==== S28 F1g: fpfit and fpfitci refit on the saved page ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S28") & `: list posof "S28" in w31_run' {
+    display as text "S28 start " c(current_date) " " c(current_time)
+    local u28d "`w31_work'/s28"
+    capture mkdir "`u28d'"
+    capture graph drop _all
+
+    // ------------------------------------------------------------
+    // U28-01..05: after a move the saved fpfit or fpfitci is twoway's on
+    // the kept rows (the serset: the sample's distinct x, the fit and the
+    // stdp limits): fpfit after the dropdown to Foreign; fpfitci,
+    // level(90) after the price range to 4500-11385; fpfit
+    // [aw=displacement] after the dropdown to Domestic; on nlsw88, fpfit
+    // [aw=hours] after the dropdown to union, whose plot grid drops an x
+    // whose lowest-wage row has no hours (the point count is twoway's);
+    // and fpfitci after the slider to the third-highest price, which
+    // keeps three rows: the line through them and no band (df 0).
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    gsort -price
+    local p3 = price[3]
+    sysuse nlsw88, clear
+    local ulab : label (union) 1
+    local k 0
+    foreach c in "U28-01|auto|(scatter mpg weight) (fpfit mpg weight)|foreign, type(dropdown)|Select|Foreign|fpfit mpg weight if foreign == 1" "U28-02|auto|(fpfitci mpg weight, level(90))|price, type(range)|RangeSlider|4500 11385|fpfitci mpg weight if inrange(price, 4500, 11385), level(90)" "U28-03|auto|fpfit mpg weight [aw=displacement]|foreign, type(dropdown)|Select|Domestic|fpfit mpg weight [aw=displacement] if foreign == 0" "U28-04|nlsw88|fpfit wage ttl_exp [aw=hours]|union, type(dropdown)|Select|`ulab'|fpfit wage ttl_exp [aw=hours] if union == 1" "U28-05|auto|(scatter mpg weight) (fpfitci mpg weight)|price, type(slider)|Slider|`p3'|fpfitci mpg weight if price >= `p3'" {
+        local ++k
+        mata: u28_t = ustrsplit(st_local("c"), "[|]"); st_local("id", u28_t[1]); st_local("ds", u28_t[2]); st_local("cmd", u28_t[3]); st_local("filt", u28_t[4]); st_local("kind", u28_t[5]); st_local("val", u28_t[6]); st_local("tw", u28_t[7])
+        sysuse `ds', clear
+        dash clear
+        capture noisily dash `cmd', name(zu28`k')
+        _w31_expect `id' "(_rc == 0)" "dash `cmd' rc `=_rc'"
+        _dash_serve_spec, specpath("`u28d'/s`k'.json") datapath("`u28d'/d`k'.json") filter(`filt')
+        python: _u28_move("`u28d'/s`k'.json", "`u28d'/d`k'.json", "`kind'", "`val'", "`u28d'/g`k'.json")
+        _u10_ss "`u28d'/t`k'.json" "`u28d'/t`k'.gph" `tw'
+        // A serset stores floats: twoway's values are read to 1e-6.
+        python: _u28_close("`u28d'/t`k'.json", "`u28d'/g`k'.json", 1e-6)
+        _w31_expect `id' "(${u28_ok} == 1)" "dash `cmd', filter(`filt') moved to `val': ${u28_msg}"
+        _w31_expect `id' "(${u28_cue} == 0)" "dash `cmd' moved to `val': the layer is marked (unfiltered)"
+        if "`id'" == "U28-05" {
+            quietly count if price >= `p3'
+            _w31_expect `id' "(r(N) == 3)" "price >= `p3' keeps `r(N)' rows"
+            _w31_expect `id' "(${u28_n} == 3 & ${u28_band} == 0)" "three kept rows: ${u28_n} line points, ${u28_band} finite limits"
+        }
+        _w31_done `id' "the saved `cmd' after the move to `val' is twoway `tw' (${u28_n} points, ${u28_band} finite limits; ${u28_msg})"
+    }
+
+    forvalues k = 1/5 {
+        foreach p in s d g t {
+            capture erase "`u28d'/`p'`k'.json"
+        }
+    }
+    capture rmdir "`u28d'"
+    macro drop u28_n u28_band u28_cue u28_ok u28_msg
+    capture mata: mata drop u28_t
+    dash clear
+    display as text "S28 end " c(current_date) " " c(current_time)
+}
+* ==== end S28 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

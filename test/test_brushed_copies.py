@@ -364,10 +364,12 @@ class TestBrushedCopiesFollowTheGlyph:
         from test_mode_parity import _spec
         from test_saved_filter_layers import _render
         from test_server_layer_defects import plot_for
-        # fpfit: a fit the saved page still marks (lfit is refitted,
-        # WP-31 F1a).
+        # fpfit recast(line): a fit the saved page still marks (lfit is
+        # refitted since WP-31 F1a, fpfit since F1g; a recast fit is not,
+        # GAPS3 C16).
         r = _render(_spec([plot_for("scatter"),
-                           plot_for("fpfit", {"lcolor": "green",
+                           plot_for("fpfit", {"recast": "line",
+                                              "lcolor": "green",
                                               "lpattern": "dash"})],
                           {"filter": "foreign, type(dropdown)"}))
         [x] = _layer_rends(r)

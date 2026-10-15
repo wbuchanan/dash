@@ -3,8 +3,9 @@
 Node runs the page's script against stand-ins; whether ``renderer.muted``,
 ``Title.visible`` and ``LegendItem.label = {value}`` do what the cue needs
 is only proved in a browser.  Each case builds the saved page of a scatter
-and an fpfit (a fit the page still marks; lfit is refitted since WP-31
-F1a) with a ``foreign`` dropdown, appends a probe script, and runs
+and an fpfit drawn with recast(line) (a fit the page still marks: a recast
+fit is not refitted, GAPS3 C16; lfit is refitted since WP-31 F1a and fpfit
+since F1g) with a ``foreign`` dropdown, appends a probe script, and runs
 headless Chrome with ``--dump-dom``.  The probe snapshots the page, moves
 the dropdown to Foreign, snapshots again, moves it back, and snapshots a
 third time, in both layouts and both filter positions.
@@ -115,7 +116,7 @@ _PROBE = r"""
 
 
 def _page(layout, pos):
-    spec = _spec([plot_for("scatter"), plot_for("fpfit")],
+    spec = _spec([plot_for("scatter"), plot_for("fpfit", {"recast": "line"})],
                  {"filter": "foreign, type(dropdown)", "layout": layout,
                   "filter_position": pos},
                  {"title": "T", "subtitle": "S", "legend": "position(12)"})

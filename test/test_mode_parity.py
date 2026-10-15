@@ -3498,6 +3498,16 @@ MOVE_CORPUS = [
                                    "wexp": "weight"})]),
     _move_case("mspline on a date x, dropdown", _MOVES[0],
                [plot_for("mspline", yvar="mpg", xvar="when")]),
+    # WP-31 F1g: fpfit and fpfitci refit on the saved page (_DF has no x
+    # with values at or below 0: test_js_fit_refit.py::TestFpBranch::
+    # test_shifted_x covers fracpoly's shift).
+    _move_case("fpfit, dropdown", _MOVES[0], [_sc(), plot_for("fpfit")]),
+    _move_case("fpfitci level(90), range", _MOVES[1],
+               [_sc(), plot_for("fpfitci", {"level": "90"})]),
+    _move_case("fpfit [aw=weight] (plot grid rule), slider", _MOVES[2],
+               [plot_for("fpfit", {"weight": "aweight", "wexp": "weight"})]),
+    _move_case("fpfitci [fw=rep], dropdown", _MOVES[0],
+               [plot_for("fpfitci", {"weight": "fweight", "wexp": "rep"})]),
 
     # WP-31 D1 (section 24): minor ticks and labels
     _move_case("xmtick(##5) after a dropdown move (WP-31 D1)", _MOVES[0],
@@ -4770,14 +4780,15 @@ class TestTheStaleStatusSkip:
     def test_a_saved_page_with_a_fit_and_a_filter_compares_equal_to_its_served_twin(
             self):
         from test_server_layer_defects import plot_for
-        # fpfit: a fit the saved page still marks (lfit is refitted since
-        # WP-31 F1a, and its page has no status Div).
-        spec = _spec([_sc(), plot_for("fpfit")],
+        # fpfit recast(line): a fit the saved page still marks (lfit is
+        # refitted since WP-31 F1a and fpfit since F1g, and their pages have
+        # no status Div; a recast fit is not refitted, GAPS3 C16).
+        spec = _spec([_sc(), plot_for("fpfit", {"recast": "line"})],
                      {"filter": "foreign, type(dropdown)"})
         r, _ = _standalone(spec)
         assert any(_is_stale_status(m)
                    for m in r._last_layout_root.references())
-        pair = _render_pair("fpfit with a dropdown", spec)
+        pair = _render_pair("fpfit recast(line) with a dropdown", spec)
         assert pair["std"]["tree"] == pair["srv"]["tree"]
 
 
