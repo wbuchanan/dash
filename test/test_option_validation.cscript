@@ -370,6 +370,13 @@
 *! Edge-title placement (WP-31 D2b; textbox_truth.json e_t1_span):
 *!   U30-14 span and nospan inside an edge title: twoway's rc and line,
 *!          "option(s) t1title_span(yes) not allowed"
+
+*! Legend geometry (WP-31 D4; test/fixtures/legend_geometry_truth.json):
+*!   U31-10 legend(symxsize(bogus)): rc 0 in both; twoway notes "named
+*!          style bogus not found in class gsize" and dash, drawing, names
+*!          legend(symxsize(bogus)) as not a recognised size
+*!   U31-11 legend(holes(0)) and holes(2.5): twoway's rc and words,
+*!          "holes() invalid -- invalid numlist has ..."
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -2079,6 +2086,47 @@ if r(trc) != 0 | r(drc) != 0 {
     local bad `"`bad' [position ring: twoway `r(trc)', dash `r(drc)']"'
 }
 _u05_judge U30-14 `"`bad'"' "span and nospan in an edge title refused with twoway's rc and line; position() and ring() taken"
+
+// U31-10 (WP-31 D4): an unknown legend key size.  twoway takes it, rc
+// 0, notes it and draws medium; dash takes it and names it when it draws.
+local bad ""
+_u05_rc "scatter mpg weight || scatter price weight, legend(symxsize(bogus))" "named style bogus not found in class gsize"
+if r(trc) != 0 | r(drc) != 0 | r(tn) < 1 {
+    local bad `"`bad' [registration: twoway `r(trc)' (`r(tn)'), dash `r(drc)']"'
+}
+local u31log "`c(tmpdir)'dash_ov.log"
+local u31html "`c(tmpdir)'dash_u31_10.html"
+capture erase "`u31html'"
+capture log close _ovlog
+capture erase "`u31log'"
+sysuse auto, clear
+log using "`u31log'", name(_ovlog) text replace
+capture noisily dash scatter mpg weight || scatter price weight, legend(symxsize(bogus)) saving("`u31html'", replace)
+local u31rc = _rc
+log close _ovlog
+_ov_count "`u31log'" "legend(symxsize(bogus)) is not a recognised size"
+if `u31rc' != 0 | r(n) < 1 {
+    local bad `"`bad' [drawn: dash rc `u31rc', note lines `r(n)']"'
+}
+capture erase "`u31log'"
+capture erase "`u31html'"
+capture dash clear
+_u05_judge U31-10 `"`bad'"' "legend(symxsize(bogus)) taken as twoway takes it, rc 0, and named when drawn"
+
+// U31-11 (WP-31 D4): holes() is a numlist of positive integers; twoway
+// refuses 0 (r(125)) and 2.5 (r(126)) in its numlist words.
+local bad ""
+foreach c in "125|0|elements outside of allowed range" "126|2.5|noninteger elements" {
+    gettoken want c : c, parse("|")
+    gettoken _p c : c, parse("|")
+    gettoken val c : c, parse("|")
+    gettoken _p words : c, parse("|")
+    _u05_rc "scatter mpg weight || scatter price weight, legend(holes(`val'))" "holes() invalid -- invalid numlist has `words'"
+    if r(trc) != `want' | r(drc) != `want' | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [holes(`val'): twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+_u05_judge U31-11 `"`bad'"' "holes(0) and holes(2.5) refused as twoway refuses them, in its words"
 
 // ----------------------------------------------------------------
 // Summary

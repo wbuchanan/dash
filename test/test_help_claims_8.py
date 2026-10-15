@@ -1088,9 +1088,12 @@ class TestTheShippedFiles:
         # text_option keys (292 to 352, rounded outward to ten).
         # WP-31 D2: the eight edge titles' textbox styles:
         # 290..360 -> 300..370 (300 to 366, rounded outward to ten).
-        assert 300 <= n <= 370, (name, n)
+        # Flipped (WP-31 D4): 300..370 -> 310..380: the ten legend
+        # geometry keys twoway's legend_g reads (316 to 376, rounded
+        # outward to ten).
+        assert 310 <= n <= 380, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"300\s+to\s+370\s+directives", help_text)
+        assert re.search(r"310\s+to\s+380\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:
@@ -1215,13 +1218,20 @@ class TestTheShippedFiles:
             # Flipped (WP-30 P1.10): `margin text_option' (text()'s box)
             # is drawn now.
             r"(?<!text)box|pie|\bdot|matrix|"
-            r"margin(?! twoway| by_indiv| subheading| text_option)|barlabel|"
+            # Flipped (WP-31 D4): `margin legend' and `margin
+            # legend_boxmargin' are the legend box's inner and outer
+            # margins, drawn as its padding and margin.
+            r"margin(?! twoway| by_indiv| subheading| text_option| legend)|"
+            r"barlabel|"
             r"barstyle|bar_",
             k))
         # Flipped (WP-31 B5b): `symbol dots' and `symbolsize dots' are
         # carried because dash draws twoway dot's rows of dots in them
         # (SchemeParser.dots_style; test_dot_rows.py).
         bad = [k for k in bad if k not in ("symbol dots", "symbolsize dots")]
+        # Flipped (WP-31 D4): `margin legend_boxmargin' is the space
+        # around the legend box, drawn as its Bokeh margin.
+        bad = [k for k in bad if k != "margin legend_boxmargin"]
         assert not bad, bad  # P1.2a: the scheme's tick keys are carried and drawn
 
 

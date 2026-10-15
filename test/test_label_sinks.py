@@ -320,7 +320,9 @@ def hostile_inputs(payload):
             xlabel='2000 "%s" 3000' % quoted("tick1"),
             # WP-31 D1: a minor label's text, a LabelSet's column.
             xmlabel='2500 "%s"' % quoted("mtick1"),
-            legend='label(2 "%s")' % quoted("leglab"),
+            # WP-31 D4: legend(title()) is the Legend's own title.
+            legend='label(2 "%s") title("%s")' % (quoted("leglab"),
+                                                  quoted("legtitle")),
             # WP-30 P1.10: a text() record, as dash.ado writes it.
             added_text=[{"at_kind": "text", "at_y": 30, "at_x": 3000,
                          "at_yaxis": 1, "at_xaxis": 1,
@@ -669,6 +671,7 @@ SINKS = (
     Sink("legend_key_from_variable_label", "vlmpg", ("LegendItem",),
          "label", "text"),
     Sink("legend_label_override", "leglab", ("LegendItem",), "label", "text"),
+    Sink("legend_title", "legtitle", ("Legend",), "title", "text"),
     Sink("colorvar_legend_title_from_variable_label", "vlrep", ("Legend",),
          "title", "text"),
     Sink("colorvar_legend_title_from_ztitle", "zt", ("Legend",), "title",

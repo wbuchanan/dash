@@ -1,0 +1,4052 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "364f9e026e204aad9bb4168f457e05e2c72fa821",
+  "extracted": "15 Oct 2026 08:15:42",
+  "members": [
+   "        dbstyle      .dbstyle",
+   "        legendstyle  .style",
+   "        spacer       .keygap",
+   "        spacer       .rowsp",
+   "        spacer       .colsp",
+   "        string       .holes         = \"\"",
+   "        gsize        .labelwidth",
+   "        array        .keys            (.arrnels=2)",
+   "        array        .labels          (.arrnels=2)",
+   "        array        .map             (.arrnels=2)",
+   "        double       ._all          = 0",
+   "        double       ._styleonly    = 0",
+   "        double       .showindex     = 0",
+   "        array        .graphs          (.arrnels=1)",
+   "        string       .dialog        = \"legend\"",
+   "        yesno        .subview",
+   "        double       .gmetric_mult  = 1",
+   "        double       .fixed_xsize   = .",
+   "        double       .fixed_ysize   = .",
+   "        double       .xoffset       = 0",
+   "        double       .yoffset       = 0",
+   "        double       .maxrow        = 7",
+   "        double       .maxcol        = 3",
+   "        array        .rowpos          (.arrnels=8)",
+   "        array        .colpos          (.arrnels=4)",
+   "        double       .shared_rowsz  = 0",
+   "        double       .shared_colsz  = 0",
+   "        array        .fitcells        (.arrnels=0)",
+   "        null         .cells",
+   "        string       .addpgm        = \"_add_view\"",
+   "        yesno        .draw_view",
+   "        yesno        .fill_if_undrawn",
+   "        double       .drawn_gmult   = 1",
+   "        margin       .drawn_margin",
+   "        double       ._hold_scaling = 232.72",
+   "        double       ._hold_gmetric_mult = 1",
+   "        string       ._dialog       = \"grid\"",
+   "        double       .dragable      = 1",
+   "        double       .y_click       = .",
+   "        double       .x_click       = .",
+   "        double       .added_lines_rec = 0",
+   "        double       .added_markers_rec = 0",
+   "        double       .added_text_rec = 0",
+   "        double       .added_lines_new = 0",
+   "        double       .added_markers_new = 0",
+   "        double       .added_text_new = 0",
+   "        transform    .xtransform",
+   "        transform    .ytransform",
+   "        color        .bgcolor",
+   "        double       ._gbeta        = 232.72",
+   "        double       .font_magnification = 1",
+   "        double       .xsize_ren     = 43.4539",
+   "        double       .ysize_ren     = 4.0722",
+   "        stretchability .xstretch",
+   "        stretchability .ystretch",
+   "        double       .gdi_y0        = 1093.784",
+   "        double       .gdi_x0        = 11431.567534896",
+   "        double       .gdi_y1        = 2599.994384",
+   "        double       .gdi_x1        = 22102.687142896",
+   "        double       .locked        = 0",
+   "        double       .grid_dragable = 1",
+   "        double       .deleted       = -1",
+   "        double       .found         = 0",
+   "        double       .found_y       = .",
+   "        double       .found_x       = .",
+   "        double       .already_custom = 1",
+   "        grid         .plotregion1",
+   "        sized_textbox .note",
+   "        sized_textbox .caption",
+   "        sized_textbox .subtitle",
+   "        sized_textbox .title",
+   "        dbstyle      .dbstyle",
+   "        numstyle     .rows",
+   "        numstyle     .cols",
+   "        yesno        .col_first",
+   "        yesno        .text_first",
+   "        yesno        .stacked",
+   "        gsize        .row_gap",
+   "        gsize        .col_gap",
+   "        gsize        .key_gap",
+   "        compass2dir  .key_position",
+   "        gsize        .key_xsize",
+   "        gsize        .key_ysize",
+   "        yesno        .force_keysize",
+   "        textboxstyle .labelstyle",
+   "        yesno        .force_draw",
+   "        yesno        .force_nodraw",
+   "        clockdir     .title_position",
+   "        gridringstyle .title_ring",
+   "        clockdir     .subtitle_position",
+   "        gridringstyle .subtitle_ring",
+   "        clockdir     .caption_position",
+   "        gridringstyle .caption_ring",
+   "        clockdir     .note_position",
+   "        gridringstyle .note_ring",
+   "        relative_posn .myposition",
+   "        margin       .boxmargin",
+   "        compass2dir  .box_alignment",
+   "        yesno        .reversekey",
+   "        margin       .margin",
+   "        areastyle    .boxstyle",
+   "        areastyle    .inner_boxstyle",
+   "        horizontal   .horizontal",
+   "        vertical     .vertical",
+   "        double       .styledex      = 0",
+   "        double       .from_scheme   = 0"
+  ],
+  "scheme": "s2color",
+  "source": "scripts/extract_legend_geometry_truth.do",
+  "stata_version": "19.5",
+  "units": "SVG px, 720 per inch; Stata size unit = 28.8 SVG px"
+ },
+ "bplacement": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 325.34,
+   "right": 1645.8799999999999,
+   "top": 2558.24
+  },
+  "box_alignment": "west",
+  "box_centre_rel": [
+   0.1947,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 390.56,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 390.56,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1286.51,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1286.51,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 472.48,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 1368.55,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_0": {
+  "box": {
+   "bottom": 1388.1399999999999,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 1201.77
+  },
+  "box_alignment": "center",
+  "box_centre_rel": [
+   0.5,
+   0.5
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 1294.96,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 1294.96,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 1329.99
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 1329.99
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_1": {
+  "box": {
+   "bottom": 321.76,
+   "fill": "#ffffff",
+   "left": 2503.96,
+   "right": 3824.5,
+   "top": 135.39
+  },
+  "box_alignment": "neast",
+  "box_centre_rel": [
+   0.8053,
+   -0.0599
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2569.17,
+    "cy": 228.57,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2569.17,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 3465.12,
+    "cy": 228.57,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 3465.12,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 263.6
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 263.6
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 356.29
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_10": {
+  "box": {
+   "bottom": 321.76,
+   "fill": "#ffffff",
+   "left": 135.38,
+   "right": 1455.92,
+   "top": 135.39
+  },
+  "box_alignment": "nwest",
+  "box_centre_rel": [
+   -0.4061,
+   0.0535
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 200.6,
+    "cy": 228.57,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 200.6,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1096.55,
+    "cy": 228.57,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1096.55,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 282.52,
+    "y": 263.6
+   },
+   {
+    "text": "Price",
+    "x": 1178.6,
+    "y": 263.6
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 1680.4,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_11": {
+  "box": {
+   "bottom": 321.76,
+   "fill": "#ffffff",
+   "left": 325.34,
+   "right": 1645.8799999999999,
+   "top": 135.39
+  },
+  "box_alignment": "nwest",
+  "box_centre_rel": [
+   0.1947,
+   -0.0599
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 390.56,
+    "cy": 228.57,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 390.56,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1286.51,
+    "cy": 228.57,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1286.51,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 472.48,
+    "y": 263.6
+   },
+   {
+    "text": "Price",
+    "x": 1368.55,
+    "y": 263.6
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 356.29
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_12": {
+  "box": {
+   "bottom": 321.76,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 135.39
+  },
+  "box_alignment": "north",
+  "box_centre_rel": [
+   0.5,
+   -0.0599
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 228.57,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 228.57,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 263.6
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 263.6
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 356.29
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_2": {
+  "box": {
+   "bottom": 321.76,
+   "fill": "#ffffff",
+   "left": 2503.96,
+   "right": 3824.5,
+   "top": 135.39
+  },
+  "box_alignment": "neast",
+  "box_centre_rel": [
+   1.3189,
+   0.0535
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2569.17,
+    "cy": 228.57,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2569.17,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 3465.12,
+    "cy": 228.57,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 3465.12,
+    "cy": 228.57,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 263.6
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 263.6
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 2469.43,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_3": {
+  "box": {
+   "bottom": 1388.1399999999999,
+   "fill": "#ffffff",
+   "left": 2503.96,
+   "right": 3824.5,
+   "top": 1201.77
+  },
+  "box_alignment": "east",
+  "box_centre_rel": [
+   1.3189,
+   0.5
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2569.17,
+    "cy": 1294.96,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2569.17,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 3465.12,
+    "cy": 1294.96,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 3465.12,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 1329.99
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 1329.99
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 2469.43,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_4": {
+  "box": {
+   "bottom": 2454.65,
+   "fill": "#ffffff",
+   "left": 2503.96,
+   "right": 3824.5,
+   "top": 2268.28
+  },
+  "box_alignment": "seast",
+  "box_centre_rel": [
+   1.3189,
+   0.9465
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2569.17,
+    "cy": 2361.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2569.17,
+    "cy": 2361.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 3465.12,
+    "cy": 2361.47,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 3465.12,
+    "cy": 2361.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 2396.5
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 2396.5
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 2469.43,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_5": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 2503.96,
+   "right": 3824.5,
+   "top": 2558.24
+  },
+  "box_alignment": "seast",
+  "box_centre_rel": [
+   0.8053,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2569.17,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2569.17,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 3465.12,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 3465.12,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_6": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_7": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 325.34,
+   "right": 1645.8799999999999,
+   "top": 2558.24
+  },
+  "box_alignment": "swest",
+  "box_centre_rel": [
+   0.1947,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 390.56,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 390.56,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1286.51,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1286.51,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 472.48,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 1368.55,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_8": {
+  "box": {
+   "bottom": 2454.65,
+   "fill": "#ffffff",
+   "left": 135.38,
+   "right": 1455.92,
+   "top": 2268.28
+  },
+  "box_alignment": "swest",
+  "box_centre_rel": [
+   -0.4061,
+   0.9465
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 200.6,
+    "cy": 2361.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 200.6,
+    "cy": 2361.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1096.55,
+    "cy": 2361.47,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1096.55,
+    "cy": 2361.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 282.52,
+    "y": 2396.5
+   },
+   {
+    "text": "Price",
+    "x": 1178.6,
+    "y": 2396.5
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 1680.4,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "clock_9": {
+  "box": {
+   "bottom": 1388.1399999999999,
+   "fill": "#ffffff",
+   "left": 135.38,
+   "right": 1455.92,
+   "top": 1201.77
+  },
+  "box_alignment": "west",
+  "box_centre_rel": [
+   -0.4061,
+   0.5
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 200.6,
+    "cy": 1294.96,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 200.6,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1096.55,
+    "cy": 1294.96,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1096.55,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 282.52,
+    "y": 1329.99
+   },
+   {
+    "text": "Price",
+    "x": 1178.6,
+    "y": 1329.99
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 1680.4,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "colfirst": {
+  "box": {
+   "bottom": 2744.61,
+   "fill": "#ffffff",
+   "left": 1333.28,
+   "right": 2816.55,
+   "top": 2418.27
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2448
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1398.5,
+    "cy": 2511.46,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1398.5,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1398.5,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1398.5,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   },
+   {
+    "cx": 2294.45,
+    "cy": 2511.46,
+    "fill": "#55752f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2294.45,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#55752f"
+   },
+   {
+    "cx": 2294.45,
+    "cy": 2651.43,
+    "fill": "#e37e00",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2294.45,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#e37e00"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1480.42,
+    "y": 2546.49
+   },
+   {
+    "text": "Price",
+    "x": 1480.42,
+    "y": 2686.46
+   },
+   {
+    "text": "trunk100",
+    "x": 2376.5,
+    "y": 2546.49
+   },
+   {
+    "text": "turn100",
+    "x": 2376.5,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 4,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2093.67,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "cols3": {
+  "box": {
+   "bottom": 2744.61,
+   "fill": "#ffffff",
+   "left": 1094.2,
+   "right": 3055.6400000000003,
+   "top": 2418.27
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2448
+  ],
+  "col_gap": 4.8611,
+  "cols": 3,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1159.41,
+    "cy": 2511.46,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1159.41,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2055.49,
+    "cy": 2511.46,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2055.49,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   },
+   {
+    "cx": 2533.53,
+    "cy": 2511.46,
+    "fill": "#55752f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2533.53,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#55752f"
+   },
+   {
+    "cx": 1159.41,
+    "cy": 2651.43,
+    "fill": "#e37e00",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1159.41,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#e37e00"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1241.46,
+    "y": 2546.49
+   },
+   {
+    "text": "Price",
+    "x": 2137.41,
+    "y": 2546.49
+   },
+   {
+    "text": "trunk100",
+    "x": 2615.58,
+    "y": 2546.49
+   },
+   {
+    "text": "turn100",
+    "x": 1241.46,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 4,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2093.67,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "cols_with_pos": {
+  "box": {
+   "bottom": 1388.1399999999999,
+   "fill": "#ffffff",
+   "left": 2503.96,
+   "right": 3824.5,
+   "top": 1201.77
+  },
+  "box_alignment": "east",
+  "box_centre_rel": [
+   1.3189,
+   0.5
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2569.17,
+    "cy": 1294.96,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2569.17,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 3465.12,
+    "cy": 1294.96,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 3465.12,
+    "cy": 1294.96,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 2651.22,
+    "y": 1329.99
+   },
+   {
+    "text": "Price",
+    "x": 3547.17,
+    "y": 1329.99
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 2469.43,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "default_geometry": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "default_lines": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1084.3,
+   "right": 3065.66,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [
+   {
+    "stroke": "#1a476f",
+    "x1": 1127.49,
+    "x2": 1501.83,
+    "y1": 2651.43
+   },
+   {
+    "stroke": "#90353b",
+    "x1": 2353.85,
+    "x2": 2728.32,
+    "y1": 2651.43
+   }
+  ],
+  "key_marks": [],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2788.21,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "hist_color": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1232.92,
+   "right": 3016.9,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1423
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [],
+  "key_texts": [
+   {
+    "text": "Density",
+    "x": 1710.6,
+    "y": 2686.46
+   },
+   {
+    "text": "Density",
+    "x": 2629.32,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2333.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "hist_mixed": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1194.31,
+   "right": 2955.52,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 2178.25,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2178.25,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Density",
+    "x": 1671.86,
+    "y": 2686.46
+   },
+   {
+    "text": "Mileage (mpg)",
+    "x": 2260.29,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "hist_on": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1622.36,
+   "right": 2627.46,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1423
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [],
+  "key_texts": [
+   {
+    "text": "Density",
+    "x": 2099.91,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2333.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "hist_only": {
+  "box_alignment": "south",
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 0,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_texts": [],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "plot": {
+   "bottom": 2589.1800000000003,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "holes": {
+  "box": {
+   "bottom": 2744.61,
+   "fill": "#ffffff",
+   "left": 1333.28,
+   "right": 2816.55,
+   "top": 2418.27
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2448
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": 2,
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1398.5,
+    "cy": 2511.46,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1398.5,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1398.5,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1398.5,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   },
+   {
+    "cx": 2294.45,
+    "cy": 2651.43,
+    "fill": "#55752f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2294.45,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#55752f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1480.42,
+    "y": 2546.49
+   },
+   {
+    "text": "Price",
+    "x": 1480.42,
+    "y": 2686.46
+   },
+   {
+    "text": "trunk100",
+    "x": 2376.5,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 3,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2093.67,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "holes_big": {
+  "box": {
+   "bottom": 2744.61,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2418.27
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2448
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": 9,
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2511.46,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2511.46,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#55752f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#55752f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2546.49
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2546.49
+   },
+   {
+    "text": "trunk100",
+    "x": 1561.85,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 3,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2093.67,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "holes_frac": {
+  "log": [
+   "holes() invalid -- invalid numlist has noninteger elements"
+  ],
+  "rc": 126
+ },
+ "holes_zero": {
+  "log": [
+   "holes() invalid -- invalid numlist has elements outside of allowed range"
+  ],
+  "rc": 125
+ },
+ "label_blank": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1740.67,
+   "right": 2409.17,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1805.88,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1805.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2049.92,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2049.92,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Price",
+    "x": 2131.84,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1255.69,
+   "right": 2994.13,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1402.95,
+    "y": 2686.46
+   },
+   {
+    "text": "Mileage (mpg)",
+    "x": 2298.9,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_glyph": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1090.48,
+   "right": 3159.33,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [
+   {
+    "stroke": "#1a476f",
+    "x1": 2029.75,
+    "x2": 2404.09,
+    "y1": 2651.43
+   }
+  ],
+  "key_marks": [
+   {
+    "cx": 1155.7,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1155.7,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1237.75,
+    "y": 2686.46
+   },
+   {
+    "text": "Mileage (mpg)",
+    "x": 2464.11,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_lab1_on": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1925.67,
+   "right": 2324.27,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1990.77,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1990.77,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "A",
+    "x": 2072.81,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_lab2": {
+  "box_alignment": "south",
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 0,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_texts": [],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_lab2_on": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1633.75,
+   "right": 2616.2,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1698.96,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1698.96,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1780.89,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_on": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1633.75,
+   "right": 2616.2,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1698.96,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1698.96,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1780.89,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_order": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1603.68,
+   "right": 2646.15,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1868.87,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1868.87,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1950.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_order2": {
+  "box_alignment": "south",
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_texts": [],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "plot": {
+   "bottom": 2333.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_pstyle": {
+  "box_alignment": "south",
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 0,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_texts": [],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_style": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1255.69,
+   "right": 2994.13,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "#ff0000",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#ff0000"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1402.95,
+    "y": 2686.46
+   },
+   {
+    "text": "Mileage (mpg)",
+    "x": 2298.9,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_three": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1464.71,
+   "right": 2785.25,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1529.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1529.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2425.87,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2425.87,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1611.84,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2507.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "nobox": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "region": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#e0e0e0",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#ff0000",
+   "width": 23.04
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "ring0_default": {
+  "box": {
+   "bottom": 2454.65,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2268.28
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   0.9465
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1490.69,
+    "cy": 2423.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1490.69,
+    "cy": 2423.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1490.69,
+    "cy": 2423.1,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1490.69,
+    "cy": 2423.1,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1596.87,
+    "cy": 2422.73,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1596.87,
+    "cy": 2422.73,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1851.8,
+    "cy": 2423.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1851.8,
+    "cy": 2423.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1862.44,
+    "cy": 2422.73,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1862.44,
+    "cy": 2422.73,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1883.72,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1883.72,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1894.24,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1894.24,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1904.88,
+    "cy": 2422.73,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1904.88,
+    "cy": 2422.73,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1936.81,
+    "cy": 2423.1,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1936.81,
+    "cy": 2423.1,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1947.45,
+    "cy": 2421.99,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1947.45,
+    "cy": 2421.99,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1968.62,
+    "cy": 2423.1,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1968.62,
+    "cy": 2423.1,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1989.9,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1989.9,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2000.54,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2000.54,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2021.7,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2021.7,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2042.99,
+    "cy": 2423.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2042.99,
+    "cy": 2423.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2064.27,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2064.27,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2064.27,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2064.27,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2096.08,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2096.08,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2117.36,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2117.36,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2117.36,
+    "cy": 2423.97,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2117.36,
+    "cy": 2423.97,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2128.01,
+    "cy": 2423.22,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2128.01,
+    "cy": 2423.22,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2170.45,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2170.45,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2308.56,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2308.56,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2308.56,
+    "cy": 2423.6,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2308.56,
+    "cy": 2423.6,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2382.93,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2382.93,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2404.22,
+    "cy": 2423.6,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2404.22,
+    "cy": 2423.6,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2404.22,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2404.22,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2414.73,
+    "cy": 2423.35,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2414.73,
+    "cy": 2423.35,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2436.02,
+    "cy": 2423.72,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2436.02,
+    "cy": 2423.72,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2457.3,
+    "cy": 2423.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2457.3,
+    "cy": 2423.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2552.84,
+    "cy": 2423.97,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2552.84,
+    "cy": 2423.97,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2605.93,
+    "cy": 2423.6,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2605.93,
+    "cy": 2423.6,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2627.21,
+    "cy": 2423.97,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2627.21,
+    "cy": 2423.97,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2361.47,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2361.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2361.47,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2361.47,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2396.5
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2396.5
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "rows3": {
+  "box": {
+   "bottom": 2744.61,
+   "fill": "#ffffff",
+   "left": 1358.53,
+   "right": 2791.4300000000003,
+   "top": 2418.27
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2448
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1423.62,
+    "cy": 2511.46,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1423.62,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2319.69,
+    "cy": 2511.46,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2319.69,
+    "cy": 2511.46,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   },
+   {
+    "cx": 1423.62,
+    "cy": 2651.43,
+    "fill": "#55752f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1423.62,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#55752f"
+   },
+   {
+    "cx": 2319.69,
+    "cy": 2651.43,
+    "fill": "#e37e00",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2319.69,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#e37e00"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1505.67,
+    "y": 2546.49
+   },
+   {
+    "text": "Price",
+    "x": 2401.74,
+    "y": 2546.49
+   },
+   {
+    "text": "trunk100",
+    "x": 1505.67,
+    "y": 2686.46
+   },
+   {
+    "text": "turn100",
+    "x": 2401.74,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 4,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2093.67,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 3
+ },
+ "silent": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 135.38,
+   "right": 3824.4900000000002,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.4734,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1384.89,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1384.89,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2280.84,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2280.84,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1466.81,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2362.88,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "sizes": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1345.91,
+   "right": 2804.0600000000004,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 1,
+  "key_lines": [
+   {
+    "stroke": "#1a476f",
+    "x1": 1389.09,
+    "x2": 1533.02,
+    "y1": 2651.43
+   },
+   {
+    "stroke": "#90353b",
+    "x1": 2353.85,
+    "x2": 2497.89,
+    "y1": 2651.43
+   }
+  ],
+  "key_marks": [],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2526.73,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 5,
+  "key_ysize": 2,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 3,
+  "rows": 0
+ },
+ "sizes_rows": {
+  "box": {
+   "bottom": 2744.62,
+   "fill": "#ffffff",
+   "left": 1488.59,
+   "right": 2661.37,
+   "top": 2371.87
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2625
+  ],
+  "col_gap": 4.8611,
+  "cols": 1,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [
+   {
+    "stroke": "#1a476f",
+    "x1": 1531.78,
+    "x2": 1906.12,
+    "y1": 2465.05
+   },
+   {
+    "stroke": "#90353b",
+    "x1": 1531.78,
+    "x2": 1906.12,
+    "y1": 2651.43
+   }
+  ],
+  "key_marks": [],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1966.14,
+    "y": 2500.08
+   },
+   {
+    "text": "Price",
+    "x": 1966.14,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2047.26,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 3,
+  "rows": 0
+ },
+ "st_default": {
+  "box": {
+   "bottom": 1623.54,
+   "fill": "#ffffff",
+   "left": 4315.78,
+   "right": 5247.79,
+   "top": 1256.34
+  },
+  "box_alignment": "east",
+  "box_centre_rel": [
+   1.1374,
+   0.5
+  ],
+  "col_gap": 4.8611,
+  "cols": 1,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 4381.26,
+    "cy": 1361.31,
+    "fill": "#1a85ff",
+    "r": 21.74,
+    "stroke": null
+   },
+   {
+    "cx": 4381.26,
+    "cy": 1361.31,
+    "fill": "none",
+    "r": 16.88,
+    "stroke": "#1a85ff"
+   },
+   {
+    "cx": 4381.26,
+    "cy": 1518.75,
+    "fill": "#d41159",
+    "r": 21.74,
+    "stroke": null
+   },
+   {
+    "cx": 4381.26,
+    "cy": 1518.75,
+    "fill": "none",
+    "r": 16.88,
+    "stroke": "#d41159"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 4465.63,
+    "y": 1400.74
+   },
+   {
+    "text": "Price",
+    "x": 4465.63,
+    "y": 1558.19
+   }
+  ],
+  "key_xsize": 8,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#ffffff",
+   "width": 6.48
+  },
+  "plot": {
+   "bottom": 2766.6600000000003,
+   "left": 601.59,
+   "right": 4276.8,
+   "top": 113.4
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "st_ring0": {
+  "box": {
+   "bottom": 1623.54,
+   "fill": "#ffffff",
+   "left": 4315.78,
+   "right": 5247.79,
+   "top": 1256.34
+  },
+  "box_alignment": "east",
+  "box_centre_rel": [
+   0.8922,
+   0.5
+  ],
+  "col_gap": 4.8611,
+  "cols": 1,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 4381.26,
+    "cy": 1361.31,
+    "fill": "#1a85ff",
+    "r": 21.74,
+    "stroke": null
+   },
+   {
+    "cx": 4381.26,
+    "cy": 1361.31,
+    "fill": "none",
+    "r": 16.88,
+    "stroke": "#1a85ff"
+   },
+   {
+    "cx": 4381.26,
+    "cy": 1518.75,
+    "fill": "#d41159",
+    "r": 21.74,
+    "stroke": null
+   },
+   {
+    "cx": 4381.26,
+    "cy": 1518.75,
+    "fill": "none",
+    "r": 16.88,
+    "stroke": "#d41159"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 4465.63,
+    "y": 1400.74
+   },
+   {
+    "text": "Price",
+    "x": 4465.63,
+    "y": 1558.19
+   }
+  ],
+  "key_xsize": 8,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#ffffff",
+   "width": 6.48
+  },
+  "plot": {
+   "bottom": 2766.6600000000003,
+   "left": 601.59,
+   "right": 5286.6,
+   "top": 113.4
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "symx_bogus": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 3.8194,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "log": [
+   "(note:  named style bogus not found in class gsize, default attributes used)"
+  ],
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "title": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1414.71,
+   "right": 2735.25,
+   "top": 2383.62
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.2579
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1479.8,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "#90353b",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2375.88,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#90353b"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1561.85,
+    "y": 2686.46
+   },
+   {
+    "text": "Price",
+    "x": 2457.92,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2059.14,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0,
+  "title_text": "Keys"
+ }
+}

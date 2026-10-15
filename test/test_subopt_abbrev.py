@@ -298,7 +298,9 @@ class TestLegendAbbreviations:
             assert lg.ncols == 1, spelling
         lg = _plot_legend(_figure(mode, tmp_path, {"legend": "r(1)"},
                                   record=msgs))
-        assert lg.nrows == 1 and lg.ncols == "auto"
+        # Flipped (WP-31 D4): ncols "auto" was wrong because twoway's
+        # legend_g sets cols = 1 + int((n-1)/rows) beside the rows.
+        assert lg.nrows == 1 and lg.ncols == len(lg.items)
         lg = _plot_legend(_figure(mode, tmp_path,
                                   {"legend": 'lab(1 "XX")'}, record=msgs))
         assert lg.items[0].label["value"] == "XX"
@@ -331,7 +333,9 @@ class TestLegendInOneCopy:
     def test_rows_beat_cols(self, mode, tmp_path):
         lg = _plot_legend(_figure(mode, tmp_path,
                                   {"legend": "cols(3) rows(1)"}))
-        assert lg.nrows == 1 and lg.ncols == "auto"
+        # Flipped (WP-31 D4): ncols "auto" was wrong because twoway's
+        # legend_g derives the columns from the rows that win.
+        assert lg.nrows == 1 and lg.ncols == len(lg.items)
 
     def test_on_beats_off(self, mode, tmp_path):
         for text in ("on off", "off on"):
@@ -343,7 +347,11 @@ class TestLegendInOneCopy:
         lg = _plot_legend(_figure(mode, tmp_path,
                                   {"legend": "cols(1) c(red)"}, record=msgs))
         assert lg.ncols == 1
-        assert any("c(red)" in m for m in _subopt_notes(msgs, "legend"))
+        # Flipped (WP-31 D4): c(red) was named as not implemented; it is
+        # color(red), the key text's colour, drawn now in silence.
+        assert lg.label_text_color == dr.OptionTranslator.parse_color_alpha(
+            "red")[0]
+        assert not any("c(red)" in m for m in _subopt_notes(msgs, "legend"))
 
     def test_position_takes_twoways_names(self, mode, tmp_path):
         base = _figure(mode, tmp_path, {})

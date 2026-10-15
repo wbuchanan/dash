@@ -341,21 +341,30 @@ class TestRowsAndColsAreAlternatives:
     alternatives, so the one the user did not give is left to Bokeh."""
 
     def test_rows_alone_frees_the_columns(self, mode):
+        # Flipped (WP-31 D4): ("auto", 1) was wrong because twoway's
+        # legend_g sets both: cols = 1 + int((n-1)/rows), then rows =
+        # 1 + int((n-1)/cols) (legend_geometry_truth.json rows3) -- the
+        # scheme's columns still do not survive.
         lg = _legend(_fig(_three_series("s2color", "rows(1)"), mode))
-        assert (lg.ncols, lg.nrows) == ("auto", 1), (
+        assert (lg.ncols, lg.nrows) == (3, 1), (
             f"{mode}: (ncols, nrows) = {(lg.ncols, lg.nrows)!r}")
 
     def test_cols_alone_frees_the_rows(self, mode):
+        # Flipped (WP-31 D4): (1, "auto") was wrong because twoway's
+        # legend_g sets the rows too: 1 + int((n-1)/cols).
         lg = _legend(_fig(_three_series("s2color", "cols(1)"), mode))
-        assert (lg.ncols, lg.nrows) == (1, "auto")
+        assert (lg.ncols, lg.nrows) == (1, 3)
 
     def test_both_given_rows_wins(self, mode):
         # Was (2, 2): both kept.  WP-30 P1.19 measured twoway drawing the
         # rows whenever rows() and cols() are both given, in either order,
         # so rows() wins and the columns are left to Bokeh (as
         # test_graph_options::test_legend_rows_and_cols_combined pins).
+        # Flipped (WP-31 D4): ("auto", 2) was wrong because twoway's
+        # legend_g derives the columns from the rows it keeps:
+        # 1 + int((3-1)/2) = 2.
         lg = _legend(_fig(_three_series("s2color", "cols(2) rows(2)"), mode))
-        assert (lg.ncols, lg.nrows) == ("auto", 2), (
+        assert (lg.ncols, lg.nrows) == (2, 2), (
             f"{mode}: (ncols, nrows) = {(lg.ncols, lg.nrows)!r}")
 
     def test_neither_given_keeps_the_schemes_columns(self, mode):

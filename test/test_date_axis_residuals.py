@@ -609,17 +609,20 @@ def _digest(model):
 # finisher and zoom code (one CustomJS per page) gain the minor-tick step;
 # measured at 3b4ff75 against this tree, the code string is the only
 # difference in a plain scatter's models.
+# ca4f095c... -> 932c85bd... and fb860211... -> 23c6fcc8...: WP-31 D4 the
+# (hidden) legend takes the scheme's key geometry, its grid and its
+# panel location from twoway's clock table.
 _PLAIN_DIGESTS = {
     ("saved", "plain"):
-        "ca4f095c5458b12c0555f5c597ec1df12972a2891c2bc3494dac948cd6f331ff",
+        "932c85bd00ba9dd820c47092a80d6d706c08c271198302db77100f4ede9348e3",
     ("saved", "yaxis2"):
-        "ca4f095c5458b12c0555f5c597ec1df12972a2891c2bc3494dac948cd6f331ff",
+        "932c85bd00ba9dd820c47092a80d6d706c08c271198302db77100f4ede9348e3",
     # WP-30 S58: re-derived once gzipped buffers are hashed decompressed,
     # the same under bokeh 3.8 (Stata's Python) and 3.9.
     ("served", "plain"):
-        "fb860211aea8f8715c60777b6b653a89cc13c6521aff7c792318bd446d7b4c08",
+        "23c6fcc8aadbbd45f5be90392a6495514c8fc1c34466a16d33fde8d7118659ed",
     ("served", "yaxis2"):
-        "fb860211aea8f8715c60777b6b653a89cc13c6521aff7c792318bd446d7b4c08",
+        "23c6fcc8aadbbd45f5be90392a6495514c8fc1c34466a16d33fde8d7118659ed",
 }
 
 

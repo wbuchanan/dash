@@ -10128,6 +10128,41 @@ class SchemeParser:
             return False
         return default
 
+    def _gsize_units(self, key: str, default: "float | str") -> float:
+        """A ``gsize`` directive in Stata's relative units (WP-31 D4): a
+        name of the gsize ladder (``OptionTranslator._GSIZE_RS``) or a
+        finite number in [0, 100]; anything else, or nothing, is
+        *default* read the same way."""
+        lad = OptionTranslator._GSIZE_RS
+        for raw in (self._props.get(key, "").strip().lower()[:32],
+                    str(default)):
+            if raw in lad:
+                return float(lad[raw])
+            try:
+                v = float(raw)
+            except ValueError:
+                continue
+            if math.isfinite(v) and 0 <= v <= 100:
+                return v
+        return 0.0
+
+    def _margin_px(self, key: str, default: str) -> int:
+        """A ``margin`` directive as whole pixels (WP-31 D4): the
+        marginstyle's largest side through this scheme's margin ladder
+        (``margin_sides``) or up to four numbers, 2.88 pt per relative
+        unit, 4/3 px per pt; an unknown name is *default*'s."""
+        raw = self._props.get(key, "").strip().strip('"').lower()[:64]
+        sides = self.margin_sides(raw)
+        if sides is None and raw:
+            nums = [OptionTranslator.stata_number(t) for t in raw.split()]
+            if nums and len(nums) <= 4 and all(
+                    n is not None and 0 <= n <= 100 for n in nums):
+                sides = nums
+        sides = sides or self.margin_sides(default) or [0.0]
+        pts = [(s[1] if isinstance(s, tuple) else
+                float(s) * OptionTranslator.PT_PER_RS) for s in sides]
+        return max(0, int(round(max(pts) * 96.0 / 72.0)))
+
     def _int(self, key: str, default: "int | None") -> "int | None":
         """Return a scheme value as an int, or *default* if absent/unparseable."""
         raw = self._props.get(key, "").strip()
@@ -10970,6 +11005,34 @@ class SchemeParser:
         self.legend_rows: int = self._bounded_int(
             "numstyle legend_rows", 0, 0, self._LEGEND_GRID_MAX,
             "legend row count") or 0
+        # WP-31 D4: the legend's key geometry (legendstyle-default.style):
+        # `gsize legend_key_xsize' 13, `legend_key_ysize' medsmall,
+        # `legend_key_gap' vsmall, `legend_row_gap' tiny, `legend_col_gap'
+        # large (read, not drawn), in Stata's relative units; `margin
+        # legend' and `margin legend_boxmargin' (small) in pixels; the
+        # ring, 3 (outside the plot, inside note and caption); and the
+        # column-first and span switches.  Absent or unreadable is
+        # s2color's value, silently, as for every other size.
+        self.legend_key_xsize: float = self._gsize_units(
+            "gsize legend_key_xsize", 13.0)
+        self.legend_key_ysize: float = self._gsize_units(
+            "gsize legend_key_ysize", "medsmall")
+        self.legend_key_gap: float = self._gsize_units(
+            "gsize legend_key_gap", "vsmall")
+        self.legend_row_gap: float = self._gsize_units(
+            "gsize legend_row_gap", "tiny")
+        self.legend_col_gap: float = self._gsize_units(
+            "gsize legend_col_gap", "large")
+        self.legend_margin: int = self._margin_px("margin legend", "small")
+        self.legend_boxmargin: int = self._margin_px(
+            "margin legend_boxmargin", "small")
+        self.legend_ring: int = self._bounded_int(
+            "gridringstyle legend_ring", 3, 0, 9, "ring")
+        if self.legend_ring is None:
+            self.legend_ring = 3
+        self.legend_col_first: bool = self._yesno(
+            "yesno legend_col_first", False)
+        self.legend_span: bool = self._yesno("yesno legend_span", False)
         # `numstyle max_wted_symsize' (WP-31 C9): the most a weighted
         # marker is multiplied by.  yxview.class reads it as
         # cond(max, max, 10): absent, zero or unreadable is 10, the value
@@ -33481,6 +33544,32 @@ _DASH_CLOCK_INSIDE = {
     2: "top_right", 3: "center_right", 4: "bottom_right",
     5: "bottom_right", 6: "bottom_center", 7: "bottom_left",
     8: "bottom_left", 9: "center_left", 10: "top_left",
+    # position(0): the centre of the plot region (WP-31 D4; measured,
+    # legend_geometry_truth.json clock_0).
+    0: "center",
+}
+#: Where a ring > 0 legend sits inside its side panel (WP-31 D4): twoway
+#: puts a corner clock at that end of the side (box_alignment neast,
+#: seast, swest, nwest: 1 and 2 at the top right, 4 and 5 at the bottom
+#: right, 7 and 8 at the bottom left, 10 and 11 at the top left) and
+#: 12/3/6/9 in the middle (legend_geometry_truth.json clock_1..clock_12).
+_DASH_CLOCK_PANEL_LOCATION = {
+    11: "top_left", 12: "center", 1: "top_right",
+    2: "top_right", 3: "center", 4: "bottom_right",
+    5: "bottom_right", 6: "center", 7: "bottom_left",
+    8: "bottom_left", 9: "center", 10: "top_left",
+}
+#: legend(bplacement(compass)): the box's place in its panel (WP-31 D4).
+_DASH_BPLACEMENT_LOCATION = {
+    "n": "top_center", "north": "top_center",
+    "ne": "top_right", "neast": "top_right",
+    "e": "center_right", "east": "center_right",
+    "se": "bottom_right", "seast": "bottom_right",
+    "s": "bottom_center", "south": "bottom_center",
+    "sw": "bottom_left", "swest": "bottom_left",
+    "w": "center_left", "west": "center_left",
+    "nw": "top_left", "nwest": "top_left",
+    "c": "center", "center": "center",
 }
 #: legend(top), legend(bottom), legend(left) and legend(right) are not
 #: twoway's: it refuses each, "option top not allowed", r(198) (measured
@@ -33590,7 +33679,7 @@ def _dash_parse_legend_order(arg):
     return out
 
 
-def _dash_move_legend(fig, legend, side):
+def _dash_move_legend(fig, legend, side, location="center", ring=3):
     """Move an attached Legend into one of the figure's side panels, as
     Stata's ring 3: nearest the plot, and centred.
 
@@ -33611,7 +33700,9 @@ def _dash_move_legend(fig, legend, side):
     panel, and Bokeh's default ``top_right`` drew it flush right under
     the plot where Stata centres a 6 o'clock legend (and centres a 3
     o'clock one vertically).  Both modes come through here, so they
-    cannot disagree.
+    cannot disagree.  *location* is the box's place in the panel
+    (``_DASH_CLOCK_PANEL_LOCATION``: a corner clock sits at that end of
+    its side, WP-31 D4); *side* ``"center"`` puts it inside the plot.
     """
     from bokeh.models import Axis
     for container in (fig.center, fig.above, fig.below, fig.left, fig.right):
@@ -33620,16 +33711,34 @@ def _dash_move_legend(fig, legend, side):
                 container.remove(legend)
         except (TypeError, ValueError):
             pass
+    if side == "center":
+        fig.center = list(fig.center) + [legend]
+        legend.location = location
+        return
     panel = list(getattr(fig, side))
     # After the edge titles too (WP-31 D2): t1title() .. r2title() are
-    # rings 1 and 2, inside the legend's ring 3.
-    at = next((i for i, m in enumerate(panel)
-               if not isinstance(m, Axis)
-               and "dash_edge_title" not in (getattr(m, "tags", None) or [])),
-              len(panel))
+    # rings 1 and 2, inside the legend's ring 3.  And after every text box
+    # tagged ``ring=<n>`` with n <= the legend's ring (WP-31 D4, DECISIONS
+    # A31): a title placed at ring(1) or ring(2) sits inside a ring 3
+    # legend, one at ring(4) outside it.
+
+    def _inside(m):
+        if isinstance(m, Axis):
+            return True
+        tags = [str(t) for t in (getattr(m, "tags", None) or [])]
+        if "dash_edge_title" in tags:
+            return True
+        for t in tags:
+            if t.startswith("ring="):
+                try:
+                    return int(t[5:]) <= ring
+                except ValueError:
+                    return False
+        return False
+    at = 1 + max((i for i, m in enumerate(panel) if _inside(m)), default=-1)
     panel.insert(at, legend)
     setattr(fig, side, panel)
-    legend.location = "center"
+    legend.location = location
 
 
 def _dash_scheme_chrome(scheme):
@@ -33641,7 +33750,8 @@ def _dash_scheme_chrome(scheme):
     legend_line`` for the box, the ``key_label`` textbox's size and colour
     for the labels (not ``gsize text``, which the box used to take), and
     ``clockdir legend_position`` / ``numstyle legend_cols`` /
-    ``numstyle legend_rows`` for where it sits when the user says nothing.
+    ``numstyle legend_rows`` / ``gridringstyle legend_ring`` for where it
+    sits when the user says nothing, and the key geometry (WP-31 D4).
     """
     return {
         "legend_bg_color": scheme.legend_bg_color,
@@ -33651,7 +33761,147 @@ def _dash_scheme_chrome(scheme):
         "legend_position": getattr(scheme, "legend_position", None),
         "legend_cols": getattr(scheme, "legend_cols", None) or 0,
         "legend_rows": getattr(scheme, "legend_rows", 0) or 0,
+        # WP-31 D4: the key geometry (relative units), the box's inner
+        # and outer margins (px), the ring and the column-first switch.
+        "legend_key_xsize": getattr(scheme, "legend_key_xsize", 13.0),
+        "legend_key_ysize": getattr(scheme, "legend_key_ysize", 3.4722),
+        "legend_key_gap": getattr(scheme, "legend_key_gap", 2.0833),
+        "legend_row_gap": getattr(scheme, "legend_row_gap", 1.3888),
+        "legend_margin": getattr(scheme, "legend_margin", 5),
+        "legend_boxmargin": getattr(scheme, "legend_boxmargin", 5),
+        "legend_ring": getattr(scheme, "legend_ring", 3),
+        "legend_col_first": getattr(scheme, "legend_col_first", False),
     }
+
+
+#: region()'s sub-options of legend() dash draws, and their twoway
+#: minimum abbreviations (areastyle's options).
+_DASH_LEGEND_REGION_NAMES = (("fcolor", "fc"), ("lcolor", "lc"),
+                             ("lwidth", "lw"), ("lpattern", "lp"),
+                             ("color", "color"), ("margin", "margin"))
+
+
+def _dash_legend_margin_px(arg):
+    """A marginstyle (a name or up to four numbers) as whole pixels, the
+    largest side (Bokeh's ``padding`` and ``margin`` are one Int), or
+    None for a value twoway would note (WP-31 D4)."""
+    a = str(arg or "").strip().lower()
+    if not a or len(a) > 64:
+        return None
+    sides = SchemeParser._MARGINSTYLES.get(a)
+    if sides is not None:
+        vals = []
+        for v in sides:
+            if isinstance(v, tuple):
+                vals.append(float(v[1]))
+            elif isinstance(v, str):
+                vals.append(float(SchemeParser._MARGIN_LADDER.get(v, 0.0))
+                            * OptionTranslator.PT_PER_RS)
+            else:
+                vals.append(float(v) * OptionTranslator.PT_PER_RS)
+    else:
+        nums = [OptionTranslator.stata_number(t) for t in a.split()]
+        if not nums or len(nums) > 4 or any(n is None for n in nums):
+            return None
+        vals = [n * OptionTranslator.PT_PER_RS for n in nums]
+    return max(0, min(500, int(round(max(vals) * OptionTranslator.PX_PER_PT))))
+
+
+def _dash_legend_box(legend, calls, words):
+    """legend()'s box and text sub-options on the series *legend* (WP-31
+    D4): region() -> the border and fill, nobox -> neither, bmargin() ->
+    Bokeh's ``margin``, region(margin()) -> ``padding``, color() -> the
+    key text's colour, textwidth() -> ``label_width``, title() -> the
+    legend's title above the keys.  Colours through Stata's colour
+    grammar, sizes through ``OptionTranslator.resolve_size``; text stays
+    a DOM text node (test_label_sinks.py)."""
+    T = OptionTranslator
+
+    def _note(where, value, what, using="the scheme's default"):
+        # _dash_style_note's wording, nested one level deeper:
+        # legend(region(lwidth(bogus))).
+        shown = _dash_display(value)
+        head = ("legend(%s(%s)))" % (where[:-1], shown)
+                if where.endswith(")") else "legend(%s(%s))" % (where, shown))
+        _dash_warn_once(("dash", "legend", where, str(value), what),
+                        f"dash: {head} is not a recognised {what}; "
+                        f"using {using}.")
+
+    def _colour(raw, option):
+        r = str(raw or "").strip()
+        if T._means_no_color(r.lower()):
+            return "none"
+        hx, _a = T.parse_color_alpha(r, option)
+        return hx
+
+    for name, arg, typed in calls:
+        if name == "region":
+            for tok in _dash_by_tokens(str(arg or "").strip()):
+                if "(" not in tok:
+                    _dash_report_suboptions("legend(region)", [tok])
+                    continue
+                nm, inner = tok.split("(", 1)
+                inner = inner[:-1] if inner.endswith(")") else inner
+                nm = nm.strip().lower()
+                full = next((f for f, mn in _DASH_LEGEND_REGION_NAMES
+                             if f.startswith(nm) and len(nm) >= len(mn)),
+                            None)
+                where = "region(%s)" % nm
+                if full in ("lcolor", "fcolor", "color"):
+                    c = _colour(inner, "legend(%s)" % where)
+                    if c is None:
+                        continue
+                    if full in ("lcolor", "color"):
+                        legend.border_line_color = None if c == "none" else c
+                    if full in ("fcolor", "color"):
+                        legend.background_fill_color = (None if c == "none"
+                                                        else c)
+                elif full == "lwidth":
+                    try:
+                        legend.border_line_width = T.line_px(T.resolve_size(
+                            inner, "line", 0.0))
+                    except (ValueError, TypeError):
+                        _note(where, inner, "line width")
+                elif full == "lpattern":
+                    try:
+                        legend.border_line_dash = T.translate_lpattern(inner)
+                    except (ValueError, TypeError):
+                        _note(where, inner, "line pattern")
+                elif full == "margin":
+                    px = _dash_legend_margin_px(inner)
+                    if px is None:
+                        _note(where, inner, "margin")
+                    else:
+                        legend.padding = px
+                else:
+                    _dash_report_suboptions("legend(region)", [tok])
+        elif name == "bmargin":
+            px = _dash_legend_margin_px(arg)
+            if px is None:
+                _note(typed, arg, "margin")
+            else:
+                legend.margin = px
+        elif name == "color":
+            c = _colour(arg, "legend(%s)" % typed)
+            if c and c != "none":
+                legend.label_text_color = c
+        elif name == "textwidth":
+            try:
+                legend.label_width = max(0, min(2000, int(round(
+                    T.resolve_size(arg, "gap", 0.0) * T.PX_PER_PT))))
+            except (ValueError, TypeError):
+                _note(typed, arg, "size")
+        elif name == "title":
+            text, _sub = _parse_textbox_opt(str(arg or ""))
+            lines = _textbox_lines(text)
+            legend.title = "\n".join(lines)[:2000]
+            legend.title_location = "above"
+            legend.title_text_font_style = "normal"
+            legend.title_text_font_size = legend.label_text_font_size
+            legend.title_text_color = legend.label_text_color
+    if "nobox" in words and "box" not in words:
+        legend.border_line_color = None
+        legend.background_fill_color = None
 
 
 def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
@@ -33742,7 +33992,12 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                     continue
                 lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
                 if lm and int(lm.group(1)) in texts:
-                    texts[int(lm.group(1))] = _textbox_lines(lm.group(2))
+                    # label(1) with no text: twoway draws key 1's symbol
+                    # with no text (WP-31 D4, legend_geometry_truth.json
+                    # label_blank).
+                    texts[int(lm.group(1))] = (
+                        _textbox_lines(lm.group(2))
+                        if lm.group(2) is not None else [""])
             _order = None
             for _name, _arg, *_ in _calls:
                 if _name == "order":
@@ -33770,7 +34025,7 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                 if _name != "lastlabel":
                     continue
                 lm = _DASH_LEGEND_LABEL_RE.fullmatch(_arg)
-                if not lm:
+                if not lm or lm.group(2) is None:
                     continue
                 pos = int(lm.group(1)) - 1
                 if 0 <= pos < len(seq):
@@ -33778,6 +34033,26 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
                         label={"value": "\n".join(
                             _textbox_lines(lm.group(2)))},
                         renderers=list(seq[pos].renderers))
+            # holes(numlist): a blank key at each 1-based position of the
+            # final sequence, counted with the holes before it (twoway's
+            # legend_g counts holes among the n keys); a position past the
+            # end is ignored, as twoway ignores holes(9) on three keys
+            # (WP-31 D4, legend_geometry_truth.json holes, holes_big).
+            # Each hole is a LegendItem with no renderers (S39 reads them).
+            _holes = _dash_legend_arg(_calls, ("holes",))
+            if _holes:
+                try:
+                    _hv, _hmany, _hbad = _dash_expand_numlist(
+                        _holes.split(), limit=300)
+                except (ValueError, TypeError, OverflowError):
+                    _hv, _hmany, _hbad = [], True, True
+                if not _hmany and not _hbad:
+                    for _p in sorted({int(v) for v in _hv
+                                      if math.isfinite(v) and v == int(v)
+                                      and v > 0}):
+                        if _p <= len(seq) + 1:
+                            seq.insert(_p - 1, LegendItem(
+                                label={"value": ""}, renderers=[]))
             legend.items = seq
 
     # 3. The scheme's chrome on EVERY legend, before the user's options so
@@ -33796,54 +34071,129 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         if chrome.get("label_text_color"):
             lg.label_text_color = chrome["label_text_color"]
 
-    # 4. Placement: position()/ring(0) first, and the SCHEME's clock only
-    #    when the user gave neither.  `clockdir legend_position' and
-    #    `numstyle legend_cols' were parsed and read by nothing, so every
-    #    legend sat at Bokeh's top_right inside the plot where s2color puts
-    #    it below in two columns.  The bare words top, bottom, left and
+    # 3b. The key geometry (WP-31 D4): the scheme's legend_key_xsize,
+    #     legend_key_ysize, legend_key_gap and legend_row_gap (Stata's
+    #     relative units, 2.88 pt each, 4/3 px per pt) and its box margins,
+    #     then symxsize(), symysize(), keygap() and rowgap() (an unknown
+    #     size is twoway's medium, with its note: legend_geometry_truth.json
+    #     symx_bogus).  twoway draws a marker key at the marker's own size,
+    #     not squeezed into symysize() (default_geometry), and Bokeh draws a
+    #     legend marker at 0.4 of the key box, so a key box holding a
+    #     marker is at least 2.5 times the marker; a legend of marker keys
+    #     only is as wide as that, as twoway's marker key is.  forcesize
+    #     forces symxsize() x symysize() (legend_options.sthlp).
+    _T = OptionTranslator
+    _lref = _T.size_ref_of(fig)
+
+    def _px_units(units):
+        try:
+            u = float(units)
+        except (TypeError, ValueError):
+            u = 0.0
+        if not math.isfinite(u):
+            u = 0.0
+        return max(0, int(round(u * _T.PT_PER_RS * _T.PX_PER_PT)))
+
+    _geom = {}
+    for _gname, _ckey, _dflt in (("symxsize", "legend_key_xsize", 13.0),
+                                 ("symysize", "legend_key_ysize", 3.4722),
+                                 ("keygap", "legend_key_gap", 2.0833),
+                                 ("rowgap", "legend_row_gap", 1.3888)):
+        _units = chrome.get(_ckey, _dflt)
+        _given = _dash_legend_arg(_calls, (_gname,))
+        if _given:
+            _typed = next((t for n, _a, t in _calls if n == _gname), _gname)
+            try:
+                _pt = _T.resolve_size(_given, "gap",
+                                      float(_units) * _T.PT_PER_RS, _lref)
+                _geom[_gname] = max(0, int(round(_pt * _T.PX_PER_PT)))
+            except (ValueError, TypeError):
+                _dash_style_note("legend(%s)" % _typed, _given, "size",
+                                 "medium")
+                _geom[_gname] = _px_units(3.8194)
+        else:
+            _geom[_gname] = _px_units(_units)
+    _forced = "forcesize" in _words and "noforcesize" not in _words
+    for lg in plot_legends:
+        _w, _h = _geom["symxsize"], _geom["symysize"]
+        if not _forced:
+            _msz, _only_marks = 0.0, True
+            for _it in lg.items:
+                for _r in (_it.renderers or []):
+                    _g = getattr(_r, "glyph", None)
+                    if type(_g).__name__ == "Scatter":
+                        _sz = getattr(_g, "size", None)
+                        if isinstance(_sz, (int, float)) and \
+                                math.isfinite(_sz):
+                            _msz = max(_msz, float(_sz))
+                    else:
+                        _only_marks = False
+            if _msz > 0:
+                _floor = min(200, int(math.ceil(_msz / 0.4)))
+                _h = max(_h, _floor)
+                if _only_marks and not _dash_legend_arg(_calls,
+                                                        ("symxsize",)):
+                    _w = _floor
+        lg.glyph_width = max(1, _w)
+        lg.glyph_height = max(1, _h)
+        lg.label_standoff = _geom["keygap"]
+        lg.spacing = _geom["rowgap"]
+        try:
+            lg.padding = int(chrome.get("legend_margin", 5))
+            lg.margin = int(chrome.get("legend_boxmargin", 5))
+        except (TypeError, ValueError):
+            pass
+
+    # 4. Placement (WP-31 D4): twoway's clock table and ring.  The clock is
+    #    position(), else the scheme's `clockdir legend_position'; the ring
+    #    ring(), else `gridringstyle legend_ring' (3).  position(0) is the
+    #    centre of the plot region; ring(0) is inside the plot at the
+    #    clock's inside location (s2color's 6: bottom_center); otherwise the
+    #    legend goes to the clock's side panel, a corner clock at that end
+    #    of the side (_DASH_CLOCK_PANEL_LOCATION), or where bplacement()
+    #    puts it (legend_geometry_truth.json clock_0..clock_12,
+    #    ring0_default, bplacement).  The bare words top, bottom, left and
     #    right are not placements: twoway refuses them, and so does
     #    dash.ado; one in a spec is named above, as a sub-option dash does
-    #    not implement.
-    # twoway's clockdir names are 0..12 as written: 13, 06 and 3.0 draw
-    # the default (Stata prints twoway's note).
+    #    not implement.  twoway's clockdir names are 0..12 as written: 13,
+    #    06 and 3.0 draw the default (Stata prints twoway's note).
     m_pos = _dash_legend_arg(_calls, ("position",), r"([0-9]|1[0-2])")
     m_ring = _dash_legend_arg(_calls, ("ring",), r"(\d+)")
-    inside = bool(m_ring) and m_ring.group(1) == "0"
-    if legend is not None:
-        placed = False
-        if m_pos:
-            placed = True
-            clock = int(m_pos.group(1))
-            if inside:
-                legend.location = _DASH_CLOCK_INSIDE.get(clock, "top_right")
-            else:
-                side = _DASH_CLOCK_SIDE.get(clock, "right")
-                _dash_move_legend(fig, legend, side)
-                legend.orientation = ("horizontal"
-                                      if side in ("above", "below")
-                                      else "vertical")
-        if not placed and not m_ring and chrome.get("legend_position"):
-            try:
-                clock = int(chrome["legend_position"])
-            except (TypeError, ValueError):
-                clock = None
-            if clock is not None:
-                side = _DASH_CLOCK_SIDE.get(clock, "right")
-                _dash_move_legend(fig, legend, side)
-                horizontal = side in ("above", "below")
-                legend.orientation = "horizontal" if horizontal else "vertical"
-                # Stata's legend_cols is a maximum: 6 o'clock under
-                # s2color is two columns, economist's 12 o'clock three; a
-                # side legend takes it only when it asks for more than one.
-                try:
-                    cols = int(chrome.get("legend_cols") or 0)
-                    rows = int(chrome.get("legend_rows") or 0)
-                except (TypeError, ValueError):
-                    cols, rows = 0, 0
-                if cols > 0 and (horizontal or cols > 1):
-                    legend.ncols = cols
-                if rows > 0:
-                    legend.nrows = rows
+    try:
+        _sclock = int(chrome.get("legend_position"))
+    except (TypeError, ValueError):
+        _sclock = None
+    clock = int(m_pos.group(1)) if m_pos else (
+        _sclock if _sclock is not None else 6)
+    try:
+        ring = (int(m_ring.group(1)) if m_ring
+                else int(chrome.get("legend_ring", 3)))
+    except (TypeError, ValueError):
+        ring = 3
+    _bp = _dash_legend_arg(_calls, ("bplacement",))
+    _bploc = None
+    if _bp:
+        _bploc = _DASH_BPLACEMENT_LOCATION.get(_bp.strip().lower())
+        if _bploc is None:
+            _typed = next((t for n, _a, t in _calls if n == "bplacement"),
+                          "bplacement")
+            _dash_style_note("legend(%s)" % _typed, _bp, "compass direction",
+                             "the default")
+    colfirst = ("nocolfirst" not in _words
+                and ("colfirst" in _words
+                     or bool(chrome.get("legend_col_first"))))
+    if legend is not None and (m_pos or m_ring or _sclock is not None):
+        if m_pos and clock == 0:
+            _dash_move_legend(fig, legend, "center", "center")
+        elif ring == 0:
+            _dash_move_legend(fig, legend, "center",
+                              _DASH_CLOCK_INSIDE.get(clock, "bottom_center"))
+        else:
+            side = _DASH_CLOCK_SIDE.get(clock, "below")
+            _dash_move_legend(
+                fig, legend, side,
+                _bploc or _DASH_CLOCK_PANEL_LOCATION.get(clock, "center"),
+                ring)
 
     # 5. label(N "text") is applied by key number in step 1-2.  Raw: a
     #    LegendItem label is a DOM text node in BokehJS (legend.js:
@@ -33855,13 +34205,15 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
     #    white-space: pre, so a newline breaks it), and bare words are one
     #    line (test_textbox_multiline.py TestALegendLabelIsReadAsStataReadsIt).
 
-    # 6. cols()/rows() on every legend.  Stata treats the two as
-    #    alternatives, so the one the user did not give goes back to
-    #    "auto": the scheme's ncols (2 under s2color, 3 under economist)
-    #    used to survive a user rows(1), and Bokeh then laid out ncols=2,
-    #    nrows=1 and wrapped the third key onto a second row.
+    # 6. The grid (WP-31 D4; legend_g.class:274-285): n keys (holes
+    #    counted); rows() gives cols = 1 + int((n-1)/rows), cols() gives
+    #    cols, neither the scheme's `numstyle legend_cols' (rows from
+    #    `legend_rows' when only that is set, else 2 columns); then
+    #    rows = 1 + int((n-1)/cols).  Both are set, as Bokeh takes them.
     #    rows() wins over cols() as twoway's does (WP-30 P1.19); each is a
-    #    numlist of one positive integer (cols(2/2), cols(+2)).
+    #    numlist of one positive integer (cols(2/2), cols(+2)).  The
+    #    scheme's columns hold whatever the position (cols_with_pos: pos(3)
+    #    keeps s2color's two columns).
     def _one_count(name):
         arg = _dash_legend_arg(_calls, (name,))
         if arg is None:
@@ -33877,7 +34229,37 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         return None
 
     n_cols, n_rows = _one_count("cols"), _one_count("rows")
-    for lg in fig.legend:
+    try:
+        _scols = int(chrome.get("legend_cols") or 0)
+        _srows = int(chrome.get("legend_rows") or 0)
+    except (TypeError, ValueError):
+        _scols, _srows = 0, 0
+    _n = len(legend.items) if legend is not None else 0
+    if legend is not None and _n > 0 and (
+            n_rows or n_cols or _scols or _srows or chrome):
+        if n_rows:
+            _gc = 1 + (_n - 1) // n_rows
+        elif n_cols:
+            _gc = n_cols
+        elif _scols > 0:
+            _gc = _scols
+        elif _srows > 0:
+            _gc = 1 + (_n - 1) // _srows
+        else:
+            _gc = 2
+        _gc = max(1, min(_gc, 1000))
+        legend.ncols = _gc
+        legend.nrows = 1 + (_n - 1) // _gc
+        # twoway fills its grid row by row, or column by column under
+        # colfirst (legend_geometry_truth.json colfirst); Bokeh fills
+        # row-first when horizontal and column-first when vertical, and a
+        # one-column grid is the same either way.
+        legend.orientation = ("vertical" if colfirst or _gc == 1
+                              else "horizontal")
+    elif legend is not None and colfirst:
+        legend.orientation = "vertical"
+    for lg in cv_legends:
+        # A colour key keeps the rule it had: the one the user gave.
         try:
             if n_rows is not None:
                 lg.nrows = n_rows
@@ -33918,6 +34300,15 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             _dash_style_note("legend(%s)" % _size_typed, m_size.group(1),
                              "size",
                              "medium")
+
+    # 7b. The box and its text (WP-31 D4): region(lcolor() fcolor()
+    #     color() lwidth() lpattern() margin()), nobox/box, bmargin(),
+    #     color(), textwidth() and title() on the series legend
+    #     (legend_geometry_truth.json region, nobox, title).  span,
+    #     forcesize's partner noforcesize, bexpand and their no-forms are
+    #     taken in silence: a side-panel legend already spans its side.
+    if legend is not None:
+        _dash_legend_box(legend, _calls, _words)
 
     # 8. Stata's rule governs the SERIES key; `off' is a bare word, so
     #    legend(pos(6) off) hides it and label(1 "Turned off") does not.
@@ -43702,16 +44093,28 @@ def _dash_subopt_resolve(copies, table):
     return names, None
 
 
-#: legend() sub-options _dash_apply_legend honours.
+#: legend() sub-options _dash_apply_legend honours.  WP-31 D4 added the
+#: key geometry, holes, colfirst, the box and its text; span, forcesize,
+#: bexpand and their no-forms are taken in silence (a side-panel legend
+#: spans its side, a forced key is drawn at symxsize() x symysize()).
+#: textfirst, stacked, symplacement(), colgap(), and the legend's own
+#: subtitle(), note() and caption() stay named: Bokeh's legend item is the
+#: key then its text in one row, with no property to swap or stack them.
 _DASH_LEGEND_SUBOPTS = frozenset({
     "on", "off", "position", "ring", "order", "label", "lastlabel",
-    "cols", "rows", "size"})
+    "cols", "rows", "size",
+    "holes", "colfirst", "nocolfirst", "title", "region", "bplacement",
+    "span", "nospan", "symxsize", "symysize", "keygap", "rowgap",
+    "textwidth", "forcesize", "noforcesize", "nobox", "box", "color",
+    "bmargin", "bexpand", "nobexpand"})
 
 #: legend(label(# text)): the key's number, then its text, read by
 #: _textbox_lines.  The number is bounded so no label can make int() read
 #: thousands of digits; the text is everything after the blank that follows
-#: it, so bare words keep the blank twoway keeps (" Foreign cars").
-_DASH_LEGEND_LABEL_RE = re.compile(r"\s*\+?(\d{1,6})(\s.*)", re.S)
+#: it, so bare words keep the blank twoway keeps (" Foreign cars").  A
+#: number with no text (label(1)) matches with no text group: twoway draws
+#: that key's symbol with no text (WP-31 D4).
+_DASH_LEGEND_LABEL_RE = re.compile(r"\s*\+?(\d{1,6})(\s.*)?", re.S)
 
 
 def _dash_legend_unsupported(legend_opt):
@@ -45132,7 +45535,10 @@ def _dash_by_legend_cell(scheme, name, side, legend, items, tag):
                  "border_line_color", "border_line_alpha", "border_line_width",
                  "glyph_width", "glyph_height", "spacing", "padding",
                  "label_standoff", "title", "title_text_font_size",
-                 "title_text_color"):
+                 "title_text_color",
+                 # WP-31 D4: the rest of legend()'s geometry and box.
+                 "margin", "label_width", "border_line_dash",
+                 "title_location", "title_text_font_style"):
         if legend is not None and prop in legend.properties():
             kw[prop] = getattr(legend, prop)
     leg = Legend(items=new_items, click_policy="none", name=name + "_key",
@@ -54114,6 +54520,8 @@ class ServerAppBuilder:
                       "_DASH_CONTOUR_TYPES",
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
+                      "_DASH_CLOCK_PANEL_LOCATION", "_DASH_BPLACEMENT_LOCATION",
+                      "_DASH_LEGEND_REGION_NAMES",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -54516,6 +54924,7 @@ class ServerAppBuilder:
                          # and the scheme's chrome for it.
                          "_dash_move_legend", "_dash_scheme_chrome",
                          "_dash_legend_parts", "_dash_legend_arg",
+                         "_dash_legend_margin_px", "_dash_legend_box",
                          "_dash_apply_legend",
                          # Axis titles, Stata's tick grammar, second axes.
                          "_parse_axis_angle", "_stata_date_kind",

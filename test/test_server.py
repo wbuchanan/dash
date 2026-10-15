@@ -4211,8 +4211,10 @@ class TestServerLegendColsRows:
                     try: os.unlink(p)
                     except OSError: pass
 
-        assert _legends("top cols(3)", "_tm_leg_cols") == [(3, "auto")]
-        assert _legends("", "_tm_leg_none") == [(2, "auto")]
+        # Flipped (WP-31 D4): the rows were "auto"; twoway's legend_g sets
+        # them, 1 + int((n-1)/cols): one row for these keys.
+        assert _legends("top cols(3)", "_tm_leg_cols") == [(3, 1)]
+        assert _legends("", "_tm_leg_none") == [(2, 1)]
 
 
 # ================================================================

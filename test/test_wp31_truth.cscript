@@ -6930,6 +6930,318 @@ if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
 }
 * ==== end S30 ====
 
+// S31 (WP-31 D4, C13) helpers: draw one command in twoway (class values
+// and SVG export) and in dash (both modes), and describe one legend fact
+// for one case into globals u31_tw (twoway), u31_s (saved) and u31_v
+// (served).  Sizes are whole pixels at dash's 4-inch reference: one Stata
+// relative unit is 2.88 pt, 3.84 px, and 28.8 SVG px in twoway's export.
+python:
+_U31_LOC = {
+    ("above", "right"): "top_right", ("above", "left"): "top_left",
+    ("above", "center"): "center", ("below", "right"): "bottom_right",
+    ("below", "left"): "bottom_left", ("below", "center"): "center",
+    ("right", "top"): "top_right", ("right", "bottom"): "bottom_right",
+    ("right", "center"): "center", ("left", "top"): "top_left",
+    ("left", "bottom"): "bottom_left", ("left", "center"): "center"}
+_U31_INSIDE = {"north": "top_center", "neast": "top_right",
+               "east": "center_right", "seast": "bottom_right",
+               "south": "bottom_center", "swest": "bottom_left",
+               "west": "center_left", "nwest": "top_left",
+               "center": "center"}
+
+
+def _u31_px(units):
+    return str(int(round(float(units) * 2.88 * 4.0 / 3.0)))
+
+
+def _u31_svg(path):
+    """(plot region, legend box, [(text, x, y)], [(x1, x2)] key lines)."""
+    from svg_truth import svg_document, svg_rects
+    doc = svg_document(path)
+    pr = doc["plotregion"]
+    keys = [(t["text"], t["x"], t["y"]) for t in doc["texts"]
+            if not t["anchor"]]
+    box = None
+    for r in svg_rects(path):
+        if r["fill"] in (None, "none") or not r["w"] or r["w"] > 3900:
+            continue
+        if abs(r["x"] - pr["left"]) < 1 and abs(r["y"] - pr["top"]) < 1:
+            continue
+        if keys and all(r["x"] <= x <= r["x"] + r["w"]
+                        and r["y"] <= y <= r["y"] + r["h"]
+                        for _t, x, y in keys):
+            if box is None or r["w"] * r["h"] < box["w"] * box["h"]:
+                box = r
+    outline = None
+    if box is not None:
+        for r in svg_rects(path):
+            if (r["fill"] == "none" and r["x"] is not None
+                    and box["x"] <= r["x"] <= box["x"] + 40
+                    and box["y"] <= r["y"] <= box["y"] + 40):
+                outline = r
+                break
+    lines = []
+    if box is not None:
+        lines = [(d["x1"], d["x2"]) for d in doc["hlines"]
+                 if box["x"] <= d["x1"] <= box["x"] + box["w"]
+                 and box["y"] <= d["y1"] <= box["y"] + box["h"]]
+    return pr, box, outline, keys, lines
+
+
+def _u31_place_tw(path, align):
+    pr, box, _o, _k, _l = _u31_svg(path)
+    cx = ((box["x"] + box["w"] / 2) - pr["left"]) / (pr["right"] - pr["left"])
+    cy = ((box["y"] + box["h"] / 2) - pr["top"]) / (pr["bottom"] - pr["top"])
+    if 0 < cx < 1 and 0 < cy < 1:
+        return "center:" + _U31_INSIDE.get(align, align)
+    side = ("above" if cy < 0 else "below" if cy > 1
+            else "left" if cx < 0 else "right")
+    if side in ("above", "below"):
+        right = box["x"] + box["w"] > pr["right"] - 60
+        left = box["x"] < pr["left"] + 60
+        end = ("right" if right and not left else
+               "left" if left and not right else "center")
+    else:
+        rel = (box["y"] + box["h"] / 2 - pr["top"]) / (pr["bottom"] - pr["top"])
+        end = "top" if rel < 0.25 else "bottom" if rel > 0.75 else "center"
+    return side + ":" + _U31_LOC[(side, end)]
+
+
+def _u31_grid_tw(path):
+    _pr, _b, _o, keys, _l = _u31_svg(path)
+    xs = sorted({round(x) for _t, x, _y in keys})
+    ys = sorted({round(y) for _t, _x, y in keys})
+    return " ".join("%s:r%dc%d" % (t.replace(" ", "_"), ys.index(round(y)) + 1,
+                                   xs.index(round(x)) + 1)
+                    for t, x, y in sorted(keys, key=lambda k: (k[2], k[1])))
+
+
+def _u31_legend(figs):
+    from bokeh.models import Legend
+    import dash_render as dr
+    lgs = [m for f in figs for m in f.select({"type": Legend})
+           if str(m.name or "") != dr._COLORVAR_LEGEND_NAME]
+    return figs[0], lgs[0]
+
+
+def _u31_text(it):
+    lab = it.label
+    return str(lab.get("value") if isinstance(lab, dict)
+               else getattr(lab, "value", lab))
+
+
+def _u31_dash(figs, case):
+    f, lg = _u31_legend(figs)
+    if case == "geom":
+        return "%d %d %d %d" % (lg.glyph_width, lg.glyph_height,
+                                lg.label_standoff, lg.spacing)
+    if case == "sizes":
+        return "%d %d %d" % (lg.glyph_width, lg.label_standoff, lg.spacing)
+    if case in ("place", "hplace"):
+        for side in ("above", "below", "left", "right", "center"):
+            if lg in list(getattr(f, side)):
+                loc = str(lg.location)
+                if case == "hplace":
+                    loc = ("left" if "left" in loc else
+                           "right" if "right" in loc else "center")
+                return side + ":" + loc
+        return "none"
+    if case == "grid":
+        nc, nr = int(lg.ncols), int(lg.nrows)
+        out = []
+        for i, it in enumerate(lg.items):
+            if lg.orientation == "vertical":
+                r, c = i % nr, i // nr
+            else:
+                r, c = i // nc, i % nc
+            if _u31_text(it):
+                out.append((r, c, _u31_text(it)))
+        rows = sorted({r for r, _c, _t in out})
+        cols = sorted({c for _r, c, _t in out})
+        return " ".join("%s:r%dc%d" % (t.replace(" ", "_"), rows.index(r) + 1,
+                                       cols.index(c) + 1)
+                        for r, c, t in sorted(out))
+    if case == "texts":
+        return "%s | keys %d" % (
+            " ".join(_u31_text(i) for i in lg.items if _u31_text(i)),
+            sum(1 for i in lg.items if i.renderers))
+    if case == "box":
+        return "%s %s" % (lg.border_line_color, lg.background_fill_color)
+    if case == "title":
+        return str(lg.title)
+    if case == "drawn":
+        return "drawn %d keys %d" % (int(bool(lg.visible)), len(lg.items))
+    return "?"
+
+
+def _u31_check(sp, dp, app, svg, case, tw):
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    if case == "place":
+        tw = _u31_place_tw(svg, tw)
+    elif case == "hplace":
+        side, loc = _u31_place_tw(svg, tw).split(":")
+        tw = side + ":" + ("left" if "left" in loc else
+                           "right" if "right" in loc else "center")
+    elif case == "grid":
+        tw = _u31_grid_tw(svg)
+    elif case == "texts":
+        _pr, _b, _o, keys, _l = _u31_svg(svg)
+        tw = "%s | keys %s" % (" ".join(t for t, _x, _y in keys), tw)
+    elif case == "box":
+        _pr, box, outline, _k, _l = _u31_svg(svg)
+        tw = "%s %s" % (outline["stroke"], box["fill"])
+    elif case == "sizes":
+        _pr, _b, _o, keys, lines = _u31_svg(svg)
+        x1, x2 = lines[0]
+        gap = min(x for _t, x, _y in keys) - max(x1, x2)
+        tw = "%s %s %s" % (_u31_px(abs(x2 - x1) / 28.8), _u31_px(gap / 28.8),
+                           tw)
+    Macro.setGlobal("u31_tw", tw)
+    for figs, sfx in ((a, "s"), (b, "v")):
+        Macro.setGlobal("u31_" + sfx, _u31_dash(figs, case))
+end
+
+capture program drop _u31_reg
+program define _u31_reg
+    // _u31_reg <dir> <k> <case> <command with options...>: twoway's
+    // value for <case> goes to u31_tw (class values here, the SVG in
+    // _u31_check), dash's saved and served values to u31_s and u31_v.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    capture graph drop u31t
+    quietly twoway `0' name(u31t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    local tw ""
+    if "`case'" == "geom" {
+        foreach s in key_xsize key_ysize key_gap row_gap {
+            mata: st_local("v", strofreal(round(`.u31t.legend.style.`s'.val' * 2.88 * 4 / 3)))
+            local tw "`tw' `v'"
+        }
+        local tw = strtrim("`tw'")
+    }
+    if "`case'" == "sizes" {
+        mata: st_local("tw", strofreal(round(`.u31t.legend.style.row_gap.val' * 2.88 * 4 / 3)))
+    }
+    if inlist("`case'", "place", "hplace") local tw "`.u31t.legend.style.box_alignment.snm'"
+    if "`case'" == "texts" local tw "`.u31t.legend.keys.arrnels'"
+    if "`case'" == "title" local tw "`.u31t.legend.title.text[1]'"
+    if "`case'" == "drawn" local tw "drawn `.u31t.legend.draw_view.istrue' keys `.u31t.legend.keys.arrnels'"
+    graph drop u31t
+    dash clear
+    capture quietly dash `0' name(zu31`k')
+    if _rc {
+        global u31_s "rc `=_rc'"
+        global u31_v "rc `=_rc'"
+        global u31_tw "(twoway drawn)"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u31_m; _u31_m._u31_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'", "`tw'")
+end
+
+* ==== S31 D4: Legend geometry ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S31") & `: list posof "S31" in w31_run' {
+    display as text "S31 start " c(current_date) " " c(current_time)
+    local u31d "`w31_work'/s31"
+    capture mkdir "`u31d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    sort weight
+    generate double trunk100 = trunk * 100
+    generate double turn100 = turn * 100
+    local u31two "(scatter mpg weight) (scatter price weight),"
+    local u31four "(scatter mpg weight) (scatter price weight) (scatter trunk100 weight) (scatter turn100 weight),"
+
+    // U31-1: the scheme's key geometry -- key_xsize, key_ysize, key_gap
+    // and row_gap -- as dash's glyph_width, glyph_height, label_standoff
+    // and spacing.
+    _u31_reg "`u31d'" 1 geom (line mpg weight) (line price weight),
+    foreach m in s v {
+        _w31_expect U31-1 `"("${u31_`m'}" == "${u31_tw}")"' "`m': dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _w31_done U31-1 "key width, height, gap and row gap ${u31_tw} px, saved and served"
+
+    // U31-2: every clock's side and place along it, pos(0) the centre,
+    // ring(0) alone inside at the scheme's clock.
+    local bad ""
+    forvalues c = 0/12 {
+        _u31_reg "`u31d'" 2`c' place `u31two' legend(pos(`c'))
+        foreach m in s v {
+            if "${u31_`m'}" != "${u31_tw}" local bad "`bad' pos(`c') `m': dash ${u31_`m'} twoway ${u31_tw};"
+        }
+    }
+    _u31_reg "`u31d'" 2r place `u31two' legend(ring(0))
+    foreach m in s v {
+        if "${u31_`m'}" != "${u31_tw}" local bad "`bad' ring(0) `m': dash ${u31_`m'} twoway ${u31_tw};"
+    }
+    _w31_expect U31-2 `"(`"`bad'"' == "")"' "`bad'"
+    _w31_done U31-2 "pos(0) to pos(12) and ring(0): twoway's side and place, saved and served"
+
+    // U31-3: pos(3) keeps s2color's two columns.
+    _u31_reg "`u31d'" 3 grid `u31two' legend(pos(3))
+    foreach m in s v {
+        _w31_expect U31-3 `"("${u31_`m'}" == "${u31_tw}")"' "`m': dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _w31_done U31-3 "pos(3) keys at ${u31_tw}"
+
+    // U31-4: holes(2) cols(2), colfirst cols(2), rows(3) and cols(3).
+    local bad ""
+    local j 0
+    foreach o in "holes(2) cols(2)" "colfirst cols(2)" "rows(3)" "cols(3)" {
+        local ++j
+        local cmd `"`u31four'"'
+        if `j' == 1 local cmd "(scatter mpg weight) (scatter price weight) (scatter trunk100 weight),"
+        _u31_reg "`u31d'" 4`j' grid `cmd' legend(`o')
+        foreach m in s v {
+            if "${u31_`m'}" != "${u31_tw}" local bad "`bad' `o' `m': dash ${u31_`m'} twoway ${u31_tw};"
+        }
+    }
+    _w31_expect U31-4 `"(`"`bad'"' == "")"' "`bad'"
+    _w31_done U31-4 "holes(), colfirst, rows() and cols() lay the keys out as twoway's grid"
+
+    // U31-5: label(1) with no text: rc 0 both, key 1's symbol kept with
+    // no text.
+    _u31_reg "`u31d'" 5 texts `u31two' legend(label(1))
+    foreach m in s v {
+        _w31_expect U31-5 `"("${u31_`m'}" == "${u31_tw}")"' "`m': dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _w31_done U31-5 "label(1) blanks key 1: ${u31_tw}"
+
+    // U31-7: region(lcolor() fcolor()) and the sizes.
+    _u31_reg "`u31d'" 7 box `u31two' legend(region(lcolor(red) fcolor(gs14) lwidth(thick)))
+    foreach m in s v {
+        _w31_expect U31-7 `"("${u31_`m'}" == "${u31_tw}")"' "`m' region: dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _u31_reg "`u31d'" 7s sizes (line mpg weight) (line price weight), legend(symxsize(5) keygap(1) rowgap(3))
+    foreach m in s v {
+        _w31_expect U31-7 `"("${u31_`m'}" == "${u31_tw}")"' "`m' sizes: dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _w31_done U31-7 "region() outline and fill, symxsize(), keygap() and rowgap() as twoway's"
+
+    // U31-8: bplacement(w) at 6 o'clock, and title().
+    _u31_reg "`u31d'" 8 hplace `u31two' legend(pos(6) bplacement(w))
+    foreach m in s v {
+        _w31_expect U31-8 `"("${u31_`m'}" == "${u31_tw}")"' "`m' bplacement: dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _u31_reg "`u31d'" 8t title `u31two' legend(title("Keys"))
+    foreach m in s v {
+        _w31_expect U31-8 `"("${u31_`m'}" == "${u31_tw}")"' "`m' title: dash ${u31_`m'}; twoway ${u31_tw}"
+    }
+    _w31_done U31-8 "bplacement(w) at the left end below; title() above the keys"
+
+    macro drop u31_tw u31_s u31_v
+    capture graph drop _all
+    dash clear
+    display as text "S31 end " c(current_date) " " c(current_time)
+}
+* ==== end S31 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

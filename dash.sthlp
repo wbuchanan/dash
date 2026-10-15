@@ -950,7 +950,7 @@ there, is an invalid point.  The literal is read as data and never run.
     {cmd:note()}, {cmd:caption()}, {cmd:xline()}/{cmd:yline()} or
     {cmd:filter()} that {cmd:dash} does not implement is named in a
     note, as {cmd:by()}'s are:
-    {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: span stack)}.
+    {cmd:(note: dash: legend() sub-option(s) not implemented and ignored: stack colgap(2))}.
     A sub-option of {cmd:legend()}, of the axis labels and ticks
     ({cmd:xlabel()}, {cmd:ylabel()}, {cmd:xtick()}, {cmd:ytick()},
     {cmd:xmlabel()}, {cmd:ymlabel()}, {cmd:xmtick()}, {cmd:ymtick()},
@@ -3838,17 +3838,33 @@ the plot specification).
 {synopt:{cmdab:leg:end(on)}}draw a legend on a graph that has fewer than two
     keys, which would otherwise have none{p_end}
 {synopt:{cmdab:leg:end(position(}{it:#}{cmd:))}}place legend by Stata clock
-    position, outside the plot: 12 is above, 3 right, 6 below, 9 left{p_end}
+    position, outside the plot: 12 is above, 3 right, 6 below, 9 left; a
+    corner sits at that end of its side (1 and 11 at the ends of the top,
+    2 and 4 of the right, 5 and 7 of the bottom, 8 and 10 of the left);
+    {cmd:position(0)} is the centre of the plot region{p_end}
 {synopt:{cmdab:leg:end(ring(0))}}keep the legend inside the plot region
-    rather than beside it{p_end}
+    rather than beside it, at {cmd:position()}'s place there or, alone, at
+    the scheme's clock (the bottom centre under {cmd:s2color}){p_end}
 {synopt:{cmdab:leg:end(cols(}{it:#}{cmd:))}}arrange legend entries in {it:#} columns{p_end}
 {synopt:{cmdab:leg:end(rows(}{it:#}{cmd:))}}arrange legend entries in {it:#} rows{p_end}
+{synopt:{cmdab:leg:end(holes(}{it:numlist}{cmd:))}}leave a blank key at each
+    position listed{p_end}
+{synopt:{cmdab:leg:end(colfirst)}}fill the grid column by column{p_end}
+{synopt:{cmdab:leg:end(symxsize() symysize() keygap() rowgap())}}the key's
+    width and height, the gap between a key and its text, the gap between
+    rows{p_end}
+{synopt:{cmdab:leg:end(region() nobox bmargin() bplacement())}}the box's
+    outline, fill and inner margin; no box; the space around it; its place
+    along its side{p_end}
+{synopt:{cmdab:leg:end(title() color() textwidth())}}a title above the keys;
+    the key text's colour; its least width{p_end}
 {synopt:{cmdab:leg:end(order(}{c -(}{it:#}|{cmd:-}{c )-} [{it:"text"} ...] ...{cmd:))}}select
     and order the keys by plot number, retitle one with text after its
     number, or insert a text-only line after {cmd:-}; a key left out is
     dropped and a number given twice draws the key twice{p_end}
 {synopt:{cmdab:leg:end(size(}{it:size}{cmd:))}}font size of the legend text{p_end}
-{synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for plot {it:#}{p_end}
+{synopt:{cmdab:leg:end(label(}{it:#} {it:"text"}{cmd:))}}override the label for plot {it:#};
+    {cmd:label(}{it:#}{cmd:)} with no text blanks it{p_end}
 {synopt:{cmdab:leg:end(lastlabel(}{it:#} {it:"text"}{cmd:))}}the last label applied,
     over {cmd:order()} and {cmd:label()}, to the {it:#}th row as drawn{p_end}
 {synopt:{cmdab:cleg:end(}{it:suboptions}{cmd:)}}place the colour key:
@@ -3888,6 +3904,33 @@ the first plot's key.
 {cmd:legend(left)} or {cmd:legend(right)} and refuses each
 ({cmd:option top not allowed}, r(198)); so does {cmd:dash}, naming the
 {cmd:position()} that says what was meant: 12, 6, 9 or 3.
+
+{pstd}
+The legend is laid out as {cmd:twoway} lays it out.  Its keys are the
+scheme's size -- under {cmd:s2color} a line key 13 units long and
+{cmd:medsmall} high, its text a {cmd:vsmall} gap after it, the rows a
+{cmd:tiny} gap apart, where a unit is 2.88 points -- and a marker key is
+the marker's own size; {cmd:symxsize()}, {cmd:symysize()}, {cmd:keygap()}
+and {cmd:rowgap()} change them, {cmd:forcesize} draws every key at
+{cmd:symxsize()} by {cmd:symysize()}, and an unknown size is
+{cmd:twoway}'s {cmd:medium}, with a note.  The keys fill a grid of
+{it:n} keys, {cmd:holes()} counted: {cmd:rows(}{it:r}{cmd:)} makes
+1 + int(({it:n}-1)/{it:r}) columns, {cmd:cols()} the columns given, and
+neither the scheme's columns, whatever the position (two under
+{cmd:s2color}, so {cmd:legend(pos(3))} is two keys side by side); the
+keys fill it row by row, or column by column with {cmd:colfirst}.
+{cmd:holes(2)} leaves the second place blank and a hole past the last
+key is ignored.
+{cmd:region(lcolor() fcolor() lwidth() lpattern() margin())} draws the box, {cmd:nobox} removes it, {cmd:bmargin()} is the
+space around it, {cmd:bplacement()} its place along its side,
+{cmd:color()} the key text's colour, {cmd:textwidth()} its least width
+and {cmd:title()} a line above the keys; {cmd:span}, {cmd:bexpand} and
+their {cmd:no} forms are taken: a legend beside the plot already spans
+its side.  {cmd:textfirst}, {cmd:stacked}, {cmd:symplacement()},
+{cmd:colgap()} and the legend's own {cmd:subtitle()}, {cmd:note()} and
+{cmd:caption()} are named in the note: a {cmd:dash} legend draws each key
+and then its text in one row, so {cmd:legend(textfirst)}, which
+{cmd:twoway} draws text then key, is drawn key then text.
 
 {pstd}
 {ul:Axis labels.}  {cmd:xlabel()} and {cmd:ylabel()} take Stata's own
@@ -5237,15 +5280,20 @@ the scheme turns off, say -- {cmd:dash} draws nothing.  The scheme sets:
     Stata resolves them.{p_end}
 
 {phang2}{ul:Legend.}  Its background and border ({cmd:color legend},
-    {cmd:color legend_line}), its text ({cmd:key_label}) and, when the
-    graph gives no {cmd:legend(}{it:position}{cmd:)},
-    {cmd:legend(position())} or {cmd:legend(ring())}, its placement and
-    columns from {cmd:clockdir legend_position} and
-    {cmd:numstyle legend_cols}: below the plot in two columns under
-    {cmd:s2color}, to the right in one under {cmd:stcolor}, above in three
-    under {cmd:economist}.  {cmd:legend(cols())} and {cmd:legend(rows())}
-    still win, and {cmd:legend(rows())} wins over
-    {cmd:legend(cols())}.{p_end}
+    {cmd:color legend_line}), its text ({cmd:key_label}), its placement
+    when the graph gives no {cmd:legend(position())}
+    ({cmd:clockdir legend_position}) and its ring when it gives no
+    {cmd:legend(ring())} ({cmd:gridringstyle legend_ring}), and its
+    columns whatever the position ({cmd:numstyle legend_cols}): below the
+    plot in two columns under {cmd:s2color}, to the right in one under
+    {cmd:stcolor}, above in three under {cmd:economist}.
+    {cmd:legend(cols())} and {cmd:legend(rows())} still win, and
+    {cmd:legend(rows())} wins over {cmd:legend(cols())}.  Its key
+    geometry ({cmd:gsize legend_key_xsize}, {cmd:legend_key_ysize},
+    {cmd:legend_key_gap}, {cmd:legend_row_gap}), its inner and outer
+    margins ({cmd:margin legend}, {cmd:margin legend_boxmargin}) and
+    {cmd:yesno legend_col_first}; {cmd:gsize legend_col_gap} and
+    {cmd:yesno legend_span} are carried and read, not drawn.{p_end}
 
 {phang2}{ul:KPI cards.}  A card is drawn as the scheme's legend box: its
     background is {cmd:color legend}, its border {cmd:color legend_line}
@@ -5396,7 +5444,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 300 to 370 directives (more for the monochrome schemes, whose
+scheme: 310 to 380 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}

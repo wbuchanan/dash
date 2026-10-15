@@ -1979,6 +1979,26 @@ def extract(stata_base: str, scheme: str) -> dict:
         "legend_rows": scalar("legend_rows", "numstyle", ["legend_rows"],
                               lambda t: _as_number(t.strip()),
                               class_default=False),
+        # WP-31 D4: the legend's key geometry, ring, box margins and
+        # layout switches (legendstyle-default.style reads each).
+        **{k: scalar(k, cls, [k], lambda t: t.strip().strip('"'),
+                     class_default=False, required=False)
+           for cls, k in (("gsize", "legend_key_xsize"),
+                          ("gsize", "legend_key_ysize"),
+                          ("gsize", "legend_key_gap"),
+                          ("gsize", "legend_row_gap"),
+                          ("gsize", "legend_col_gap"),
+                          ("margin", "legend_boxmargin"),
+                          ("yesno", "legend_col_first"),
+                          ("yesno", "legend_span"))},
+        "legend_ring": scalar("legend_ring", "gridringstyle", ["legend_ring"],
+                              lambda t: _as_number(t.strip()),
+                              class_default=False, required=False),
+        # scheme-meta.scheme writes `margin legend "1 0 0 0' with no
+        # closing quote; its first token, quote off, is the value kept.
+        "legend_margin": scalar("legend_margin", "margin", ["legend"],
+                                lambda t: t.strip().strip('"'),
+                                class_default=False, required=False),
     }
     out["margin_twoway_rs"] = resolve_margin_rs(r, out.get("margin_twoway"))
     out.update(by_chrome_truth())
@@ -2295,6 +2315,16 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         scalar("symbolsize", "p", "symbolsize", use_name=True),
         scalar("clockdir", "legend_position", "legend_position"),
         scalar("numstyle", "legend_cols", "legend_cols"),
+        scalar("gridringstyle", "legend_ring", "legend_ring"),
+        scalar("gsize", "legend_key_xsize", "legend_key_xsize"),
+        scalar("gsize", "legend_key_ysize", "legend_key_ysize"),
+        scalar("gsize", "legend_key_gap", "legend_key_gap"),
+        scalar("gsize", "legend_row_gap", "legend_row_gap"),
+        scalar("gsize", "legend_col_gap", "legend_col_gap"),
+        scalar("margin", "legend", "legend_margin"),
+        scalar("margin", "legend_boxmargin", "legend_boxmargin"),
+        scalar("yesno", "legend_col_first", "legend_col_first"),
+        scalar("yesno", "legend_span", "legend_span"),
     ])
     group(["Textbox rings (WP-31 D3): the order of title, subtitle, caption and",
            "note on one side of the plot region; a larger ring is further out."], [

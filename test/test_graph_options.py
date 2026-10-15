@@ -1321,11 +1321,16 @@ class TestLegendColsRows:
             assert fig.legend[0].ncols == 2
 
     def test_legend_rows_sets_nrows(self):
-        """legend(rows(3)) must set fig.legend[0].nrows = 3."""
+        """legend(rows(3)) sets the grid as twoway's legend_g does.
+
+        Flipped (WP-31 D4): nrows == 3 was wrong because legend_g derives
+        cols = 1 + int((n-1)/rows) and then rows = 1 + int((n-1)/cols)
+        (legend_geometry_truth.json rows3: rows(3) on four keys draws two
+        rows); this figure has one key, so one row and one column."""
         fig = _get_figure({"legend": "rows(3)"})
         assert len(fig.legend) == 1, len(fig.legend)
         if fig.legend:
-            assert fig.legend[0].nrows == 3
+            assert (fig.legend[0].ncols, fig.legend[0].nrows) == (1, 1)
 
     def test_legend_cols_and_position_combined(self):
         """legend(position(12) cols(2)) must set both placement and ncols
@@ -1340,8 +1345,10 @@ class TestLegendColsRows:
         P1.19, measured: every order of rows/cols draws the rows)."""
         fig = _get_figure({"legend": "cols(2) rows(4)"})
         assert len(fig.legend) == 1, len(fig.legend)
-        assert fig.legend[0].nrows == 4
-        assert fig.legend[0].ncols == "auto"
+        # Flipped (WP-31 D4): (auto, 4) was wrong because twoway's
+        # legend_g derives both from the rows that win: one key is one
+        # column and one row.
+        assert (fig.legend[0].ncols, fig.legend[0].nrows) == (1, 1)
 
     def test_legend_cols_zero_ignored(self):
         """legend(cols(0)) — zero column count must not raise."""
@@ -1358,8 +1365,11 @@ class TestLegendColsRows:
         and which is no placement (WP-23)."""
         fig = _get_figure({"legend": "position(3)"})
         assert fig.legend
-        assert fig.legend[0].ncols == "auto"
-        assert fig.legend[0].nrows == "auto"
+        # Flipped (WP-31 D4): "auto" was wrong because twoway keeps the
+        # scheme's columns whatever the position (legend_geometry_truth.
+        # json cols_with_pos): s2color's 2, and one row for the one key.
+        assert fig.legend[0].ncols == 2
+        assert fig.legend[0].nrows == 1
 
 
 # ================================================================

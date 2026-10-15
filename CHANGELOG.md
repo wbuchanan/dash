@@ -424,7 +424,7 @@ and now matches Stata.
 
 - `dash scatter mpg weight, text(30 2000 "$x")` with the `$` kept for dash (`\$x` in a do-file, or `macval()`): drew $x -> draws the global's value, as twoway draws it, by text only; `text(..., tstyle(heading))`: named -> drawn in the heading's size and colour (WP-31, D13)
 
-<!-- WP-31 D4 -->
+- dash scatter mpg weight || scatter price weight, legend(ring(0)): top right -> inside at the bottom centre, keys 13 x medsmall (WP-31, D4)
 
 <!-- WP-31 C13 -->
 

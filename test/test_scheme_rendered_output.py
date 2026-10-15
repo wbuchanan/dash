@@ -754,9 +754,17 @@ class TestTheLegend:
             self, scheme, mode):
         """A legend Stata places at 6, 12, 3 or 9 o'clock is centred on the
         plot; a legend moved into a Bokeh side panel kept the model's
-        default ``top_right``, so a below-legend hugged the right edge."""
+        default ``top_right``, so a below-legend hugged the right edge.
+
+        Flipped (WP-31 D4): every scheme's legend was asserted "center";
+        twoway's legend_g geometry (WP-31 D4) puts a corner clock at that
+        end of its side (legend_geometry_truth.json clock_4: meta's 4
+        o'clock legend sits at the bottom of the right side), so the
+        location is the clock's place in its panel."""
         lg = _legend(_page(scheme, "titles", mode).fig)
-        assert lg.location == "center", (
+        clock = dr.SchemeParser(scheme).legend_position
+        want = dr._DASH_CLOCK_PANEL_LOCATION.get(clock, "center")
+        assert lg.location == want, (
             f"{scheme}/{mode}: legend location {lg.location!r}")
 
     @_every_scheme("titles")

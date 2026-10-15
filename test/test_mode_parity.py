@@ -1759,7 +1759,9 @@ CORPUS = [
           {"title": "T, size(large) color(red) box width(20)"}),
     _case("legend with an unimplemented sub-option",
           [_sc(), plot_for("lfit")], None,
-          {"legend": "position(6) span holes(1)"}),
+          # Flipped (WP-31 D4): span and holes(1) are drawn (span taken
+          # in silence); stacked and colgap() are the words still named.
+          {"legend": "position(6) stacked colgap(1)"}),
     _case("xscale(range()) and yscale with an unimplemented sub-option",
           [_sc()], None, {"xscale": "range(1500 4500)",
                           "yscale": "reverse outergap(1)"}),
@@ -2548,6 +2550,16 @@ CORPUS = [
               "caption": '"C", box bcolor(gs14) lcolor(red)'}),
     _case("note tstyle(heading) margin(medium) (WP-31 D3)", [_sc()],
           go={"note": '"N", tstyle(heading) margin(medium)'}),
+
+    # WP-31 D4/C13 (section 31): legend geometry
+    _case("legend(pos(1) symxsize(5) keygap(1)) (WP-31 D4)",
+          [_sc(), _sc(yvar="price")],
+          go={"legend": "pos(1) symxsize(5) keygap(1)"}),
+    _case("legend(ring(0)) (WP-31 D4)", [_sc(), _sc(yvar="price")],
+          go={"legend": "ring(0)"}),
+    _case("legend(holes(2) cols(2) colfirst) three series (WP-31 D4)",
+          [_sc(), _sc(yvar="price"), _sc(yvar="rep")],
+          go={"legend": "holes(2) cols(2) colfirst"}),
 ]
 
 
@@ -2669,7 +2681,7 @@ _MUST_WARN = {
         "dash: title() sub-option(s) not implemented and ignored: width(20)",
     "legend with an unimplemented sub-option":
         "dash: legend() sub-option(s) not implemented and ignored: "
-        "span holes(1)",
+        "stacked colgap(1)",
     "xscale(range()) and yscale with an unimplemented sub-option":
         "dash: yscale() sub-option(s) not implemented and ignored: "
         "outergap(1)",
@@ -3562,6 +3574,11 @@ MOVE_CORPUS = [
     # WP-31 D3 (section 30): textbox placement
     _move_case("ring(0) note after a dropdown move (WP-31 D3)", _MOVES[0],
                [plot_for("scatter")], go={"note": '"N", ring(0) position(1)'}),
+
+    # WP-31 D4/C13 (section 31): legend geometry
+    _move_case("legend(ring(0) holes(2)) after a dropdown move (WP-31 D4)",
+               _MOVES[0], [plot_for("scatter"), plot_for("line")],
+               go={"legend": "ring(0) holes(2)"}),
 ]
 
 

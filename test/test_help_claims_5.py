@@ -911,7 +911,11 @@ class TestTheSubOptionSplitterReadsStataQuotes:
             "foreign", 2, False, False, [])
 
     def test_legend_names_what_follows_an_apostrophe(self):
-        assert dr._dash_legend_unsupported("label(1 Bob's) span") == ["span"]
+        # Flipped (WP-31 D4): span is taken in silence now (a side-panel
+        # legend spans its side), so the word after the apostrophe is
+        # stack, which twoway's legend_g draws and Bokeh cannot.
+        assert dr._dash_legend_unsupported("label(1 Bob's) stack") == [
+            "stack"]
 
     def test_in_both_modes(self):
         """Flipped (WP-30 P1.15a): title(Bob's cars) was named as not

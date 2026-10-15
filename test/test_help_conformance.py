@@ -800,9 +800,10 @@ class TestTheParsersFoundSomething:
         # 431 -> 433: B4b the Plot types table's "surface" row and the
         # Unsupported entry "Contour options"; 433 -> 432: D2 the
         # Unsupported entry "Alternative titles" goes.
-        assert len(defs) == 432, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 432 "
-            f"measured 14oct2026")
+        # 432 -> 437: D4 five synopt rows holes() .. textwidth().
+        assert len(defs) == 437, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 437 "
+            f"measured 15oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
         assert not any("dcount" in _option_tokens(t) for t in defs), (
