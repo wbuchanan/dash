@@ -509,7 +509,7 @@ and now matches Stata.
 
 <!-- WP-31 D1c -->
 
-<!-- WP-31 D2b -->
+- `dash scatter mpg weight, t1title("E", position(6))`: E above the plot, position() named -> E below the plot, as twoway draws it; `ring()` orders an edge title on its side (`ring(8)` outside the title); `span` and `nospan` inside an edge title are refused, "option(s) t1title_span(yes) not allowed", r(198), as twoway refuses them (WP-31, D2b)
 
 - After a filter move a contour is cut where twoway cuts the rows kept, and its colour key follows: dash contour price mpg weight, filter(foreign) moved to Foreign kept the build's cuts 5000 10000 on the saved page and, in the served app, a key whose levels no longer matched the bands; both now cut at twoway's 6000 8000 10000 12000 and key them, within the key's first span. (WP-31, B4d)
 

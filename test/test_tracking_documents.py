@@ -2052,7 +2052,6 @@ WP31_OPEN = {
     "B5c": "dot rows on the saved page keep the build's axis span after a filter move",
     "D1b": "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn",
     "D1c": "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule",
-    "D2b": "Edge titles name position(), ring(), span and orientation() where twoway draws them",
     "D16b": "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced",
 }
 

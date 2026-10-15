@@ -1178,4 +1178,5 @@ class TestInternalLinksResolve:
         # links Resource limits and, for the first time, Graph text.
         # 97 -> 98 links, 35 -> 36 targets: WP-31 D3 links the textbox
         # sentence to the new Textbox options paragraph.
-        assert len(refs) == 98 and len(set(refs)) == 36
+        # 98 -> 99 links: WP-31 D2b links the Edge titles paragraph to it.
+        assert len(refs) == 99 and len(set(refs)) == 36

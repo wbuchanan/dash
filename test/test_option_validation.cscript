@@ -367,6 +367,9 @@
 *!   U30-8  note("N", tstyle(nosuch)): rc 0 in both and twoway's note
 *!          "named style nosuch not found in class textboxstyle, default
 *!          attributes used", printed by dash when it draws (tstyle_bad)
+*! Edge-title placement (WP-31 D2b; textbox_truth.json e_t1_span):
+*!   U30-14 span and nospan inside an edge title: twoway's rc and line,
+*!          "option(s) t1title_span(yes) not allowed"
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -2060,6 +2063,22 @@ foreach u in 7 8 {
     capture dash clear
     _u05_judge U30-`u' `"`bad'"' `"`u30msg': rc 0 and twoway's note, once, when drawn"'
 }
+
+// U30-14 (WP-31 D2b): span or nospan inside an edge title, refused with
+// twoway's rc and line, the last of a title's copies winning, after a
+// plot's comma too.
+local bad ""
+foreach cmd in `"scatter mpg weight, t1title("E", span)"' `"scatter mpg weight, l2title("E", nospan)"' `"scatter mpg weight, t1title("E") t1title(, span)"' `"scatter mpg weight, t1title("E", span) b1title("B", span)"' `"(scatter mpg weight, r1title("E", span)),"' {
+    _u07_rc `"`macval(cmd)'"' "not allowed"
+    if r(trc) != 198 | r(drc) != 198 | strtrim(`"`r(tline)'"') != strtrim(`"`r(dline)'"') | `"`r(dline)'"' == "" {
+        local bad `"`bad' [`cmd': twoway `r(trc)' `r(tline)', dash `r(drc)' `r(dline)']"'
+    }
+}
+_u07_rc `"scatter mpg weight, t1title("E", position(3) ring(8))"' "not allowed"
+if r(trc) != 0 | r(drc) != 0 {
+    local bad `"`bad' [position ring: twoway `r(trc)', dash `r(drc)']"'
+}
+_u05_judge U30-14 `"`bad'"' "span and nospan in an edge title refused with twoway's rc and line; position() and ring() taken"
 
 // ----------------------------------------------------------------
 // Summary

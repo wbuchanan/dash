@@ -6664,6 +6664,17 @@ def _u30_tw(path, case):
         t = [e for e in texts if e[0] not in ("Mileage (mpg)",
                                               "Weight (lbs.)")]
         return "%s %gpt" % (t[0][0], round(t[0][3] / 10.0)) if t else "-"
+    if case == "edge":
+        t = [e for e in texts if e[0] == "E"][0]
+        clock = int(path.rsplit("_e", 1)[1].split(".")[0])
+        if t[2] < py:
+            return "above"
+        if t[2] > py + ph:
+            return "below"
+        return dr._dash_textbox_place(clock, "center")[0]
+    if case == "eorder":
+        y = {e[0]: e[2] for e in texts}
+        return "E outside T" if y["E"] < y["T"] else "E inside T"
     return "?"
 
 
@@ -6704,6 +6715,23 @@ def _u30_dash(figs, case):
     if case == "by":
         return "N:%d" % sum(1 for g in figs for side, m in boxes(g)
                             if m.text == "N")
+    if case in ("edge", "eorder"):
+        where = {}
+        for side in ("center", "above", "below", "left", "right"):
+            for i, m in enumerate(getattr(f, side)):
+                tg = list(getattr(m, "tags", None) or [])
+                if (getattr(m, "text", None) == "E"
+                        and "dash_edge_title" in tg):
+                    where["E"] = (side, i)
+                if getattr(m, "text", None) == "T" and "title" in tg:
+                    where["T"] = (side, i)
+        if case == "edge":
+            return where.get("E", ("-",))[0]
+        if ("E" not in where or "T" not in where
+                or where["E"][0] != where["T"][0]):
+            return "not on one side: %s" % where
+        return ("E outside T" if where["E"][1] > where["T"][1]
+                else "E inside T")
     if case == "at":
         labs = [m for m in f.center if isinstance(m, Label)
                 and "dash_added_text" in list(m.tags or [])]
@@ -6860,6 +6888,42 @@ if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
         }
     }
     macro drop u30x u30f u30_tw u30_s u30_v
+    capture graph drop _all
+    dash clear
+    display as text "S30 end " c(current_date) " " c(current_time)
+}
+* ==== end S30 ====
+
+* ==== S30 D2b: Edge titles' position() and ring() ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S30") & `: list posof "S30" in w31_run' {
+    display as text "S30 start " c(current_date) " " c(current_time)
+    local u30d "`w31_work'/s30c"
+    capture mkdir "`u30d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U30-12: position() moves an edge title to the clock's side; beside
+    // the plot is dash's nearer horizontal side, as for title().
+    foreach c in "t1title 6" "t1title 3" "l1title 12" "b1title 11" {
+        gettoken key k : c
+        local k = strtrim("`k'")
+        _u30_reg "`u30d'" e`k' edge scatter mpg weight, `key'("E", position(`k'))
+        foreach m in s v {
+            _w31_expect U30-12 `"("${u30_`m'}" == "${u30_tw}")"' "`m' `key' position(`k'): dash ${u30_`m'}; twoway ${u30_tw}"
+        }
+    }
+    _w31_done U30-12 "edge titles at their position() on twoway's sides, saved and served"
+
+    // U30-13: ring(8) puts t1title outside the title (ring 7).
+    _u30_reg "`u30d'" r8 eorder scatter mpg weight, title("T") t1title("E", ring(8))
+    foreach m in s v {
+        _w31_expect U30-13 `"("${u30_`m'}" == "${u30_tw}")"' "`m': dash ${u30_`m'}; twoway ${u30_tw}"
+    }
+    _w31_done U30-13 "t1title ring(8): ${u30_tw}, saved and served"
+
+    macro drop u30_tw u30_s u30_v
     capture graph drop _all
     dash clear
     display as text "S30 end " c(current_date) " " c(current_time)

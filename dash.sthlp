@@ -4523,8 +4523,14 @@ inside the legend, the note, the caption, the subtitle and the title
 {cmd:subheading} for the {cmd:1} titles and {cmd:body} for the {cmd:2}
 titles, except {cmd:b2title()}, which {cmd:twoway} draws in
 {cmd:b1title()}'s box, as {cmd:dash} does.  {cmd:size()}, {cmd:color()},
-{cmd:prefix} and {cmd:suffix} are honoured as on {cmd:title()};
-{cmd:position()}, {cmd:ring()}, {cmd:span}, {cmd:orientation()} and the
+{cmd:prefix} and {cmd:suffix} are honoured as on {cmd:title()}.
+{cmd:position()} moves an edge title to that clock, level, by the clock
+rule of {help dash##textbox_options:Textbox options}
+({cmd:l1title("E", position(12))} is above the plot), and {cmd:ring()}
+orders it on its side ({cmd:ring(8)} is outside the title; {cmd:ring(0)}
+stays nearest the plot, as in {cmd:twoway}); {cmd:span} and
+{cmd:nospan} are refused, {cmd:option(s) t1title_span(yes) not allowed},
+{cmd:r(198)}, as {cmd:twoway} refuses them; {cmd:orientation()} and the
 other text-box sub-options are named in the note.  On a {cmd:by()} graph
 each panel carries them, as {cmd:twoway} draws them.
 

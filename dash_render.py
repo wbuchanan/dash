@@ -43782,6 +43782,10 @@ def _dash_textbox(raw, option, seen=None, key="", placed=True):
             elif placed and nm in _DASH_TEXTBOX_BOX_HONOURED and option in (
                     "title", "subtitle", "note", "caption"):
                 continue
+            elif nm in ("position", "ring") and re.fullmatch(
+                    r"[tblr][12]title", str(option)):
+                # An edge title's clock and ring (WP-31 D2b).
+                continue
             bad.append(t)
         _dash_report_suboptions(option, bad, seen, key)
     return text, opts
@@ -44103,10 +44107,11 @@ def _dash_textbox_style(model, opts, fig, scheme, option, *, base_size=None,
     return model
 
 
-def _dash_textbox_insert(fig, side, model, ring):
+def _dash_textbox_insert(fig, side, model, ring, tag=True):
     """Insert a side-panel *model* at ring *ring* (WP-31 D3).
 
-    The model is tagged ``ring=<ring>``.  BokehJS lays a panel out from
+    The model is tagged ``ring=<ring>`` (unless *tag* is false: an edge
+    title at its own digit's ring, WP-31 D2b).  BokehJS lays a panel out from
     the frame outward in list order, so a larger ring goes further out:
     the model goes after the panel's axes and after every model whose
     ring is not larger -- an edge title its digit (1, 2), a Legend 3, a
@@ -44114,10 +44119,26 @@ def _dash_textbox_insert(fig, side, model, ring):
     (title 7, subtitle 6, caption 5, note 4, legend 3; textbox_truth.json
     order, user_ring).
     """
-    from bokeh.models import Axis, Legend
+    from bokeh.models import Axis, Legend, Title
     tags = list(getattr(model, "tags", None) or [])
-    if not any(str(t).startswith("ring=") for t in tags):
+    if tag and not any(str(t).startswith("ring=") for t in tags):
         model.tags = tags + ["ring=%d" % ring]
+    # Bokeh's own title slot is drawn outside the whole panel; a box of a
+    # larger ring on the title's side (t1title("E", ring(8)), WP-31 D2b)
+    # goes outside the title, so the title moves into the panel first, at
+    # its own ring -- unless a Label is pinned to it (economist's band).
+    t = getattr(fig, "title", None)
+    sch = getattr(fig, "_dash_scheme", None)
+    t_ring = sch.text_ring["title"] if sch is not None else 7
+    if (t is not None and str(getattr(t, "text", "") or "").strip()
+            and side == (getattr(fig, "title_location", None) or "above")
+            and ring > t_ring
+            and not any(getattr(getattr(m, a, None), "target", None) is t
+                        for m in fig.center for a in ("x", "y"))):
+        props = t.properties_with_values(include_defaults=False)
+        props["tags"] = ["dash_textbox", "title", "ring=%d" % t_ring]
+        fig.title = None
+        _dash_textbox_insert(fig, side, Title(**props), t_ring)
 
     def ring_of(m):
         tg = [str(t) for t in (getattr(m, "tags", None) or [])]
@@ -44130,9 +44151,16 @@ def _dash_textbox_insert(fig, side, model, ring):
             return int(k[1])
         return 3 if isinstance(m, Legend) else 0
     panel = list(getattr(fig, side))
+    # At one ring an edge title is the inner (a ring(2) subtitle shares
+    # t2title's ring; twoway draws both in it, textbox_truth.json
+    # user_ring).
+    edge = "dash_edge_title" in list(getattr(model, "tags", None) or [])
     at = 0
     for i, m in enumerate(panel):
-        if isinstance(m, Axis) or ring_of(m) <= ring:
+        r = ring_of(m)
+        if isinstance(m, Axis) or r < ring or (r == ring and (
+                not edge or "dash_edge_title" in list(
+                    getattr(m, "tags", None) or []))):
             at = i + 1
     panel.insert(at, model)
     setattr(fig, side, panel)
@@ -44391,20 +44419,47 @@ def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
             opts, None, base=color_default,
             colours=getattr(fig, "_dash_scheme_colours", None),
             with_alpha=True)
+        # position() and ring() (WP-31 D2b): twoway's numbered title
+        # takes the clock's side, level (no vertical turn), and orders by
+        # ring on that side; ring(0) is not the plot region for it
+        # (_fr_title_parse_and_log.ado; textbox_truth.json e_*).
+        pos = str(opts.get("position", "") or "").strip()
+        rr = str(opts.get("ring", "") or "").strip()
+        user_pos = re.fullmatch(r"[0-9]|1[0-2]", pos) is not None
+        user_ring = rr in ("inside", "outside") or \
+            re.fullmatch(r"[0-9]{1,2}", rr) is not None
+        if user_pos or user_ring:
+            ring_k = (0 if rr == "inside" else 1 if rr == "outside"
+                      else int(rr) if user_ring else ring)
+            if user_pos and pos == "0":
+                place = _dash_textbox_position({"position": "0"}, 0, ring_k,
+                                               "center", k)
+            else:
+                side_k, align_k = (_dash_textbox_place(int(pos), "center")
+                                   if user_pos else (side, align))
+                place = {"mode": "side", "side": side_k, "align": align_k,
+                         "ring": ring_k}
+            m = _dash_textbox_draw(fig, k, text, {}, scheme, place,
+                                   base_size=px if px is not None
+                                   else size_default,
+                                   base_color=colour if colour is not None
+                                   else color_default)
+            m.tags = ["dash_edge_title"] + list(m.tags)
+            m.tags = [t for t in m.tags if t != "dash_textbox"]
+            if alpha is not None:
+                m.text_alpha = alpha
+            continue
         made.setdefault(side, []).append(Title(
             text=text, align=align, text_font_style="normal",
             text_font_size=px if px is not None else size_default,
             text_color=colour if colour is not None else color_default,
             tags=["dash_edge_title", k],
             **({"text_alpha": alpha} if alpha is not None else {})))
+    # Each at its digit's ring, after the axes and every model of a ring
+    # not larger (WP-31 D2b: a user ring() among them).
     for side, titles in made.items():
-        panel = list(getattr(fig, side))
-        at = next((i for i, m in enumerate(panel)
-                   if not isinstance(m, Axis)
-                   and "dash_edge_title" not in (getattr(m, "tags", None)
-                                                 or [])), len(panel))
-        panel[at:at] = titles
-        setattr(fig, side, panel)
+        for t in titles:
+            _dash_textbox_insert(fig, side, t, int(t.tags[1][1]), tag=False)
 
 
 def _dash_added_text_opts(opts, seen=None, key="", scheme=None,

@@ -289,6 +289,10 @@
 *!   _dash_at_orient(o)
 *!       twoway's orientation for orientation(o), "" for a name it notes.
 *!
+*!   _dash_edge_span(pre)
+*!       twoway's refusal of span or nospan on an edge title, in the
+*!       caller's local _es_msg (WP-31 D2b).
+*!
 *!   _dash_at_globals(s)
 *!       s with each $name and ${name} replaced by the global's value, by
 *!       text, never evaluated (WP-31 D13).
@@ -9822,6 +9826,49 @@ string scalar _dash_at_orient(string scalar o)
         if (T[i, 1] == o) return(T[i, 2])
     }
     return("")
+}
+
+// _dash_edge_span(pre) -- span or nospan given inside an edge title, which
+// twoway refuses when it draws (_fr_title_parse_and_log.ado logs
+// <k>_span(yes|no) as a style edit the edge title's style does not have;
+// textbox_truth.json e_t1_span): "option(s) t1title_span(yes) not
+// allowed", r(198), the last span or nospan of a title winning, the titles
+// in twoway's parse order (graph_g.class parse_and_log_titles: r1 r2 l1
+// l2 t1 t2 b1 b2).  Reads s(<pre><k>) by value -- each copy (char(30)
+// between copies), its sub-options after the first top-level comma
+// (_first_comma_pos), split by _dash_rep_toks -- and sets the caller's
+// local _es_msg to twoway's line, or "".
+void _dash_edge_span(string scalar pre)
+{
+    string rowvector ks, t
+    string scalar    v, cp, last
+    real scalar      i, j, p, c
+
+    ks = ("r1title", "r2title", "l1title", "l2title", "t1title", "t2title",
+          "b1title", "b2title")
+    for (i = 1; i <= cols(ks); i++) {
+        v = st_global("s(" + pre + ks[i] + ")")
+        if (!strpos(v, "span")) continue
+        last = ""
+        while (v != "") {
+            p = strpos(v, char(30))
+            cp = (p ? substr(v, 1, p - 1) : v)
+            v = (p ? substr(v, p + 1, .) : "")
+            c = _first_comma_pos(cp)
+            if (!c) continue
+            t = _dash_rep_toks(substr(cp, c + 1, .), 1)
+            for (j = 1; j <= cols(t); j++) {
+                if (t[j] == "span") last = "yes"
+                else if (t[j] == "nospan") last = "no"
+            }
+        }
+        if (last != "") {
+            st_local("_es_msg", "option(s) " + ks[i] + "_span(" + last +
+                     ") not allowed")
+            return
+        }
+    }
+    st_local("_es_msg", "")
 }
 
 // _dash_at_globals(s) -- s with each $name and ${name} (name

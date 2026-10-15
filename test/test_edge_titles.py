@@ -271,8 +271,11 @@ class TestStyles:
 @pytest.mark.parametrize("mode", MODES)
 class TestNamedSubOptions:
 
-    @pytest.mark.parametrize("sub", ["position(3)", "ring(2)", "span",
-                                     "orientation(horizontal)"])
+    # Flipped (WP-31 D2b): position(3) and ring(2) were named; that was
+    # wrong because they are drawn now (test_edge_title_placement.py).
+    # span is refused by dash.ado as twoway refuses it and is named here
+    # only for a hand-written spec; orientation() a Title cannot draw.
+    @pytest.mark.parametrize("sub", ["span", "orientation(horizontal)"])
     def test_named_once(self, mode, sub):
         f, caught = _fig(mode, {"t1title": '"X", %s' % sub})
         named = [w for w in caught if "t1title()" in w and sub in w]

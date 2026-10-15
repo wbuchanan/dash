@@ -453,7 +453,7 @@ program define _dash_require_mata
         _dash_unbound_cands _dash_fn_points_json _dash_fn_spec_tail _dash_fn_stray_close _dash_rep_scan ///
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
-        _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_at_records _dash_json_first_num ///
+        _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
         _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
@@ -9779,6 +9779,9 @@ end
 // then folds back into title() -- twoway draws B (merged_title).  <prefix>
 // is - for the graph parser's s(title2), g_ for the plot parser's
 // s(g_title2).  The first such word of <options>, read by value, is named.
+// WP-31 D2b: then span or nospan inside an edge title, refused as twoway
+// refuses it, "option(s) t1title_span(yes) not allowed" (_dash_edge_span;
+// textbox_truth.json e_t1_span).
 // ================================================================
 program define _dash_refuse_title2
     version 19
@@ -9786,10 +9789,18 @@ program define _dash_refuse_title2
     local pre : copy local _dash_a1
     if "`pre'" == "-" local pre ""
     mata: st_local("_rt_on", strofreal(st_global("s(`pre'title2)") != "" | st_global("s(`pre'subtitle2)") != "" | ustrregexm(" " + st_global("s(_unknown)") + " ", "[ ,](sub)?title2[ ,]")))
-    if !`_rt_on' exit
-    mata: st_local("_rt_w", ustrregexm(" " + st_local("_dash_txt"), "[ ,]((sub)?title2)[ ]*(\(?)") ? ustrregexs(1) + (ustrregexs(3) == "(" ? "()" : "") : (st_global("s(`pre'title2)") != "" ? "title2()" : "subtitle2()"))
-    mata: _dash_say("err", "option ", st_local("_rt_w"), " not allowed")
-    exit 198
+    if `_rt_on' {
+        mata: st_local("_rt_w", ustrregexm(" " + st_local("_dash_txt"), "[ ,]((sub)?title2)[ ]*(\(?)") ? ustrregexs(1) + (ustrregexs(3) == "(" ? "()" : "") : (st_global("s(`pre'title2)") != "" ? "title2()" : "subtitle2()"))
+        mata: _dash_say("err", "option ", st_local("_rt_w"), " not allowed")
+        exit 198
+    }
+    // span or nospan inside an edge title (WP-31 D2b), which twoway
+    // refuses when it draws: "option(s) t1title_span(yes) not allowed".
+    mata: _dash_edge_span(st_local("pre"))
+    if `"`_es_msg'"' != "" {
+        mata: _dash_say("err", "", st_local("_es_msg"), "")
+        exit 198
+    }
 end
 
 // ================================================================
