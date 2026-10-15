@@ -10205,7 +10205,8 @@ class SchemeParser:
     _TICK_MAX_PX: float = 100.0
 
     def _tick_length_px(self, key: str = "gsize tick",
-                        default_pt: float = 4.0) -> float:
+                        default_pt: float = 4.0,
+                        default_name: str = "") -> float:
         """*key* (``gsize tick``) in Bokeh pixels: a Stata size (tiny is
         1.3888 units, 4pt, 5.33px at the 4-inch reference) through
         ``OptionTranslator.resolve_size``.  Absent is *default_pt* (4pt;
@@ -10214,6 +10215,11 @@ class SchemeParser:
         *default_pt* with one note."""
         default = default_pt * OptionTranslator.PX_PER_PT
         raw = self._props.get(key, "").strip()
+        if not raw and default_name:
+            # Absent: s2color's own size name (half_tiny for the minor
+            # tick and the tick gap), read as a scheme value would be, so
+            # the file-less fallback mirrors s2color exactly.
+            raw = default_name
         if not raw:
             return default
         try:
@@ -10842,8 +10848,9 @@ class SchemeParser:
         # minor tick counts (`numticks_g horizontal_minor|vertical_minor
         # 0': no minor tick unless asked).
         self.minortick_length_px: float = self._tick_length_px(
-            "gsize minortick", 2.0)
-        self.tickgap_px: float = self._tick_length_px("gsize tickgap", 2.0)
+            "gsize minortick", 2.0, "half_tiny")
+        self.tickgap_px: float = self._tick_length_px(
+            "gsize tickgap", 2.0, "half_tiny")
         self.minortick_line_width: float = self._bounded_lwidth(
             "linewidth minortick", self.tick_line_width)
         self.minortick_label_font_size: str = self._gsize(
