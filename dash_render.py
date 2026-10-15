@@ -10899,6 +10899,20 @@ class SchemeParser:
                                  "clock position")
             for k, d in (("title", 12), ("subtitle", 12), ("note", 7),
                          ("caption", 7))}
+        # The edge titles' text boxes (WP-31 D2): `textboxstyle t1title'
+        # .. `r2title' (s2color: subheading for the 1 titles, body for the
+        # 2 titles).  b2title reads `textboxstyle b1title', as twoway's
+        # parser builds it (graph_g.class parse_and_log_titles; measured:
+        # twoway draws b2title() medium, t2title() medsmall).
+        self.edge_title_styles: dict = {
+            k: self._choice(f"textboxstyle {src}",
+                            tuple(self._TEXTBOX_STYLES),
+                            "subheading" if src[1] == "1" else "body",
+                            "textbox style")
+            for k, src in (("t1title", "t1title"), ("t2title", "t2title"),
+                           ("b1title", "b1title"), ("b2title", "b1title"),
+                           ("l1title", "l1title"), ("l2title", "l2title"),
+                           ("r1title", "r1title"), ("r2title", "r2title"))}
         # Parsed for S16 (P1.2b): the p#bar / p#area intensity chains
         # (p#stub -> pstub -> p# -> p, as _first_present walks every p#
         # cycle); naturally_white is read first (above).
@@ -32983,7 +32997,11 @@ def _dash_move_legend(fig, legend, side):
         except (TypeError, ValueError):
             pass
     panel = list(getattr(fig, side))
-    at = next((i for i, m in enumerate(panel) if not isinstance(m, Axis)),
+    # After the edge titles too (WP-31 D2): t1title() .. r2title() are
+    # rings 1 and 2, inside the legend's ring 3.
+    at = next((i for i, m in enumerate(panel)
+               if not isinstance(m, Axis)
+               and "dash_edge_title" not in (getattr(m, "tags", None) or [])),
               len(panel))
     panel.insert(at, legend)
     setattr(fig, side, panel)
@@ -43411,6 +43429,85 @@ def _dash_text_annotations(fig, graph_opts, seen=None, key="", scheme=None,
             ), side)
 
 
+#: The eight edge titles in twoway's order on each side: (option, side,
+#: ring).  Ring 1 is nearest the plot region (WP-31 D2).
+_DASH_EDGE_TITLES = (
+    ("t1title", "above", 1), ("t2title", "above", 2),
+    ("b1title", "below", 1), ("b2title", "below", 2),
+    ("l1title", "left", 1), ("l2title", "left", 2),
+    ("r1title", "right", 1), ("r2title", "right", 2),
+)
+
+
+def _dash_edge_titles(fig, graph_opts, seen=None, key="", scheme=None):
+    """t1title() .. r2title() as side-panel Titles, in both modes (WP-31
+    D2).
+
+    twoway inserts each edge title beside the plot region in the ring its
+    digit names (``_fr_title_parse_and_log.ado``: ring 1 or 2, position
+    from the letter -- t above, b below, l left of, r right of -- l and r
+    turned vertical), so the ``1`` title is nearest the plot, the ``2``
+    title next, and the legend (ring 3), note, caption, subtitle and title
+    outside both; every axis on that side is inside them (measured,
+    test/fixtures/edge_title_truth.json).  Each is a ``Title`` tagged
+    ``["dash_edge_title", <option>]``, inserted after the panel's leading
+    axes and before everything else, ring 1 first: BokehJS lays a panel
+    out from the frame outward and draws a Title in a left or right panel
+    turned on its side, as twoway draws l and r.
+
+    The text box is the scheme's ``textboxstyle <option>``
+    (:attr:`SchemeParser.edge_title_styles`: subheading for the ``1``
+    titles and body for the ``2`` titles in s2color, but subheading for
+    b2title, which twoway builds with b1title's box); ``size()``,
+    ``color()``, ``prefix`` and ``suffix`` as on title(), the other
+    sub-options named once (:func:`_dash_textbox`).  The text is a
+    canvas ``Title.text``, the sink note() already uses.
+    """
+    from bokeh.models import Axis, Title
+    go = graph_opts or {}
+    made = {}
+    for k, side, ring in _DASH_EDGE_TITLES:
+        raw = go.get(k, "")
+        if not raw:
+            continue
+        text, opts = _dash_textbox(raw, k, seen, key)
+        if not text:
+            continue
+        default_style = "subheading" if ring == 1 else "body"
+        style = (scheme.edge_title_styles.get(k, default_style)
+                 if scheme is not None else default_style)
+        if scheme is not None:
+            size_default, color_default = (
+                scheme.textbox_style(style)
+                or (scheme.subheading_font_size, scheme.subheading_color))
+            align = scheme.text_just.get(style, "center")
+        else:
+            d = _DASH_TEXTBOX_DEFAULTS[
+                "subtitle" if style == "subheading" else "caption"]
+            size_default, color_default = f"{d['size']:g}px", d["color"]
+            align = "center"
+        px = _textbox_size(opts, size_default,
+                           OptionTranslator.size_ref_of(fig), f"{k}(size)")
+        colour, alpha = _textbox_color(
+            opts, None, base=color_default,
+            colours=getattr(fig, "_dash_scheme_colours", None),
+            with_alpha=True)
+        made.setdefault(side, []).append(Title(
+            text=text, align=align, text_font_style="normal",
+            text_font_size=px if px is not None else size_default,
+            text_color=colour if colour is not None else color_default,
+            tags=["dash_edge_title", k],
+            **({"text_alpha": alpha} if alpha is not None else {})))
+    for side, titles in made.items():
+        panel = list(getattr(fig, side))
+        at = next((i for i, m in enumerate(panel)
+                   if not isinstance(m, Axis)
+                   and "dash_edge_title" not in (getattr(m, "tags", None)
+                                                 or [])), len(panel))
+        panel[at:at] = titles
+        setattr(fig, side, panel)
+
+
 def _dash_added_text_opts(opts, seen=None, key="", scheme=None,
                           ref_in=4.0, base_pt=None, base_color=None):
     """One added_text record's sub-options read for drawing (WP-30 P1.10).
@@ -50118,6 +50215,9 @@ class DashRenderer:
         # note(), caption(), subtitle(), through the helper the generated
         # app runs as well, at the scheme's text-box sizes and colours.
         _dash_text_annotations(fig, graph_opts, _seen, _gkey, self.scheme)
+        # t1title() .. r2title() (WP-31 D2), the helper the generated app
+        # runs as well.
+        _dash_edge_titles(fig, graph_opts, _seen, _gkey, self.scheme)
         # text() and ttext() (WP-30 P1.10): data-unit Labels, after the
         # reference lines and the text boxes in both modes, counted over
         # the render against the added_text limit.
@@ -53044,7 +53144,8 @@ class ServerAppBuilder:
                       "_DASH_TEXTBOX_HONOURED",
                       "_DASH_ADDED_TEXT_PLACE", "_DASH_ADDED_TEXT_ORIENT",
                       "_DASH_ADDED_TEXT_HONOURED",
-                      "_DASH_TEXTBOX_DEFAULTS", "_DASH_SCALE_SUBOPTS",
+                      "_DASH_TEXTBOX_DEFAULTS", "_DASH_EDGE_TITLES",
+                      "_DASH_SCALE_SUBOPTS",
                       "_DASH_TBSTYLE_ROWS", "_DASH_LEGEND_SUBOPT_TABLE",
                       "_DASH_AXLABEL_SUBOPT_TABLE",
                       "_DASH_AXSCALE_SUBOPT_TABLE",
@@ -53640,7 +53741,8 @@ class ServerAppBuilder:
                          "_dash_textbox_place",
                          "_textbox_canon", "_dash_route_axis_titles",
                          "_dash_figure_title", "_dash_style_axis_titles",
-                         "_dash_text_annotations", "_dash_scale_spec",
+                         "_dash_text_annotations", "_dash_edge_titles",
+                         "_dash_scale_spec",
                          "_dash_added_text", "_dash_added_text_opts",
                          "_dash_apply_scale_ranges",
                          # the copied _dash_route_axis_titles reads the
@@ -55969,6 +56071,8 @@ class ServerAppBuilder:
             "        # note(), caption(), subtitle(): the helper the saved renderer",
             "        # runs, at the scheme's text-box sizes and colours.",
             "        _dash_text_annotations(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
+            "        # t1title() .. r2title(): the helper the saved renderer runs.",
+            "        _dash_edge_titles(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
             "        # xline()/yline(): the helper the saved renderer runs.",
             "        _dash_reference_lines(fig, go, _reported_subopts, gname, _DASH_SCHEME)",
             "        # text() and ttext(): the helper the saved renderer runs, last",

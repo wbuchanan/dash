@@ -472,7 +472,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D1 Tracked:** Closed in WP-31, BUGS.md "xmtick, ymtick, xmlabel, ymlabel, tmtick and tmlabel and their *2 forms are pending and never read", commit 4db3719.
 - **D1b Tracked:** Open (WP-31 section 35).
 - **D1c Tracked:** Open (WP-31 section 33).
-- **D2 Tracked:** Open (WP-31 section 27).
+- **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit pending.
 - **D2b Tracked:** Open (WP-31 section 30).
 - **D3 Tracked:** Open (WP-31 section 30).
 - **D4 Tracked:** Open (WP-31 section 31).

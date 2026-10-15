@@ -6586,7 +6586,7 @@ string scalar _dash_rep_cat(string scalar key)
     if (anyof(("title", "subtitle", "note", "caption", "xtitle", "ytitle",
                "xtitle2", "ytitle2", "t1title", "t2title", "b1title",
                "b2title", "l1title", "l2title", "r1title", "r2title",
-               "title2", "subtitle2", "ztitle", "ttitle", "ttitle2"), k)) return("T")
+               "ztitle", "ttitle", "ttitle2"), k)) return("T")
     if (anyof(("xlabel", "ylabel", "xlabel2", "ylabel2", "xtick", "ytick",
                "xtick2", "ytick2", "xmtick", "ymtick", "xmlabel", "ymlabel",
                "xmtick2", "ymtick2", "xmlabel2", "ymlabel2",

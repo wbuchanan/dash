@@ -1004,8 +1004,6 @@ program define _dash_parse_graph_opts, sclass
     // output does not change.  Implement one and forget to remove it
     // here, and that test fails.
     local _dash_pending ""
-    if `: length local b1title' local _dash_pending `"`_dash_pending' b1title"'
-    if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     // link() and filter() belong to `dash build' and `dash serve', where
     // the link group and the filter widgets are made.  Written on a graph
     // they were stored in graph_options and read by nothing -- measured
@@ -1014,17 +1012,9 @@ program define _dash_parse_graph_opts, sclass
     if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
     if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
     if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
-    if `: length local l1title' local _dash_pending `"`_dash_pending' l1title"'
-    if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
-    if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
-    if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
-    if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
-    if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
-    if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
-    if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
     if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
@@ -1350,8 +1340,6 @@ program define _dash_parse_plot_opts, sclass
     // here, and that test fails.
     local _dash_pending ""
     if `: length local at' local _dash_pending `"`_dash_pending' at"'
-    if `: length local b1title' local _dash_pending `"`_dash_pending' b1title"'
-    if `: length local b2title' local _dash_pending `"`_dash_pending' b2title"'
     if `: length local blabel' local _dash_pending `"`_dash_pending' blabel"'
     if `: length local ciopts' local _dash_pending `"`_dash_pending' ciopts"'
     // As in the graph-level block: build-time options written on a graph.
@@ -1359,8 +1347,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
     if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
     if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
-    if `: length local l1title' local _dash_pending `"`_dash_pending' l1title"'
-    if `: length local l2title' local _dash_pending `"`_dash_pending' l2title"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
@@ -1390,8 +1376,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local alcolor' local _dash_pending `"`_dash_pending' alcolor"'
     if `: length local alwidth' local _dash_pending `"`_dash_pending' alwidth"'
     if `: length local alpattern' local _dash_pending `"`_dash_pending' alpattern"'
-    if `: length local r1title' local _dash_pending `"`_dash_pending' r1title"'
-    if `: length local r2title' local _dash_pending `"`_dash_pending' r2title"'
     if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
     // sort(varlist) arrives in `sort1', -syntax-'s name for it, and is
     // returned in s(sort1); it is named here as sort().  _dash_sort_opt
@@ -1400,10 +1384,6 @@ program define _dash_parse_plot_opts, sclass
     // on tsline and tsrline, taking sort off this list there (WP-29
     // P0.1); on every other type it stays named.
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
-    if `: length local subtitle2' local _dash_pending `"`_dash_pending' subtitle2"'
-    if `: length local t1title' local _dash_pending `"`_dash_pending' t1title"'
-    if `: length local t2title' local _dash_pending `"`_dash_pending' t2title"'
-    if `: length local title2' local _dash_pending `"`_dash_pending' title2"'
     // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
     // region so an end tick label does not run off the edge.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
@@ -6189,6 +6169,8 @@ program define _dash_process_segment, rclass
         // An option given more than once: read as twoway reads it -- the
         // last copy, the copies merged, or refused (_dash_opts_repeats).
         _dash_opts_repeats _dash_parse_plot_opts `ptype' `"`macval(opts_raw)'"'
+        // title2() and subtitle2(), which twoway has not (WP-31 D2).
+        _dash_refuse_title2 g_ `"`macval(opts_raw)'"'
         // recast(), recastas() and type() as twoway reads them (WP-30
         // P1.8b), before connect(), as twoway sets the view type first: a
         // base, range, pc or time-series layer becomes the type it is
@@ -6574,8 +6556,8 @@ program define _dash_process_segment, rclass
             xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
             scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-            t2title b1title b2title l1title l2title r1title r2title title2 ///
-            subtitle2 zlabel ztitle zscale nodraw play replace {
+            t2title b1title b2title l1title l2title r1title r2title ///
+            zlabel ztitle zscale nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local _sg_`gkey' : copy local gval
@@ -7650,8 +7632,8 @@ program define _dash_plot
           xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-          t2title b1title b2title l1title l2title r1title r2title title2 ///
-          subtitle2 zlabel ztitle zscale nodraw play replace {
+          t2title b1title b2title l1title l2title r1title r2title ///
+          zlabel ztitle zscale nodraw play replace {
         local g_`gk' ""
     }
 
@@ -7679,6 +7661,8 @@ program define _dash_plot
         _dash_refuse_jit
         // An option given twice after the comma, read as twoway reads it.
         _dash_opts_repeats _dash_parse_graph_opts - `"`macval(gopts_raw)'"'
+        // title2() and subtitle2(), which twoway has not (WP-31 D2).
+        _dash_refuse_title2 - `"`macval(gopts_raw)'"'
         local _gund_acc : copy local _rp_gund_out
         mata: st_local("_g_names_n", strofreal(st_global("s(name)") != ""))
         foreach gk in title subtitle note caption name saving xtitle ytitle xlabel ///
@@ -7687,8 +7671,8 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-              t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 zlabel ztitle zscale nodraw play replace {
+              t2title b1title b2title l1title l2title r1title r2title ///
+              zlabel ztitle zscale nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
                 // Kept apart and merged in after the segment loop: an option
@@ -7798,8 +7782,8 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-              t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 zlabel ztitle zscale nodraw play replace {
+              t2title b1title b2title l1title l2title r1title r2title ///
+              zlabel ztitle zscale nodraw play replace {
             local _sg_`gk' ""
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
@@ -7909,8 +7893,8 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-              t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 zlabel ztitle zscale nodraw play replace {
+              t2title b1title b2title l1title l2title r1title r2title ///
+              zlabel ztitle zscale nodraw play replace {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
                 if `_gseen_`gk'' {
@@ -7941,8 +7925,8 @@ program define _dash_plot
               xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-              t2title b1title b2title l1title l2title r1title r2title title2 ///
-              subtitle2 zlabel ztitle zscale nodraw play replace {
+              t2title b1title b2title l1title l2title r1title r2title ///
+              zlabel ztitle zscale nodraw play replace {
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
@@ -8351,8 +8335,8 @@ program define _dash_plot
           xtitle2 ylabel2 xlabel2 xmlabel2 ymlabel2 xmtick2 ymtick2 yscale2 xscale2 ytick2 xtick2 yline2 xline2 ///
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
-          t2title b1title b2title l1title l2title r1title r2title title2 ///
-          subtitle2 zlabel ztitle zscale nodraw play replace {
+          t2title b1title b2title l1title l2title r1title r2title ///
+          zlabel ztitle zscale nodraw play replace {
         // text() and ttext() are written as added_text records below
         // (WP-30 P1.10), never as their raw values.
         if inlist("`gk'", "text", "ttext") continue
@@ -9698,6 +9682,35 @@ program define _dash_refuse_jit
         }
     }
     mata: _dash_say("err", "option ", st_local("_rj_w"), " not allowed")
+    exit 198
+end
+
+// ================================================================
+// _dash_refuse_title2 <prefix> `"<options>"'  -- title2() and subtitle2()
+// ================================================================
+// WP-31 D2.  twoway has no title2() or subtitle2(): "option title2() not
+// allowed" and "option subtitle2() not allowed", r(198), after the comma,
+// inside a plot's parentheses and after a || segment's comma alike, and a
+// bare title2 is "option title2 not allowed" (measured 15oct2026,
+// test/fixtures/edge_title_truth.json refuse_*).  dash declared both and
+// named them as unsupported.  They stay declared, so the spelling binds
+// here and is refused rather than reaching the catch-all (a bare title2,
+// which -syntax- cannot bind, is read from s(_unknown)); the check runs
+// after _dash_opts_repeats, because the parser's first pass binds the
+// second copy of title(A) title(B) to TITLE2(), which the repeat merge
+// then folds back into title() -- twoway draws B (merged_title).  <prefix>
+// is - for the graph parser's s(title2), g_ for the plot parser's
+// s(g_title2).  The first such word of <options>, read by value, is named.
+// ================================================================
+program define _dash_refuse_title2
+    version 19
+    mata: _dash_text_args(1, 0, 0)
+    local pre : copy local _dash_a1
+    if "`pre'" == "-" local pre ""
+    mata: st_local("_rt_on", strofreal(st_global("s(`pre'title2)") != "" | st_global("s(`pre'subtitle2)") != "" | ustrregexm(" " + st_global("s(_unknown)") + " ", "[ ,](sub)?title2[ ,]")))
+    if !`_rt_on' exit
+    mata: st_local("_rt_w", ustrregexm(" " + st_local("_dash_txt"), "[ ,]((sub)?title2)[ ]*(\(?)") ? ustrregexs(1) + (ustrregexs(3) == "(" ? "()" : "") : (st_global("s(`pre'title2)") != "" ? "title2()" : "subtitle2()"))
+    mata: _dash_say("err", "option ", st_local("_rt_w"), " not allowed")
     exit 198
 end
 

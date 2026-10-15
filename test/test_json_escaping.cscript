@@ -1987,7 +1987,7 @@ assert `jg_m1' == 1 & `jg_m2' == 0
 // and t1title("'90s t1"), r(109).  The page is held to what this tree's
 // renderer draws as twoway does; a "b" c is the renderer's own text
 // reader's to draw (test_textbox_multiline.py) and is held here to what is
-// stored.  t1title() .. r2title() are stored and named, not drawn.
+// stored.  t1title() .. r2title() are stored and drawn (WP-31 D2).
 capture dash clear
 capture noisily dash scatter mpg weight, ytitle("line 1" "line 2") xtitle(`"a "b" c"') name(jg46i)
 local jg_t1 = _rc

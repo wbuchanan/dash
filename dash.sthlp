@@ -4481,6 +4481,27 @@ show it or {cmd:csv} is given, and always in a served app (see
 {cmd:dash serve} refuse a {cmd:hover()} variable no longer in memory with
 r(111), as they refuse a dropped plotted variable.
 
+{marker edge_titles}{...}
+{pstd}
+{ul:Edge titles.}  {opt t1title()}, {opt t2title()}, {opt b1title()},
+{opt b2title()}, {opt l1title()}, {opt l2title()}, {opt r1title()} and
+{opt r2title()} ({cmd:t()}, {cmd:b()}, {cmd:l()} and {cmd:r()} for the
+{cmd:1} titles) are drawn where {cmd:twoway} draws them, in both render
+modes: the {cmd:t} titles above the plot region, the {cmd:b} titles
+below it, the {cmd:l} titles to its left and the {cmd:r} titles to its
+right, turned on their side.  The {cmd:1} title is nearest the plot and
+the {cmd:2} title outside it, both outside every axis on that side and
+inside the legend, the note, the caption, the subtitle and the title
+({cmd:twoway}'s rings 1 and 2).  Each is the scheme's
+{cmd:textboxstyle t1title} ... {cmd:r2title} box -- under {cmd:s2color}
+{cmd:subheading} for the {cmd:1} titles and {cmd:body} for the {cmd:2}
+titles, except {cmd:b2title()}, which {cmd:twoway} draws in
+{cmd:b1title()}'s box, as {cmd:dash} does.  {cmd:size()}, {cmd:color()},
+{cmd:prefix} and {cmd:suffix} are honoured as on {cmd:title()};
+{cmd:position()}, {cmd:ring()}, {cmd:span}, {cmd:orientation()} and the
+other text-box sub-options are named in the note.  On a {cmd:by()} graph
+each panel carries them, as {cmd:twoway} draws them.
+
 
 {marker colorvar}
 {title:Mapping a Variable to Colour}
@@ -5298,7 +5319,7 @@ Colours may be Stata colour names or {cmd:#rrggbb}.
 {pstd}
 {ul:What the shipped files are.}  Each is a translation in {cmd:dash}'s
 own format, not a copy of StataCorp's file and not a drop-in Stata
-scheme: 290 to 360 directives (more for the monochrome schemes, whose
+scheme: 300 to 370 directives (more for the monochrome schemes, whose
 chains declare connecting-line and line-plot keys, a symbol cycle and
 {cmd:color plabel}; every file carries {cmd:gsize plabel}) where Stata's
 {cmd:scheme-s2color.scheme}
@@ -5382,23 +5403,13 @@ command copy-pasted from a do-file always runs -- and every one that is
 supplied is named in that command's note, so nothing is dropped in silence:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) t1title("hi")}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() t1title())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) scale(1.2)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() scale())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado}, and this list is
 checked against them: {cmd:test/test_help_conformance.py} fails if the two
 disagree in either direction.
-
-{phang2}{ul:Alternative titles.}
-    {opt t1title(string)}, {opt t2title(string)}, {opt b1title(string)},
-    {opt b2title(string)}, {opt l1title(string)}, {opt l2title(string)},
-    {opt r1title(string)}, {opt r2title(string)} -- {cmd:twoway}'s titles
-    above, below and beside the plot region; {cmd:dash} draws
-    {cmd:title()}, {cmd:subtitle()}, {cmd:note()}, {cmd:caption()} and the
-    axis titles only.  {opt title2(string)} and
-    {opt subtitle2(string)} are not {cmd:twoway} options at all:
-    {cmd:twoway} refuses them, r(198), and {cmd:dash} names them.
 
 {phang2}{ul:Sizing for graph combine, and scale().}
     {opt fxsize(#)} and {opt fysize(#)} make a graph use only that
@@ -5516,6 +5527,14 @@ outside {cmd:graph twoway}, such as {cmd:histogram}; and {cmd:lockaspect},
 {cmd:zoom()} and {cmd:ddensity} are options of no Stata graph command.
 {cmd:bargap()} is an option of {cmd:graph bar}: {cmd:twoway bar} accepts it
 and draws nothing different, and {cmd:dash} names it.
+
+{pstd}
+{opt title2(string)} and {opt subtitle2(string)} are not {cmd:twoway}
+options: {cmd:twoway} refuses them, "option title2() not allowed", r(198),
+and so does {cmd:dash}, after the comma, inside a plot's parentheses and
+after a {cmd:||} segment's comma alike.  A second {cmd:title()} is not one
+of them: {cmd:title("A") title("B")} draws {cmd:B}, the last copy, as
+{cmd:twoway} draws it.
 
 {pstd}
 Two further notes on the note itself.  It names option {it:names}, never the

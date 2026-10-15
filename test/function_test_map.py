@@ -741,6 +741,7 @@ FUNCTIONS = {
  '_dash_subopt_name': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',
  '_dash_tab_panels': 'test/test_server.py::test_compute_kpi_mean_and_dcount',
  '_dash_text_annotations': 'test/test_axis_options.py::TestTitleTextFidelity::test_note_and_caption_do_not_overlap',
+ '_dash_edge_titles': 'test/test_edge_titles.py::TestEdgeTitlesAreDrawn::test_each_side_and_ring',
  '_dash_textbox': 'test/test_varlist_expansion.py::test_tsline_without_x_variable_reports_tsset',
  '_dash_textbox_or_default': 'test/test_textbox_no_text.py::TestSubOptionsKeepTheDefault::test_suffix_prefix_alone_and_empty_default',
  '_dash_unquoted': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_unquoted',

@@ -2,7 +2,7 @@
   "_meta": {
     "generated_by": "scripts/extract_scheme_truth.py",
     "do_not_hand_edit": "This file is GENERATED ground truth extracted from Stata's own scheme and style files. Regenerate it by re-running scripts/extract_scheme_truth.py; do not hand-edit.",
-    "generated_utc": "2026-10-14T22:58:44Z",
+    "generated_utc": "2026-10-15T09:00:10Z",
     "stata_version": "StataNow 19.5 (MP), born 12 Aug 2026",
     "scheme_dir": "/Applications/StataNow/ado/base/s",
     "style_dir": "/Applications/StataNow/ado/base/style",
@@ -11429,6 +11429,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -12344,6 +12352,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -15074,6 +15090,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -17519,6 +17591,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -18434,6 +18514,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -21164,6 +21252,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -23609,6 +23753,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -24524,6 +24676,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -27254,6 +27414,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -29777,6 +29993,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -30706,6 +30930,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -33423,6 +33655,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -36043,6 +36331,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -36988,6 +37284,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -39718,6 +40022,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -42450,6 +42810,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -43392,6 +43760,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -46122,6 +46498,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -48775,6 +49207,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -49687,6 +50127,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -52417,6 +52865,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -54938,6 +55442,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -55880,6 +56392,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -58610,6 +59130,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -61264,6 +61840,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -62176,6 +62760,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -64906,6 +65498,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -67350,6 +67998,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -68262,6 +68918,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -70995,6 +71659,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -73517,6 +74237,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -74443,6 +75171,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -77160,6 +77896,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -79703,6 +80495,14 @@
     "note_text_color": "#ffffff",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -80615,6 +81415,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -83348,6 +84156,62 @@
         "line": 27
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -85796,6 +86660,14 @@
     "note_text_color": "#ffffff",
     "note_box_drawn": true,
     "note_box_fill_color": "#7b92a8",
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -86725,6 +87597,14 @@
       "note_text_size": "gsize reverse_big",
       "note_text_color": "color reverse_big_text",
       "note_box_fill_color": "color reverse_big",
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -89495,6 +90375,62 @@
         "file": "scheme-economist.scheme",
         "line": 128
       },
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -92136,6 +93072,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -93078,6 +94022,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -95808,6 +96760,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -98540,6 +99548,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -99482,6 +100498,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -102212,6 +103236,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -104945,6 +106025,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -105880,6 +106968,14 @@
       "note_text_size": "gsize key_label",
       "note_text_color": "color key_label",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -108597,6 +109693,62 @@
         "line": 32
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -111203,6 +112355,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -112159,6 +113319,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -114873,6 +116041,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -117625,6 +118849,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -118537,6 +119769,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -121267,6 +122507,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -123711,6 +125007,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -124626,6 +125930,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -127356,6 +128668,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -129802,6 +131170,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -130717,6 +132093,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -133447,6 +134831,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -135891,6 +137331,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -136803,6 +138251,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -139533,6 +140989,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -141978,6 +143490,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -142893,6 +144413,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -145623,6 +147151,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -148069,6 +149653,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -148984,6 +150576,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -151714,6 +153314,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -154159,6 +155815,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -155074,6 +156738,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -157804,6 +159476,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -160250,6 +161978,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -161165,6 +162901,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -163895,6 +165639,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",
@@ -166342,6 +168142,14 @@
     "note_text_color": "#000000",
     "note_box_drawn": false,
     "note_box_fill_color": null,
+    "edge_textbox_t1title": "subheading",
+    "edge_textbox_t2title": "body",
+    "edge_textbox_b1title": "subheading",
+    "edge_textbox_b2title": "body",
+    "edge_textbox_l1title": "subheading",
+    "edge_textbox_l2title": "body",
+    "edge_textbox_r1title": "subheading",
+    "edge_textbox_r2title": "body",
     "tick_angle_x": {
       "name": "horizontal",
       "degrees": 0.0
@@ -167257,6 +169065,14 @@
       "note_text_size": "gsize small_body",
       "note_text_color": "color small_body",
       "note_box_fill_color": null,
+      "edge_textbox_t1title": "textboxstyle t1title",
+      "edge_textbox_t2title": "textboxstyle t2title",
+      "edge_textbox_b1title": "textboxstyle b1title",
+      "edge_textbox_b2title": "textboxstyle b2title",
+      "edge_textbox_l1title": "textboxstyle l1title",
+      "edge_textbox_l2title": "textboxstyle l2title",
+      "edge_textbox_r1title": "textboxstyle r1title",
+      "edge_textbox_r2title": "textboxstyle r2title",
       "tick_angle_x": "anglestyle horizontal_tick",
       "tick_angle_y": "anglestyle vertical_tick",
       "major_grid_pattern": "linepattern major_grid",
@@ -169987,6 +171803,62 @@
         "line": 315
       },
       "note_box_fill_color": null,
+      "edge_textbox_t1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1331
+      },
+      "edge_textbox_t2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle t2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1332
+      },
+      "edge_textbox_b1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1333
+      },
+      "edge_textbox_b2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle b2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1334
+      },
+      "edge_textbox_l1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1337
+      },
+      "edge_textbox_l2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle l2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1338
+      },
+      "edge_textbox_r1title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r1title",
+        "value": "subheading",
+        "file": "scheme-s2color.scheme",
+        "line": 1335
+      },
+      "edge_textbox_r2title": {
+        "kind": "transcribed",
+        "directive": "textboxstyle r2title",
+        "value": "body",
+        "file": "scheme-s2color.scheme",
+        "line": 1336
+      },
       "tick_angle_x": {
         "kind": "transcribed",
         "directive": "anglestyle horizontal_tick",

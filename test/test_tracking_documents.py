@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "D2": "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them",
     "B4c": "contour and contourline are refused by name (the JavaScript twin)",
     "D3": "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only",
     "D13": "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label",

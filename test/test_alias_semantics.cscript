@@ -32,7 +32,8 @@
 *!          t(), b(), l() and r(), lands where twoway puts it at plot level,
 *!          inside a plot's parentheses, after them and after ||; and a
 *!          third spelling on one side is a second copy of *1title(), kept
-*!          as twoway keeps it and named in the note, never dropped.
+*!          as twoway keeps it, never dropped; drawn, so never named in the
+*!          note (flipped, WP-31 D2).
 *!
 *! No dashboard is rendered: every probe registers with name(), so the spec
 *! JSON can be read back out of the registry global.
@@ -349,7 +350,10 @@ foreach s in t b l r {
                 local named = r(named)
                 mata: st_local("v_key", _zas_val("zqas", "`key'"))
                 mata: st_local("v_sib", _zas_val("zqas", "`sib'"))
-                if `drc' != 0 | "`v_key'" != "ZQV" | "`v_sib'" != "<none>" | `named' != 1 {
+                // Flipped (WP-31 D2): `named' != 1 -- the note naming
+                // the side title -- was wrong because dash draws it now,
+                // as twoway does (edge_title_truth.json): never named.
+                if `drc' != 0 | "`v_key'" != "ZQV" | "`v_sib'" != "<none>" | `named' != 0 {
                     display as error "AS-06 FAIL `lev' `sp'(): rc=`drc' `key'=[`v_key'] `sib'=[`v_sib'] note names `key'()=`named'"
                     local bad06 = `bad06' + 1
                 }
@@ -382,7 +386,8 @@ foreach s in t b l r {
         local named = r(named)
         mata: st_local("v_1", _zas_val("zqas", "`s'1title"))
         mata: st_local("v_2", _zas_val("zqas", "`s'2title"))
-        if `drc' != 0 | `named' != 1 | "`v_1'" != "ZQV" | "`v_2'" != "ZQB" {
+        // Flipped (WP-31 D2): drawn now, so not named.
+        if `drc' != 0 | `named' != 0 | "`v_1'" != "ZQV" | "`v_2'" != "ZQB" {
             display as error "AS-06b FAIL `lev' `o': rc=`drc', `s'1title=[`v_1'] `s'2title=[`v_2'], the note names `s'1title()=`named'"
             local bad06 = `bad06' + 1
         }
@@ -394,7 +399,7 @@ if `bad06' {
     local nfail = `nfail' + 1
     local faillist "`faillist' AS-06"
 }
-else display as text "AS-06 PASS: `n06' side-title spellings land where twoway puts them at every level, and a third one is named"
+else display as text "AS-06 PASS: `n06' side-title spellings land where twoway puts them at every level, and a third one is kept as the 1 title"
 
 // ----------------------------------------------------------------
 // Summary

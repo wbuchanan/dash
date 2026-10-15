@@ -5958,6 +5958,209 @@ if inlist("`only'", "", "S26") & `: list posof "S26" in w31_run' {
 }
 * ==== end S26 ====
 
+// S27 (WP-31 D2) helpers: draw one command in twoway (SVG export) and in
+// dash (both modes), and describe the edge titles each draws for one case
+// into globals u27_tw (twoway), u27_s (saved) and u27_v (served).
+python:
+def _u27_svg(path):
+    import re
+    with open(path, encoding="utf-8") as fh:
+        src = fh.read()
+    out = []
+    for attrs, body in re.findall(r"<text\b([^>]*)>([^<]*)</text>", src):
+        body = body.replace(" ", " ").strip()
+        if not body or re.fullmatch(r"[-0-9.,]+", body):
+            continue
+        a = dict(re.findall(r'([a-z-]+)="([^"]*)"', attrs))
+        fs = re.search(r"font-size:([0-9.]+)px", a.get("style", ""))
+        rot = re.search(r"rotate\((-?[0-9.]+)", a.get("transform", ""))
+        out.append((body, float(a["x"]), float(a["y"]),
+                    float(fs.group(1)) if fs else 0.0,
+                    int(float(rot.group(1))) if rot else 0))
+    return out
+
+
+_U27_LABS = ("T1", "T2", "B1", "B2", "L1", "L2", "R1", "R2")
+
+
+def _u27_rel(sz):
+    def rel(a, b):
+        if a is None or b is None:
+            return "?"
+        return "=" if abs(a - b) <= 0.01 * max(a, b) else (">" if a > b else "<")
+    return " ".join("%s%s%s" % (p, rel(sz.get(p), sz.get(q)), q)
+                    for p, q in (("T1", "T2"), ("B1", "B2"), ("L1", "L2"),
+                                 ("R1", "R2"), ("T1", "B2")))
+
+
+def _u27_tw(path, case):
+    t = _u27_svg(path)
+    pos = {b: (x, y, s, r) for b, x, y, s, r in t}
+    if case == "by":
+        return " ".join("%s:%d" % (k, sum(1 for b, *_ in t if b == k))
+                        for k in ("T1", "B1", "L1", "R1"))
+    if case == "vert":
+        return " ".join("%s:%d" % (k, pos[k][3]) for k in _U27_LABS)
+    if case == "sizes":
+        return _u27_rel({k: pos[k][2] for k in _U27_LABS})
+    cx, cy = pos["T1"][0], pos["L1"][1]
+    if case == "sides":
+        side = {}
+        for k in _U27_LABS:
+            x, y = pos[k][0], pos[k][1]
+            side[k] = (("above" if y < cy else "below") if abs(x - cx) < 1
+                       else ("left" if x < cx else "right"))
+        out = []
+        for k in _U27_LABS:
+            mates = [j for j in _U27_LABS if side[j] == side[k]]
+            d = {j: abs(pos[j][0] - cx) + abs(pos[j][1] - cy) for j in mates}
+            out.append("%s:%s:%d" % (k, side[k],
+                                     sorted(mates, key=d.get).index(k) + 1))
+        return " ".join(out)
+    # order: above nearest the plot first (largest y), below smallest y first
+    legend = {"Mileage (mpg)", "Trunk space (cu. ft.)"}
+    skip = {"T", "Weight (lbs.)"} | set(k for k in _U27_LABS if k[0] in "LR")
+    top = pos["L1"][1]
+    above = sorted([e for e in t if e[2] < top and e[0] not in skip],
+                   key=lambda e: -e[2])
+    below = sorted([e for e in t if e[2] > top and e[0] not in skip],
+                   key=lambda e: e[2])
+
+    def names(es):
+        out = []
+        for e in es:
+            n = "legend" if e[0] in legend else e[0]
+            if not out or out[-1] != n:
+                out.append(n)
+        return " ".join(out)
+    return "above: %s | below: %s" % (names(above), names(below))
+
+
+def _u27_dash(figs, case):
+    from bokeh.models import Axis, Legend, Title
+    edges = []
+    for f in figs:
+        for side in ("above", "below", "left", "right"):
+            k = 0
+            for m in getattr(f, side):
+                tags = list(getattr(m, "tags", None) or [])
+                if isinstance(m, Title) and "dash_edge_title" in tags:
+                    k += 1
+                    edges.append((m.text, side, k,
+                                  float(str(m.text_font_size).rstrip("ptx"))))
+    if case == "by":
+        return " ".join("%s:%d" % (k, sum(1 for e in edges if e[0] == k))
+                        for k in ("T1", "B1", "L1", "R1"))
+    e = {x[0]: x for x in edges}
+    if case == "vert":
+        return " ".join("%s:%d" % (k, -90 if e[k][1] in ("left", "right")
+                                   else 0) for k in _U27_LABS if k in e)
+    if case == "sizes":
+        return _u27_rel({k: e[k][3] for k in e})
+    if case == "sides":
+        return " ".join("%s:%s:%d" % (k, e[k][1], e[k][2])
+                        for k in _U27_LABS if k in e)
+    f = figs[0]
+
+    def names(side):
+        out = []
+        for m in getattr(f, side):
+            if isinstance(m, Axis) or "dash_stale_cue" in list(
+                    getattr(m, "tags", None) or []):
+                continue
+            n = ("legend" if isinstance(m, Legend) else
+                 (m.text if isinstance(m, Title) else type(m).__name__))
+            out.append(n)
+        return " ".join(out)
+    return "above: %s | below: %s" % (names("above"), names("below"))
+
+
+def _u27_check(sp, dp, app, svg, case):
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    Macro.setGlobal("u27_tw", _u27_tw(svg, case))
+    for figs, sfx in ((a, "s"), (b, "v")):
+        Macro.setGlobal("u27_" + sfx, _u27_dash(figs, case))
+end
+
+capture program drop _u27_reg
+program define _u27_reg
+    // _u27_reg <dir> <k> <case> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    gettoken case 0 : 0
+    quietly twoway `0' name(u27t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    graph drop u27t
+    dash clear
+    capture quietly dash `0' name(zu27`k')
+    if _rc {
+        global u27_s "rc `=_rc'"
+        global u27_v "rc `=_rc'"
+        global u27_tw "(twoway drawn)"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u27_m; _u27_m._u27_check("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", "`case'")
+end
+
+* ==== S27 D2: Edge titles ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S27") & `: list posof "S27" in w31_run' {
+    display as text "S27 start " c(current_date) " " c(current_time)
+    local u27d "`w31_work'/s27"
+    capture mkdir "`u27d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    local u27all `"(scatter mpg weight) (scatter trunk weight), t1title("T1") t2title("T2") b1title("B1") b2title("B2") l1title("L1") l2title("L2") r1title("R1") r2title("R2")"'
+
+    // U27-1: each of the eight on twoway's side, ring 1 nearest the plot.
+    _u27_reg "`u27d'" 1 sides `u27all'
+    foreach m in s v {
+        _w31_expect U27-1 `"("${u27_`m'}" == "${u27_tw}")"' "`m': dash ${u27_`m'}; twoway ${u27_tw}"
+    }
+    _w31_done U27-1 "the eight edge titles on twoway's sides and rings, saved and served: ${u27_tw}"
+
+    // U27-2: the rings outward from the plot, above and below: the edge
+    // titles inside the legend, the note, the caption and the subtitle.
+    _u27_reg "`u27d'" 2 order `u27all' note("N") caption("C") subtitle("S") title("T")
+    foreach m in s v {
+        _w31_expect U27-2 `"("${u27_`m'}" == "${u27_tw}")"' "`m': dash ${u27_`m'}; twoway ${u27_tw}"
+    }
+    _w31_done U27-2 "ring order ${u27_tw}, saved and served"
+
+    // U27-3: l and r titles turned on their side, t and b level.
+    _u27_reg "`u27d'" 3 vert `u27all'
+    foreach m in s v {
+        _w31_expect U27-3 `"("${u27_`m'}" == "${u27_tw}")"' "`m': dash ${u27_`m'}; twoway ${u27_tw}"
+    }
+    _w31_done U27-3 "l and r vertical, t and b level: ${u27_tw}"
+
+    // U27-4: the 1 titles larger than the 2 titles, except b2title, which
+    // twoway draws in b1title's box.
+    _u27_reg "`u27d'" 4 sizes `u27all'
+    foreach m in s v {
+        _w31_expect U27-4 `"("${u27_`m'}" == "${u27_tw}")"' "`m': dash ${u27_`m'}; twoway ${u27_tw}"
+    }
+    _w31_done U27-4 "text sizes as twoway's: ${u27_tw}"
+
+    // U27-5: by(): the edge titles on every panel.
+    _u27_reg "`u27d'" 5 by scatter mpg weight, by(foreign) t1title("T1") b1title("B1") l1title("L1") r1title("R1")
+    foreach m in s v {
+        _w31_expect U27-5 `"("${u27_`m'}" == "${u27_tw}")"' "`m': dash ${u27_`m'}; twoway ${u27_tw}"
+    }
+    _w31_done U27-5 "by(): ${u27_tw}, saved and served"
+
+    macro drop u27_tw u27_s u27_v
+    capture graph drop _all
+    dash clear
+    display as text "S27 end " c(current_date) " " c(current_time)
+}
+* ==== end S27 ====
+
 // S28 helpers (WP-31 F1g).  _u28_move: the saved page's fpfit or fpfitci
 // after one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- the line's columns (x_fp,

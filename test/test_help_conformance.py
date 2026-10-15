@@ -589,9 +589,10 @@ class TestTheParsersFoundSomething:
         # labels" goes (xmtick() .. tmtick()) and four synopt rows define
         # ymtick2() ymlabel2() xmtick2() xmlabel2().
         # 219 -> 221: B4b the Unsupported entry "Contour options" names
-        # heatmap and outlines.
-        assert len(found) == 221, (
-            f"{len(found)} options parsed out of dash.sthlp, 221 measured "
+        # heatmap and outlines; 221 -> 211: D2 the Unsupported entry
+        # "Alternative titles" goes.
+        assert len(found) == 211, (
+            f"{len(found)} options parsed out of dash.sthlp, 211 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -699,8 +700,9 @@ class TestTheParsersFoundSomething:
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn
-        # 33 -> 35: B4b heatmap and outlines named on contour
-        assert len(_ignored_options()) == 35
+        # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25: D2
+        # the eight edge titles drawn, title2() and subtitle2() refused
+        assert len(_ignored_options()) == 25
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -724,8 +726,9 @@ class TestTheParsersFoundSomething:
         # 40 -> 39: B5b dstyle() and dlstyle() leave it with their entry,
         # dlalign() joins the marker outline entry
         # 39 -> 33: D1 the "Minor ticks and minor labels" entry goes
-        # 33 -> 35: B4b the "Contour options" entry, heatmap and outlines
-        assert len(_unsupported_section()) == 35
+        # 33 -> 35: B4b the "Contour options" entry, heatmap and outlines;
+        # 35 -> 25: D2 the "Alternative titles" entry goes
+        assert len(_unsupported_section()) == 25
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -795,9 +798,10 @@ class TestTheParsersFoundSomething:
         # 428 -> 431: D1 four synopt rows ymtick2() .. xmlabel2(), less
         # the Unsupported entry "Minor ticks and minor labels".
         # 431 -> 433: B4b the Plot types table's "surface" row and the
-        # Unsupported entry "Contour options".
-        assert len(defs) == 433, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 433 "
+        # Unsupported entry "Contour options"; 433 -> 432: D2 the
+        # Unsupported entry "Alternative titles" goes.
+        assert len(defs) == 432, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 432 "
             f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"
@@ -917,9 +921,19 @@ class TestEveryDashOnlyOptionIsDocumented:
         which is how mlg() went unmentioned while dash honoured it, and how
         marker() passed on the word "marker" in SMCL's own {marker} tags."""
         documented = set(_help_options()) | _defined_names()
+        # WP-31 D2: title2() and subtitle2() are declared only so that dash
+        # refuses them in twoway's words, r(198); no command runs with
+        # them, so there is nothing to define -- the Unsupported section's
+        # prose says they are refused.
+        refused = {"title2", "subtitle2"}
+        h = _help_text()
+        sec = h[h.index("{marker unsupported}"):h.index("{marker dependencies}")]
+        for name in refused:
+            assert "{opt %s(string)}" % name in sec and "r(198)" in sec, name
         undocumented = sorted(name for name in _ado_declarations()
                               if not _twoway_spelling(name)
-                              and name not in documented)
+                              and name not in documented
+                              and name not in refused)
         assert not undocumented, (
             f"{len(undocumented)} options exist only in dash -- twoway has no "
             f"such option, so the help's redirect to the twoway manual cannot "

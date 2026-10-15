@@ -4585,7 +4585,9 @@ foreach a in "tm(2001m1)" "ts(range(1999m1))" {
 }
 _zta_cmp `"tsline y, t("x")"'
 _ztp_logged "$zta_log" "t1title()"
-if `_zta_trc' | `_zta_drc' | !r(found) local bad `"`bad' [t(): rc `_zta_trc'/`_zta_drc' named `=r(found)']"'
+// Flipped (WP-31 D2): !r(found) -- t() named as t1title() in the note --
+// was wrong because dash draws t1title() now, as twoway does: not named.
+if `_zta_trc' | `_zta_drc' | r(found) local bad `"`bad' [t(): rc `_zta_trc'/`_zta_drc' named `=r(found)']"'
 if `"`bad'"' != "" {
     local nfail = `nfail' + 1
     local faillist "`faillist' TA-03"

@@ -416,7 +416,7 @@ and now matches Stata.
 
 - mband and mspline on a saved page after a filter move: the build's knots (marked) -> the cross medians and spline of the kept rows (WP-31, F1f)
 
-<!-- WP-31 D2 -->
+- `dash scatter mpg weight, t1title("T1")`: not drawn, and named as unsupported -> drawn above the plot region in ring 1, as twoway draws it; `t2title()`, `b1title()`, `b2title()`, `l1title()`, `l2title()`, `r1title()` and `r2title()` likewise on their sides, the l and r titles turned on their side, inside the legend, note and caption, in the scheme's subheading and body boxes (WP-31, D2)
 
 - fpfit and fpfitci on a saved page after a filter move: the build's fit (marked) -> fracpoly's degree-2 fit on the kept rows and its stdp band (WP-31, F1g)
 
@@ -891,7 +891,7 @@ and now matches Stata.
 
 - mlalign() is declared with twoway's minimum, mlal(): mlal(inside) was named in the note as mlal() and is now named as mlalign() until it is drawn; mla() and ml() stay mlabel(), as twoway binds them (measured: twoway scatter mpg weight, mla(center) says "variable center not found", r(111), as dash does). (WP-31, A4)
 
-<!-- WP-31 D2 -->
+- title2() and subtitle2() are refused, "option title2() not allowed" and "option subtitle2() not allowed", r(198), as twoway refuses them, after the comma, inside a plot's parentheses and after a || segment's comma; dash named them as unsupported and drew the graph. (WP-31, D2)
 
 <!-- WP-31 D6 -->
 

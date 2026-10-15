@@ -86,8 +86,6 @@ PLOT_VALUES = {
     "alwidth": ("thick", "vthin", "scatter"),
     "alpattern": ("dash", "dot", "scatter"),
     "at": ("mpg", "weight", "bar"),
-    "b1title": ("b1", "bA", "scatter"),
-    "b2title": ("b2", "bB", "scatter"),
     # Flipped (WP-31 C3): ("20", "55", "kdensity") was wrong because twoway
     # refuses bands() on kdensity, r(198) "option bands() not allowed", and
     # dash now refuses it there (test_option_applicability.py).
@@ -108,8 +106,6 @@ PLOT_VALUES = {
     "link": ("g1", "g2", "scatter"),
     "jitterseed": ("7", "99", "scatter"),
     "kernel": ("epan2", "gaussian", "kdensity"),
-    "l1title": ("l1", "lA", "scatter"),
-    "l2title": ("l2", "lB", "scatter"),
     "level": ("80", "99", "lfitci"),
     "lineopts": ("lcolor(red)", "lcolor(blue)", "kdensity"),
     # WP-22 TR-22.3: twoway options that used to land in the note as
@@ -133,8 +129,6 @@ PLOT_VALUES = {
     "nodraw": ("nodraw", "", "scatter"),
     "percent": ("percent", "frequency", "histogram"),
     "play": ("x", "y", "scatter"),
-    "r1title": ("r1", "rA", "scatter"),
-    "r2title": ("r2", "rB", "scatter"),
     "range": ("10 30", "12 28", "kdensity"),
     "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
@@ -146,11 +140,12 @@ PLOT_VALUES = {
     # is still named and draws nothing.
     "sort": ("sort", "", "scatter"),
     "start": ("8", "11", "histogram"),
-    "subtitle2": ("S2", "SS", "scatter"),
-    "t1title": ("t1", "tA", "scatter"),
-    "t2title": ("t2", "tB", "scatter"),
-    "title2": ("T2", "TT", "scatter"),
     "width": ("2", "4", "histogram"),
+    # Flipped (WP-31 D2): b1title .. t2title ("b1", "bA", "scatter") and
+    # the rest -- named and inert -- were wrong because twoway draws the
+    # eight edge titles (edge_title_truth.json); they are in LIVE_VALUES.
+    # title2 ("T2", "TT") and subtitle2 ("S2", "SS") were wrong because
+    # twoway refuses them, r(198), and dash now does (REFUSED).
     # Flipped (WP-31 D1): xmlabel, xmtick, tmlabel, tmtick, ymlabel and
     # ymtick left this table for LIVE_VALUES and ALIASES: minor ticks and
     # labels are drawn.
@@ -299,9 +294,10 @@ class TestTheListIsCoveredAndHonest:
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
         # 39 -> 33 and 24 -> 18: D1 xmlabel xmtick tmlabel tmtick ymlabel
         # ymtick drawn (minor ticks and labels)
-        # 33 -> 35: B4b heatmap and outlines named on contour
-        assert len(_plot_pending()) == 35, sorted(_plot_pending())
-        assert len(_graph_pending()) == 18, sorted(_graph_pending())
+        # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25 and
+        # 18 -> 8: D2 edge titles drawn, title2/subtitle2 refused
+        assert len(_plot_pending()) == 25, sorted(_plot_pending())
+        assert len(_graph_pending()) == 8, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -465,6 +461,16 @@ ALIASES = {"t", "b", "l", "r", "bins", "bw", "mlg", "cv", "colv", "pbgc",
            "colorformissing"}
 
 #: Options that decide where a command goes rather than what it draws.
+#: Declared so the spelling binds, and refused as twoway refuses it: no
+#: page is ever written with them (WP-31 D2; test_option_validation.cscript
+#: U27-6 .. U27-8, edge_title_truth.json refuse_*).
+REFUSED = {
+    "title2": "refused r(198), \"option title2() not allowed\", as twoway "
+              "refuses it (WP-31 D2)",
+    "subtitle2": "refused r(198), \"option subtitle2() not allowed\", as "
+                 "twoway refuses it (WP-31 D2)",
+}
+
 NOT_IN_FILE = {
     "name": "routes the spec to the registry instead of the renderer",
     "saving": "chooses the output path on the immediate route; on a named "
@@ -741,6 +747,15 @@ LIVE_VALUES = {
                                     {"graphregion": "color(none)"})),
     "by": ({}, {}, "scatter", ("by", "foreign", "rep78")),
     "caption": ({}, {}, "scatter", ("caption", "A", "B")),
+    # WP-31 D2: the eight edge titles, drawn (test_edge_titles.py).
+    "b1title": ({}, {}, "scatter", ("b1title", "A", "B")),
+    "b2title": ({}, {}, "scatter", ("b2title", "A", "B")),
+    "l1title": ({}, {}, "scatter", ("l1title", "A", "B")),
+    "l2title": ({}, {}, "scatter", ("l2title", "A", "B")),
+    "r1title": ({}, {}, "scatter", ("r1title", "A", "B")),
+    "r2title": ({}, {}, "scatter", ("r2title", "A", "B")),
+    "t1title": ({}, {}, "scatter", ("t1title", "A", "B")),
+    "t2title": ({}, {}, "scatter", ("t2title", "A", "B")),
     "graphregion": ({}, {}, "scatter", ("graphregion", "color(red)",
                                          "color(blue)")),
     "hover": ({}, {}, "scatter", ("hover", "price", "rep78")),
@@ -842,12 +857,12 @@ def _live_pair(opt):
 
 def _plot_live():
     return sorted(set(_declared_plot()) - set(_plot_pending()) - ALIASES
-                  - set(NOT_IN_FILE) - set(_declared_graph()))
+                  - set(NOT_IN_FILE) - set(REFUSED) - set(_declared_graph()))
 
 
 def _graph_live():
     return sorted(set(_declared_graph()) - set(_graph_pending()) - ALIASES
-                  - set(NOT_IN_FILE))
+                  - set(NOT_IN_FILE) - set(REFUSED))
 
 
 class TestEveryDeclaredOptionIsClassified:
@@ -897,7 +912,8 @@ class TestEveryDeclaredOptionIsClassified:
         declared = set(_declared_plot()) | set(_declared_graph())
         unclassified = sorted(declared - set(_plot_pending())
                               - set(_graph_pending()) - ALIASES
-                              - set(NOT_IN_FILE) - set(LIVE_VALUES))
+                              - set(NOT_IN_FILE) - set(LIVE_VALUES)
+                              - set(REFUSED))
         assert not unclassified, (
             f"dash.ado declares {unclassified} and nothing here says whether "
             f"each is honoured (add LIVE_VALUES) or reported (add it to a "

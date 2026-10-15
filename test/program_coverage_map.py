@@ -117,6 +117,9 @@ COVERAGE = {
         # e2e: jit() and the other short jitter() spellings refused as
         # twoway refuses them (WP-31 A3d).
         "_dash_refuse_jit": ("test_abbreviations.cscript:U15-06",),
+        # e2e: title2() and subtitle2() refused as twoway refuses them
+        # (WP-31 D2).
+        "_dash_refuse_title2": ("test_option_validation.cscript:U27-6",),
         # e2e: colorvar() dropped, unchecked, where twoway drops it.
         "_dash_cv_drop": ("test_help_claims_7.cscript:HC7-02",
                           "test_wp31_truth.cscript:U15-05"),

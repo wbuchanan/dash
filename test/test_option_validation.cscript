@@ -353,6 +353,13 @@
 *! Minor ticks (WP-31 D1; test/fixtures/minor_tick_truth.json m_refusal):
 *!   U24-5  xlabel(##5): twoway's rc 0 and its note "##5 ignored, only
 *!          allowed for minor ticks", printed by dash when it draws
+*! Edge titles (WP-31 D2; test/fixtures/edge_title_truth.json refuse_*):
+*!   U27-6  title2("x") and a bare title2: twoway's rc and line
+*!   U27-7  subtitle2("x"): twoway's rc and line
+*!   U27-8  title2() inside a plot's parentheses and after a || segment's
+*!          comma: twoway's rc and line
+*!   U27-9  title("A") title("B"): rc 0 in both, and dash keeps the last
+*!          copy, B, as twoway draws it (merged_title)
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -1964,6 +1971,51 @@ capture erase "`u24log'"
 capture erase "`u24html'"
 capture dash clear
 _u05_judge U24-5 `"`bad'"' "xlabel(##5) taken as twoway takes it, rc 0, with twoway's note when drawn"
+
+// U27-6 .. U27-8 (WP-31 D2): title2() and subtitle2(), which twoway has
+// not, refused with twoway's rc and line wherever they are written.
+foreach u in 6 7 8 {
+    local bad ""
+    if `u' == 6 local cases `"`"scatter mpg weight, title2("x")"' `"scatter mpg weight, title2"'"'
+    if `u' == 7 local cases `"`"scatter mpg weight, subtitle2("x")"'"'
+    if `u' == 8 local cases `"`"(scatter mpg weight, title2(x)),"' `"scatter mpg weight || scatter price weight, title2("x")"'"'
+    foreach cmd of local cases {
+        _u07_rc `"`macval(cmd)'"' "not allowed"
+        if r(trc) != 198 | r(drc) != 198 | strtrim(`"`r(tline)'"') != strtrim(`"`r(dline)'"') | `"`r(dline)'"' == "" | r(noted) != 0 {
+            local bad `"`bad' [`cmd': twoway `r(trc)' `r(tline)', dash `r(drc)' `r(dline)', notes `r(noted)']"'
+        }
+    }
+    if `"`bad'"' != "" {
+        display as error `"U27-`u' FAIL:`bad'"'
+        global ov_nfail    = ${ov_nfail} + 1
+        global ov_faillist "${ov_faillist} U27-`u'"
+    }
+    else if `u' == 6 display as text "U27-6 PASS: title2() and a bare title2 refused with twoway's rc and line"
+    else if `u' == 7 display as text "U27-7 PASS: subtitle2() refused with twoway's rc and line"
+    else display as text "U27-8 PASS: title2() in a plot's parentheses and after a segment's comma refused with twoway's rc and line"
+}
+
+// U27-9 (WP-31 D2): title("A") title("B") is no title2(): rc 0 in both,
+// and dash keeps the last copy, as twoway draws it.
+local bad ""
+_u07_rc `"scatter mpg weight, title("A") title("B")"' "not allowed"
+if r(trc) != 0 | r(drc) != 0 {
+    local bad `"`bad' [twoway `r(trc)', dash `r(drc)']"'
+}
+capture dash clear
+capture noisily dash scatter mpg weight, title(A) title(B) name(u279)
+local u279rc = _rc
+mata: st_local("u279b", strofreal(strpos(st_global("dash_json_u279"), char(34) + "title" + char(34) + ":" + char(34) + "B" + char(34)) > 0))
+if `u279rc' != 0 | `u279b' != 1 {
+    local bad `"`bad' [title(A) title(B): rc `u279rc', title B `u279b']"'
+}
+capture dash clear
+if `"`bad'"' != "" {
+    display as error `"U27-9 FAIL:`bad'"'
+    global ov_nfail    = ${ov_nfail} + 1
+    global ov_faillist "${ov_faillist} U27-9"
+}
+else display as text "U27-9 PASS: title(A) title(B) taken, the last copy kept"
 
 // ----------------------------------------------------------------
 // Summary

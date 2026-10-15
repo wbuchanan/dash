@@ -2529,6 +2529,14 @@ CORPUS = [
     _case("ymtick(5000, axis(2)) on a yaxis(2) layer (WP-31 D1)",
           [_sc(), plot_for("scatter", {"yaxis": "2"}, yvar="price")],
           go={"ymtick2": "5000", "ymlabel2": "10000"}),
+    # WP-31 D2 (section 27): edge titles
+    _case("t1title b1title l1title r1title (WP-31 D2)", [_sc()],
+          go={"t1title": '"T1"', "b1title": '"B1"', "l1title": '"L1"',
+              "r1title": '"R1"'}),
+    _case("t2title with legend(pos(6)) and caption (WP-31 D2)",
+          [_sc(), _sc(yvar="price")],
+          go={"t2title": '"T2"', "b2title": '"B2"', "legend": "pos(6)",
+              "caption": '"C"'}),
 ]
 
 
@@ -3527,6 +3535,10 @@ MOVE_CORPUS = [
                [plot_for("scatter")],
                go={"xlabel": "0(1000)5000", "xmtick": "##5",
                    "xmlabel": "1500 2500"}),
+    # WP-31 D2 (section 27): edge titles
+    _move_case("t1title after a dropdown move (WP-31 D2)", _MOVES[0],
+               [plot_for("scatter")],
+               go={"t1title": '"T1"', "b2title": '"B2"'}),
 ]
 
 

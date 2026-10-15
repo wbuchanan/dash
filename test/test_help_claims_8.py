@@ -1086,9 +1086,11 @@ class TestTheShippedFiles:
         # (286 to 346, rounded outward to ten).
         # Flipped (WP-30 P1.10): 280..350 -> 290..360: text()'s six
         # text_option keys (292 to 352, rounded outward to ten).
-        assert 290 <= n <= 360, (name, n)
+        # WP-31 D2: the eight edge titles' textbox styles:
+        # 290..360 -> 300..370 (300 to 366, rounded outward to ten).
+        assert 300 <= n <= 370, (name, n)
         help_text = _read(_HELP)
-        assert re.search(r"290\s+to\s+360\s+directives", help_text)
+        assert re.search(r"300\s+to\s+370\s+directives", help_text)
 
     def test_the_s2mono_family_is_what_includes_s2mono(self):
         for name in _S2MONO_FAMILY:

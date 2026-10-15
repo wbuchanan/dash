@@ -729,6 +729,26 @@ gsize minortick  half_tiny
 gsize tickgap    half_tiny
 
 * ---------------------------------------------------------------------------
+* Added 15oct2026 by scripts/extract_scheme_truth.py (WP-16): directives
+* Stata consumes that the translation above did not carry.  Values are
+* resolved from the same Stata #include chain and style files as the
+* rest of this file (chain: s2color -> s1color -> s1mono -> stmono1); colours are
+* pre-resolved #rrggbb.  Re-running the script re-checks every directive
+* in this file and appends only what is missing.
+* ---------------------------------------------------------------------------
+
+* The edge titles' text boxes (Stata: textboxstyle t1title ..
+* r2title), read by t1title() .. r2title() (WP-31 D2).
+textboxstyle t1title  subheading
+textboxstyle t2title  body
+textboxstyle b1title  subheading
+textboxstyle b2title  body
+textboxstyle l1title  subheading
+textboxstyle l2title  body
+textboxstyle r1title  subheading
+textboxstyle r2title  body
+
+* ---------------------------------------------------------------------------
 * BEGIN provenance (WP-17)
 * Where every directive above comes from, written by
 * scripts/extract_scheme_truth.py from the fixture's per-scheme `provenance'
@@ -879,6 +899,14 @@ gsize tickgap    half_tiny
 * provenance: linewidth plotregion -- inferred: plotregionstyle twoway twoway -> style/plotregionstyle-twoway.style -> areastyle twoway_plotregion plotregion -> style/areastyle-plotregion.style -> linestyle plotregion foreground -> style/linestyle-foreground.style reads `linewidth foreground thin' (scheme-s2color.scheme:1200)
 * provenance: linepattern plotregion -- inferred: plotregionstyle twoway twoway -> style/plotregionstyle-twoway.style -> areastyle twoway_plotregion plotregion -> style/areastyle-plotregion.style -> linestyle plotregion foreground -> style/linestyle-foreground.style reads `linepattern foreground solid' (scheme-s2color.scheme:558)
 * provenance: textboxstyle note -- transcribed from scheme-s2color.scheme:1320 `textboxstyle note small_body'
+* provenance: textboxstyle t1title -- transcribed from scheme-s2color.scheme:1331 `textboxstyle t1title subheading'
+* provenance: textboxstyle t2title -- transcribed from scheme-s2color.scheme:1332 `textboxstyle t2title body'
+* provenance: textboxstyle b1title -- transcribed from scheme-s2color.scheme:1333 `textboxstyle b1title subheading'
+* provenance: textboxstyle b2title -- transcribed from scheme-s2color.scheme:1334 `textboxstyle b2title body'
+* provenance: textboxstyle l1title -- transcribed from scheme-s2color.scheme:1337 `textboxstyle l1title subheading'
+* provenance: textboxstyle l2title -- transcribed from scheme-s2color.scheme:1338 `textboxstyle l2title body'
+* provenance: textboxstyle r1title -- transcribed from scheme-s2color.scheme:1335 `textboxstyle r1title subheading'
+* provenance: textboxstyle r2title -- transcribed from scheme-s2color.scheme:1336 `textboxstyle r2title body'
 * provenance: gsize label -- transcribed from scheme-s2color.scheme:143 `gsize label medsmall'
 * provenance: color label -- transcribed from scheme-s1color.scheme:31 `color label black'
 * provenance: gsize small_label -- transcribed from scheme-s2color.scheme:144 `gsize small_label small'

@@ -1478,6 +1478,29 @@ def extract(stata_base: str, scheme: str) -> dict:
             "note_box_fill_color": fill,
         }
 
+    # The edge titles' text boxes (WP-31 D2): `textboxstyle t1title' ..
+    # `r2title' (scheme-s2color.scheme:1331-1338, inherited by every other
+    # scheme); a scheme that sets none falls back on subheading for the 1
+    # titles and body for the 2 titles, s2color's values.
+    def edge_title_truth():
+        out_ = {}
+        for k in EDGE_TITLES:
+            key = f"edge_textbox_{k}"
+            tb = r.get("textboxstyle", k, class_default=False)
+            if tb is not None:
+                out_[key] = tb.strip().strip('"')
+                sources[key] = f"textboxstyle {k}"
+                provenance[key] = prov_entry("transcribed", "textboxstyle", k)
+            else:
+                out_[key] = "subheading" if k[1] == "1" else "body"
+                sources[key] = None
+                provenance[key] = {
+                    "kind": "inferred", "directive": f"textboxstyle {k}",
+                    "value": None, "file": None, "line": None,
+                    "rule": ("`textboxstyle %s' is not set anywhere in the "
+                             "#include chain; s2color's %s" % (k, out_[key]))}
+        return out_
+
     # The chrome (WP-30 P1.2a): tick-label angles, grid patterns, the tick's
     # colour, width, length and side, each axis role's line and tick flags,
     # the alt_xaxes/alt_yaxes switches, the text boxes' justification and
@@ -1956,6 +1979,7 @@ def extract(stata_base: str, scheme: str) -> dict:
     out.update(xyline_truth())
     out.update(plotregion_line_truth())
     out.update(note_truth())
+    out.update(edge_title_truth())
     out.update(chrome_truth())
     out.update(text_option_truth())
     out.update(opacities)
@@ -1996,6 +2020,10 @@ def extract(stata_base: str, scheme: str) -> dict:
 # ends with a generated provenance block -- one `* provenance:' line per
 # directive, transcribed-from or inferred-by -- that is rewritten only when
 # it differs.  A second run changes nothing.
+
+#: The eight edge titles whose text box styles the files carry (WP-31 D2).
+EDGE_TITLES = ("t1title", "t2title", "b1title", "b2title",
+               "l1title", "l2title", "r1title", "r2title")
 
 _RULE = "* " + "-" * 75
 PROVENANCE_BEGIN = "* BEGIN provenance (WP-17)"
@@ -2371,6 +2399,11 @@ def expected_directives(e: dict) -> "list[tuple[list[str], list[tuple], bool]]":
         "note()'s text box (Stata: textboxstyle note) and the keys that box",
         "reads for its size, text colour and, where it draws a box, fill.",
     ], note_items)
+    group([
+        "The edge titles' text boxes (Stata: textboxstyle t1title ..",
+        "r2title), read by t1title() .. r2title() (WP-31 D2).",
+    ], [("textboxstyle", k, e.get(f"edge_textbox_{k}"),
+         (f"edge_textbox_{k}", None)) for k in EDGE_TITLES])
     # WP-30 P1.24: the keys the remaining text box styles read, where the
     # scheme's chain sets them and no group above writes them already.
     have = {(c, k) for _cm, its, _op in groups for c, k, _v, _r in its}
