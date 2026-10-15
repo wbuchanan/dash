@@ -507,7 +507,10 @@ restore
 // Stata's own regress on the kept rows and marks nothing -- it marked the
 // unrefitted line before the saved page refitted lfit -- and the served
 // app refits it alike, with no cue; a page with no filter carries no cue
-// model, and a page whose fit it still does not refit (fpfit) one.
+// model, and a page whose fit it still does not refit one.  Flipped (WP-31
+// F1g): SCU-02 and SCU-03 measured a plain fpfit, which the saved page
+// refits since; they measure fpfit recast(line), a recast fit the page does
+// not refit (GAPS3 C16), with fpfit's sample rules.
 // ================================================================
 preserve
 sysuse auto, clear
@@ -562,8 +565,10 @@ python:
 import filter_truth_check as ftc
 from sfi import Macro
 df, strings = ftc.frame_from_stata(["mpg", "weight", "price"])
-# fpfit: a fit the saved page still marks (lfit is refitted, WP-31 F1a).
-spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight", "fpfit")],
+# fpfit recast(line): a fit the saved page still marks (lfit is refitted,
+# WP-31 F1a, fpfit too, F1g; a recast fit is not, GAPS3 C16).
+spec = ftc.spec_of([ftc.fit_graph("g1", "mpg", "weight", "fpfit",
+                                  {"recast": "line"})],
                    [{"varname": "price", "type": "slider"}])
 pmin = float(Macro.getGlobal("scu_pmin"))
 _, r = ftc.saved(df, strings, spec, [(0, pmin)])
@@ -579,7 +584,7 @@ restore
 preserve
 sysuse auto, clear
 dash clear
-dash (scatter mpg weight) (fpfit mpg weight), name(gscu)
+dash (scatter mpg weight) (fpfit mpg weight, recast(line)), name(gscu)
 tempfile scu3a scu3b
 dash build, saving("`scu3a'.html") replace
 cert_file_count "`scu3a'.html", needle("dash_stale_cue")
@@ -593,7 +598,7 @@ cert_file_count "`scu3b'.html", needle("dash_stale_status")
 assert r(count) == 1
 capture erase "`scu3a'.html"
 capture erase "`scu3b'.html"
-display "SCU-03 PASS: an fpfit page with no filter holds no cue model; with filter(foreign) one caption and one status line"
+display "SCU-03 PASS: an fpfit recast(line) page with no filter holds no cue model; with filter(foreign) one caption and one status line"
 dash clear
 restore
 
