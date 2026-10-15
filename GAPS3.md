@@ -435,6 +435,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B4a Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)", commit 8e78c4d.
 - **B4b Tracked:** Open (WP-31 section 26).
 - **B4c Tracked:** Open (WP-31 section 29).
+- **B4d Tracked:** Open (WP-31 section 29).
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
 - **B5b Tracked:** Closed in WP-31, BUGS.md "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)", commit 5e0a387.
 - **B5c Tracked:** Open (WP-31 section 35).

@@ -407,3 +407,16 @@ Acceptance: **AC-29.1** twins at 1e-9; **AC-29.2** bands/lines agree with contou
 - **python_exec hazard**: check `~/.stata19/console/stata19.rc` after the driver runs.
 - **Shared files (R1-R13).** R1: one S29 block. R2: no Python module function added (JS only; the `part` config key lives in S26's mapper). R3: the saved-page sentences in Server Mode and S26's contour paragraph (S29 owns them in batch 10). R4: one marker. R5: B4c entry closed, B4c Tracked rewritten (`commit pending`, A11). R8: one MOVE_CORPUS entry. R9: test_contour_layers.py::TestMoves::test_saved_is_marked flipped; `_FROZEN` untouched (A20). R12: S29 is batch 10's `_FILTER_JS` and `_make_figure_body` editor (frozen-tag lines only); S30/S31 edit neither.
 - **For S61 (closeout).** "Contour above the cap" is in index Residuals and decided by D4 (subsample, 100x100 grid, cue, note); no BUGS.md residual entry is opened here. The hand-back note carries the measured node timing.
+
+## Addendum (15oct2026, DECISIONS D22): row B4d added to this section
+
+### B4d: After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed
+
+**Gap.** S26 recomputes the served contour bands after a move (the served `_dash_draw_layer` contour branch) but the ContourColorBar still holds the build's cuts and ticks, so after a move that changes the cuts (levels() or the default `zlabel(#5)` rule) the key and the bands disagree.
+
+**Requirement.** After every move, in the served app and in this section's saved-page refit within the cap, recompute the cuts with twoway's rule (S26's measured default `#5`, rules drop the first and last tick) and update the colour bar's mapper and ticks with the bands; pin it with a served move test and a saved node test.
+
+**Fits S29** because S29 ports the contour refit (marching squares, isobands) to the saved page and owns the move-time contour code in batch 10.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 B4d)`; close the BUGS.md entry "After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed" (Resolution ending `Closes GAPS3 B4 (WP-31, B4d).`), delete its `"B4d":` WP31_OPEN line, rewrite GAPS3.md's `- **B4d Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 B4d -->` under `### Results that change` with a line ending `(WP-31, B4d)`. dash replaces twoway (D13).
+

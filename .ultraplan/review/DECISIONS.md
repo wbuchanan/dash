@@ -27,6 +27,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D19 | **Batch 6 addition** (14oct2026): S18's saved-page residual -- dot rows keep the build's axis after a filter move (pinned xfail strict) -- is row B5c, added to S35, which recomputes the extra ranges and the axis finish in the saved page's move callback. | S35 |
 | D20 | **Batch 8 additions** (14oct2026): S24's minor-tick residuals go to the axis sections: the axis-2 and axes 3-9 cases (D1b) to S35, which owns those axes after a move; the label-grammar cases (D1c) to S33, which owns axis label sub-options and formats. S23's measured duplicate-z non-determinism in twoway is documented by S26 (no row: twoway itself varies with sortseed). | S35, S33 |
 | D21 | **Batch 9 addition** (15oct2026): S27's edge titles name position(), ring(), span and orientation() where twoway's parser takes them; row D2b goes to S30, which wires textbox position() and ring() through _dash_textbox_place for the titles. | S30 |
+| D22 | **Batch 9 addition** (15oct2026): S26's unfiled served difference -- the contour colour bar keeps the build's cuts and ticks after a filter move while the bands are recomputed -- is row B4d, added to S29, which refits contours after a move. | S29 |
 
 ## Architect rulings (process and feasibility; from the reviews)
 

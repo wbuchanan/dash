@@ -3957,3 +3957,9 @@
   - Description: GAPS3.md D2, found by WP-31 section 27 (D2, its D-27.c): t1title() to r2title() are drawn on each side, but their textbox sub-options position(), ring(), span and orientation() are named in the note where twoway's parser takes and draws them.
   - Suggested fix: WP-31 section 30 (textbox placement added text): place and orient edge titles through _dash_textbox_place with these sub-options, both modes, measured against twoway.
   - Resolution: Not fixed because WP-31 section 30 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed
+  - File Names and Line Numbers: dash_render.py the served _dash_draw_layer contour branch, ContourColorBar
+  - Description: GAPS3.md B4, found by WP-31 section 26 (B4b): in the served app a filter move recomputes the contour bands, but the ContourColorBar keeps the cuts and ticks from the build; it shows when the cuts move (levels() or the default zlabel(#5) rule).
+  - Suggested fix: WP-31 section 29 (js contour): recompute the colour bar's cuts and ticks with the bands after a move, in the served app and in the saved page's refit.
+  - Resolution: Not fixed because WP-31 section 29 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

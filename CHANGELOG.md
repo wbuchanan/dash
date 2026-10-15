@@ -511,6 +511,8 @@ and now matches Stata.
 
 <!-- WP-31 D2b -->
 
+<!-- WP-31 B4d -->
+
 ### Security
 
 - Saved and served pages carry a `default-src 'none'` Content Security
