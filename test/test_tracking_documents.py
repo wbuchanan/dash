@@ -1973,7 +1973,6 @@ class TestWp30Tracking:
 #: in Appendix A order.  A section's closing commit closes the entry in place
 #: and deletes its own key line.  S61 leaves it {}.
 WP31_OPEN = {
-    "C13": "A histogram-only graph draws a legend where twoway draws none",
     "D5": "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()",
     "E11": "Sizes are relative to a 4-inch reference and scale() is pending",
     "D6": "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn",

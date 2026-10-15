@@ -462,7 +462,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
-- **C13 Tracked:** Open (WP-31 section 31).
+- **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit pending.
 - **C14 Tracked:** Open (WP-31 section 34).
 - **C15 Tracked:** Open (WP-31 section 34).
 - **C16 Tracked:** Open (WP-31 section 46).

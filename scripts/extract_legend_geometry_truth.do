@@ -3,7 +3,9 @@
 *! clock position and ring(0) put the box, the columns kept with position(),
 *! holes(), colfirst, rows()/cols(), label(#) with no text, two keys with
 *! the same text, region(), the key sizes, bplacement(), title(), and
-*! whether a histogram-only graph draws a legend -- from twoway's own class
+*! whether a histogram-only graph draws a legend, and which keys twoway
+*! merges into one (same plot type and look, no style option given; the
+*! texts joined by "/") -- from twoway's own class
 *! values and SVG export.  twoway only: the output is the same before and
 *! after dash changes.
 *!
@@ -134,6 +136,12 @@ _lg_run merge_order `"twoway scatter mpg weight, pstyle(p1) || scatter mpg weigh
 _lg_run merge_lab2_on `"twoway scatter mpg weight, pstyle(p1) || scatter mpg weight, pstyle(p1) legend(on label(2 "B"))"'
 _lg_run merge_lab1_on `"twoway scatter mpg weight, pstyle(p1) || scatter mpg weight, pstyle(p1) legend(on label(1 "A"))"'
 _lg_run merge_order2 `"twoway scatter mpg weight, pstyle(p1) || scatter mpg weight, pstyle(p1) legend(on order(2))"'
+_lg_run merge_text `"twoway scatter mpg weight, pstyle(p1) || scatter price weight, pstyle(p1) legend(on)"'
+global LG_MERGE_TEXT "`.u31k.legend.labels[1]'"
+_lg_run merge_override `"twoway scatter mpg weight, pstyle(p1) mcolor(red) || scatter mpg weight, pstyle(p1) mcolor(red)"'
+_lg_run merge_default_value `"twoway scatter mpg weight, pstyle(p1) msize(medium) || scatter mpg weight, pstyle(p1)"'
+_lg_run merge_mlabel `"twoway scatter mpg weight, pstyle(p1) mlabel(make) || scatter mpg weight, pstyle(p1) mlabel(make)"'
+_lg_run hist_scales `"twoway histogram mpg, freq || histogram mpg, percent"'
 _lg_run merge_glyph `"twoway scatter mpg weight, pstyle(p1) || line mpg weight, pstyle(p1)"'
 _lg_run merge_three `"twoway scatter mpg weight, pstyle(p1) || scatter price weight || scatter mpg weight, pstyle(p1)"'
 _lg_run region `"`two' legend(region(lcolor(red) fcolor(gs14) lwidth(thick)))"'
@@ -271,11 +279,13 @@ keys = ["default_geometry", "default_lines"] + [
     "label_blank", "merge", "merge_pstyle", "merge_style", "hist_only",
     "hist_on", "hist_mixed", "hist_color", "merge_on", "merge_lab2",
     "merge_order", "merge_lab2_on", "merge_lab1_on", "merge_order2",
-    "merge_glyph", "merge_three", "region", "nobox", "sizes", "sizes_rows",
+    "merge_text", "merge_override", "merge_default_value", "merge_mlabel",
+    "hist_scales", "merge_glyph", "merge_three", "region", "nobox", "sizes", "sizes_rows",
     "bplacement", "title", "silent", "holes_zero", "holes_frac", "holes_big",
     "symx_bogus", "st_default", "st_ring0"]
 out = {k: record(k) for k in keys}
 out["title"]["title_text"] = G("LG_TITLE")
+out["merge_text"]["label_1"] = G("LG_MERGE_TEXT")
 for k in ("holes_zero", "holes_frac", "symx_bogus"):
     out[k]["log"] = log_lines(k)
 try:

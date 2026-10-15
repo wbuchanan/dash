@@ -51,12 +51,13 @@ with open(_FIX_PATH, encoding="utf-8") as _fh:
 _AUTO_LABELS = _FIX["data"]["auto"]["variableLabels"]
 
 #: Probes whose keys still differ from twoway's, and the item that owns
-#: each: keys twoway merges (P2.50) and the legend twoway leaves off a graph
-#: of histograms alone (P2.51).  G20 (one rcap layer under by(), P1.15c)
-#: matches: dash shows no legend for its one key either.
-_NOT_YET_KEYS = {"F31": "P2.50", "L01": "P2.50", "L02": "P2.50",
-                 "L04": "P2.50", "L05": "P2.50", "G25": "P2.51",
-                 "L03": "P2.51", "L09": "P2.51"}
+#: each.  Flipped (WP-31 C13): the eight residuals -- keys twoway merges
+#: (P2.50: F31 L01 L02 L04 L05) and the legend twoway leaves off a graph of
+#: histograms alone (P2.51: G25 L03 L09) -- match now: dash draws two keys
+#: with the same text and style as one, as twoway's legend_g does, and a
+#: graph of one key draws no legend.  G20 (one rcap layer under by(),
+#: P1.15c) matches: dash shows no legend for its one key either.
+_NOT_YET_KEYS = {}
 
 _SIDES = (("left", "y1"), ("right", "y2"), ("below", "x1"), ("above", "x2"))
 
@@ -362,11 +363,14 @@ class TestKeysMatchTwoway:
         assert not bad, "\n".join(bad)
 
     def test_the_residuals_still_differ(self, mode):
+        # Flipped (WP-31 C13): P2.50 and P2.51 were open; the merge of keys
+        # with the same text and style closes both, so no residual is left
+        # and test_keys holds every probe.
         got = _probe_summaries(mode)
         same = [pid for pid in _NOT_YET_KEYS
                 if got[pid]["keys"] == _twoway_keys(pid)]
         assert not same, same
-        assert set(_NOT_YET_KEYS.values()) == {"P2.50", "P2.51"}
+        assert _NOT_YET_KEYS == {}
 
 
 class TestScatteriKeys:

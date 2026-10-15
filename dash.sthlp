@@ -4805,6 +4805,17 @@ when the graph has two or more keys: a lone {cmd:scatter} gets none, a
 {cmd:scatter} with an {cmd:lfit} over it gets one.  {cmd:legend(on)} forces
 one onto a single-key graph and {cmd:legend(off)} removes it from any graph;
 in one {cmd:legend()}, {cmd:on} wins over {cmd:off}.
+Plots that look the same, none given a style option of its own, share one
+key, the first plot's, its text their texts joined by "/", as
+{cmd:twoway} draws them: two histograms, of {cmd:mpg} and of {cmd:price},
+are one key, "Density", in the one histogram colour, so they draw no
+legend; scatters of {cmd:mpg} and {cmd:price} with {cmd:pstyle(p1)} are one
+key, "Mileage (mpg)/Price"; {cmd:color(red)} on one histogram, or
+{cmd:mcolor()} or {cmd:msize()} on a scatter -- even the size it would
+have drawn -- keeps its key apart, while {cmd:mlabel()} does not.  The
+merged key answers to the first plot's number: {cmd:label(1 "A")} renames
+it, and {cmd:label(2 "B")} and {cmd:order(2)} find no key, as in
+{cmd:twoway}.
 A {cmd:colorvar()} key is not the legend: it stays.
 {cmd:legend()}'s sub-options are read under {cmd:twoway}'s spellings in
 lower case: {cmd:legend(c(2) r(1) lab(1 "A") posi(6) s(small) lastlab(2 "Z"))}

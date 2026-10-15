@@ -33984,6 +33984,55 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
         live = [(plot, [r for r in rends if r in fig.renderers])
                 for plot, rends in plot_renderers]
         keys = _dash_legend_keys(live, var_labels or {}, default_level)
+        # WP-31 C13: twoway's legend_g draws the keys of two plots that
+        # look the same, neither given a style option of its own,
+        # as ONE key, the first's, its text the plots' distinct texts
+        # joined by "/" -- and a graph of one key draws no legend.  Two
+        # histograms are one "Density" key in the one histogram colour, so
+        # they draw none; color(red) on one keeps two keys; scatters of mpg
+        # and price with pstyle(p1) are one key "Mileage (mpg)/Price"; an
+        # explicit mcolor(red) on both, or msize(medium) on one, keeps two,
+        # while mlabel() does not (legend_geometry_truth.json hist_only,
+        # hist_color, hist_scales, merge_pstyle, merge_text, merge_override,
+        # merge_default_value, merge_mlabel); an lfitci band and a qfitci
+        # or lpolyci band are one "95% CI" key (series_label_truth.json
+        # L02, F31).  The folded number is no
+        # key: label(2 "B") changes nothing and order(2) draws none
+        # (merge_lab2_on, merge_order2).  The merged item holds both
+        # renderer lists, its numbers in its tags ("dash_key_numbers", ...).
+        _folded = {}
+        if keys:
+            _plot_of, _pn = {}, 1
+            for _pl, _r in live:
+                _plot_of[_pn] = _pl
+                if str(_pl.get("type", "")).lower() in _DASH_CI_TYPES:
+                    _plot_of[_pn + 1] = _pl
+                    _pn += 2
+                else:
+                    _pn += 1
+            _first, _kept, _ktexts = {}, [], {}
+            for _n, _t, _rends in keys:
+                _pl = _plot_of.get(_n) or {}
+                _o = _pl.get("options") if isinstance(_pl.get("options"),
+                                                      dict) else {}
+                if any(str(_k).lower() in _DASH_KEY_STYLE_OPTS
+                       and str(_v).strip() for _k, _v in _o.items()):
+                    _kept.append((_n, _t, list(_rends)))
+                    continue
+                _sig = _dash_key_signature(_rends)
+                if _sig in _first:
+                    _k = _first[_sig]
+                    _n0, _t0, _r0 = _kept[_k]
+                    if _t not in _ktexts[_k]:
+                        _ktexts[_k].append(_t)
+                    _kept[_k] = (_n0, "/".join(_ktexts[_k]),
+                                 list(_r0) + list(_rends))
+                    _folded.setdefault(_n0, []).append(_n)
+                    continue
+                _first[_sig] = len(_kept)
+                _ktexts[len(_kept)] = [_t]
+                _kept.append((_n, _t, list(_rends)))
+            keys = _kept
         if keys:
             n_keys = len(keys)
             texts = {n: [t] for n, t, _ in keys}
@@ -34009,6 +34058,9 @@ def _dash_apply_legend(fig, plot_renderers, legend_opt, var_labels=None,
             items_by_n = {n: LegendItem(label={"value": "\n".join(texts[n])},
                                         renderers=rends)
                           for n, _, rends in keys}
+            for _n, _more in _folded.items():
+                items_by_n[_n].tags = ["dash_key_numbers"] + [
+                    str(x) for x in [_n] + _more]
             if not entries:
                 seq = [items_by_n[n] for n, _, _ in keys]
             else:
@@ -47421,6 +47473,50 @@ def _dash_legend_key(plot, var_labels=None):
     return text or ptype
 
 
+#: The plot options that give a plot a style of its own: twoway's legend
+#: keeps such a plot's key apart even when it looks like another's
+#: (WP-31 C13; legend_geometry_truth.json merge_override, merge_default_
+#: value).  mlabel(), yaxis(), jitter() and the like do not.
+_DASH_KEY_STYLE_OPTS = frozenset({
+    "msymbol", "msize", "msangle", "mcolor", "mfcolor", "mlcolor",
+    "mlwidth", "mlstyle", "mlpattern", "mlalign", "mstyle",
+    "lcolor", "lwidth", "lpattern", "lstyle", "lalign",
+    "color", "fcolor", "fintensity", "astyle", "bstyle", "acolor",
+    "alcolor", "alwidth", "alpattern", "alstyle", "aalign", "bcolor",
+    "blcolor", "blwidth", "blpattern", "blstyle", "balign"})
+
+
+def _dash_key_signature(renderers):
+    """The style of one legend key, for twoway's rule that two keys with
+    the same text and style are one (WP-31 C13): per renderer, its glyph's
+    class and the values of the properties a key draws with -- colours,
+    alphas, widths, dash, hatch, marker and size.  A number is rounded to
+    nine places; a list is a tuple; anything else (a field or value spec)
+    is its repr, so two layers coloured by their own mappers stay apart.
+    """
+    out = []
+    for r in renderers or ():
+        g = getattr(r, "glyph", None)
+        props = []
+        for name in ("line_color", "line_alpha", "line_width", "line_dash",
+                     "fill_color", "fill_alpha", "hatch_pattern",
+                     "hatch_color", "marker", "size", "angle"):
+            if g is None or name not in g.properties():
+                continue
+            v = getattr(g, name, None)
+            if isinstance(v, bool) or v is None or isinstance(v, str):
+                pass
+            elif isinstance(v, (int, float)):
+                v = round(float(v), 9)
+            elif isinstance(v, (list, tuple)):
+                v = tuple(v)
+            else:
+                v = repr(v)
+            props.append((name, v))
+        out.append((type(g).__name__, tuple(props)))
+    return tuple(out)
+
+
 def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
     """``[(number, key_text, [renderer, ...]), ...]`` for one figure's
     layers, numbered as twoway numbers its plots.
@@ -54521,7 +54617,7 @@ class ServerAppBuilder:
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_CLOCK_PANEL_LOCATION", "_DASH_BPLACEMENT_LOCATION",
-                      "_DASH_LEGEND_REGION_NAMES",
+                      "_DASH_LEGEND_REGION_NAMES", "_DASH_KEY_STYLE_OPTS",
                       "_DASH_HIST_YTITLES",
                       "_DASH_OPT_VAR_KEYS", "_DASH_PLOT_VAR_KEYS",
                       "_DASH_SWATCH_PREFIX",
@@ -54858,7 +54954,8 @@ class ServerAppBuilder:
                          # ... and the note for a layer it cannot reach.
                          "_dash_note_hover_unreached",
                          # Stata's legend keying rules.
-                         "_dash_legend_key", "_dash_legend_entries",
+                         "_dash_legend_key", "_dash_key_signature",
+                         "_dash_legend_entries",
                          "_dash_layer_series", "_dash_function_yname",
                          # twoway's label-or-name rule (WP-29 P0.3).
                          "_dash_var_label", "_dash_clean_var_labels",

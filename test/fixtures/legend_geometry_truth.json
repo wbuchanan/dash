@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "364f9e026e204aad9bb4168f457e05e2c72fa821",
-  "extracted": "15 Oct 2026 08:15:42",
+  "dash_commit": "afc35202a3bffe6f43c8ca9d125e72b975c6d6ae",
+  "extracted": "15 Oct 2026 09:28:10",
   "members": [
    "        dbstyle      .dbstyle",
    "        legendstyle  .style",
@@ -1836,6 +1836,27 @@
   "row_gap": 1.3888,
   "rows": 0
  },
+ "hist_scales": {
+  "box_alignment": "south",
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 0,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_texts": [],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 290.81,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
  "holes": {
   "box": {
    "bottom": 2744.61,
@@ -2193,6 +2214,84 @@
   "row_gap": 1.3888,
   "rows": 0
  },
+ "merge_default_value": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1255.69,
+   "right": 2994.13,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1402.95,
+    "y": 2686.46
+   },
+   {
+    "text": "Mileage (mpg)",
+    "x": 2298.9,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
  "merge_glyph": {
   "box": {
    "bottom": 2744.6099999999997,
@@ -2403,6 +2502,768 @@
   "row_gap": 1.3888,
   "rows": 0
  },
+ "merge_mlabel": {
+  "box_alignment": "south",
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 0,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_texts": [
+   {
+    "text": "Honda Civic",
+    "x": 496.11,
+    "y": 1140.68
+   },
+   {
+    "text": "Ford Fiesta",
+    "x": 537.32,
+    "y": 1140.68
+   },
+   {
+    "text": "Plym. Champ",
+    "x": 537.32,
+    "y": 702.84
+   },
+   {
+    "text": "Renault Le Car",
+    "x": 568.26,
+    "y": 1286.59
+   },
+   {
+    "text": "VW Rabbit",
+    "x": 671.47,
+    "y": 1359.48
+   },
+   {
+    "text": "Mazda GLC",
+    "x": 722.95,
+    "y": 994.65
+   },
+   {
+    "text": "VW Scirocco",
+    "x": 733.34,
+    "y": 1359.48
+   },
+   {
+    "text": "Datsun 210",
+    "x": 764.28,
+    "y": 629.95
+   },
+   {
+    "text": "VW Diesel",
+    "x": 784.82,
+    "y": 192.23
+   },
+   {
+    "text": "Subaru",
+    "x": 795.22,
+    "y": 629.95
+   },
+   {
+    "text": "Audi Fox",
+    "x": 815.76,
+    "y": 1505.39
+   },
+   {
+    "text": "Chev. Chevette",
+    "x": 857.09,
+    "y": 1067.67
+   },
+   {
+    "text": "Dodge Colt",
+    "x": 867.36,
+    "y": 994.65
+   },
+   {
+    "text": "Fiat Strada",
+    "x": 877.64,
+    "y": 1651.29
+   },
+   {
+    "text": "VW Dasher",
+    "x": 908.57,
+    "y": 1505.39
+   },
+   {
+    "text": "Plym. Horizon",
+    "x": 949.91,
+    "y": 1359.48
+   },
+   {
+    "text": "Toyota Corolla",
+    "x": 949.91,
+    "y": 921.76
+   },
+   {
+    "text": "Buick Opel",
+    "x": 980.84,
+    "y": 1286.59
+   },
+   {
+    "text": "Honda Accord",
+    "x": 991.11,
+    "y": 1359.48
+   },
+   {
+    "text": "Datsun 510",
+    "x": 1032.45,
+    "y": 1432.49
+   },
+   {
+    "text": "Datsun 200",
+    "x": 1125.26,
+    "y": 1505.39
+   },
+   {
+    "text": "Toyota Celica",
+    "x": 1166.47,
+    "y": 1870.21
+   },
+   {
+    "text": "Plym. Sapporo",
+    "x": 1279.95,
+    "y": 1286.59
+   },
+   {
+    "text": "Merc. Bobcat",
+    "x": 1341.82,
+    "y": 1578.4
+   },
+   {
+    "text": "AMC Spirit",
+    "x": 1403.7,
+    "y": 1578.4
+   },
+   {
+    "text": "Ford Mustang",
+    "x": 1413.97,
+    "y": 1651.29
+   },
+   {
+    "text": "BMW 320i",
+    "x": 1413.97,
+    "y": 1359.48
+   },
+   {
+    "text": "Toyota Corona",
+    "x": 1434.63,
+    "y": 1870.21
+   },
+   {
+    "text": "Pont. Sunbird",
+    "x": 1455.3,
+    "y": 1432.49
+   },
+   {
+    "text": "Olds Starfire",
+    "x": 1496.51,
+    "y": 1432.49
+   },
+   {
+    "text": "Chev. Monza",
+    "x": 1517.18,
+    "y": 1432.49
+   },
+   {
+    "text": "Datsun 810",
+    "x": 1517.18,
+    "y": 1651.29
+   },
+   {
+    "text": "Audi 5000",
+    "x": 1599.59,
+    "y": 1943.1
+   },
+   {
+    "text": "Merc. Zephyr",
+    "x": 1599.59,
+    "y": 1724.31
+   },
+   {
+    "text": "AMC Concord",
+    "x": 1702.8,
+    "y": 1578.4
+   },
+   {
+    "text": "Volvo 260",
+    "x": 1950.3,
+    "y": 1943.1
+   },
+   {
+    "text": "Chev. Malibu",
+    "x": 1960.57,
+    "y": 1578.4
+   },
+   {
+    "text": "Pont. Le Mans",
+    "x": 1981.24,
+    "y": 1797.2
+   },
+   {
+    "text": "Pont. Grand Prix",
+    "x": 1991.51,
+    "y": 1797.2
+   },
+   {
+    "text": "Chev. Monte Carlo",
+    "x": 2001.9,
+    "y": 1578.4
+   },
+   {
+    "text": "Buick Century",
+    "x": 2032.84,
+    "y": 1724.31
+   },
+   {
+    "text": "Plym. Arrow",
+    "x": 2043.11,
+    "y": 1140.68
+   },
+   {
+    "text": "Buick Regal",
+    "x": 2063.78,
+    "y": 1724.31
+   },
+   {
+    "text": "Olds Cutlass",
+    "x": 2084.32,
+    "y": 1797.2
+   },
+   {
+    "text": "Olds Cutl Supr",
+    "x": 2094.72,
+    "y": 1797.2
+   },
+   {
+    "text": "Plym. Volare",
+    "x": 2115.26,
+    "y": 1870.21
+   },
+   {
+    "text": "AMC Pacer",
+    "x": 2135.93,
+    "y": 1943.1
+   },
+   {
+    "text": "Merc. Monarch",
+    "x": 2156.59,
+    "y": 1870.21
+   },
+   {
+    "text": "Olds Omega",
+    "x": 2156.59,
+    "y": 1797.2
+   },
+   {
+    "text": "Buick Skylark",
+    "x": 2187.53,
+    "y": 1797.2
+   },
+   {
+    "text": "Pont. Phoenix",
+    "x": 2208.2,
+    "y": 1797.2
+   },
+   {
+    "text": "Peugeot 604",
+    "x": 2208.2,
+    "y": 2162.02
+   },
+   {
+    "text": "Chev. Nova",
+    "x": 2218.47,
+    "y": 1797.2
+   },
+   {
+    "text": "Pont. Firebird",
+    "x": 2259.68,
+    "y": 1870.21
+   },
+   {
+    "text": "Dodge Diplomat",
+    "x": 2393.82,
+    "y": 1870.21
+   },
+   {
+    "text": "Dodge Magnum",
+    "x": 2393.82,
+    "y": 2016.12
+   },
+   {
+    "text": "Buick LeSabre",
+    "x": 2465.97,
+    "y": 1870.21
+   },
+   {
+    "text": "Chev. Impala",
+    "x": 2486.63,
+    "y": 2016.12
+   },
+   {
+    "text": "Olds Delta 88",
+    "x": 2486.63,
+    "y": 1870.21
+   },
+   {
+    "text": "Pont. Catalina",
+    "x": 2496.9,
+    "y": 1870.21
+   },
+   {
+    "text": "Merc. Marquis",
+    "x": 2517.57,
+    "y": 2089.13
+   },
+   {
+    "text": "Dodge St. Regis",
+    "x": 2538.11,
+    "y": 1943.1
+   },
+   {
+    "text": "Linc. Versailles",
+    "x": 2631.05,
+    "y": 2162.02
+   },
+   {
+    "text": "Buick Riviera",
+    "x": 2682.53,
+    "y": 2016.12
+   },
+   {
+    "text": "Cad. Eldorado",
+    "x": 2703.2,
+    "y": 2162.02
+   },
+   {
+    "text": "Olds Toronado",
+    "x": 2837.22,
+    "y": 2016.12
+   },
+   {
+    "text": "Olds 98",
+    "x": 2868.15,
+    "y": 1651.29
+   },
+   {
+    "text": "Merc. Cougar",
+    "x": 2868.15,
+    "y": 2162.02
+   },
+   {
+    "text": "Buick Electra",
+    "x": 2888.82,
+    "y": 2089.13
+   },
+   {
+    "text": "Merc. XR-7",
+    "x": 2940.42,
+    "y": 2162.02
+   },
+   {
+    "text": "Cad. Seville",
+    "x": 3105.38,
+    "y": 1651.29
+   },
+   {
+    "text": "Cad. Deville",
+    "x": 3146.72,
+    "y": 2162.02
+   },
+   {
+    "text": "Linc. Mark V",
+    "x": 3548.9,
+    "y": 2307.93
+   },
+   {
+    "text": "Linc. Continental",
+    "x": 3672.65,
+    "y": 2307.93
+   },
+   {
+    "text": "Honda Civic",
+    "x": 496.11,
+    "y": 1140.68
+   },
+   {
+    "text": "Ford Fiesta",
+    "x": 537.32,
+    "y": 1140.68
+   },
+   {
+    "text": "Plym. Champ",
+    "x": 537.32,
+    "y": 702.84
+   },
+   {
+    "text": "Renault Le Car",
+    "x": 568.26,
+    "y": 1286.59
+   },
+   {
+    "text": "VW Rabbit",
+    "x": 671.47,
+    "y": 1359.48
+   },
+   {
+    "text": "Mazda GLC",
+    "x": 722.95,
+    "y": 994.65
+   },
+   {
+    "text": "VW Scirocco",
+    "x": 733.34,
+    "y": 1359.48
+   },
+   {
+    "text": "Datsun 210",
+    "x": 764.28,
+    "y": 629.95
+   },
+   {
+    "text": "VW Diesel",
+    "x": 784.82,
+    "y": 192.23
+   },
+   {
+    "text": "Subaru",
+    "x": 795.22,
+    "y": 629.95
+   },
+   {
+    "text": "Audi Fox",
+    "x": 815.76,
+    "y": 1505.39
+   },
+   {
+    "text": "Chev. Chevette",
+    "x": 857.09,
+    "y": 1067.67
+   },
+   {
+    "text": "Dodge Colt",
+    "x": 867.36,
+    "y": 994.65
+   },
+   {
+    "text": "Fiat Strada",
+    "x": 877.64,
+    "y": 1651.29
+   },
+   {
+    "text": "VW Dasher",
+    "x": 908.57,
+    "y": 1505.39
+   },
+   {
+    "text": "Plym. Horizon",
+    "x": 949.91,
+    "y": 1359.48
+   },
+   {
+    "text": "Toyota Corolla",
+    "x": 949.91,
+    "y": 921.76
+   },
+   {
+    "text": "Buick Opel",
+    "x": 980.84,
+    "y": 1286.59
+   },
+   {
+    "text": "Honda Accord",
+    "x": 991.11,
+    "y": 1359.48
+   },
+   {
+    "text": "Datsun 510",
+    "x": 1032.45,
+    "y": 1432.49
+   },
+   {
+    "text": "Datsun 200",
+    "x": 1125.26,
+    "y": 1505.39
+   },
+   {
+    "text": "Toyota Celica",
+    "x": 1166.47,
+    "y": 1870.21
+   },
+   {
+    "text": "Plym. Sapporo",
+    "x": 1279.95,
+    "y": 1286.59
+   },
+   {
+    "text": "Merc. Bobcat",
+    "x": 1341.82,
+    "y": 1578.4
+   },
+   {
+    "text": "AMC Spirit",
+    "x": 1403.7,
+    "y": 1578.4
+   },
+   {
+    "text": "Ford Mustang",
+    "x": 1413.97,
+    "y": 1651.29
+   },
+   {
+    "text": "BMW 320i",
+    "x": 1413.97,
+    "y": 1359.48
+   },
+   {
+    "text": "Toyota Corona",
+    "x": 1434.63,
+    "y": 1870.21
+   },
+   {
+    "text": "Pont. Sunbird",
+    "x": 1455.3,
+    "y": 1432.49
+   },
+   {
+    "text": "Olds Starfire",
+    "x": 1496.51,
+    "y": 1432.49
+   },
+   {
+    "text": "Chev. Monza",
+    "x": 1517.18,
+    "y": 1432.49
+   },
+   {
+    "text": "Datsun 810",
+    "x": 1517.18,
+    "y": 1651.29
+   },
+   {
+    "text": "Audi 5000",
+    "x": 1599.59,
+    "y": 1943.1
+   },
+   {
+    "text": "Merc. Zephyr",
+    "x": 1599.59,
+    "y": 1724.31
+   },
+   {
+    "text": "AMC Concord",
+    "x": 1702.8,
+    "y": 1578.4
+   },
+   {
+    "text": "Volvo 260",
+    "x": 1950.3,
+    "y": 1943.1
+   },
+   {
+    "text": "Chev. Malibu",
+    "x": 1960.57,
+    "y": 1578.4
+   },
+   {
+    "text": "Pont. Le Mans",
+    "x": 1981.24,
+    "y": 1797.2
+   },
+   {
+    "text": "Pont. Grand Prix",
+    "x": 1991.51,
+    "y": 1797.2
+   },
+   {
+    "text": "Chev. Monte Carlo",
+    "x": 2001.9,
+    "y": 1578.4
+   },
+   {
+    "text": "Buick Century",
+    "x": 2032.84,
+    "y": 1724.31
+   },
+   {
+    "text": "Plym. Arrow",
+    "x": 2043.11,
+    "y": 1140.68
+   },
+   {
+    "text": "Buick Regal",
+    "x": 2063.78,
+    "y": 1724.31
+   },
+   {
+    "text": "Olds Cutlass",
+    "x": 2084.32,
+    "y": 1797.2
+   },
+   {
+    "text": "Olds Cutl Supr",
+    "x": 2094.72,
+    "y": 1797.2
+   },
+   {
+    "text": "Plym. Volare",
+    "x": 2115.26,
+    "y": 1870.21
+   },
+   {
+    "text": "AMC Pacer",
+    "x": 2135.93,
+    "y": 1943.1
+   },
+   {
+    "text": "Merc. Monarch",
+    "x": 2156.59,
+    "y": 1870.21
+   },
+   {
+    "text": "Olds Omega",
+    "x": 2156.59,
+    "y": 1797.2
+   },
+   {
+    "text": "Buick Skylark",
+    "x": 2187.53,
+    "y": 1797.2
+   },
+   {
+    "text": "Pont. Phoenix",
+    "x": 2208.2,
+    "y": 1797.2
+   },
+   {
+    "text": "Peugeot 604",
+    "x": 2208.2,
+    "y": 2162.02
+   },
+   {
+    "text": "Chev. Nova",
+    "x": 2218.47,
+    "y": 1797.2
+   },
+   {
+    "text": "Pont. Firebird",
+    "x": 2259.68,
+    "y": 1870.21
+   },
+   {
+    "text": "Dodge Diplomat",
+    "x": 2393.82,
+    "y": 1870.21
+   },
+   {
+    "text": "Dodge Magnum",
+    "x": 2393.82,
+    "y": 2016.12
+   },
+   {
+    "text": "Buick LeSabre",
+    "x": 2465.97,
+    "y": 1870.21
+   },
+   {
+    "text": "Chev. Impala",
+    "x": 2486.63,
+    "y": 2016.12
+   },
+   {
+    "text": "Olds Delta 88",
+    "x": 2486.63,
+    "y": 1870.21
+   },
+   {
+    "text": "Pont. Catalina",
+    "x": 2496.9,
+    "y": 1870.21
+   },
+   {
+    "text": "Merc. Marquis",
+    "x": 2517.57,
+    "y": 2089.13
+   },
+   {
+    "text": "Dodge St. Regis",
+    "x": 2538.11,
+    "y": 1943.1
+   },
+   {
+    "text": "Linc. Versailles",
+    "x": 2631.05,
+    "y": 2162.02
+   },
+   {
+    "text": "Buick Riviera",
+    "x": 2682.53,
+    "y": 2016.12
+   },
+   {
+    "text": "Cad. Eldorado",
+    "x": 2703.2,
+    "y": 2162.02
+   },
+   {
+    "text": "Olds Toronado",
+    "x": 2837.22,
+    "y": 2016.12
+   },
+   {
+    "text": "Olds 98",
+    "x": 2868.15,
+    "y": 1651.29
+   },
+   {
+    "text": "Merc. Cougar",
+    "x": 2868.15,
+    "y": 2162.02
+   },
+   {
+    "text": "Buick Electra",
+    "x": 2888.82,
+    "y": 2089.13
+   },
+   {
+    "text": "Merc. XR-7",
+    "x": 2940.42,
+    "y": 2162.02
+   },
+   {
+    "text": "Cad. Seville",
+    "x": 3105.38,
+    "y": 1651.29
+   },
+   {
+    "text": "Cad. Deville",
+    "x": 3146.72,
+    "y": 2162.02
+   },
+   {
+    "text": "Linc. Mark V",
+    "x": 3548.9,
+    "y": 2307.93
+   },
+   {
+    "text": "Linc. Continental",
+    "x": 3672.65,
+    "y": 2307.93
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
  "merge_on": {
   "box": {
    "bottom": 2744.6099999999997,
@@ -2542,6 +3403,84 @@
   "row_gap": 1.3888,
   "rows": 0
  },
+ "merge_override": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1255.69,
+   "right": 2994.13,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "#ff0000",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1320.91,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#ff0000"
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "#ff0000",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 2216.98,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#ff0000"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)",
+    "x": 1402.95,
+    "y": 2686.46
+   },
+   {
+    "text": "Mileage (mpg)",
+    "x": 2298.9,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 2,
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
  "merge_pstyle": {
   "box_alignment": "south",
   "col_gap": 4.8611,
@@ -2634,6 +3573,66 @@
   "plot": {
    "bottom": 2233.63,
    "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "row_gap": 1.3888,
+  "rows": 0
+ },
+ "merge_text": {
+  "box": {
+   "bottom": 2744.6099999999997,
+   "fill": "#ffffff",
+   "left": 1451.46,
+   "right": 2698.49,
+   "top": 2558.24
+  },
+  "box_alignment": "south",
+  "box_centre_rel": [
+   0.5,
+   1.1959
+  ],
+  "col_gap": 4.8611,
+  "cols": 2,
+  "drawn": 1,
+  "holes": "-",
+  "key_gap": 2.0833,
+  "key_lines": [],
+  "key_marks": [
+   {
+    "cx": 1516.68,
+    "cy": 2651.43,
+    "fill": "#1a476f",
+    "r": 26.35,
+    "stroke": null
+   },
+   {
+    "cx": 1516.68,
+    "cy": 2651.43,
+    "fill": "none",
+    "r": 22.03,
+    "stroke": "#1a476f"
+   }
+  ],
+  "key_texts": [
+   {
+    "text": "Mileage (mpg)/Price",
+    "x": 1598.6,
+    "y": 2686.46
+   }
+  ],
+  "key_xsize": 13,
+  "key_ysize": 3.4722,
+  "keys": 1,
+  "label_1": "Mileage (mpg)/Price",
+  "outline": {
+   "stroke": "#000000",
+   "width": 5.76
+  },
+  "plot": {
+   "bottom": 2233.63,
+   "left": 290.81,
    "right": 3859.02,
    "top": 100.86
   },

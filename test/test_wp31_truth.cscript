@@ -7242,6 +7242,59 @@ if inlist("`only'", "", "S31") & `: list posof "S31" in w31_run' {
 }
 * ==== end S31 ====
 
+* ==== S31 C13: Histogram-only legend ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S31") & `: list posof "S31" in w31_run' {
+    display as text "S31 start " c(current_date) " " c(current_time)
+    local u31d "`w31_work'/s31c"
+    capture mkdir "`u31d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+
+    // U31-6: plots that look the same, none given a style option, are
+    // one key (and one key draws no legend); a style option, even one
+    // equal to the default, keeps two; CI bands of two fits are one key.
+    local bad ""
+    local j 0
+    foreach c in "(scatter mpg weight, pstyle(p1)) (scatter mpg weight, pstyle(p1))," ///
+        "(scatter mpg weight, pstyle(p1)) (scatter mpg weight, pstyle(p1) mcolor(red))," ///
+        "(scatter mpg weight, pstyle(p1)) (scatter mpg weight, pstyle(p1)), legend(on order(2 1))" ///
+        "(scatter mpg weight, pstyle(p1)) (scatter price weight, pstyle(p1))," ///
+        "(scatter mpg weight, pstyle(p1) msize(medium)) (scatter mpg weight, pstyle(p1))," ///
+        "(lfitci mpg weight) (qfitci mpg weight), legend(on)" {
+        local ++j
+        _u31_reg "`u31d'" 6`j' drawn `c'
+        foreach m in s v {
+            if "${u31_`m'}" != "${u31_tw}" local bad "`bad' case `j' `m': dash ${u31_`m'} twoway ${u31_tw};"
+        }
+    }
+    _w31_expect U31-6 `"(`"`bad'"' == "")"' "`bad'"
+    _w31_done U31-6 "plots that look the same merge into one key, saved and served, as twoway"
+
+    // U31-9: histogram-only graphs: no legend, legend(on) one, two
+    // colours two keys.
+    local bad ""
+    local j 0
+    foreach c in "(histogram mpg) (histogram price)," "(histogram mpg) (histogram price), legend(on)" ///
+        "(histogram mpg) (histogram price, color(red))," ///
+        "(histogram mpg, freq) (histogram mpg, percent)," {
+        local ++j
+        _u31_reg "`u31d'" 9`j' drawn `c'
+        foreach m in s v {
+            if "${u31_`m'}" != "${u31_tw}" local bad "`bad' case `j' `m': dash ${u31_`m'} twoway ${u31_tw};"
+        }
+    }
+    _w31_expect U31-9 `"(`"`bad'"' == "")"' "`bad'"
+    _w31_done U31-9 "histogram-only graphs draw the legend twoway draws, saved and served"
+
+    macro drop u31_tw u31_s u31_v
+    capture graph drop _all
+    dash clear
+    display as text "S31 end " c(current_date) " " c(current_time)
+}
+* ==== end S31 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

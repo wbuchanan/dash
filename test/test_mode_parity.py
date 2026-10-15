@@ -2553,13 +2553,21 @@ CORPUS = [
 
     # WP-31 D4/C13 (section 31): legend geometry
     _case("legend(pos(1) symxsize(5) keygap(1)) (WP-31 D4)",
-          [_sc(), _sc(yvar="price")],
+          [_sc(), plot_for("scatter", yvar="price")],
           go={"legend": "pos(1) symxsize(5) keygap(1)"}),
-    _case("legend(ring(0)) (WP-31 D4)", [_sc(), _sc(yvar="price")],
+    _case("legend(ring(0)) (WP-31 D4)",
+          [_sc(), plot_for("scatter", yvar="price")],
           go={"legend": "ring(0)"}),
     _case("legend(holes(2) cols(2) colfirst) three series (WP-31 D4)",
-          [_sc(), _sc(yvar="price"), _sc(yvar="rep")],
+          [_sc(), plot_for("scatter", yvar="price"),
+           plot_for("scatter", yvar="rep")],
           go={"legend": "holes(2) cols(2) colfirst"}),
+    # pcycle(1): both scatters draw in p1, so they look the same (a
+    # pstyle() here would make this a named-style case).
+    _case("two identical scatters merged (WP-31 C13)",
+          [_sc(), _sc()], go={"legend": "on", "pcycle": "1"}),
+    _case("histogram only, no legend (WP-31 C13)",
+          [plot_for("histogram"), plot_for("histogram", var="price")]),
 ]
 
 

@@ -619,6 +619,7 @@ FUNCTIONS = {
  '_dash_legend_arg': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_arg',
  '_dash_legend_entries': 'test/test_server_layer_defects.py::TestTheLegendKeyRule::test_a_layer_that_drew_nothing_gets_no_key',
  '_dash_legend_key': 'test/test_series_labels.py::TestTheLegendKeys::test_the_key_is_the_last_series_y_label',
+ '_dash_key_signature': 'test/test_legend_histogram_only.py::TestKeySignature::test_equal_glyphs_sign_alike',
  '_dash_legend_keys': 'test/test_legend_order.py::TestKeysAreNumberedByPlot::test_numbers_unit',
  '_dash_legend_parts': 'test/test_help_claims_7.py::TestTheNewHelpers::test_dash_legend_parts',
  '_dash_legend_unsupported': 'test/test_help_claims_5.py::TestTheSubOptionSplitterReadsStataQuotes::test_legend_names_what_follows_an_apostrophe',

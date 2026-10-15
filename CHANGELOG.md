@@ -426,7 +426,7 @@ and now matches Stata.
 
 - dash scatter mpg weight || scatter price weight, legend(ring(0)): top right -> inside at the bottom centre, keys 13 x medsmall (WP-31, D4)
 
-<!-- WP-31 C13 -->
+- dash histogram mpg || histogram price: a two-key legend -> no legend (WP-31, C13)
 
 <!-- WP-31 D5 -->
 
