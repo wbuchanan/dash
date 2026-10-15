@@ -4157,6 +4157,14 @@ replace that layer's x or y variable's display format for the axis it
 labels, as {cmd:twoway} reads them; written after the plot groups' comma
 they are refused, {cmd:option xvarformat() not allowed}, r(198).
 
+{phang}{opt yvarlabel(strings)} and {opt xvarlabel(string)}, inside a plot,
+stand in for the labels of that layer's variables, as {cmd:twoway} reads
+them: the axis titles and the legend keys take them.  {cmd:yvarlabel()}
+holds one quoted string per y variable, in order -- a range plot's two
+boundaries take the first two, a ci fit's band and line the first, as
+{cmd:twoway} writes {cmd:Q/95% CI} and {cmd:Q} -- and {cmd:xvarlabel("")}
+draws no x title.
+
 {pstd}
 On a date axis a number is a date in the variable's own units, as
 {cmd:twoway} reads it: days for {cmd:%td}, milliseconds for {cmd:%tc},

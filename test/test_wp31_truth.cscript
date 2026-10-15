@@ -7851,6 +7851,117 @@ if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
 }
 * ==== end S33 ====
 
+// S34 helpers (WP-31 D8 C17 E3 C14 C15).  _u34_reg: one command drawn by
+// twoway and registered with dash, the y and x titles and legend keys of
+// each (twoway's from its class values and SVG, dash's saved and served)
+// into globals u34_tw, u34_s, u34_v.
+python:
+def _u34_tw_keys(svg):
+    from svg_truth import svg_document
+    return [t["text"] for t in svg_document(svg)["texts"]
+            if not t["anchor"]]
+
+
+def _u34_dash(figs):
+    f = figs[0]
+    keys = []
+    for lg in f.legend:
+        if not lg.visible:
+            continue
+        for it in lg.items:
+            lab = it.label
+            t = lab.get("value") if isinstance(lab, dict) else getattr(
+                lab, "value", lab)
+            if t:
+                keys.append(str(t))
+    return "%s|%s|%s" % (f.yaxis[0].axis_label or "",
+                         f.xaxis[0].axis_label or "", " ~ ".join(keys))
+
+
+def _u34_titles(sp, dp, app, svg, yt, xt):
+    import __main__ as m
+    from sfi import Macro
+    a, b = m._u03_docs(sp, dp, app)
+    Macro.setGlobal("u34_tw", "%s|%s|%s" % (yt, xt,
+                                            " ~ ".join(_u34_tw_keys(svg))))
+    Macro.setGlobal("u34_s", _u34_dash(a))
+    Macro.setGlobal("u34_v", _u34_dash(b))
+end
+
+capture program drop _u34_reg
+program define _u34_reg
+    // _u34_reg <dir> <k> <command with options...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    capture graph drop u34t
+    quietly twoway `0' name(u34t, replace)
+    quietly graph export "`dir'/t`k'.svg", replace
+    local yt ""
+    local xt ""
+    if 0`.u34t.yaxis1.title.text.arrnels' > 0 local yt `"`.u34t.yaxis1.title.text[1]'"'
+    if 0`.u34t.xaxis1.title.text.arrnels' > 0 local xt `"`.u34t.xaxis1.title.text[1]'"'
+    graph drop u34t
+    dash clear
+    capture quietly dash `0' name(zu34`k')
+    if _rc {
+        global u34_s "rc `=_rc'"
+        global u34_v "rc `=_rc'"
+        global u34_tw "(twoway drawn)"
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u34_m; _u34_m._u34_titles("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py", "`dir'/t`k'.svg", r"""`yt'""", r"""`xt'""")
+end
+
+* ==== S34 D8: yvarlabel() and xvarlabel() ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S34") & `: list posof "S34" in w31_run' {
+    display as text "S34 start " c(current_date) " " c(current_time)
+    local u34d "`w31_work'/s34a"
+    capture mkdir "`u34d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    capture drop lo hi
+    generate lo = mpg - 2
+    generate hi = mpg + 2
+
+    // U34-1: the axis titles and legend keys yvarlabel() and xvarlabel()
+    // give, saved and served, as twoway draws them; no note.
+    local bad ""
+    local j 0
+    foreach c in `"scatter mpg weight, yvarlabel("Miles") xvarlabel("Pounds")"' ///
+        `"scatter mpg weight, xvarlabel("")"' ///
+        `"scatter mpg price weight, yvarlabel("A" "B")"' ///
+        `"rscatter lo hi weight, yvarlabel("Band" "Top")"' ///
+        `"lfit mpg weight, yvarlabel("Q") xvarlabel("Pounds")"' ///
+        `"lfitci mpg weight, yvarlabel("Q")"' {
+        local ++j
+        _u34_reg "`u34d'" 1`j' `c'
+        foreach m in s v {
+            if `"${u34_`m'}"' != `"${u34_tw}"' local bad `"`bad' case `j' `m': dash ${u34_`m'} twoway ${u34_tw};"'
+        }
+    }
+    local lg "`u34d'/u341.log"
+    capture log close _u34log
+    quietly log using "`lg'", name(_u34log) text replace
+    capture noisily dash scatter mpg weight, yvarlabel("Miles") xvarlabel("Pounds") name(u341)
+    local rc = _rc
+    quietly log close _u34log
+    if `rc' local bad `"`bad' rc `rc';"'
+    cert_file_has "`lg'", needle("ignoring unsupported option")
+    if r(found) local bad `"`bad' the generic note named the option;"'
+    _w31_expect U34-1 `"(`"`bad'"' == "")"' `"`bad'"'
+    _w31_done U34-1 "yvarlabel() and xvarlabel() title the axes and key the legend as twoway does, saved and served, silently"
+
+    macro drop u34_tw u34_s u34_v
+    capture graph drop _all
+    dash clear
+    display as text "S34 end " c(current_date) " " c(current_time)
+}
+* ==== end S34 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

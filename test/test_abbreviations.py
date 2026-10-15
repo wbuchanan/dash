@@ -765,8 +765,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 20 -> 21: B4b _dash_le_typed declares LE() alone, to tell le()
     # typed from level() on the contour types.
     # 21 -> 22: D5 WP-31's _dash_aspect_split reads aspectratio()'s
-    # placement() with twoway's own syntax statement.
-    assert len(with_syntax) == 22, with_syntax
+    # placement() with twoway's own syntax statement; 22 -> 23: D8
+    # _dash_label_split declares yvarlabel() and xvarlabel(), which the
+    # plot parser's syntax has no room for.
+    assert len(with_syntax) == 23, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
@@ -818,8 +820,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # lines and its pending lines (one each).  71 -> 72: A3b the note on
     # NAMe, now NAME, is one line longer.
     # 72 -> 73: D5 the overhangs' pending note goes (one) and the
-    # aspectratio() split's note comes (two).
-    assert comments == {"_dash_parse_plot_opts": 159,
+    # aspectratio() split's note comes (two); 159 -> 161: D8 the note on
+    # _dash_label_split's call (two).
+    assert comments == {"_dash_parse_plot_opts": 161,
                         "_dash_parse_graph_opts": 73}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

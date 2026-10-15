@@ -991,6 +991,10 @@ FUNCTIONS = {
  '_dash_layer_series.<locals>.L': 'test/test_series_labels.py::TestTheSeriesRule::test_each_type_gives_twoways_series',
  '_dash_layer_series.<locals>.name': 'test/test_series_labels.py::TestTheSeriesRule::test_names_and_labels_as_twoway_uses_them',
  '_dash_layer_series.<locals>.pair': 'test/test_series_labels.py::TestTheSeriesRule::test_equal_or_missing_boundaries_give_one_label',
+ # WP-31 S34 (D8): yvarlabel() and xvarlabel() read by the series rule.
+ '_dash_layer_series.<locals>.Lx': 'test/test_varlabel_options.py::TestVarlabels::test_series',
+ '_dash_layer_series.<locals>.Ly': 'test/test_varlabel_options.py::TestVarlabels::test_range_and_fit_layers',
+ '_dash_layer_series.<locals>.words': 'test/test_varlabel_options.py::TestVarlabels::test_range_and_fit_layers',
  '_dash_axis_default_titles': 'test/test_series_labels.py::TestTheAxisTitleRule::test_first_equals_last',
  # WP-30 S21 (P1.3a): natscale ticker and twoway margin on non-date axes (P1.3 part a, M1)
  '_dash_axis_plan': 'test/test_default_axes.py::TestTheHelpers::test_axis_plan_shape',

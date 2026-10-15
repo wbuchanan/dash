@@ -455,7 +455,7 @@ program define _dash_require_mata
         _dash_fit_points_json _dash_fit_opt_bad _dash_recast_canon ///
         _dash_rep_keyof _dash_rep_reduce _dash_rep_merge_locals ///
         _dash_at_parse _dash_at_copy _dash_at_dates _dash_at_place _dash_at_orient _dash_at_canon _dash_edge_span _dash_at_records _dash_json_first_num ///
-        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals ///
+        _dash_stylelist_keys _dash_stylelist_norm _dash_stylelist_pick _dash_stylelist_bad _dash_stylelist_blank _dash_stylelist_probe _dash_stylelist_locals _dash_varlabel_tail ///
         _dash_connect_canon ///
         _dash_rep_und_scan _dash_rep_und_cross _dash_log_split _dash_logit_typed _dash_barwidth_typed _dash_matamatrix_typed ///
         _dash_hz_order ///
@@ -1191,6 +1191,9 @@ program define _dash_parse_plot_opts, sclass
     // -syntax- takes); the rest goes on, as typed, to it.
     mata: _dash_zyx_text = st_local("0")
     _dash_contour_split
+    // WP-31 S34: yvarlabel(), xvarlabel() and the other options the
+    // syntax below has no room for, read the same way (_dash_label_split).
+    _dash_label_split
     mata: st_local("0", ", " + _dash_zyx_text)
     syntax [, ///
         MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
@@ -1607,6 +1610,8 @@ program define _dash_parse_plot_opts, sclass
     // WP-30 P1.24: a text box style per y, a style list (S11).
     sreturn local mlabtextstyle    : copy local mlabtextstyle
     sreturn local xvarformat       : copy local xvarformat
+    sreturn local yvarlabel        : copy local yvarlabel
+    sreturn local xvarlabel        : copy local xvarlabel
     sreturn local yvarformat       : copy local yvarformat
     // The seven statistical sub-options (WP-18): declared with twoway's own
     // minimum abbreviations (twoway_histogram_parse.class DISCrete;
@@ -2394,6 +2399,49 @@ program define _dash_contour_split
         c_local `o' `"`macval(`o')'"'
     }
     mata: _dash_zyx_text = strtrim(_dash_zyx_out)
+end
+
+// ================================================================
+// _dash_label_split  -- options the plot parser's syntax has no room for
+//
+// WP-31 S34.  The plot parser's syntax holds as many options as -syntax-
+// takes (_dash_contour_split), so twoway's yvarlabel() and xvarlabel()
+// (advanced_options.sthlp, every yxview type: FactorPlot) are read here,
+// out of the option text _dash_zyx_text holds (by value), as
+// _dash_contour_split reads contour's: each top-level option tried alone
+// against these declarations, the ones read parsed together, every other
+// token handed back exactly as typed.  The minimums are twoway's (yvarl,
+// xvarl; measured: twoway takes yvarl("Q") xvarl("R"), rc 0).  Each value
+// is kept as typed, quotes and all, so xvarlabel("") -- no x title, as
+// twoway draws it (test/fixtures/varlabel_mlabel_truth.json
+// varlabel.x_empty) -- is a value and not an absent option.  Sets the
+// caller's locals of the same names, by value.
+// ================================================================
+program define _dash_label_split
+    version 19
+    local lo "yvarlabel xvarlabel"
+    foreach o of local lo {
+        c_local `o' ""
+    }
+    mata: st_local("_lb_any", strofreal(regexm(strlower(_dash_zyx_text), "(^|[ ,])(yvarl|xvarl)")))
+    if !`_lb_any' exit
+    mata: _dash_lb_tok = _dash_opt_tokens(_dash_zyx_text)
+    mata: _dash_lb_in = ""
+    mata: _dash_lb_out = ""
+    mata: st_local("_ln", strofreal(cols(_dash_lb_tok)))
+    forvalues _li = 1/`_ln' {
+        mata: st_local("0", ", " + _dash_lb_tok[`_li'])
+        capture syntax [, YVARLabel(string asis) XVARLabel(string asis) ]
+        if _rc mata: _dash_lb_out = _dash_lb_out + " " + _dash_lb_tok[`_li']
+        else  mata: _dash_lb_in = _dash_lb_in + " " + _dash_lb_tok[`_li']
+    }
+    mata: st_local("0", ", " + _dash_lb_in)
+    syntax [, YVARLabel(string asis) XVARLabel(string asis) ]
+    foreach o of local lo {
+        c_local `o' `"`macval(`o')'"'
+    }
+    mata: _dash_zyx_text = strtrim(_dash_lb_out)
+    mata: mata drop _dash_lb_tok _dash_lb_in _dash_lb_out
 end
 
 // ================================================================
@@ -5127,7 +5175,7 @@ program define _dash_plot_opts_to_json, rclass
                    clcolor clpattern clwidth mlabangle mlabformat ///
                    mlabvposition mlabtextstyle ///
                    mangle barbsize headlabel ///
-                   xvarformat yvarformat ///
+                   xvarformat yvarformat yvarlabel xvarlabel ///
                    acolor alcolor alwidth alpattern ///
                    pwidth lpvar ///
                    atobs estopts predopts estcmd fitplot ciplot nofit ///
@@ -5142,6 +5190,11 @@ program define _dash_plot_opts_to_json, rclass
         if `_p_on' & `: list key in _dash_p_drops' continue
         if `: list key in _sl_keys' {
             mata: st_local("val", _dash_stylelist_pick(st_global("s(" + st_local("key") + ")"), `series'))
+        }
+        // yvarlabel() (WP-31 D8): this record's strings, as typed, from its
+        // own y on (_dash_varlabel_tail); the renderer reads one per y.
+        else if "`key'" == "yvarlabel" {
+            mata: st_local("val", _dash_varlabel_tail(st_global("s(yvarlabel)"), `series'))
         }
         else mata: st_local("val", st_global("s(" + st_local("key") + ")"))
         if `: length local val' {

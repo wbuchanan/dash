@@ -1,0 +1,2677 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "0aa96dc5c5c5e8b63798971984646237035a3f7b",
+  "extracted": "15 Oct 2026 16:15:59",
+  "source": "scripts/extract_varlabel_mlabel_truth.do",
+  "stata_version": "19.5"
+ },
+ "align": {
+  "bogus": {
+   "error": "",
+   "label_position": "3",
+   "notes": [
+    "(note:  named style bogus not found in class alignstroke, default attributes used)",
+    "(note:  named style bogus not found in class alignstroke, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "center": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "inside": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "la": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "outside": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "0bfbde2afaeaa21d0895e25ab6ac3aec9a71303f34ee6e78c88b0e7741512dba",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  }
+ },
+ "bardefault": {
+  "bar": {
+   "error": "",
+   "label_position": "12",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "c432206678deea09f0d3c26d8ba8202228016bb61a06056561b72fe30c1cc876",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#000000",
+     "text": "17"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "19"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "rbar": {
+   "error": "",
+   "label_position": "12",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "82f71cf8e217a9d23ff9bb0f07de6468ae1ff1da38fdf056db0098f5e036c226",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "14"
+    },
+    {
+     "fill": "#000000",
+     "text": "16"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "24"
+    },
+    {
+     "fill": "#000000",
+     "text": "lo/hi"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "lo/hi"
+  },
+  "scatter": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "e23df1f74fd17133cfa2b7ef44bbc08d569a2d3ba65562928885957e383f6ae3",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#000000",
+     "text": "17"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "19"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  }
+ },
+ "c14": {
+  "other": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "2bb57bdb7ac479ace112cad15427be9c65ba8492e657c08903468f6bfe197dd2",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Century"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Electra"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick LeSabre"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Opel"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Regal"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Riviera"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Skylark"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Cad. Deville"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Cad. Eldorado"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Cad. Seville"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Chevette"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Impala"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Malibu"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Monte Carlo"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Monza"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Nova"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge Colt"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge Diplomat"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge Magnum"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge St. Regis"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Ford Fiesta"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Ford Mustang"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Linc. Continental"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Linc. Mark V"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Linc. Versailles"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Bobcat"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Cougar"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Marquis"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Monarch"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. XR-7"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Zephyr"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds 98"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Cutl Supr"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Cutlass"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Delta 88"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Omega"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Starfire"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Toronado"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Arrow"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Champ"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Horizon"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Sapporo"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Volare"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Catalina"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Firebird"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Grand Prix"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Le Mans"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Phoenix"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Sunbird"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Audi 5000"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Audi Fox"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "BMW 320i"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 200"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 210"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 510"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 810"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Fiat Strada"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Honda Accord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Honda Civic"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Mazda GLC"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Peugeot 604"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Renault Le Car"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Subaru"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Toyota Celica"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Toyota Corolla"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Toyota Corona"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Dasher"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Diesel"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Rabbit"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Scirocco"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Volvo 260"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Century"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Electra"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick LeSabre"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Opel"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Regal"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Riviera"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Buick Skylark"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Cad. Deville"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Cad. Eldorado"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Cad. Seville"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Chevette"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Impala"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Malibu"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Monte Carlo"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Monza"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Chev. Nova"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge Colt"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge Diplomat"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge Magnum"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Dodge St. Regis"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Ford Fiesta"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Ford Mustang"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Linc. Continental"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Linc. Mark V"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Linc. Versailles"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Bobcat"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Cougar"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Marquis"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Monarch"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. XR-7"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Merc. Zephyr"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds 98"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Cutl Supr"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Cutlass"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Delta 88"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Omega"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Starfire"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Olds Toronado"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Arrow"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Champ"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Horizon"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Sapporo"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Plym. Volare"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Catalina"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Firebird"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Grand Prix"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Le Mans"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Phoenix"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Pont. Sunbird"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Audi 5000"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Audi Fox"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "BMW 320i"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 200"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 210"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 510"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Datsun 810"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Fiat Strada"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Honda Accord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Honda Civic"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Mazda GLC"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Peugeot 604"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Renault Le Car"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Subaru"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Toyota Celica"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Toyota Corolla"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Toyota Corona"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Dasher"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Diesel"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Rabbit"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "VW Scirocco"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "Volvo 260"
+    },
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "50"
+    },
+    {
+     "fill": "#000000",
+     "text": "lo/hi"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "lo/hi"
+  },
+  "rarea_y": {
+   "error": "rarea requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "rbar_y": {
+   "error": "rbar requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "rcap_y": {
+   "error": "rcap requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "rcapsym_y": {
+   "error": "rcapsym requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "rconnected_y": {
+   "error": "rconnected requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "rline_y": {
+   "error": "rline requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "rpcap_y": {
+   "error": "you must specify four variables with twoway rpcap",
+   "notes": [],
+   "rc": 102
+  },
+  "rpspike_y": {
+   "error": "you must specify four variables with twoway rpspike",
+   "notes": [],
+   "rc": 102
+  },
+  "rspike_y": {
+   "error": "rspike requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "x": {
+   "error": "rscatter requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "y": {
+   "error": "rscatter requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "y2": {
+   "error": "rscatter requires 3 variables: lo hi weight",
+   "notes": [],
+   "rc": 102
+  },
+  "y_other": {
+   "error": "rscatter requires 3 variables: lo hi weight make",
+   "notes": [],
+   "rc": 102
+  }
+ },
+ "malign": {
+  "bogus": {
+   "error": "",
+   "label_position": "3",
+   "notes": [
+    "(note:  named style bogus not found in class alignstroke, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_sha": "c035a286c3b031235a2e407acd6c2adba2b3d27154cd64b91566a813a6426ad7",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "center": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "7de52be8bf0493c262206ce6e08faced9854faf3f0cb2acdb74b701bde73a80b",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "inside": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "c035a286c3b031235a2e407acd6c2adba2b3d27154cd64b91566a813a6426ad7",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "outside": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "dd63ab734b3530a662b42486a0cf9a6a367b87beae34214c0e8e0e0e0b309979",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  }
+ },
+ "mlabstyle": {
+  "bogus": {
+   "error": "",
+   "label_position": "12",
+   "notes": [
+    "(note:  named style bogus not found in class labelstyle, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_sha": "db3ee99df69065112eacf4edc1c96b37c1d806f3ea1c08b0dae8fe7f6100e573",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#000000",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#000000",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#000000",
+     "text": "17"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "19"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "p2": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "d820a8057f31c80515969d4294cd7c3b7f4253aff83a542ac7a6d246aea23bb5",
+   "texts": [
+    {
+     "fill": "#90353b",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#90353b",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#90353b",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#000000",
+     "text": "17"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "19"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  }
+ },
+ "mlalign": {
+  "declared": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "7de52be8bf0493c262206ce6e08faced9854faf3f0cb2acdb74b701bde73a80b",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "mla": {
+   "error": "variable center not found",
+   "notes": [],
+   "rc": 111
+  }
+ },
+ "msangle": {
+  "bogus": {
+   "error": "",
+   "label_position": "3",
+   "notes": [
+    "(note:  named style bogus not found in class anglestyle, default attributes used)"
+   ],
+   "rc": 0,
+   "svg_sha": "f8af2379c956a8e9e8d7b6569c9e848f31124c4c35b01ab97bc8d00145c20c82",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "forty_five": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "a18840f8f0930666a3bad1b22f7fcbe399d591c817d1d0bad598b8935cc9eefc",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "n0": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "f8af2379c956a8e9e8d7b6569c9e848f31124c4c35b01ab97bc8d00145c20c82",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "n45": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "a18840f8f0930666a3bad1b22f7fcbe399d591c817d1d0bad598b8935cc9eefc",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  }
+ },
+ "mwidth": {
+  "rbar": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "6ad89264fe9826a528c94ff89b7614e3993961ab8de41562e88fc00df17a93d8",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "50"
+    },
+    {
+     "fill": "#000000",
+     "text": "lo/hi"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "lo/hi"
+  }
+ },
+ "prefix": {
+  "both": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "56ad80d545d8444ebe32e53956cb024ef419be279e510ff4c518e51d8326461c",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "[AMC Concord]"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "[AMC Pacer]"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "[AMC Spirit]"
+    },
+    {
+     "fill": "#000000",
+     "text": "17"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "19"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "none": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "e23df1f74fd17133cfa2b7ef44bbc08d569a2d3ba65562928885957e383f6ae3",
+   "texts": [
+    {
+     "fill": "#1a476f",
+     "text": "AMC Concord"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Pacer"
+    },
+    {
+     "fill": "#1a476f",
+     "text": "AMC Spirit"
+    },
+    {
+     "fill": "#000000",
+     "text": "17"
+    },
+    {
+     "fill": "#000000",
+     "text": "18"
+    },
+    {
+     "fill": "#000000",
+     "text": "19"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "21"
+    },
+    {
+     "fill": "#000000",
+     "text": "22"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,600"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,800"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,200"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,400"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  }
+ },
+ "varlabel": {
+  "both": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "6ce17e585e25a42ccd48c6058e49272ea62ba55f8db80037b987a112abd491f7",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Miles"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Pounds"
+    }
+   ],
+   "xtitle": "Pounds",
+   "ytitle": "Miles"
+  },
+  "fit": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "fc3be3487fa746b4d651d8cbc6e369173d3fda966c140c8719af02c02240f087",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "15"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "25"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Pounds"
+    }
+   ],
+   "xtitle": "Pounds",
+   "ytitle": "Q"
+  },
+  "fitci": {
+   "error": "",
+   "label_position": "12",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "1e91b554c875f8468f32b61bb989c5c4b2ee169596742a8a2bbbece4d4516c72",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "15"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "25"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "2000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q/95% CI"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": null
+  },
+  "overlay": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "594a48eb4b02e64796da9d4470bcd0e75b2bff07d6a41dc2b0f0b9b2144b0d51",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Q"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": null
+  },
+  "plain": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "c035a286c3b031235a2e407acd6c2adba2b3d27154cd64b91566a813a6426ad7",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Mileage (mpg)"
+  },
+  "plain_two": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "55814658e0376f246dc971b81b75317c0b4db573db22660d3218dcb2784b56b1",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "10000"
+    },
+    {
+     "fill": "#000000",
+     "text": "15000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "Price"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": null
+  },
+  "range": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "d5cafb7811c7e16d24baa7efb3e12dc3f28447865b824448dd92fe245ca77785",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "50"
+    },
+    {
+     "fill": "#000000",
+     "text": "Band/hi"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Pounds"
+    }
+   ],
+   "xtitle": "Pounds",
+   "ytitle": "Band/hi"
+  },
+  "range_two": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "ae90907ce62fd489414e67b55b224980c9839e8a8ad2808da58b31d9b06ef816",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "50"
+    },
+    {
+     "fill": "#000000",
+     "text": "Band/Top"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Band/Top"
+  },
+  "x": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "be19ee83069ae299824b0865350b76d2581dc9b07a5619e3fa2eef860e9a4393",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Pounds"
+    }
+   ],
+   "xtitle": "Pounds",
+   "ytitle": "Mileage (mpg)"
+  },
+  "x_empty": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "46a9bb7523d917090c7e2b562845337d2928f24da4dc5890b12535644701edc6",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Mileage (mpg)"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    }
+   ],
+   "xtitle": null,
+   "ytitle": "Mileage (mpg)"
+  },
+  "y": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "d5c2b04ee0822e80049bb552f04e5d04f1b4971db92f3e52b2a0274148800e95",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "10"
+    },
+    {
+     "fill": "#000000",
+     "text": "20"
+    },
+    {
+     "fill": "#000000",
+     "text": "30"
+    },
+    {
+     "fill": "#000000",
+     "text": "40"
+    },
+    {
+     "fill": "#000000",
+     "text": "Miles"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": "Miles"
+  },
+  "y_two": {
+   "error": "",
+   "label_position": "3",
+   "notes": [],
+   "rc": 0,
+   "svg_sha": "83bb3e3cb5863116dc034d6b2afe65df0ee7bf827df035fb7edc60e8b5895862",
+   "texts": [
+    {
+     "fill": "#000000",
+     "text": "0"
+    },
+    {
+     "fill": "#000000",
+     "text": "5000"
+    },
+    {
+     "fill": "#000000",
+     "text": "10000"
+    },
+    {
+     "fill": "#000000",
+     "text": "15000"
+    },
+    {
+     "fill": "#000000",
+     "text": "2,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "3,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "4,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "5,000"
+    },
+    {
+     "fill": "#000000",
+     "text": "Weight (lbs.)"
+    },
+    {
+     "fill": "#000000",
+     "text": "A"
+    },
+    {
+     "fill": "#000000",
+     "text": "B"
+    }
+   ],
+   "xtitle": "Weight (lbs.)",
+   "ytitle": null
+  }
+ }
+}

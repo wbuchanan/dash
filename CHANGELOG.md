@@ -438,7 +438,7 @@ and now matches Stata.
 
 - lwidth(*#) multiplies the unfloored width before the 0.3 pt floor: dash scatter mpg weight, xline(3000, lwidth(*2)) under a scheme whose xyline is vvthin drew twice the floor (0.8 px), now the floor (0.4 px, 3.0 SVG units in twoway); tlwidth(*#), glwidth(*#) and yscale(lwidth(*#)) multiply the scheme's tick, grid and axis widths. (WP-31, E6)
 
-<!-- WP-31 D8 -->
+- dash scatter mpg weight, yvarlabel("Miles") xvarlabel("Pounds"): axis titles "Mileage (mpg)" and "Weight (lbs.)" with a note naming both -> "Miles" and "Pounds", silently, as twoway; the strings also key the legend (WP-31, D8)
 
 <!-- WP-31 C17 -->
 

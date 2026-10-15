@@ -133,6 +133,9 @@ COVERAGE = {
         # WP-31 S32 (A3c): asp() .. aspec() refused as twoway refuses them.
         "_dash_refuse_asp": ("test_abbreviations.cscript:U32-10",),
         "_dash_le_typed": ("test_parser.cscript:U26-9",),
+        # e2e: yvarlabel() and xvarlabel() read beside the plot parser
+        # (WP-31 D8).
+        "_dash_label_split": ("test_option_validation.cscript:U34-8",),
         # e2e: sort() refused, named or silent as twoway, on every type
         # (WP-29 P0.1).
         "_dash_sort_opt": ("test_twoway_option_parity.cscript:JO-21",
@@ -780,6 +783,7 @@ COVERAGE = {
         "_dash_axis_fmts": ("test_option_validation.cscript:AF-01", "test_option_validation.cscript:AF-06"),
         # WP-30 S20 (P1.1b): Per-series value lists (P1.1 part b)
         "_dash_stylelist_locals": ("test_varlist_expansion.cscript:PS-01",),
+        "_dash_varlabel_tail": ("test_option_validation.cscript:U34-8",),
         # WP-30 S22 (P1.28a): r(filename) and the stale-graph note (P1.28 part a, M8)
         "_dash_abs_path": ("test_export.cscript:GE-11",),
         "_dash_graph_names": ("test_export.cscript:GE-14",),

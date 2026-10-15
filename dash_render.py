@@ -48305,12 +48305,65 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
     def L(name):
         return _dash_var_label(vl, name) if name not in (None, "") else ""
 
+    # yvarlabel() and xvarlabel() (WP-31 D8; advanced_options.sthlp): the
+    # strings twoway takes for the variables' labels.  The record carries
+    # its strings as typed, from its own y on (dash.ado
+    # _dash_varlabel_tail): the k-th is the plot's k-th y variable within
+    # each series -- a range layer's two boundaries, a ci fit's band and
+    # line both from the first (measured,
+    # test/fixtures/varlabel_mlabel_truth.json varlabel.range_two
+    # "Band/Top", varlabel.fitci "Q/95% CI" and "Q", varlabel.fit "Q").
+    # A quoted "" is a string: the label is empty, as twoway's
+    # xvarlabel("") draws no title.
+    def words(raw):
+        if not isinstance(raw, str):
+            return []
+        out, i, n = [], 0, len(raw)
+        while i < n:
+            if raw[i] in " \t":
+                i += 1
+            elif raw.startswith('`"', i):
+                depth, j = 0, i
+                while j < n:
+                    if raw.startswith('`"', j):
+                        depth, j = depth + 1, j + 2
+                    elif raw.startswith('"\'', j):
+                        depth, j = depth - 1, j + 2
+                        if depth == 0:
+                            break
+                    else:
+                        j += 1
+                out.append(raw[i + 2:j - 2] if depth == 0 else raw[i + 2:])
+                i = j
+            elif raw[i] == '"':
+                j = raw.find('"', i + 1)
+                j = n if j < 0 else j
+                out.append(raw[i + 1:j])
+                i = j + 1
+            else:
+                j = i
+                while j < n and raw[j] not in " \t":
+                    j += 1
+                out.append(raw[i:j])
+                i = j
+        return out
+
+    _yvl = words(opts.get("yvarlabel"))
+    _xvl = words(opts.get("xvarlabel"))
+
+    def Ly(name, k=0):
+        return _yvl[k] if k < len(_yvl) else L(name)
+
+    def Lx(name):
+        return _xvl[0] if _xvl else L(name)
+
     def name(key):
         v = plot.get(key, "")
         return "" if v in (None, "") else str(v)
 
-    def pair(a, b):
-        la, lb = L(plot.get(a)), L(plot.get(b))
+    def pair(a, b, y=True):
+        la, lb = ((Ly(plot.get(a), 0), Ly(plot.get(b), 1)) if y
+                  else (Lx(plot.get(a)), L(plot.get(b))))
         if not lb or lb == la:
             return la
         if not la:
@@ -48323,16 +48376,17 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
             return [(("kdensity %s" % var) if var else "kdensity", "x")]
         return [(_DASH_HIST_YTITLES[_dash_histogram_ymode(opts)], L(var))]
     if ptype in _DASH_RANGE_TYPES:
-        return [(pair("yvar1", "yvar2"), L(plot.get("xvar")))]
+        return [(pair("yvar1", "yvar2"), Lx(plot.get("xvar")))]
     if ptype in _DASH_RANGEPT_TYPES:
         # WP-31 B1: twoway's y3xview_g.dimtitle -- L(y1), then L(y2) and
         # L(y3) joined with "/" unless all three are the same.
-        l1, l2, l3 = (L(plot.get(k)) for k in ("yvar1", "yvar2", "yvar"))
+        l1, l2, l3 = (Ly(plot.get(k), i)
+                      for i, k in enumerate(("yvar1", "yvar2", "yvar")))
         if l1 != l2 or l1 != l3:
             l1 = "/".join([l1] + [v for v in (l2, l3) if v])
-        return [(l1, L(plot.get("xvar")))]
+        return [(l1, Lx(plot.get("xvar")))]
     if ptype in _DASH_PC_TYPES:
-        return [(pair("y1var", "y2var"), pair("x1var", "x2var"))]
+        return [(pair("y1var", "y2var"), pair("x1var", "x2var", False))]
     if ptype == "scatteri":
         return [("y", "x")]
     if ptype in ("pci", "pcarrowi"):
@@ -48351,13 +48405,22 @@ def _dash_layer_series(plot, var_labels=None, default_level=None):
         else:
             line = _DASH_FIT_KEYS.get(ptype, "Fitted values")
         x = ("lpoly smoothing grid" if ptype in ("lpoly", "lpolyci")
-             else L(xv))
+             else Lx(xv))
+        band = None
         if ptype in _DASH_CI_TYPES:
             lvl = _resolve_level(opts, _DEFAULT_LEVEL if default_level is None
                                  else default_level, ptype)
-            return [(f"{lvl:g}% CI", x), (line, x)]
+            band = f"{lvl:g}% CI"
+        if _yvl:
+            # The fit's y is its first string; the band's lower boundary
+            # too, joined to the upper's "<level>% CI" (varlabel.fitci).
+            line = _yvl[0]
+            if band is not None and _yvl[0] and _yvl[0] != band:
+                band = _yvl[0] + "/" + band
+        if band is not None:
+            return [(band, x), (line, x)]
         return [(line, x)]
-    return [(L(plot.get("yvar")), L(plot.get("xvar")))]
+    return [(Ly(plot.get("yvar")), Lx(plot.get("xvar")))]
 
 
 def _dash_legend_key(plot, var_labels=None):

@@ -2279,6 +2279,36 @@ if r(trc) != 0 | r(drc) != 0 {
 }
 _u05_judge U33-09 `"`bad'"' "axis-2 minor angle() bounded as twoway bounds it"
 
+// U34-8 (WP-31 D8): yvarlabel() and xvarlabel(), twoway's plot options
+// (advanced_options.sthlp), taken as twoway takes them, rc 0 and silent,
+// and written to the registry as typed (test/fixtures/
+// varlabel_mlabel_truth.json varlabel.both).
+local bad ""
+_u05_rc `"scatter mpg weight, yvarlabel("Miles") xvarlabel("Pounds")"' ""
+if r(trc) != 0 | r(drc) != 0 | r(dnote) != 0 {
+    local bad `"`bad' [twoway `r(trc)', dash `r(drc)', dash notes `r(dnote)']"'
+}
+capture dash clear
+sysuse auto, clear
+quietly dash scatter mpg price weight, yvarlabel("A" "B") xvarl("P") name(u348)
+mata: st_local("_u348", strofreal(strpos(st_global("dash_json_u348"), char(34) + "yvarlabel" + char(34) + ":" + char(34) + char(92) + char(34) + "B" + char(92) + char(34)) > 0 & strpos(st_global("dash_json_u348"), char(34) + "xvarlabel" + char(34)) > 0))
+if `_u348' != 1 local bad `"`bad' [the registry lacks the second record's yvarlabel "B" or xvarlabel]"'
+capture dash clear
+_u05_judge U34-8 `"`bad'"' "yvarlabel() and xvarlabel() taken silently as twoway takes them and written to the registry"
+
+// U34-10 (WP-31 C17, a guard): headlabel is taken on every paired-
+// coordinate type, as twoway takes it (yxyxview_parse:52,67).
+local bad ""
+foreach c in "pcspike mpg weight price length" "pcscatter mpg weight price length" ///
+        "pcarrow mpg weight price length" "pccapsym mpg weight price length" ///
+        "pci 20 2000 30 4000" "pcarrowi 20 2000 30 4000" {
+    _u05_rc `"`c', headlabel"' ""
+    if r(trc) != 0 | r(drc) != 0 {
+        local bad `"`bad' [`c': twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+_u05_judge U34-10 `"`bad'"' "headlabel taken on every paired-coordinate type, as twoway takes it"
+
 // ----------------------------------------------------------------
 // Summary
 // ----------------------------------------------------------------

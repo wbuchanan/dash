@@ -297,7 +297,10 @@ def _help_synonym_claims():
 _PROGRAMS = ("_dash_parse_plot_opts", "_dash_parse_graph_opts", "_dash_build",
              "_dash_kpi", "_dash_prepare_spec", "_dash_serve_spec",
              # WP-31 B4b: contour's options, read before the plot parser's.
-             "_dash_contour_split")
+             "_dash_contour_split",
+             # WP-31 S34: yvarlabel() and the other options the plot
+             # parser's syntax has no room for.
+             "_dash_label_split")
 
 # Declared by `syntax' for internal plumbing; never typed by a user.  The
 # only exceptions to "every spelling dash accepts is documented", each with
@@ -591,8 +594,9 @@ class TestTheParsersFoundSomething:
         # 219 -> 221: B4b the Unsupported entry "Contour options" names
         # heatmap and outlines; 221 -> 211: D2 the Unsupported entry
         # "Alternative titles" goes.
-        assert len(found) == 211, (
-            f"{len(found)} options parsed out of dash.sthlp, 211 measured "
+        # 211 -> 213: D8 the yvarlabel() xvarlabel() entry.
+        assert len(found) == 213, (
+            f"{len(found)} options parsed out of dash.sthlp, 213 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -677,7 +681,8 @@ class TestTheParsersFoundSomething:
         # 240 -> 249: B5b the nine dot options declared
         # 249 -> 253: D1 xmlabel2 ymlabel2 xmtick2 ymtick2 declared
         # 253 -> 269: B4b contour's sixteen options (_dash_contour_split)
-        assert len(_ado_declarations()) == 269
+        # 269 -> 271: D8 yvarlabel xvarlabel declared (_dash_label_split)
+        assert len(_ado_declarations()) == 271
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -806,9 +811,10 @@ class TestTheParsersFoundSomething:
         # 432 -> 437: D4 five synopt rows holes() .. textwidth().
         # 437 -> 439: D5 four sizing entries (aspectratio(), scale(),
         # fysize()/fxsize(), the overhangs), less the two Unsupported
-        # entries "Sizing for graph combine" and "Room for long end labels".
-        assert len(defs) == 439, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 439 "
+        # entries "Sizing for graph combine" and "Room for long end labels";
+        # 439 -> 440: D8 the yvarlabel() xvarlabel() entry.
+        assert len(defs) == 440, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 440 "
             f"measured 15oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

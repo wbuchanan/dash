@@ -481,7 +481,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit pending.
 - **D6 Tracked:** Closed in WP-31, BUGS.md "Axis label and tick style sub-options are named, ##5 is read as #5, and label forms twoway refuses are drawn", commit pending.
 - **D7 Tracked:** Closed in WP-31, BUGS.md "Axis-scale look options fill, outergap(), extend, fextend and lstyle are named and two yscale(alt) do not toggle back", commit pending.
-- **D8 Tracked:** Open (WP-31 section 34).
+- **D8 Tracked:** Closed in WP-31, BUGS.md "yvarlabel() and xvarlabel() are undeclared, noted and absent from the help", commit pending.
 - **D9 Tracked:** Open (WP-31 section 35).
 - **D10 Tracked:** Open (WP-31 section 36).
 - **D11 Tracked:** Open (WP-31 section 37).

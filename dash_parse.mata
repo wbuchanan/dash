@@ -229,6 +229,9 @@
 *!   _dash_stylelist_locals(raw, stub)
 *!       A stylelist's elements as the caller's locals <stub>n, t<j>, q<j>.
 *!
+*!   _dash_varlabel_tail(raw, i)
+*!       yvarlabel()'s words from the i-th on, as typed (WP-31 D8).
+*!
 *!   _dash_connect_canon(kind, e)
 *!       One connect() or cmissing() element as twoway reads it: the
 *!       canonical style name, y or n; "" when empty, "?" when unknown.
@@ -5980,6 +5983,24 @@ string scalar _dash_stylelist_norm(string scalar raw)
         if (E[2, j] != "1" | E[1, j] != "") return(raw)
     }
     return("")
+}
+
+// _dash_varlabel_tail(raw, i) -- yvarlabel()'s top-level words from the
+// i-th on, each as typed (quotes kept), joined by one blank; "" when the
+// list is shorter (WP-31 D8).  twoway gives the k-th string to a plot's
+// k-th y variable within each of its sersets (measured,
+// test/fixtures/varlabel_mlabel_truth.json varlabel.range_two "Band/Top",
+// varlabel.fitci "Q/95% CI" and "Q"), and dash writes one record per y of
+// an expanded varlist: record i keeps the words from the i-th on, so its
+// own y reads the first of them and a range record reads two.
+string scalar _dash_varlabel_tail(string scalar raw, real scalar i)
+{
+    string rowvector t
+
+    if (strtrim(raw) == "" | i < 1) return("")
+    t = _dash_rep_toks(raw, 0)
+    if (cols(t) < i) return("")
+    return(invtokens(t[|1, i \ 1, cols(t)|]))
 }
 
 // _dash_stylelist_pick(raw, i) -- the element the i-th y takes, "" for
