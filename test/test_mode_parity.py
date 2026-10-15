@@ -820,12 +820,25 @@ def _svg_action(tool, entry):
     return entry + tuple(sorted(extra.items(), key=lambda kv: kv[0]))
 
 
+def _plain_arg(v):
+    """A formatter arg as plain data: a model (alternate's base formatter,
+    WP-31 D6) as its type, its own args and its code."""
+    from bokeh.model import Model
+    if isinstance(v, Model):
+        return (type(v).__name__,
+                tuple(sorted((k, _plain_arg(x)) for k, x in
+                             (getattr(v, "args", None) or {}).items())),
+                getattr(v, "code", None))
+    return v
+
+
 def _axes(fig):
     def one(a):
         ori = a.major_label_orientation
         return {"type": type(a).__name__, "label": a.axis_label,
                 "formatter": type(a.formatter).__name__,
                 "formatter_args": sorted(
+                    (k, _plain_arg(v)) for k, v in
                     (getattr(a.formatter, "args", None) or {}).items()),
                 "ticker": type(a.ticker).__name__,
                 "ticks": ([_num(float(t)) for t in a.ticker.ticks]
@@ -2580,6 +2593,15 @@ CORPUS = [
               "ysize": "4"}),
     _case("fysize(50) (WP-31 D5)", [plot_for("scatter")],
           go={"fysize": "50"}),
+
+    # WP-31 D6/D7/E6 (section 33): the axis look and line-width edges.
+    _case("ylabel alternate labgap", [_sc()],
+          go={"ylabel": ", alternate labgap(large)"}),
+    _case("ylabel glwidth nogmin", [_sc()],
+          go={"ylabel": ", grid glwidth(thick) nogmin"}),
+    _case("yscale noextend outergap", [_sc()],
+          go={"yscale": "noextend outergap(5)"}),
+    _case("xline lwidth(*2)", [_sc()], go={"xline": "3000, lwidth(*2)"}),
 ]
 
 
@@ -3603,6 +3625,10 @@ MOVE_CORPUS = [
     # WP-31 D5/E11 (section 32): sizing
     _move_case("scale(1.5) after a dropdown move (WP-31 D5)", _MOVES[0],
                [plot_for("scatter")], go={"scale": "1.5"}),
+
+    # WP-31 D6 (section 33): the twin label axis survives a move.
+    _move_case("ylabel alternate, dropdown (WP-31 D6)", _MOVES[0],
+               [plot_for("scatter")], go={"ylabel": ", alternate"}),
 ]
 
 

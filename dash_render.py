@@ -7838,14 +7838,19 @@ class OptionTranslator:
 
     @staticmethod
     def translate_lwidth(value: str, default_px: Any = None,
-                         ref_in: float = 4.0) -> float:
+                         ref_in: float = 4.0,
+                         default_pt: Any = None) -> float:
         """Return a pixel line width for a Stata lwidth() value.
 
         Line widths are Stata units on Stata's linewidth ladder (IR-1,
         P1.12.3; twoway measured 03oct2026, WP-30 P1.12b): a number and
         ``#rs`` are Stata units (2.88 pt each), ``#pt``/``#in``/``#cm`` are
         absolute at the graph's reference length *ref_in*, ``*#`` multiplies
-        *default_px* (the width the site would draw; medium when absent),
+        *default_pt* -- the site's unfloored width in points, which wins --
+        else *default_px* (the width the site would draw; medium when
+        absent), so the 0.3 pt floor applies once, after the multiply, as
+        twoway applies it (WP-31 E6: xline(, lwidth(*2)) over a vvthin
+        xyline draws the floor, test/fixtures/axis_look_truth.json),
         names are case-sensitive, and ``OptionTranslator.line_px`` turns
         the points into pixels with the 0.3 pt floor.
 
@@ -7859,7 +7864,13 @@ class OptionTranslator:
             d = float(default_px)
             if not (math.isfinite(d) and d >= 0):
                 d = None
-        default_pt = (d * 0.75 if d is not None
+        dp = None
+        if isinstance(default_pt, (int, float)) \
+                and not isinstance(default_pt, bool):
+            dp = float(default_pt)
+            if not (math.isfinite(dp) and dp >= 0):
+                dp = None
+        default_pt = (dp if dp is not None else d * 0.75 if d is not None
                       else T._LWIDTH_RS["medium"] * T.PT_PER_RS)
         pt = T.resolve_size(value, "line", default_pt, ref_in)
         if pt < 0:
@@ -11297,6 +11308,24 @@ class SchemeParser:
         """Return the dash list for a connected plot's connecting line."""
         return self.p_line_patterns[index % 15]
 
+    def linewidth_pt(self, role: str) -> float:
+        """``linewidth <role>`` in points, unfloored (WP-31 E6): the
+        default ``*#`` multiplies, so the 0.3 pt floor applies once, after
+        it.  A number is Stata units (2.88 pt each), a name is read on
+        Stata's ladder; absent or unreadable is medium.  *role* is a key
+        into the parsed scheme, never a path."""
+        T = OptionTranslator
+        medium = T._LWIDTH_RS["medium"] * T.PT_PER_RS
+        raw = self._props.get("linewidth " + str(role), "").strip()
+        if not raw:
+            return medium
+        try:
+            pt = T.resolve_size(raw, "line", medium,
+                                getattr(self, "size_ref_in", 4.0))
+        except (ValueError, TypeError):
+            return medium
+        return pt if math.isfinite(pt) and pt >= 0 else medium
+
     def default_marker_size(self, index: int = 0) -> float:
         """Return the marker diameter in pixels for the plot at *index*:
         ``symbolsize p#`` -> ``symbolsize p``, cycling through fifteen as
@@ -11995,7 +12024,11 @@ class SchemeParser:
             "minor_label_color": self.tick_label_color,
             "minor_grid_color": self.minor_grid_color,
             "minor_grid_width": float(self.minor_grid_line_width),
-            "minor_grid_dash": list(self.minor_grid_dash or [])}
+            "minor_grid_dash": list(self.minor_grid_dash or []),
+            # WP-31 E6: the unfloored widths *# multiplies.
+            "tick_pt": float(self.linewidth_pt("tick")),
+            "grid_pt": float(self.linewidth_pt("major_grid")),
+            "line_pt": float(self.linewidth_pt("axisline"))}
         if which not in ("x", "y"):
             return
         angle = self.tick_angle_x if which == "x" else self.tick_angle_y
@@ -37003,6 +37036,15 @@ def _dash_tick_look(axis_obj, spec, minor=False, by_graph=False, option="",
             setattr(ax, pre + "_tick_line_color", base_col or "#000000")
 
 
+def _dash_look_pt(ax, key):
+    """The unfloored scheme width *key* (``tick_pt``, ``grid_pt``,
+    ``line_pt``) of axis *ax*'s scheme snapshot, or None (WP-31 E6)."""
+    look = getattr(ax, "_dash_scheme_look", None)
+    v = look.get(key) if isinstance(look, dict) else None
+    return float(v) if isinstance(v, (int, float)) \
+        and not isinstance(v, bool) and math.isfinite(float(v)) else None
+
+
 #: WP-31 D6: twoway's default gap between a tick and its label, gsize
 #: tickgap half_tiny (2 pt), which Bokeh's default label standoff (5 px)
 #: stands for: labgap() moves the labels by its size less this.
@@ -37064,7 +37106,8 @@ def _dash_tick_line_look(axis_obj, spec, minor=False, option="axis",
         if v is not None:
             try:
                 setattr(ax, pre + "_tick_line_width", T.translate_lwidth(
-                    str(v), getattr(ax, pre + "_tick_line_width"), ref_in))
+                    str(v), getattr(ax, pre + "_tick_line_width"), ref_in,
+                    default_pt=_dash_look_pt(ax, "tick_pt")))
             except (ValueError, TypeError):
                 _dash_style_note(f"{option}(tlwidth)", v, "line width",
                                  "the scheme's width")
@@ -37113,7 +37156,9 @@ def _dash_grid_look(axis_obj, grid_obj, spec, option="axis", ref_in=4.0,
         if v is not None:
             try:
                 g.grid_line_width = T.translate_lwidth(
-                    str(v), g.grid_line_width, ref_in)
+                    str(v), g.grid_line_width, ref_in,
+                    default_pt=_dash_look_pt(axes[0] if axes else None,
+                                             "grid_pt"))
             except (ValueError, TypeError):
                 _dash_style_note(f"{option}(glwidth)", v, "line width",
                                  "the scheme's width")
@@ -37211,7 +37256,9 @@ def _dash_apply_scale_look(fig, axis_obj, look, option, number=1,
     if v is not None:
         try:
             axis_obj.axis_line_width = T.translate_lwidth(
-                v, axis_obj.axis_line_width, ref_in)
+                v, axis_obj.axis_line_width, ref_in,
+                default_pt=(None if look.get("lstyle") is not None
+                            else _dash_look_pt(axis_obj, "line_pt")))
         except (ValueError, TypeError):
             _dash_style_note(f"{option}(lwidth)", v, "line width",
                              "the scheme's width")
@@ -47408,6 +47455,7 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
     range *range_name* -- ``"y2"``/``"x2"`` for a yline(#, axis(2)) copy
     (WP-29 P0.5); a second axis of dates reads dates, as the first does
     (WP-30 P1.23a)."""
+    kw_pt = None
     if style.get("lstyle"):
         # lstyle(): any line style name, through the scheme's chain (WP-30
         # P1.21a; S32/S36's style_bundle); an unknown name is foreground's
@@ -47423,6 +47471,8 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
         kw = {"line_color": scheme.xyline_color,
               "line_dash": list(scheme.xyline_dash),
               "line_width": scheme.xyline_width}
+        # WP-31 E6: *# multiplies xyline's unfloored width.
+        kw_pt = scheme.linewidth_pt("xyline")
     else:
         kw = {"line_color": "#000000", "line_dash": "dashed",
               "line_width": OptionTranslator.translate_lwidth("medium")}
@@ -47468,7 +47518,7 @@ def _dash_refline_draw(fig, opt, dim, values, style, scheme, Span,
         try:
             kw["line_width"] = OptionTranslator.translate_lwidth(
                 style["lwidth"], kw["line_width"],
-                OptionTranslator.size_ref_of(fig))
+                OptionTranslator.size_ref_of(fig), default_pt=kw_pt)
         except (ValueError, TypeError):
             _dash_style_note(
                 f"{opt}({style.get('_typed', {}).get('lwidth', 'lwidth')})",
@@ -55907,6 +55957,7 @@ class ServerAppBuilder:
                          "_dash_alt_axes", "_dash_axis_layer_values",
                          "_dash_axis_label_look", "_dash_tick_line_look",
                          "_dash_grid_look", "_dash_axis_bounds", "_dash_axis_major_ticks",
+                         "_dash_look_pt",
                          "_dash_add_secondary_axes",
                          "_dash_secondary_values",
                          "_dash_finish_secondary_axes",

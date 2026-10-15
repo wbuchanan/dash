@@ -5072,7 +5072,11 @@ ladder: {cmd:none}, {cmd:vvvthin}, {cmd:vvthin}, {cmd:vthin}, {cmd:thin},
 other size, so {cmd:lwidth(thick)} draws 8/3 as wide as {cmd:medium}.  A
 number and {it:#}{cmd:rs} are Stata units; {it:#}{cmd:pt}, {it:#}{cmd:in}
 and {it:#}{cmd:cm} are absolute, at the graph's reference length;
-{cmd:*}{it:#} multiplies the width the site would draw otherwise.  A
+{cmd:*}{it:#} multiplies the width the site would draw otherwise, before
+the floor: {cmd:xline(3000, lwidth(*2))} under a scheme whose {cmd:xyline}
+is {cmd:vvthin} draws the floor, as {cmd:twoway} does, not twice it; the
+same holds for {cmd:tlwidth()}, {cmd:glwidth()} and the axis line's
+{cmd:lwidth()}, which multiply the scheme's tick, grid and axis widths.  A
 width under 0.3 point is drawn at 0.3 point, as {cmd:twoway} draws it,
 and {cmd:none}, {cmd:0} and {cmd:*0} draw nothing.  A name is matched in
 its case, so {cmd:lwidth(THICK)} is noted and drawn at the scheme's width,

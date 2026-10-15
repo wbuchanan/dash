@@ -7540,6 +7540,11 @@ def _u33_tw(case, svg, svg0, tlog):
         x = [t["x"] for t in d["texts"] if t.get("rotate")
              and t["text"].isdigit()][0]
         return "right" if x > d["plotregion"]["right"] else "left"
+    if case == "xline":
+        w = [v["width"] for v in d["vlines"]
+             if v["stroke"] not in ("#000000", "#eaf2f3")
+             and abs(v["y2"] - v["y1"]) > 500][0]
+        return "%.2f" % (w / 10 * 4 / 3)
     if case == "dh":
         n = len([t for t in d["texts"] if t.get("rotate")
                  and t["text"].isdigit()])
@@ -7577,6 +7582,10 @@ def _u33_dash(figs, case, log):
     if case == "side":
         return "right" if any("dash_alt_axis" not in (a.tags or [])
                               for a in f.right) else "left"
+    if case == "xline":
+        ws = [m.line_width for m in list(f.center) + list(f.renderers)
+              if type(m).__name__ in ("Span", "Arrow")]
+        return "%.2f" % ws[0] if ws else "none"
     if case == "dh":
         t = yax.ticker
         n = len(getattr(t, "ticks", None) or [])
@@ -7612,6 +7621,25 @@ def _u33_docs(sp, dp, app):
     return (list(r.figures.values()), sv,
             "\n".join(str(x.message) for x in w1),
             "\n".join(str(x.message) for x in w2))
+
+
+def _u33_vvthin(base, out):
+    """scheme-u33vvthin.scheme in *out*: s2color with linewidth xyline
+    vvthin and no #include."""
+    import os
+    with open(os.path.join(base, "s", "scheme-s2color.scheme"),
+              encoding="latin-1") as fh:
+        lines = fh.read().splitlines()
+    keep = []
+    for ln in lines:
+        if ln.lstrip().startswith("#include"):
+            continue
+        if ln.split()[:2] == ["linewidth", "xyline"]:
+            ln = "linewidth xyline       vvthin"
+        keep.append(ln)
+    with open(os.path.join(out, "scheme-u33vvthin.scheme"), "w",
+              encoding="latin-1") as fh:
+        fh.write("\n".join(keep) + "\n")
 
 
 def _u33_check(sp, dp, app, svg, svg0, tlog, dlog, case):
@@ -7734,6 +7762,42 @@ if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
     macro drop u33_tw u33_s u33_v u33_noted
     capture graph drop _all
     dash clear
+    display as text "S33 end " c(current_date) " " c(current_time)
+}
+* ==== end S33 ====
+
+* ==== S33 E6: Line-width edges ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S33") & `: list posof "S33" in w31_run' {
+    display as text "S33 start " c(current_date) " " c(current_time)
+    local u33d "`w31_work'/s33c"
+    capture mkdir "`u33d'"
+    capture graph drop _all
+    sysuse auto, clear
+    // A scheme whose xyline is vvthin: s2color with that one line changed.
+    python: _u33_vvthin(r"`c(sysdir_base)'", r"`u33d'")
+    adopath ++ "`u33d'"
+    set scheme s2color
+    quietly twoway scatter mpg weight, name(u33t, replace)
+    quietly graph export "`u33d'/t0.svg", replace
+    graph drop u33t
+
+    // U33-08: lwidth(*2) multiplies before the floor, under vvthin and
+    // under s2color's medium.
+    _u33_reg "`u33d'" 8 xline scatter mpg weight, xline(3000, lwidth(*2)) scheme(u33vvthin)
+    foreach m in s v {
+        _w31_expect U33-08 `"("${u33_`m'}" == "${u33_tw}")"' "`m' vvthin: dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _u33_reg "`u33d'" 9 xline scatter mpg weight, xline(3000, lwidth(*2))
+    foreach m in s v {
+        _w31_expect U33-08 `"("${u33_`m'}" == "${u33_tw}")"' "`m' medium: dash ${u33_`m'}; twoway ${u33_tw}"
+    }
+    _w31_done U33-08 "xline(, lwidth(*2)) floored after the multiply, saved and served"
+
+    macro drop u33_tw u33_s u33_v u33_noted
+    capture graph drop _all
+    dash clear
+    set scheme s2color
     display as text "S33 end " c(current_date) " " c(current_time)
 }
 * ==== end S33 ====

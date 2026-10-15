@@ -436,7 +436,7 @@ and now matches Stata.
 
 - The axis-scale look is drawn. dash scatter mpg weight, yscale(alt) yscale(alt) moved the y axis to the right, now leaves it on the left as twoway does; yscale(noextend) drew the axis line across the whole frame, now from the first to the last tick (10 to 40); yscale(outergap(5)) was named in a note, now widens the border by twoway's 12.4 pt; yscale(lstyle(grid)) draws the grid's line; the default gap between an axis's labels and its title is the scheme's gsize axis_title_gap (1 pt under s2color; Bokeh's 5 px before). (WP-31, D7)
 
-<!-- WP-31 E6 -->
+- lwidth(*#) multiplies the unfloored width before the 0.3 pt floor: dash scatter mpg weight, xline(3000, lwidth(*2)) under a scheme whose xyline is vvthin drew twice the floor (0.8 px), now the floor (0.4 px, 3.0 SVG units in twoway); tlwidth(*#), glwidth(*#) and yscale(lwidth(*#)) multiply the scheme's tick, grid and axis widths. (WP-31, E6)
 
 <!-- WP-31 D8 -->
 

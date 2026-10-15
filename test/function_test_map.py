@@ -1074,6 +1074,8 @@ FUNCTIONS = {
  '_dash_axis_major_ticks': 'test/test_axis_look_options.py::TestTheBoundsFinisher::test_the_major_ticks_under_a_wrapper',
  '_dash_grid_look': 'test/test_axis_look_options.py::TestGridLook::test_each',
  '_dash_tick_line_look': 'test/test_axis_look_options.py::TestTickLook::test_major',
+ '_dash_look_pt': 'test/test_line_width_edges.py::TestDrawn::test_tick_and_grid_defaults',
+ 'SchemeParser.linewidth_pt': 'test/test_line_width_edges.py::TestCallSites::test_scheme_points',
  '_dash_tick_position': 'test/test_axis_suboptions.py::TestTheUnitFunctions::test_tick_position',
  # WP-30 S32 (P1.14a): Named styles p1-p15 (P1.14 part a)
  'GlyphMapper._style_options': 'test/test_named_styles.py::TestPlanUnits::test_shadowed_options_are_dropped',
