@@ -3969,3 +3969,15 @@
   - Description: GAPS3.md D16, found by WP-31 section 26 (B4b, measured 15oct2026): `twoway scatter mpg weight, "abc"` (and the same on contour and contourline) is refused "quotes unbalanced", r(198); dash keeps the string and names it in its ignoring note (test_json_escaping.cscript JSE-69 pins that today).
   - Suggested fix: WP-31 section 39 (tabs layout legend edges): refuse a bare quoted string among the options with twoway's words and code on every plot type and in the graph options, and flip JSE-69 to the refusal while keeping its no-expansion check.
   - Resolution: Not fixed because WP-31 section 39 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them
+  - File Names and Line Numbers: dash.ado graph-text options; test_json_escaping.cscript JSE-65; dash_parse.mata _dash_at_globals (S30's added-text expansion)
+  - Description: GAPS3.md D13, found by WP-31 section 30 (D13): added text() now expands a global at registration by text substitution (never evaluating `=exp'), as twoway draws it; title(), subtitle(), note() and caption() keep a typed \$name literal under an earlier decision (JSE-65), where twoway expands it in every text option.
+  - Suggested fix: WP-31 section 42 (smcl inline runs): measure twoway's expansion in each graph text option and expand globals there the way S30 does for text(), by text substitution only, keeping JSE-65's no-double-expansion and no-evaluation guarantees.
+  - Resolution: Not fixed because WP-31 section 42 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.
+
+- [ ] Title: subtitle() position() and ring() on a by() panel's label row are named, not drawn
+  - File Names and Line Numbers: dash_render.py by() panel label row; _dash_textbox_place
+  - Description: GAPS3.md D3, found by WP-31 section 30 (D3): title()/subtitle()/note()/caption() position() and ring() are drawn through _dash_textbox_place, but on a by() graph the panel label row's subtitle(, position() ring()) is still named in the note.
+  - Suggested fix: WP-31 section 36 (by remainder): place the by() panel label subtitle by its position() and ring() as twoway does, both modes.
+  - Resolution: Not fixed because WP-31 section 36 has not landed. Graded S3 (WP-31): fidelity, hygiene, coverage or documentation drift.

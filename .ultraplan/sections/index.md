@@ -97,13 +97,13 @@
 | 33 | axis-suboptions-look | D6, D7, E6 + D1c (D20) | 11 | 24 | -- | yellow | M | 4 |
 | 34 | varlabel-marker-label-options | D8, C17, E3, C14, C15 | 11 | 01 | -- | green | S | 4 |
 | 35 | second-axis-moves | D9 + C10e (D14) + B5c (D19) + D1b (D20) | 12 | 09 | -- | yellow | M | 3 |
-| 36 | by-remainder | D10 | 12 | 01 | -- | yellow | M | 4 |
+| 36 | by-remainder | D10 + D3b (D24) | 12 | 01 | -- | yellow | M | 4 |
 | 37 | region-remainder | D11 | 12 | 01 | -- | yellow | M | 3 |
 | 38 | reference-lines-frame | D12 | 13 | 01 | -- | yellow | S | 3 |
 | 39 | tabs-layout-legend-edges | D14, D16 + D16b (D23) | 13 | 31 | -- | green | S | 3 |
 | 40 | symbols-line-patterns | E1, E2, E12 | 13 | 01 | 44 | yellow | M | 4 |
 | 41 | colour-width-outline-edges | E4, E5, E7, E8, E13 + C4b (D14) | 14 | 01 | -- | green | S | 4 |
-| 42 | smcl-inline-runs | E9 | 14 | 01 | -- | yellow | M | 3 |
+| 42 | smcl-inline-runs | E9 + D13b (D24) | 14 | 01 | -- | yellow | M | 3 |
 | 43 | data-missing-locale | G1, G2, G3, G4, G5 | 14 | 01 | -- | yellow | M | 4 |
 | 44 | style-file-resolver | E10 + C8c (D18) | 15 | 40 | -- | red | L | 4 |
 | 45 | date-ticks-natscale | D15 | 15 | 01 | -- | red | L | 3 |
@@ -151,6 +151,8 @@ Differences the batch 1-4 sections measured but no section owned, each added as 
 | D2b | Edge titles name position(), ring(), span and orientation() where twoway draws them (D21) | S27 | S30 (10) | RC |
 | B4d | After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed (D22) | S26 | S29 (10) | RC |
 | D16b | A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced (D23) | S26 | S39 (13) | CB |
+| D13b | Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them (D24) | S30 | S42 (14) | RC |
+| D3b | subtitle() position() and ring() on a by() panel's label row are named, not drawn (D24) | S30 | S36 (12) | RC |
 
 ## Batch execution order
 

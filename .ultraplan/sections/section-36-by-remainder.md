@@ -398,3 +398,16 @@ TR-36.11's entries under `# WP-31 D10: the by() remainder`.
 - **For S37 (batch 12).** `_dash_plot_margin` gains `mult=None` here; S37's margin edits keep the signature.
 - **For S45 and S61.** test/test_by_scales.py:426 stays a strict xfail: the panel tick count under `style(rescale) noyrescale` is a finisher model (`special by_slope1/by_knot1/by_slope2`, stata-ground-truth.md §11), to be measured with S45's date-tick work or filed by S61 under M12.
 - **Decisions for maintainer ratification.** D-36.a (regions per panel, by() copy wins), D-36.b (ring(0) into an empty cell, else inside the compass panel), D-36.c (cross-panel legend items with a sync fallback), D-36.i (hidden panels keep their cell; blank or collapsed as measured), D-36.j (test/test_by_scales.py:426 strict xfail stays; the tick-count model is S35/S45's), D-36.k (other bystyles drawn from the measurement or filed as a residual).
+
+## Addendum (15oct2026, DECISIONS D24): row D3b added to this section
+
+### D3b: subtitle() position() and ring() on a by() panel's label row are named, not drawn
+
+**Gap.** S30 routes textbox position()/ring() through `_dash_textbox_place` (`_dash_textbox_position`, `_dash_textbox_draw`); a by() graph's per-panel label (by()'s subtitle) is drawn by the by() machinery and names these sub-options.
+
+**Requirement.** Measure twoway's by(…, subtitle(, position() ring())) and draw the panel labels there in both modes, reusing S30's placement helpers.
+
+**Fits S36** because S36 applies by()'s stage-3 grammar rows in batch 12.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D3b)`; close the BUGS.md entry "subtitle() position() and ring() on a by() panel's label row are named, not drawn" (Resolution ending `Closes GAPS3 D3 (WP-31, D3b).`), delete its `"D3b":` WP31_OPEN line, rewrite GAPS3.md's `- **D3b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D3b -->` under `### Results that change` with a line ending `(WP-31, D3b)`. dash replaces twoway (D13).
+

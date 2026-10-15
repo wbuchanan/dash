@@ -2053,6 +2053,8 @@ WP31_OPEN = {
     "D1b": "Minor labels on a far-side axis stay where the build put them after a move, and minor ticks on axes 3 to 9 are named, not drawn",
     "D1c": "A minor-label format() is not kept after a move, axis-2 minor-label angle() is unbounded, and an evenly spaced typed list is drawn as a rule",
     "D16b": "A bare quoted string after the comma is named in the note where twoway refuses it as quotes unbalanced",
+    "D13b": "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them",
+    "D3b": "subtitle() position() and ring() on a by() panel's label row are named, not drawn",
 }
 
 #: Every WP-31 entry, permanently, and the CHANGELOG.md lists of the current
@@ -2188,6 +2190,8 @@ WP31_LISTS = {
     "D2b": ("Results that change",),
     "B4d": ("Results that change",),
     "D16b": ("Changed behaviour",),
+    "D13b": ("Results that change",),
+    "D3b": ("Results that change",),
 }
 
 #: The section that closes each entry (index.md "Section manifest").
@@ -2322,6 +2326,8 @@ WP31_SECTION = {
     "D2b": 30,
     "B4d": 29,
     "D16b": 39,
+    "D13b": 42,
+    "D3b": 36,
 }
 
 WP31_ALL = tuple(WP31_LISTS)
@@ -2533,7 +2539,8 @@ class TestWp31Tracking:
         # 126 -> 127: D21 adds D2b.
         # 127 -> 128: D22 adds B4d.
         # 128 -> 129: D23 adds D16b.
-        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 129
+        # 129 -> 131: D24 adds D13b, D3b.
+        assert WP31_ALL == tuple(WP31_LISTS) and len(WP31_ALL) == 131
         assert tuple(WP31_SECTION) == WP31_ALL
         assert set(WP31_SECTION.values()) == set(range(2, 61))
         bad = _wp31_list_problems(WP31_LISTS, _read("CHANGELOG.md"))

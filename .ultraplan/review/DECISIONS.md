@@ -29,6 +29,7 @@ Recorded 2026-10-10 after the four reviews (REVIEW-1..4) and the five deep passe
 | D21 | **Batch 9 addition** (15oct2026): S27's edge titles name position(), ring(), span and orientation() where twoway's parser takes them; row D2b goes to S30, which wires textbox position() and ring() through _dash_textbox_place for the titles. | S30 |
 | D22 | **Batch 9 addition** (15oct2026): S26's unfiled served difference -- the contour colour bar keeps the build's cuts and ticks after a filter move while the bands are recomputed -- is row B4d, added to S29, which refits contours after a move. | S29 |
 | D23 | **Batch 9 addition** (15oct2026): S26 measured that twoway refuses a bare quoted string after the comma, "quotes unbalanced", r(198), on every plot type, where dash keeps it and names it in the note; row D16b goes to S39, which matches twoway's refusal order and messages. | S39 |
+| D24 | **Batch 10 additions** (15oct2026): S30's two unfiled differences get owners: global macros in title()/subtitle()/note()/caption() kept literal where twoway expands them (D13b) to S42, which owns the graph-text parser; subtitle() position()/ring() on a by() panel's label row (D3b) to S36, which owns by()'s sub-options. | S42, S36 |
 
 ## Architect rulings (process and feasibility; from the reviews)
 

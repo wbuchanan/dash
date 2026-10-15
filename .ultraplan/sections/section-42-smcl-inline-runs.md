@@ -265,3 +265,16 @@ AC-42.1 every probed directive drawn as twoway's SVG; AC-42.2 bounds; AC-42.3 he
 - **R12:** no hot function.
 - **python_exec hazard** as S40.
 - **Decision for ratification:** D-42a (document inline runs; no Label splitting, no TeX).
+
+## Addendum (15oct2026, DECISIONS D24): row D13b added to this section
+
+### D13b: Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them
+
+**Gap.** S30 made `text()` expand a global at registration with `_dash_at_globals` (by text substitution only; a global holding a `=exp` is not evaluated, documented). title()/subtitle()/note()/caption() still keep `$name` literal by JSE-65's decision, while twoway expands globals in every graph text option.
+
+**Requirement.** Measure twoway for each text option (and the edge titles, axis titles, legend label text) with a global that holds plain text, SMCL, quotes and a `=exp`; expand the same way as S30's text() (substitution, bounded length, refusal past the bound), never evaluating; keep JSE-65's guarantee that text Stata already expanded is not expanded twice; update JSE-65 with a Flipped line.
+
+**Fits S42** because S42 owns the graph-text parser (`_dash_gt_head`, inline SMCL runs) in batch 14.
+
+**Process (binding).** As every row: measure twoway first (the measurement wins over this text; record a deviation); failing tests first with saved failure text; ONE commit with subject ending `(WP-31 D13b)`; close the BUGS.md entry "Global macros in title(), subtitle(), note() and caption() are drawn literally where twoway expands them" (Resolution ending `Closes GAPS3 D13 (WP-31, D13b).`), delete its `"D13b":` WP31_OPEN line, rewrite GAPS3.md's `- **D13b Tracked:**` line to `Closed in WP-31, BUGS.md "<title>", commit pending.`, replace `<!-- WP-31 D13b -->` under `### Results that change` with a line ending `(WP-31, D13b)`. dash replaces twoway (D13).
+

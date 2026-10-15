@@ -475,6 +475,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
 - **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit pending.
 - **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit pending.
+- **D3b Tracked:** Open (WP-31 section 36).
 - **D4 Tracked:** Open (WP-31 section 31).
 - **D5 Tracked:** Open (WP-31 section 32).
 - **D6 Tracked:** Open (WP-31 section 33).
@@ -485,6 +486,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D11 Tracked:** Open (WP-31 section 37).
 - **D12 Tracked:** Open (WP-31 section 38).
 - **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit pending.
+- **D13b Tracked:** Open (WP-31 section 42).
 - **D14 Tracked:** Open (WP-31 section 39).
 - **D15 Tracked:** Open (WP-31 section 45).
 - **D16 Tracked:** Open (WP-31 section 39).
