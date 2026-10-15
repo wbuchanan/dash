@@ -434,8 +434,8 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **B3 Tracked:** Closed in WP-31, BUGS.md "matamatrix() is read as a varlist and refused r(101) or r(111)", commit ff82353.
 - **B4a Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the interpolation, grid rule, cap and truth extractor)", commit 8e78c4d.
 - **B4b Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the type registration, options, colour rules, colour key and both modes)", commit b89f2a4.
-- **B4c Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the JavaScript twin)", commit pending.
-- **B4d Tracked:** Closed in WP-31, BUGS.md "After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed", commit pending.
+- **B4c Tracked:** Closed in WP-31, BUGS.md "contour and contourline are refused by name (the JavaScript twin)", commit 4456ce9.
+- **B4d Tracked:** Closed in WP-31, BUGS.md "After a filter move the served contour colour bar keeps the build's cuts while the bands are recomputed", commit 62890cf.
 - **B5a Tracked:** Closed in WP-31, BUGS.md "base() on dot is written to the spec and never read, and recast() on dot is dropped with no note (the base and recast parts)", commit 9f74f15.
 - **B5b Tracked:** Closed in WP-31, BUGS.md "dot is drawn as a plain scatter with no dot rows, and dotextend(), ndots() and the d-options are undeclared or pending (the dot rows and d-options)", commit 5e0a387.
 - **B5c Tracked:** Open (WP-31 section 35).
@@ -462,7 +462,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **C11 Tracked:** Open (WP-31 section 46).
 - **C11b Tracked:** Closed in WP-31, BUGS.md "lpoly's default bandwidth on an exactly fitted y differs between the saved page and the served app", commit 3df7686.
 - **C12 Tracked:** Open (WP-31 section 46).
-- **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit pending.
+- **C13 Tracked:** Closed in WP-31, BUGS.md "A histogram-only graph draws a legend where twoway draws none", commit 26b5060.
 - **C14 Tracked:** Open (WP-31 section 34).
 - **C15 Tracked:** Open (WP-31 section 34).
 - **C16 Tracked:** Open (WP-31 section 46).
@@ -473,10 +473,10 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D1b Tracked:** Open (WP-31 section 35).
 - **D1c Tracked:** Open (WP-31 section 33).
 - **D2 Tracked:** Closed in WP-31, BUGS.md "t1title to r2title are pending and title2 and subtitle2 are named where twoway refuses them", commit 2c6a68a.
-- **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit pending.
-- **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit pending.
+- **D2b Tracked:** Closed in WP-31, BUGS.md "Edge titles name position(), ring(), span and orientation() where twoway draws them", commit 5a36059.
+- **D3 Tracked:** Closed in WP-31, BUGS.md "Textbox sub-options on titles are named and _dash_textbox_place is wired to scheme clocks only", commit 0dfb5b6.
 - **D3b Tracked:** Open (WP-31 section 36).
-- **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit pending.
+- **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit c2e27c0.
 - **D4b Tracked:** Open (WP-31 section 39).
 - **D5 Tracked:** Open (WP-31 section 32).
 - **D6 Tracked:** Open (WP-31 section 33).
@@ -486,7 +486,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D10 Tracked:** Open (WP-31 section 36).
 - **D11 Tracked:** Open (WP-31 section 37).
 - **D12 Tracked:** Open (WP-31 section 38).
-- **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit pending.
+- **D13 Tracked:** Closed in WP-31, BUGS.md "Added text ignores tstyle() and the textbox sub-options and does not expand a global macro in a drawn label", commit 86e627a.
 - **D13b Tracked:** Open (WP-31 section 42).
 - **D14 Tracked:** Open (WP-31 section 39).
 - **D15 Tracked:** Open (WP-31 section 45).
