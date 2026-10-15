@@ -625,3 +625,91 @@ class TestHelp:
         assert ("a saved page recomputes the layer after a filter move up "
                 "to 1,000 distinct points") in text
         assert "the saved page does not recompute the layer" not in text
+
+
+# ---------------------------------------------------------------------------
+# A date on the plane (WP-31 B4c): twoway fits the surface in the
+# variable's Stata units (days for %td, months for %tm); the page draws it
+# on the date axis.
+# ---------------------------------------------------------------------------
+
+def _date_df(kind, n=40, seed=8):
+    df = _page_df(n, seed)
+    rng = np.random.default_rng(seed)
+    if kind == "td":
+        df["when"] = 15340.0 + np.round(rng.uniform(0, 400, n))
+    else:
+        df["when"] = 600.0 + np.round(rng.uniform(0, 48, n))
+    return df
+
+
+def _date_spec(kind, ptype, filt):
+    spec = tp._spec([{"type": ptype, "zvar": "price", "yvar": "mpg",
+                      "xvar": "when",
+                      "options": {"ccuts": "6000 8000 10000"}}],
+                    {"filter": filt, "formats": {"when": "%" + kind}})
+    return spec
+
+
+def _units_to_axis(v, kind):
+    return np.asarray(dr._dash_units_to_axis(list(v), kind), float)
+
+
+def _poly_points(d):
+    """Every vertex of a fill source, as (x, y) arrays."""
+    xs = [v for band in d["xs"] for poly in band for ring in poly for v in ring]
+    ys = [v for band in d["ys"] for poly in band for ring in poly for v in ring]
+    return np.asarray(xs, float), np.asarray(ys, float)
+
+
+@requires_node
+class TestDates:
+
+    @pytest.mark.parametrize("kind", ["td", "tm"])
+    def test_the_build_fits_in_stata_units(self, kind):
+        """The built bands are contourpy's cut of the surface twoway fits
+        in the date's own units, drawn at the axis's positions."""
+        df = _date_df(kind)
+        spec = _date_spec(kind, "contour", sf._MOVES[0][1])
+        figs = hm.jo._saved_figs(hm.jo._saved(spec, df, labels=True))
+        d = _layer_data(figs, "fill")
+        S = dr._dash_contour_surface(df["when"], df["mpg"], df["price"])
+        gx = _units_to_axis(S["gx"], kind)
+        lv = _levels(S["gz"], [6000.0, 8000.0, 10000.0])
+        cd = contour_data(gx, S["gy"], S["gz"], lv).fill_data
+        X, Y = _grid(gx, S["gy"])
+        agree = (_raster(cd.xs, cd.ys, X, Y)
+                 == _raster(d["xs"], d["ys"], X, Y)).mean()
+        assert agree >= 0.999, agree
+
+    @pytest.mark.parametrize("ptype", ["contour", "contourline"])
+    @pytest.mark.parametrize("kind", ["td", "tm"])
+    def test_a_move_matches_the_served_app_and_the_build(self, kind, ptype):
+        _label, filt, action, oracle = sf._MOVES[0]
+        df = _date_df(kind)
+        spec = _date_spec(kind, ptype, filt)
+        _r, saved = hm._saved_moved(spec, action, df)
+        _d, served = hm._served_moved(spec, action, df)
+        kept = hm._kept(spec, oracle, "saved", df=df)
+        part = "fill" if ptype == "contour" else "line"
+        a, s, k = (_layer_data(f, part) for f in (saved, served, kept))
+        if part == "fill":
+            px, py = _poly_points(k)
+            X, Y = _grid(px, py)
+            want = _raster(k["xs"], k["ys"], X, Y)
+            for got in (a, s):
+                agree = (_raster(got["xs"], got["ys"], X, Y) == want).mean()
+                assert agree >= 0.999, agree
+            assert px.min() > 1e10      # epoch milliseconds on the axis
+        else:
+            for got in (a, s):
+                for j in range(len(k["xs"])):
+                    q = _nan(got["xs"][j])
+                    p = np.asarray(k["xs"][j], float)
+                    assert np.isfinite(q).sum() == np.isfinite(p).sum()
+                    p = np.sort(p[np.isfinite(p)])
+                    # within 1e-6 of the axis span: the twins' thin-plate
+                    # surfaces differ by round-off (TestTwins)
+                    np.testing.assert_allclose(
+                        np.sort(q[np.isfinite(q)]), p, rtol=0,
+                        atol=1e-6 * (np.ptp(p) if p.size else 1.0))

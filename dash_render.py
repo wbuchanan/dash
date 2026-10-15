@@ -21205,12 +21205,27 @@ class GlyphMapper:
         """
         x, y, z = GlyphMapper._masked(source, view, xvar, yvar, zvar)
         ptype = "contourline" if lines_only else "contour"
-        surf = _dash_contour_surface(x, y, z, options.get("interp"))
+        horizontal = _dash_is_horizontal_opts(options)
+        # A date on the plane is fitted in its Stata units, as twoway fits
+        # it (days, months, ...), and its grid drawn where the axis draws
+        # those dates (WP-31 B4c).
+        dv = dict(getattr(self, "date_vars", None) or {})
+        units = {v: dv[v] for v in (xvar, yvar)
+                 if v and dv.get(v) in _STATA_DATE_KINDS}
+        ux, uy, uz = (GlyphMapper._masked(source, view, xvar, yvar, zvar,
+                                          units=units) if units
+                      else (x, y, z))
+        letters = ("y", "x") if horizontal else ("x", "y")
+        surf = _dash_contour_surface(ux, uy, uz, options.get("interp"))
+        if units:
+            surf["gx"] = self._on_axis(fig, surf["gx"], xvar, letters[0],
+                                       options)[0]
+            surf["gy"] = self._on_axis(fig, surf["gy"], yvar, letters[1],
+                                       options)[0]
         zmin = float(np.min(z)) if z.size else float("nan")
         zmax = float(np.max(z)) if z.size else float("nan")
         cuts, ticks = _dash_contour_cuts(options, zmin, zmax,
                                          self.z_options)
-        horizontal = _dash_is_horizontal_opts(options)
         gx, gy, gz = surf["gx"], surf["gy"], surf["gz"]
         if surf["capped"]:
             _dash_warn_once(
@@ -21270,6 +21285,13 @@ class GlyphMapper:
             "cuts": [float(c) for c in cuts], "interp": surf["interp"],
             "cap": _DASH_CONTOUR_EXACT_MAX, "capped": bool(surf["capped"]),
             "horizontal": bool(horizontal),
+            # A date's kind (read in its Stata units) and the kind of the
+            # axis it is drawn on (WP-31 B4c), as a fit's config has them.
+            "xdatekind": units.get(xvar), "ydatekind": units.get(yvar),
+            "xaxiskind": (self._unit_kind(fig, xvar, letters[0], options)
+                          if xvar in units else None),
+            "yaxiskind": (self._unit_kind(fig, yvar, letters[1], options)
+                          if yvar in units else None),
             "fill_color": [] if lines_only else list(colours),
             "lo": lo, "hi": hi}
         cr._dash_contour_capped = bool(surf["capped"])
@@ -30653,8 +30675,16 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         // stale cue (D4).
         const _cx = _pick(_ac_data[ac.xvar]), _cy = _pick(_ac_data[ac.yvar]), _cz = _pick(_ac_data[ac.zvar]);
         if (!_cx || !_cy || !_cz) continue;
-        let S = dash_contour_surface(_cx, _cy, _cz, ac.interp, ac.cap);
+        // A date is fitted in its Stata units (ac.xdatekind, as
+        // dash_fit_rows reads it) and its grid drawn on its axis
+        // (ac.xaxiskind); a value with no Stata date is dropped.
+        const _su = (col, k) => k ? col.map(v => {
+            const u = (typeof v === "number" && isFinite(v)) ? dash_stata_value_of(v, k) : null;
+            return u === null ? NaN : u; }) : col;
+        let S = dash_contour_surface(_su(_cx, ac.xdatekind), _su(_cy, ac.ydatekind), _cz, ac.interp, ac.cap);
         if (S === null) continue;
+        if (ac.xaxiskind) S.gx = S.gx.map(v => dash_axis_value_of(v, ac.xaxiskind));
+        if (ac.yaxiskind) S.gy = S.gy.map(v => dash_axis_value_of(v, ac.yaxiskind));
         if (ac.horizontal) {
             // drawn turned, as map_contour turns it: x and y swap
             const tz = new Float64Array(S.nx * S.ny);
