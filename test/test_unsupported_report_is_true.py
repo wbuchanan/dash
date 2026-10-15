@@ -138,6 +138,9 @@ PLOT_VALUES = {
     "range": ("10 30", "12 28", "kdensity"),
     "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
+    # WP-31 B4b: contour's heatmap cells and band outlines, named.
+    "heatmap": ("heatmap", "", "contour"),
+    "outlines": ("outlines", "", "contour"),
     # Flipped (WP-29 P0.1): sort is honoured on line now -- twoway joins a
     # line in x order under it -- so the inert case is on scatter, where it
     # is still named and draws nothing.
@@ -190,6 +193,8 @@ FLAGS = {"colordiscrete", "coloruseplegend", "density", "fraction",
          "frequency", "horizontal", "nodraw", "percent", "sort", "vertical",
          # WP-22: twoway's advanced options, declared XOVERHANGs/YOVERHANGs.
          "xoverhangs", "yoverhangs",
+         # WP-31 B4b: contour's heatmap and band outlines, named.
+         "heatmap", "outlines",
          # The seven statistical sub-options (WP-18): discrete on
          # histogram; stdp/stdf/stdr on lfitci and qfitci; mean, noweight,
          # adjust and logit on lowess.
@@ -238,6 +243,10 @@ def _render(tmp_path, ptype, popts, gopts, tag):
                                        # (rarea's too, WP-31 C6).
                                        **({"yvar1": "mpg", "yvar2": "price"}
                                           if ptype in ("rbar", "rarea")
+                                          # WP-31 B4b: contour's z.
+                                          else {"zvar": "price"}
+                                          if ptype in ("contour",
+                                                       "contourline")
                                           else {}))]
                         + ([dict(plot, yvar="price")] if twin else [])}],
             "kpis": [],
@@ -290,7 +299,8 @@ class TestTheListIsCoveredAndHonest:
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
         # 39 -> 33 and 24 -> 18: D1 xmlabel xmtick tmlabel tmtick ymlabel
         # ymtick drawn (minor ticks and labels)
-        assert len(_plot_pending()) == 33, sorted(_plot_pending())
+        # 33 -> 35: B4b heatmap and outlines named on contour
+        assert len(_plot_pending()) == 35, sorted(_plot_pending())
         assert len(_graph_pending()) == 18, sorted(_graph_pending())
 
 

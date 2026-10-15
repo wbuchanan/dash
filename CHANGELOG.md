@@ -1017,7 +1017,7 @@ Changed behaviour.
 
 - The contour surface twoway computes (the thin-plate spline with kernel r^2 log r and a linear trend, Shepard's 1/d^2 mean, the unique(x) x unique(y) grid, smallest-z duplicates, interp() read as twoway reads it) is available to the renderers, exact up to 1,000 distinct points and on a flagged 100x100 grid above; no plot type uses it until B4b. (WP-31, B4a)
 
-<!-- WP-31 B4b -->
+- contour and contourline are drawn in both modes with twoway's surface, cuts, colours and key; dash refused both by name, r(198). ccuts() with levels(), a second contour, a weight and contour options on other types are refused in twoway's words, r(198) or r(101); above 1,000 distinct points a 100 x 100 grid is drawn and noted. (WP-31, B4b)
 
 <!-- WP-31 B4c -->
 

@@ -413,11 +413,13 @@ class TestThePlotTypesSection:
         # Flipped (WP-31 B1): rpcap and rpspike are drawn; four -> two.
         # WP-31 B2: sunflower refused by name; two -> three.
         # WP-31 B3: matamatrix() refused by name; three -> four.
-        refused = ("contour", "contourline", "sunflower", "matamatrix")
-        assert "Four {cmd:twoway} plot types are not drawn" in _plot_types()
+        # Flipped (WP-31 B4b): contour and contourline are drawn; four ->
+        # two.
+        refused = ("sunflower", "matamatrix")
+        assert "Two {cmd:twoway} plot types are not drawn" in _plot_types()
         diff = _prose(_differences())
-        assert "the four twoway plot types it refuses" in diff
-        assert "the three twoway plot types" not in diff
+        assert "the two twoway plot types it refuses" in diff
+        assert "the four twoway plot types" not in diff
         for name in refused:
             assert name not in dr._dash_plot_type_names()
 

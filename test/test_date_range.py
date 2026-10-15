@@ -729,6 +729,10 @@ def _plot_for(ptype, options=None):
     if ptype in _RANGE:
         return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "xvar": "date",
                 "options": o}
+    if ptype in dr._DASH_CONTOUR_TYPES:
+        # WP-31 B4b: z y x, the date on x.
+        return {"type": ptype, "zvar": "hi", "yvar": "lo", "xvar": "date",
+                "options": o}
     if ptype in dr._DASH_RANGEPT_TYPES:
         # WP-31 B1: the range and its marker (y3).
         return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "yvar": "hi",
@@ -753,9 +757,12 @@ def _x_extents(fig):
     read as the page reads it: a date in epoch milliseconds."""
     out = []
     for r in fig.renderers:
-        g, data = getattr(r, "glyph", None), r.data_source.data
+        g = getattr(r, "glyph", None)
         if g is None:
+            # A contour renderer draws through its children; its extent
+            # rides on the layer's invisible corner scatter (WP-31 B4b).
             continue
+        data = r.data_source.data
         for attr in ("x", "left", "right", "x0", "x1"):
             if attr not in g.properties():
                 continue

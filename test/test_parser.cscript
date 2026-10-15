@@ -298,62 +298,60 @@ program define _p1a_logrun, rclass
 end
 
 // ================================================================
-// P1A-49 -- twoway contour: refused as a type dash does not draw
+// P1A-49 -- twoway contour: drawn since WP-31 B4b
 // ================================================================
+// Flipped (WP-31 B4b): dash refused contour by name, r(198) "a twoway
+// plot type dash does not draw"; the refusal was dash's gap, twoway draws
+// contour, and so does dash now, z y x into the spec's zvar, yvar, xvar.
 sysuse auto, clear
 dash clear
 _p1a_logrun "dash contour mpg weight length, name(p1a49)"
-assert r(rc) == 198
+assert r(rc) == 0
 local lg49 "`r(log)'"
-cert_file_has "`lg49'", needle("dash: 'contour' is a twoway plot type dash does not draw: it needs a surface interpolated over a grid. Use Stata's own twoway contour, or dash scatter y x, colorvar(z) to colour each point by z.")
-assert r(found) == 1
-// Flipped (WP-31 A2): the generic refusal is twoway's sentence now.
-cert_file_has "`lg49'", needle("is not a twoway plot type")
+cert_file_has "`lg49'", needle("a twoway plot type dash does not draw")
 assert r(found) == 0
-cert_file_has "`lg49'", needle("Supported:")
-assert r(found) == 0
-assert "${dash_graph_registry}" == ""
-display "P1A-49 PASS: twoway contour is refused, r(198), as a plot type dash does not draw, naming what to use instead"
+_dash_process_segment "contour mpg weight length" _pt49 _js49
+assert "`_pt49'" == "contour"
+assert strpos(`"`_js49'"', `""type":"contour","zvar":"mpg","yvar":"weight","xvar":"length""') > 0
+dash clear
+display "P1A-49 PASS: twoway contour registers z y x as zvar, yvar and xvar (drawn since WP-31 B4b)"
 
 // ================================================================
-// P1A-50 -- twoway contourline: the same refusal, naming contourline
+// P1A-50 -- twoway contourline: drawn since WP-31 B4b
 // ================================================================
+// Flipped (WP-31 B4b): refused by name before; twoway draws it.
 _p1a_logrun "dash contourline mpg weight length, name(p1a50)"
-assert r(rc) == 198
-local lg50 "`r(log)'"
-cert_file_has "`lg50'", needle("dash: 'contourline' is a twoway plot type dash does not draw: it needs a surface interpolated over a grid. Use Stata's own twoway contourline, or dash scatter y x, colorvar(z) to colour each point by z.")
-assert r(found) == 1
-// Flipped (WP-31 A2): the generic refusal is twoway's sentence now.
-cert_file_has "`lg50'", needle("is not a twoway plot type")
-assert r(found) == 0
-assert "${dash_graph_registry}" == ""
-display "P1A-50 PASS: twoway contourline is refused, r(198), as a plot type dash does not draw, naming what to use instead"
+assert r(rc) == 0
+_dash_process_segment "contourline mpg weight length" _pt50 _js50
+assert "`_pt50'" == "contourline"
+assert strpos(`"`_js50'"', `""type":"contourline","zvar":"mpg","yvar":"weight","xvar":"length""') > 0
+dash clear
+display "P1A-50 PASS: twoway contourline registers z y x (drawn since WP-31 B4b)"
 
 // ================================================================
-// P1A-51 -- the refusal echoes the token as typed, holds inside a
-// multi-plot command, and is not given to a prefix twoway refuses too
+// P1A-51 -- the names in any case and inside a multi-plot command; no
+// prefix is taken, as twoway takes none
 // ================================================================
+// Flipped (WP-31 B4b): the upper-case name and the multi-plot command
+// were refused by name; both draw now.  The prefix part stands.
 _p1a_logrun "dash CONTOUR mpg weight length, name(p1a51)"
-assert r(rc) == 198
-// Saved first: cert_file_has is rclass and replaces r(log).
-local lg51 "`r(log)'"
-cert_file_has "`lg51'", needle("dash: 'CONTOUR' is a twoway plot type dash does not draw")
-assert r(found) == 1
-cert_file_has "`lg51'", needle("Use Stata's own twoway contour, or")
-assert r(found) == 1
+assert r(rc) == 0
+dash clear
 _p1a_logrun "dash (scatter mpg weight) (contourline mpg weight length), name(p1a51b)"
-assert r(rc) == 198
-cert_file_has "`r(log)'", needle("dash: 'contourline' is a twoway plot type dash does not draw")
-assert r(found) == 1
+assert r(rc) == 0
+dash clear
 // twoway takes no abbreviation of either name: "contourl is not a twoway
-// plot type".  A prefix stays an unrecognised plot type here as well,
-// refused in twoway's words (Flipped, WP-31 A2).
+// plot type", in twoway's words (WP-31 A2).
 _p1a_logrun "dash contourl mpg weight length, name(p1a51c)"
 assert r(rc) == 198
 cert_file_has "`r(log)'", needle("contourl is not a twoway plot type")
 assert r(found) == 1
+_p1a_logrun "dash contou mpg weight length, name(p1a51d)"
+assert r(rc) == 198
+cert_file_has "`r(log)'", needle("contou is not a twoway plot type")
+assert r(found) == 1
 assert "${dash_graph_registry}" == ""
-display "P1A-51 PASS: the contour refusal echoes the token as typed, holds inside a multi-plot command, and is not given to a prefix"
+display "P1A-51 PASS: contour and contourline draw in any case and inside a multi-plot command; their prefixes stay unrecognised"
 
 // ================================================================
 // P1A-52 -- pccapsym: four variables, the paired-coordinate keys
@@ -510,6 +508,13 @@ foreach t of local fam_rpt {
     assert strpos(`"`_js56'"', `""type":"`t'","yvar1":"lo","yvar2":"hi","yvar":"mpg","xvar":"weight""') > 0
     local ++n56
 }
+// WP-31 B4b: contour and contourline, z y x.
+foreach t in contour contourline {
+    _dash_process_segment "`t' mpg weight length" _pt56 _js56
+    assert "`_pt56'" == "`t'"
+    assert strpos(`"`_js56'"', `""type":"`t'","zvar":"mpg","yvar":"weight","xvar":"length""') > 0
+    local ++n56
+}
 _dash_process_segment "scatteri 20 3000" _pt56 _js56
 assert strpos(`"`_js56'"', `""type":"scatteri","values":[[20,3000]]"') > 0
 // pci is written one record per segment, as pcarrowi is (P1A-63): it was
@@ -522,12 +527,14 @@ _dash_process_segment "function y=x" _pt56 _js56
 assert strpos(`"`_js56'"', `""type":"function","expr":"x""') > 0
 local n56 = `n56' + 4
 // 40 -> 42: WP-31 B1 rpcap and rpspike drawn
-assert `n56' == 42
+// 42 -> 44: WP-31 B4b contour and contourline drawn
+assert `n56' == 44
 _dash_plottype_families
 assert "`_pt_univar'"  == "histogram kdensity"
 assert "`_pt_range'"   == "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
 assert "`_pt_pc'"      == "pcspike pcarrow pcbarrow pcscatter pccapsym"
 assert "`_pt_rangept'" == "rpcap rpspike"
+assert "`_pt_contour'" == "contour contourline"
 assert "`_pt_literal'" == "scatteri pci pcarrowi function"
 local _pt_range "`_pt_range' zz10 zz11"
 foreach ptype in rarea tsrline zz10 zz11 {
@@ -537,7 +544,7 @@ local ptype "zz12"
 assert !`: list ptype in _pt_range'
 capture noisily display inlist("zz10", "rarea", "rbar", "rspike", "rcap", "rline", "rconnected", "rcapsym", "rscatter", "tsrline", "zz10")
 assert _rc == 130
-display "P1A-56 PASS: all 42 plot types are routed by family lists, and a tenth range member is found where inlist() would be r(130)"
+display "P1A-56 PASS: all 44 plot types are routed by family lists, and a tenth range member is found where inlist() would be r(130)"
 
 // ================================================================
 // P1A-57 -- the Mata table: the full names only, as twoway takes them
@@ -548,7 +555,13 @@ foreach t in pccapsym pcarrowi pcarrow pci scatteri pcspike {
 }
 mata: _dash_expand_plottype("PCCAPSYM", "_pt57")
 assert "`_pt57'" == "pccapsym"
-foreach t in pc pcc pcca pccap pccaps pccapsy pcarr pcarro contour contourline {
+// Flipped (WP-31 B4b): contour and contourline expand to themselves
+// now that dash draws them; their prefixes stay unrecognised.
+foreach t in contour contourline {
+    mata: _dash_expand_plottype("`t'", "_pt57")
+    assert "`_pt57'" == "`t'"
+}
+foreach t in pc pcc pcca pccap pccaps pccapsy pcarr pcarro cont contou contourl contourlin {
     mata: _dash_expand_plottype("`t'", "_pt57")
     assert "`_pt57'" == ""
 }
@@ -563,8 +576,9 @@ bs = char(92)
 q  = char(34)
 // _dash_undrawn_plottype: the names, any case, and nothing else.
 // Flipped (WP-31 B1): rpcap and rpspike are drawn, so no longer named.
-assert(_dash_undrawn_plottype("contour") == "contour")
-assert(_dash_undrawn_plottype(" CONTOURLINE ") == "contourline")
+// Flipped (WP-31 B4b): contour and contourline are drawn too.
+assert(_dash_undrawn_plottype("contour") == "")
+assert(_dash_undrawn_plottype(" CONTOURLINE ") == "")
 assert(_dash_undrawn_plottype("RPCAP") == "")
 assert(_dash_undrawn_plottype("rpspike") == "")
 // WP-31 B2: sunflower, its full name only.
@@ -682,6 +696,66 @@ capture erase "`c(tmpdir)'u218t.log"
 drop lo hi
 assert "${dash_graph_registry}" == ""
 display "U21-8 PASS: rpcap and rpspike refuse 1, 2, 3 and 5 variables in twoway's words and codes; recast() finds rpcap and rpspike, else rpspike"
+
+capture mata: mata drop _u269_first()
+mata:
+// The first line twoway printed that is no command echo and no note.
+string scalar _u269_first(string scalar path)
+{
+    real scalar fh
+    string matrix line
+    fh = fopen(path, "r")
+    while ((line = fget(fh)) != J(0, 0, "")) {
+        line = strtrim(line)
+        if (line == "" | substr(line, 1, 1) == "." | substr(line, 1, 1) == ">") continue
+        if (strpos(line, "log:") | strpos(line, "log type:") | strpos(line, "opened on:") | strpos(line, "closed on:") | strpos(line, "name:")) continue
+        if (substr(line, 1, 5) == "(note") continue
+        fclose(fh)
+        return(line)
+    }
+    fclose(fh)
+    return("")
+}
+end
+// ================================================================
+// U26-9 -- WP-31 B4b: contour's refusals, asked of twoway here beside
+// dash: ccuts() with levels(); a second contour, a second contourline
+// (a contour and a contourline together draw); a string z; the variable
+// counts; a weight; contour's options on another type; levels() and
+// ccuts() that are no integer or numlist; crule() twoway has no style
+// for.  Each rc equal to twoway's and twoway's first line in dash's log
+// (twoway_zyx2view_parse.class, twowaygraph_g.class:349-394).
+// ================================================================
+sysuse auto, clear
+local u269 `" "contour mpg weight length, ccuts(15 20) levels(5)" "(contour mpg weight length) (contour price weight length)" "(contourline mpg weight length) (contourline price weight length)" "(contour mpg weight length) (contourline price weight length)" "contour make weight length" "contour mpg" "contour mpg weight" "contour mpg weight length turn" "contour mpg weight length [aw=price]" "scatter mpg weight, ccuts(1 2)" "scatter mpg weight, levels(5)" "scatter mpg weight, crule(hue)" "scatter mpg weight, interp(none)" "scatter mpg weight, minmax" "contour mpg weight length, levels(a)" "contour mpg weight length, levels(-1)" "contour mpg weight length, ccuts(a b)" "contour mpg weight length, crule(bogus)" "(contour mpg weight length) (scatter mpg weight, colorvar(price))" "'
+local n269 0
+foreach c of local u269 {
+    local ++n269
+    // Drawn, as a named graph: twoway judges crule() when it draws
+    // (with nodraw crule(bogus) is rc 0).
+    local tc = cond(strpos(`"`c'"', ",") & substr(`"`c'"', 1, 1) != "(", `"`c' name(u269g, replace)"', `"`c', name(u269g, replace)"')
+    quietly log using "`c(tmpdir)'u269t.log", text replace name(u269t)
+    capture noisily twoway `tc'
+    local trc = _rc
+    quietly log close u269t
+    dash clear
+    _p1a_logrun "dash `c'"
+    local drc = r(rc)
+    local lg269 "`r(log)'"
+    assert `drc' == `trc'
+    local w269 ""
+    if `trc' mata: st_local("w269", _u269_first("`c(tmpdir)'u269t.log"))
+    if `: length local w269' {
+        cert_file_has "`lg269'", needle(`"`w269'"')
+        if !r(found) display as error `"U26-9 FAIL: `c' -- dash lacks twoway's "`w269'""'
+        assert r(found) == 1
+    }
+}
+assert `n269' == 19
+capture erase "`c(tmpdir)'u269t.log"
+capture graph drop u269g
+dash clear
+display "U26-9 PASS: contour's 19 refusals and acceptances match twoway's rc and first line"
 
 // ================================================================
 // P1A-60..67 -- scatteri and pci read their immediate values as twoway
@@ -1593,8 +1667,9 @@ display "P1A-76: `p76rows' rows read, `p76np' distinct prefixes, `p76two' reachi
 // it held when this was written.
 assert `p76rows' >= 40
 assert "`p76first'" == "scatter,sc"
-// WP-31 B1: rpspike is the last row since rpcap and rpspike are drawn.
-assert "`p76last'" == "rpspike,rpspike"
+// WP-31 B1: rpspike was the last row once rpcap and rpspike were drawn;
+// WP-31 B4b: contourline is, now contour and contourline are.
+assert "`p76last'" == "contourline,contourline"
 assert `p76np' >= 186
 if `"$P76_BAD"' != "" {
     display as error "P1A-76 FAIL:$P76_BAD"

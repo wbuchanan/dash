@@ -11,6 +11,9 @@
 *! itself stores z as a float through getmata; the matrix it reads is the
 *! same).  Columns are (x, y, z, level), missing rows separating pieces.
 *!
+*! WP-31 section 26 (B4b) appends the ZD_ block: how twoway draws the
+*! two types (cuts, colours, key, lines, abbreviations, refusals).
+*!
 *! Output: test/fixtures/contour_truth.json
 *!
 *! Run through the slot wrapper only:
@@ -221,6 +224,162 @@ foreach d in two_points one_x {
 
 mata: zc_close()
 
+* ==== ZD_ (WP-31 section 26, B4b): how twoway draws contour and
+* contourline -- the cuts (ccuts(), levels(), minmax, the z axis's ticks),
+* the level colours under each crule() and ccolors(), the labels, the key,
+* horizontal, the contourline lines (exported SVG), the abbreviations
+* twoway takes and every refusal with its rc and printed lines, on auto
+* (z = mpg, y = weight, x = length).  Written under the new top-level keys
+* draw, line, abbrev, refuse and scheme; S23's keys are untouched.
+* Each probe runs with its printed lines in a log; a drawn graph's
+* class values go to one record file, "key<TAB>value" a line.
+global ZD_KEYS ""
+capture file close zdf
+file open zdf using "${ZC_WORK}/zd_records.txt", write text replace
+capture program drop _zd_run
+program define _zd_run
+    gettoken key 0 : 0
+    capture graph drop zd
+    quietly log using "${ZC_WORK}/zd_`key'.log", text replace name(zdlog)
+    capture noisily `0'
+    local rc = _rc
+    display as text "{p_end}"
+    quietly log close zdlog
+    file write zdf "`key'.rc" _tab "`rc'" _n
+    global ZD_KEYS "${ZD_KEYS} `key'"
+    if `rc' exit
+    capture graph describe zd
+    if _rc exit
+    local v ".zd.plotregion1.plot1"
+    capture confirm existence `.zd.contour_view'`.zd.contourline_view'
+    local vv "`.zd.contour_view'"
+    if "`vv'" == "" local vv "`.zd.contourline_view'"
+    if "`vv'" == "" exit
+    local v ".zd.`vv'"
+    local L = 0`.`v'.style.levels.val'
+    local za `.`v'.zaxis'
+    file write zdf "`key'.view" _tab "`vv'" _n
+    file write zdf "`key'.type" _tab "`.`v'.type.setting'" _n
+    file write zdf "`key'.cuts" _tab "`.`v'.style.ccutsopt'" _n
+    file write zdf "`key'.levels" _tab "`L'" _n
+    file write zdf "`key'.rule" _tab "`.`v'.style.rule.stylename'" _n
+    file write zdf "`key'.ticks" _tab "`.`za'.major.tick_values'" _n
+    file write zdf "`key'.use_rule" _tab "`.`za'.major.use_rule.istrue'" _n
+    file write zdf "`key'.legend_keys" _tab "`.zd.legend.keys.arrnels'" _n
+    file write zdf "`key'.drop_to" _tab "`.`v'.drop_to.stylename'" _n
+    local fmt "`.`v'.style.format'"
+    if "`fmt'" == "" local fmt "`.`v'.serset.sers[`.`v'.zvar'].format'"
+    file write zdf "`key'.format" _tab "`fmt'" _n
+    forvalues i = 1/`L' {
+        file write zdf "`key'.rgb`i'" _tab "`.`v'.style.cstyles[`i'].color.rgb'" _n
+    }
+    forvalues k = 1/`=`L'-1' {
+        local lab `"`.`v'.style.clabels[`k']'"'
+        if `"`lab'"' == "" local lab = string(`.`v'.style.ccuts[`k']', "`fmt'")
+        file write zdf "`key'.label`k'" _tab `"`lab'"' _n
+        file write zdf "`key'.lw`k'" _tab "`.`v'.style.lwstyles[`k'].stylename'" _n
+        file write zdf "`key'.lp`k'" _tab "`.`v'.style.lpstyles[`k'].stylename'" _n
+    }
+    file write zdf "`key'.xmin" _tab "`.zd.plotregion1.xscale.curmin'" _n
+    file write zdf "`key'.xmax" _tab "`.zd.plotregion1.xscale.curmax'" _n
+    quietly graph export "${ZC_WORK}/zd_`key'.svg", as(svg) replace
+end
+
+sysuse auto, clear
+set scheme s2color
+local c "twoway contour mpg weight length"
+local cl "twoway contourline mpg weight length"
+local nm "name(zd)"
+_zd_run draw.default `c', `nm'
+_zd_run draw.ccuts `c', ccuts(15 20 25 30) `nm'
+_zd_run draw.ccuts_unsorted `c', ccuts(30 15 25 20) `nm'
+_zd_run draw.levels5 `c', levels(5) `nm'
+_zd_run draw.levels5_minmax `c', levels(5) minmax `nm'
+_zd_run draw.levels1 `c', levels(1) `nm'
+_zd_run draw.levels2 `c', levels(2) `nm'
+_zd_run draw.minmax_alone `c', minmax `nm'
+_zd_run draw.zlabel5 `c', zlabel(#5) `nm'
+_zd_run draw.zlabel_list `c', zlabel(15(5)35) `nm'
+_zd_run draw.zlabel_plain `c', zlabel(15 20 25 30 35) `nm'
+_zd_run draw.zlabel_minmax `c', zlabel(minmax) `nm'
+foreach r in linear revlinear intensity hue chue phue {
+    _zd_run draw.crule_`r' `c', crule(`r') scolor(navy) ecolor(gold) `nm'
+}
+_zd_run draw.crule_hue_default `c', crule(hue) `nm'
+_zd_run draw.crule_linear_default `c', crule(linear) `nm'
+_zd_run draw.crule_intensity_default `c', crule(intensity) `nm'
+_zd_run draw.chue_default `c', crule(chue) `nm'
+_zd_run draw.scolor_only `c', scolor(green) `nm'
+_zd_run draw.ccolors `c', ccolors(red blue green) `nm'
+_zd_run draw.clabels `c', ccuts(15 20 25 30) clabels(a b c d) `nm'
+_zd_run draw.format `c', format(%4.1f) `nm'
+_zd_run draw.hz `c', horizontal `nm'
+_zd_run draw.vertical `c', vertical `nm'
+_zd_run draw.interp_shepard `c', interp(shepard) `nm'
+_zd_run draw.interp_none `c', interp(none) `nm'
+_zd_run draw.reversekey `c', reversekey `nm'
+_zd_run draw.scheme_s1mono `c', scheme(s1mono) `nm'
+_zd_run draw.scheme_economist `c', scheme(economist) `nm'
+_zd_run line.default `cl', `nm'
+_zd_run line.ccuts `cl', ccuts(15 20 25 30) `nm'
+_zd_run line.clwidths `cl', clwidths(thin medium thick) `nm'
+_zd_run line.clpatterns `cl', clpatterns(solid dash dot) `nm'
+_zd_run line.reversekey `cl', reversekey `nm'
+_zd_run line.hz `cl', horizontal `nm'
+_zd_run line.vertical `cl', vertical `nm'
+_zd_run line.ccolors `cl', ccolors(red blue) `nm'
+_zd_run line.colorlines `cl', colorlines `nm'
+_zd_run line.colorlines_clwidths `cl', colorlines clwidths(vthick thin) `nm'
+_zd_run line.clwidths_vthick `cl', clwidths(vthick vthick) `nm'
+_zd_run line.clpatterns_dash `cl', clpatterns(dash dash) `nm'
+* abbreviations twoway takes and dash declares in full
+_zd_run abbrev.lev `c', lev(5) `nm'
+_zd_run abbrev.i `c', i(shepard) `nm'
+_zd_run abbrev.clw `cl', clw(thin) `nm'
+_zd_run abbrev.clp `cl', clp(dash) `nm'
+_zd_run abbrev.cc `c', cc(20 30) `nm'
+_zd_run abbrev.sc `c', sc(navy) `nm'
+_zd_run abbrev.ec `c', ec(gold) `nm'
+_zd_run abbrev.ccol `c', ccol(red blue) `nm'
+_zd_run abbrev.clab `c', ccuts(20 30) clab(a b) `nm'
+_zd_run abbrev.rev `c', rev `nm'
+_zd_run abbrev.out `c', out `nm'
+_zd_run abbrev.colorl `cl', colorl `nm'
+_zd_run abbrev.hor `c', hor `nm'
+* refusals
+_zd_run refuse.ccuts_levels `c', ccuts(15 20) levels(5)
+_zd_run refuse.levels0 `c', levels(0)
+_zd_run refuse.levelsneg `c', levels(-1)
+_zd_run refuse.levelsbig `c', levels(1001) nodraw
+_zd_run refuse.levels_text `c', levels(a)
+_zd_run refuse.levels_real `c', levels(2.5)
+_zd_run refuse.ccuts_text `c', ccuts(a b)
+_zd_run refuse.crule_bogus `c', crule(bogus)
+_zd_run refuse.crule_Hue `c', crule(Hue)
+_zd_run refuse.scolor_bogus `c', scolor(notacolour)
+_zd_run refuse.ccolors_bogus `c', ccolors(red notacolour)
+_zd_run refuse.clwidths_bogus `cl', clwidths(notawidth)
+_zd_run refuse.clpatterns_bogus `cl', clpatterns(notapattern)
+_zd_run refuse.hz_vert `c', horizontal vertical
+_zd_run refuse.two_contours twoway (contour mpg weight length) (contour price weight length)
+_zd_run refuse.two_lines twoway (contourline mpg weight length) (contourline price weight length)
+_zd_run refuse.contour_and_line twoway (contour mpg weight length) (contourline price weight length)
+_zd_run refuse.contour_scatter twoway (contour mpg weight length) (scatter weight length), `nm'
+_zd_run refuse.string_z twoway contour make weight length
+_zd_run refuse.string_y twoway contour mpg make length
+_zd_run refuse.weight twoway contour mpg weight length [aw=price]
+_zd_run refuse.counts_1 twoway contour mpg
+_zd_run refuse.counts_2 twoway contour mpg weight
+_zd_run refuse.counts_4 twoway contour mpg weight length turn
+_zd_run refuse.counts_5 twoway contour mpg weight length turn trunk
+_zd_run refuse.line_counts_2 twoway contourline mpg weight
+foreach o in ccuts(1) levels(5) crule(hue) scolor(red) ecolor(red) ccolors(red) clabels(a) interp(none) minmax reversekey clwidths(thin) clpatterns(dash) heatmap outlines colorlines {
+    local k = subinstr(subinstr(subinstr("`o'", "(", "", .), ")", "", .), " ", "", .)
+    _zd_run refuse.on_scatter_`k' twoway scatter mpg weight, `o'
+}
+_zd_run refuse.colorvar `c', colorvar(price) `nm'
+file close zdf
+
 python:
 import json, os, re
 from sfi import Macro
@@ -348,6 +507,89 @@ for d in ("two_points", "one_x"):
 out["degenerate"] = deg
 out["cost"] = {"n3000": "not run: twoway did not finish n=3000 in ten minutes "
                         "(research/bokeh-web.md section 2)"}
+
+# ---- ZD_ (WP-31 B4b): the drawing records, logs and SVGs.
+zd = {}
+with open(os.path.join(work, "zd_records.txt"), encoding="utf-8") as fh:
+    for ln in fh.read().split("\n"):
+        if "\t" not in ln:
+            continue
+        k, v = ln.split("\t", 1)
+        key, field = k.rsplit(".", 1)
+        zd.setdefault(key, {})[field] = v
+
+
+def zd_lines(key):
+    p = os.path.join(work, "zd_%s.log" % key)
+    try:
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            lines = [ln.strip() for ln in fh
+                     if ln.strip() and not ln.lstrip().startswith((".", "> "))
+                     and "log:" not in ln and "log type:" not in ln
+                     and "opened on:" not in ln and "closed on:" not in ln
+                     and "name:" not in ln and not ln.startswith("---")
+                     and ln.strip() != "{p_end}"]
+        os.remove(p)
+    except OSError:
+        lines = []
+    return lines
+
+
+_ZD_STROKE = re.compile(r'<line [^>]*style="stroke:(#[0-9A-Fa-f]{6});stroke-width:([\d.]+)"')
+_ZD_KEYFILL = re.compile(r'style="stroke:none;fill:(#[0-9A-Fa-f]{6})"')
+
+
+def zd_svg(key):
+    p = os.path.join(work, "zd_%s.svg" % key)
+    if not os.path.exists(p):
+        return None
+    with open(p, encoding="utf-8", errors="replace") as fh:
+        txt = fh.read()
+    os.remove(p)
+    head, _, tail = txt.partition("Length (in.)</text>")
+    strokes = {}
+    for c, w in _ZD_STROKE.findall(head):
+        strokes["%s %s" % (c.lower(), w)] = strokes.get("%s %s" % (c.lower(), w), 0) + 1
+    return {"plot_strokes": strokes,
+            "key_fills": [f.lower() for f in _ZD_KEYFILL.findall(tail)]}
+
+
+def zd_num(v):
+    return [float(t) for t in v.split()] if v.strip() else []
+
+
+for key in G("ZD_KEYS").split():
+    d = zd.get(key, {})
+    rec = {"rc": int(d.get("rc", "-1")), "lines": zd_lines(key)}
+    if "levels" in d:
+        L = int(d["levels"] or 0)
+        rec.update(type=d.get("type", ""), cuts=zd_num(d.get("cuts", "")),
+                   levels=L, rule=d.get("rule", ""),
+                   ticks=zd_num(d.get("ticks", "")),
+                   use_rule=d.get("use_rule", ""),
+                   legend_keys=int(d.get("legend_keys") or 0),
+                   format=d.get("format", ""),
+                   rgb=["#%02x%02x%02x" % tuple(int(c) for c in d["rgb%d" % i].split())
+                        for i in range(1, L + 1) if d.get("rgb%d" % i, "").strip()],
+                   labels=[d.get("label%d" % k, "") for k in range(1, L)],
+                   lwstyles=[d.get("lw%d" % k, "") for k in range(1, L)],
+                   lpstyles=[d.get("lp%d" % k, "") for k in range(1, L)],
+                   xrange=[float(d.get("xmin") or "nan"), float(d.get("xmax") or "nan")])
+        svg = zd_svg(key)
+        if svg is not None:
+            rec.update(svg)
+    group, _, name = key.partition(".")
+    if group == "draw" and name.startswith("scheme_"):
+        out.setdefault("scheme", {})[name[len("scheme_"):]] = rec
+    else:
+        out.setdefault(group, {})[name] = rec
+out.setdefault("scheme", {})["note"] = ("twoway contour mpg weight length, scheme(<s>): the "
+                                        "scheme's zyx2rule contour and contour_begin/end colours")
+for f in ("zd_records.txt",):
+    try:
+        os.remove(os.path.join(work, f))
+    except OSError:
+        pass
 
 try:
     with open(os.path.join(work, "git_head.txt")) as fh:

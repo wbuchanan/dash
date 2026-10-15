@@ -121,7 +121,8 @@
 *!
 *!   _dash_undrawn_plottype(name)
 *!       name, lower case, when it is a twoway plot type dash refuses by
-*!       name -- contour, contourline, sunflower -- else "".
+*!       name -- sunflower (contour and contourline until WP-31 B4b) --
+*!       else "".
 *!
 *!   _dash_kernel_full(word)
 *!       The full kernel name, lower case, for a word twoway's kernel()
@@ -1820,7 +1821,9 @@ string scalar _expand_plottype_str(string scalar name) {
         ("pccapsym","pccapsym") \
         ("pcarrowi","pcarrowi") \
         ("rpcap","rpcap") \
-        ("rpspike","rpspike")
+        ("rpspike","rpspike") \
+        ("contour","contour") \
+        ("contourline","contourline")
     // pccapsym and pcarrowi (WP-22): twoway takes neither by any shorter
     // name -- measured 23sep2026, pc .. pccapsy and pcarr, pcarro are "not
     // a twoway plot type", and pcarrow is its own type -- so the minimum
@@ -1828,6 +1831,10 @@ string scalar _expand_plottype_str(string scalar name) {
     // minimum is eight letters.  rpcap and rpspike (WP-31 B1): full names
     // only -- rpca and rpspik are "not a twoway plot type" (measured
     // 23sep2026 and 14oct2026, test/fixtures/rangept_truth.json abbrev.*).
+    // contour and contourline (WP-31 B4b): full names only -- cont ..
+    // contou and contourl .. contourlin are "not a twoway plot type"
+    // (measured 23sep2026); neither row claims the other's name, since a
+    // name matches only from its row's minimum.
 
     // twoway's two spellings that are no prefix of the name, from the
     // declaration its plot types are read by (twowaygraph_g.class, program
@@ -1879,7 +1886,8 @@ void _dash_expand_plottype(string scalar abbrev, string scalar out_macro) {
 // abbreviation of either -- measured 23sep2026: cont .. contou and
 // contourl .. contourlin are "not a twoway plot type", and con is
 // connected -- so only the full names match.  rpcap and rpspike were
-// refused here too until WP-31 B1 drew them.  sunflower (WP-31 B2) is a
+// refused here too until WP-31 B1 drew them, contour and contourline
+// until WP-31 B4b.  sunflower (WP-31 B2) is a
 // twoway plot type too (twoway sunflower mpg weight: rc 0), which dash
 // does not draw (PRD section 7): it was answered "not a twoway plot
 // type"; twoway takes no shorter name (sunflow is "not a twoway plot
@@ -1889,7 +1897,7 @@ string scalar _dash_undrawn_plottype(string scalar name) {
     string scalar s
 
     s = strlower(strtrim(name))
-    if (anyof(("contour", "contourline", "sunflower"), s)) {
+    if (anyof(("sunflower"), s)) {
         return(s)
     }
     return("")
@@ -3005,7 +3013,8 @@ void _dash_extract_vars(string scalar json_str, string scalar out_macro) {
                char(34)+"mlabel"+char(34)+":",
                char(34)+"mlabvposition"+char(34)+":",
                char(34)+"colorvar"+char(34)+":",
-               char(34)+"wexp"+char(34)+":")
+               char(34)+"wexp"+char(34)+":",
+               char(34)+"zvar"+char(34)+":")
     varlist = ""
 
     for (k = 1; k <= cols(keys); k++) {

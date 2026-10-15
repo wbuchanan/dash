@@ -2086,6 +2086,11 @@ def _dash_stale_kind(ptype, options):
     recast, or is a ci layer whose band or line ciplot()/fitplot() draws
     as another type (``GlyphMapper._fitci_redrawn``, WP-31 F1b)."""
     t = str(ptype or "").lower()
+    if t in _DASH_CONTOUR_TYPES:
+        # WP-31 B4b: the surface is computed at build from the layer's
+        # rows, which the page embeds (so no computed-only type); the
+        # saved page's twin is section 29's (B4c).
+        return "grid"
     if t not in _DASH_COMPUTED_ONLY_TYPES:
         return None
     if t == "histogram":
@@ -2465,9 +2470,11 @@ def _dash_hover_shown(g):
     _dash_spec_types_in and _dash_graph_computed_cells read it -- is not
     a computed-only or literal type (``_DASH_COMPUTED_ONLY_TYPES |
     _DASH_LITERAL_TYPES``, dash.ado's _pt_univar, _pt_onefit and
-    _pt_literal).  Such a graph draws no observation, so the saved page
+    _pt_literal) or a contour type (``_DASH_CONTOUR_TYPES``, _pt_contour;
+    WP-31 B4b).  Such a graph draws no observation, so the saved page
     holds none of hover()'s rows for it."""
-    hidden = _DASH_COMPUTED_ONLY_TYPES | _DASH_LITERAL_TYPES
+    hidden = (_DASH_COMPUTED_ONLY_TYPES | _DASH_LITERAL_TYPES
+              | _DASH_CONTOUR_TYPES)
     plots = [p for p in (g or {}).get("plots") or [] if isinstance(p, dict)]
     if not plots:
         return True
@@ -12028,6 +12035,14 @@ _MAX_MBANDS = 1000
 _DASH_CONTOUR_EXACT_MAX = 1000
 _DASH_CONTOUR_FALLBACK_N = 100
 _DASH_CONTOUR_INTERPS = ("thinplatespline", "shepard", "none")
+#: WP-31 B4b (decision D4): the note a contour above the cap prints, once
+#: a layer, in both modes; filled with the distinct points, the cap (twice)
+#: and the fallback grid's side.
+_DASH_CONTOUR_CAP_NOTE = (
+    "dash: contour draws an approximate surface: {n} distinct points "
+    "exceed the {cap} twoway's grid is reproduced for, so a seeded "
+    "subsample of {cap} of them is fitted and drawn on a {g} x {g} grid "
+    "over the data's range; the saved page does not recompute it.")
 
 
 def _with_color_alias(options: dict, specific: str) -> dict:
@@ -14562,7 +14577,8 @@ class GlyphMapper:
             return
         if place.get("title") is not None:
             key.title = place["title"]
-        is_bar = type(key).__name__ == "ColorBar"
+        # contour's ContourColorBar sizes as a ColorBar does (WP-31 B4b).
+        is_bar = type(key).__name__ in ("ColorBar", "ContourColorBar")
         _named = list(place.get("other") or [])
         for _k in ("width", "height"):
             if place.get(_k) is None:
@@ -21134,6 +21150,172 @@ class GlyphMapper:
                               color_idx=color_idx, colorvar_key=False)
         return list(rs or []) + ([pt] if pt is not None else [])
 
+    def map_contour(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: dict[str, str],
+        view=None,
+        color_idx: int = 0,
+        zvar: str = "",
+        lines_only: bool = False,
+    ) -> list:
+        """contour (WP-31 B4b): twoway's filled bands of *zvar* over the
+        (*xvar*, *yvar*) plane.
+
+        The surface is S23's (:func:`_dash_contour_surface`, interp()
+        read as twoway reads it); the cuts, colours and key are twoway's
+        (:func:`_dash_contour_cuts`, :func:`_dash_contour_colours`,
+        :func:`_dash_contour_fill_levels`).  Drawn by Bokeh's contour
+        renderer: ``#cuts + 1`` bands, no outline (twoway's
+        ``gm_linewidth .001``); under ``horizontal`` the surface is drawn
+        turned here (the transposer turns glyphs, and a contour renderer
+        has none).  The colour key is a ContourColorBar over twoway's z
+        axis -- from the lower of zmin and its first tick to the higher of
+        zmax and its last, ticked at the z axis's ticks (the cuts under
+        ccuts() or levels()) and titled with z's label -- placed by
+        clegend() as the colorvar() key is.  An invisible two-point
+        scatter at the surface's corners carries the layer's extent to the
+        axes, which read glyph coordinates.
+
+        With *lines_only* (contourline) the lines at the cuts are drawn
+        instead (:func:`_dash_contour_line_style`) and no key: twoway's is
+        its plot legend's level keys, which dash names and does not draw.
+
+        Returns:
+            ``[contour_renderer, extent_scatter]``; the renderer's child
+            sources ride on ``_dash_contour_sources`` (fill, line) for the
+            served redraw, which pairs sources by position.
+        """
+        x, y, z = GlyphMapper._masked(source, view, xvar, yvar, zvar)
+        ptype = "contourline" if lines_only else "contour"
+        surf = _dash_contour_surface(x, y, z, options.get("interp"))
+        zmin = float(np.min(z)) if z.size else float("nan")
+        zmax = float(np.max(z)) if z.size else float("nan")
+        cuts, ticks = _dash_contour_cuts(options, zmin, zmax,
+                                         self.z_options)
+        horizontal = _dash_is_horizontal_opts(options)
+        gx, gy, gz = surf["gx"], surf["gy"], surf["gz"]
+        if surf["capped"]:
+            _dash_warn_once(
+                ("contour-cap", ptype, int(surf["n_unique"])),
+                _DASH_CONTOUR_CAP_NOTE.format(n=int(surf["n_unique"]),
+                                              cap=_DASH_CONTOUR_EXACT_MAX,
+                                              g=_DASH_CONTOUR_FALLBACK_N))
+        drawable = (surf["note"] != "degenerate" and gx.size >= 2
+                    and gy.size >= 2 and np.isfinite(gz).any()
+                    and math.isfinite(zmin))
+        if horizontal:
+            gx, gy, gz = gy, gx, np.asarray(gz).T
+        colours = _dash_contour_colours(
+            options, len(cuts) + 1, self.scheme,
+            parse=lambda t: self.tr.parse_color_alpha(t, "ccolors")[0])
+        if not drawable:
+            # Nothing to cut: an empty renderer of the same shape, so the
+            # served redraw keeps its pairing (twoway draws nothing, rc 0).
+            gx = np.array([0.0, 1.0])
+            gy = np.array([0.0, 1.0])
+            gz = np.full((2, 2), np.nan)
+        if lines_only:
+            lcol, lwid = _dash_contour_line_style(options, colours, len(cuts))
+            T = OptionTranslator
+            cr = fig.contour(x=gx, y=gy, z=gz, levels=[float(c) for c in cuts],
+                             line_color=lcol,
+                             line_width=[T.translate_lwidth(w) for w in lwid])
+            # twoway's key for the lines is its plot legend's level keys
+            # (labelled by clabels() and format()); not drawn, named once.
+            _dash_warn_once(
+                ("contourline-keys",),
+                "dash: contourline: the legend's keys for its levels are "
+                "not drawn; clabels() and format() label them.")
+            lo = hi = None
+        else:
+            lv = _dash_contour_fill_levels(cuts, ticks, zmin, zmax) \
+                if math.isfinite(zmin) else [0.0] + list(cuts) + [1.0]
+            lo, hi = lv[0], lv[-1]
+            # The outer bands hold every node: a spline overshoots the
+            # data's range, and twoway fills below the first cut and above
+            # the last whatever the value.  The key keeps the z axis's
+            # ends (lv).
+            fin = np.asarray(gz, dtype=float)
+            fin = fin[np.isfinite(fin)]
+            fl = list(lv)
+            if fin.size:
+                fl[0] = min(fl[0], float(fin.min()) - 1e-9 * (hi - lo))
+                fl[-1] = max(fl[-1], float(fin.max()) + 1e-9 * (hi - lo))
+            cr = fig.contour(x=gx, y=gy, z=gz, levels=fl,
+                             fill_color=list(colours))
+        cr._dash_contour_sources = [cr.fill_renderer.data_source,
+                                    cr.line_renderer.data_source]
+        # For the saved page's twin (WP-31 B4c, section 29): what it needs
+        # to cut the surface again.  Not an agg source yet: the saved page
+        # keeps this layer frozen until then.
+        cr._dash_contour_config = {
+            "type": ptype, "xvar": xvar, "yvar": yvar, "zvar": zvar,
+            "cuts": [float(c) for c in cuts], "interp": surf["interp"],
+            "cap": _DASH_CONTOUR_EXACT_MAX, "capped": bool(surf["capped"]),
+            "horizontal": bool(horizontal),
+            "fill_color": [] if lines_only else list(colours),
+            "lo": lo, "hi": hi}
+        cr._dash_contour_capped = bool(surf["capped"])
+        cr.tags = list(cr.tags or []) + ["dash_contour"]
+        # The layer's extent, upright (the transposer turns it with the
+        # layer): the data's corners, drawn invisibly.
+        ex = [float(np.min(x)), float(np.max(x))] if x.size else [np.nan] * 2
+        ey = [float(np.min(y)), float(np.max(y))] if y.size else [np.nan] * 2
+        hull = fig.scatter(x=ex, y=ey, size=0, fill_alpha=0, line_alpha=0,
+                           tags=["dash_contour_extent"])
+        if not lines_only and drawable:
+            self._contour_key(fig, cr, ticks, lo, hi, zvar, zmin, zmax)
+        return [cr, hull]
+
+    def _contour_key(self, fig, cr, ticks, lo, hi, zvar, zmin, zmax) -> None:
+        """contour's colour key (WP-31 B4b): see :meth:`map_contour`."""
+        from bokeh.models import FixedTicker
+        cb = cr.construct_color_bar(
+            title=_dash_var_label(self.variable_labels, zvar, zvar))
+        # The key spans twoway's z axis, not the bands' outer bounds.
+        cb.levels = [float(lo)] + [float(v) for v in cr.levels[1:-1]] \
+            + [float(hi)]
+        for k, v in (self.scheme.colorbar_chrome() or {}).items():
+            try:
+                setattr(cb, k, v)
+            except (AttributeError, ValueError, TypeError):
+                pass
+        cb.width = 12
+        fmt, _bad = _dash_key_format(self.z_options)
+        pos, ovr = _dash_key_ticks([t for t in ticks if lo <= t <= hi], "",
+                                   fmt)
+        cb.ticker = FixedTicker(ticks=pos)
+        cb.major_label_overrides = ovr
+        zo = dict(self.z_options or {})
+        if zo.pop("zscale", ""):
+            _dash_style_note("zscale", self.z_options.get("zscale", ""),
+                             "sub-option", "not drawn on a contour key")
+        _dash_apply_z_options(fig, cb, None, zo, *self.z_context,
+                              units=(zmin, zmax))
+        self._colorvar_key_place(
+            fig, cb, _dash_clegend_opts(zo.get("clegend", "")), "clegend")
+
+    def map_contourline(
+        self,
+        fig: Any,
+        source: ColumnDataSource,
+        yvar: str,
+        xvar: str,
+        options: dict[str, str],
+        view=None,
+        color_idx: int = 0,
+        zvar: str = "",
+    ) -> list:
+        """contourline (WP-31 B4b): twoway's lines at the cuts
+        (:meth:`map_contour` with *lines_only*)."""
+        return self.map_contour(fig, source, yvar, xvar, options, view=view,
+                                color_idx=color_idx, zvar=zvar,
+                                lines_only=True)
+
     def map_scatteri(
         self,
         fig: Any,
@@ -25193,6 +25375,168 @@ def _dash_contour_surface(x, y, z, interp="thinplatespline",
         gz[np.searchsorted(gy, py), np.searchsorted(gx, px)] = pz
     out.update(gx=gx, gy=gy, gz=gz)
     return out
+
+
+# ---- twoway contour's drawing (WP-31 B4b) ----------------------------------
+#
+# The cuts, colours and key twoway contour and contourline draw from the
+# surface above, measured against twoway's own class values
+# (test/fixtures/contour_truth.json draw.*, line.*; zyx2view_g.class
+# reset_dserset and set_ccuts_from_levels, zyx2style.class).
+
+def _dash_contour_zticks(zopts, zmin, zmax):
+    """``(ticks, is_rule)``: the z axis's major ticks twoway cuts at when
+    neither ccuts() nor levels() is given.
+
+    twoway's default is ``zlabel(#5)`` over the z range (measured: auto's
+    mpg 12-41 ticks 10 20 30 40; the plan's #7 was not it).  zlabel()'s
+    own ``#n`` and ``minmax`` are rules, as is a numlist with a ``(``
+    step (``15(5)35``); a plain list of values is not (draw.zlabel_plain).
+    """
+    raw = str((zopts or {}).get("zlabel", "") or "").strip()
+    if raw:
+        spec = _dash_parse_axis_spec(raw)
+        mode = spec.get("mode")
+        if mode == "count" and spec.get("count"):
+            return (list(_dash_axis_count_ticks(zmin, zmax, int(spec["count"]),
+                                                None) or []), True)
+        if mode == "minmax":
+            return ([zmin, zmax], True)
+        if mode == "explicit" and spec.get("ticks"):
+            head = raw.split(",", 1)[0]
+            return (sorted(float(t) for t in spec["ticks"]),
+                    bool(re.search(r"\(", head)))
+    return (list(_dash_axis_count_ticks(zmin, zmax, 5, None) or []), True)
+
+
+def _dash_contour_cuts(options, zmin, zmax, zopts=None):
+    """``(cuts, ticks)`` twoway contour draws at, as zyx2view_g.class's
+    reset_dserset and set_ccuts_from_levels choose them (WP-31 B4b).
+
+    ``ccuts()`` sorted as given; else ``levels(#)`` with # of at least 2:
+    the # - 1 cuts ``zmin + i (zmax - zmin) / #``, ``minmax`` adding zmin
+    and zmax (levels(0) and levels(1) give no cut and fall through,
+    measured); else the z axis's ticks (:func:`_dash_contour_zticks`),
+    the first and last dropped when they come from a rule and there are
+    more than two, and ``[zmax]`` when that leaves none.  *ticks* are the
+    colour key's: the cuts themselves under ccuts() or levels().
+    """
+    opts = options or {}
+    raw = str(opts.get("ccuts", "") or "").strip()
+    if raw:
+        cuts = sorted(float(t) for t in raw.split())
+        return cuts, list(cuts)
+    try:
+        n = int(float(str(opts.get("levels", "") or "").strip()))
+    except ValueError:
+        n = 0
+    if n >= 2 and math.isfinite(zmin) and math.isfinite(zmax):
+        d = (zmax - zmin) / n
+        cuts = [zmin + i * d for i in range(1, n)]
+        if str(opts.get("minmax", "") or "").strip():
+            cuts = [zmin] + cuts + [zmax]
+        return cuts, list(cuts)
+    ticks, rule = _dash_contour_zticks(zopts, zmin, zmax)
+    if rule:
+        cuts = list(ticks[1:-1]) if len(ticks) > 2 else []
+    else:
+        cuts = list(ticks)
+    if not cuts:
+        cuts = [zmax]
+    return cuts, ticks
+
+
+def _dash_contour_colours(options, n_levels, scheme, parse=None):
+    """The ``#rrggbb`` of each of the *n_levels* bands, lowest first
+    (zyx2style.class reset and its rules; WP-31 B4b).
+
+    ``ccolors()``: one colour a level, the last repeated.  Else
+    ``crule()`` (the scheme's ``zyx2rule contour`` when not given) from
+    ``scolor()`` to ``ecolor()`` (the scheme's ``contour_begin`` and
+    ``contour_end``) by S17's :func:`_dash_colorrule_palette`, which
+    twoway's colorvar() key shares (measured equal per level for linear,
+    revlinear, intensity, hue, chue and phue, draw.crule_*).  *parse* reads
+    a colour name to ``#rrggbb`` (OptionTranslator.parse_color_alpha's
+    colour); a name it cannot read is black, as twoway draws an unknown
+    style's default attributes.
+    """
+    opts = options or {}
+    k = max(int(n_levels), 1)
+
+    def _col(text):
+        if parse is None:
+            return None
+        try:
+            c = parse(text)
+        except (ValueError, TypeError):
+            c = None
+        return c
+
+    raw = str(opts.get("ccolors", "") or "").strip()
+    if raw:
+        cols = [(_col(_dash_unquoted(t)) or "#000000")
+                for t in _dash_by_tokens(raw)]
+        if cols:
+            return [cols[min(i, len(cols) - 1)] for i in range(k)]
+    d_rule, d_start, d_end = _dash_colorrule_default(scheme)
+    rule = str(opts.get("crule", "") or "").strip() or d_rule
+    if rule not in _DASH_COLORRULES:
+        rule = d_rule
+    start = (_col(str(opts["scolor"]).strip()) or "#000000") \
+        if str(opts.get("scolor", "") or "").strip() else d_start
+    end = (_col(str(opts["ecolor"]).strip()) or "#000000") \
+        if str(opts.get("ecolor", "") or "").strip() else d_end
+    return _dash_colorrule_palette(
+        rule, start, end, k,
+        scheme_p=list(getattr(scheme, "p_colors", None) or []))
+
+
+def _dash_contour_line_style(options, colours, n_cuts):
+    """``(line_color, line_width_names)`` of a contourline's *n_cuts*
+    lines (yxview_contourline_draw.ado; exported SVGs, line.*).
+
+    twoway draws every line black and thin unless ``colorlines`` or
+    ``ccolors()`` is given; then line i takes level i's colour (*colours*,
+    lowest first) at medium width, and under ``colorlines`` the i-th
+    ``clwidths()`` width.  clpatterns() changes no line (measured), and
+    clwidths() none without colorlines.
+    """
+    opts = options or {}
+    n = max(int(n_cuts), 0)
+    per_level = bool(str(opts.get("colorlines", "") or "").strip()
+                     or str(opts.get("ccolors", "") or "").strip())
+    if not per_level:
+        return ["#000000"] * n, ["thin"] * n
+    widths = ["medium"] * n
+    if str(opts.get("colorlines", "") or "").strip():
+        given = _dash_by_tokens(str(opts.get("clwidths", "") or "").strip())
+        for i, w in enumerate(given[:n]):
+            widths[i] = _dash_unquoted(w)
+    return [colours[min(i, len(colours) - 1)] for i in range(n)], widths
+
+
+def _dash_contour_fill_levels(cuts, ticks, zmin, zmax):
+    """The levels Bokeh fills between: ``[lo] + cuts + [hi]`` with
+    *lo*/*hi* the colour key's ends, twoway's z axis from the lower of
+    zmin and the first tick to the higher of zmax and the last
+    (exported SVG: auto's key runs 10 to 41), each strictly outside the
+    cuts and the data so the outer bands hold every node."""
+    lo = min([zmin] + [t for t in ticks[:1] if math.isfinite(t)])
+    hi = max([zmax] + [t for t in ticks[-1:] if math.isfinite(t)])
+    span = max(abs(hi - lo), abs(cuts[-1] - cuts[0]), 1.0)
+    eps = 1e-9 * span
+    if lo >= min(cuts[0], zmin):
+        lo = min(cuts[0], zmin) - eps
+    if hi <= max(cuts[-1], zmax):
+        hi = max(cuts[-1], zmax) + eps
+    return [float(lo)] + [float(c) for c in cuts] + [float(hi)]
+
+
+def _dash_is_horizontal_opts(options):
+    """``horizontal`` given (and not ``vertical``) in a layer's options."""
+    opts = options or {}
+    return bool(str(opts.get("horizontal", "") or "").strip()) \
+        and not str(opts.get("vertical", "") or "").strip()
 
 
 _LITERAL_MARK = "\x01"
@@ -30395,6 +30739,10 @@ _DASH_PC_TYPES = frozenset({"pcspike", "pcarrow", "pcbarrow", "pcscatter",
 #: the keys yvar1, yvar2, yvar (y3) and xvar.  Drawn by the range branch
 #: of both build loops, the marker variable riding along.
 _DASH_RANGEPT_TYPES = frozenset({"rpcap", "rpspike"})
+#: The contour types (WP-31 B4b): three variables z y x, written with the
+#: keys zvar, yvar and xvar; drawn by Bokeh's contour renderer over S23's
+#: surface, before the range branch of both build loops.
+_DASH_CONTOUR_TYPES = frozenset({"contour", "contourline"})
 
 #: Plot types that carry no variable names -- an inline coordinate list or
 #: an expression.  Both renderers branch on these by name BEFORE the
@@ -37050,12 +37398,14 @@ _DASH_HORIZONTAL_TYPES = (
     "area", "bar", "spike", "dropline", "dot", "histogram", "kdensity",
     "rarea", "rbar", "rspike", "rcap", "rcapsym", "rline", "rconnected",
     "rscatter", "rpcap", "rpspike", "pcspike", "pcarrow", "pcbarrow",
-    "pcscatter", "pccapsym", "pci", "pcarrowi", "function", "tsrline")
+    "pcscatter", "pccapsym", "pci", "pcarrowi", "function", "tsrline",
+    "contour", "contourline")
 _DASH_VERTICAL_TYPES = (
     "area", "bar", "spike", "dropline", "dot", "histogram",
     "rarea", "rbar", "rspike", "rcap", "rcapsym", "rline", "rconnected",
     "rscatter", "rpcap", "rpspike", "pcspike", "pcarrow", "pcbarrow",
-    "pcscatter", "pccapsym", "pci", "pcarrowi", "tsrline")
+    "pcscatter", "pccapsym", "pci", "pcarrowi", "tsrline",
+    "contour", "contourline")
 #: Types that keep their own type under recast() and carry the target
 #: (S45): a flag is refused only when both refuse it (E4).
 _DASH_DERIVED_ORIENT_TYPES = (
@@ -41888,7 +42238,9 @@ _DASH_OPT_VAR_KEYS = ("colorvar", "mlabel", "mlabvposition", "wexp")
 #: placeholder listed five of them, so a paired-coordinate layer's columns
 #: were missing from it.
 _DASH_PLOT_VAR_KEYS = ("yvar", "xvar", "var", "yvar1", "yvar2", "y1var",
-                       "x1var", "y2var", "x2var")
+                       "x1var", "y2var", "x2var",
+                       # WP-31 B4b: a contour layer's z.
+                       "zvar")
 #: The invisible swatch renderers a discrete colorvar() legend is built from.
 _DASH_SWATCH_PREFIX = "_clegend_"
 
@@ -45638,6 +45990,11 @@ def _dash_legend_keys(plot_renderers, var_labels=None, default_level=None):
                     out.append((n + 1, ser[-1][0], line))
             n += 2
             continue
+        if ptype in _DASH_CONTOUR_TYPES:
+            # WP-31 B4b: twoway gives contour no key (numkeys 0; its
+            # colour key is the clegend) and contourline's level keys are
+            # named, not drawn; either consumes its number.
+            rends = []
         if rends:
             out.append((n, _dash_legend_key(plot, var_labels), rends))
         n += 1
@@ -45748,6 +46105,9 @@ def _dash_hover_layer_vars(plot):
     elif ptype in _DASH_RANGEPT_TYPES:
         # WP-31 B1: the range's ends, then its marker (y3).
         keys = ("xvar", "yvar1", "yvar2", "yvar")
+    elif ptype in _DASH_CONTOUR_TYPES:
+        # WP-31 B4b: the plane, then the variable cut into levels.
+        keys = ("xvar", "yvar", "zvar")
     else:
         keys = ("xvar", "yvar", "yvar1", "yvar2")
     out = []
@@ -47666,6 +48026,8 @@ def _dash_note_hover_unreached(gname, plots, hover_extra):
         "fpfit", "fpfitci", "function", "histogram", "kdensity", "lfit",
         "lfitci", "lowess", "lpoly", "lpolyci", "mband", "mspline", "qfit",
         "qfitci",
+        # WP-31 B4b: a contour's bands and lines are cut from a surface.
+        "contour", "contourline",
     })
     literal = frozenset({"scatteri", "pci", "pcarrowi"})
     for i, plot in enumerate(plots or []):
@@ -47782,6 +48144,9 @@ def _dash_glyph_dispatch(mapper):
         "rpcap":      mapper.map_rpcap,
         "rpspike":    mapper.map_rpspike,
     }
+    # WP-31 B4b: the contour types, z over the (x, y) plane.
+    dispatch["contour"] = mapper.map_contour
+    dispatch["contourline"] = mapper.map_contourline
     return dispatch, range_dispatch
 
 
@@ -48254,7 +48619,7 @@ def _dash_note_no_second_y(plot_type):
 
 def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
                     y2var="", view=None, color_idx=0, order=None,
-                    marker_view=None, y3var=""):
+                    marker_view=None, y3var="", zvar=""):
     """Dispatch one plot layer to the GlyphMapper method that draws it.
 
     *order* is the layer's join key (``_dash_join_key``), one value per row
@@ -48263,6 +48628,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
     none.  *marker_view* reaches connected alone: its markers' view
     (map_connected; WP-30 P1.8a).  *y3var* reaches the range-point types
     alone (``_DASH_RANGEPT_TYPES``): their marker variable (WP-31 B1).
+    *zvar* reaches the contour types alone (``_DASH_CONTOUR_TYPES``): the
+    variable cut into levels (WP-31 B4b).
     """
     _before = frozenset(id(r) for r in (getattr(fig, "renderers", None) or ()))
     try:
@@ -48276,6 +48643,16 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
                 # The marker variable too: a layer without it draws
                 # nothing, with the note, as the other guards do.
                 _vars_needed.append(y3var)
+            if pt in _DASH_CONTOUR_TYPES:
+                if not zvar:
+                    # A hand-written spec without its z: nothing to cut
+                    # (dash.ado always writes one, WP-31 B4b).
+                    _dash_warn_once(
+                        ("contour-noz", pt),
+                        "dash: %s needs three variables, z y x; nothing "
+                        "was drawn for that layer." % pt)
+                    return None
+                _vars_needed.append(zvar)
             if _vars_needed and not mapper._check_vars(source, *_vars_needed):
                 return None
 
@@ -48286,6 +48663,8 @@ def _dash_add_glyph(mapper, fig, source, plot_type, yvar, xvar, options,
             _jkw["marker_view"] = marker_view
         if pt in _DASH_RANGEPT_TYPES:
             _jkw["y3var"] = y3var
+        if pt in _DASH_CONTOUR_TYPES:
+            _jkw["zvar"] = zvar
         rfn = range_dispatch.get(pt)
         if rfn is not None and not y2var:
             # A range type with no second y variable fell through to "no glyph
@@ -49010,12 +49389,17 @@ class DashRenderer:
                 tag = getattr(r, "_dash_frozen", None)
                 if tag is None:
                     continue
+                # A contour renderer draws through its fill and line
+                # children, which carry the glyphs the cue mutes (WP-31
+                # B4b).
+                kids = ([r.fill_renderer, r.line_renderer]
+                        if hasattr(r, "fill_renderer") else [r])
                 for g in groups:
                     if g[0] is tag:
-                        g[1].append(r)
+                        g[1].extend(kids)
                         break
                 else:
-                    groups.append((tag, [r]))
+                    groups.append((tag, list(kids)))
             if groups:
                 out[key] = groups
         return out
@@ -49931,6 +50315,16 @@ class DashRenderer:
                 px2var = plot.get("x2var", "")
                 self._add_pc_glyph(fig, source_for_plot, ptype, py1var, px1var, py2var, px2var, popts,
                                    view=_plot_view, color_idx=_pstyle_idx[pi])
+            elif ptype.lower() in _DASH_CONTOUR_TYPES:
+                # WP-31 B4b: contour and contourline, z cut over the
+                # (x, y) plane; frozen on the saved page (grid kind)
+                # until its twin lands (section 29).
+                pzvar = plot.get("zvar", "")
+                _frozen_vars = [pzvar, plot.get("yvar", ""), pxvar]
+                self._add_glyph(fig, source_for_plot, ptype,
+                                plot.get("yvar", ""), pxvar, popts,
+                                view=_plot_view, color_idx=_pstyle_idx[pi],
+                                zvar=pzvar)
             elif ptype.lower() in _DASH_RANGEPT_TYPES:
                 # WP-31 B1: rpcap and rpspike, a range with its marker
                 # at yvar (y3); tested before _RANGE_TYPES, so yvar1 is
@@ -49992,7 +50386,8 @@ class DashRenderer:
             # carries ONE tag on every renderer: its kind, variables,
             # weight rule and member rows (WP-29 P0.17).  Private to the
             # Python object; never serialised.
-            if _frozen_vars and ptype.lower() in _DASH_COMPUTED_ONLY_TYPES:
+            if _frozen_vars and (ptype.lower() in _DASH_COMPUTED_ONLY_TYPES
+                                 or ptype.lower() in _DASH_CONTOUR_TYPES):
                 # A layer drawn from Stata's stored points is frozen with
                 # the kind "fit" whatever its type (WP-31 C4, D3).
                 _fkind = ("fit" if any(getattr(_fr, "_dash_points_frozen",
@@ -50177,6 +50572,7 @@ class DashRenderer:
         order=None,
         marker_view=None,
         y3var: str = "",
+        zvar: str = "",
     ) -> None:
         """Dispatch a single plot layer to the correct GlyphMapper method.
 
@@ -50194,10 +50590,12 @@ class DashRenderer:
             marker_view: A connected layer's markers' view, or None
                         (``_dash_add_glyph``).
             y3var:      A range-point layer's marker variable (WP-31 B1).
+            zvar:       A contour layer's z variable (WP-31 B4b).
         """
         _dash_add_glyph(self.mapper, fig, source, plot_type, yvar, xvar,
                         options, y2var=y2var, view=view, color_idx=color_idx,
-                        order=order, marker_view=marker_view, y3var=y3var)
+                        order=order, marker_view=marker_view, y3var=y3var,
+                        zvar=zvar)
 
     def _add_pc_glyph(
         self,
@@ -52617,6 +53015,8 @@ class ServerAppBuilder:
                       "_DASH_PC_TYPES", "_DASH_LITERAL_TYPES",
                       # WP-31 B1: rpcap and rpspike.
                       "_DASH_RANGEPT_TYPES",
+                      # WP-31 B4b: contour and contourline.
+                      "_DASH_CONTOUR_TYPES",
                       # The shared legend, axis, column and swatch tables.
                       "_DASH_CLOCK_SIDE", "_DASH_CLOCK_INSIDE",
                       "_DASH_HIST_YTITLES",
@@ -53497,6 +53897,8 @@ class ServerAppBuilder:
                 "_DASH_CONTOUR_EXACT_MAX = %d" % _DASH_CONTOUR_EXACT_MAX,
                 "_DASH_CONTOUR_FALLBACK_N = %d" % _DASH_CONTOUR_FALLBACK_N,
                 "_DASH_CONTOUR_INTERPS = %r" % (_DASH_CONTOUR_INTERPS,),
+                # WP-31 B4b: the note a contour above the cap prints.
+                "_DASH_CONTOUR_CAP_NOTE = %r" % (_DASH_CONTOUR_CAP_NOTE,),
                 "", ""]
 
         for _fn in (_stat_option_float,
@@ -53549,6 +53951,11 @@ class ServerAppBuilder:
                     _dash_tps_eval, _dash_shepard, _dash_contour_grid,
                     _dash_contour_fallback_grid, _dash_contour_interp,
                     _dash_contour_surface,
+                    # WP-31 B4b: the cuts, colours, lines and key ends
+                    # map_contour draws with, in both renderers.
+                    _dash_contour_zticks, _dash_contour_cuts,
+                    _dash_contour_colours, _dash_contour_line_style,
+                    _dash_contour_fill_levels, _dash_is_horizontal_opts,
                     # qfit's and qfitci's shared design (the WP-18 review).
                     _qfit_design,
                     # Stata's `if' grammar and its arithmetic operators.  The
@@ -55253,6 +55660,19 @@ class ServerAppBuilder:
             "                        plot.get('y1var', ''), plot.get('x1var', ''),",
             "                        plot.get('y2var', ''), plot.get('x2var', ''),",
             "                        opts, color_idx=_sidx)",
+            "            elif ptype in _DASH_CONTOUR_TYPES:",
+            "                # WP-31 B4b: z cut over the (x, y) plane; the mapper",
+            "                # builds its own sources from the layer's rows.",
+            "                _ly_src, _ly_view = _dash_layer_source(",
+            "                    g_df, df, xvar, yvar, '',",
+            "                    gname, _ln, _shared, _shared_pos, _fallback,",
+            "                    extra_cols=_hv + [plot.get('zvar', '')]",
+            "                    + _dash_option_columns(opts, df.columns))",
+            "                if _ly_src is not None:",
+            "                    _dash_add_glyph(",
+            "                        _m, fig, _ly_src, ptype, yvar, xvar, opts,",
+            "                        view=_ly_view, color_idx=_sidx,",
+            "                        zvar=plot.get('zvar', ''))",
             "            elif ptype in _DASH_RANGE_TYPES or ptype in _DASH_RANGEPT_TYPES:",
             "                y1var = plot.get('yvar1', '') or plot.get('yvar', '') or plot.get('y1var', '')",
             "                y2var = plot.get('yvar2', '') or plot.get('y2var', '')",
@@ -55316,9 +55736,12 @@ class ServerAppBuilder:
             "            # source: not refreshed, not redrawn.",
             "            if _dash_is_swatch(_rr):",
             "                continue",
-            "            _rs = getattr(_rr, 'data_source', None)",
-            "            if _rs is not None and all(_rs is not _s for _s in _srcs):",
-            "                _srcs.append(_rs)",
+            "            # A contour renderer has no source of its own: its fill",
+            "            # and line children's, in that order (WP-31 B4b).",
+            "            for _rs in ([getattr(_rr, 'data_source', None)]",
+            "                        + list(getattr(_rr, '_dash_contour_sources', []))):",
+            "                if _rs is not None and all(_rs is not _s for _s in _srcs):",
+            "                    _srcs.append(_rs)",
             "        return _ly_src, _srcs",
             "",
             "    def _hover_cols_of(gname):",
@@ -55333,7 +55756,7 @@ class ServerAppBuilder:
             "            if _gx.get('graph_options', {}).get('name', '') == gname.split('__by__')[0]:",
             "                _raw = (_gx.get('graph_options', {}).get('hover', '') or '').strip()",
             "                _p0 = (_gx.get('plots') or [{}])[0] or {}",
-            "                _tip = [_p0.get(_k, '') for _k in ('xvar', 'yvar', 'yvar1', 'yvar2')]",
+            "                _tip = [_p0.get(_k, '') for _k in ('xvar', 'yvar', 'yvar1', 'yvar2', 'zvar')]",
             "                return [_c for _c in dict.fromkeys(_tip + _raw.split())",
             "                        if _c and _c in df.columns]",
             "        return []",

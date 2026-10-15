@@ -5528,6 +5528,357 @@ if inlist("`only'", "", "S25") & `: list posof "S25" in w31_run' {
 }
 * ==== end S25 ====
 
+// S26 (WP-31 B4b) helpers: register one dash contour graph, write its
+// spec and data, and read what both modes draw.  _u26_draw sets, per
+// mode m (s saved, v served): u26_n<m> (contour renderers), u26_cut<m>
+// (the cuts, %.10g), u26_rgb<m> (each band's fill, lowest first, or each
+// line's colour for contourline), u26_tick<m> (the colour key's ticks),
+// u26_side<m> (the key's side, "none" without one), u26_fx<m> (the fill
+// polygons' x extent "lo hi"), u26_lv<m> (the number of line levels),
+// u26_kind<m> (the saved layer's frozen kind), u26_cap<m> (capped 0/1)
+// and u26_notes (approximate-surface notes printed, both builds).
+python:
+def _u26_docs(sp, dp, app):
+    import warnings
+    import dash_render as dr
+    from bokeh.document import Document
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        r = dr.DashRenderer(sp, dp)
+        r.render()
+        dr.ServerAppBuilder(sp, dp).build(app)
+        with open(app, encoding="utf-8") as fh:
+            src = fh.read()
+        attach = "if __name__ != '__main__':\n    make_document(curdoc())"
+        ns = dict(__name__="dash_u26_app")
+        exec(compile(src.replace(attach, "pass"), "dash_u26_app.py", "exec"),
+             ns)
+        doc = Document()
+        ns["make_document"](doc)
+    sv = [m for m in doc.models if type(m).__name__ == "figure"]
+    notes = [str(x.message) for x in w]
+    return list(r.figures.values()), sv, notes
+
+
+def _u26_draw(sp, dp, app):
+    from sfi import Macro
+    a, b, notes = _u26_docs(sp, dp, app)
+    Macro.setGlobal("u26_notes", str(sum("approximate surface" in n
+                                         for n in notes)))
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        crs = [r for r in f.renderers
+               if type(r).__name__ == "ContourRenderer"]
+        Macro.setGlobal("u26_n" + sfx, str(len(crs)))
+        for g in ("cut", "rgb", "tick", "fx", "lv", "kind", "cap"):
+            Macro.setGlobal("u26_%s%s" % (g, sfx), "")
+        Macro.setGlobal("u26_side" + sfx, "none")
+        if len(crs) != 1:
+            continue
+        cr = crs[0]
+        cfg = getattr(cr, "_dash_contour_config", {}) or {}
+        Macro.setGlobal("u26_cut" + sfx, " ".join(
+            format(float(c), ".10g") for c in cfg.get("cuts", [])))
+        fd = cr.fill_renderer.data_source.data
+        ld = cr.line_renderer.data_source.data
+        if cfg.get("type") == "contourline":
+            cols = cr.line_renderer.glyph.line_color
+            fld = cols if isinstance(cols, str) else getattr(cols, "field", None)
+            cols = list(ld[fld]) if fld in ld else [cols]
+        else:
+            levels = [float(v) for v in cr.levels]
+            by = {}
+            for lo, c in zip(fd["lower_levels"], fd["fill_color"]):
+                by[levels.index(float(lo))] = c
+            cols = [by[k] for k in sorted(by)]
+        Macro.setGlobal("u26_rgb" + sfx, " ".join(str(c).lower() for c in cols))
+        xs = [v for p in fd["xs"] for poly in p for ring in poly for v in ring]
+        if xs:
+            Macro.setGlobal("u26_fx" + sfx, "%s %s" % (
+                format(min(xs), ".10g"), format(max(xs), ".10g")))
+        Macro.setGlobal("u26_lv" + sfx, str(len(ld.get("levels", []))))
+        tag = getattr(cr, "_dash_frozen", None)
+        Macro.setGlobal("u26_kind" + sfx, str((tag or {}).get("kind", "")))
+        Macro.setGlobal("u26_cap" + sfx,
+                        str(int(bool(getattr(cr, "_dash_contour_capped", 0)))))
+        for side in ("right", "left", "above", "below"):
+            for m in getattr(f, side):
+                if type(m).__name__ == "ContourColorBar":
+                    Macro.setGlobal("u26_side" + sfx, side)
+                    Macro.setGlobal("u26_tick" + sfx, " ".join(
+                        format(float(t), ".10g") for t in m.ticker.ticks))
+
+
+def _u26_raster(case, interp):
+    """U26-2: the band of each cell of a 200 x 200 raster in twoway's
+    filled rows (contour_truth.json) and in dash's polygons agree."""
+    import os
+    import sys
+    from sfi import Macro
+    sys.path.insert(0, os.getcwd())
+    import test_contour_layers as t
+    import numpy as np
+    import pandas as pd
+    import warnings
+    import tempfile
+    import pathlib
+    c = t._T["cases"][case]
+    rows = c["rows"]
+    df = pd.DataFrame({"z": rows["z"], "y": rows["y"], "x": rows["x"]})
+    cuts = " ".join(repr(float(v)) for v in c[interp]["cuts"])
+    out = []
+    for mode in ("saved", "served"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            figs, _n = t._figs(mode, pathlib.Path(tempfile.mkdtemp()),
+                               [t._plot(z="z", y="y", x="x",
+                                        opts={"ccuts": cuts,
+                                              "interp": interp})], df=df)
+        [cr] = t._contours(figs[0])
+        g = t._T["grid"][case]
+        xs = np.linspace(min(g["x"]), max(g["x"]), 201)
+        ys = np.linspace(min(g["y"]), max(g["y"]), 201)
+        X, Y = np.meshgrid((xs[:-1] + xs[1:]) / 2, (ys[:-1] + ys[1:]) / 2)
+        out.append(float((t._twoway_raster(c[interp]["filled"], X, Y)
+                          == t._dash_raster(cr, X, Y)).mean()))
+    Macro.setGlobal("u26_agree", " ".join("%.4f" % v for v in out))
+end
+
+capture mata: mata drop _u26_near() _u26_hex() _u26_h2()
+mata:
+// 1 when two lists of #rrggbb colours have the same length and every
+// channel within 1/255.
+real scalar _u26_near(string scalar a, string scalar b)
+{
+    string rowvector A, B
+    real scalar i, j
+    A = tokens(a)
+    B = tokens(b)
+    if (cols(A) != cols(B) | cols(A) == 0) return(0)
+    for (i = 1; i <= cols(A); i++) {
+        if (strlen(A[i]) != 7 | strlen(B[i]) != 7) return(0)
+        for (j = 2; j <= 6; j = j + 2) {
+            if (abs(_u26_hex(substr(A[i], j, 2)) - _u26_hex(substr(B[i], j, 2))) > 1) return(0)
+        }
+    }
+    return(1)
+}
+string scalar _u26_h2(real scalar v)
+{
+    return(strlower(substr("0" + inbase(16, v), -2, 2)))
+}
+real scalar _u26_hex(string scalar h)
+{
+    string scalar d
+    d = "0123456789abcdef"
+    h = strlower(h)
+    return(16 * (strpos(d, substr(h, 1, 1)) - 1) + strpos(d, substr(h, 2, 1)) - 1)
+}
+end
+
+capture program drop _u26_reg
+program define _u26_reg
+    // _u26_reg <dir> <k> <dash command...>
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    dash clear
+    capture quietly dash `0'
+    global u26_rc = _rc
+    if _rc {
+        foreach m in s v {
+            global u26_n`m' "rc `=_rc'"
+        }
+        exit
+    }
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+    python: import __main__ as _u26_m; _u26_m._u26_draw("`dir'/s`k'.json", "`dir'/d`k'.json", "`dir'/a`k'.py")
+end
+
+capture program drop _u26_tw
+program define _u26_tw
+    // _u26_tw <twoway command>: twoway's cuts, band (or line) colours and
+    // z-axis ticks, read from the drawn graph u26t, into u26_twcut,
+    // u26_twrgb ("#rrggbb" each) and u26_twtick ("%.10g" each).
+    version 19
+    capture graph drop u26t
+    twoway `0' name(u26t)
+    local v ".u26t.`.u26t.contour_view'`.u26t.contourline_view'"
+    local out ""
+    foreach c in `.`v'.style.ccutsopt' {
+        local out "`out' `=strtrim(string(`c', "%18.10g"))'"
+    }
+    global u26_twcut = strtrim("`out'")
+    local L = 0`.`v'.style.levels.val'
+    local n = cond("`.`v'.type.setting'" == "contourline", `L' - 1, `L')
+    local out ""
+    forvalues i = 1/`n' {
+        tokenize `.`v'.style.cstyles[`i'].color.rgb'
+        mata: st_local("out", st_local("out") + " #" + _u26_h2(`1') + _u26_h2(`2') + _u26_h2(`3'))
+    }
+    global u26_twrgb = strtrim("`out'")
+    local za `.`v'.zaxis'
+    local out ""
+    foreach t in `.`za'.major.tick_values' {
+        local out "`out' `=strtrim(string(`t', "%18.10g"))'"
+    }
+    global u26_twtick = strtrim("`out'")
+    graph drop u26t
+end
+
+* ==== S26 B4b: contour and contourline ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S26") & `: list posof "S26" in w31_run' {
+    display as text "S26 start " c(current_date) " " c(current_time)
+    local u26dir "`w31_work'/u26"
+    capture mkdir "`u26dir'"
+    sysuse auto, clear
+
+    // ------------------------------------------------------------
+    // U26-1: dash contour mpg weight length registers z y x and both
+    // modes draw one contour renderer with twoway's cuts and colours.
+    // ------------------------------------------------------------
+    _u26_tw contour mpg weight length,
+    _u26_reg `u26dir' 1 contour mpg weight length, name(u261)
+    foreach m in s v {
+        _w31_expect U26-1 `"("${u26_n`m'}" == "1")"' "`m': ${u26_n`m'} contour renderers"
+        _w31_expect U26-1 `"("${u26_cut`m'}" == "${u26_twcut}")"' "`m': cuts ${u26_cut`m'}; twoway's ${u26_twcut}"
+        _w31_expect U26-1 `"("${u26_rgb`m'}" == "${u26_twrgb}")"' "`m': bands ${u26_rgb`m'}; twoway's ${u26_twrgb}"
+    }
+    _w31_done U26-1 "contour draws twoway's cuts ${u26_twcut} and bands ${u26_twrgb} in both modes"
+
+    // ------------------------------------------------------------
+    // U26-2: the level sets equal twoway's filled polygons
+    // (contour_truth.json cases.*): a 200 x 200 raster agrees on 98% of
+    // its cells (97% for auto's ill-conditioned thin-plate spline).
+    // ------------------------------------------------------------
+    foreach c in auto synthetic {
+        foreach i in thinplatespline shepard {
+            python: import __main__ as _u26_m; _u26_m._u26_raster("`c'", "`i'")
+            local fl = cond("`c'`i'" == "autothinplatespline", .97, .98)
+            foreach a of global u26_agree {
+                _w31_expect U26-2 `"(`a' >= `fl')"' "`c' `i': `a' of the cells agree (at least `fl')"
+            }
+        }
+    }
+    _w31_done U26-2 "the bands' level sets equal twoway's filled polygons"
+
+    // ------------------------------------------------------------
+    // U26-3: ccuts(), levels(), levels() minmax: twoway's cuts.
+    // ------------------------------------------------------------
+    local k 3
+    foreach o in "ccuts(30 15 25 20)" "levels(5)" "levels(5) minmax" "levels(1)" {
+        _u26_tw contour mpg weight length, `o'
+        _u26_reg `u26dir' `k' contour mpg weight length, `o' name(u263)
+        foreach m in s v {
+            _w31_expect U26-3 `"("${u26_cut`m'}" == "${u26_twcut}")"' "`o' `m': cuts ${u26_cut`m'}; twoway's ${u26_twcut}"
+        }
+        local ++k
+    }
+    _w31_done U26-3 "ccuts(), levels() and minmax cut where twoway cuts"
+
+    // ------------------------------------------------------------
+    // U26-4: the colour rules between scolor() and ecolor(), and
+    // ccolors(): each band's colour twoway's (within 1/255 a channel).
+    // ------------------------------------------------------------
+    foreach o in "crule(linear) scolor(navy) ecolor(gold)" "crule(revlinear) scolor(navy) ecolor(gold)" "crule(intensity) scolor(navy) ecolor(gold)" "crule(hue) scolor(navy) ecolor(gold)" "crule(chue) scolor(navy) ecolor(gold)" "crule(phue)" "ccolors(red blue green)" "scheme(s1mono)" {
+        _u26_tw contour mpg weight length, `o'
+        _u26_reg `u26dir' `k' contour mpg weight length, `o' name(u264)
+        foreach m in s v {
+            mata: st_local("u26ok", strofreal(_u26_near(st_global("u26_rgb`m'"), st_global("u26_twrgb"))))
+            _w31_expect U26-4 `"(`u26ok' == 1)"' "`o' `m': ${u26_rgb`m'}; twoway's ${u26_twrgb}"
+        }
+        local ++k
+    }
+    _w31_done U26-4 "every crule(), ccolors() and the scheme's own rule colour the bands as twoway does"
+
+    // ------------------------------------------------------------
+    // U26-5: the colour key: right of the plot, ticked at twoway's z-axis
+    // ticks; none under clegend(off); on the left at position(9).
+    // ------------------------------------------------------------
+    _u26_tw contour mpg weight length,
+    _u26_reg `u26dir' `k' contour mpg weight length, name(u265)
+    foreach m in s v {
+        _w31_expect U26-5 `"("${u26_side`m'}" == "right" & "${u26_tick`m'}" == "${u26_twtick}")"' "`m': key ${u26_side`m'} ticked ${u26_tick`m'}; twoway's ${u26_twtick}"
+    }
+    local ++k
+    _u26_reg `u26dir' `k' contour mpg weight length, clegend(off) name(u265)
+    foreach m in s v {
+        _w31_expect U26-5 `"("${u26_side`m'}" == "none")"' "`m': clegend(off) key ${u26_side`m'}"
+    }
+    local ++k
+    _u26_reg `u26dir' `k' contour mpg weight length, clegend(position(9)) name(u265)
+    foreach m in s v {
+        _w31_expect U26-5 `"("${u26_side`m'}" == "left")"' "`m': clegend(position(9)) key ${u26_side`m'}"
+    }
+    local ++k
+    _w31_done U26-5 "the key is twoway's: right, ticked ${u26_twtick}; off and position(9) honoured"
+
+    // ------------------------------------------------------------
+    // U26-6: contourline: lines at the cuts and no fill; black unless
+    // colorlines colours them in twoway's level colours.
+    // ------------------------------------------------------------
+    _u26_tw contourline mpg weight length,
+    _u26_reg `u26dir' `k' contourline mpg weight length, name(u266)
+    foreach m in s v {
+        _w31_expect U26-6 `"("${u26_lv`m'}" == "`: word count ${u26_twcut}'" & "${u26_fx`m'}" == "" & "${u26_rgb`m'}" == "#000000 #000000")"' "`m': ${u26_lv`m'} line levels, colours ${u26_rgb`m'}, fill ${u26_fx`m'}"
+    }
+    local ++k
+    _u26_tw contourline mpg weight length, colorlines
+    _u26_reg `u26dir' `k' contourline mpg weight length, colorlines name(u266)
+    foreach m in s v {
+        _w31_expect U26-6 `"("${u26_rgb`m'}" == "${u26_twrgb}")"' "`m': colorlines ${u26_rgb`m'}; twoway's ${u26_twrgb}"
+    }
+    local ++k
+    _w31_done U26-6 "contourline draws its lines at the cuts, black or in twoway's level colours"
+
+    // ------------------------------------------------------------
+    // U26-7: horizontal: the surface is turned, weight across.
+    // ------------------------------------------------------------
+    quietly summarize weight
+    local wlo = r(min)
+    local whi = r(max)
+    _u26_reg `u26dir' `k' contour mpg weight length, horizontal name(u267)
+    foreach m in s v {
+        _w31_expect U26-7 `"("${u26_fx`m'}" == "`wlo' `whi'")"' "`m': fill x ${u26_fx`m'}; weight's range `wlo' `whi'"
+    }
+    local ++k
+    _w31_done U26-7 "horizontal turns the surface: weight across"
+
+    // ------------------------------------------------------------
+    // U26-8: the saved page keeps the layer frozen with the grid cue
+    // until its twin lands (section 29); the served app refits it (its
+    // redraw pairs the fill and line sources, test_contour_layers.py
+    // TestMoves).
+    // ------------------------------------------------------------
+    _u26_reg `u26dir' `k' contour mpg weight length, name(u268)
+    _w31_expect U26-8 `"("${u26_kinds}" == "grid")"' "saved: frozen kind ${u26_kinds}"
+    local ++k
+    _w31_done U26-8 "the saved page marks the contour (grid unfiltered)"
+
+    // ------------------------------------------------------------
+    // U26-10: above 1,000 distinct points: approximate, noted once a
+    // build, flagged in both modes.
+    // ------------------------------------------------------------
+    clear
+    quietly set obs 1001
+    set seed 26
+    quietly generate double x = runiform()
+    quietly generate double y = runiform()
+    quietly generate double z = rnormal()
+    _u26_reg `u26dir' `k' contour z y x, name(u2610)
+    _w31_expect U26-10 `"("${u26_caps}" == "1" & "${u26_capv}" == "1")"' "capped: saved ${u26_caps}, served ${u26_capv}"
+    _w31_expect U26-10 `"("${u26_notes}" == "2")"' "approximate-surface notes: ${u26_notes} (one a build)"
+    _w31_done U26-10 "a contour over 1,001 distinct points is approximate, noted once and flagged"
+
+    dash clear
+    clear
+    macro drop u26_*
+    capture graph drop _all
+    display as text "S26 end " c(current_date) " " c(current_time)
+}
+* ==== end S26 ====
+
 // S28 helpers (WP-31 F1g).  _u28_move: the saved page's fpfit or fpfitci
 // after one filter move -- the page rendered, the widget set and its own
 // callback run under node (test/js_runner.py) -- the line's columns (x_fp,

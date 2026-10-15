@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "d887f0d02f0945deb0cae9d85dc1cfcb3acd2d63",
-  "extracted": "14 Oct 2026 16:24:40",
+  "dash_commit": "0dd33eacdf73629fc4eb89d191093ee10b298a14",
+  "extracted": "15 Oct 2026 05:38:12",
   "source": "scripts/extract_applicability_truth.do",
   "stata_version": "19.5"
  },
@@ -35,6 +35,16 @@
   },
   "bands@connected": {
    "cmd": "twoway connected mpg weight, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@contour": {
+   "cmd": "twoway contour mpg weight length, bands(5) nodraw",
+   "message": "option bands() not allowed",
+   "rc": 198
+  },
+  "bands@contourline": {
+   "cmd": "twoway contourline mpg weight length, bands(5) nodraw",
    "message": "option bands() not allowed",
    "rc": 198
   },
@@ -248,6 +258,16 @@
    "message": "option barwidth() not allowed",
    "rc": 198
   },
+  "barwidth@contour": {
+   "cmd": "twoway contour mpg weight length, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
+  "barwidth@contourline": {
+   "cmd": "twoway contourline mpg weight length, barwidth(.5) nodraw",
+   "message": "option barwidth() not allowed",
+   "rc": 198
+  },
   "barwidth@dot": {
    "cmd": "twoway dot mpg weight, barwidth(.5) nodraw",
    "message": "",
@@ -455,6 +475,16 @@
   },
   "base@connected": {
    "cmd": "twoway connected mpg weight, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@contour": {
+   "cmd": "twoway contour mpg weight length, base(0) nodraw",
+   "message": "option base() not allowed",
+   "rc": 198
+  },
+  "base@contourline": {
+   "cmd": "twoway contourline mpg weight length, base(0) nodraw",
    "message": "option base() not allowed",
    "rc": 198
   },
@@ -668,6 +698,16 @@
    "message": "option bin() not allowed",
    "rc": 198
   },
+  "bin@contour": {
+   "cmd": "twoway contour mpg weight length, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
+  "bin@contourline": {
+   "cmd": "twoway contourline mpg weight length, bin(5) nodraw",
+   "message": "option bin() not allowed",
+   "rc": 198
+  },
   "bin@dot": {
    "cmd": "twoway dot mpg weight, bin(5) nodraw",
    "message": "option bin() not allowed",
@@ -875,6 +915,16 @@
   },
   "bwidth@connected": {
    "cmd": "twoway connected mpg weight, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@contour": {
+   "cmd": "twoway contour mpg weight length, bwidth(.5) nodraw",
+   "message": "option bwidth() not allowed",
+   "rc": 198
+  },
+  "bwidth@contourline": {
+   "cmd": "twoway contourline mpg weight length, bwidth(.5) nodraw",
    "message": "option bwidth() not allowed",
    "rc": 198
   },
@@ -1088,6 +1138,16 @@
    "message": "option degree() not allowed",
    "rc": 198
   },
+  "degree@contour": {
+   "cmd": "twoway contour mpg weight length, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
+  "degree@contourline": {
+   "cmd": "twoway contourline mpg weight length, degree(1) nodraw",
+   "message": "option degree() not allowed",
+   "rc": 198
+  },
   "degree@dot": {
    "cmd": "twoway dot mpg weight, degree(1) nodraw",
    "message": "option degree() not allowed",
@@ -1295,6 +1355,16 @@
   },
   "dotextend@connected": {
    "cmd": "twoway connected mpg weight, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@contour": {
+   "cmd": "twoway contour mpg weight length, dotextend(no) nodraw",
+   "message": "option dotextend() not allowed",
+   "rc": 198
+  },
+  "dotextend@contourline": {
+   "cmd": "twoway contourline mpg weight length, dotextend(no) nodraw",
    "message": "option dotextend() not allowed",
    "rc": 198
   },
@@ -1508,6 +1578,16 @@
    "message": "option kernel() not allowed",
    "rc": 198
   },
+  "kernel@contour": {
+   "cmd": "twoway contour mpg weight length, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
+  "kernel@contourline": {
+   "cmd": "twoway contourline mpg weight length, kernel(gaussian) nodraw",
+   "message": "option kernel() not allowed",
+   "rc": 198
+  },
   "kernel@dot": {
    "cmd": "twoway dot mpg weight, kernel(gaussian) nodraw",
    "message": "option kernel() not allowed",
@@ -1718,6 +1798,16 @@
    "message": "option level() not allowed",
    "rc": 198
   },
+  "level@contour": {
+   "cmd": "twoway contour mpg weight length, level(90) nodraw",
+   "message": "",
+   "rc": 0
+  },
+  "level@contourline": {
+   "cmd": "twoway contourline mpg weight length, level(90) nodraw",
+   "message": "",
+   "rc": 0
+  },
   "level@dot": {
    "cmd": "twoway dot mpg weight, level(90) nodraw",
    "message": "option level() not allowed",
@@ -1925,6 +2015,16 @@
   },
   "n@connected": {
    "cmd": "twoway connected mpg weight, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@contour": {
+   "cmd": "twoway contour mpg weight length, n(50) nodraw",
+   "message": "option n() not allowed",
+   "rc": 198
+  },
+  "n@contourline": {
+   "cmd": "twoway contourline mpg weight length, n(50) nodraw",
    "message": "option n() not allowed",
    "rc": 198
   },
@@ -2138,6 +2238,16 @@
    "message": "option ndots() not allowed",
    "rc": 198
   },
+  "ndots@contour": {
+   "cmd": "twoway contour mpg weight length, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
+  "ndots@contourline": {
+   "cmd": "twoway contourline mpg weight length, ndots(10) nodraw",
+   "message": "option ndots() not allowed",
+   "rc": 198
+  },
   "ndots@dot": {
    "cmd": "twoway dot mpg weight, ndots(10) nodraw",
    "message": "",
@@ -2345,6 +2455,16 @@
   },
   "range@connected": {
    "cmd": "twoway connected mpg weight, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@contour": {
+   "cmd": "twoway contour mpg weight length, range(1 10) nodraw",
+   "message": "option range() not allowed",
+   "rc": 198
+  },
+  "range@contourline": {
+   "cmd": "twoway contourline mpg weight length, range(1 10) nodraw",
    "message": "option range() not allowed",
    "rc": 198
   },
@@ -2558,6 +2678,16 @@
    "message": "option start() not allowed",
    "rc": 198
   },
+  "start@contour": {
+   "cmd": "twoway contour mpg weight length, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
+  "start@contourline": {
+   "cmd": "twoway contourline mpg weight length, start(0) nodraw",
+   "message": "option start() not allowed",
+   "rc": 198
+  },
   "start@dot": {
    "cmd": "twoway dot mpg weight, start(0) nodraw",
    "message": "option start() not allowed",
@@ -2765,6 +2895,16 @@
   },
   "width@connected": {
    "cmd": "twoway connected mpg weight, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@contour": {
+   "cmd": "twoway contour mpg weight length, width(1) nodraw",
+   "message": "option width() not allowed",
+   "rc": 198
+  },
+  "width@contourline": {
+   "cmd": "twoway contourline mpg weight length, width(1) nodraw",
    "message": "option width() not allowed",
    "rc": 198
   },
@@ -2985,6 +3125,8 @@
   "rscatter",
   "rpcap",
   "rpspike",
+  "contour",
+  "contourline",
   "pcspike",
   "pccapsym",
   "pcarrow",

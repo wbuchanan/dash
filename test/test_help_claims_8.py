@@ -1401,7 +1401,11 @@ def _served_pair(tmp_path, opt, level):
         (popts if level == "plot" else gopts).update(vals)
         spec = {"graphs": [{"graph_options": dict(gopts, name="g1"),
                             "plots": [{"type": ptype, "yvar": "mpg",
-                                       "xvar": "weight", "options": popts}],
+                                       "xvar": "weight", "options": popts,
+                                       # WP-31 B4b: contour's z.
+                                       **({"zvar": "price"} if ptype in (
+                                           "contour", "contourline")
+                                          else {})}],
                             "if_expr": "", "in_expr": ""}],
                 "kpis": [],
                 "build_options": {"layout": "auto", "registry": "g1",
@@ -1894,7 +1898,8 @@ class TestThePackageDescription:
 
     def test_the_number_of_plot_types_is_the_dispatch_tables(self):
         # 40 -> 42: WP-31 B1 rpcap and rpspike drawn.
-        words = {40: "forty", 42: "forty-two"}
+        # 42 -> 44: WP-31 B4b contour and contourline drawn.
+        words = {40: "forty", 42: "forty-two", 44: "forty-four"}
         n = len(dr._dash_plot_type_names())
         assert "%s twoway plot types" % words.get(n, str(n)) in _pkg_text()
 

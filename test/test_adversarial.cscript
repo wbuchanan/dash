@@ -3101,6 +3101,12 @@ _sv_case "SV-92" "rpspike" 1 "make mpg weight price"
 _sv_case "SV-93" "rpspike" 2 "mpg make weight price"
 _sv_case "SV-94" "rpspike" 3 "mpg weight make price"
 _sv_case "SV-95" "rpspike" 4 "mpg weight price make"
+_sv_case "SV-96" "contour" 1 "make mpg weight"
+_sv_case "SV-97" "contour" 2 "mpg make weight"
+_sv_case "SV-98" "contour" 3 "mpg weight make"
+_sv_case "SV-99" "contourline" 1 "make mpg weight"
+_sv_case "SV-100" "contourline" 2 "mpg make weight"
+_sv_case "SV-101" "contourline" 3 "mpg weight make"
 
 capture program drop _sv_case
 capture dash clear

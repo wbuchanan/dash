@@ -256,6 +256,7 @@ this file says so under the option concerned.
 {synopt:range}{cmd:rarea}, {cmd:rbar}, {cmd:rspike}, {cmd:rcap},
     {cmd:rcapsym}, {cmd:rscatter}, {cmd:rline}, {cmd:rconnected}{p_end}
 {synopt:range with a point}{cmd:rpcap}, {cmd:rpspike}{p_end}
+{synopt:surface}{cmd:contour}, {cmd:contourline}{p_end}
 {synopt:paired coordinates}{cmd:pcspike}, {cmd:pccapsym}, {cmd:pcarrow},
     {cmd:pcbarrow}, {cmd:pcscatter}{p_end}
 {synopt:time series}{cmd:tsline}, {cmd:tsrline} -- drawn against the
@@ -497,6 +498,40 @@ them: "you must specify four variables with twoway rpcap", {cmd:r(102)}
 or {cmd:r(103)}.
 
 {pstd}
+{ul:contour and contourline.}  Three variables {it:z y x}.  The surface is
+{cmd:twoway}'s: a thin-plate spline (kernel r^2 log r with a linear trend)
+or Shepard's inverse-distance-squared weights over the grid of the
+distinct {it:x} by the distinct {it:y}, {opt interp(none)} drawing the
+observed cells only; cuts from {opt ccuts()}, {opt levels(#)} with
+{opt minmax}, else the z axis's labels ({opt zlabel()}, five by default),
+the first and last dropped; colours from {opt crule()} between
+{opt scolor()} and {opt ecolor()}, the scheme's rule and ends by default,
+or from {opt ccolors()}; the colour key ticked as {cmd:twoway}'s z axis
+and placed by {opt clegend()}.  {cmd:contourline} draws black lines at the
+cuts, or the levels' colours under {opt colorlines} or {opt ccolors()}
+with {opt clwidths()} under {opt colorlines}; {cmd:horizontal} turns
+either.  A second {cmd:contour}, or a second {cmd:contourline}, in one
+graph is refused as {cmd:twoway} refuses it, {cmd:r(198)}; so are
+{opt ccuts()} with {opt levels()}, a weight, and the options on other
+plot types.  {it:Differences from twoway:} at a repeated ({it:x}, {it:y})
+{cmd:dash} keeps the smallest {it:z} under every {opt interp()};
+{cmd:twoway} does so under {opt interp(none)} and otherwise keeps one that
+follows {cmd:set sortseed} (measured: rows (2,2,4) and (2,2,5) give the
+node 4 or 5 under seeds 1 to 5).  The surface is exact up to 1,000
+distinct points; above that a seeded subsample of 1,000 is fitted and
+drawn on a 100 x 100 grid over the data's range, and a note says so.  The
+polygons are cut by a different algorithm from {cmd:twoway}'s, so their
+vertices differ while the level sets agree.  The served app recomputes the
+layer after a filter move; the saved page keeps it as built and marks it
+(grid unfiltered).  {opt heatmap} and {opt outlines} are named in a note
+and not drawn, and so are {cmd:contourline}'s legend keys, which
+{opt clabels()} and {opt format()} label.  {opt lev()} through
+{opt level()} are {opt levels()} here, as {cmd:twoway} reads them;
+{opt interp()}, {opt clwidths()}, {opt clpatterns()} and {opt colorlines}
+are typed in full, as {cmd:dash} reads their shorter spellings as other
+options.
+
+{pstd}
 {ul:Bars and range caps.}  {cmd:bar} and {cmd:rbar} draw each bar one unit
 of {it:x} wide whatever the spacing of {it:x}, as {cmd:twoway} does, and
 {cmd:barwidth(}{it:#}{cmd:)} sets another width in the same units.  On a
@@ -609,16 +644,13 @@ and is refused without them, as {cmd:twoway} refuses it:
 {cmd:varlist required}, {cmd:r(100)}.
 
 {pstd}
-{ul:Not drawn.}  Four {cmd:twoway} plot types are not drawn by {cmd:dash}:
-{cmd:contour} and {cmd:contourline}, which interpolate a surface over a
-grid from their three variables; {cmd:sunflower}, which bins points into
-density petals; and {cmd:matamatrix(}{it:name}{cmd:)}, which plots a Mata
-matrix.  Each is refused with {cmd:r(198)} and a message naming what to
-use instead: {cmd:twoway} itself or {cmd:dash scatter} {it:y x}{cmd:,}
-{cmd:colorvar(}{it:z}{cmd:)} for the first two,
+{ul:Not drawn.}  Two {cmd:twoway} plot types are not drawn by {cmd:dash}:
+{cmd:sunflower}, which bins points into density petals; and
+{cmd:matamatrix(}{it:name}{cmd:)}, which plots a Mata matrix.  Each is
+refused with {cmd:r(198)} and a message naming what to use instead:
 Stata's {cmd:sunflower} command, which Stata recommends over
-{cmd:twoway sunflower}, for the third, and {cmd:getmata} into variables
-for the last.  Any other word that
+{cmd:twoway sunflower}, for the first, and {cmd:getmata} into variables
+for the second.  Any other word that
 is not a plot type is refused too, and the message lists the plot
 types above.  A plot type cannot be handled as an unknown option is --
 named in a note and drawn around -- because it is what would be drawn.
@@ -845,7 +877,7 @@ there, is an invalid point.  The literal is read as data and never run.
     does {cmd:dash} (see {it:Where a graph-level option may be written}
     under 3. above) -- so a command copy-pasted from a do-file runs whenever
     {cmd:dash} draws its plot type -- {help dash##plottypes:Plot types}
-    names the four {cmd:twoway} plot types it refuses -- and can draw the
+    names the two {cmd:twoway} plot types it refuses -- and can draw the
     values it is given: a few values {cmd:twoway} accepts, such as
     {cmd:bin(2000)}, are more than {cmd:dash} draws and are refused (see
     {help dash##validation:Option values} below).  Anything {cmd:dash}
@@ -2056,7 +2088,9 @@ layer: it is dimmed, its legend key reads
 "(unfiltered)", "(bins unfiltered)" or "(grid unfiltered)", the graph shows
 "Marked layers were computed before the filter", and a note under the
 filters says the same in text a screen reader reads.  A density drawn over
-{cmd:range()} keeps the grid you gave and is not marked.  The marks go when
+{cmd:range()} keeps the grid you gave and is not marked.  A
+{cmd:contour} or {cmd:contourline} is kept as built and marked "(grid
+unfiltered)"; the served app recomputes its surface.  The marks go when
 the filters again keep every observation the layer was computed from; a move
 that removes only observations the layer never used (a missing y, x or
 weight, a zero weight, or one outside the plot's own {cmd:if} or {cmd:in})
@@ -5424,6 +5458,10 @@ disagree in either direction.
     {opt xoverhangs}, {opt yoverhangs} -- {cmd:twoway} widens the graph
     region so that the label on the first or last tick does not run off the
     edge; {cmd:dash} does not move the figure's edges for them.
+
+{phang2}{ul:Contour options.}
+    {opt heatmap}, {opt outlines} -- {cmd:contour} draws its bands without
+    the heatmap's cells or the bands' outlines.
 
 {phang2}{ul:Build-time options written on a graph.}
     {opt link(namelist)}, {opt filter(varname, ...)} -- these belong to

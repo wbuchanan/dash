@@ -62,10 +62,11 @@ gen yh = mpg + 1
 gen t = _n
 tsset t
 
-* The forty-two types (the dash.ado "Supported:" set) and their commands;
-* rpcap and rpspike since WP-31 B1.
+* The forty-four types (the dash.ado "Supported:" set) and their commands;
+* rpcap and rpspike since WP-31 B1, contour and contourline since WP-31 B4b.
 local types scatter line connected area bar spike dropline dot tsline tsrline ///
     rarea rbar rspike rcap rline rconnected rcapsym rscatter rpcap rpspike ///
+    contour contourline ///
     pcspike pccapsym pcarrow pcbarrow pcscatter pci pcarrowi scatteri ///
     lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mspline mband ///
     kdensity histogram function
@@ -101,6 +102,9 @@ foreach o of local options {
         }
         else if inlist("`t'", "rpcap", "rpspike") {
             local a "`t' yl yh mpg weight"
+        }
+        else if inlist("`t'", "contour", "contourline") {
+            local a "`t' mpg weight length"
         }
         else if inlist("`t'", "pcspike", "pccapsym", "pcarrow", "pcbarrow", "pcscatter") {
             local a "`t' mpg weight trunk turn"

@@ -559,10 +559,10 @@ class TestNoPlotTypePrefixReachesTwoRows:
     def test_the_table_is_read_whole(self):
         rows = _plottype_rows(_read(_MATA_FILE))
         assert len(rows) >= 40, rows
-        # WP-31 B1: rpspike is the last row since rpcap and rpspike are
-        # drawn.
-        assert rows[0] == ("scatter", "sc") and rows[-1] == ("rpspike",
-                                                              "rpspike")
+        # WP-31 B1: rpspike was the last row once rpcap and rpspike were
+        # drawn; WP-31 B4b: contourline is, now contour and contourline are.
+        assert rows[0] == ("scatter", "sc") and rows[-1] == ("contourline",
+                                                              "contourline")
         assert len({f for f, _m in rows}) == len(rows), rows
         assert all(f.startswith(m) for f, m in rows), rows
 

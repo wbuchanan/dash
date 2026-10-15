@@ -295,7 +295,9 @@ def _help_synonym_claims():
 # ---------------------------------------------------------------------------
 
 _PROGRAMS = ("_dash_parse_plot_opts", "_dash_parse_graph_opts", "_dash_build",
-             "_dash_kpi", "_dash_prepare_spec", "_dash_serve_spec")
+             "_dash_kpi", "_dash_prepare_spec", "_dash_serve_spec",
+             # WP-31 B4b: contour's options, read before the plot parser's.
+             "_dash_contour_split")
 
 # Declared by `syntax' for internal plumbing; never typed by a user.  The
 # only exceptions to "every spelling dash accepts is documented", each with
@@ -473,9 +475,36 @@ def _twoway_takes_plottype(spelling, ptype):
     return None
 
 
+#: WP-31 B4b: contour's own options, each drawn by twoway contour or
+#: contourline rc 0 in test/fixtures/contour_truth.json (the probe that
+#: typed it in full).
+_CONTOUR_PROBES = {
+    "ccuts": ("draw", "ccuts"), "levels": ("draw", "levels5"),
+    "minmax": ("draw", "levels5_minmax"), "crule": ("draw", "crule_hue"),
+    "scolor": ("draw", "scolor_only"), "ecolor": ("draw", "crule_linear"),
+    "ccolors": ("draw", "ccolors"), "clabels": ("draw", "clabels"),
+    "format": ("draw", "format"), "interp": ("draw", "interp_shepard"),
+    "reversekey": ("draw", "reversekey"), "clwidths": ("line", "clwidths"),
+    "clpatterns": ("line", "clpatterns"),
+    "colorlines": ("line", "colorlines"),
+}
+
+
+def _contour_takes(name):
+    probe = _CONTOUR_PROBES.get(name)
+    if probe is None:
+        return False
+    with open(os.path.join(_HERE, "fixtures", "contour_truth.json"),
+              encoding="utf-8") as fh:
+        truth = json.load(fh)
+    return truth[probe[0]][probe[1]]["rc"] == 0
+
+
 def _twoway_spelling(name):
     """Does twoway take `name' as an option, or as an abbreviation of one,
     in any context a fixture measured?  Then the help's redirect covers it."""
+    if _contour_takes(name):
+        return True
     truth = _abbrev_truth()
     if any(o.startswith(name) and len(name) >= len(e["min_abbrev"])
            for o, e in truth["options"].items()):
@@ -559,8 +588,10 @@ class TestTheParsersFoundSomething:
         # 217 -> 219: D1 the Unsupported entry "Minor ticks and minor
         # labels" goes (xmtick() .. tmtick()) and four synopt rows define
         # ymtick2() ymlabel2() xmtick2() xmlabel2().
-        assert len(found) == 219, (
-            f"{len(found)} options parsed out of dash.sthlp, 219 measured "
+        # 219 -> 221: B4b the Unsupported entry "Contour options" names
+        # heatmap and outlines.
+        assert len(found) == 221, (
+            f"{len(found)} options parsed out of dash.sthlp, 221 measured "
             f"14oct2026: a reader of the parser lost a form, or the help "
             f"gained or lost a definition and this count must follow it"
         )
@@ -644,7 +675,8 @@ class TestTheParsersFoundSomething:
         # colorallowmultiple colorotherlabel clegend plegend pcycle declared
         # 240 -> 249: B5b the nine dot options declared
         # 249 -> 253: D1 xmlabel2 ymlabel2 xmtick2 ymtick2 declared
-        assert len(_ado_declarations()) == 253
+        # 253 -> 269: B4b contour's sixteen options (_dash_contour_split)
+        assert len(_ado_declarations()) == 269
 
     def test_the_ignored_list_was_found(self):
         # 44 names, all of them in the plot parser's list (the graph
@@ -667,7 +699,8 @@ class TestTheParsersFoundSomething:
         # 42 -> 40: C8b colorlist() and coloruseplegend drawn
         # 40 -> 39: B5b dstyle() dlstyle() drawn, dlalign() named
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn
-        assert len(_ignored_options()) == 33
+        # 33 -> 35: B4b heatmap and outlines named on contour
+        assert len(_ignored_options()) == 35
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -691,7 +724,8 @@ class TestTheParsersFoundSomething:
         # 40 -> 39: B5b dstyle() and dlstyle() leave it with their entry,
         # dlalign() joins the marker outline entry
         # 39 -> 33: D1 the "Minor ticks and minor labels" entry goes
-        assert len(_unsupported_section()) == 33
+        # 33 -> 35: B4b the "Contour options" entry, heatmap and outlines
+        assert len(_unsupported_section()) == 35
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -760,8 +794,10 @@ class TestTheParsersFoundSomething:
         # 427 -> 428: B1 the Plot types table's "range with a point" row.
         # 428 -> 431: D1 four synopt rows ymtick2() .. xmlabel2(), less
         # the Unsupported entry "Minor ticks and minor labels".
-        assert len(defs) == 431, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 431 "
+        # 431 -> 433: B4b the Plot types table's "surface" row and the
+        # Unsupported entry "Contour options".
+        assert len(defs) == 433, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 433 "
             f"measured 14oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

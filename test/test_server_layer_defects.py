@@ -93,6 +93,10 @@ def plot_for(ptype, options=None, **extra):
     elif ptype in _RANGEPT:
         p = {"type": ptype, "yvar1": "mpg", "yvar2": "price",
              "yvar": "foreign", "xvar": "weight", "options": o}
+    elif ptype in ("contour", "contourline"):
+        # WP-31 B4b: z y x.
+        p = {"type": ptype, "zvar": "price", "yvar": "mpg",
+             "xvar": "weight", "options": o}
     elif ptype == "scatteri":
         p = {"type": ptype, "values": [[20.0, 3000.0], [30.0, 4000.0]],
              "options": o}

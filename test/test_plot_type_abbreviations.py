@@ -50,7 +50,9 @@ class TestTheTable:
         rows, _ = _table()
         # 40 -> 42: WP-31 B1 rpcap and rpspike drawn (full names only,
         # test/fixtures/rangept_truth.json abbrev.*).
-        assert len(rows) == 42, len(rows)
+        # 42 -> 44: WP-31 B4b contour and contourline drawn (full names
+        # only, measured 23sep2026: cont .. contourlin are no plot type).
+        assert len(rows) == 44, len(rows)
         bad = [(full, mn) for full, mn in rows
                if mn != TWOWAY_MINIMUMS.get(full, full)]
         assert not bad, (

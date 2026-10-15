@@ -35,6 +35,8 @@ rcapsym lo hi weight
 rscatter lo hi weight
 rpcap lo hi mpg weight
 rpspike lo hi mpg weight
+contour mpg weight length
+contourline mpg weight length
 scatteri 20 3000 30 4000
 pci 20 3000 30 4000
 pcspike mpg weight m2 w2

@@ -159,7 +159,7 @@ class TestTheFamiliesAreNamedOnce:
     def test_every_family_is_defined(self):
         fams = _families()
         for name in ("_pt_univar", "_pt_range", "_pt_pc", "_pt_rangept",
-                     "_pt_literal", "_pt_ts"):
+                     "_pt_contour", "_pt_literal", "_pt_ts"):
             assert name in fams, f"{name} is not defined"
 
     def test_no_family_is_redefined_elsewhere(self):
@@ -179,6 +179,8 @@ class TestTheFamiliesAreNamedOnce:
         assert set(fams["_pt_pc"]) == set(dr._DASH_PC_TYPES)
         # WP-31 B1: rpcap and rpspike, routed by a family of their own.
         assert set(fams["_pt_rangept"]) == set(dr._DASH_RANGEPT_TYPES)
+        # WP-31 B4b: contour and contourline, z y x.
+        assert set(fams["_pt_contour"]) == set(dr._DASH_CONTOUR_TYPES)
         assert set(fams["_pt_literal"]) == set(dr._DASH_LITERAL_TYPES)
         # Exactly: the renderer's univariate set carried the alias "hist"
         # too, which dash.ado never writes (the Mata table expands it
@@ -195,7 +197,7 @@ class TestTheFamiliesAreNamedOnce:
         """A type in two routing families would be parsed by the first."""
         fams = _families()
         order = ("_pt_univar", "_pt_range", "_pt_pc", "_pt_rangept",
-                 "_pt_literal")
+                 "_pt_contour", "_pt_literal")
         seen = {}
         for name in order:
             for t in fams[name]:

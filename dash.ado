@@ -1159,6 +1159,12 @@ program define _dash_parse_plot_opts, sclass
     // scatter mpg weight, log, where twoway draws both as if log were not
     // there (BUGS.md, S1).
     mata: _dash_log_split("0", "_dash_logw")
+    // WP-31 B4b: contour's and contourline's options, read first by
+    // _dash_contour_split (the syntax below holds as many options as
+    // -syntax- takes); the rest goes on, as typed, to it.
+    mata: _dash_zyx_text = st_local("0")
+    _dash_contour_split
+    mata: st_local("0", ", " + _dash_zyx_text)
     syntax [, ///
         MColor(string asis)       Msymbol(string asis)      MSIze(string asis) ///
         MSAngle(string asis)      MFColor(string asis)      MLColor(string asis) ///
@@ -1402,6 +1408,9 @@ program define _dash_parse_plot_opts, sclass
     // region so an end tick label does not run off the edge.
     if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
     if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
+    // WP-31 B4b: contour's heatmap drawing and its band outlines.
+    if `: length local heatmap' local _dash_pending `"`_dash_pending' heatmap"'
+    if `: length local outlines' local _dash_pending `"`_dash_pending' outlines"'
     // scheme(), xsize(), ysize(), xtick() and ytick() are NOT listed.  They
     // are twoway GRAPH-level options, and this program promotes them --
     // `sreturn local g_xsize' and friends just above, picked up by the
@@ -1496,6 +1505,23 @@ program define _dash_parse_plot_opts, sclass
     // WP-31 C5: histogram gap() and baroffset(), bar baroffset(),
     // kdensity area() and boundary, function droplines(), area
     // nodropbase (syntax's noDROPBase: local dropbase holds "nodropbase").
+    // WP-31 B4b: contour's and contourline's options (zyx2view_parse).
+    sreturn local ccuts            : copy local ccuts
+    sreturn local levels           : copy local levels
+    sreturn local minmax           : copy local minmax
+    sreturn local crule            : copy local crule
+    sreturn local scolor           : copy local scolor
+    sreturn local ecolor           : copy local ecolor
+    sreturn local ccolors          : copy local ccolors
+    sreturn local clabels          : copy local clabels
+    sreturn local format           : copy local format
+    sreturn local interp           : copy local interp
+    sreturn local clwidths         : copy local clwidths
+    sreturn local clpatterns       : copy local clpatterns
+    sreturn local reversekey       : copy local reversekey
+    sreturn local heatmap          : copy local heatmap
+    sreturn local outlines         : copy local outlines
+    sreturn local colorlines       : copy local colorlines
     sreturn local gap              : copy local gap
     sreturn local baroffset        : copy local baroffset
     sreturn local area             : copy local area
@@ -2283,6 +2309,116 @@ program define _dash_fold_range, sclass
 end
 
 // ================================================================
+// _dash_contour_split  -- contour's options, read before the plot parser's
+//
+// WP-31 B4b.  twoway_zyx2view_parse's options, read by a syntax of their
+// own out of the option text _dash_parse_plot_opts hands over in the Mata
+// string _dash_zyx_text (by value), which gets the rest back as typed:
+// that parser's syntax holds as many options as -syntax- takes (one more
+// is r(197), measured 15oct2026).  The minimums are twoway's, except
+// levels(), interp(), clwidths(), clpatterns() and colorlines, typed in
+// full here: their twoway minimums (lev, i, clw, clp, colorl) are already
+// level(), the i* options, clwidth(), clpattern() and colorlist()
+// (_dash_contour_check reads level() as levels() on the contour types, as
+// twoway does).  Sets the caller's locals of the same names, by value.
+// ================================================================
+program define _dash_contour_split
+    version 19
+    mata: st_local("0", _dash_zyx_text)
+    syntax [, CCUTs(string asis) LEVELS(string) MINMAX CRULE(string asis) ///
+        SColor(string asis) EColor(string asis) CColors(string asis) ///
+        CLABels(string asis) FORMAT(string asis) INTERP(string asis) ///
+        CLWIDTHS(string asis) CLPATTERNS(string asis) REVersekey ///
+        HEATMAP OUTlines COLORLINES * ]
+    foreach o in ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines {
+        c_local `o' `"`macval(`o')'"'
+    }
+    mata: _dash_zyx_text = st_local("options")
+end
+
+// ================================================================
+// _dash_contour_check <own>  -- contour's options read as twoway reads them
+//
+// WP-31 B4b.  twoway_zyx2view_parse.class:94-198, measured 15oct2026
+// (test/fixtures/contour_truth.json refuse.*): every contour option on any
+// other type is "option <name>() not allowed" (a flag without the
+// parentheses), r(198); ccuts() with levels() is "option ccuts() cannot
+// be combined with option levels()", r(198); ccuts() is a numlist, sorted
+// (a word that is no number: "ccuts() invalid -- invalid numlist",
+// r(121)); levels() an integer ("option levels() incorrectly specified"
+// for any other word, "invalid syntax" for a negative one, both r(198);
+// levels(0) and levels(1) draw the default cuts; lev() .. level() are
+// levels(), as twoway's minimum lev reads them); crule() a zyx2rule
+// name, else two notes and r(198), as colorrule() (_dash_colorrule_check).
+// Writes the sorted ccuts() back to s(ccuts) and a level() to s(levels).
+// Called by
+// _dash_process_segment before _dash_validate_opts, with the layer's own
+// type.  sclass: it touches only s(ccuts), s(levels) and s(level).
+// ================================================================
+program define _dash_contour_check, sclass
+    version 19
+    args own
+    local zo "ccuts levels minmax crule scolor ecolor ccolors clabels format interp clwidths clpatterns reversekey heatmap outlines colorlines"
+    local zo_flags "minmax reversekey heatmap outlines colorlines"
+    if !inlist("`own'", "contour", "contourline") {
+        foreach o of local zo {
+            mata: st_local("_zv", strofreal(st_global("s(`o')") != ""))
+            if `_zv' {
+                local _zp = cond(`: list o in zo_flags', "", "()")
+                display as error "option `o'`_zp' not allowed"
+                exit 198
+            }
+        }
+        exit
+    }
+    // twoway's minimum for levels() is lev, so lev(), leve() and level()
+    // are levels() on these two types (applicability_truth.json
+    // level@contour rc 0); this parser reads them as level() first.
+    mata: st_local("_zv", strofreal(st_global("s(level)") != "" & st_global("s(levels)") == ""))
+    if `_zv' {
+        mata: st_local("_zl", st_global("s(level)"))
+        sreturn local levels : copy local _zl
+        sreturn local level ""
+    }
+    mata: st_local("_zv", strofreal(st_global("s(ccuts)") != "" & st_global("s(levels)") != ""))
+    if `_zv' {
+        display as error "option ccuts() cannot be combined with option levels()"
+        exit 198
+    }
+    mata: st_local("_zc", st_global("s(ccuts)"))
+    if `: length local _zc' {
+        capture numlist `"`_zc'"', sort
+        if _rc {
+            display as error "ccuts() invalid -- invalid numlist"
+            exit 121
+        }
+        sreturn local ccuts "`r(numlist)'"
+    }
+    mata: st_local("_zl", strtrim(st_global("s(levels)")))
+    if `: length local _zl' {
+        capture confirm integer number `_zl'
+        if _rc {
+            display as error "option levels() incorrectly specified"
+            exit 198
+        }
+        if `_zl' < 0 {
+            display as error "invalid syntax"
+            exit 198
+        }
+    }
+    mata: st_local("_zr", strtrim(st_global("s(crule)")))
+    if `: length local _zr' {
+        mata: _dash_colorrule_check(st_local("_zr"))
+        if "`_crc'" != "" {
+            if "`_crn'" == "" local _crn : copy local _zr
+            mata: _dash_note("named style ", st_local("_crn"), " not found in class zyx2rule, default attributes used")
+            mata: _dash_note("zyx2rule not found in scheme, default attributes used", "", "")
+            exit 198
+        }
+    }
+end
+
+// ================================================================
 // _dash_cv_drop <own> <drawn>  -- colorvar() dropped where twoway drops it
 //
 // WP-31 C8a.  twoway_yxview_parse.class:206-208 empties colorvar() on
@@ -2302,7 +2438,7 @@ end
 program define _dash_cv_drop, sclass
     version 19
     args own drawn
-    local cv_silent "area fpfit fpfitci function histogram kdensity lfit lfitci lowess lpoly lpolyci mband mspline pcarrowi pci qfit qfitci rarea scatteri"
+    local cv_silent "area contour contourline fpfit fpfitci function histogram kdensity lfit lfitci lowess lpoly lpolyci mband mspline pcarrowi pci qfit qfitci rarea scatteri"
     if !`: list own in cv_silent' & !`: list drawn in cv_silent' exit
     local cv_opts "colorvar colordiscrete colorcuts colpalette colornlevels colormissing colorlevels colorvarminmax"
     local cv_opts "`cv_opts' coloruseplegend colorlist colorstart colorend colorrule colorfillonly"
@@ -2495,8 +2631,8 @@ end
 program define _dash_hz_check, sclass
     version 19
     args ptype target kind S
-    local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline
-    local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline
+    local _hz_htypes area bar spike dropline dot histogram kdensity rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi function tsrline contour contourline
+    local _hz_vtypes area bar spike dropline dot histogram rarea rbar rspike rcap rcapsym rline rconnected rscatter rpcap rpspike pcspike pcarrow pcbarrow pcscatter pccapsym pci pcarrowi tsrline contour contourline
     local _hz_derived lfit qfit lfitci qfitci fpfit fpfitci lowess lpoly lpolyci mband mspline kdensity function histogram
     if `"`s(horizontal)'`s(vertical)'"' == "" exit
     mata: st_local("_hz_order", _dash_hz_order(st_strscalar("`S'")))
@@ -3208,6 +3344,7 @@ program define _dash_option_rules
         n=int,1,300@mspline  n=int,1,10000  bin=int,1,1000  width=pos  start=num  bands=int,1,200 ///
         gap=num  baroffset=num  area=num  droplines=numlist,1 ///
         level=num,10,99.99@lpolyci ///
+        levels=int,0,1000@contour|contourline ///
         colornlevels=int,2,256  colorlevels=int ///
         colpalette=enum,viridis|magma|inferno|plasma|cividis|turbo|greys|blues|reds ///
         colorcuts=numlist,1  colorvar=var  mlabel=var ///
@@ -3290,7 +3427,7 @@ program define _dash_option_rules
     local applies ///
         kernel@lpoly|lpolyci|kdensity ///
         n@lfit|qfit|lfitci|qfitci|fpfitci|lpoly|lpolyci|mspline|mband|kdensity|function ///
-        level@lfitci|qfitci|fpfitci|lpolyci ///
+        level@contour|contourline|lfitci|qfitci|fpfitci|lpolyci ///
         bwidth@lowess|lpoly|lpolyci|kdensity ///
         bands@mspline|mband ///
         range@lfit|qfit|lfitci|qfitci|kdensity|function ///
@@ -4861,6 +4998,8 @@ program define _dash_plot_opts_to_json, rclass
                    pwidth lpvar ///
                    atobs estopts predopts estcmd fitplot ciplot nofit ///
                    gap baroffset area boundary droplines nodropbase ///
+                   ccuts levels minmax crule scolor ecolor ccolors clabels ///
+                   format interp clwidths clpatterns reversekey colorlines ///
                    weight wexp {
         // Read by value and measured, never copied or compared in quotes: a
         // copy through them expanded a macro in the value again --
@@ -4915,6 +5054,7 @@ end
 //   _pt_range    y1 y2 [x]                          the range types
 //   _pt_pc       y1 x1 y2 x2                        the paired-coordinate types
 //   _pt_rangept  y1 y2 y3 x                         rpcap rpspike (WP-31 B1)
+//   _pt_contour  z y x                              contour contourline (WP-31 B4b)
 //   _pt_literal  literal values or an expression    scatteri pci pcarrowi function
 //   _pt_imm      immediate values, read as twoway   scatteri pci pcarrowi
 //                reads them (dash_parse.mata 2c)
@@ -4926,6 +5066,7 @@ program define _dash_plottype_families
     c_local _pt_range   "rarea rbar rspike rcap rline rconnected rcapsym rscatter tsrline"
     c_local _pt_pc      "pcspike pcarrow pcbarrow pcscatter pccapsym"
     c_local _pt_rangept "rpcap rpspike"
+    c_local _pt_contour "contour contourline"
     c_local _pt_literal "scatteri pci pcarrowi function"
     c_local _pt_imm     "scatteri pci pcarrowi"
     c_local _pt_ts      "tsline tsrline"
@@ -5291,17 +5432,15 @@ program define _dash_process_segment, rclass
         // plot type", as if twoway had no such type; they are named for
         // what they are now, with what to use instead (WP-22 TR-22.1).
         // rpcap and rpspike were refused the same way until WP-31 B1 drew
-        // them (_pt_rangept).
+        // them (_pt_rangept), contour and contourline until WP-31 B4b
+        // (_pt_contour).
         // _pt_nodraw is one of those names or "": never user text.
         mata: st_local("_pt_nodraw", _dash_undrawn_plottype(st_local("plottype")))
         if "`_pt_nodraw'" != "" {
-            if "`_pt_nodraw'" == "contour" | "`_pt_nodraw'" == "contourline" {
-                local _pt_why "it needs a surface interpolated over a grid. Use Stata's own twoway `_pt_nodraw', or dash scatter y x, colorvar(z) to colour each point by z."
-            }
             // WP-31 B2: twoway draws sunflower, and its manual recommends
             // the sunflower command over it (twoway_sunflower.sthlp;
             // test/fixtures/rangept_truth.json advice.sunflower).
-            else if "`_pt_nodraw'" == "sunflower" {
+            if "`_pt_nodraw'" == "sunflower" {
                 local _pt_why "it bins points into density petals. Use Stata's own sunflower command, which Stata recommends over twoway sunflower, or dash scatter y x with jitter() or colorvar()."
             }
             mata: _dash_say("err", "dash: '", st_local("plottype"), "' is a twoway plot type dash does not draw: " + st_local("_pt_why"))
@@ -5318,7 +5457,7 @@ program define _dash_process_segment, rclass
             "histogram kdensity rarea rbar rspike rcap rline rconnected " _n ///
             "dot dropline rcapsym scatteri pcspike pcarrow pcbarrow " _n ///
             "pccapsym pci pcarrowi pcscatter tsline tsrline mspline mband " _n ///
-            "rscatter function rpcap rpspike"
+            "rscatter function rpcap rpspike contour contourline"
         exit(198)
     }
 
@@ -5508,6 +5647,30 @@ program define _dash_process_segment, rclass
         local yvar2 = word("`vl'", 2)
         local yvar  = word("`vl'", 3)
         local xvar  = word("`vl'", 4)
+        mata: st_local("if_cl", st_global("s(if_clause)"))
+        mata: st_local("in_cl", st_global("s(in_clause)"))
+    }
+    else if `: list ptype in _pt_contour' {
+        // contour and contourline (WP-31 B4b): z y x, as
+        // twoway_zyx2view_parse reads them.  twoway's count, measured
+        // 15oct2026 (test/fixtures/contour_truth.json refuse.counts_*):
+        // one variable "too few variables specified"; two, four or five
+        // "<type> requires 3 variables: <varlist>", r(102) below three and
+        // r(103) above.
+        _dash_parse_varpart_3v `macval(varpart)'
+        local vl = "`s(varlist)'"
+        local nv : word count `vl'
+        if `nv' != 3 {
+            if `nv' == 1 {
+                display as error "too few variables specified"
+                exit 102
+            }
+            display as error "`ptype' requires 3 variables: `vl'"
+            exit cond(`nv' < 3, 102, 103)
+        }
+        local zvar = word("`vl'", 1)
+        local yvar = word("`vl'", 2)
+        local xvar = word("`vl'", 3)
         mata: st_local("if_cl", st_global("s(if_clause)"))
         mata: st_local("in_cl", st_global("s(in_clause)"))
     }
@@ -5838,7 +6001,12 @@ program define _dash_process_segment, rclass
             exit 198
         }
         local _wt_refused ""
-        if "`_seg_weight'" == "iweight" {
+        // WP-31 B4b: twoway's zyx2 parser takes no weight, "weights not
+        // allowed", r(101) (contour_truth.json refuse.weight).
+        if `: list ptype in _pt_contour' {
+            local _wt_refused "weights not allowed"
+        }
+        else if "`_seg_weight'" == "iweight" {
             local _wt_refused "iweights not allowed"
         }
         else if "`ptype'" == "lowess" {
@@ -6103,6 +6271,9 @@ program define _dash_process_segment, rclass
                 }
             }
         }
+        // WP-31 B4b: contour's options on contour and contourline only,
+        // read as twoway's zyx2view parser reads them.
+        _dash_contour_check "`_rc_own'"
         // WP-31 C8a: colorvar() dropped, unchecked, where twoway drops it.
         _dash_cv_drop "`_rc_own'" "`_cn_ptype'"
         _dash_validate_opts "`_rc_own'" `_sl_n'
@@ -6410,6 +6581,13 @@ program define _dash_process_segment, rclass
         _dash_json_str "`yvar'"  _jyv
         _dash_json_str "`xvar'"  _jxv
         local vfields `""yvar1":"`_jy1'","yvar2":"`_jy2'","yvar":"`_jyv'","xvar":"`_jxv'""'
+    }
+    else if `: list ptype in _pt_contour' {
+        // WP-31 B4b: the variable cut into levels, then the plane.
+        _dash_json_str "`zvar'" _jzv
+        _dash_json_str "`yvar'" _jyv
+        _dash_json_str "`xvar'" _jxv
+        local vfields `""zvar":"`_jzv'","yvar":"`_jyv'","xvar":"`_jxv'""'
     }
     else if "`ptype'" == "function" {
         _dash_json_str `"`macval(expr)'"' _jex
@@ -7429,6 +7607,8 @@ program define _dash_plot
     mata: _dash_axisn_clear()
     local _g_ys ""
     local _g_cvn 0
+    local _g_hascont 0
+    local _g_hascl 0
     local _g_xs ""
     local _tx_list ""
     // The by() panels drawn, for the added_text count (WP-30 P1.10).
@@ -7598,8 +7778,27 @@ program define _dash_plot
         // twoway draws one colorvar() layer a graph: a later one is
         // refused unless it says colorallowmultiple itself (WP-31 C8b,
         // colorvar_options_truth.json R03, R03b, R03c).
+        // WP-31 B4b: one contour and one contourline a graph, and no
+        // colorvar() layer after a contour unless it says
+        // colorallowmultiple (twowaygraph_g.class:349-394, measured
+        // 15oct2026, contour_truth.json refuse.two_*; a contour and a
+        // contourline together draw).
+        if "`_pt_k'" == "contour" {
+            if 0`_g_hascont' {
+                display as error "multiple contour, heatmap, or patch plots not allowed"
+                exit 198
+            }
+            local _g_hascont 1
+        }
+        if "`_pt_k'" == "contourline" {
+            if 0`_g_hascl' {
+                display as error "multiple contourline plots not allowed"
+                exit 198
+            }
+            local _g_hascl 1
+        }
         if `_seg_cv_out' {
-            if `_g_cvn' & !`_seg_cvam_out' {
+            if (`_g_cvn' | 0`_g_hascont') & !`_seg_cvam_out' {
                 display as error "multiple contour, patch, or colorvar plots not allowed"
                 exit 198
             }
@@ -10023,9 +10222,11 @@ program define _dash_render_immediate
     if "`_hvars'" != "" {
         _dash_plottype_families
         local _hv_show = 1
+        // WP-31 B4b: a contour's polygons are no observations either.
         mata: st_local("_hv_show", strofreal(!_dash_spec_types_in( ///
             st_local("json_spec"), st_local("_pt_univar") + " " + ///
-            st_local("_pt_onefit") + " " + st_local("_pt_literal"))))
+            st_local("_pt_onefit") + " " + st_local("_pt_contour") + " " + ///
+            st_local("_pt_literal"))))
         if `_hv_show' local _cap_vars : list _cap_vars | _hvars
         local needed_vars : list needed_vars | _hvars
     }
@@ -11213,7 +11414,7 @@ program define _dash_prepare_spec, rclass
             local _hv_show_`k' = 1
             if "`_hv_k'" != "" & "`csv'" == "" {
                 mata: st_local("_hv_show_`k'", strofreal(!_dash_spec_types_in( ///
-                    st_local("_qg_`k'"), "`_pt_univar' `_pt_onefit' `_pt_literal'")))
+                    st_local("_qg_`k'"), "`_pt_univar' `_pt_onefit' `_pt_contour' `_pt_literal'")))
             }
             if `_hv_show_`k'' {
                 local all_vars : list all_vars | _hv_k

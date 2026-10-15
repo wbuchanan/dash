@@ -263,7 +263,10 @@ _AT_Y3 = ("rpcap", "rpspike")
 _NO_LABEL = ("line", "spike", "area", "lfit", "qfit", "lowess", "lpoly",
              "fpfit", "lfitci", "qfitci", "lpolyci", "fpfitci", "rarea",
              "rbar", "rspike", "rcap", "rline", "pcspike", "histogram",
-             "kdensity", "function", "tsline", "tsrline")
+             "kdensity", "function", "tsline", "tsrline",
+             # WP-31 B4b: measured 15oct2026, twoway contour and
+             # contourline take mlabel(make) rc 0 and draw no label.
+             "contour", "contourline")
 #: twoway refuses mlabel() (r(103)); dash.ado refuses it too, and a spec
 #: written by hand draws none.
 _REFUSED = ("mspline", "mband")

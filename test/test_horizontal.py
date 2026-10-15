@@ -138,9 +138,20 @@ class TestTheTypeSets:
               if rp["horizontal." + t]["rc"] == 0}
         v |= {t for t in ("rpcap", "rpspike")
               if rp["vertical." + t]["rc"] == 0}
+        # WP-31 B4b: contour and contourline take both, measured in
+        # test/fixtures/contour_truth.json (draw.hz, draw.vertical, line.hz,
+        # line.vertical).
+        with open(os.path.join(_HERE, "fixtures", "contour_truth.json"),
+                  encoding="utf-8") as fh:
+            ct = json.load(fh)
+        h |= {t for t, g in (("contour", "draw"), ("contourline", "line"))
+              if ct[g]["hz"]["rc"] == 0}
+        v |= {t for t, g in (("contour", "draw"), ("contourline", "line"))
+              if ct[g]["vertical"]["rc"] == 0}
         # 24 -> 26 and 22 -> 24: WP-31 B1 rpcap and rpspike drawn.
-        assert set(dr._DASH_HORIZONTAL_TYPES) == h and len(h) == 26
-        assert set(dr._DASH_VERTICAL_TYPES) == v and len(v) == 24
+        # 26 -> 28 and 24 -> 26: WP-31 B4b contour and contourline drawn.
+        assert set(dr._DASH_HORIZONTAL_TYPES) == h and len(h) == 28
+        assert set(dr._DASH_VERTICAL_TYPES) == v and len(v) == 26
         with open(_ADO, encoding="utf-8") as fh:
             ado = fh.read()
         for name, want in (("_hz_htypes", h), ("_hz_vtypes", v),
@@ -329,6 +340,10 @@ def _tplot(t, opts=None, y="Yvar", x="Xvar"):
     if t == "tsrline":
         return {"type": t, "yvar1": "Lovar", "yvar2": "Hivar",
                 "xvar": "Tvar", "options": o}
+    if t in dr._DASH_CONTOUR_TYPES:
+        # WP-31 B4b: z y x.
+        return {"type": t, "zvar": "Hivar", "yvar": y, "xvar": x,
+                "options": o}
     if t in dr._DASH_RANGEPT_TYPES:
         # WP-31 B1: the range and its marker at y3.
         return {"type": t, "yvar1": "Lovar", "yvar2": "Hivar", "yvar": y,
@@ -498,6 +513,7 @@ class TestUprightIsUntouched:
                             raising=False)
         patched = page({})
         # 40 -> 42: WP-31 B1 rpcap and rpspike drawn.
-        assert len(types) == 42
+        # 42 -> 44: WP-31 B4b contour and contourline drawn.
+        assert len(types) == 44
         assert plain == patched
         assert plain == vert

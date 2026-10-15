@@ -1,8 +1,8 @@
 {
  "_meta": {
   "born_date": "12 Aug 2026",
-  "dash_commit": "d887f0d02f0945deb0cae9d85dc1cfcb3acd2d63",
-  "extracted": "14 Oct 2026 16:24:40",
+  "dash_commit": "0dd33eacdf73629fc4eb89d191093ee10b298a14",
+  "extracted": "15 Oct 2026 05:38:12",
   "source": "scripts/extract_colorvar_types_truth.do",
   "stata_version": "19.5"
  },
@@ -33,6 +33,8 @@
  ],
  "cv_silent": [
   "area",
+  "contour",
+  "contourline",
   "fpfit",
   "fpfitci",
   "function",
@@ -275,6 +277,54 @@
    ],
    "rc": 0,
    "string_var_rc": 7
+  },
+  "contour": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [
+    "#0000ff",
+    "#00ff00",
+    "#ff0000"
+   ],
+   "colours_without": [
+    "#0000ff",
+    "#00ff00",
+    "#ff0000"
+   ],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [
+    "#0000ff",
+    "#00ff00",
+    "#ff0000"
+   ],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
+  },
+  "contourline": {
+   "bad_var_rc": 0,
+   "coloured": false,
+   "colours_with": [],
+   "colours_without": [],
+   "head_strokes_with": [],
+   "line_strokes_with": [],
+   "line_strokes_without": [],
+   "marker_fills_with": [],
+   "plots": [
+    {
+     "cvar": null,
+     "hascolorvar": 0.0
+    }
+   ],
+   "rc": 0,
+   "string_var_rc": 0
   },
   "dot": {
    "bad_var_rc": 111,

@@ -208,7 +208,8 @@ class TestTheGeneratedRegion:
         region = self._region_text()
         if mod is None or region is None:
             pytest.fail("task 08-02 must land first")
-        call_ids = re.findall(r'_sv_case "SV-(\d\d)"', region)
+        # \d+ since WP-31 B4b took the cases past SV-99.
+        call_ids = re.findall(r'_sv_case "SV-(\d+)"', region)
         n = mod.N_CASES
         assert len(call_ids) == n
         assert sorted(int(i) for i in call_ids) == list(range(1, n + 1))
@@ -218,7 +219,8 @@ class TestTheGeneratedRegion:
         assert "display as text \"`sv' PASS" in region
         types = mod.variable_taking_types()
         # 36 -> 38: WP-31 B1 rpcap and rpspike drawn.
-        assert len(types) == 38
+        # 38 -> 40: WP-31 B4b contour and contourline drawn.
+        assert len(types) == 40
         assert not ({"scatteri", "pci", "pcarrowi", "function"} & set(types))
 
     def test_the_arity_table_matches_dash_ado(self):

@@ -739,7 +739,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # sub-options with twoway's own syntax statements.
     # 18 -> 19: C4 WP-31's _dash_fit_points declares the arguments it
     # hands twoway's fit generators.
-    assert len(with_syntax) == 19, with_syntax
+    # 19 -> 20: B4b WP-31's _dash_contour_split declares contour's
+    # options, which the plot parser's syntax has no room left for.
+    assert len(with_syntax) == 20, with_syntax
     assert {"_dash_browser_wanted", "_dash_stylelist_bind"} <= set(with_syntax)
     assert {"_dash_tmp_preview", "_dash_tmp_close"} <= set(with_syntax)
     assert "_dash_open_page" in with_syntax, with_syntax
@@ -787,7 +789,9 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # d-options' four and dlalign's two for dstyle/dlstyle's three.
     # 156 -> 154 and 73 -> 71: D1 the note on the tmlabel and tmtick
     # pending lines goes with them (two, in each parser).
-    assert comments == {"_dash_parse_plot_opts": 154,
+    # 154 -> 159: B4b the notes on contour's split (three), its sreturn
+    # lines and its pending lines (one each).
+    assert comments == {"_dash_parse_plot_opts": 159,
                         "_dash_parse_graph_opts": 71}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --

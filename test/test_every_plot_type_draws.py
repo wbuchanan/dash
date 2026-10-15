@@ -191,6 +191,10 @@ def _plot_for(ptype):
     if ptype in _FAMILIES["_pt_pc"]:
         return {"type": ptype, "y1var": "y", "x1var": "x",
                 "y2var": "y2", "x2var": "x2", "options": {}}
+    if ptype in _FAMILIES["_pt_contour"]:
+        # WP-31 B4b: z y x.
+        return {"type": ptype, "zvar": "y2", "yvar": "y", "xvar": "x",
+                "options": {}}
     if ptype in _FAMILIES["_pt_rangept"]:
         # WP-31 B1: y1 y2 y3 x.
         return {"type": ptype, "yvar1": "lo", "yvar2": "hi", "yvar": "y",

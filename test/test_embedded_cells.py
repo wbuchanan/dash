@@ -403,11 +403,15 @@ class TestTheTwoLanguagesAgree:
         with open(os.path.join(_ROOT, "dash.ado"), encoding="utf-8") as fh:
             ado = fh.read()
         words = set()
-        for fam in ("_pt_univar", "_pt_onefit", "_pt_literal"):
+        # WP-31 B4b: _pt_contour too -- a contour's polygons are no
+        # observations, though its rows are embedded (not computed-only).
+        for fam in ("_pt_univar", "_pt_onefit", "_pt_contour",
+                    "_pt_literal"):
             m = re.search(r'c_local ' + fam + r'\s+"([^"]*)"', ado)
             assert m is not None, fam
             words |= set(m.group(1).split())
-        python = dr._DASH_COMPUTED_ONLY_TYPES | dr._DASH_LITERAL_TYPES
+        python = (dr._DASH_COMPUTED_ONLY_TYPES | dr._DASH_LITERAL_TYPES
+                  | dr._DASH_CONTOUR_TYPES)
         assert words == set(python)
         src = inspect.getsource(dr._dash_note_hover_unreached)
         start = src.index("computed = frozenset({")

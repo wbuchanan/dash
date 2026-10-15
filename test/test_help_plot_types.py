@@ -26,8 +26,9 @@ import dash_render as dr
 #: (contour, contourline) and a point on a range (rpcap, rpspike) -- the
 #: last two new in StataNow 19.5.
 # Flipped (WP-31 B1): rpcap and rpspike are drawn.  WP-31 B2 and B3:
-# sunflower and matamatrix() are refused by name.
-_REFUSED = ("contour", "contourline", "sunflower", "matamatrix")
+# sunflower and matamatrix() are refused by name.  Flipped (WP-31 B4b):
+# contour and contourline are drawn.
+_REFUSED = ("sunflower", "matamatrix")
 
 
 def _help():

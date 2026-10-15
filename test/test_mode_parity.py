@@ -1451,7 +1451,18 @@ CORPUS = [
         "rcap", "rline", "rconnected", "dot", "dropline", "rcapsym",
         "scatteri", "pcspike", "pcarrow", "pcbarrow", "pci", "pcscatter",
         "tsline", "tsrline", "mspline", "mband", "rscatter", "function",
-        "pccapsym", "pcarrowi", "rpcap", "rpspike")],
+        "pccapsym", "pcarrowi", "rpcap", "rpspike", "contour",
+        "contourline")],
+    # WP-31 B4b: contour's cuts, rules and lines, turned.
+    _case("contour ccuts", [plot_for("contour", {"ccuts": "4000 6000 8000"})]),
+    _case("contour crule(linear)",
+          [plot_for("contour", {"crule": "linear", "scolor": "navy",
+                                "ecolor": "gold"})]),
+    _case("contour horizontal",
+          [plot_for("contour", {"horizontal": "horizontal"})]),
+    _case("contourline colorlines",
+          [plot_for("contourline", {"colorlines": "colorlines",
+                                    "clwidths": "thin thick"})]),
     # WP-31 B1: rpcap's caps and marker sized together, turned, weighted.
     _case("rpcap msize(large)", [plot_for("rpcap", {"msize": "large"})]),
     _case("rpcap horizontal",
@@ -3038,6 +3049,8 @@ _MOVED_LAYERS += ["bar", "rbar", "lowess", "qfit", "fpfit", "mband",
                   "mspline", "lpolyci", "qfitci", "fpfitci"]
 # WP-31 B1: rpcap and rpspike, the range and its marker, after a move.
 _MOVED_LAYERS += ["rpcap", "rpspike"]
+# WP-31 B4b: contour and contourline refit by the served app after a move
+# (their fill and line sources); the saved page keeps them frozen.
 
 #: WP-29 P0.18: moves that leave 2 and 1 rows of _DF.
 _EMPTYING_MOVES = [
@@ -4194,6 +4207,8 @@ _HOVER_COMPUTED = frozenset({
     "fpfit", "fpfitci", "function", "histogram", "kdensity", "lfit",
     "lfitci", "lowess", "lpoly", "lpolyci", "mband", "mspline", "qfit",
     "qfitci",
+    # WP-31 B4b: contour and contourline, cut from a surface.
+    "contour", "contourline",
 })
 
 #: Layers drawn from values typed in the command: no observation at all.
@@ -4359,7 +4374,8 @@ class TestHoverReachesEveryLayerOrIsReported:
     def test_the_forty_types_are_partitioned(self):
         # 40 -> 42 and 23 -> 25: WP-31 B1 rpcap and rpspike drawn, one
         # mark per observation.
-        assert len(_ALL_PLOT_TYPES) == 42, _ALL_PLOT_TYPES
+        # 42 -> 44: WP-31 B4b contour and contourline drawn, computed.
+        assert len(_ALL_PLOT_TYPES) == 44, _ALL_PLOT_TYPES
         assert _HOVER_COMPUTED | _HOVER_LITERAL <= set(_ALL_PLOT_TYPES)
         assert len(_HOVER_HONOURED) == 25, sorted(_HOVER_HONOURED)
 
