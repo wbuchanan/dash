@@ -21210,7 +21210,9 @@ class GlyphMapper:
         # it (days, months, ...), and its grid drawn where the axis draws
         # those dates (WP-31 B4c).
         dv = dict(getattr(self, "date_vars", None) or {})
-        units = {v: dv[v] for v in (xvar, yvar)
+        # A date z is cut in its Stata units too, and keyed in %8.0gc as
+        # twoway keys it (measured: a %td z keys 20,000 ... 60,000).
+        units = {v: dv[v] for v in (xvar, yvar, zvar)
                  if v and dv.get(v) in _STATA_DATE_KINDS}
         ux, uy, uz = (GlyphMapper._masked(source, view, xvar, yvar, zvar,
                                           units=units) if units
@@ -21222,8 +21224,8 @@ class GlyphMapper:
                                        options)[0]
             surf["gy"] = self._on_axis(fig, surf["gy"], yvar, letters[1],
                                        options)[0]
-        zmin = float(np.min(z)) if z.size else float("nan")
-        zmax = float(np.max(z)) if z.size else float("nan")
+        zmin = float(np.min(uz)) if uz.size else float("nan")
+        zmax = float(np.max(uz)) if uz.size else float("nan")
         cuts, ticks = _dash_contour_cuts(options, zmin, zmax,
                                          self.z_options)
         gx, gy, gz = surf["gx"], surf["gy"], surf["gz"]
@@ -21288,6 +21290,7 @@ class GlyphMapper:
             # A date's kind (read in its Stata units) and the kind of the
             # axis it is drawn on (WP-31 B4c), as a fit's config has them.
             "xdatekind": units.get(xvar), "ydatekind": units.get(yvar),
+            "zdatekind": units.get(zvar),
             "xaxiskind": (self._unit_kind(fig, xvar, letters[0], options)
                           if xvar in units else None),
             "yaxiskind": (self._unit_kind(fig, yvar, letters[1], options)
@@ -30681,7 +30684,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         const _su = (col, k) => k ? col.map(v => {
             const u = (typeof v === "number" && isFinite(v)) ? dash_stata_value_of(v, k) : null;
             return u === null ? NaN : u; }) : col;
-        let S = dash_contour_surface(_su(_cx, ac.xdatekind), _su(_cy, ac.ydatekind), _cz, ac.interp, ac.cap);
+        const _zu = _su(_cz, ac.zdatekind);
+        let S = dash_contour_surface(_su(_cx, ac.xdatekind), _su(_cy, ac.ydatekind), _zu, ac.interp, ac.cap);
         if (S === null) continue;
         if (ac.xaxiskind) S.gx = S.gx.map(v => dash_axis_value_of(v, ac.xaxiskind));
         if (ac.yaxiskind) S.gy = S.gy.map(v => dash_axis_value_of(v, ac.yaxiskind));
@@ -30693,8 +30697,8 @@ for (let ai = 0; ai < agg_configs.length; ai++) {
         }
         // The kept rows' z range, over the rows with x, y and z.
         let _zmin = Infinity, _zmax = -Infinity;
-        for (let i = 0; i < _cz.length; i++) {
-            const a = _cx[i], b = _cy[i], c = _cz[i];
+        for (let i = 0; i < _zu.length; i++) {
+            const a = _cx[i], b = _cy[i], c = _zu[i];
             if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c)) continue;
             if (c < _zmin) _zmin = c;
             if (c > _zmax) _zmax = c;

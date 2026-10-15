@@ -713,3 +713,62 @@ class TestDates:
                     np.testing.assert_allclose(
                         np.sort(q[np.isfinite(q)]), p, rtol=0,
                         atol=1e-6 * (np.ptp(p) if p.size else 1.0))
+
+
+def _zdate_df(n=40, seed=9):
+    df = _page_df(n, seed)
+    df["zd"] = 14610.0 + 3.0 * df["price"]          # td(01jan2000) + 3 price
+    return df
+
+
+def _zdate_spec(ptype, filt):
+    return tp._spec([{"type": ptype, "zvar": "zd", "yvar": "mpg",
+                      "xvar": "weight", "options": {}}],
+                    {"filter": filt, "formats": {"zd": "%td"}})
+
+
+@requires_node
+class TestDateZ:
+    """twoway cuts a %td z in days and keys it in %8.0gc (measured
+    15oct2026: twoway contour zd mpg weight on auto with zd =
+    td(01jan2000) + 3*price cuts at 30000 40000 50000, ticks 20000(10000)
+    60000, labelled "20,000" ... "60,000"; test_wp31_truth.cscript U29-8)."""
+
+    def test_the_build_cuts_in_days(self):
+        df = _zdate_df()
+        figs = hm.jo._saved_figs(hm.jo._saved(_zdate_spec("contour", sf._MOVES[0][1]), df,
+                                              labels=True))
+        [cr] = [r for r in figs[0].renderers
+                if type(r).__name__ == "ContourRenderer"]
+        zmin, zmax = float(df["zd"].min()), float(df["zd"].max())
+        cuts, ticks = dr._dash_contour_cuts({}, zmin, zmax)
+        assert list(cr.levels[1:-1]) == pytest.approx(cuts)
+        [bar] = [m for side in (figs[0].right, figs[0].left, figs[0].above,
+                                figs[0].below, figs[0].center)
+                 for m in side if type(m).__name__ == "ContourColorBar"]
+        assert list(bar.ticker.ticks) == pytest.approx(
+            [t for t in ticks if bar.levels[0] <= t <= bar.levels[-1]])
+        assert all(v == dr._dash_fmt_text(float(t), "%8.0gc")
+                   for t, v in bar.major_label_overrides.items())
+
+    @pytest.mark.parametrize("ptype", ["contour", "contourline"])
+    def test_a_move_matches_the_served_app_and_the_build(self, ptype):
+        _label, filt, action, oracle = sf._MOVES[0]
+        df = _zdate_df()
+        spec = _zdate_spec(ptype, filt)
+        _r, saved = hm._saved_moved(spec, action, df)
+        _d, served = hm._served_moved(spec, action, df)
+        kept = hm._kept(spec, oracle, "saved", df=df)
+        part = "fill" if ptype == "contour" else "line"
+        a, s, k = (_layer_data(f, part) for f in (saved, served, kept))
+        key = "lower_levels" if part == "fill" else "levels"
+        sub = df.query(oracle)
+        for got in (a, s):
+            assert list(got[key])[1:] == pytest.approx(list(k[key])[1:],
+                                                       rel=1e-9)
+        if part == "fill":
+            X, Y = _grid(sub["weight"], sub["mpg"])
+            want = _raster(k["xs"], k["ys"], X, Y)
+            for got in (a, s):
+                assert (_raster(got["xs"], got["ys"], X, Y)
+                        == want).mean() >= 0.999

@@ -6470,14 +6470,33 @@ if inlist("`only'", "", "S29") & `: list posof "S29" in w31_run' {
     _w31_expect U29-4 "(${u29_cue} == 1)" "1,001 points: the layer is not marked after the move"
     _w31_done U29-4 "above the cap the saved page keeps the contour as built and marks it"
 
+    // ------------------------------------------------------------
+    // U29-8: a %td z is cut in days, as twoway cuts it (measured
+    // live: the contour view's ccuts and its z axis's ticks), in both
+    // modes; the key is written in %8.0gc, not %td.
+    // ------------------------------------------------------------
+    sysuse auto, clear
+    quietly generate double zd = td(01jan2000) + 3*price
+    format zd %td
+    _u26_tw contour zd mpg weight,
+    local ++k
+    _u26_reg `u29d' `k' contour zd mpg weight, name(zu298)
+    foreach m in s v {
+        _w31_expect U29-8 `"("${u26_cut`m'}" == "${u26_twcut}")"' "`m': cuts ${u26_cut`m'}; twoway's ${u26_twcut}"
+        _w31_expect U29-8 `"("${u26_tick`m'}" == "${u26_twtick}")"' "`m': key ticks ${u26_tick`m'}; twoway's ${u26_twtick}"
+    }
+    _w31_done U29-8 "a %td z is cut at twoway's ${u26_twcut} and keyed at ${u26_twtick}"
+
     forvalues i = 1/`k' {
-        foreach p in s d q e {
+        foreach p in s d q e a {
             capture erase "`u29d'/`p'`i'.json"
+            capture erase "`u29d'/`p'`i'.py"
         }
     }
     capture rmdir "`u29d'"
     capture label drop u29g
     macro drop u29_agree u29_area u29_cue u29_same u29_xr
+    capture macro drop u26_*
     capture mata: mata drop u29_t
     dash clear
     clear
