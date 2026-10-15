@@ -2045,7 +2045,6 @@ WP31_OPEN = {
     "H6": "The parity guard compares only glyphs, labels, arrowheads and KPI cards after a move and its oracle is the saved renderer, not the saved page's JS",
     "I6": "No secret scan, CI, ruff, pyflakes or bandit, the hooks CLAUDE.md relies on are git-ignored, and *.log is excluded only locally",
     # Batch 1-4 gap additions (DECISIONS D14, 14oct2026)
-    "A3b": "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)",
     "A3c": "aspectratio() takes asp, shorter than twoway's minimum",
     "C10d": "kdensity range() naming a string or all-missing variable draws over the data's span where twoway draws an empty curve",
     "C10e": "Axes 3 to 9 on a date variable are labelled in Stata numbers, and t-options with axis(3) to axis(9) are left as typed",

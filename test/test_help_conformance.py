@@ -888,12 +888,21 @@ class TestEveryDocumentedOptionIsAccepted:
 class TestAbbreviationsAgree:
     def test_every_cmdab_claim_matches_the_declaration(self):
         declared = _ado_declarations()
+        # WP-31 A3b: name() is declared twice with two minimums -- a graph's
+        # NAME(), twoway's full name, and dash kpi's NAMe(), whose nam()
+        # the help documents for dash kpi -- so a claim is held to the
+        # declaration of any command that takes the option.
+        src = _ado_text()
+        every = {}
+        for prog in _PROGRAMS:
+            for mn, full in _syntax_options(_program_body(src, prog)):
+                every.setdefault(full, set()).add(mn)
         bad = []
         for name, claims in sorted(_help_options().items()):
             if name not in declared:
                 continue
             for claim in sorted(claims):
-                if claim != declared[name]:
+                if claim not in every.get(name, {declared[name]}):
                     bad.append(f"{name}: help says {claim!r}, "
                                f"dash.ado accepts {declared[name]!r}")
         assert not bad, (

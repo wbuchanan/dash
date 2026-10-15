@@ -117,6 +117,8 @@ COVERAGE = {
         # e2e: jit() and the other short jitter() spellings refused as
         # twoway refuses them (WP-31 A3d).
         "_dash_refuse_jit": ("test_abbreviations.cscript:U15-06",),
+        # e2e: nam() and na() refused as twoway refuses them (WP-31 A3b).
+        "_dash_refuse_nam": ("test_abbreviations.cscript:U27-10",),
         # e2e: title2() and subtitle2() refused as twoway refuses them
         # (WP-31 D2).
         "_dash_refuse_title2": ("test_option_validation.cscript:U27-6",),

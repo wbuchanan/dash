@@ -294,6 +294,14 @@ _SHORTER_THAN_TWOWAY = {
     # b2title(), l2title(), r2title(), t2title(): a digit ends the run of
     # capitals, so B2title's minimum is b; b() binds b1title() first, as
     # in twoway, and only a second b() reaches b2title (_SHARED_SPELLINGS).
+    # WP-31 A3b measured them (edge_title_truth.json spellings, and live
+    # in test_abbreviations.cscript U27-11): twoway does not refuse b(),
+    # t(), l() or r(); it binds each to the 1 title, and a repeat -- b(A)
+    # b(B), b1title(A) b(B), b2title(A) b(B) -- to the 1 title, the last
+    # copy, as dash does once _dash_opts_repeats has merged the copies.
+    # The shorter declared minimum is -syntax-'s notation only: no
+    # spelling reaches b2title() in dash that twoway sends elsewhere, so
+    # the entries stay.
     "b2title": ("b", "b2"),
     "l2title": ("l", "l2"),
     "r2title": ("r", "r2"),
@@ -301,8 +309,9 @@ _SHORTER_THAN_TWOWAY = {
     # Flipped (WP-31 A3d): jitter() was ("jit", "jitter") -- dash took
     # jit() .. jitte(), which twoway refuses ("option jit() not allowed",
     # r(198)); dash declares twoway's minimum, the full name, now.
-    # name(): dash takes nam(); twoway only name() (graph-created oracle).
-    "name": ("nam", "name"),
+    # Flipped (WP-31 A3b): name() was ("nam", "name") -- dash took nam(),
+    # which twoway refuses ("option nam() not allowed", r(198)); dash
+    # declares twoway's minimum, the full name, now (U27-10).
 }
 
 #: twoway's plot-type minimums (twowaygraph_g.class _unab_cmd); every other
@@ -574,8 +583,16 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
     build = dict((full, mn) for mn, full in declarations["_dash_build"])
     plot  = dict((full, mn) for mn, full in plot_decls)
 
+    # WP-31 A3b: dash kpi's name() takes nam(), the graph's name() only
+    # name(), as twoway's; a spelling written for dash kpi -- its Syntax
+    # block and its own section -- is held to dash kpi's declaration first.
+    k0 = help_txt.index("{pstd}{ul:KPI card}")
+    kpi_spans = ((k0, help_txt.index("{pstd}{ul:", k0 + 1)),
+                 (help_txt.index("{marker kpi}"),
+                  help_txt.index("{marker server_mode}")))
     bad, seen = [], set()
-    for tok in re.findall(r"\{cmdab:([^}]*)\}", help_txt):
+    for m in re.finditer(r"\{cmdab:([^}]*)\}", help_txt):
+        tok = m.group(1)
         if ":" not in tok or " " in tok:
             continue
         mn, rest = tok.split(":", 1)
@@ -586,8 +603,11 @@ def test_help_documents_only_accepted_abbreviations(declarations, plot_decls,
             continue
         seen.add((mn, full))
 
-        for where, table in (("a plot/graph", plot), ("dash kpi", kpi),
-                             ("dash build", build)):
+        order = (("a plot/graph", plot), ("dash kpi", kpi),
+                 ("dash build", build))
+        if any(a <= m.start() < b for a, b in kpi_spans):
+            order = (order[1], order[0], order[2])
+        for where, table in order:
             if full in table:
                 declared = table[full]
                 ok = full.startswith(mn) and mn.startswith(declared) \
@@ -792,9 +812,10 @@ def test_the_tr_23_6_scans_see_what_they_look_for():
     # 156 -> 154 and 73 -> 71: D1 the note on the tmlabel and tmtick
     # pending lines goes with them (two, in each parser).
     # 154 -> 159: B4b the notes on contour's split (three), its sreturn
-    # lines and its pending lines (one each).
+    # lines and its pending lines (one each).  71 -> 72: A3b the note on
+    # NAMe, now NAME, is one line longer.
     assert comments == {"_dash_parse_plot_opts": 159,
-                        "_dash_parse_graph_opts": 71}, comments
+                        "_dash_parse_graph_opts": 72}, comments
     # Every fold, in either form: 11 in the plot parser and 7 in the graph
     # parser (measured 24sep2026).  A fold the pattern stopped matching --
     # rewritten in a third form -- would leave the fold checks below

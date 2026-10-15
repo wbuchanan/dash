@@ -57,7 +57,7 @@
 
 {p 8 17 2}
 {cmd:dash} {it:plot_specs} {ifin} [{cmd:,} {it:graph_options}
-{cmdab:nam:e}{cmd:(}{it:identifier} [{cmd:, replace}]{cmd:)}]
+{cmd:name(}{it:identifier} [{cmd:, replace}]{cmd:)}]
 
 {pstd}{ul:KPI card}{p_end}
 

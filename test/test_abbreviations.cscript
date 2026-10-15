@@ -76,6 +76,14 @@
 *!   OS-07 (WP-30 P1.14b) dst() dl() dls() bml() land on dstyle, dlstyle
 *!       and bmlinestyle and are named by their full names.
 *!
+*!   U27-10 (WP-31 A3b) name()'s minimum is twoway's, the full name:
+*!       nam(), na() and a bare nam are refused with twoway's rc and line,
+*!       in the plot's options, after the paren-mode comma and after a ||
+*!       segment's comma; name() is taken.
+*!   U27-11 (WP-31 A3b) b() t() l() r(), b2() .. r2(), and a repeat such
+*!       as b1title(A) b(B) or b2title(A) b(B), land where twoway puts
+*!       them (measured live from the graph's own text boxes).
+*!
 *! Usage:  do test/test_abbreviations.cscript   (run from test/)
 *! Version: 1.0
 
@@ -281,7 +289,9 @@ MATA_OPT_ALIAS = {
     "fal": "falpha",
     "ti": "title", "sub": "subtitle", "xti": "xtitle", "yti": "ytitle",
     "xla": "xlabel", "yla": "ylabel", "note": "note", "cap": "caption",
-    "leg": "legend", "sav": "saving", "nam": "name", "by": "by",
+    # Flipped (WP-31 A3b): "nam": "name" -- nam() is refused now, as
+    # twoway refuses it (U27-10).
+    "leg": "legend", "sav": "saving", "by": "by",
     "xsc": "xscale", "ysc": "yscale", "xl": "xline", "yl": "yline",
     "asp": "aspectratio", "bgc": "bgcolor", "pbgc": "plotbgcolor",
     "plotr": "plotregion", "graphr": "graphregion",
@@ -475,6 +485,10 @@ for tok in re.findall(r"\{cmdab:([^}]*)\}", HELPTXT):
     if full in ("update", "layout", "fmt"):     # dash kpi / dash build: group A8
         continue
     for spelling in (mn, full):
+        # WP-31 A3b: nam() is documented for dash kpi only (group A8); a
+        # graph's name() takes twoway's minimum, the full name (U27-10).
+        if (spelling, full) == ("nam", "name"):
+            continue
         if (spelling, full) not in DOC:
             DOC.append((spelling, full))
 # How many spellings the help documents, before any is set aside: the
@@ -948,8 +962,9 @@ if `n_R2' + `n_R3' != ${ZQA_EXPN_R23} {
 // colorrule() colorstart() colorend() colorlist() colorformissing()
 // colorkeysrange colorkeysreverse colorotherlabel() coloruseplegend
 // clegend() plegend() pcycle().
-if ${ZQA_NDOC} != 170 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
-    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (170 measured); A4 ran `n_A4' and A4b `n_A4b'"
+// 170 -> 169: WP-31 A3b, nam() is dash kpi's only (A8), not a graph's.
+if ${ZQA_NDOC} != 169 | `n_A4' + `n_A4b' != ${ZQA_NDOC} | `n_A4b' != 4 {
+    display as error "SIZE FAIL: dash.sthlp documents ${ZQA_NDOC} spellings (169 measured); A4 ran `n_A4' and A4b `n_A4b'"
     local nfail = `nfail' + 1
     local faillist `"`faillist' size(A4)"'
 }
@@ -1123,6 +1138,91 @@ if `u1506' {
     local faillist `"`faillist' U15-06"'
 }
 else display as text "U15-06 PASS: j() ji() jit() jitt() jitte() and bare jit refused as twoway refuses them, in the plot and after the comma, jitter(5) taken"
+
+// U27-10 (WP-31 A3b): name()'s minimum is twoway's, the full name.
+// nam(), na() and a bare nam twoway refuses, "option nam() not allowed",
+// r(198); dash took nam() as name() (edge_title_truth.json refuse_nam*).
+local u2710 0
+local u27log "`c(tmpdir)'zu2710.log"
+local i 0
+foreach o in "nam(zq)" "na(zq)" "nam" "P:nam(zq)" "P:na(zq)" "S:nam(zq)" "name(zq)" {
+    local ++i
+    local pre "scatter mpg weight,"
+    if substr(`"`o'"', 1, 2) == "P:" {
+        local o = substr(`"`o'"', 3, .)
+        local pre "(scatter mpg weight),"
+    }
+    if substr(`"`o'"', 1, 2) == "S:" {
+        local o = substr(`"`o'"', 3, .)
+        local pre "scatter mpg weight || line mpg weight,"
+    }
+    foreach who in twoway dash {
+        capture dash clear
+        capture graph drop _all
+        capture log close _zu27
+        quietly log using "`u27log'", text replace name(_zu27)
+        if "`who'" == "twoway" capture noisily twoway `pre' `o' nodraw
+        else capture noisily dash `pre' `o'
+        local rc_`who' = _rc
+        quietly log close _zu27
+        python: from sfi import Macro as _u27M; _u27l = [l.rstrip() for l in open(_u27M.getLocal("u27log"), encoding="utf-8", errors="replace") if l.strip() and not l.lstrip().startswith((".", ">", "-")) and ":" not in l[:12] and "dash:" not in l]; _u27M.setLocal("line_`who'", (_u27l[0] if _u27l else "")[:120])
+    }
+    if `i' == 7 {
+        if `rc_twoway' != 0 | `rc_dash' != 0 {
+            display as error `"U27-10 FAIL name(zq): twoway r(`rc_twoway'), dash r(`rc_dash')"'
+            local u2710 1
+        }
+        continue
+    }
+    if `rc_twoway' != 198 | `rc_twoway' != `rc_dash' | `"`line_twoway'"' != `"`line_dash'"' {
+        display as error `"U27-10 FAIL case `i' `o': twoway r(`rc_twoway') [`line_twoway'], dash r(`rc_dash') [`line_dash']"'
+        local u2710 1
+    }
+}
+capture erase "`u27log'"
+capture dash clear
+capture graph drop _all
+if `u2710' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' U27-10"'
+}
+else display as text "U27-10 PASS: nam() na() and bare nam refused as twoway refuses them, in the plot, after the comma and after ||; name() taken"
+
+// U27-11 (WP-31 A3b): the short side-title spellings land where twoway
+// puts them -- read from twoway's own text boxes in this run and from
+// dash's registered spec.
+local u2711 0
+foreach o in "b(ZQV)" "t(ZQV)" "l(ZQV)" "r(ZQV)" "b2(ZQV)" "t2(ZQV)" "l2(ZQV)" "r2(ZQV)" "b2t(ZQV)" "b1title(ZQA) b(ZQV)" "b2title(ZQA) b(ZQV)" "t(ZQA) t(ZQV)" {
+    capture graph drop _all
+    quietly twoway scatter mpg weight, `o' name(zu2711t, replace) nodraw
+    local tw ""
+    foreach k in t1title t2title b1title b2title l1title l2title r1title r2title {
+        local n "`.zu2711t.`k'.text.arrnels'"
+        if "`n'" != "" & "`n'" != "0" {
+            local v "`.zu2711t.`k'.text[1]'"
+            if "`v'" != "" local tw "`tw' `k'=`v'"
+        }
+    }
+    capture dash clear
+    capture quietly dash scatter mpg weight, `o' name(zu2711)
+    local drc = _rc
+    local da ""
+    foreach k in t1title t2title b1title b2title l1title l2title r1title r2title {
+        mata: st_local("_v", ustrregexm(st_global("dash_json_zu2711"), char(34) + "`k'" + char(34) + ":" + char(34) + "([A-Z]+)" + char(34)) ? ustrregexs(1) : "")
+        if "`_v'" != "" local da "`da' `k'=`_v'"
+    }
+    if `drc' != 0 | strtrim("`tw'") != strtrim("`da'") {
+        display as error `"U27-11 FAIL `o': twoway [`tw'], dash r(`drc') [`da']"'
+        local u2711 1
+    }
+}
+capture dash clear
+capture graph drop _all
+if `u2711' {
+    local nfail = `nfail' + 1
+    local faillist `"`faillist' U27-11"'
+}
+else display as text "U27-11 PASS: b() t() l() r(), the *2 spellings and the repeats land where twoway puts them"
 
 // ----------------------------------------------------------------
 // Report

@@ -1304,8 +1304,9 @@ display "REG-38 PASS: two name()s naming nothing registered are refused, and nei
 
 // ---- REG-39 -- one name() still names the graph, wherever it is written ----
 // The positive control: a single name() in the first group, in the last,
-// after a paren command's comma, after an || command's last comma, or
-// abbreviated, registers the graph under that name; and text that only
+// after a paren command's comma or after an || command's last comma
+// registers the graph under that name (nam() is refused, as twoway refuses
+// it: WP-31 A3b); and text that only
 // looks like name() is not a second one -- a title or a note holding
 // "name(x)" is text.  An option spelled NAME() is not name() either
 // (Stata's options are case-sensitive): twoway refuses it, "option NAME()
@@ -1317,7 +1318,6 @@ foreach c in ///
     `"dash (scatter price weight) (line price weight, name(b2))"' ///
     `"dash (scatter price weight) (line price weight), name(b3)"' ///
     `"dash scatter price weight || line price weight, name(b4)"' ///
-    `"dash scatter price weight, nam(b5)"' ///
     `"dash scatter price weight, name(b6) title("name(x) and nam(y)") note("name(z, replace)")"' {
     capture noisily `c'
     local rc39 = _rc
@@ -1330,7 +1330,14 @@ local rc39 = _rc
 if `rc39' != 198 {
     mata: st_global("REG_BAD", st_global("REG_BAD") + " | name(b7) NAME(zz) -> rc " + st_local("rc39"))
 }
-if "${dash_graph_registry}" != "b1 b2 b3 b4 b5 b6" {
+// Flipped (WP-31 A3b): nam(b5) registering b5 was wrong because twoway
+// refuses nam(), "option nam() not allowed", r(198), and dash now does.
+capture noisily dash scatter price weight, nam(b5)
+local rc39 = _rc
+if `rc39' != 198 {
+    mata: st_global("REG_BAD", st_global("REG_BAD") + " | nam(b5) -> rc " + st_local("rc39"))
+}
+if "${dash_graph_registry}" != "b1 b2 b3 b4 b6" {
     mata: st_global("REG_BAD", st_global("REG_BAD") + " | registry [" + st_global("dash_graph_registry") + "]")
 }
 _reg_verdict REG-39

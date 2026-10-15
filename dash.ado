@@ -906,7 +906,8 @@ program define _dash_parse_graph_opts, sclass
     // the graph-level loops in _dash_process_segment and _dash_plot.
     // Capitalised letters are the minimum abbreviation: as a rule twoway's
     // own where twoway has the option (measured, abbrev_truth.json) --
-    // NAMe and ASPectratio are shorter, kept from dash's old table,
+    // ASPectratio is shorter, kept from dash's old table (NAMe was too,
+    // until WP-31 A3b declared twoway's minimum, the full name),
     // and MEan and BWIDth longer -- and dash's own choice where it has not.
     // -syntax- ends the run of capitals at a digit, so T1title's minimum is
     // t, and YTITLE2's is ytitle -- which YTitle, declared first, takes.
@@ -925,7 +926,7 @@ program define _dash_parse_graph_opts, sclass
     // test_json_escaping.cscript JSE-46).
     syntax [, ///
         TItle(string asis)        SUBtitle(string asis)     NOTE(string asis) ///
-        CAPtion(string asis)      NAMe(string)              SAVing(string) ///
+        CAPtion(string asis)      NAME(string)              SAVing(string) ///
         XTitle(string asis)       YTitle(string asis)       XLabel(string asis) ///
         YLabel(string asis)       XLIne(string asis)        YLIne(string asis) ///
         LEGend(string asis)       BY(string asis)           XSCale(string asis) ///
@@ -1207,7 +1208,7 @@ program define _dash_parse_plot_opts, sclass
         YOVERHANGs ///
         XVARFormat(string)        YVARFormat(string) ///
         JITTERSEED(string)        TItle(string asis)        SUBtitle(string asis) ///
-        NOTE(string asis)         CAPtion(string asis)      NAMe(string) ///
+        NOTE(string asis)         CAPtion(string asis)      NAME(string) ///
         SAVing(string)            XTitle(string asis)       YTitle(string asis) ///
         XLabel(string asis)       YLabel(string asis)       XLIne(string asis) ///
         YLIne(string asis)        LEGend(string asis)       BY(string asis) ///
@@ -6157,8 +6158,10 @@ program define _dash_process_segment, rclass
         _dash_refuse_unbound _dash_parse_plot_opts `"`macval(opts_raw)'"'
         // jitter() spelled shorter than twoway's minimum (WP-31 A3d).
         _dash_refuse_jit
+        // name() spelled shorter than twoway's minimum (WP-31 A3b).
+        _dash_refuse_nam
         // A second name() in this option list: -syntax- binds the first to
-        // NAMe() and leaves any other to the catch-all, which is read by
+        // NAME() and leaves any other to the catch-all, which is read by
         // value -- it is the user's text.
         mata: st_local("_seg_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
         if `_seg_name2' _dash_refuse_second_name
@@ -7648,6 +7651,9 @@ program define _dash_plot
         mata: st_local("gopts_raw", _dash_route_axis2(st_local("gopts_raw")))
         _dash_parse_graph_opts , `macval(gopts_raw)'
         _dash_refuse_unbound _dash_parse_graph_opts `"`macval(gopts_raw)'"'
+        // name() spelled shorter than twoway's minimum (WP-31 A3b), before
+        // the second-name() check would read nam() as a second name().
+        _dash_refuse_nam
         // A second name() in the options after the comma, and whether they
         // gave one at all: a group's name() is then a second one too.
         mata: st_local("_g_name2", strofreal(_dash_has_name_opt(st_global("s(_unknown)"))))
@@ -9682,6 +9688,31 @@ program define _dash_refuse_jit
         }
     }
     mata: _dash_say("err", "option ", st_local("_rj_w"), " not allowed")
+    exit 198
+end
+
+// ================================================================
+// _dash_refuse_nam  -- name() spelled shorter than twoway's minimum
+// ================================================================
+// WP-31 A3b.  twoway's minimum for name() is the full name: na(zq) and
+// nam(zq) are "option na() not allowed" and "option nam() not allowed",
+// and a bare nam "option nam not allowed", r(198), in a plot's options,
+// after the paren-mode comma and after a || segment's comma alike
+// (measured 15oct2026, test/fixtures/edge_title_truth.json refuse_nam*,
+// test_abbreviations.cscript U27-10).  dash declared NAMe and took nam()
+// as name(); it declares NAME now, so -syntax- leaves them to the
+// catch-all.  Called by _dash_process_segment right after
+// _dash_refuse_jit, and after the paren-mode comma right after
+// _dash_refuse_unbound (before the second-name() check, which would read
+// nam() as a second name()), with the parser's s() in place: the first
+// such word of s(_unknown), read by value, is refused
+// in twoway's words.  It touches nothing in s().
+// ================================================================
+program define _dash_refuse_nam
+    version 19
+    mata: st_local("_rn_w", ustrregexm(" " + st_global("s(_unknown)") + " ", "[ ,](na|nam)(\(|[ ,])") ? ustrregexs(1) + (ustrregexs(2) == "(" ? "()" : "") : "")
+    if "`_rn_w'" == "" exit
+    mata: _dash_say("err", "option ", st_local("_rn_w"), " not allowed")
     exit 198
 end
 

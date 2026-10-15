@@ -420,7 +420,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **A1 Tracked:** Closed in WP-31, BUGS.md "dash twoway with nothing after it is refused r(198) where twoway draws an empty graph", commit 4b1be95.
 - **A2 Tracked:** Closed in WP-31, BUGS.md "Plot-type abbreviations are a superset of twoway's eight and the help lists only twoway's", commit 9319ed5.
 - **A3 Tracked:** Closed in WP-31, BUGS.md "Option-abbreviation minimums have no live pin and test/fixtures/abbrev_truth.json is a pre-fix record whose stale counts test_abbreviations.py asserts", commit c956f42.
-- **A3b Tracked:** Open (WP-31 section 27).
+- **A3b Tracked:** Closed in WP-31, BUGS.md "The *2title options and name() take spellings shorter than twoway's minimum (b, l, r, t and nam)", commit pending.
 - **A3c Tracked:** Open (WP-31 section 32).
 - **A3d Tracked:** Closed in WP-31, BUGS.md "jitter() takes jit, shorter than twoway's minimum", commit 9665bca.
 - **A4 Tracked:** Closed in WP-31, BUGS.md "mla() binds to mlabel() where twoway's mla is mlalign(), so mla(center) is refused as a bad variable", commit 3380e3d.

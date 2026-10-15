@@ -913,7 +913,7 @@ and now matches Stata.
 
 <!-- WP-31 H4 -->
 
-<!-- WP-31 A3b -->
+- name() is declared with twoway's minimum, the full name: nam(), na() and a bare nam are refused, r(198), "option nam() not allowed", as twoway refuses them; dash took nam() as name(). dash kpi keeps nam(). b(), t(), l() and r() stay the 1 titles, as twoway reads them. (WP-31, A3b)
 
 <!-- WP-31 A3c -->
 

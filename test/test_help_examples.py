@@ -131,7 +131,8 @@ class TestTheShapeOfTheExamples:
             'dash build, saving(d.html) scheme(nosuchthing) replace': 1,
             # Flipped (WP-30 P1.14a): pstyle() is drawn, so the
             # Unsupported example names mlpattern() instead.
-            'dash scatter mpg weight, mlpattern(dash) t1title("hi")': 1,
+            # WP-31 D2: t1title("hi") -> scale(1.2), t1title() is drawn.
+            'dash scatter mpg weight, mlpattern(dash) scale(1.2)': 1,
         }
 
 
