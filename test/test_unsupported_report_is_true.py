@@ -101,8 +101,6 @@ PLOT_VALUES = {
     # link() and filter() belong to dash build; written on a graph they
     # are stored, read by nothing, and named in the note (WP-13 TR-13.1).
     "filter": ("foreign, type(dropdown)", "weight, type(range)", "scatter"),
-    "fxsize": ("50", "80", "scatter"),
-    "fysize": ("50", "80", "scatter"),
     "link": ("g1", "g2", "scatter"),
     "jitterseed": ("7", "99", "scatter"),
     "kernel": ("epan2", "gaussian", "kdensity"),
@@ -130,7 +128,6 @@ PLOT_VALUES = {
     "percent": ("percent", "frequency", "histogram"),
     "play": ("x", "y", "scatter"),
     "range": ("10 30", "12 28", "kdensity"),
-    "scale": ("1.5", "0.5", "scatter"),
     "scheme": ("economist", "s1mono", "scatter"),
     # WP-31 B4b: contour's heatmap cells and band outlines, named.
     "heatmap": ("heatmap", "", "contour"),
@@ -149,10 +146,12 @@ PLOT_VALUES = {
     # Flipped (WP-31 D1): xmlabel, xmtick, tmlabel, tmtick, ymlabel and
     # ymtick left this table for LIVE_VALUES and ALIASES: minor ticks and
     # labels are drawn.
-    "xoverhangs": ("xoverhangs", "", "scatter"),
+    # Flipped (WP-31 D5): fxsize ("50", "80"), fysize ("50", "80"), scale
+    # ("1.5", "0.5"), xoverhangs and yoverhangs -- named and inert -- were
+    # wrong because twoway draws them (sizing_truth.json); they are in
+    # LIVE_VALUES.
     "xsize": ("3", "9", "scatter"),
     "xtick": ("5(5)40", "10(10)40", "scatter"),
-    "yoverhangs": ("yoverhangs", "", "scatter"),
     "ysize": ("2", "9", "scatter"),
     "ytick": ("5(5)40", "10(10)40", "scatter"),
 }
@@ -296,8 +295,10 @@ class TestTheListIsCoveredAndHonest:
         # ymtick drawn (minor ticks and labels)
         # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25 and
         # 18 -> 8: D2 edge titles drawn, title2/subtitle2 refused
-        assert len(_plot_pending()) == 25, sorted(_plot_pending())
-        assert len(_graph_pending()) == 8, sorted(_graph_pending())
+        # 25 -> 20 and 8 -> 3: D5 fxsize fysize scale xoverhangs
+        # yoverhangs drawn
+        assert len(_plot_pending()) == 20, sorted(_plot_pending())
+        assert len(_graph_pending()) == 3, sorted(_graph_pending())
 
 
 @pytest.mark.parametrize("opt", sorted(set(_plot_pending())))
@@ -748,6 +749,13 @@ LIVE_VALUES = {
     "by": ({}, {}, "scatter", ("by", "foreign", "rep78")),
     "caption": ({}, {}, "scatter", ("caption", "A", "B")),
     # WP-31 D2: the eight edge titles, drawn (test_edge_titles.py).
+    # WP-31 D5: scale(), fxsize()/fysize() and the overhangs, drawn
+    # (test_sizing.py; sizing_truth.json).
+    "scale": ({}, {}, "scatter", ("scale", "1.5", "0.5")),
+    "fxsize": ({}, {}, "scatter", ("fxsize", "50", "80")),
+    "fysize": ({}, {}, "scatter", ("fysize", "50", "80")),
+    "xoverhangs": ({}, {}, "scatter", ("xoverhangs", "xoverhangs", "")),
+    "yoverhangs": ({}, {}, "scatter", ("yoverhangs", "yoverhangs", "")),
     "b1title": ({}, {}, "scatter", ("b1title", "A", "B")),
     "b2title": ({}, {}, "scatter", ("b2title", "A", "B")),
     "l1title": ({}, {}, "scatter", ("l1title", "A", "B")),

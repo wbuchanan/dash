@@ -132,7 +132,8 @@ class TestTheShapeOfTheExamples:
             # Flipped (WP-30 P1.14a): pstyle() is drawn, so the
             # Unsupported example names mlpattern() instead.
             # WP-31 D2: t1title("hi") -> scale(1.2), t1title() is drawn.
-            'dash scatter mpg weight, mlpattern(dash) scale(1.2)': 1,
+            # WP-31 D5: scale(1.2) -> play(x), scale() is drawn.
+            'dash scatter mpg weight, mlpattern(dash) play(x)': 1,
         }
 
 

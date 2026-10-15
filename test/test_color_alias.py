@@ -150,14 +150,15 @@ def _plot_pending():
 
     An absence check on an empty list passes whatever dash.ado says: were
     the local renamed, or its lines reworded, the reader above would find
-    nothing and "color not in []" would hold.  at() and fxsize() are
+    nothing and "color not in []" would hold.  at() and play() are
     pending on every plot type -- 44 names in all, measured 24sep2026 -- so
     the reader must find them before its silence about color() means
     anything.  (Flipped, WP-31 D2: b1title() was the second control; it is
-    drawn now, as twoway draws it, and pending no more.)
+    drawn now, as twoway draws it, and pending no more.  Flipped, WP-31 D5:
+    fxsize() was, until it was drawn.)
     """
     pending = _pending("_dash_parse_plot_opts")
-    assert {"at", "fxsize"} <= set(pending), (
+    assert {"at", "play"} <= set(pending), (
         f"the pending-list reader no longer finds options that are pending: "
         f"{pending}"
     )

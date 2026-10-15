@@ -637,7 +637,11 @@ forvalues i = 1/`dsp_ar_n' {
     local opts  = trim(subinstr(`"`macval(opts)'"', "name(g1)", "", 1))
 
     local ar_optlist `"`macval(ar_optlist)' `macval(opts)'"'
-    local ar_keylist `"`ar_keylist' `key'"'
+    // Flipped (WP-31 D5): the drawn overhangs are given in O2-04's one
+    // command but are not among the names its note must hold.
+    if !inlist("`key'", "xoverhangs", "yoverhangs") {
+        local ar_keylist `"`ar_keylist' `key'"'
+    }
 
     _dsp_probe "ar_`key'" `"`macval(spec)'"' `"`macval(opts)'"'
     local prc    = r(rc)
@@ -646,9 +650,19 @@ forvalues i = 1/`dsp_ar_n' {
     local pcmd   `"`r(cmd)'"'
 
     local bad = 0
+    // Flipped (WP-31 D5): xoverhangs and yoverhangs named in the note was
+    // wrong once dash drew them (sizing_truth.json overhang_x1): accepted,
+    // and named by nothing.
+    local honoured = inlist("`key'", "xoverhangs", "yoverhangs")
     if `prc' != 0 {
         display as error `"O2-03 FAIL `key': rc=`prc' from  `macval(pcmd)'"'
         local bad = 1
+    }
+    else if `honoured' {
+        if `pnotes' != 0 {
+            display as error `"O2-03 FAIL `key': drawn, yet named: `macval(pnote)'"'
+            local bad = 1
+        }
     }
     else if `pnotes' != 1 {
         display as error `"O2-03 FAIL `key': expected exactly 1 note, got `pnotes'."'

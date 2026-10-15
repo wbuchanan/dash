@@ -428,7 +428,7 @@ and now matches Stata.
 
 - dash histogram mpg || histogram price: a two-key legend -> no legend (WP-31, C13)
 
-<!-- WP-31 D5 -->
+- dash scatter mpg weight, scale(1.5): unchanged -> every text, marker and line 1.5 x; aspectratio(1, placement(e)) xsize(8) ysize(4): refused "not a positive number" -> a square plot region at the right edge; fysize(50), fxsize(50): unchanged -> half the height, half the width (WP-31, D5)
 
 <!-- WP-31 E11 -->
 

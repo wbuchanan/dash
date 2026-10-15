@@ -962,6 +962,15 @@ program define _dash_parse_graph_opts, sclass
         * ///
     ]
 
+    // aspectratio(#[, placement(compassdir)]) as twoway reads it (WP-31
+    // D5): the number goes on to the rules, placement() to its own key.
+    local aspectplacement ""
+    if `: length local aspectratio' {
+        _dash_aspect_split `"`macval(aspectratio)'"'
+        local aspectratio : copy local _asp_num
+        local aspectplacement : copy local _asp_place
+    }
+
     // t(), b(), l() and r() are twoway's abbreviations of t1title(),
     // b1title(), l1title() and r1title(), and T1title() .. R1title() take
     // them as they stand: a digit ends -syntax-'s run of capitals, so
@@ -1011,14 +1020,8 @@ program define _dash_parse_graph_opts, sclass
     // 22sep2026: name(g1) link(g1) registered, built one source, said
     // nothing.  Named here, so nothing is dropped in silence.
     if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
-    if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
-    if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local play' local _dash_pending `"`_dash_pending' play"'
-    if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
-    // WP-22: twoway's advanced xoverhangs and yoverhangs, after the comma.
-    if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
-    if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
     // Whatever Stata could not match at all, via the trailing *.
     local _dash_unknown : copy local options
 
@@ -1042,6 +1045,9 @@ program define _dash_parse_graph_opts, sclass
     sreturn local xscale       : copy local xscale
     sreturn local yscale       : copy local yscale
     sreturn local aspectratio  : copy local aspectratio
+    sreturn local aspectplacement : copy local aspectplacement
+    sreturn local xoverhangs   : copy local xoverhangs
+    sreturn local yoverhangs   : copy local yoverhangs
     sreturn local scheme       : copy local scheme
     sreturn local plotregion   : copy local plotregion
     sreturn local graphregion  : copy local graphregion
@@ -1109,6 +1115,35 @@ program define _dash_parse_graph_opts, sclass
     sreturn local _unknown  : copy local _dash_unknown
 end
 
+
+// _dash_aspect_split text -- aspectratio(#[, placement(compassdir)]) as
+// twoway reads it (WP-31 D5; test/fixtures/sizing_truth.json): the number
+// before the comma in the caller's local _asp_num, and placement() as its
+// compass direction in _asp_place, "" when it is not given.  Locals, not
+// s(): the parser's s() is what _dash_opts_repeats keys a copy by.
+// Measured: aspectratio(1, foo) is "option foo not allowed", r(198)
+// (syntax's own words, as twoway's), and an unknown placement() name is a
+// note, drawn centred (aspect_bad_place).
+program define _dash_aspect_split
+    version 19
+    args text
+    local num : copy local text
+    local place ""
+    local cpos = strpos(`"`macval(text)'"', ",")
+    if `cpos' {
+        local num = substr(`"`macval(text)'"', 1, `cpos' - 1)
+        local 0 = substr(`"`macval(text)'"', `cpos', .)
+        syntax [, PLACEment(string)]
+        if `: length local placement' {
+            mata: st_local("place", _dash_at_place(strtrim(st_local("placement"))))
+            if "`place'" == "" {
+                mata: _dash_note("named style ", st_local("placement"), " not found in class compass2dir, default attributes used")
+            }
+        }
+    }
+    c_local _asp_num = strtrim(`"`macval(num)'"')
+    c_local _asp_place `"`place'"'
+end
 
 // ================================================================
 // _dash_parse_plot_opts
@@ -1259,6 +1294,14 @@ program define _dash_parse_plot_opts, sclass
     // copy of it is a copy of cmissing(), the rightmost copy read
     // (_dash_opts_repeats keys both as cmissing).
     if `"`macval(cmissings)'"' != "" mata: st_local("cmissing", _dash_stylelist_norm(st_local("cmissings")))
+    // aspectratio(#[, placement(compassdir)]) as twoway reads it (WP-31
+    // D5): the number goes on to the rules, placement() to its own key.
+    local aspectplacement ""
+    if `: length local aspectratio' {
+        _dash_aspect_split `"`macval(aspectratio)'"'
+        local aspectratio : copy local _asp_num
+        local aspectplacement : copy local _asp_place
+    }
     /* ---- plot-level ---- */
 
     // t(), b(), l() and r() need no fold: T1title() .. R1title() take them
@@ -1346,8 +1389,6 @@ program define _dash_parse_plot_opts, sclass
     // As in the graph-level block: build-time options written on a graph.
     if `: length local filter' local _dash_pending `"`_dash_pending' filter"'
     if `: length local fitopts' local _dash_pending `"`_dash_pending' fitopts"'
-    if `: length local fxsize' local _dash_pending `"`_dash_pending' fxsize"'
-    if `: length local fysize' local _dash_pending `"`_dash_pending' fysize"'
     if `: length local link' local _dash_pending `"`_dash_pending' link"'
     if `: length local lineopts' local _dash_pending `"`_dash_pending' lineopts"'
     if `: length local mlabwidth' local _dash_pending `"`_dash_pending' mlabwidth"'
@@ -1377,7 +1418,6 @@ program define _dash_parse_plot_opts, sclass
     if `: length local alcolor' local _dash_pending `"`_dash_pending' alcolor"'
     if `: length local alwidth' local _dash_pending `"`_dash_pending' alwidth"'
     if `: length local alpattern' local _dash_pending `"`_dash_pending' alpattern"'
-    if `: length local scale' local _dash_pending `"`_dash_pending' scale"'
     // sort(varlist) arrives in `sort1', -syntax-'s name for it, and is
     // returned in s(sort1); it is named here as sort().  _dash_sort_opt
     // checks it as twoway does once the repeats are reduced, honours it
@@ -1385,10 +1425,6 @@ program define _dash_parse_plot_opts, sclass
     // on tsline and tsrline, taking sort off this list there (WP-29
     // P0.1); on every other type it stays named.
     if `: length local sort1' local _dash_pending `"`_dash_pending' sort"'
-    // WP-22: twoway's advanced xoverhangs and yoverhangs widen the graph
-    // region so an end tick label does not run off the edge.
-    if `: length local xoverhangs' local _dash_pending `"`_dash_pending' xoverhangs"'
-    if `: length local yoverhangs' local _dash_pending `"`_dash_pending' yoverhangs"'
     // WP-31 B4b: contour's heatmap drawing and its band outlines.
     if `: length local heatmap' local _dash_pending `"`_dash_pending' heatmap"'
     if `: length local outlines' local _dash_pending `"`_dash_pending' outlines"'
@@ -1621,6 +1657,9 @@ program define _dash_parse_plot_opts, sclass
     sreturn local g_xscale       : copy local xscale
     sreturn local g_yscale       : copy local yscale
     sreturn local g_aspectratio  : copy local aspectratio
+    sreturn local g_aspectplacement : copy local aspectplacement
+    sreturn local g_xoverhangs   : copy local xoverhangs
+    sreturn local g_yoverhangs   : copy local yoverhangs
     sreturn local g_scheme       : copy local scheme
     sreturn local g_plotregion   : copy local plotregion
     sreturn local g_graphregion  : copy local graphregion
@@ -3433,6 +3472,14 @@ program define _dash_option_rules
     // not refused; the renderer reports the angle and draws horizontal.
     // Elsewhere twoway never evaluates the angle, and neither does this
     // table.
+    // lwidth()'s 0..10000 bound stands (WP-31 S33, A15): S33's
+    // measurement (sizing_truth.json lw_20000) is twoway's gm_linewidth
+    // refusal the token already gives.
+    // scale(), fxsize(), fysize() (WP-31 D5, sizing_truth.json): scale()
+    // takes 0 and above, a negative number is twoway's gm_linewidth
+    // refusal and a word its note, drawn at 1 (mult); fxsize()/fysize()
+    // take any number (0 and 150 draw) and refuse a word "option fxsize()
+    // incorrectly specified" (optnum).
     // Graph rules: validated once per segment in _dash_validate_opts, from
     // s(g_<opt>) -- so a value inside a segment is refused as twoway refuses
     // it even when a later segment or the after-comma part outranks it --
@@ -3445,6 +3492,7 @@ program define _dash_option_rules
     // alike, by the same rule `dash build' and `dash serve' apply.
     local graph ///
         xsize=style,1,100  ysize=style,1,100  aspectratio=num,0  hover=varlist  by=byvarlist ///
+        scale=mult  fxsize=optnum  fysize=optnum ///
         scheme=scheme ///
         xlabel=axislist  ylabel=axislist  xlabel2=axislist  ylabel2=axislist ///
         xtick=axislist  ytick=axislist  xtick2=axislist  ytick2=axislist ///
@@ -3585,6 +3633,9 @@ program define _dash_validate_value, rclass
     }
 
     local bad ""
+    // A line width (and scale()) out of twoway's range: its gm_linewidth
+    // line, after the chain.
+    local lwout 0
     if "`kind'" == "num" {
         if "`p3'" == "x"                     local bad "a number strictly between `p1' and `p2'"
         else if "`p1'" != "" & "`p2'" != ""  local bad "a number between `p1' and `p2'"
@@ -3689,6 +3740,30 @@ program define _dash_validate_value, rclass
             else       local norm = strtrim(string(`R', "%21.0g"))
         }
     }
+    else if "`kind'" == "mult" {
+        // scale() (WP-31 D5, sizing_truth.json scale_*): twoway draws 0 and
+        // above, refuses a negative number when it draws the line widths,
+        // r(198) in its gm_linewidth words, and notes a word and draws at 1.
+        if `isnum' {
+            if `R' < 0 local lwout 1
+            if `plain' local norm : copy local tv
+            else       local norm = strtrim(string(`R', "%21.0g"))
+        }
+        else {
+            mata: _dash_note("named style ", st_local("tv"), " not found in class numstyle, default attributes used")
+            local norm ""
+        }
+    }
+    else if "`kind'" == "optnum" {
+        // fxsize()/fysize() (WP-31 D5, sizing_truth.json fx_bad_*, fy_bad_*):
+        // any number, a word refused in twoway's words.
+        if !`isnum' {
+            display as error "option `opt'() incorrectly specified"
+            exit 198
+        }
+        if `plain' local norm : copy local tv
+        else       local norm = strtrim(string(`R', "%21.0g"))
+    }
     else if "`kind'" == "colour" {
         // WP-30 P1.13a: twoway refuses a comma-written plot colour,
         // mcolor("255,0,128"), with invalid '<word>', r(198): the first
@@ -3731,7 +3806,6 @@ program define _dash_validate_value, rclass
             // the scheme and graph size are known is the renderer's to
             // note (D-13b).  An overflow (*1e400) passes as a name, as
             // twoway reads it.
-            local lwout 0
             tempname LW
             if regexm(scalar(`T'), "^\*([-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eEdD][-+]?[0-9]+)?)$") {
                 scalar `LW' = real(regexs(1))
@@ -3749,11 +3823,6 @@ program define _dash_validate_value, rclass
                 if `R' < `p1' | `R' > `p2' local lwout 1
             }
             else if `numlike' local bad "a name or a number between `p1' and `p2'"
-            if `lwout' {
-                mata: _dash_say("err", "gm_linewidth must be between 0.000 and  1.0e+04", "", "")
-                mata: _dash_say("err", "`prefix': `opt'() must be a line width from 0 to 10000 Stata units (got: ", st_local("value"), ")")
-                exit 198
-            }
         }
         else if "`p1'" != "" & "`p2'" != "" {
             if `isnum' {
@@ -4128,6 +4197,13 @@ program define _dash_validate_value, rclass
         }
     }
 
+    if `lwout' {
+        mata: _dash_say("err", "gm_linewidth must be between 0.000 and  1.0e+04", "", "")
+        if "`kind'" == "style" {
+            mata: _dash_say("err", "`prefix': `opt'() must be a line width from 0 to 10000 Stata units (got: ", st_local("value"), ")")
+        }
+        exit 198
+    }
     // Every refusal above and here echoes the value through _dash_say: the
     // value is read from Mata, never expanded into the display line, and
     // shown as written -- `jitter({bf:X})' printed a bold X (P20-02..06).
@@ -6603,7 +6679,7 @@ program define _dash_process_segment, rclass
             xsize ysize fxsize fysize ///
             scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
             t2title b1title b2title l1title l2title r1title r2title ///
-            zlabel ztitle zscale nodraw play replace {
+            zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
         mata: st_local("gval", st_global("s(g_" + st_local("gkey") + ")"))
         if `: length local gval' {
             c_local _sg_`gkey' : copy local gval
@@ -7679,7 +7755,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title ///
-          zlabel ztitle zscale nodraw play replace {
+          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
         local g_`gk' ""
     }
 
@@ -7721,7 +7797,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
             mata: st_local("_gv", st_global("s(" + st_local("gk") + ")"))
             if `: length local _gv' {
                 // Kept apart and merged in after the segment loop: an option
@@ -7789,7 +7865,7 @@ program define _dash_plot
     // a second copy, in another plot group, another || segment or after
     // the comma, is "option scheme() not allowed", r(198) (measured
     // 24sep2026 for each; name() has its own check, above and below).
-    local _g_unique "saving scheme aspectratio xsize ysize scale fxsize fysize nodraw play"
+    local _g_unique "saving scheme aspectratio aspectplacement xsize ysize scale fxsize fysize nodraw play"
     // The function layers, collected for evaluation after the loop.
     local _fn_m 0
     // The fit layers' points (WP-31 C4): each segment's in _ft_sc
@@ -7832,7 +7908,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
             local _sg_`gk' ""
         }
         mata: st_strscalar(st_local("_ft_sc"), "")
@@ -7943,7 +8019,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
             if !`: length local _sg_`gk'' continue
             if `: list gk in _g_unique' {
                 if `_gseen_`gk'' {
@@ -7975,7 +8051,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
               scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
               t2title b1title b2title l1title l2title r1title r2title ///
-              zlabel ztitle zscale nodraw play replace {
+              zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
         if `: length local _gafter_`gk'' {
             mata: _dash_rep_merge_locals(st_local("gk"), "g_`gk'", "_gafter_`gk'", "g_`gk'")
         }
@@ -8385,7 +8461,7 @@ program define _dash_plot
             xsize ysize fxsize fysize ///
           scale text ttext hover xtick ytick xmtick ymtick xmlabel ymlabel tlabel ttick tmlabel tmtick tscale ttitle tline tlabel2 ttick2 tline2 tscale2 ttitle2 t1title ///
           t2title b1title b2title l1title l2title r1title r2title ///
-          zlabel ztitle zscale nodraw play replace {
+          zlabel ztitle zscale aspectplacement xoverhangs yoverhangs nodraw play replace {
         // text() and ttext() are written as added_text records below
         // (WP-30 P1.10), never as their raw values.
         if inlist("`gk'", "text", "ttext") continue

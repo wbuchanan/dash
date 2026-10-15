@@ -7295,6 +7295,198 @@ if inlist("`only'", "", "S31") & `: list posof "S31" in w31_run' {
 }
 * ==== end S31 ====
 
+capture program drop _u32_tw
+program define _u32_tw
+    // _u32_tw <svg> <command...>: twoway's drawing of <command> exported
+    // with the plot region outlined #010203, for _u32_check.
+    version 19
+    gettoken svg 0 : 0
+    if !strpos(`"`0'"', ",") local 0 `"`0',"'
+    capture graph drop u32t
+    quietly twoway `0' plotregion(lcolor("1 2 3")) name(u32t, replace)
+    quietly graph export "`svg'", replace
+    graph drop u32t
+end
+
+capture program drop _u32_dash
+program define _u32_dash
+    // _u32_dash <dir> <k> <command...>: dash's spec and data for
+    // <command>, read by _u32_check.
+    version 19
+    gettoken dir 0 : 0
+    gettoken k 0 : 0
+    if !strpos(`"`0'"', ",") local 0 `"`0',"'
+    dash clear
+    quietly dash `0' name(zu32`k')
+    _dash_serve_spec, specpath("`dir'/s`k'.json") datapath("`dir'/d`k'.json")
+end
+
+python:
+def _u32_check(dr_dir, k, case):
+    """dash's value for <case> in the saved and served figure of spec k,
+    into u32_s and u32_v."""
+    import __main__ as m
+    from sfi import Macro
+    import dash_render as dr
+    sp, dp = "%s/s%s.json" % (dr_dir, k), "%s/d%s.json" % (dr_dir, k)
+    a, b = m._u03_docs(sp, dp, "%s/a%s.py" % (dr_dir, k))
+    for figs, sfx in ((a, "s"), (b, "v")):
+        f = figs[0]
+        if case == "title":
+            v = "%.4f" % dr.OptionTranslator.css_to_pt(f.title.text_font_size)
+        elif case == "fy":
+            v = "%.4f %d" % (float(f.aspect_ratio), int(f.max_height))
+        elif case == "fx":
+            v = str((f.styles or {}).get("max-width", ""))
+        elif case == "ratio":
+            v = "%.4f %s %s" % (float(f.aspect_ratio), f.frame_width,
+                                f.frame_height)
+        elif case == "place":
+            v = "%s %s %s %s" % (f.frame_width, f.frame_height,
+                                 f.min_border_left, f.min_border_right)
+        elif case == "border":
+            v = "%s %s" % (f.min_border_left, f.min_border_right)
+        Macro.setGlobal("u32_" + sfx, v)
+
+
+def _u32_plot(svg):
+    """twoway's plot region in <svg>: left top right bottom."""
+    import os, sys
+    from sfi import Macro
+    sys.path.insert(0, os.path.join(Macro.getGlobal("u32_repo"), "scripts"))
+    import svg_chrome
+    r = svg_chrome.svg_region(svg, "#010203")
+    import svg_truth
+    t = [d for d in svg_truth.svg_document(svg)["texts"] if d["text"] == "T"]
+    Macro.setGlobal("u32_tw", "%.3f %.3f %.3f %.3f %s" % (
+        r["left"], r["top"], r["right"], r["bottom"],
+        t[0]["size"] if t else "."))
+end
+
+* ==== S32 D5: Sizing ====
+local only : env WP31_ONLY
+if inlist("`only'", "", "S32") & `: list posof "S32" in w31_run' {
+    display as text "S32 start " c(current_date) " " c(current_time)
+    local u32d "`w31_work'/s32"
+    capture mkdir "`u32d'"
+    capture graph drop _all
+    set scheme s2color
+    sysuse auto, clear
+    global u32_repo "`c(pwd)'/.."
+
+    // U32-1: scale(1.5) draws the title 1.5 x, in twoway and in dash.
+    _u32_tw "`u32d'/t1a.svg" scatter mpg weight, title("T")
+    python: _u32_plot("`u32d'/t1a.svg")
+    local tw0 : word 5 of ${u32_tw}
+    _u32_tw "`u32d'/t1b.svg" scatter mpg weight, title("T") scale(1.5)
+    python: _u32_plot("`u32d'/t1b.svg")
+    local tw1 : word 5 of ${u32_tw}
+    _u32_dash "`u32d'" 1a scatter mpg weight, title("T")
+    python: _u32_check("`u32d'", "1a", "title")
+    local s0 ${u32_s}
+    local v0 ${u32_v}
+    _u32_dash "`u32d'" 1b scatter mpg weight, title("T") scale(1.5)
+    python: _u32_check("`u32d'", "1b", "title")
+    _w31_expect U32-1 "abs(`tw1' / `tw0' - 1.5) < .01" "twoway's title `tw0' -> `tw1'"
+    _w31_expect U32-1 "abs(${u32_s} / `s0' - `tw1' / `tw0') < .02" "saved: `s0' -> ${u32_s}"
+    _w31_expect U32-1 "abs(${u32_v} / `v0' - `tw1' / `tw0') < .02" "served: `v0' -> ${u32_v}"
+    _w31_done U32-1 "scale(1.5) draws the title `tw1'/`tw0' as large, as twoway, saved and served"
+
+    // U32-2: fysize(50) halves the plot region's height in twoway and the
+    // figure's height in dash; fxsize(50) holds it to half its width.
+    _u32_tw "`u32d'/t2a.svg" scatter mpg weight
+    python: _u32_plot("`u32d'/t2a.svg")
+    local h0 = real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))
+    _u32_tw "`u32d'/t2b.svg" scatter mpg weight, fysize(50)
+    python: _u32_plot("`u32d'/t2b.svg")
+    local h1 = real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))
+    _w31_expect U32-2 "`h1' < .6 * `h0'" "twoway's plot height `h0' -> `h1'"
+    _u32_dash "`u32d'" 2a scatter mpg weight
+    python: _u32_check("`u32d'", "2a", "fy")
+    local s0 ${u32_s}
+    local v0 ${u32_v}
+    _u32_dash "`u32d'" 2b scatter mpg weight, fysize(50)
+    python: _u32_check("`u32d'", "2b", "fy")
+    foreach m in s v {
+        local a0 : word 1 of ``m'0'
+        local a1 : word 1 of ${u32_`m'}
+        local m0 : word 2 of ``m'0'
+        local m1 : word 2 of ${u32_`m'}
+        _w31_expect U32-2 "abs(`a1' / `a0' - 2) < 1e-6 & abs(`m1' - `m0' / 2) <= 1" "`m': ratio `a0' -> `a1', height bound `m0' -> `m1'"
+    }
+    _u32_dash "`u32d'" 2c scatter mpg weight, fxsize(50)
+    python: _u32_check("`u32d'", "2c", "fx")
+    _w31_expect U32-2 `"("${u32_s}" == "50%") & ("${u32_v}" == "50%")"' "max-width ${u32_s} ${u32_v}"
+    _w31_done U32-2 "fysize(50) halves the height, fxsize(50) the width, saved and served"
+
+    // U32-3: aspectratio(1) alone: twoway's plot region square; dash's
+    // figure square (the documented difference: its frame is not).
+    _u32_tw "`u32d'/t3.svg" scatter mpg weight, aspectratio(1)
+    python: _u32_plot("`u32d'/t3.svg")
+    local r = (real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))) / (real(word("${u32_tw}", 3)) - real(word("${u32_tw}", 1)))
+    _w31_expect U32-3 "abs(`r' - 1) < .01" "twoway's plot region h/w `r'"
+    _u32_dash "`u32d'" 3 scatter mpg weight, aspectratio(1)
+    python: _u32_check("`u32d'", "3", "ratio")
+    foreach m in s v {
+        _w31_expect U32-3 `"("${u32_`m'}" == "1.0000 None None")"' "`m': ${u32_`m'}"
+    }
+    _w31_done U32-3 "aspectratio(1) alone: twoway's plot region h/w `r', dash's figure 1:1, saved and served"
+
+    // U32-4: aspectratio(1) xsize(8) ysize(4): a square plot region,
+    // pushed right by placement(e), in twoway and in dash.
+    _u32_tw "`u32d'/t4.svg" scatter mpg weight, aspectratio(1, placement(e)) xsize(8) ysize(4)
+    python: _u32_plot("`u32d'/t4.svg")
+    local w = real(word("${u32_tw}", 3)) - real(word("${u32_tw}", 1))
+    local h = real(word("${u32_tw}", 4)) - real(word("${u32_tw}", 2))
+    local rgt = real(word("${u32_tw}", 3))
+    _w31_expect U32-4 "abs(`h' / `w' - 1) < .01 & `rgt' > 5500" "twoway's plot region `w' x `h', right edge `rgt' of 5760"
+    _u32_dash "`u32d'" 4 scatter mpg weight, aspectratio(1, placement(e)) xsize(8) ysize(4)
+    python: _u32_check("`u32d'", "4", "place")
+    foreach m in s v {
+        local fw : word 1 of ${u32_`m'}
+        local fh : word 2 of ${u32_`m'}
+        local bl : word 3 of ${u32_`m'}
+        local br : word 4 of ${u32_`m'}
+        _w31_expect U32-4 "`fw' == `fh' & `bl' > `br'" "`m': frame `fw' x `fh', borders `bl' `br'"
+    }
+    _w31_done U32-4 "aspectratio(1, placement(e)) with xsize(8) ysize(4): a square plot region at the right, saved and served"
+
+    // U32-5: _dash_aspect_split reads aspectratio()'s text as twoway does.
+    _dash_aspect_split "1, placement(e)"
+    _w31_expect U32-5 `"("`_asp_num'" == "1") & ("`_asp_place'" == "e")"' "1, placement(e): `_asp_num' `_asp_place'"
+    _dash_aspect_split "0.5"
+    _w31_expect U32-5 `"("`_asp_num'" == "0.5") & ("`_asp_place'" == "")"' "0.5: `_asp_num' `_asp_place'"
+    _dash_aspect_split "2, place(3)"
+    _w31_expect U32-5 `"("`_asp_num'" == "2") & ("`_asp_place'" == "e")"' "2, place(3): `_asp_num' `_asp_place'"
+    _w31_done U32-5 "the number and placement() of aspectratio() split as twoway reads them"
+
+    // U32-9: xoverhangs narrows twoway's plot region for a long end
+    // label, and raises dash's borders for it.
+    _u32_tw "`u32d'/t9a.svg" scatter mpg weight, xlabel(1760 "a very long first label" 4840)
+    python: _u32_plot("`u32d'/t9a.svg")
+    local l0 : word 1 of ${u32_tw}
+    _u32_tw "`u32d'/t9b.svg" scatter mpg weight, xlabel(1760 "a very long first label" 4840) xoverhangs
+    python: _u32_plot("`u32d'/t9b.svg")
+    local l1 : word 1 of ${u32_tw}
+    _w31_expect U32-9 "`l1' > `l0'" "twoway's plot region left edge `l0' -> `l1'"
+    _u32_dash "`u32d'" 9a scatter mpg weight, xlabel(1760 "a very long first label" 4840)
+    python: _u32_check("`u32d'", "9a", "border")
+    local s0 ${u32_s}
+    local v0 ${u32_v}
+    _u32_dash "`u32d'" 9b scatter mpg weight, xlabel(1760 "a very long first label" 4840) xoverhangs
+    python: _u32_check("`u32d'", "9b", "border")
+    foreach m in s v {
+        local b0 : word 1 of ``m'0'
+        local b1 : word 1 of ${u32_`m'}
+        if "`b0'" == "None" local b0 0
+        _w31_expect U32-9 "`b1' > `b0'" "`m': left border `b0' -> `b1'"
+    }
+    _w31_done U32-9 "xoverhangs makes room for a long end label, as twoway, saved and served"
+    dash clear
+    display as text "S32 end " c(current_date) " " c(current_time)
+}
+* ==== end S32 ====
+
 * ==== append new blocks above this line ====
 
 // ----------------------------------------------------------------

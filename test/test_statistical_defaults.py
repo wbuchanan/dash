@@ -896,9 +896,10 @@ class TestKdensityRange:
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn.
         # 33 -> 23: D2 the eight edge titles drawn, title2() and
         # subtitle2() refused.  23 -> 25: B4b heatmap() and outlines()
-        # named on contour.
-        assert len(pending) == 25, (len(pending), pending)
-        for really_pending in ("sort", "scale"):
+        # named on contour.  25 -> 20: D5 fxsize fysize scale xoverhangs
+        # yoverhangs drawn (scale was the second control; play is now).
+        assert len(pending) == 20, (len(pending), pending)
+        for really_pending in ("sort", "play"):
             assert really_pending in pending, (really_pending, pending)
         assert "range" not in pending, (
             "range() sets a function plot's domain and a kdensity's "

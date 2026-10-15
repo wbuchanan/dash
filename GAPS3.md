@@ -478,7 +478,7 @@ A closing commit writes `commit pending`; the merger's step k.3b replaces it wit
 - **D3b Tracked:** Open (WP-31 section 36).
 - **D4 Tracked:** Closed in WP-31, BUGS.md "Legend geometry sub-options are named, corner clocks are centred, pos(0) and ring(0) land at Bokeh's top_right, label(#) with no text is dropped, and identical keys are not merged", commit c2e27c0.
 - **D4b Tracked:** Open (WP-31 section 39).
-- **D5 Tracked:** Open (WP-31 section 32).
+- **D5 Tracked:** Closed in WP-31, BUGS.md "scale(), fxsize(), fysize() and the overhangs are never read, and aspectratio() shapes the figure, loses to xsize/ysize and refuses placement()", commit pending.
 - **D6 Tracked:** Open (WP-31 section 33).
 - **D7 Tracked:** Open (WP-31 section 33).
 - **D8 Tracked:** Open (WP-31 section 34).

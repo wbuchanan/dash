@@ -11,8 +11,8 @@
 *! DRAWS is read from `graph export' SVG.
 *!
 *!   HC8-01  the note the help prints for `dash scatter mpg weight,
-*!           mlpattern(dash) scale(1.2)' is, word for word, "dash:
-*!           ignoring unsupported option(s): mlpattern() scale()".
+*!           mlpattern(dash) play(x)' is, word for word, "dash:
+*!           ignoring unsupported option(s): mlpattern() play()".
 *!           (Flipped, WP-30 P1.14a: pstyle() is drawn now; flipped,
 *!           WP-31 D2: t1title() is drawn now.)
 *!   HC8-02  every option on the Unsupported list is accepted (rc 0) and
@@ -390,11 +390,13 @@ generate pos = mod(_n, 12) + 1
 // Flipped (WP-30 P1.14a): pstyle() -> mlpattern(), which is still named.
 // Flipped (WP-31 D2): t1title() -> scale(), which is still named;
 // t1title() is drawn, as twoway draws it (edge_title_truth.json).
-_hc_run "" `"dash scatter mpg weight, mlpattern(dash) scale(1.2)"'
+// Flipped (WP-31 D5): scale() -> play(), which is still named; scale() is
+// drawn, as twoway draws it (sizing_truth.json scale_15).
+_hc_run "" `"dash scatter mpg weight, mlpattern(dash) play(x)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
 _hc_expect "HC8-01" "(`rc' == 0)" "rc `rc'"
-_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): mlpattern() scale())" 1 1
+_hc_log "HC8-01" "`lf'" "(note:  dash: ignoring unsupported option(s): mlpattern() play())" 1 1
 _hc_done "HC8-01" "the note is the help's, word for word"
 
 // ================================================================
@@ -433,7 +435,11 @@ local p_opts `"acolor(red) alcolor(red) alpattern(dash) alwidth(thick) at(mpg) b
 // given here and not named.  title2() and subtitle2() are refused, as
 // twoway refuses them (U27-6 .. U27-8), so they are not given (34 -> 24
 // and 18 -> 8).
-local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts filter fitopts fxsize fysize link lineopts mlabwidth mlpattern play scale xoverhangs yoverhangs"
+// Flipped (WP-31 D5): fxsize(), fysize(), scale(), xoverhangs and
+// yoverhangs named in the note was wrong, because dash draws them as
+// twoway does (sizing_truth.json); given here and not named (24 -> 19 and
+// 8 -> 3).
+local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts filter fitopts link lineopts mlabwidth mlpattern play"
 // Flipped (WP-30 P1.24): mlabvposition named in the note was wrong,
 // because dash draws it per row as twoway does; it is given and not named.
 // Flipped (WP-30 P1.24, part 2): mlabtextstyle likewise, drawn in the
@@ -441,7 +447,7 @@ local p_names "acolor alcolor alpattern alwidth at blabel bmlinestyle ciopts fil
 // Flipped (WP-30 P1.8a): connect(), cmissing() and sort named in the note
 // was wrong, because a scatter given connect() is drawn as twoway's
 // connected plot, its line joined in x order under sort.
-local p_honoured "mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title"
+local p_honoured "mlabvposition mlabtextstyle cmissing connect sort text colorlist coloruseplegend dstyle dlstyle xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs"
 _hc_run "" `"dash scatter mpg weight, mlabel(make) `p_opts' name(hc02p, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -474,7 +480,7 @@ local g_opts `"b1title(b) b2title(b) filter(foreign) fxsize(50) fysize(50) l1tit
 // named (see the plot level).
 // Flipped (WP-31 D2): the eight edge titles are drawn, given and not
 // named; title2() and subtitle2() refused, not given (see the plot level).
-local g_names "filter fxsize fysize link play scale xoverhangs yoverhangs"
+local g_names "filter link play"
 _hc_run "" `"dash (scatter mpg weight), `g_opts' name(hc02g, replace)"'
 local rc = r(rc)
 local lf "`r(logfile)'"
@@ -494,7 +500,7 @@ foreach nm of local g_names {
 _hc_expect "HC8-02" "(`nmiss' == 0)" "`nmiss' graph-level option(s) not named"
 mata: st_local("gtext", strofreal(strpos(" " + st_local("note") + " ", " text() ") > 0))
 _hc_expect "HC8-02" "(`gtext' == 0)" "graph-level text() is drawn and named in the note"
-foreach nm in xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title {
+foreach nm in xmlabel xmtick ymlabel ymtick b1title b2title l1title l2title r1title r2title t1title t2title fxsize fysize scale xoverhangs yoverhangs {
     mata: st_local("gmin", strofreal(strpos(" " + st_local("note") + " ", " `nm'() ") > 0))
     _hc_expect "HC8-02" "(`gmin' == 0)" "graph-level `nm'() is drawn and named in the note"
 }

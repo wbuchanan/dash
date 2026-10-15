@@ -4860,6 +4860,41 @@ Under {cmd:by()}, as in {helpb twoway}, {cmd:xsize()} and {cmd:ysize()}
 size the whole array of panels, not each panel; {cmd:layout(bs)} places a
 faceted graph by that ratio.
 
+{phang2}{opt aspectratio(#)} shapes the {bf:plot region}, as in
+{helpb twoway}, and takes {helpb twoway}'s sub-option {it:placement}
+({it:compassdir}) after a comma.  With {cmd:xsize()} or
+{cmd:ysize()} the figure is drawn at that size (96 pixels an inch, held to
+the page's height bound) and its plot region is the largest of ratio
+{it:#} that fits, placed where {it:placement} says -- {cmd:e} against
+the right edge, {cmd:w} the left, {cmd:n} the top, {cmd:s} the bottom,
+{cmd:c} (the default) centred; a name {cmd:twoway} does not know is noted
+and centred, as {cmd:twoway} draws it.  The room the axes and titles take
+is estimated, so the figure's size can differ from {cmd:xsize()} by a few
+pixels.  Without {cmd:xsize()} or {cmd:ysize()} the figure stretches to
+its cell, so {it:#} shapes the whole figure instead (the plot region's
+own ratio then differs from {it:#} by the room the axes take), and
+{it:placement} has no slack to use.  Under {cmd:by()} {it:#} shapes
+each panel as a figure.{p_end}
+
+{phang2}{opt scale(#)} multiplies every text size, marker size and line
+width of the graph -- titles, axis titles, tick labels and tick lengths,
+legend keys and labels, added text, reference lines -- by {it:#}, as in
+{helpb twoway}; the gaps between boxes are not scaled.  {cmd:scale(0)}
+draws them at size 0 and a negative {it:#} is refused, r(198), in
+{cmd:twoway}'s words; a word is noted and drawn at 1.{p_end}
+
+{phang2}{opt fysize(#)} draws the figure {it:#} percent as tall, and
+{opt fxsize(#)} holds it to {it:#} percent of the width its cell
+gives it.  {helpb twoway} keeps a graph drawn alone at its size and draws
+the plot in {it:#} percent of four inches, centred; on a dashboard the cell
+is what shrinks.  A value of 0 or less, or of 100 and more, changes
+nothing; a word is refused, r(198), as {cmd:twoway} refuses it.{p_end}
+
+{phang2}{opt xoverhangs} and {opt yoverhangs} keep the first and last tick labels
+inside the figure, as {helpb twoway} narrows the plot region for them: the
+figure's border on each side is raised to half the widest end label, never
+lowered.{p_end}
+
 {pstd}
 The ratio is honoured within a height band.  Outside it the ratio yields, so
 that a single square panel cannot fill an entire screen and a very wide panel
@@ -5539,23 +5574,13 @@ command copy-pasted from a do-file always runs -- and every one that is
 supplied is named in that command's note, so nothing is dropped in silence:
 
 {p 12 12 2}{cmd:. sysuse auto, clear}{p_end}
-{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) scale(1.2)}{p_end}
-{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() scale())}{p_end}
+{p 12 12 2}{cmd:. dash scatter mpg weight, mlpattern(dash) play(x)}{p_end}
+{p 12 12 2}{cmd:(note: dash: ignoring unsupported option(s): mlpattern() play())}{p_end}
 
 {pstd}
 The note is built from the declarations in {cmd:dash.ado}, and this list is
 checked against them: {cmd:test/test_help_conformance.py} fails if the two
 disagree in either direction.
-
-{phang2}{ul:Sizing for graph combine, and scale().}
-    {opt fxsize(#)} and {opt fysize(#)} make a graph use only that
-    percentage of the width or height it is given -- {cmd:twoway}'s way of
-    sizing a panel for {cmd:graph combine}, though they change a graph
-    drawn alone too -- and {opt scale(#)} makes all the text, markers and
-    lines of a graph larger or smaller.  {cmd:dash} applies none of them:
-    a {cmd:dash} figure stretches to the width it is given.  Use
-    {cmd:xsize()}, {cmd:ysize()} or {cmd:aspectratio()} to set its
-    proportions, and {cmd:layout()} to place it.
 
 {phang2}{ul:A confidence band's outline, on other plots.}
     {opt acolor(color)}, {opt alcolor(color)}, {opt alwidth(linewidth)},
@@ -5603,11 +5628,6 @@ disagree in either direction.
     {cmd:twoway} does, so none of the eight names them (see
     {ul:Join order} under the plot types).  A malformed {cmd:sort()} is
     refused on every type, as {cmd:twoway} refuses it.
-
-{phang2}{ul:Room for long end labels.}
-    {opt xoverhangs}, {opt yoverhangs} -- {cmd:twoway} widens the graph
-    region so that the label on the first or last tick does not run off the
-    edge; {cmd:dash} does not move the figure's edges for them.
 
 {phang2}{ul:Contour options.}
     {opt heatmap}, {opt outlines} -- {cmd:contour} draws its bands without

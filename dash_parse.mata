@@ -6613,6 +6613,9 @@ string scalar _dash_rep_keyof(string scalar snames)
     key = ""
     for (i = 1; i <= cols(w); i++) {
         if (w[i] == "_unknown" | w[i] == "_pending") continue
+        // WP-31 D5: aspectratio()'s placement() rides its own key; a copy
+        // is keyed as aspectratio() alone.
+        if (w[i] == "aspectplacement" | w[i] == "g_aspectplacement") continue
         key = key + (key == "" ? "" : " ") + w[i]
     }
     if (key == "" & strtrim(st_global("s(_pending)")) != "") {

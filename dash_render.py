@@ -24204,6 +24204,262 @@ def _dash_figure_aspect(graph_opts, scheme_x=None, scheme_y=None):
     return None
 
 
+
+def _dash_scale_factor(graph_opts):
+    """scale(#) of *graph_opts* as a multiplier (WP-31 D5), or None when it
+    is absent, 1 or unusable.  dash.ado has refused a negative value with
+    twoway's words and dropped a word (twoway notes it and draws at 1), so
+    anything else reaching here is ignored."""
+    raw = str((graph_opts or {}).get("scale", "") or "").strip()[:64]
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        return None
+    if not math.isfinite(v) or v < 0 or v == 1.0:
+        return None
+    return v
+
+
+def _dash_scale_columns(sources, factor):
+    """Multiply dash's own derived marker-size columns (``__dash_wsize*``,
+    the weighted markers) of *sources* by *factor*, once per source
+    (WP-31 D5).  The served redraw rebuilds them unscaled after a move,
+    so it calls this on the redrawn sources as the build did."""
+    if not factor or factor == 1.0:
+        return
+    for src in sources or ():
+        data = getattr(src, "data", None)
+        if not isinstance(data, dict) or getattr(src, "_dash_scaled", None):
+            continue
+        new = {}
+        for k, col in data.items():
+            if str(k).startswith("__dash_wsize"):
+                try:
+                    new[k] = [v * factor if isinstance(v, (int, float))
+                              and not isinstance(v, bool) else v
+                              for v in col]
+                except TypeError:
+                    continue
+        if new:
+            src.data.update(new)
+        src._dash_scaled = factor
+
+
+def _dash_apply_scale(fig, factor):
+    """twoway's scale(#) (WP-31 D5): every drawn size of *fig* -- text,
+    markers, line widths, tick lengths, standoffs, paddings and the legend's
+    key geometry -- times *factor*, as twoway multiplies "the size of all
+    text, markers and line widths" (measured, sizing_truth.json scale_15:
+    title, tick labels, marker radius and strokes 1.5 x).  A post-pass over
+    the finished figure, so every renderer path is covered; idempotent
+    (``fig._dash_scaled``); ``fig._dash_scale`` records the factor.  Gaps
+    between boxes are not scaled.  *factor* None or 1 does nothing."""
+    if factor is None or factor == 1.0 or fig is None:
+        return
+    if getattr(fig, "_dash_scaled", None) is not None:
+        return
+    fig._dash_scaled = factor
+    fig._dash_scale = factor
+    from bokeh.models import (Axis, Grid, Title, Label, LabelSet, Legend,
+                              Span, ColorBar, GlyphRenderer, Arrow)
+
+    def css(m, *props):
+        for p in props:
+            v = getattr(m, p, None)
+            pt = OptionTranslator.css_to_pt(v)
+            if pt is not None:
+                setattr(m, p, OptionTranslator.css_pt(pt * factor))
+
+    def num(m, *props):
+        for p in props:
+            v = getattr(m, p, None)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                setattr(m, p, v * factor)
+
+    def whole(m, *props):
+        for p in props:
+            v = getattr(m, p, None)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                setattr(m, p, max(0, int(round(v * factor))))
+
+    cols = []
+    for m in fig.references():
+        if isinstance(m, Axis):
+            css(m, "major_label_text_font_size", "axis_label_text_font_size")
+            whole(m, "major_tick_in", "major_tick_out", "minor_tick_in",
+                  "minor_tick_out", "axis_label_standoff",
+                  "major_label_standoff")
+            num(m, "axis_line_width", "major_tick_line_width",
+                "minor_tick_line_width")
+        elif isinstance(m, Grid):
+            num(m, "grid_line_width", "minor_grid_line_width")
+        elif isinstance(m, (Title, Label, LabelSet)):
+            css(m, "text_font_size")
+            num(m, "border_line_width", "x_offset", "y_offset")
+            whole(m, "padding", "standoff", "offset")
+        elif isinstance(m, Legend):
+            css(m, "label_text_font_size", "title_text_font_size")
+            whole(m, "glyph_width", "glyph_height", "label_standoff",
+                  "spacing", "padding", "margin", "label_width",
+                  "label_height")
+            num(m, "border_line_width")
+        elif isinstance(m, ColorBar):
+            css(m, "major_label_text_font_size", "title_text_font_size")
+            num(m, "bar_line_width", "major_tick_line_width",
+                "border_line_width")
+        elif isinstance(m, (Span, Arrow)):
+            num(m, "line_width")
+        elif isinstance(m, GlyphRenderer):
+            for g in (m.glyph, m.nonselection_glyph, m.selection_glyph,
+                      m.hover_glyph, m.muted_glyph):
+                if g is None or isinstance(g, str):
+                    continue
+                num(g, "line_width", "size", "x_offset", "y_offset")
+                css(g, "text_font_size")
+                sz = getattr(g, "size", None)
+                fld = sz if isinstance(sz, str) else (
+                    sz.get("field") if isinstance(sz, dict) else
+                    getattr(sz, "field", None))
+                if isinstance(fld, str) and fld.startswith("__dash_wsize"):
+                    cols.append(m.data_source)
+    _dash_scale_columns(cols, factor)
+
+
+def _dash_frame_aspect(graph_opts):
+    """twoway's aspectratio(#), the plot region's height/width, or None
+    (WP-31 D5).  ``_dash_figure_aspect`` keeps the figure's own ratio;
+    this is the frame's, drawn by ``_dash_frame_sizes`` when xsize() or
+    ysize() fixes the figure's size."""
+    raw = str((graph_opts or {}).get("aspectratio", "") or "").strip()[:64]
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        return None
+    return v if math.isfinite(v) and v > 0 else None
+
+
+def _dash_frame_borders(fig):
+    """The px each side of *fig*'s frame is estimated to need, as
+    ``{"left", "right", "above", "below"}``: an axis 45 px, a title or
+    label its font's height plus 10 px, and the figure's own min_border
+    when larger (WP-31 D5).  An estimate, used to size the frame so the
+    figure stays near the size xsize()/ysize() asked for."""
+    from bokeh.models import Axis
+    base = fig.min_border if isinstance(fig.min_border, (int, float)) else 5
+    out = {}
+    for side in ("left", "right", "above", "below"):
+        own = getattr(fig, "min_border_" + {"above": "top",
+                                            "below": "bottom"}.get(side, side))
+        tot = 0.0
+        for m in getattr(fig, side, None) or []:
+            if isinstance(m, Axis):
+                tot += 45.0
+            else:
+                pt = OptionTranslator.css_to_pt(
+                    getattr(m, "text_font_size", None))
+                if pt is not None:
+                    tot += pt * 4.0 / 3.0 + 10.0
+        own = own if isinstance(own, (int, float)) else base
+        out[side] = max(float(own), tot)
+    return out
+
+
+def _dash_frame_sizes(fig, ar, placement, width, height):
+    """Draw twoway's aspectratio(*ar*) on *fig*'s plot region (WP-31 D5,
+    DECISIONS A16): the largest frame of height/width *ar* inside a figure
+    of *width* x *height* px less the borders ``_dash_frame_borders``
+    estimates, set as ``frame_width``/``frame_height`` on a fixed-size
+    figure, the slack put where ``placement()`` puts the plot region
+    (measured, sizing_truth.json ar_place_*: ``e`` against the right edge,
+    ``w`` the left, ``n`` the top, ``s`` the bottom, ``c`` centred) through
+    ``min_border_*``.  No page JavaScript."""
+    if fig is None or not ar or ar <= 0 or not width or not height:
+        return
+    b = _dash_frame_borders(fig)
+    fig._dash_frame_est = b
+    iw = max(1.0, float(width) - b["left"] - b["right"])
+    ih = max(1.0, float(height) - b["above"] - b["below"])
+    fw = min(iw, ih / ar)
+    fh = fw * ar
+    fw, fh = max(1, int(round(fw))), max(1, int(round(fh)))
+    sx, sy = max(0.0, iw - fw), max(0.0, ih - fh)
+    p = str(placement or "c")
+    xl = sx if "e" in p else (0.0 if "w" in p else sx / 2.0)
+    yt = sy if "s" in p else (0.0 if "n" in p else sy / 2.0)
+    fig.sizing_mode = "fixed"
+    fig.frame_width, fig.frame_height = fw, fh
+    fig.min_border_left = int(round(b["left"] + xl))
+    fig.min_border_right = int(round(b["right"] + sx - xl))
+    fig.min_border_top = int(round(b["above"] + yt))
+    fig.min_border_bottom = int(round(b["below"] + sy - yt))
+
+
+def _dash_apply_frame_aspect(fig, graph_opts, scheme_x=None, scheme_y=None):
+    """aspectratio() on the plot region when xsize() or ysize() is given
+    (WP-31 D5): the figure is drawn at that size (96 px an inch, held to
+    the page's height bound) and ``_dash_frame_sizes`` shapes its frame.
+    Without either size nothing is done: the figure keeps 1/# as its own
+    ratio (``_dash_figure_aspect``), documented."""
+    ar = _dash_frame_aspect(graph_opts)
+    if ar is None or fig is None:
+        return
+    go = graph_opts or {}
+    xs = _dash_frame_aspect({"aspectratio": go.get("xsize", "")})
+    ys = _dash_frame_aspect({"aspectratio": go.get("ysize", "")})
+    if xs is None and ys is None:
+        return
+    w_in = xs if xs is not None else (scheme_x or 5.5)
+    h_in = ys if ys is not None else (scheme_y or 4.0)
+    k = min(1.0, _MAX_FIGURE_HEIGHT / (h_in * 96.0))
+    width = w_in * 96.0 * k
+    height = h_in * 96.0 * k
+    fig._dash_frame_box = (int(round(width)), int(round(height)))
+    _dash_frame_sizes(fig, ar, go.get("aspectplacement", "") or "c",
+                      width, height)
+
+
+def _dash_overhangs(fig, graph_opts):
+    """xoverhangs and yoverhangs (WP-31 D5): twoway narrows the plot region
+    so the first and last tick labels fit inside the graph (measured,
+    sizing_truth.json overhang_x0/x1: the plot region's left edge moved in
+    by 138 and its right by 80 of 3,960 units for a long first label).
+    Each side's min_border is raised to half the widest end label
+    (x: the labels' estimated width; y: their height), never lowered, so
+    the borders other options set are kept."""
+    go = graph_opts or {}
+    want_x = bool(str(go.get("xoverhangs", "") or "").strip())
+    want_y = bool(str(go.get("yoverhangs", "") or "").strip())
+    if fig is None or not (want_x or want_y):
+        return
+    base = fig.min_border if isinstance(fig.min_border, (int, float)) else 5
+
+    def raise_to(side, px):
+        cur = getattr(fig, "min_border_" + side)
+        cur = cur if isinstance(cur, (int, float)) else base
+        setattr(fig, "min_border_" + side, int(max(cur, math.ceil(px))))
+
+    for axis, want, sides in ((fig.xaxis, want_x, ("left", "right")),
+                              (fig.yaxis, want_y, ("top", "bottom"))):
+        if not want:
+            continue
+        for ax in axis:
+            pt = OptionTranslator.css_to_pt(
+                getattr(ax, "major_label_text_font_size", None)) or 8.25
+            px = pt * 4.0 / 3.0
+            if sides[0] == "left":
+                ov = getattr(ax, "major_label_overrides", None) or {}
+                n = max([len(str(v)) for v in ov.values()] or [6])
+                half = 0.5 * n * 0.6 * px
+            else:
+                half = 0.5 * px
+            for side in sides:
+                raise_to(side, half)
+
+
 def _stat_option_float(
     options: dict,
     key: str,
@@ -42819,10 +43075,49 @@ def _dash_layout_cell(name, figures, facet_map, kpi_divs, gopts_of):
         # by()'s overall text above and below the panels (WP-30 P1.15a).
         _dash_by_frame_grid(grid, getattr(figs[0], "_dash_by_chrome", None),
                             cn)
+        _dash_fxy_size(grid, gopts_of(name) or {})
         return _dash_name_save(_dash_reflow(grid))
     if name in figures:
+        _dash_fxy_size(figures[name], gopts_of(name) or {})
         return figures[name]
     return kpi_divs.get(name)
+
+
+def _dash_fxy_size(item, graph_opts):
+    """fysize(#) and fxsize(#) on a graph's cell (WP-31 D5).  fysize(#)
+    draws it # percent as tall: a figure kept in proportion has its ratio
+    divided and its height bound multiplied by #/100, any other its
+    height; fxsize(#) holds it to # percent of the width its cell gives it
+    (CSS ``max-width`` through the ``styles`` property, no inline style
+    text).  twoway, measured (sizing_truth.json fysize_50, fxsize_50),
+    keeps the graph's size and draws the plot in # percent of 4 inches,
+    centred; on a page the cell is what shrinks.  A value of 0 or less,
+    or 100 and over, changes nothing.  Once per item."""
+    if item is None or getattr(item, "_dash_fxy_done", False):
+        return
+    item._dash_fxy_done = True
+    fy = _dash_frame_aspect({"aspectratio": (graph_opts or {}).get("fysize")})
+    fx = _dash_frame_aspect({"aspectratio": (graph_opts or {}).get("fxsize")})
+    if fy is not None and fy < 100:
+        k = fy / 100.0
+        ar = getattr(item, "aspect_ratio", None)
+        if isinstance(ar, (int, float)) and ar > 0 and \
+                getattr(item, "sizing_mode", None) != "fixed":
+            item.aspect_ratio = float(ar) / k
+            for p in ("max_height", "min_height"):
+                v = getattr(item, p, None)
+                if isinstance(v, (int, float)):
+                    setattr(item, p, max(1, int(round(v * k))))
+        else:
+            h = getattr(item, "height", None)
+            if isinstance(h, (int, float)) and h > 0:
+                item.height = max(1, int(round(h * k)))
+            fh = getattr(item, "frame_height", None)
+            if isinstance(fh, (int, float)) and fh > 0:
+                item.frame_height = max(1, int(round(fh * k)))
+    if fx is not None and fx < 100:
+        item.styles = {**dict(item.styles or {}),
+                       "max-width": f"{fx:g}%"}
 
 
 def _dash_parse_tabs(tabs_str, all_names, limit=None):
@@ -52138,6 +52433,14 @@ class DashRenderer:
             _hover_extra_str.split() if _hover_extra_str else [],
             list(self.df.columns))
 
+        # WP-31 D5: scale() over everything drawn, then the overhangs'
+        # borders and aspectratio()'s frame (with xsize()/ysize()), last.
+        _dash_apply_scale(fig, _dash_scale_factor(graph_opts))
+        _dash_overhangs(fig, graph_opts)
+        if facet_view is None:
+            _dash_apply_frame_aspect(
+                fig, graph_opts, getattr(self.scheme, "graphsize_x", None),
+                getattr(self.scheme, "graphsize_y", None))
         return fig
 
     def _add_glyph(
@@ -55512,7 +55815,11 @@ class ServerAppBuilder:
                     # once-per-render set's helpers, and the graph-level
                     # colour and proportion readers the figure block calls.
                     _dash_style_note, _dash_warn_once, _dash_reset_notes,
-                    _dash_graph_color, _dash_figure_aspect, _fit_grid,
+                    _dash_graph_color, _dash_figure_aspect, _dash_scale_factor,
+                    _dash_scale_columns, _dash_apply_scale, _dash_frame_aspect,
+                    _dash_frame_borders, _dash_frame_sizes,
+                    _dash_apply_frame_aspect, _dash_overhangs, _dash_fxy_size,
+                    _fit_grid,
                     # WP-31 C10a: range(. #) on the fits, and the t of a
                     # confidence level twoway draws at any value.
                     _dash_range_bounds, _dash_ci_t,
@@ -57428,6 +57735,8 @@ class ServerAppBuilder:
             "                                          set(), None, None, sidx=_sidx,",
             "                                          cv_domain=_cv_dom)",
             "            _out = [_s for _s in _srcs if _s is not _ly]",
+            "            # WP-31 D5: the weighted sizes at the graph's scale().",
+            "            _dash_scale_columns(_out, _dash_scale_factor(_go))",
             "            # WP-31 B4d: a contour's redrawn levels and its key's",
             "            # ticks ride on the first source, for the live key.",
             "            for _rr in _tfig.renderers:",
@@ -57884,6 +58193,13 @@ class ServerAppBuilder:
             "        # sites do (WP-28 E14).",
             "        if gname in linked_names:",
             "            _dash_dim_nonselection(fig, _NONSELECTION_ALPHA)",
+            "        # WP-31 D5: scale(), the overhangs and aspectratio()'s",
+            "        # frame, last, as the saved renderer applies them.",
+            "        _dash_apply_scale(fig, _dash_scale_factor(go))",
+            "        _dash_overhangs(fig, go)",
+            "        if _fac_label is None:",
+            "            _dash_apply_frame_aspect(fig, go, _SCHEME_GRAPHSIZE_X,",
+            "                                     _SCHEME_GRAPHSIZE_Y)",
             "        return fig",
 
             "    # ---- Build figures: one call per graph, or per by() panel ----",

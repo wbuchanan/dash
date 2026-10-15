@@ -1591,7 +1591,9 @@ class TestTheUnsupportedSectionSaysWhatTwowayDoes:
     def test_scale_is_not_called_a_combine_option(self):
         s = self._sec()
         assert "these size a panel within" not in s
-        assert "{opt scale(#)}" in s and "text" in s
+        # Flipped (WP-31 D5): scale() is drawn (test_sizing.py), so the
+        # section no longer lists it; it was there as a pending option.
+        assert "{opt scale(#)}" not in s and "fxsize" not in s
 
     def test_twoways_refusals_are_named_as_such(self):
         s = self._sec()

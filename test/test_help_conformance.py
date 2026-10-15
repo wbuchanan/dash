@@ -702,7 +702,8 @@ class TestTheParsersFoundSomething:
         # 39 -> 33: D1 xmlabel xmtick tmlabel tmtick ymlabel ymtick drawn
         # 33 -> 35: B4b heatmap and outlines named on contour; 35 -> 25: D2
         # the eight edge titles drawn, title2() and subtitle2() refused
-        assert len(_ignored_options()) == 25
+        # 25 -> 20: D5 fxsize fysize scale xoverhangs yoverhangs drawn
+        assert len(_ignored_options()) == 20
 
     def test_the_unsupported_section_was_found(self):
         # 44 names.  A blank line inside the first grouped entry of the
@@ -728,7 +729,9 @@ class TestTheParsersFoundSomething:
         # 39 -> 33: D1 the "Minor ticks and minor labels" entry goes
         # 33 -> 35: B4b the "Contour options" entry, heatmap and outlines;
         # 35 -> 25: D2 the "Alternative titles" entry goes
-        assert len(_unsupported_section()) == 25
+        # 25 -> 20: D5 the "Sizing for graph combine" and "Room for long
+        # end labels" entries go
+        assert len(_unsupported_section()) == 20
 
     def test_the_token_reader_reads_every_form(self):
         assert _option_tokens(
@@ -801,8 +804,11 @@ class TestTheParsersFoundSomething:
         # Unsupported entry "Contour options"; 433 -> 432: D2 the
         # Unsupported entry "Alternative titles" goes.
         # 432 -> 437: D4 five synopt rows holes() .. textwidth().
-        assert len(defs) == 437, (  # 352 -> 361: P1.14a Named styles
-            f"{len(defs)} definition entries cut out of dash.sthlp, 437 "
+        # 437 -> 439: D5 four sizing entries (aspectratio(), scale(),
+        # fysize()/fxsize(), the overhangs), less the two Unsupported
+        # entries "Sizing for graph combine" and "Room for long end labels".
+        assert len(defs) == 439, (  # 352 -> 361: P1.14a Named styles
+            f"{len(defs)} definition entries cut out of dash.sthlp, 439 "
             f"measured 15oct2026")
         assert any({"pbgc", "plotbgcolor"} <= set(_option_tokens(t))
                    for t in defs), "no entry holds plotbgcolor() and pbgc()"

@@ -377,6 +377,12 @@
 *!          legend(symxsize(bogus)) as not a recognised size
 *!   U31-11 legend(holes(0)) and holes(2.5): twoway's rc and words,
 *!          "holes() invalid -- invalid numlist has ..."
+*! Sizing (WP-31 D5; test/fixtures/sizing_truth.json):
+*!   U32-6  scale(-1) refused in twoway's gm_linewidth line, fxsize(x) and
+*!          fysize(x) in "option fxsize() incorrectly specified"; scale(0),
+*!          scale(x), fxsize(150) and fysize(0) drawn, as twoway draws them
+*!   U32-7  aspectratio(1, foo) refused "option foo not allowed";
+*!          aspectratio(1, placement(xx)) drawn with twoway's note
 *!
 *! Every refusal is read back out of a captured log with Stata's wrapped
 *! lines re-joined, as test_suboption_reporting.cscript does.
@@ -2127,6 +2133,59 @@ foreach c in "125|0|elements outside of allowed range" "126|2.5|noninteger eleme
     }
 }
 _u05_judge U31-11 `"`bad'"' "holes(0) and holes(2.5) refused as twoway refuses them, in its words"
+
+// U32-6 (WP-31 D5): scale(), fxsize() and fysize() refused and drawn as
+// twoway refuses and draws them.
+local bad ""
+// twoway refuses scale(-1) when it draws the line widths, so under
+// nodraw it says nothing (rc 0); dash always draws the page and refuses
+// it, as for the axes' line widths (WP-30 P1.18a).  twoway is asked
+// drawing here.
+capture quietly twoway scatter mpg weight, scale(-1) name(u32x, replace)
+local u32trc = _rc
+capture graph drop u32x
+_u05_rc "scatter mpg weight, scale(-1)" "gm_linewidth must be between 0.000 and  1.0e+04"
+if `u32trc' != 198 | r(drc) != 198 | r(dn) < 1 {
+    local bad `"`bad' [scale(-1): twoway `u32trc', dash `r(drc)' (`r(dn)')]"'
+}
+foreach c in "fxsize(x)|option fxsize() incorrectly specified" ///
+             "fysize(x)|option fysize() incorrectly specified" {
+    gettoken o c : c, parse("|")
+    gettoken _p words : c, parse("|")
+    _u05_rc "scatter mpg weight, `o'" "`words'"
+    if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+        local bad `"`bad' [`o': twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+    }
+}
+foreach o in "scale(0)" "scale(1.5)" "fxsize(150)" "fysize(0)" "fxsize(50) fysize(50)" {
+    _u05_rc "scatter mpg weight, `o'" ""
+    if r(trc) != 0 | r(drc) != 0 {
+        local bad `"`bad' [`o': twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+_u05_rc "scatter mpg weight, scale(x)" "named style x not found in class numstyle"
+if r(trc) != 0 | r(drc) != 0 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [scale(x): twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+_u05_judge U32-6 `"`bad'"' "scale(), fxsize() and fysize(): twoway's refusals in its words, its drawn values drawn"
+
+// U32-7 (WP-31 D5): aspectratio()'s sub-options as twoway reads them.
+local bad ""
+_u05_rc "scatter mpg weight, aspectratio(1, foo)" "option foo not allowed"
+if r(trc) != 198 | r(drc) != 198 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [foo: twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+_u05_rc "scatter mpg weight, aspectratio(1, placement(xx))" "named style xx not found in class compass2dir"
+if r(trc) != 0 | r(drc) != 0 | r(tn) < 1 | r(dn) < 1 {
+    local bad `"`bad' [placement(xx): twoway `r(trc)' (`r(tn)'), dash `r(drc)' (`r(dn)')]"'
+}
+foreach p in e w c ne {
+    _u05_rc "scatter mpg weight, aspectratio(1, placement(`p')) xsize(8) ysize(4)" ""
+    if r(trc) != 0 | r(drc) != 0 {
+        local bad `"`bad' [placement(`p'): twoway `r(trc)', dash `r(drc)']"'
+    }
+}
+_u05_judge U32-7 `"`bad'"' "aspectratio(#, placement()) taken, a bad sub-option refused and a bad compass noted, as twoway"
 
 // ----------------------------------------------------------------
 // Summary

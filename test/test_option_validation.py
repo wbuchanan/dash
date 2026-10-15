@@ -72,7 +72,11 @@ KINDS = {"num", "int", "pos", "style", "istyle", "enum", "numlist", "var",
          "range",
          # 16 -> 17: WP-31 C10b the axes kind (yaxis(1 2), twoway's
          # numlist codes outside 1-9).
-         "axes"}
+         "axes",
+         # 17 -> 19: WP-31 D5 scale()'s mult kind (gm_linewidth below 0, a
+         # word noted) and fxsize()/fysize()'s optnum (a word refused in
+         # twoway's "incorrectly specified").
+         "mult", "optnum"}
 
 #: The contract's table, token for token (DESIGN.md section 2).  The test
 #: asserts the table in dash.ado carries every one of these; it may carry
@@ -426,6 +430,9 @@ class TestTheNewProgramsKeepTheirConstraints:
         # WP-30 P1.5: _dash_axis_fmts reads format() words by value and
         # tests their characters; _dash_imm_echo cuts an echo at 80.
         "_dash_axis_fmts", "_dash_imm_echo",
+        # WP-31 D5: _dash_note is _dash_say's twin for twoway's notes
+        # (scale(word)'s "named style ... not found").
+        "_dash_note",
     })
 
     @staticmethod
@@ -1394,7 +1401,13 @@ _PROBED_LIVE = {"zlabel",
                 # fixtures/kde_hist_fn_truth.json and asked of twoway again
                 # in test_wp31_truth.cscript U12-02 and
                 # test_option_validation.cscript U12-08.
-                "gap", "baroffset", "area", "droplines"}
+                "gap", "baroffset", "area", "droplines",
+                # WP-31 D5: scale(), fxsize() and fysize(): twoway's
+                # refusals and notes are measured in
+                # fixtures/sizing_truth.json (scale_bad_*, fx_bad_*,
+                # fy_bad_*) and asked of twoway again in
+                # test_option_validation.cscript U32-6.
+                "scale", "fxsize", "fysize"}
 
 
 def _fixture():

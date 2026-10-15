@@ -1,0 +1,912 @@
+{
+ "_meta": {
+  "born_date": "12 Aug 2026",
+  "dash_commit": "0aa96dc5c5c5e8b63798971984646237035a3f7b",
+  "extracted": "15 Oct 2026 16:09:16",
+  "source": "scripts/extract_sizing_truth.do",
+  "stata_version": "19.5"
+ },
+ "abbrev_as": {
+  "lines": [
+   "option as() not allowed"
+  ],
+  "rc": 198
+ },
+ "abbrev_asp": {
+  "lines": [
+   "option asp() not allowed"
+  ],
+  "rc": 198
+ },
+ "abbrev_aspe": {
+  "lines": [
+   "option aspe() not allowed"
+  ],
+  "rc": 198
+ },
+ "abbrev_aspec": {
+  "lines": [
+   "option aspec() not allowed"
+  ],
+  "rc": 198
+ },
+ "abbrev_aspect": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": null,
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": null,
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "abbrev_aspectr": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": null,
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": null,
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "abbrev_aspectra": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": null,
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": null,
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "abbrev_aspectrat": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": null,
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": null,
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "abbrev_aspectrati": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": null,
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": null,
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "ar_1": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 930.72,
+   "right": 3319.1,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "ar_place_c": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 1830.78,
+   "right": 4219.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 100.08
+ },
+ "ar_place_e": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 3270.78,
+   "right": 5659.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 100.08
+ },
+ "ar_place_ne": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 3270.78,
+   "right": 5659.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 100.08
+ },
+ "ar_place_sw": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 390.78,
+   "right": 2779.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 100.08
+ },
+ "ar_place_w": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 390.78,
+   "right": 2779.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 100.08
+ },
+ "ar_sizes": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 1830.78,
+   "right": 4219.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 100.08
+ },
+ "ar_vplace_c": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 2880.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 2880.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 1641.06,
+   "left": 390.78,
+   "right": 2779.2,
+   "top": 948.96
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "ar_vplace_n": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 2880.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 2880.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 792.9,
+   "left": 390.78,
+   "right": 2779.2,
+   "top": 100.8
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "ar_vplace_s": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 2880.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 2880.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 390.78,
+   "right": 2779.2,
+   "top": 1797.03
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "aspect_bad_num": {
+  "lines": [
+   "option aspectratio() incorrectly specified"
+  ],
+  "rc": 198
+ },
+ "aspect_bad_place": {
+  "lines": [
+   "(note:  named style xx not found in class compass2dir, default attributes used)"
+  ],
+  "rc": 0
+ },
+ "aspect_bad_sub": {
+  "lines": [
+   "option foo not allowed"
+  ],
+  "rc": 198
+ },
+ "base": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.18,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 275.35
+  },
+  "rc": 0,
+  "title_size": 139.96,
+  "xlabel_size": 99.99
+ },
+ "fx_100": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 829.99,
+   "right": 3419.95,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "fx_bad_0": {
+  "lines": [],
+  "rc": 0
+ },
+ "fx_bad_150": {
+  "lines": [],
+  "rc": 0
+ },
+ "fx_bad_x": {
+  "lines": [
+   "option fxsize() incorrectly specified"
+  ],
+  "rc": 198
+ },
+ "fxsize_50": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 1549.97,
+   "right": 2699.98,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "fy_bad_0": {
+  "lines": [],
+  "rc": 0
+ },
+ "fy_bad_150": {
+  "lines": [],
+  "rc": 0
+ },
+ "fy_bad_x": {
+  "lines": [
+   "option fysize() incorrectly specified"
+  ],
+  "rc": 198
+ },
+ "fysize_50": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 1870.04,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 720.0
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "lw_10000": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": null,
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": null,
+  "plot": null,
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "lw_20000": {
+  "lines": [
+   "gm_linewidth must be between 0.000 and  1.0e+04"
+  ],
+  "rc": 198
+ },
+ "overhang_x0": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": null
+ },
+ "overhang_x1": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 529.4,
+   "right": 3778.58,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": null
+ },
+ "overhang_y0": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 578.53,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "overhang_y1": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.19,
+   "left": 578.53,
+   "right": 3859.02,
+   "top": 100.86
+  },
+  "rc": 0,
+  "title_size": null,
+  "xlabel_size": 99.99
+ },
+ "ref_48": {
+  "canvas": {
+   "h": 5760.0,
+   "w": 2880.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 5760.0,
+   "left": 0.0,
+   "right": 2880.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 5369.22,
+   "left": 390.78,
+   "right": 2779.2,
+   "top": 279.36
+  },
+  "rc": 0,
+  "title_size": 144.0,
+  "xlabel_size": 100.08
+ },
+ "ref_84": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 21.96,
+  "plot": {
+   "bottom": 2489.22,
+   "left": 390.78,
+   "right": 5659.2,
+   "top": 279.36
+  },
+  "rc": 0,
+  "title_size": 144.0,
+  "xlabel_size": 100.08
+ },
+ "ref_88": {
+  "canvas": {
+   "h": 5760.0,
+   "w": 5760.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 5760.0,
+   "left": 0.0,
+   "right": 5760.0,
+   "top": 0.0
+  },
+  "line_widths": [
+   11.52,
+   17.28
+  ],
+  "lines": [],
+  "marker_r": 43.92,
+  "plot": {
+   "bottom": 4978.44,
+   "left": 781.56,
+   "right": 5558.4,
+   "top": 558.72
+  },
+  "rc": 0,
+  "title_size": 288.0,
+  "xlabel_size": 199.98
+ },
+ "ref_def": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   5.76,
+   8.64
+  ],
+  "lines": [],
+  "marker_r": 22.03,
+  "plot": {
+   "bottom": 2489.18,
+   "left": 390.8,
+   "right": 3859.02,
+   "top": 279.31
+  },
+  "rc": 0,
+  "title_size": 144.04,
+  "xlabel_size": 99.99
+ },
+ "scale_05": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   3.0,
+   4.32
+  ],
+  "lines": [],
+  "marker_r": 11.01,
+  "plot": {
+   "bottom": 2634.23,
+   "left": 245.77,
+   "right": 3859.02,
+   "top": 188.11
+  },
+  "rc": 0,
+  "title_size": 70.04,
+  "xlabel_size": 50.0
+ },
+ "scale_15": {
+  "canvas": {
+   "h": 2880.0,
+   "w": 3960.0,
+   "x": 0.0,
+   "y": 0.0
+  },
+  "graph": {
+   "bottom": 2880.0,
+   "left": 0.0,
+   "right": 3959.88,
+   "top": 0.0
+  },
+  "line_widths": [
+   8.64,
+   12.96
+  ],
+  "lines": [],
+  "marker_r": 33.04,
+  "plot": {
+   "bottom": 2344.27,
+   "left": 535.71,
+   "right": 3859.02,
+   "top": 362.6
+  },
+  "rc": 0,
+  "title_size": 210.0,
+  "xlabel_size": 149.99
+ },
+ "scale_bad_0": {
+  "lines": [],
+  "rc": 0
+ },
+ "scale_bad_neg": {
+  "lines": [
+   "gm_linewidth must be between 0.000 and  1.0e+04"
+  ],
+  "rc": 198
+ },
+ "scale_bad_x": {
+  "lines": [
+   "(note:  named style x not found in class numstyle, default attributes used)",
+   "(note:  named style 1 not found in class numstyle, default attributes used)"
+  ],
+  "rc": 0
+ }
+}
